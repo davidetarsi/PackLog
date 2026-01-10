@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
+import '../../../shared/theme/theme.dart';
 
 class HouseDetailScreen extends ConsumerWidget {
   final String houseId;
@@ -24,7 +25,11 @@ class HouseDetailScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.home_outlined, size: 64, color: Colors.grey),
+                  const Icon(
+                    Icons.home_outlined,
+                    size: 64,
+                    color: AppColors.disabled,
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'La casa richiesta non è stata trovata.',
@@ -72,7 +77,7 @@ class HouseDetailScreen extends ConsumerWidget {
                           onPressed: () => context.pop(true),
                           child: const Text(
                             'Elimina',
-                            style: TextStyle(color: Colors.red),
+                            style: TextStyle(color: AppColors.destructive),
                           ),
                         ),
                       ],
@@ -107,7 +112,11 @@ class HouseDetailScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: AppColors.destructive,
+              ),
               const SizedBox(height: 16),
               Text('Errore: $error'),
               const SizedBox(height: 16),

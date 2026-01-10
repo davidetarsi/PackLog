@@ -5,6 +5,8 @@ import '../providers/item_provider.dart';
 import '../model/item_model.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
 import '../../trips/model/trip_model.dart';
+import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/widgets.dart';
 
 class ItemsScreen extends ConsumerWidget {
   final String houseId;
@@ -55,17 +57,23 @@ class ItemsScreen extends ConsumerWidget {
                       Icon(
                         Icons.inventory_2_outlined,
                         size: 64,
-                        color: Colors.grey,
+                        color: AppColors.disabled,
                       ),
                       SizedBox(height: 16),
                       Text(
                         'Nessun oggetto',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: AppColors.disabled,
+                        ),
                       ),
                       SizedBox(height: 8),
                       Text(
                         'Aggiungi il tuo primo oggetto',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.disabled,
+                        ),
                       ),
                     ],
                   ),
@@ -127,7 +135,11 @@ class ItemsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: AppColors.destructive,
+                  ),
                   const SizedBox(height: 16),
                   Text('Errore: $error'),
                   const SizedBox(height: 16),
@@ -157,13 +169,13 @@ class ItemsScreen extends ConsumerWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.luggage, color: Colors.blue.shade700),
+            Icon(Icons.luggage, color: AppColors.itemTemporary),
             const SizedBox(width: 8),
             Text(
               'Oggetti temporanei (in arrivo)',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.blue.shade700,
+                color: AppColors.itemTemporary,
               ),
             ),
           ],
@@ -175,29 +187,16 @@ class ItemsScreen extends ConsumerWidget {
   }
 
   Widget _buildTemporaryItemCard(BuildContext context, TripItem item) {
+    final appColors = context.appColors;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: Colors.blue.shade50,
+      color: appColors.itemTemporaryBackground,
       child: ListTile(
         leading: Stack(
           children: [
-            Icon(Icons.inventory_2, color: Colors.blue.shade600),
-            Positioned(
-              right: -4,
-              bottom: -4,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.flight_land,
-                  size: 12,
-                  color: Colors.white,
-                ),
-              ),
-            ),
+            Icon(Icons.inventory_2, color: appColors.itemTemporary),
+            StatusIconOverlay.temporary(),
           ],
         ),
         title: Row(
@@ -205,31 +204,21 @@ class ItemsScreen extends ConsumerWidget {
             Expanded(
               child: Text(
                 item.name,
-                style: TextStyle(color: Colors.blue.shade800),
+                style: TextStyle(color: appColors.itemTemporaryText),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'Temporaneo',
-                style: TextStyle(color: Colors.white, fontSize: 10),
-              ),
-            ),
+            const TemporaryBadge(),
           ],
         ),
         subtitle: Text(
           item.category,
-          style: TextStyle(color: Colors.blue.shade600),
+          style: TextStyle(color: appColors.itemTemporary),
         ),
         trailing: Text(
           'x${item.quantity}',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.blue.shade700,
+            color: appColors.itemTemporaryText,
           ),
         ),
       ),
@@ -242,6 +231,8 @@ class ItemsScreen extends ConsumerWidget {
     ItemModel item,
     int quantityOnTrip,
   ) {
+    final appColors = context.appColors;
+    final colorScheme = Theme.of(context).colorScheme;
     final totalQuantity = item.quantity ?? 1;
     final availableQuantity = totalQuantity - quantityOnTrip;
     final isPartiallyOnTrip = quantityOnTrip > 0 && availableQuantity > 0;
@@ -250,7 +241,7 @@ class ItemsScreen extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: isFullyOnTrip ? Colors.orange.shade50 : null,
+      color: isFullyOnTrip ? appColors.itemOnTripBackground : null,
       child: ListTile(
         onTap: isFullyOnTrip
             ? null
@@ -260,23 +251,7 @@ class ItemsScreen extends ConsumerWidget {
         leading: Stack(
           children: [
             _getCategoryIcon(item.category),
-            if (hasAnyOnTrip)
-              Positioned(
-                right: -4,
-                bottom: -4,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.orange,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.luggage,
-                    size: 12,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+            if (hasAnyOnTrip) StatusIconOverlay.onTrip(),
           ],
         ),
         title: Row(
@@ -285,33 +260,15 @@ class ItemsScreen extends ConsumerWidget {
               child: Text(
                 item.name,
                 style: isFullyOnTrip
-                    ? TextStyle(color: Colors.orange.shade800)
+                    ? TextStyle(color: appColors.itemOnTripText)
                     : null,
               ),
             ),
-            if (isFullyOnTrip)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.orange,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'In viaggio',
-                  style: TextStyle(color: Colors.white, fontSize: 10),
-                ),
-              ),
+            if (isFullyOnTrip) const OnTripBadge(),
             if (isPartiallyOnTrip)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade200,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'x$quantityOnTrip in viaggio',
-                  style: TextStyle(color: Colors.orange.shade800, fontSize: 10),
-                ),
+              OnTripQuantityBadge(
+                quantity: quantityOnTrip,
+                totalQuantity: totalQuantity,
               ),
           ],
         ),
@@ -319,7 +276,7 @@ class ItemsScreen extends ConsumerWidget {
             ? Text(
                 item.description!,
                 style: isFullyOnTrip
-                    ? TextStyle(color: Colors.orange.shade600)
+                    ? TextStyle(color: appColors.itemOnTrip)
                     : null,
               )
             : null,
@@ -334,8 +291,8 @@ class ItemsScreen extends ConsumerWidget {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isFullyOnTrip
-                    ? Colors.orange.shade600
-                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    ? appColors.itemOnTrip
+                    : colorScheme.onSurface.withOpacity(0.7),
               ),
             ),
             const SizedBox(width: 8),
@@ -343,7 +300,9 @@ class ItemsScreen extends ConsumerWidget {
             IconButton(
               icon: Icon(
                 Icons.delete,
-                color: hasAnyOnTrip ? Colors.grey : Colors.red,
+                color: hasAnyOnTrip
+                    ? AppColors.disabled
+                    : AppColors.destructive,
               ),
               onPressed: hasAnyOnTrip
                   ? null
@@ -364,7 +323,7 @@ class ItemsScreen extends ConsumerWidget {
                               onPressed: () => context.pop(true),
                               child: const Text(
                                 'Elimina',
-                                style: TextStyle(color: Colors.red),
+                                style: TextStyle(color: AppColors.destructive),
                               ),
                             ),
                           ],

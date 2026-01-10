@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/theme.dart';
 
 class TripsScreen extends ConsumerWidget {
   const TripsScreen({super.key});
@@ -19,16 +20,16 @@ class TripsScreen extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.luggage_outlined, size: 64, color: Colors.grey),
+                Icon(Icons.luggage_outlined, size: 64, color: AppColors.disabled),
                 SizedBox(height: 16),
                 Text(
                   'Nessuna lista di viaggio',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                  style: TextStyle(fontSize: 18, color: AppColors.disabled),
                 ),
                 SizedBox(height: 8),
                 Text(
                   'Crea la tua prima lista',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                  style: TextStyle(fontSize: 14, color: AppColors.disabled),
                 ),
               ],
             ),
@@ -58,7 +59,7 @@ class TripsScreen extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const Icon(Icons.error_outline, size: 64, color: AppColors.destructive),
             const SizedBox(height: 16),
             Text('Errore: $error'),
             const SizedBox(height: 16),
@@ -130,7 +131,7 @@ class _TripCard extends StatelessWidget {
                   backgroundColor: colorScheme.surfaceContainerHighest,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     trip.completionPercentage == 1.0
-                        ? Colors.green
+                        ? AppColors.success
                         : colorScheme.primary,
                   ),
                 ),
@@ -161,7 +162,7 @@ class _TripCard extends StatelessWidget {
                                 : Icons.check_box_outline_blank,
                             size: 16,
                             color: item.isChecked
-                                ? Colors.green
+                                ? AppColors.success
                                 : colorScheme.onSurface.withOpacity(0.5),
                           ),
                           const SizedBox(width: 6),

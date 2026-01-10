@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/trip_provider.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/theme.dart';
 
 class TripDetailScreen extends ConsumerWidget {
   final String tripId;
@@ -24,7 +25,7 @@ class TripDetailScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.luggage_outlined, size: 64, color: Colors.grey),
+                  const Icon(Icons.luggage_outlined, size: 64, color: AppColors.disabled),
                   const SizedBox(height: 16),
                   const Text(
                     'Lista non trovata',
@@ -73,7 +74,7 @@ class TripDetailScreen extends ConsumerWidget {
                           onPressed: () => context.pop(true),
                           child: const Text(
                             'Elimina',
-                            style: TextStyle(color: Colors.red),
+                            style: TextStyle(color: AppColors.destructive),
                           ),
                         ),
                       ],
@@ -117,7 +118,7 @@ class TripDetailScreen extends ConsumerWidget {
                             backgroundColor: colorScheme.surface,
                             valueColor: AlwaysStoppedAnimation<Color>(
                               trip.completionPercentage == 1.0
-                                  ? Colors.green
+                                  ? AppColors.success
                                   : colorScheme.primary,
                             ),
                           ),
@@ -141,7 +142,7 @@ class TripDetailScreen extends ConsumerWidget {
                     ? const Center(
                         child: Text(
                           'Nessun oggetto nella lista',
-                          style: TextStyle(color: Colors.grey),
+                          style: TextStyle(color: AppColors.disabled),
                         ),
                       )
                     : ListView.builder(
@@ -207,7 +208,7 @@ class TripDetailScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const Icon(Icons.error_outline, size: 64, color: AppColors.destructive),
               const SizedBox(height: 16),
               Text('Errore: $error'),
               const SizedBox(height: 16),

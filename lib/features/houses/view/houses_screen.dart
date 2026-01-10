@@ -5,6 +5,7 @@ import '../providers/house_provider.dart';
 import '../providers/house_deletion_provider.dart';
 import '../model/house_model.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/theme.dart';
 
 class HousesScreen extends ConsumerWidget {
   const HousesScreen({super.key});
@@ -22,16 +23,20 @@ class HousesScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.home_outlined, size: 64, color: Colors.grey),
+                  Icon(
+                    Icons.home_outlined,
+                    size: 64,
+                    color: AppColors.disabled,
+                  ),
                   SizedBox(height: 16),
                   Text(
                     'Nessuna casa',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                    style: TextStyle(fontSize: 18, color: AppColors.disabled),
                   ),
                   SizedBox(height: 8),
                   Text(
                     'Aggiungi la tua prima casa',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                    style: TextStyle(fontSize: 14, color: AppColors.disabled),
                   ),
                 ],
               ),
@@ -51,7 +56,11 @@ class HousesScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: AppColors.destructive,
+              ),
               const SizedBox(height: 16),
               Text('Errore: $error'),
               const SizedBox(height: 16),
@@ -132,7 +141,10 @@ class _HouseCard extends ConsumerWidget {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.delete_outline, color: Colors.red.shade300),
+                icon: Icon(
+                  Icons.delete_outline,
+                  color: AppColors.destructiveLight,
+                ),
                 onPressed: () => _showDeleteDialog(context, ref),
               ),
               Icon(
@@ -164,7 +176,11 @@ class _HouseCard extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.warning_amber, color: Colors.orange, size: 48),
+              const Icon(
+                Icons.warning_amber,
+                color: AppColors.warning,
+                size: 48,
+              ),
               const SizedBox(height: 16),
               Text(deletionCheck.reason ?? 'La casa non può essere eliminata.'),
             ],
@@ -193,7 +209,10 @@ class _HouseCard extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Elimina', style: TextStyle(color: Colors.red)),
+            child: const Text(
+              'Elimina',
+              style: TextStyle(color: AppColors.destructive),
+            ),
           ),
         ],
       ),

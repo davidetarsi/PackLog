@@ -7,6 +7,7 @@ import '../providers/item_provider.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/theme.dart';
 
 class AddEditItemScreen extends ConsumerStatefulWidget {
   /// houseId è opzionale: se null, viene mostrato un dropdown per selezionare la casa
@@ -94,7 +95,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 return ListTile(
                   title: Text(quantity.toString()),
                   trailing: _selectedQuantity == quantity
-                      ? const Icon(Icons.check, color: Colors.green)
+                      ? const Icon(Icons.check, color: AppColors.success)
                       : null,
                   onTap: () => Navigator.pop(context, quantity),
                 );
@@ -299,17 +300,17 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.orange),
+          border: Border.all(color: AppColors.warning),
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Row(
           children: [
-            Icon(Icons.warning_amber, color: Colors.orange),
+            Icon(Icons.warning_amber, color: AppColors.warning),
             SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Nessuna casa disponibile. Crea prima una casa.',
-                style: TextStyle(color: Colors.orange),
+                style: TextStyle(color: AppColors.warning),
               ),
             ),
           ],
@@ -339,7 +340,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                     ).name
                   : 'Seleziona una casa',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: _selectedHouseId == null ? Colors.grey : null,
+                    color: _selectedHouseId == null ? AppColors.disabled : null,
                   ),
             ),
             const Icon(Icons.arrow_drop_down),
@@ -374,7 +375,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   title: Text(house.name),
                   subtitle: house.description != null ? Text(house.description!) : null,
                   trailing: _selectedHouseId == house.id
-                      ? const Icon(Icons.check, color: Colors.green)
+                      ? const Icon(Icons.check, color: AppColors.success)
                       : null,
                   onTap: () => Navigator.pop(context, house.id),
                 );

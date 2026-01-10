@@ -9,6 +9,8 @@ import '../../items/providers/item_provider.dart';
 import '../../items/model/item_model.dart';
 import '../../items/view/add_edit_item_screen.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/widgets/quantity_badge.dart';
+import '../../../shared/theme/theme.dart';
 
 class AddEditTripScreen extends ConsumerStatefulWidget {
   final String? tripId;
@@ -91,6 +93,13 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
         time.hour,
         time.minute,
       );
+      // Imposta automaticamente la data di ritorno a +12 ore
+      // se non è già stata impostata o se è prima della partenza
+      final autoReturn = _departureDateTime!.add(const Duration(hours: 12));
+      if (_returnDateTime == null ||
+          _returnDateTime!.isBefore(_departureDateTime!)) {
+        _returnDateTime = autoReturn;
+      }
     });
   }
 
@@ -420,7 +429,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                     'Gli oggetti verranno temporaneamente spostati in questa casa durante il viaggio',
                     style: Theme.of(
                       context,
-                    ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    ).textTheme.bodySmall?.copyWith(color: AppColors.disabled),
                   ),
                   const SizedBox(height: 12),
                   housesAsync.when(
@@ -452,7 +461,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                     Container(
                       padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(color: AppColors.border),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Center(
@@ -461,18 +470,18 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                             Icon(
                               Icons.inventory_2_outlined,
                               size: 48,
-                              color: Colors.grey,
+                              color: AppColors.disabled,
                             ),
                             SizedBox(height: 8),
                             Text(
                               'Nessun oggetto selezionato',
-                              style: TextStyle(color: Colors.grey),
+                              style: TextStyle(color: AppColors.disabled),
                             ),
                             SizedBox(height: 4),
                             Text(
                               'Premi "Aggiungi" per selezionare oggetti dalle tue case',
                               style: TextStyle(
-                                color: Colors.grey,
+                                color: AppColors.disabled,
                                 fontSize: 12,
                               ),
                               textAlign: TextAlign.center,
@@ -487,34 +496,16 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
-                          leading: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'x${item.quantity}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimaryContainer,
-                              ),
-                            ),
+                          leading: QuantityBadge(
+                            quantity: item.quantity,
+                            isSelected: true,
                           ),
                           title: Text(item.name),
                           subtitle: Text(item.category),
                           trailing: IconButton(
                             icon: const Icon(
                               Icons.remove_circle_outline,
-                              color: Colors.red,
+                              color: AppColors.destructive,
                             ),
                             onPressed: () => _removeItem(index),
                           ),
@@ -555,12 +546,12 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Text(
           'Nessuna casa disponibile',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: AppColors.disabled),
         ),
       );
     }
@@ -587,7 +578,9 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
         ),
         child: Text(
           selectedHouse?.name ?? 'Nessuna (solo spostamento)',
-          style: TextStyle(color: selectedHouse == null ? Colors.grey : null),
+          style: TextStyle(
+            color: selectedHouse == null ? AppColors.disabled : null,
+          ),
         ),
       ),
     );
@@ -611,7 +604,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
             leading: const Icon(Icons.cancel_outlined),
             title: const Text('Nessuna (solo spostamento)'),
             trailing: _destinationHouseId == null
-                ? const Icon(Icons.check, color: Colors.green)
+                ? const Icon(Icons.check, color: AppColors.success)
                 : null,
             onTap: () => Navigator.pop(context, ''),
           ),
@@ -629,7 +622,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                       ? Text(house.description)
                       : null,
                   trailing: _destinationHouseId == house.id
-                      ? const Icon(Icons.check, color: Colors.green)
+                      ? const Icon(Icons.check, color: AppColors.success)
                       : null,
                   onTap: () => Navigator.pop(context, house.id),
                 );
@@ -856,7 +849,7 @@ class _ItemPickerSheetState extends ConsumerState<_ItemPickerSheet> {
             padding: EdgeInsets.all(16),
             child: Text(
               'Nessun oggetto in questa casa',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: AppColors.disabled),
             ),
           );
         }
@@ -866,11 +859,6 @@ class _ItemPickerSheetState extends ConsumerState<_ItemPickerSheet> {
             final isSelected = _isItemSelected(item.id);
             final totalQuantity = item.quantity ?? 1;
             final selectedQuantity = _getSelectedQuantity(item.id);
-
-            // Testo del badge: "xN" se tutto selezionato o niente, "xN/M" se parziale
-            final badgeText = isSelected && selectedQuantity < totalQuantity
-                ? 'x$selectedQuantity/$totalQuantity'
-                : 'x$totalQuantity';
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -894,33 +882,15 @@ class _ItemPickerSheetState extends ConsumerState<_ItemPickerSheet> {
                     child: Row(
                       children: [
                         // Quantità sempre visibile, stile diverso se selezionato
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primaryContainer
-                                : Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            badgeText,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected
-                                  ? Theme.of(
-                                      context,
-                                    ).colorScheme.onPrimaryContainer
-                                  : Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
+                        QuantityBadge(
+                          quantity: selectedQuantity > 0
+                              ? selectedQuantity
+                              : totalQuantity,
+                          totalQuantity:
+                              isSelected && selectedQuantity < totalQuantity
+                              ? totalQuantity
+                              : null,
+                          isSelected: isSelected,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -932,7 +902,7 @@ class _ItemPickerSheetState extends ConsumerState<_ItemPickerSheet> {
                                 item.category.displayName,
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey,
+                                  color: AppColors.disabled,
                                 ),
                               ),
                             ],
