@@ -81,6 +81,31 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
   );
 }
 
+/// Provider che fornisce le quantità in viaggio per ogni item di una casa
+/// Restituisce una mappa {itemId: quantitàInViaggio}
+@riverpod
+Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
+  final tripsAsync = ref.watch(tripNotifierProvider);
+  
+  return tripsAsync.when(
+    data: (trips) {
+      final quantities = <String, int>{};
+      for (final trip in trips) {
+        if (trip.isActive) {
+          for (final item in trip.items) {
+            if (item.originHouseId == houseId) {
+              quantities[item.id] = (quantities[item.id] ?? 0) + item.quantity;
+            }
+          }
+        }
+      }
+      return quantities;
+    },
+    loading: () => <String, int>{},
+    error: (e, s) => <String, int>{},
+  );
+}
+
 /// Provider che fornisce gli items temporaneamente presenti in una casa (da viaggi attivi)
 @riverpod
 List<TripItem> temporaryItemsInHouse(Ref ref, String houseId) {

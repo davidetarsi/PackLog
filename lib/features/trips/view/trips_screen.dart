@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
+import '../../../shared/constants/app_constants.dart';
 
 class TripsScreen extends ConsumerWidget {
   const TripsScreen({super.key});
@@ -86,11 +87,11 @@ class _TripCard extends StatelessWidget {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
         side: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
         onTap: () {
           context.push('/trips/${trip.id}');
         },
@@ -163,10 +164,10 @@ class _TripCard extends StatelessWidget {
                                 ? Colors.green
                                 : colorScheme.onSurface.withOpacity(0.5),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              '${item.name} (${item.quantity})',
+                              item.name,
                               style: TextStyle(
                                 fontSize: 12,
                                 decoration: item.isChecked
@@ -178,6 +179,14 @@ class _TripCard extends StatelessWidget {
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            'x${item.quantity}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onSurface.withOpacity(0.5),
                             ),
                           ),
                         ],

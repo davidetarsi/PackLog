@@ -8,6 +8,7 @@ import '../../houses/providers/house_provider.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/model/item_model.dart';
 import '../../items/view/add_edit_item_screen.dart';
+import '../../../shared/constants/app_constants.dart';
 
 class AddEditTripScreen extends ConsumerStatefulWidget {
   final String? tripId;
@@ -24,7 +25,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
   final _descriptionController = TextEditingController();
   List<TripItem> _selectedItems = [];
   bool _isLoading = false;
-  
+
   // Nuovi campi per date e casa destinazione
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
@@ -75,7 +76,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
 
     final time = await showTimePicker(
       context: context,
-      initialTime: _departureDateTime != null 
+      initialTime: _departureDateTime != null
           ? TimeOfDay.fromDateTime(_departureDateTime!)
           : TimeOfDay.now(),
       helpText: 'Seleziona ora di partenza',
@@ -84,7 +85,11 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
 
     setState(() {
       _departureDateTime = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute,
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
       );
     });
   }
@@ -94,7 +99,9 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
     final date = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: _departureDateTime ?? DateTime.now().subtract(const Duration(days: 365)),
+      firstDate:
+          _departureDateTime ??
+          DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
       helpText: 'Seleziona data di ritorno',
     );
@@ -102,7 +109,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
 
     final time = await showTimePicker(
       context: context,
-      initialTime: _returnDateTime != null 
+      initialTime: _returnDateTime != null
           ? TimeOfDay.fromDateTime(_returnDateTime!)
           : TimeOfDay.now(),
       helpText: 'Seleziona ora di ritorno',
@@ -111,7 +118,11 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
 
     setState(() {
       _returnDateTime = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute,
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
       );
     });
   }
@@ -119,8 +130,8 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
   String _formatDateTime(DateTime? dateTime) {
     if (dateTime == null) return 'Non impostata';
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} '
-           '${dateTime.hour.toString().padLeft(2, '0')}:'
-           '${dateTime.minute.toString().padLeft(2, '0')}';
+        '${dateTime.hour.toString().padLeft(2, '0')}:'
+        '${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> _saveTrip() async {
@@ -129,7 +140,9 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
       if (_departureDateTime != null && _returnDateTime != null) {
         if (_returnDateTime!.isBefore(_departureDateTime!)) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('La data di ritorno deve essere dopo la partenza')),
+            const SnackBar(
+              content: Text('La data di ritorno deve essere dopo la partenza'),
+            ),
           );
           return;
         }
@@ -145,7 +158,9 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
               if (trips == null) {
                 throw StateError('Lista non trovata');
               }
-              return trips.firstWhere((t) => t.id == widget.tripId).copyWith(
+              return trips
+                  .firstWhere((t) => t.id == widget.tripId)
+                  .copyWith(
                     name: _nameController.text.trim(),
                     description: _descriptionController.text.trim().isEmpty
                         ? null
@@ -179,9 +194,9 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Errore: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Errore: $e')));
           setState(() => _isLoading = false);
           return;
         }
@@ -200,7 +215,9 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
     final houses = housesAsync.value;
     if (houses == null || houses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nessuna casa disponibile. Aggiungi prima una casa.')),
+        const SnackBar(
+          content: Text('Nessuna casa disponibile. Aggiungi prima una casa.'),
+        ),
       );
       return;
     }
@@ -252,13 +269,15 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
 
     // Aggiungi l'item alla lista
     setState(() {
-      _selectedItems.add(TripItem(
-        id: createdItem.id,
-        name: createdItem.name,
-        category: createdItem.category.displayName,
-        quantity: createdItem.quantity ?? 1,
-        originHouseId: houseId,
-      ));
+      _selectedItems.add(
+        TripItem(
+          id: createdItem.id,
+          name: createdItem.name,
+          category: createdItem.category.displayName,
+          quantity: createdItem.quantity ?? 1,
+          originHouseId: houseId,
+        ),
+      );
     });
 
     if (mounted) {
@@ -295,9 +314,13 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                 children: [
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Nome lista *',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.inputBorderRadius,
+                        ),
+                      ),
                       hintText: 'es. Viaggio Roma, Weekend mare...',
                     ),
                     validator: (value) {
@@ -310,34 +333,46 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _descriptionController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Descrizione',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.inputBorderRadius,
+                        ),
+                      ),
                     ),
                     maxLines: 2,
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Sezione Date
                   Text(
                     'Date del viaggio',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  
+
                   // Data/ora partenza
                   InkWell(
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.inputBorderRadius,
+                    ),
                     onTap: _pickDepartureDateTime,
                     child: InputDecorator(
                       decoration: InputDecoration(
                         labelText: 'Partenza',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: _departureDateTime != null 
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.inputBorderRadius,
+                          ),
+                        ),
+                        suffixIcon: _departureDateTime != null
                             ? IconButton(
                                 icon: const Icon(Icons.clear),
-                                onPressed: () => setState(() => _departureDateTime = null),
+                                onPressed: () =>
+                                    setState(() => _departureDateTime = null),
                               )
                             : const Icon(Icons.calendar_today),
                       ),
@@ -345,18 +380,26 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  
+
                   // Data/ora ritorno
                   InkWell(
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.inputBorderRadius,
+                    ),
                     onTap: _pickReturnDateTime,
                     child: InputDecorator(
                       decoration: InputDecoration(
                         labelText: 'Ritorno',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: _returnDateTime != null 
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.inputBorderRadius,
+                          ),
+                        ),
+                        suffixIcon: _returnDateTime != null
                             ? IconButton(
                                 icon: const Icon(Icons.clear),
-                                onPressed: () => setState(() => _returnDateTime = null),
+                                onPressed: () =>
+                                    setState(() => _returnDateTime = null),
                               )
                             : const Icon(Icons.calendar_today),
                       ),
@@ -364,38 +407,38 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Casa di destinazione
                   Text(
                     'Casa di destinazione (opzionale)',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Gli oggetti verranno temporaneamente spostati in questa casa durante il viaggio',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
                   housesAsync.when(
                     data: (houses) => _buildDestinationHousePicker(houses),
-                    loading: () => const Center(child: CircularProgressIndicator()),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Text('Errore: $e'),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Sezione selezione items
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Oggetti (${_selectedItems.length})',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       ElevatedButton.icon(
                         onPressed: _showItemPicker,
@@ -415,7 +458,11 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                       child: const Center(
                         child: Column(
                           children: [
-                            Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey),
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
                             SizedBox(height: 8),
                             Text(
                               'Nessun oggetto selezionato',
@@ -424,7 +471,10 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                             SizedBox(height: 4),
                             Text(
                               'Premi "Aggiungi" per selezionare oggetti dalle tue case',
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -437,11 +487,35 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
-                          leading: const Icon(Icons.drag_indicator),
+                          leading: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'x${item.quantity}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
                           title: Text(item.name),
-                          subtitle: Text('${item.category} • Quantità: ${item.quantity}'),
+                          subtitle: Text(item.category),
                           trailing: IconButton(
-                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                            icon: const Icon(
+                              Icons.remove_circle_outline,
+                              color: Colors.red,
+                            ),
                             onPressed: () => _removeItem(index),
                           ),
                         ),
@@ -496,11 +570,14 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
         : null;
 
     return InkWell(
+      borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       onTap: () => _showDestinationHousePicker(houses),
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: 'Casa di arrivo',
-          border: const OutlineInputBorder(),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+          ),
           suffixIcon: _destinationHouseId != null
               ? IconButton(
                   icon: const Icon(Icons.clear),
@@ -510,9 +587,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
         ),
         child: Text(
           selectedHouse?.name ?? 'Nessuna (solo spostamento)',
-          style: TextStyle(
-            color: selectedHouse == null ? Colors.grey : null,
-          ),
+          style: TextStyle(color: selectedHouse == null ? Colors.grey : null),
         ),
       ),
     );
@@ -550,7 +625,9 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                 return ListTile(
                   leading: const Icon(Icons.home),
                   title: Text(house.name),
-                  subtitle: house.description != null ? Text(house.description) : null,
+                  subtitle: house.description != null
+                      ? Text(house.description)
+                      : null,
                   trailing: _destinationHouseId == house.id
                       ? const Icon(Icons.check, color: Colors.green)
                       : null,
@@ -592,7 +669,9 @@ class _ItemPickerSheet extends ConsumerStatefulWidget {
 
 class _ItemPickerSheetState extends ConsumerState<_ItemPickerSheet> {
   late List<TripItem> _tempSelectedItems;
-  String? _expandedHouseId;
+
+  /// Set delle case chiuse (di default tutte sono aperte)
+  final Set<String> _collapsedHouseIds = {};
 
   @override
   void initState() {
@@ -604,20 +683,82 @@ class _ItemPickerSheetState extends ConsumerState<_ItemPickerSheet> {
     return _tempSelectedItems.any((i) => i.id == itemId);
   }
 
-  void _toggleItem(ItemModel item, String houseId) {
+  /// Restituisce la quantità selezionata per un item, o 0 se non selezionato
+  int _getSelectedQuantity(String itemId) {
+    final selected = _tempSelectedItems
+        .where((i) => i.id == itemId)
+        .firstOrNull;
+    return selected?.quantity ?? 0;
+  }
+
+  /// Gestisce il tap su un item
+  void _handleItemTap(ItemModel item, String houseId) {
+    final totalQuantity = item.quantity ?? 1;
+
+    if (totalQuantity == 1) {
+      // Quantità 1: toggle semplice
+      _toggleItemSimple(item, houseId);
+    } else {
+      // Quantità > 1: mostra picker quantità
+      _showQuantityPicker(item, houseId, totalQuantity);
+    }
+  }
+
+  /// Toggle semplice per item con quantità 1
+  void _toggleItemSimple(ItemModel item, String houseId) {
     setState(() {
       if (_isItemSelected(item.id)) {
         _tempSelectedItems.removeWhere((i) => i.id == item.id);
       } else {
-        _tempSelectedItems.add(TripItem(
-          id: item.id,
-          name: item.name,
-          category: item.category.displayName,
-          quantity: item.quantity ?? 1,
-          originHouseId: houseId,
-        ));
+        _tempSelectedItems.add(
+          TripItem(
+            id: item.id,
+            name: item.name,
+            category: item.category.displayName,
+            quantity: 1,
+            originHouseId: houseId,
+          ),
+        );
       }
     });
+  }
+
+  /// Mostra il picker per selezionare la quantità
+  Future<void> _showQuantityPicker(
+    ItemModel item,
+    String houseId,
+    int maxQuantity,
+  ) async {
+    final currentSelected = _getSelectedQuantity(item.id);
+
+    final result = await showModalBottomSheet<int>(
+      context: context,
+      builder: (context) => _QuantityPickerSheet(
+        itemName: item.name,
+        maxQuantity: maxQuantity,
+        currentQuantity: currentSelected,
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        // Rimuovi l'item esistente se presente
+        _tempSelectedItems.removeWhere((i) => i.id == item.id);
+
+        // Aggiungi con la nuova quantità (se > 0)
+        if (result > 0) {
+          _tempSelectedItems.add(
+            TripItem(
+              id: item.id,
+              name: item.name,
+              category: item.category.displayName,
+              quantity: result,
+              originHouseId: houseId,
+            ),
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -670,7 +811,8 @@ class _ItemPickerSheetState extends ConsumerState<_ItemPickerSheet> {
             itemCount: widget.houses.length,
             itemBuilder: (context, index) {
               final house = widget.houses[index];
-              final isExpanded = _expandedHouseId == house.id;
+              // Di default tutte le case sono aperte (non nel set delle chiuse)
+              final isExpanded = !_collapsedHouseIds.contains(house.id);
 
               return Column(
                 children: [
@@ -685,7 +827,11 @@ class _ItemPickerSheetState extends ConsumerState<_ItemPickerSheet> {
                     ),
                     onTap: () {
                       setState(() {
-                        _expandedHouseId = isExpanded ? null : house.id;
+                        if (isExpanded) {
+                          _collapsedHouseIds.add(house.id);
+                        } else {
+                          _collapsedHouseIds.remove(house.id);
+                        }
                       });
                     },
                   ),
@@ -718,18 +864,85 @@ class _ItemPickerSheetState extends ConsumerState<_ItemPickerSheet> {
         return Column(
           children: items.map((item) {
             final isSelected = _isItemSelected(item.id);
-            return ListTile(
-              contentPadding: const EdgeInsets.only(left: 56, right: 16),
-              leading: Checkbox(
-                value: isSelected,
-                onChanged: (_) => _toggleItem(item, houseId),
+            final totalQuantity = item.quantity ?? 1;
+            final selectedQuantity = _getSelectedQuantity(item.id);
+
+            // Testo del badge: "xN" se tutto selezionato o niente, "xN/M" se parziale
+            final badgeText = isSelected && selectedQuantity < totalQuantity
+                ? 'x$selectedQuantity/$totalQuantity'
+                : 'x$totalQuantity';
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(
+                  AppConstants.cardBorderRadius,
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.cardBorderRadius,
+                  ),
+                  onTap: () => _handleItemTap(item, houseId),
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: 48,
+                      right: 8,
+                      top: 8,
+                      bottom: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        // Quantità sempre visibile, stile diverso se selezionato
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primaryContainer
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item.name),
+                              Text(
+                                item.category.displayName,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              title: Text(item.name),
-              subtitle: Text(
-                '${item.category.displayName} • Quantità: ${item.quantity ?? 1}',
-                style: const TextStyle(fontSize: 12),
-              ),
-              onTap: () => _toggleItem(item, houseId),
             );
           }).toList(),
         );
@@ -746,3 +959,150 @@ class _ItemPickerSheetState extends ConsumerState<_ItemPickerSheet> {
   }
 }
 
+/// Sheet per selezionare la quantità di un item
+class _QuantityPickerSheet extends StatefulWidget {
+  final String itemName;
+  final int maxQuantity;
+  final int currentQuantity;
+
+  const _QuantityPickerSheet({
+    required this.itemName,
+    required this.maxQuantity,
+    required this.currentQuantity,
+  });
+
+  @override
+  State<_QuantityPickerSheet> createState() => _QuantityPickerSheetState();
+}
+
+class _QuantityPickerSheetState extends State<_QuantityPickerSheet> {
+  late int _selectedQuantity;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedQuantity = widget.currentQuantity;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Text(
+            'Quanti "${widget.itemName}" vuoi portare?',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Disponibili: ${widget.maxQuantity}',
+            style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+          ),
+          const SizedBox(height: 24),
+
+          // Slider o lista di quantità
+          if (widget.maxQuantity <= 10)
+            // Per quantità piccole, mostra bottoni
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: List.generate(widget.maxQuantity + 1, (index) {
+                final isSelected = _selectedQuantity == index;
+                return ChoiceChip(
+                  label: Text(index == 0 ? 'Nessuno' : 'x$index'),
+                  selected: isSelected,
+                  onSelected: (_) {
+                    setState(() => _selectedQuantity = index);
+                  },
+                );
+              }),
+            )
+          else
+            // Per quantità grandi, usa slider
+            Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: _selectedQuantity > 0
+                          ? () => setState(() => _selectedQuantity--)
+                          : null,
+                      icon: const Icon(Icons.remove_circle_outline),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _selectedQuantity == 0
+                            ? 'Nessuno'
+                            : 'x$_selectedQuantity',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _selectedQuantity < widget.maxQuantity
+                          ? () => setState(() => _selectedQuantity++)
+                          : null,
+                      icon: const Icon(Icons.add_circle_outline),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Slider(
+                  value: _selectedQuantity.toDouble(),
+                  min: 0,
+                  max: widget.maxQuantity.toDouble(),
+                  divisions: widget.maxQuantity,
+                  label: _selectedQuantity == 0
+                      ? 'Nessuno'
+                      : 'x$_selectedQuantity',
+                  onChanged: (value) {
+                    setState(() => _selectedQuantity = value.round());
+                  },
+                ),
+              ],
+            ),
+
+          const SizedBox(height: 24),
+
+          // Bottoni azione
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Annulla'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context, _selectedQuantity),
+                  child: Text(_selectedQuantity == 0 ? 'Rimuovi' : 'Conferma'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}

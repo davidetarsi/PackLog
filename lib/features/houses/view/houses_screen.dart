@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
 import '../providers/house_deletion_provider.dart';
 import '../model/house_model.dart';
+import '../../../shared/constants/app_constants.dart';
 
 class HousesScreen extends ConsumerWidget {
   const HousesScreen({super.key});
@@ -11,11 +12,9 @@ class HousesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final housesAsync = ref.watch(houseNotifierProvider);
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Case'),
-      ),
+      appBar: AppBar(title: const Text('Case')),
       body: housesAsync.when(
         data: (houses) {
           if (houses.isEmpty) {
@@ -38,7 +37,7 @@ class HousesScreen extends ConsumerWidget {
               ),
             );
           }
-          
+
           return ListView.builder(
             itemCount: houses.length,
             itemBuilder: (context, index) {
@@ -77,32 +76,81 @@ class _HouseCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        leading: const Icon(Icons.home),
-        title: Text(house.name),
-        subtitle: house.description != null ? Text(house.description!) : null,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _showDeleteDialog(context, ref),
-            ),
-            const Icon(Icons.chevron_right),
-          ],
-        ),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+        side: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
         onTap: () {
           context.push('/houses/${house.id}');
         },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.cardBorderRadius,
+                  ),
+                ),
+                child: Icon(Icons.home, color: colorScheme.onPrimaryContainer),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      house.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    if (house.description != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        house.description!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: Colors.red.shade300),
+                onPressed: () => _showDeleteDialog(context, ref),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: colorScheme.onSurface.withOpacity(0.4),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Future<void> _showDeleteDialog(BuildContext context, WidgetRef ref) async {
     // Verifica se la casa può essere eliminata
-    final deletionCheck = await ref.read(canDeleteHouseProvider(house.id).future);
+    final deletionCheck = await ref.read(
+      canDeleteHouseProvider(house.id).future,
+    );
 
     if (!context.mounted) return;
 
@@ -156,4 +204,3 @@ class _HouseCard extends ConsumerWidget {
     }
   }
 }
-

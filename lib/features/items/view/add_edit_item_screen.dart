@@ -6,6 +6,7 @@ import '../model/item_model.dart';
 import '../providers/item_provider.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
+import '../../../shared/constants/app_constants.dart';
 
 class AddEditItemScreen extends ConsumerStatefulWidget {
   /// houseId è opzionale: se null, viene mostrato un dropdown per selezionare la casa
@@ -39,22 +40,27 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     super.initState();
     _selectedHouseId = widget.houseId;
     if (widget.itemId != null && widget.houseId != null) {
-      _loadItem();
+      // Usa addPostFrameCallback per assicurarsi che il widget sia montato
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadItem();
+      });
     }
   }
 
   Future<void> _loadItem() async {
     if (_selectedHouseId == null) return;
-    final itemsAsync = ref.watch(itemNotifierProvider(_selectedHouseId!));
+    final itemsAsync = ref.read(itemNotifierProvider(_selectedHouseId!));
     itemsAsync.whenData((items) {
-      final item = items.firstWhere(
-        (i) => i.id == widget.itemId,
-        orElse: () => throw StateError('Oggetto non trovato'),
-      );
-      _nameController.text = item.name;
-      _descriptionController.text = item.description ?? '';
-      _selectedQuantity = item.quantity ?? 1;
-      _selectedCategory = item.category;
+      final matchingItems = items.where((i) => i.id == widget.itemId);
+      if (matchingItems.isEmpty) return;
+      
+      final item = matchingItems.first;
+      setState(() {
+        _nameController.text = item.name;
+        _descriptionController.text = item.description ?? '';
+        _selectedQuantity = item.quantity ?? 1;
+        _selectedCategory = item.category;
+      });
     });
   }
 
@@ -200,9 +206,11 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
             ],
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Nome *',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                ),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -214,9 +222,11 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
             const SizedBox(height: 16),
             DropdownButtonFormField<ItemCategory>(
               value: _selectedCategory,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Categoria *',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                ),
               ),
               items: ItemCategory.values.map((category) {
                 return DropdownMenuItem(
@@ -233,19 +243,24 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Descrizione',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                ),
               ),
               maxLines: 3,
             ),
             const SizedBox(height: 16),
             InkWell(
+              borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
               onTap: _showQuantityPicker,
               child: InputDecorator(
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Quantità',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -303,11 +318,14 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     }
 
     return InkWell(
+      borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       onTap: () => _showHousePicker(houses),
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: 'Casa *',
-          border: const OutlineInputBorder(),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+          ),
           errorText: _selectedHouseId == null ? null : null,
         ),
         child: Row(

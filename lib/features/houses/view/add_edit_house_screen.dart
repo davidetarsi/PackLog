@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../model/house_model.dart';
 import '../providers/house_provider.dart';
+import '../../../shared/constants/app_constants.dart';
 
 class AddEditHouseScreen extends ConsumerStatefulWidget {
   final String? houseId;
@@ -113,9 +114,11 @@ class _AddEditHouseScreenState extends ConsumerState<AddEditHouseScreen> {
           children: [
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Nome *',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                ),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -127,9 +130,11 @@ class _AddEditHouseScreenState extends ConsumerState<AddEditHouseScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Descrizione',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                ),
               ),
               maxLines: 3,
             ),

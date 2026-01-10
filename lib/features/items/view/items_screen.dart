@@ -10,14 +10,20 @@ class ItemsScreen extends ConsumerWidget {
   final String houseId;
   final String houseName;
 
-  const ItemsScreen({super.key, required this.houseId, required this.houseName});
+  const ItemsScreen({
+    super.key,
+    required this.houseId,
+    required this.houseName,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final itemsAsync = ref.watch(itemNotifierProvider(houseId));
-    final itemsOnTrip = ref.watch(itemsOnTripFromHouseProvider(houseId));
+    final itemQuantitiesOnTrip = ref.watch(
+      itemQuantitiesOnTripFromHouseProvider(houseId),
+    );
     final temporaryItems = ref.watch(temporaryItemsInHouseProvider(houseId));
-    
+
     return Column(
       children: [
         Container(
@@ -40,13 +46,17 @@ class ItemsScreen extends ConsumerWidget {
           child: itemsAsync.when(
             data: (items) {
               final hasTemporaryItems = temporaryItems.isNotEmpty;
-              
+
               if (items.isEmpty && !hasTemporaryItems) {
                 return const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
+                      Icon(
+                        Icons.inventory_2_outlined,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
                       SizedBox(height: 16),
                       Text(
                         'Nessun oggetto',
@@ -78,12 +88,12 @@ class ItemsScreen extends ConsumerWidget {
                     const Divider(),
                     const SizedBox(height: 16),
                   ],
-                  
+
                   // Items normali raggruppati per categoria
                   ...itemsByCategory.entries.map((entry) {
                     final category = entry.key;
                     final categoryItems = entry.value;
-                    
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -91,14 +101,19 @@ class ItemsScreen extends ConsumerWidget {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Text(
                             category.displayName,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                         ),
                         ...categoryItems.map((item) {
-                          final isOnTrip = itemsOnTrip.contains(item.id);
-                          return _buildItemCard(context, ref, item, isOnTrip);
+                          final quantityOnTrip =
+                              itemQuantitiesOnTrip[item.id] ?? 0;
+                          return _buildItemCard(
+                            context,
+                            ref,
+                            item,
+                            quantityOnTrip,
+                          );
                         }),
                         const SizedBox(height: 16),
                       ],
@@ -118,7 +133,9 @@ class ItemsScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      ref.read(itemNotifierProvider(houseId).notifier).refresh(houseId);
+                      ref
+                          .read(itemNotifierProvider(houseId).notifier)
+                          .refresh(houseId);
                     },
                     child: const Text('Riprova'),
                   ),
@@ -131,7 +148,10 @@ class ItemsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTemporaryItemsSection(BuildContext context, List<TripItem> items) {
+  Widget _buildTemporaryItemsSection(
+    BuildContext context,
+    List<TripItem> items,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -171,7 +191,11 @@ class ItemsScreen extends ConsumerWidget {
                   color: Colors.blue,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.flight_land, size: 12, color: Colors.white),
+                child: const Icon(
+                  Icons.flight_land,
+                  size: 12,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
@@ -198,22 +222,45 @@ class ItemsScreen extends ConsumerWidget {
           ],
         ),
         subtitle: Text(
-          '${item.category} • Quantità: ${item.quantity}',
+          item.category,
           style: TextStyle(color: Colors.blue.shade600),
+        ),
+        trailing: Text(
+          'x${item.quantity}',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.blue.shade700,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildItemCard(BuildContext context, WidgetRef ref, ItemModel item, bool isOnTrip) {
+  Widget _buildItemCard(
+    BuildContext context,
+    WidgetRef ref,
+    ItemModel item,
+    int quantityOnTrip,
+  ) {
+    final totalQuantity = item.quantity ?? 1;
+    final availableQuantity = totalQuantity - quantityOnTrip;
+    final isPartiallyOnTrip = quantityOnTrip > 0 && availableQuantity > 0;
+    final isFullyOnTrip = quantityOnTrip > 0 && availableQuantity == 0;
+    final hasAnyOnTrip = quantityOnTrip > 0;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: isOnTrip ? Colors.orange.shade50 : null,
+      color: isFullyOnTrip ? Colors.orange.shade50 : null,
       child: ListTile(
+        onTap: isFullyOnTrip
+            ? null
+            : () {
+                context.push('/houses/$houseId/items/${item.id}/edit');
+              },
         leading: Stack(
           children: [
             _getCategoryIcon(item.category),
-            if (isOnTrip)
+            if (hasAnyOnTrip)
               Positioned(
                 right: -4,
                 bottom: -4,
@@ -223,7 +270,11 @@ class ItemsScreen extends ConsumerWidget {
                     color: Colors.orange,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.luggage, size: 12, color: Colors.white),
+                  child: const Icon(
+                    Icons.luggage,
+                    size: 12,
+                    color: Colors.white,
+                  ),
                 ),
               ),
           ],
@@ -233,12 +284,12 @@ class ItemsScreen extends ConsumerWidget {
             Expanded(
               child: Text(
                 item.name,
-                style: isOnTrip
+                style: isFullyOnTrip
                     ? TextStyle(color: Colors.orange.shade800)
                     : null,
               ),
             ),
-            if (isOnTrip)
+            if (isFullyOnTrip)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
@@ -250,50 +301,60 @@ class ItemsScreen extends ConsumerWidget {
                   style: TextStyle(color: Colors.white, fontSize: 10),
                 ),
               ),
+            if (isPartiallyOnTrip)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade200,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'x$quantityOnTrip in viaggio',
+                  style: TextStyle(color: Colors.orange.shade800, fontSize: 10),
+                ),
+              ),
           ],
         ),
         subtitle: item.description != null
             ? Text(
                 item.description!,
-                style: isOnTrip
+                style: isFullyOnTrip
                     ? TextStyle(color: Colors.orange.shade600)
                     : null,
               )
-            : item.quantity != null
-                ? Text(
-                    'Quantità: ${item.quantity}',
-                    style: isOnTrip
-                        ? TextStyle(color: Colors.orange.shade600)
-                        : null,
-                  )
-                : null,
+            : null,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: Icon(
-                Icons.edit,
-                color: isOnTrip ? Colors.orange.shade400 : null,
+            // Quantità
+            Text(
+              isPartiallyOnTrip
+                  ? 'x$availableQuantity/$totalQuantity'
+                  : 'x$totalQuantity',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isFullyOnTrip
+                    ? Colors.orange.shade600
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),
-              onPressed: isOnTrip
-                  ? null
-                  : () {
-                      context.push('/houses/$houseId/items/${item.id}/edit');
-                    },
             ),
+            const SizedBox(width: 8),
+            // Bottone elimina
             IconButton(
               icon: Icon(
                 Icons.delete,
-                color: isOnTrip ? Colors.grey : Colors.red,
+                color: hasAnyOnTrip ? Colors.grey : Colors.red,
               ),
-              onPressed: isOnTrip
+              onPressed: hasAnyOnTrip
                   ? null
                   : () async {
                       final confirmed = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
                           title: const Text('Elimina oggetto'),
-                          content: Text('Sei sicuro di voler eliminare "${item.name}"?'),
+                          content: Text(
+                            'Sei sicuro di voler eliminare "${item.name}"?',
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => context.pop(false),
@@ -301,13 +362,18 @@ class ItemsScreen extends ConsumerWidget {
                             ),
                             TextButton(
                               onPressed: () => context.pop(true),
-                              child: const Text('Elimina', style: TextStyle(color: Colors.red)),
+                              child: const Text(
+                                'Elimina',
+                                style: TextStyle(color: Colors.red),
+                              ),
                             ),
                           ],
                         ),
                       );
                       if (confirmed == true) {
-                        await ref.read(itemNotifierProvider(houseId).notifier).deleteItem(item.id, houseId);
+                        await ref
+                            .read(itemNotifierProvider(houseId).notifier)
+                            .deleteItem(item.id, houseId);
                       }
                     },
             ),
@@ -330,4 +396,3 @@ class ItemsScreen extends ConsumerWidget {
     }
   }
 }
-

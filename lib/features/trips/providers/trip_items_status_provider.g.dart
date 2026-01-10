@@ -292,6 +292,153 @@ class _ItemsOnTripFromHouseProviderElement
   String get houseId => (origin as ItemsOnTripFromHouseProvider).houseId;
 }
 
+String _$itemQuantitiesOnTripFromHouseHash() =>
+    r'9097bc937d4eaae82970d10fa7bd326b6b580f70';
+
+/// Provider che fornisce le quantità in viaggio per ogni item di una casa
+/// Restituisce una mappa {itemId: quantitàInViaggio}
+///
+/// Copied from [itemQuantitiesOnTripFromHouse].
+@ProviderFor(itemQuantitiesOnTripFromHouse)
+const itemQuantitiesOnTripFromHouseProvider =
+    ItemQuantitiesOnTripFromHouseFamily();
+
+/// Provider che fornisce le quantità in viaggio per ogni item di una casa
+/// Restituisce una mappa {itemId: quantitàInViaggio}
+///
+/// Copied from [itemQuantitiesOnTripFromHouse].
+class ItemQuantitiesOnTripFromHouseFamily extends Family<Map<String, int>> {
+  /// Provider che fornisce le quantità in viaggio per ogni item di una casa
+  /// Restituisce una mappa {itemId: quantitàInViaggio}
+  ///
+  /// Copied from [itemQuantitiesOnTripFromHouse].
+  const ItemQuantitiesOnTripFromHouseFamily();
+
+  /// Provider che fornisce le quantità in viaggio per ogni item di una casa
+  /// Restituisce una mappa {itemId: quantitàInViaggio}
+  ///
+  /// Copied from [itemQuantitiesOnTripFromHouse].
+  ItemQuantitiesOnTripFromHouseProvider call(String houseId) {
+    return ItemQuantitiesOnTripFromHouseProvider(houseId);
+  }
+
+  @override
+  ItemQuantitiesOnTripFromHouseProvider getProviderOverride(
+    covariant ItemQuantitiesOnTripFromHouseProvider provider,
+  ) {
+    return call(provider.houseId);
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'itemQuantitiesOnTripFromHouseProvider';
+}
+
+/// Provider che fornisce le quantità in viaggio per ogni item di una casa
+/// Restituisce una mappa {itemId: quantitàInViaggio}
+///
+/// Copied from [itemQuantitiesOnTripFromHouse].
+class ItemQuantitiesOnTripFromHouseProvider
+    extends AutoDisposeProvider<Map<String, int>> {
+  /// Provider che fornisce le quantità in viaggio per ogni item di una casa
+  /// Restituisce una mappa {itemId: quantitàInViaggio}
+  ///
+  /// Copied from [itemQuantitiesOnTripFromHouse].
+  ItemQuantitiesOnTripFromHouseProvider(String houseId)
+    : this._internal(
+        (ref) => itemQuantitiesOnTripFromHouse(
+          ref as ItemQuantitiesOnTripFromHouseRef,
+          houseId,
+        ),
+        from: itemQuantitiesOnTripFromHouseProvider,
+        name: r'itemQuantitiesOnTripFromHouseProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$itemQuantitiesOnTripFromHouseHash,
+        dependencies: ItemQuantitiesOnTripFromHouseFamily._dependencies,
+        allTransitiveDependencies:
+            ItemQuantitiesOnTripFromHouseFamily._allTransitiveDependencies,
+        houseId: houseId,
+      );
+
+  ItemQuantitiesOnTripFromHouseProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.houseId,
+  }) : super.internal();
+
+  final String houseId;
+
+  @override
+  Override overrideWith(
+    Map<String, int> Function(ItemQuantitiesOnTripFromHouseRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: ItemQuantitiesOnTripFromHouseProvider._internal(
+        (ref) => create(ref as ItemQuantitiesOnTripFromHouseRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        houseId: houseId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeProviderElement<Map<String, int>> createElement() {
+    return _ItemQuantitiesOnTripFromHouseProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ItemQuantitiesOnTripFromHouseProvider &&
+        other.houseId == houseId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, houseId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin ItemQuantitiesOnTripFromHouseRef
+    on AutoDisposeProviderRef<Map<String, int>> {
+  /// The parameter `houseId` of this provider.
+  String get houseId;
+}
+
+class _ItemQuantitiesOnTripFromHouseProviderElement
+    extends AutoDisposeProviderElement<Map<String, int>>
+    with ItemQuantitiesOnTripFromHouseRef {
+  _ItemQuantitiesOnTripFromHouseProviderElement(super.provider);
+
+  @override
+  String get houseId =>
+      (origin as ItemQuantitiesOnTripFromHouseProvider).houseId;
+}
+
 String _$temporaryItemsInHouseHash() =>
     r'802e83e1b2f035913791be3b5d13f961beec4097';
 

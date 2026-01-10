@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/trip_provider.dart';
+import '../../../shared/constants/app_constants.dart';
 
 class TripDetailScreen extends ConsumerWidget {
   final String tripId;
@@ -149,6 +150,11 @@ class TripDetailScreen extends ConsumerWidget {
                         itemBuilder: (context, index) {
                           final item = trip.items[index];
                           return Card(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppConstants.cardBorderRadius,
+                              ),
+                            ),
                             child: ListTile(
                               leading: Checkbox(
                                 value: item.isChecked,
@@ -170,17 +176,18 @@ class TripDetailScreen extends ConsumerWidget {
                                 ),
                               ),
                               subtitle: Text(
-                                '${item.category} • Quantità: ${item.quantity}',
+                                item.category,
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: colorScheme.onSurface.withOpacity(0.6),
                                 ),
                               ),
-                              trailing: Icon(
-                                item.isChecked
-                                    ? Icons.check_circle
-                                    : Icons.circle_outlined,
-                                color: item.isChecked ? Colors.green : Colors.grey,
+                              trailing: Text(
+                                'x${item.quantity}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.onSurface.withOpacity(0.7),
+                                ),
                               ),
                             ),
                           );
