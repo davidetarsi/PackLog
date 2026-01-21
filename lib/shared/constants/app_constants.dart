@@ -11,4 +11,10 @@ class AppConstants {
 
   /// Raggio per i campi di input (TextFormField, Dropdown, etc.)
   static const double inputBorderRadius = 12.0;
+
+  /// Padding inferiore per le liste con floating navigation bar
+  static const double floatingNavBarPadding = 80.0;
+
+  /// Padding inferiore per le bottom sheet (evita sovrapposizione con elementi sotto)
+  static const double bottomSheetBottomPadding = 24.0;
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
 import '../../../shared/theme/theme.dart';
+import 'add_edit_house_screen.dart';
 
 class HouseDetailScreen extends ConsumerWidget {
   final String houseId;
@@ -50,12 +51,16 @@ class HouseDetailScreen extends ConsumerWidget {
         final house = matchingHouses.first;
         return Scaffold(
           appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.pop(),
+            ),
             title: Text(house.name),
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit),
                 onPressed: () {
-                  context.push('/houses/$houseId/edit');
+                  showAddEditHouseSheet(context, houseId: houseId);
                 },
               ),
               IconButton(
@@ -88,7 +93,7 @@ class HouseDetailScreen extends ConsumerWidget {
                         .read(houseNotifierProvider.notifier)
                         .deleteHouse(houseId);
                     if (context.mounted) {
-                      context.pop();
+                      context.go('/');
                     }
                   }
                 },
@@ -96,12 +101,6 @@ class HouseDetailScreen extends ConsumerWidget {
             ],
           ),
           body: ItemsScreen(houseId: houseId, houseName: house.name),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              context.push('/houses/$houseId/items/new');
-            },
-            child: const Icon(Icons.add),
-          ),
         );
       },
       loading: () =>

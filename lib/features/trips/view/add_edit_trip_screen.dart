@@ -254,16 +254,13 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
   }
 
   void _createNewItemAndAddToList() {
-    // Apri la schermata di creazione item e aggiungi l'item creato alla lista
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => AddEditItemScreen(
-          onItemSaved: (itemId, houseId) {
-            // Dopo che l'item è stato salvato, recuperalo e aggiungilo alla lista
-            _addCreatedItemToList(itemId, houseId);
-          },
-        ),
-      ),
+    // Apri il bottom sheet di creazione item e aggiungi l'item creato alla lista
+    showAddEditItemSheet(
+      context,
+      onItemSaved: (itemId, houseId) {
+        // Dopo che l'item è stato salvato, recuperalo e aggiungilo alla lista
+        _addCreatedItemToList(itemId, houseId);
+      },
     );
   }
 

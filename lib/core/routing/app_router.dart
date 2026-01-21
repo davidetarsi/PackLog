@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/houses/view/houses_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
-import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/items/view/add_edit_item_screen.dart';
 import '../../features/trips/view/trips_page.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
@@ -10,6 +9,8 @@ import '../../features/trips/view/add_edit_trip_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _housesNavigatorKey = GlobalKey<NavigatorState>();
+final _tripsNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
@@ -22,6 +23,7 @@ final appRouter = GoRouter(
       branches: [
         // Branch 0: Case
         StatefulShellBranch(
+          navigatorKey: _housesNavigatorKey,
           routes: [
             GoRoute(
               path: '/',
@@ -32,6 +34,7 @@ final appRouter = GoRouter(
         ),
         // Branch 1: Viaggi
         StatefulShellBranch(
+          navigatorKey: _tripsNavigatorKey,
           routes: [
             GoRoute(
               path: '/trips',
@@ -42,12 +45,18 @@ final appRouter = GoRouter(
         ),
       ],
     ),
-    // Route fuori dalla shell (si aprono sopra)
+    // Route fuori dalla shell (senza tab bar)
     GoRoute(
-      path: '/trips/new',
-      name: 'trip-new',
+      path: '/houses/:id',
+      name: 'house-detail',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const AddEditTripScreen(),
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        if (id == null || id.isEmpty) {
+          return const _ErrorScreen(message: 'ID casa non valido');
+        }
+        return HouseDetailScreen(houseId: id);
+      },
     ),
     GoRoute(
       path: '/trips/:id',
@@ -55,11 +64,17 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
         final id = state.pathParameters['id'];
-        if (id == null || id.isEmpty || id == 'new') {
-          return const AddEditTripScreen();
+        if (id == null || id.isEmpty) {
+          return const _ErrorScreen(message: 'ID viaggio non valido');
         }
         return TripDetailScreen(tripId: id);
       },
+    ),
+    GoRoute(
+      path: '/new-trip',
+      name: 'trip-new',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const AddEditTripScreen(),
     ),
     GoRoute(
       path: '/trips/:id/edit',
@@ -73,72 +88,12 @@ final appRouter = GoRouter(
         return AddEditTripScreen(tripId: id);
       },
     ),
-    // IMPORTANTE: Le route specifiche devono venire PRIMA delle route con parametri
-    GoRoute(
-      path: '/houses/new',
-      name: 'house-new',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const AddEditHouseScreen(),
-    ),
-    GoRoute(
-      path: '/houses/:id',
-      name: 'house-detail',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final id = state.pathParameters['id'];
-        if (id == null || id.isEmpty || id == 'new') {
-          // Se id è "new", reindirizza alla route corretta
-          return const AddEditHouseScreen();
-        }
-        return HouseDetailScreen(houseId: id);
-      },
-    ),
-    GoRoute(
-      path: '/houses/:id/edit',
-      name: 'house-edit',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final id = state.pathParameters['id'];
-        if (id == null || id.isEmpty) {
-          return const _ErrorScreen(message: 'ID casa non valido');
-        }
-        return AddEditHouseScreen(houseId: id);
-      },
-    ),
-    // Route per creare item senza casa preselezionata
+    // Route per creare item senza casa preselezionata (fuori dalla shell)
     GoRoute(
       path: '/items/new',
       name: 'item-new-global',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AddEditItemScreen(),
-    ),
-    GoRoute(
-      path: '/houses/:houseId/items/new',
-      name: 'item-new',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final houseId = state.pathParameters['houseId'];
-        if (houseId == null || houseId.isEmpty) {
-          return const _ErrorScreen(message: 'ID casa non valido');
-        }
-        return AddEditItemScreen(houseId: houseId);
-      },
-    ),
-    GoRoute(
-      path: '/houses/:houseId/items/:id/edit',
-      name: 'item-edit',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final houseId = state.pathParameters['houseId'];
-        final itemId = state.pathParameters['id'];
-        if (houseId == null || houseId.isEmpty) {
-          return const _ErrorScreen(message: 'ID casa non valido');
-        }
-        if (itemId == null || itemId.isEmpty) {
-          return const _ErrorScreen(message: 'ID oggetto non valido');
-        }
-        return AddEditItemScreen(houseId: houseId, itemId: itemId);
-      },
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

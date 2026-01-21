@@ -6,7 +6,7 @@ part of 'trip_items_status_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$itemTripStatusHash() => r'b01f1777b37b919c1d50091745a4def6c13ee200';
+String _$itemTripStatusHash() => r'1a8ccad5303c462acd22722443435fd5b150aaa1';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -30,21 +30,25 @@ class _SystemHash {
 }
 
 /// Provider che fornisce lo stato di un item specifico rispetto ai viaggi
+/// Considera il viaggio più recente come quello determinante per lo stato dell'item
 ///
 /// Copied from [itemTripStatus].
 @ProviderFor(itemTripStatus)
 const itemTripStatusProvider = ItemTripStatusFamily();
 
 /// Provider che fornisce lo stato di un item specifico rispetto ai viaggi
+/// Considera il viaggio più recente come quello determinante per lo stato dell'item
 ///
 /// Copied from [itemTripStatus].
 class ItemTripStatusFamily extends Family<ItemTripStatus> {
   /// Provider che fornisce lo stato di un item specifico rispetto ai viaggi
+  /// Considera il viaggio più recente come quello determinante per lo stato dell'item
   ///
   /// Copied from [itemTripStatus].
   const ItemTripStatusFamily();
 
   /// Provider che fornisce lo stato di un item specifico rispetto ai viaggi
+  /// Considera il viaggio più recente come quello determinante per lo stato dell'item
   ///
   /// Copied from [itemTripStatus].
   ItemTripStatusProvider call(String itemId) {
@@ -74,10 +78,12 @@ class ItemTripStatusFamily extends Family<ItemTripStatus> {
 }
 
 /// Provider che fornisce lo stato di un item specifico rispetto ai viaggi
+/// Considera il viaggio più recente come quello determinante per lo stato dell'item
 ///
 /// Copied from [itemTripStatus].
 class ItemTripStatusProvider extends AutoDisposeProvider<ItemTripStatus> {
   /// Provider che fornisce lo stato di un item specifico rispetto ai viaggi
+  /// Considera il viaggio più recente come quello determinante per lo stato dell'item
   ///
   /// Copied from [itemTripStatus].
   ItemTripStatusProvider(String itemId)
@@ -293,10 +299,12 @@ class _ItemsOnTripFromHouseProviderElement
 }
 
 String _$itemQuantitiesOnTripFromHouseHash() =>
-    r'9097bc937d4eaae82970d10fa7bd326b6b580f70';
+    r'cdb33f8709b7c17eb4c08a13cf87ead7bf839dcc';
 
 /// Provider che fornisce le quantità in viaggio per ogni item di una casa
 /// Restituisce una mappa {itemId: quantitàInViaggio}
+/// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
+/// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
 ///
 /// Copied from [itemQuantitiesOnTripFromHouse].
 @ProviderFor(itemQuantitiesOnTripFromHouse)
@@ -305,17 +313,23 @@ const itemQuantitiesOnTripFromHouseProvider =
 
 /// Provider che fornisce le quantità in viaggio per ogni item di una casa
 /// Restituisce una mappa {itemId: quantitàInViaggio}
+/// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
+/// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
 ///
 /// Copied from [itemQuantitiesOnTripFromHouse].
 class ItemQuantitiesOnTripFromHouseFamily extends Family<Map<String, int>> {
   /// Provider che fornisce le quantità in viaggio per ogni item di una casa
   /// Restituisce una mappa {itemId: quantitàInViaggio}
+  /// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
+  /// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
   ///
   /// Copied from [itemQuantitiesOnTripFromHouse].
   const ItemQuantitiesOnTripFromHouseFamily();
 
   /// Provider che fornisce le quantità in viaggio per ogni item di una casa
   /// Restituisce una mappa {itemId: quantitàInViaggio}
+  /// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
+  /// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
   ///
   /// Copied from [itemQuantitiesOnTripFromHouse].
   ItemQuantitiesOnTripFromHouseProvider call(String houseId) {
@@ -346,12 +360,16 @@ class ItemQuantitiesOnTripFromHouseFamily extends Family<Map<String, int>> {
 
 /// Provider che fornisce le quantità in viaggio per ogni item di una casa
 /// Restituisce una mappa {itemId: quantitàInViaggio}
+/// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
+/// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
 ///
 /// Copied from [itemQuantitiesOnTripFromHouse].
 class ItemQuantitiesOnTripFromHouseProvider
     extends AutoDisposeProvider<Map<String, int>> {
   /// Provider che fornisce le quantità in viaggio per ogni item di una casa
   /// Restituisce una mappa {itemId: quantitàInViaggio}
+  /// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
+  /// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
   ///
   /// Copied from [itemQuantitiesOnTripFromHouse].
   ItemQuantitiesOnTripFromHouseProvider(String houseId)
@@ -440,24 +458,40 @@ class _ItemQuantitiesOnTripFromHouseProviderElement
 }
 
 String _$temporaryItemsInHouseHash() =>
-    r'802e83e1b2f035913791be3b5d13f961beec4097';
+    r'691d98e496d50f484d30d847b245bc7077755752';
 
 /// Provider che fornisce gli items temporaneamente presenti in una casa (da viaggi attivi)
+/// Un item è temporaneo in una casa solo se il viaggio PIÙ RECENTE che lo contiene
+/// ha questa casa come destinazione.
+/// Se l'item è in un viaggio più recente con destinazione diversa (o senza destinazione),
+/// non deve apparire come temporaneo in questa casa.
 ///
 /// Copied from [temporaryItemsInHouse].
 @ProviderFor(temporaryItemsInHouse)
 const temporaryItemsInHouseProvider = TemporaryItemsInHouseFamily();
 
 /// Provider che fornisce gli items temporaneamente presenti in una casa (da viaggi attivi)
+/// Un item è temporaneo in una casa solo se il viaggio PIÙ RECENTE che lo contiene
+/// ha questa casa come destinazione.
+/// Se l'item è in un viaggio più recente con destinazione diversa (o senza destinazione),
+/// non deve apparire come temporaneo in questa casa.
 ///
 /// Copied from [temporaryItemsInHouse].
 class TemporaryItemsInHouseFamily extends Family<List<TripItem>> {
   /// Provider che fornisce gli items temporaneamente presenti in una casa (da viaggi attivi)
+  /// Un item è temporaneo in una casa solo se il viaggio PIÙ RECENTE che lo contiene
+  /// ha questa casa come destinazione.
+  /// Se l'item è in un viaggio più recente con destinazione diversa (o senza destinazione),
+  /// non deve apparire come temporaneo in questa casa.
   ///
   /// Copied from [temporaryItemsInHouse].
   const TemporaryItemsInHouseFamily();
 
   /// Provider che fornisce gli items temporaneamente presenti in una casa (da viaggi attivi)
+  /// Un item è temporaneo in una casa solo se il viaggio PIÙ RECENTE che lo contiene
+  /// ha questa casa come destinazione.
+  /// Se l'item è in un viaggio più recente con destinazione diversa (o senza destinazione),
+  /// non deve apparire come temporaneo in questa casa.
   ///
   /// Copied from [temporaryItemsInHouse].
   TemporaryItemsInHouseProvider call(String houseId) {
@@ -487,11 +521,19 @@ class TemporaryItemsInHouseFamily extends Family<List<TripItem>> {
 }
 
 /// Provider che fornisce gli items temporaneamente presenti in una casa (da viaggi attivi)
+/// Un item è temporaneo in una casa solo se il viaggio PIÙ RECENTE che lo contiene
+/// ha questa casa come destinazione.
+/// Se l'item è in un viaggio più recente con destinazione diversa (o senza destinazione),
+/// non deve apparire come temporaneo in questa casa.
 ///
 /// Copied from [temporaryItemsInHouse].
 class TemporaryItemsInHouseProvider
     extends AutoDisposeProvider<List<TripItem>> {
   /// Provider che fornisce gli items temporaneamente presenti in una casa (da viaggi attivi)
+  /// Un item è temporaneo in una casa solo se il viaggio PIÙ RECENTE che lo contiene
+  /// ha questa casa come destinazione.
+  /// Se l'item è in un viaggio più recente con destinazione diversa (o senza destinazione),
+  /// non deve apparire come temporaneo in questa casa.
   ///
   /// Copied from [temporaryItemsInHouse].
   TemporaryItemsInHouseProvider(String houseId)

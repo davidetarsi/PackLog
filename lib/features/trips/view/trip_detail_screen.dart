@@ -25,7 +25,11 @@ class TripDetailScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.luggage_outlined, size: 64, color: AppColors.disabled),
+                  const Icon(
+                    Icons.luggage_outlined,
+                    size: 64,
+                    color: AppColors.disabled,
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Lista non trovata',
@@ -47,6 +51,10 @@ class TripDetailScreen extends ConsumerWidget {
 
         return Scaffold(
           appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.pop(),
+            ),
             title: Text(trip.name),
             actions: [
               IconButton(
@@ -81,7 +89,9 @@ class TripDetailScreen extends ConsumerWidget {
                     ),
                   );
                   if (confirmed == true) {
-                    await ref.read(tripNotifierProvider.notifier).deleteTrip(tripId);
+                    await ref
+                        .read(tripNotifierProvider.notifier)
+                        .deleteTrip(tripId);
                     if (context.mounted) {
                       context.go('/trips');
                     }
@@ -199,16 +209,19 @@ class TripDetailScreen extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, stack) => Scaffold(
         appBar: AppBar(title: const Text('Errore')),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 64, color: AppColors.destructive),
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: AppColors.destructive,
+              ),
               const SizedBox(height: 16),
               Text('Errore: $error'),
               const SizedBox(height: 16),
@@ -225,4 +238,3 @@ class TripDetailScreen extends ConsumerWidget {
     );
   }
 }
-

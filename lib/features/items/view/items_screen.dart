@@ -7,6 +7,7 @@ import '../../trips/providers/trip_items_status_provider.dart';
 import '../../trips/model/trip_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/widgets.dart';
+import 'add_edit_item_screen.dart';
 
 class ItemsScreen extends ConsumerWidget {
   final String houseId;
@@ -28,22 +29,22 @@ class ItemsScreen extends ConsumerWidget {
 
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: Row(
-            children: [
-              const Icon(Icons.inventory_2),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Oggetti in $houseName',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-            ],
-          ),
-        ),
+        // Container(
+        //   padding: const EdgeInsets.all(16),
+        //   color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        //   child: Row(
+        //     children: [
+        //       const Icon(Icons.inventory_2),
+        //       const SizedBox(width: 8),
+        //       Expanded(
+        //         child: Text(
+        //           'Oggetti in $houseName',
+        //           style: Theme.of(context).textTheme.titleLarge,
+        //         ),
+        //       ),
+        //     ],
+        //   ),
+        // ),
         Expanded(
           child: itemsAsync.when(
             data: (items) {
@@ -246,7 +247,11 @@ class ItemsScreen extends ConsumerWidget {
         onTap: isFullyOnTrip
             ? null
             : () {
-                context.push('/houses/$houseId/items/${item.id}/edit');
+                showAddEditItemSheet(
+                  context,
+                  houseId: houseId,
+                  itemId: item.id,
+                );
               },
         leading: Stack(
           children: [

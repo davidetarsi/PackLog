@@ -9,6 +9,30 @@ import '../../../shared/theme/theme.dart';
 class TripsScreen extends ConsumerWidget {
   const TripsScreen({super.key});
 
+  /// Stima l'altezza di una card in base al suo contenuto
+  static double _estimateCardHeight(TripModel trip) {
+    const maxPreviewItems = 5;
+    double height = 60; // Base: titolo + padding
+
+    if (trip.description != null) {
+      height += 20; // Descrizione
+    }
+
+    if (trip.items.isNotEmpty) {
+      height += 40; // Progress bar + counter + spacing
+      final itemsToShow = trip.items.length > maxPreviewItems
+          ? maxPreviewItems
+          : trip.items.length;
+      height += itemsToShow * 24; // Ogni item ~24px
+
+      if (trip.items.length > maxPreviewItems) {
+        height += 20; // "+N altri"
+      }
+    }
+
+    return height;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tripsAsync = ref.watch(tripNotifierProvider);
@@ -20,7 +44,11 @@ class TripsScreen extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.luggage_outlined, size: 64, color: AppColors.disabled),
+                Icon(
+                  Icons.luggage_outlined,
+                  size: 64,
+                  color: AppColors.disabled,
+                ),
                 SizedBox(height: 16),
                 Text(
                   'Nessuna lista di viaggio',
@@ -36,21 +64,62 @@ class TripsScreen extends ConsumerWidget {
           );
         }
 
-        // Layout stile Google Keep con cards
-        return Padding(
-          padding: const EdgeInsets.all(8),
-          child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 0.85,
-            ),
-            itemCount: trips.length,
-            itemBuilder: (context, index) {
-              final trip = trips[index];
-              return _TripCard(trip: trip);
-            },
+        // Layout stile Google Keep masonry con due colonne
+        // Assegna ogni trip alla colonna più corta per un vero effetto masonry
+        final leftColumnTrips = <TripModel>[];
+        final rightColumnTrips = <TripModel>[];
+        double leftColumnHeight = 0;
+        double rightColumnHeight = 0;
+
+        for (final trip in trips) {
+          final cardHeight = _estimateCardHeight(trip);
+          if (leftColumnHeight <= rightColumnHeight) {
+            leftColumnTrips.add(trip);
+            leftColumnHeight += cardHeight + 8; // +8 per il padding
+          } else {
+            rightColumnTrips.add(trip);
+            rightColumnHeight += cardHeight + 8;
+          }
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.only(
+            left: 8,
+            right: 8,
+            top: 8,
+            bottom: AppConstants.floatingNavBarPadding,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Colonna sinistra
+              Expanded(
+                child: Column(
+                  children: leftColumnTrips
+                      .map(
+                        (trip) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _TripCard(trip: trip),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Colonna destra
+              Expanded(
+                child: Column(
+                  children: rightColumnTrips
+                      .map(
+                        (trip) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _TripCard(trip: trip),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -59,7 +128,11 @@ class TripsScreen extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: AppColors.destructive),
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: AppColors.destructive,
+            ),
             const SizedBox(height: 16),
             Text('Errore: $error'),
             const SizedBox(height: 16),
@@ -81,12 +154,22 @@ class _TripCard extends StatelessWidget {
 
   const _TripCard({required this.trip});
 
+  // Numero massimo di item da mostrare nella preview
+  static const int _maxPreviewItems = 5;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    // Calcola quanti item mostrare (max 5)
+    final itemsToShow = trip.items.length > _maxPreviewItems
+        ? _maxPreviewItems
+        : trip.items.length;
+
     return Card(
       elevation: 2,
+      margin: EdgeInsets
+          .zero, // Rimuove il margine di default per controllare gli spazi
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
         side: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
@@ -100,6 +183,7 @@ class _TripCard extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min, // Altezza dinamica
             children: [
               // Titolo
               Text(
@@ -145,64 +229,61 @@ class _TripCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
               ],
-              // Lista items (preview)
-              Expanded(
-                child: ListView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: trip.items.length > 5 ? 5 : trip.items.length,
-                  itemBuilder: (context, index) {
-                    final item = trip.items[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        children: [
-                          Icon(
-                            item.isChecked
-                                ? Icons.check_box
-                                : Icons.check_box_outline_blank,
-                            size: 16,
-                            color: item.isChecked
-                                ? AppColors.success
-                                : colorScheme.onSurface.withOpacity(0.5),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              item.name,
-                              style: TextStyle(
-                                fontSize: 12,
-                                decoration: item.isChecked
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                color: item.isChecked
-                                    ? colorScheme.onSurface.withOpacity(0.5)
-                                    : null,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Text(
-                            'x${item.quantity}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onSurface.withOpacity(0.5),
-                            ),
-                          ),
-                        ],
+              // Lista items (preview) - ora con Column invece di ListView
+              ...List.generate(itemsToShow, (index) {
+                final item = trip.items[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      Icon(
+                        item.isChecked
+                            ? Icons.check_box
+                            : Icons.check_box_outline_blank,
+                        size: 16,
+                        color: item.isChecked
+                            ? AppColors.success
+                            : colorScheme.onSurface.withOpacity(0.5),
                       ),
-                    );
-                  },
-                ),
-              ),
-              if (trip.items.length > 5)
-                Text(
-                  '+${trip.items.length - 5} altri',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colorScheme.onSurface.withOpacity(0.5),
-                    fontStyle: FontStyle.italic,
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          style: TextStyle(
+                            fontSize: 12,
+                            decoration: item.isChecked
+                                ? TextDecoration.lineThrough
+                                : null,
+                            color: item.isChecked
+                                ? colorScheme.onSurface.withOpacity(0.5)
+                                : null,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        'x${item.quantity}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface.withOpacity(0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              if (trip.items.length > _maxPreviewItems)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    '+${trip.items.length - _maxPreviewItems} altri',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.onSurface.withOpacity(0.5),
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ),
             ],
@@ -212,4 +293,3 @@ class _TripCard extends StatelessWidget {
     );
   }
 }
-

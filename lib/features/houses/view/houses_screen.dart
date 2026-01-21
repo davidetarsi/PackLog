@@ -44,6 +44,9 @@ class HousesScreen extends ConsumerWidget {
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.only(
+              bottom: AppConstants.floatingNavBarPadding,
+            ),
             itemCount: houses.length,
             itemBuilder: (context, index) {
               final house = houses[index];
@@ -131,7 +134,7 @@ class _HouseCard extends ConsumerWidget {
                         house.description!,
                         style: TextStyle(
                           fontSize: 13,
-                          color: colorScheme.onSurface.withOpacity(0.6),
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -149,7 +152,7 @@ class _HouseCard extends ConsumerWidget {
               ),
               Icon(
                 Icons.chevron_right,
-                color: colorScheme.onSurface.withOpacity(0.4),
+                color: colorScheme.onSurface.withValues(alpha: 0.4),
               ),
             ],
           ),
