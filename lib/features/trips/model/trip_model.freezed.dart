@@ -316,6 +316,9 @@ mixin _$TripModel {
 
   /// Casa di destinazione (opzionale)
   String? get destinationHouseId => throw _privateConstructorUsedError;
+
+  /// Viaggio salvato/preferito
+  bool get isSaved => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime get updatedAt => throw _privateConstructorUsedError;
 
@@ -342,6 +345,7 @@ abstract class $TripModelCopyWith<$Res> {
     DateTime? departureDateTime,
     DateTime? returnDateTime,
     String? destinationHouseId,
+    bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
   });
@@ -369,6 +373,7 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
     Object? departureDateTime = freezed,
     Object? returnDateTime = freezed,
     Object? destinationHouseId = freezed,
+    Object? isSaved = null,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -402,6 +407,10 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
                 ? _value.destinationHouseId
                 : destinationHouseId // ignore: cast_nullable_to_non_nullable
                       as String?,
+            isSaved: null == isSaved
+                ? _value.isSaved
+                : isSaved // ignore: cast_nullable_to_non_nullable
+                      as bool,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -433,6 +442,7 @@ abstract class _$$TripModelImplCopyWith<$Res>
     DateTime? departureDateTime,
     DateTime? returnDateTime,
     String? destinationHouseId,
+    bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
   });
@@ -459,6 +469,7 @@ class __$$TripModelImplCopyWithImpl<$Res>
     Object? departureDateTime = freezed,
     Object? returnDateTime = freezed,
     Object? destinationHouseId = freezed,
+    Object? isSaved = null,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -492,6 +503,10 @@ class __$$TripModelImplCopyWithImpl<$Res>
             ? _value.destinationHouseId
             : destinationHouseId // ignore: cast_nullable_to_non_nullable
                   as String?,
+        isSaved: null == isSaved
+            ? _value.isSaved
+            : isSaved // ignore: cast_nullable_to_non_nullable
+                  as bool,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -516,6 +531,7 @@ class _$TripModelImpl extends _TripModel {
     this.departureDateTime,
     this.returnDateTime,
     this.destinationHouseId,
+    this.isSaved = false,
     required this.createdAt,
     required this.updatedAt,
   }) : _items = items,
@@ -550,6 +566,11 @@ class _$TripModelImpl extends _TripModel {
   /// Casa di destinazione (opzionale)
   @override
   final String? destinationHouseId;
+
+  /// Viaggio salvato/preferito
+  @override
+  @JsonKey()
+  final bool isSaved;
   @override
   final DateTime createdAt;
   @override
@@ -557,7 +578,7 @@ class _$TripModelImpl extends _TripModel {
 
   @override
   String toString() {
-    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -576,6 +597,7 @@ class _$TripModelImpl extends _TripModel {
                 other.returnDateTime == returnDateTime) &&
             (identical(other.destinationHouseId, destinationHouseId) ||
                 other.destinationHouseId == destinationHouseId) &&
+            (identical(other.isSaved, isSaved) || other.isSaved == isSaved) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -593,6 +615,7 @@ class _$TripModelImpl extends _TripModel {
     departureDateTime,
     returnDateTime,
     destinationHouseId,
+    isSaved,
     createdAt,
     updatedAt,
   );
@@ -620,6 +643,7 @@ abstract class _TripModel extends TripModel {
     final DateTime? departureDateTime,
     final DateTime? returnDateTime,
     final String? destinationHouseId,
+    final bool isSaved,
     required final DateTime createdAt,
     required final DateTime updatedAt,
   }) = _$TripModelImpl;
@@ -648,6 +672,10 @@ abstract class _TripModel extends TripModel {
   /// Casa di destinazione (opzionale)
   @override
   String? get destinationHouseId;
+
+  /// Viaggio salvato/preferito
+  @override
+  bool get isSaved;
   @override
   DateTime get createdAt;
   @override

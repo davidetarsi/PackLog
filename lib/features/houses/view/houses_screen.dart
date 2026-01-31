@@ -19,24 +19,30 @@ class HousesScreen extends ConsumerWidget {
       body: housesAsync.when(
         data: (houses) {
           if (houses.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.home_outlined,
-                    size: 64,
+                    size: context.iconSizeHero,
                     color: AppColors.disabled,
                   ),
-                  SizedBox(height: 16),
+                  SizedBox(height: context.spacingMd),
                   Text(
                     'Nessuna casa',
-                    style: TextStyle(fontSize: 18, color: AppColors.disabled),
+                    style: TextStyle(
+                      fontSize: context.fontSizeXl,
+                      color: AppColors.disabled,
+                    ),
                   ),
-                  SizedBox(height: 8),
+                  SizedBox(height: context.spacingSm),
                   Text(
                     'Aggiungi la tua prima casa',
-                    style: TextStyle(fontSize: 14, color: AppColors.disabled),
+                    style: TextStyle(
+                      fontSize: context.fontSizeMd,
+                      color: AppColors.disabled,
+                    ),
                   ),
                 ],
               ),
@@ -59,14 +65,14 @@ class HousesScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
-                size: 64,
+                size: context.iconSizeHero,
                 color: AppColors.destructive,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacingMd),
               Text('Errore: $error'),
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacingMd),
               ElevatedButton(
                 onPressed: () {
                   ref.read(houseNotifierProvider.notifier).refresh();
@@ -91,49 +97,57 @@ class _HouseCard extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: context.responsiveSymmetricPadding(horizontal: 16, vertical: 8),
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-        side: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
+        borderRadius: context.responsiveBorderRadius(
+          AppConstants.cardBorderRadius,
+        ),
+        side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+        borderRadius: context.responsiveBorderRadius(
+          AppConstants.cardBorderRadius,
+        ),
         onTap: () {
           context.push('/houses/${house.id}');
         },
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(context.spacingMd),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(context.spacingSm + 4),
                 decoration: BoxDecoration(
                   color: colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(
+                  borderRadius: context.responsiveBorderRadius(
                     AppConstants.cardBorderRadius,
                   ),
                 ),
-                child: Icon(Icons.home, color: colorScheme.onPrimaryContainer),
+                child: Icon(
+                  Icons.home,
+                  color: colorScheme.onPrimaryContainer,
+                  size: context.iconSizeMd,
+                ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: context.spacingMd),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       house.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: context.fontSizeLg,
                       ),
                     ),
                     if (house.description != null) ...[
-                      const SizedBox(height: 4),
+                      SizedBox(height: context.spacingXs),
                       Text(
                         house.description!,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: context.fontSizeSm + 1,
                           color: colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                         maxLines: 1,
@@ -147,12 +161,14 @@ class _HouseCard extends ConsumerWidget {
                 icon: Icon(
                   Icons.delete_outline,
                   color: AppColors.destructiveLight,
+                  size: context.iconSizeMd,
                 ),
                 onPressed: () => _showDeleteDialog(context, ref),
               ),
               Icon(
                 Icons.chevron_right,
                 color: colorScheme.onSurface.withValues(alpha: 0.4),
+                size: context.iconSizeMd,
               ),
             ],
           ),
@@ -173,24 +189,24 @@ class _HouseCard extends ConsumerWidget {
       // Mostra dialogo informativo sul perché non può essere eliminata
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
           title: const Text('Impossibile eliminare'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
+              Icon(
                 Icons.warning_amber,
                 color: AppColors.warning,
-                size: 48,
+                size: dialogContext.iconSizeXl,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: dialogContext.spacingMd),
               Text(deletionCheck.reason ?? 'La casa non può essere eliminata.'),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('OK'),
             ),
           ],

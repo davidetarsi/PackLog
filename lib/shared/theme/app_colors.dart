@@ -7,9 +7,9 @@ abstract class AppColors {
   // === Colori principali del tema ===
 
   /// Arancione scuro - colore principale dell'app
-  static const Color primaryOrange = Color.fromARGB(255, 237, 100, 26);
+  static const Color primaryOrange = Color.fromARGB(255, 214, 103, 49);
   static const Color primaryOrangeLight = Color.fromARGB(255, 247, 144, 92);
-  static const Color primaryOrangeDark = Color.fromARGB(255, 215, 98, 62);
+  static const Color primaryOrangeDark = primaryOrange;
 
   // === Stati degli item ===
 

@@ -34,7 +34,12 @@ class AddEditItemSheet extends ConsumerStatefulWidget {
   final String? itemId;
   final void Function(String itemId, String houseId)? onItemSaved;
 
-  const AddEditItemSheet({super.key, this.houseId, this.itemId, this.onItemSaved});
+  const AddEditItemSheet({
+    super.key,
+    this.houseId,
+    this.itemId,
+    this.onItemSaved,
+  });
 
   @override
   ConsumerState<AddEditItemSheet> createState() => _AddEditItemSheetState();
@@ -49,7 +54,23 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
   bool _isLoading = false;
   String? _selectedHouseId;
 
-  static const List<int> _quantityOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 50, 100];
+  static const List<int> _quantityOptions = [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    15,
+    20,
+    25,
+    50,
+    100,
+  ];
 
   bool get _needsHouseSelection => widget.houseId == null;
 
@@ -130,9 +151,9 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
   Future<void> _saveItem() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedHouseId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Seleziona una casa')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Seleziona una casa')));
         return;
       }
 
@@ -150,7 +171,9 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
               if (items == null) {
                 throw StateError('Oggetto non trovato');
               }
-              return items.firstWhere((i) => i.id == widget.itemId).copyWith(
+              return items
+                  .firstWhere((i) => i.id == widget.itemId)
+                  .copyWith(
                     name: _nameController.text.trim(),
                     description: _descriptionController.text.trim().isEmpty
                         ? null
@@ -175,15 +198,17 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
 
       try {
         if (widget.itemId != null) {
-          await ref.read(itemNotifierProvider(houseId).notifier).updateItem(item);
+          await ref
+              .read(itemNotifierProvider(houseId).notifier)
+              .updateItem(item);
         } else {
           await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Errore: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Errore: $e')));
           setState(() => _isLoading = false);
           return;
         }
@@ -206,7 +231,9 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(context.responsive(20)),
+        ),
       ),
       padding: EdgeInsets.only(bottom: bottomPadding),
       child: SingleChildScrollView(
@@ -215,34 +242,36 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
           children: [
             // Handle
             Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
+              margin: EdgeInsets.only(top: context.spacingSm + 4),
+              width: context.responsive(40),
+              height: context.responsive(4),
               decoration: BoxDecoration(
-                color: colorScheme.onSurfaceVariant.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(2),
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                borderRadius: context.responsiveBorderRadius(2),
               ),
             ),
             // Header
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: context.responsiveScreenPadding,
               child: Row(
                 children: [
                   Text(
-                    widget.itemId != null ? 'Modifica oggetto' : 'Nuovo oggetto',
+                    widget.itemId != null
+                        ? 'Modifica oggetto'
+                        : 'Nuovo oggetto',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
+                    icon: Icon(Icons.close, size: context.iconSizeMd),
                   ),
                 ],
               ),
             ),
             // Form
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: context.responsiveSymmetricPadding(horizontal: 16),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -251,10 +280,11 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
                     if (_needsHouseSelection) ...[
                       housesAsync.when(
                         data: (houses) => _buildHouseSelector(houses),
-                        loading: () => const Center(child: CircularProgressIndicator()),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
                         error: (e, _) => Text('Errore: $e'),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: context.spacingMd),
                     ],
                     // Name
                     TextFormField(
@@ -263,7 +293,9 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
                       decoration: InputDecoration(
                         labelText: 'Nome *',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                          borderRadius: context.responsiveBorderRadius(
+                            AppConstants.inputBorderRadius,
+                          ),
                         ),
                       ),
                       validator: (value) {
@@ -273,18 +305,20 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: context.spacingMd),
                     // Category & Quantity row
                     Row(
                       children: [
                         Expanded(
                           flex: 2,
                           child: DropdownButtonFormField<ItemCategory>(
-                            value: _selectedCategory,
+                            initialValue: _selectedCategory,
                             decoration: InputDecoration(
                               labelText: 'Categoria',
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                                borderRadius: context.responsiveBorderRadius(
+                                  AppConstants.inputBorderRadius,
+                                ),
                               ),
                             ),
                             items: ItemCategory.values.map((category) {
@@ -300,16 +334,20 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: context.spacingSm + 4),
                         Expanded(
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                            borderRadius: context.responsiveBorderRadius(
+                              AppConstants.inputBorderRadius,
+                            ),
                             onTap: _showQuantityPicker,
                             child: InputDecorator(
                               decoration: InputDecoration(
                                 labelText: 'Qtà',
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                                  borderRadius: context.responsiveBorderRadius(
+                                    AppConstants.inputBorderRadius,
+                                  ),
                                 ),
                               ),
                               child: Text(
@@ -321,14 +359,16 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: context.spacingMd),
                     // Description
                     TextFormField(
                       controller: _descriptionController,
                       decoration: InputDecoration(
                         labelText: 'Descrizione',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                          borderRadius: context.responsiveBorderRadius(
+                            AppConstants.inputBorderRadius,
+                          ),
                         ),
                       ),
                       maxLines: 2,
@@ -340,26 +380,30 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
             // Button
             Padding(
               padding: EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                16 + AppConstants.bottomSheetBottomPadding,
+                context.spacingMd,
+                context.spacingMd,
+                context.spacingMd,
+                context.spacingMd + AppConstants.bottomSheetBottomPadding,
               ),
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveItem,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: context.spacingMd),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                      borderRadius: context.responsiveBorderRadius(
+                        AppConstants.inputBorderRadius,
+                      ),
                     ),
                   ),
                   child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                      ? SizedBox(
+                          height: context.responsive(20),
+                          width: context.responsive(20),
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
                         )
                       : Text(widget.itemId != null ? 'Salva' : 'Crea'),
                 ),
@@ -374,15 +418,19 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
   Widget _buildHouseSelector(List<HouseModel> houses) {
     if (houses.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(16),
+        padding: context.responsiveScreenPadding,
         decoration: BoxDecoration(
           border: Border.all(color: AppColors.warning),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: context.responsiveBorderRadius(8),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.warning_amber, color: AppColors.warning),
-            SizedBox(width: 8),
+            Icon(
+              Icons.warning_amber,
+              color: AppColors.warning,
+              size: context.iconSizeMd,
+            ),
+            SizedBox(width: context.spacingSm),
             Expanded(
               child: Text(
                 'Nessuna casa disponibile. Crea prima una casa.',
@@ -395,13 +443,17 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
     }
 
     return InkWell(
-      borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+      borderRadius: context.responsiveBorderRadius(
+        AppConstants.inputBorderRadius,
+      ),
       onTap: () => _showHousePicker(houses),
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: 'Casa *',
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+            borderRadius: context.responsiveBorderRadius(
+              AppConstants.inputBorderRadius,
+            ),
           ),
         ),
         child: Row(
@@ -409,16 +461,18 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
           children: [
             Text(
               _selectedHouseId != null
-                  ? houses.firstWhere(
-                      (h) => h.id == _selectedHouseId,
-                      orElse: () => houses.first,
-                    ).name
+                  ? houses
+                        .firstWhere(
+                          (h) => h.id == _selectedHouseId,
+                          orElse: () => houses.first,
+                        )
+                        .name
                   : 'Seleziona una casa',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: _selectedHouseId == null ? AppColors.disabled : null,
-                  ),
+                color: _selectedHouseId == null ? AppColors.disabled : null,
+              ),
             ),
-            const Icon(Icons.arrow_drop_down),
+            Icon(Icons.arrow_drop_down, size: context.iconSizeMd),
           ],
         ),
       ),
@@ -428,14 +482,14 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
   Future<void> _showHousePicker(List<HouseModel> houses) async {
     final selected = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => Column(
+      builder: (sheetContext) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: sheetContext.responsiveScreenPadding,
             child: Text(
               'Seleziona casa',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(sheetContext).textTheme.titleLarge,
             ),
           ),
           const Divider(),
@@ -443,21 +497,27 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
             child: ListView.builder(
               shrinkWrap: true,
               itemCount: houses.length,
-              itemBuilder: (context, index) {
+              itemBuilder: (itemContext, index) {
                 final house = houses[index];
                 return ListTile(
-                  leading: const Icon(Icons.home),
+                  leading: Icon(Icons.home, size: itemContext.iconSizeMd),
                   title: Text(house.name),
-                  subtitle: house.description != null ? Text(house.description!) : null,
-                  trailing: _selectedHouseId == house.id
-                      ? const Icon(Icons.check, color: AppColors.success)
+                  subtitle: house.description != null
+                      ? Text(house.description!)
                       : null,
-                  onTap: () => Navigator.pop(context, house.id),
+                  trailing: _selectedHouseId == house.id
+                      ? Icon(
+                          Icons.check,
+                          color: AppColors.success,
+                          size: itemContext.iconSizeMd,
+                        )
+                      : null,
+                  onTap: () => Navigator.pop(itemContext, house.id),
                 );
               },
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: sheetContext.spacingMd),
         ],
       ),
     );
@@ -472,10 +532,16 @@ class AddEditItemScreen extends ConsumerStatefulWidget {
   /// houseId è opzionale: se null, viene mostrato un dropdown per selezionare la casa
   final String? houseId;
   final String? itemId;
+
   /// Callback opzionale chiamato quando l'item viene salvato con successo
   final void Function(String itemId, String houseId)? onItemSaved;
 
-  const AddEditItemScreen({super.key, this.houseId, this.itemId, this.onItemSaved});
+  const AddEditItemScreen({
+    super.key,
+    this.houseId,
+    this.itemId,
+    this.onItemSaved,
+  });
 
   @override
   ConsumerState<AddEditItemScreen> createState() => _AddEditItemScreenState();
@@ -491,7 +557,23 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   String? _selectedHouseId;
 
   // Lista di valori per la quantità
-  static const List<int> _quantityOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 50, 100];
+  static const List<int> _quantityOptions = [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    15,
+    20,
+    25,
+    50,
+    100,
+  ];
 
   bool get _needsHouseSelection => widget.houseId == null;
 
@@ -513,7 +595,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     itemsAsync.whenData((items) {
       final matchingItems = items.where((i) => i.id == widget.itemId);
       if (matchingItems.isEmpty) return;
-      
+
       final item = matchingItems.first;
       setState(() {
         _nameController.text = item.name;
@@ -574,19 +656,19 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     if (_formKey.currentState!.validate()) {
       // Verifica che sia selezionata una casa
       if (_selectedHouseId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Seleziona una casa')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Seleziona una casa')));
         return;
       }
 
       setState(() => _isLoading = true);
-      
+
       final now = DateTime.now();
       final quantity = _selectedQuantity;
       final houseId = _selectedHouseId!;
       final itemId = widget.itemId ?? const Uuid().v4();
-      
+
       final item = widget.itemId != null
           ? (() {
               final itemsAsync = ref.read(itemNotifierProvider(houseId));
@@ -594,7 +676,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               if (items == null) {
                 throw StateError('Oggetto non trovato');
               }
-              return items.firstWhere((i) => i.id == widget.itemId).copyWith(
+              return items
+                  .firstWhere((i) => i.id == widget.itemId)
+                  .copyWith(
                     name: _nameController.text.trim(),
                     description: _descriptionController.text.trim().isEmpty
                         ? null
@@ -619,15 +703,17 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
 
       try {
         if (widget.itemId != null) {
-          await ref.read(itemNotifierProvider(houseId).notifier).updateItem(item);
+          await ref
+              .read(itemNotifierProvider(houseId).notifier)
+              .updateItem(item);
         } else {
           await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Errore: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Errore: $e')));
           setState(() => _isLoading = false);
           return;
         }
@@ -648,7 +734,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.itemId != null ? 'Modifica oggetto' : 'Nuovo oggetto'),
+        title: Text(
+          widget.itemId != null ? 'Modifica oggetto' : 'Nuovo oggetto',
+        ),
       ),
       body: Form(
         key: _formKey,
@@ -669,7 +757,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               decoration: InputDecoration(
                 labelText: 'Nome *',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.inputBorderRadius,
+                  ),
                 ),
               ),
               validator: (value) {
@@ -681,11 +771,13 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<ItemCategory>(
-              value: _selectedCategory,
+              initialValue: _selectedCategory,
               decoration: InputDecoration(
                 labelText: 'Categoria *',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.inputBorderRadius,
+                  ),
                 ),
               ),
               items: ItemCategory.values.map((category) {
@@ -706,20 +798,26 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               decoration: InputDecoration(
                 labelText: 'Descrizione',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.inputBorderRadius,
+                  ),
                 ),
               ),
               maxLines: 3,
             ),
             const SizedBox(height: 16),
             InkWell(
-              borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+              borderRadius: BorderRadius.circular(
+                AppConstants.inputBorderRadius,
+              ),
               onTap: _showQuantityPicker,
               child: InputDecorator(
                 decoration: InputDecoration(
                   labelText: 'Quantità',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                    borderRadius: BorderRadius.circular(
+                      AppConstants.inputBorderRadius,
+                    ),
                   ),
                 ),
                 child: Row(
@@ -793,14 +891,16 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
           children: [
             Text(
               _selectedHouseId != null
-                  ? houses.firstWhere(
-                      (h) => h.id == _selectedHouseId,
-                      orElse: () => houses.first,
-                    ).name
+                  ? houses
+                        .firstWhere(
+                          (h) => h.id == _selectedHouseId,
+                          orElse: () => houses.first,
+                        )
+                        .name
                   : 'Seleziona una casa',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: _selectedHouseId == null ? AppColors.disabled : null,
-                  ),
+                color: _selectedHouseId == null ? AppColors.disabled : null,
+              ),
             ),
             const Icon(Icons.arrow_drop_down),
           ],
@@ -832,7 +932,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 return ListTile(
                   leading: const Icon(Icons.home),
                   title: Text(house.name),
-                  subtitle: house.description != null ? Text(house.description!) : null,
+                  subtitle: house.description != null
+                      ? Text(house.description!)
+                      : null,
                   trailing: _selectedHouseId == house.id
                       ? const Icon(Icons.check, color: AppColors.success)
                       : null,
@@ -850,4 +952,3 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     }
   }
 }
-

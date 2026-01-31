@@ -5,6 +5,7 @@ import '../../features/houses/view/settings_screen.dart';
 import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/items/view/add_edit_item_screen.dart';
 import '../constants/app_constants.dart';
+import '../theme/app_spacing.dart';
 
 /// Shell principale dell'app con tab bar persistente
 class MainShell extends ConsumerStatefulWidget {
@@ -125,10 +126,11 @@ class _MainShellState extends ConsumerState<MainShell>
     final currentIndex = widget.navigationShell.currentIndex;
     final selectedTabIndex = currentIndex + 1;
 
-    // Altezza tab bar + padding bottom
-    const tabBarHeight = 56.0;
-    const tabBarBottomPadding = 30.0;
-    const tabBarTotalHeight = tabBarHeight + tabBarBottomPadding + 16;
+    // Altezza tab bar + padding bottom - responsive
+    final tabBarHeight = context.responsive(56.0);
+    final tabBarBottomPadding = context.responsive(30.0);
+    final tabBarTotalHeight =
+        tabBarHeight + tabBarBottomPadding + context.spacingMd;
 
     return Scaffold(
       body: Stack(
@@ -143,7 +145,7 @@ class _MainShellState extends ConsumerState<MainShell>
                 onTap: _closeCreateMenu,
                 child: FadeTransition(
                   opacity: _fadeAnimation,
-                  child: Container(color: Colors.black.withOpacity(0.5)),
+                  child: Container(color: Colors.black.withValues(alpha: 0.5)),
                 ),
               ),
             ),
@@ -151,8 +153,8 @@ class _MainShellState extends ConsumerState<MainShell>
           // Menu pill tabs sopra la tab bar
           if (_isCreateMenuOpen)
             Positioned(
-              right: 16,
-              bottom: tabBarTotalHeight + 8,
+              right: context.spacingMd,
+              bottom: tabBarTotalHeight + context.spacingSm,
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: SlideTransition(
@@ -172,7 +174,7 @@ class _MainShellState extends ConsumerState<MainShell>
                           iconColor: colorScheme.onPrimaryContainer,
                           onTap: _onCreateTrip,
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: context.spacingSm),
                         _CreatePillTab(
                           icon: Icons.inventory_2,
                           label: 'Oggetto',
@@ -180,7 +182,7 @@ class _MainShellState extends ConsumerState<MainShell>
                           iconColor: colorScheme.onSecondaryContainer,
                           onTap: _onCreateItem,
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: context.spacingSm),
                         _CreatePillTab(
                           icon: Icons.home,
                           label: 'Casa',
@@ -198,15 +200,22 @@ class _MainShellState extends ConsumerState<MainShell>
       ),
       extendBody: true,
       bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, tabBarBottomPadding),
+        padding: EdgeInsets.fromLTRB(
+          context.spacingMd,
+          0,
+          context.spacingMd,
+          tabBarBottomPadding,
+        ),
         child: Container(
           height: tabBarHeight,
           decoration: BoxDecoration(
             color: colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+            borderRadius: context.responsiveBorderRadius(
+              AppConstants.pillBorderRadius,
+            ),
             boxShadow: [
               BoxShadow(
-                color: colorScheme.shadow.withOpacity(0.15),
+                color: colorScheme.shadow.withValues(alpha: 0.15),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -274,31 +283,28 @@ class _NavItem extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: context.responsiveBorderRadius(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: isSelected
-            ? BoxDecoration(
-                color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(16),
-              )
-            : null,
+        padding: context.responsiveSymmetricPadding(
+          horizontal: 12,
+          vertical: 6,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               isSelected ? selectedIcon : icon,
-              size: 22,
+              size: context.responsive(22),
               color: isSelected
                   ? colorScheme.primary
                   : colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 2),
+            SizedBox(height: context.spacingXs / 2),
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: context.fontSizeXs,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 color: isSelected
                     ? colorScheme.primary
@@ -331,22 +337,29 @@ class _CreatePillTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: color,
-      borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+      borderRadius: context.responsiveBorderRadius(
+        AppConstants.pillBorderRadius,
+      ),
       elevation: 4,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+        borderRadius: context.responsiveBorderRadius(
+          AppConstants.pillBorderRadius,
+        ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: context.responsiveSymmetricPadding(
+            horizontal: 20,
+            vertical: 12,
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 22, color: iconColor),
-              const SizedBox(width: 10),
+              Icon(icon, size: context.responsive(22), color: iconColor),
+              SizedBox(width: context.spacingSm + 2),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: context.responsiveFont(15),
                   fontWeight: FontWeight.w600,
                   color: iconColor,
                 ),

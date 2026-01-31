@@ -69,6 +69,9 @@ class AppTheme {
     return _buildTheme(colorScheme, AppColorsExtension.dark);
   }
 
+  // Font family dell'app
+  static const String fontFamily = 'serif';
+
   static ThemeData _buildTheme(
     ColorScheme colorScheme,
     AppColorsExtension appColors,
@@ -76,6 +79,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      fontFamily: fontFamily,
 
       // === Card Theme ===
       cardTheme: CardThemeData(

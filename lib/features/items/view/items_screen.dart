@@ -51,28 +51,28 @@ class ItemsScreen extends ConsumerWidget {
               final hasTemporaryItems = temporaryItems.isNotEmpty;
 
               if (items.isEmpty && !hasTemporaryItems) {
-                return const Center(
+                return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.inventory_2_outlined,
-                        size: 64,
+                        size: context.iconSizeHero,
                         color: AppColors.disabled,
                       ),
-                      SizedBox(height: 16),
+                      SizedBox(height: context.spacingMd),
                       Text(
                         'Nessun oggetto',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: context.fontSizeXl,
                           color: AppColors.disabled,
                         ),
                       ),
-                      SizedBox(height: 8),
+                      SizedBox(height: context.spacingSm),
                       Text(
                         'Aggiungi il tuo primo oggetto',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: context.fontSizeMd,
                           color: AppColors.disabled,
                         ),
                       ),
@@ -88,14 +88,14 @@ class ItemsScreen extends ConsumerWidget {
               }
 
               return ListView(
-                padding: const EdgeInsets.all(16),
+                padding: context.responsiveScreenPadding,
                 children: [
                   // Sezione items temporanei (da viaggi attivi)
                   if (hasTemporaryItems) ...[
                     _buildTemporaryItemsSection(context, temporaryItems),
-                    const SizedBox(height: 24),
+                    SizedBox(height: context.spacingLg),
                     const Divider(),
-                    const SizedBox(height: 16),
+                    SizedBox(height: context.spacingMd),
                   ],
 
                   // Items normali raggruppati per categoria
@@ -107,7 +107,7 @@ class ItemsScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
+                          padding: EdgeInsets.only(bottom: context.spacingSm),
                           child: Text(
                             category.displayName,
                             style: Theme.of(context).textTheme.titleMedium
@@ -124,7 +124,7 @@ class ItemsScreen extends ConsumerWidget {
                             quantityOnTrip,
                           );
                         }),
-                        const SizedBox(height: 16),
+                        SizedBox(height: context.spacingMd),
                       ],
                     );
                   }),
@@ -136,14 +136,14 @@ class ItemsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.error_outline,
-                    size: 64,
+                    size: context.iconSizeHero,
                     color: AppColors.destructive,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.spacingMd),
                   Text('Errore: $error'),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.spacingMd),
                   ElevatedButton(
                     onPressed: () {
                       ref
@@ -170,8 +170,12 @@ class ItemsScreen extends ConsumerWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.luggage, color: AppColors.itemTemporary),
-            const SizedBox(width: 8),
+            Icon(
+              Icons.luggage,
+              color: AppColors.itemTemporary,
+              size: context.iconSizeMd,
+            ),
+            SizedBox(width: context.spacingSm),
             Text(
               'Oggetti temporanei (in arrivo)',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -181,7 +185,7 @@ class ItemsScreen extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: context.spacingSm),
         ...items.map((item) => _buildTemporaryItemCard(context, item)),
       ],
     );
@@ -191,12 +195,16 @@ class ItemsScreen extends ConsumerWidget {
     final appColors = context.appColors;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: context.spacingSm),
       color: appColors.itemTemporaryBackground,
       child: ListTile(
         leading: Stack(
           children: [
-            Icon(Icons.inventory_2, color: appColors.itemTemporary),
+            Icon(
+              Icons.inventory_2,
+              color: appColors.itemTemporary,
+              size: context.iconSizeMd,
+            ),
             StatusIconOverlay.temporary(),
           ],
         ),
@@ -241,7 +249,7 @@ class ItemsScreen extends ConsumerWidget {
     final hasAnyOnTrip = quantityOnTrip > 0;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: context.spacingSm),
       color: isFullyOnTrip ? appColors.itemOnTripBackground : null,
       child: ListTile(
         onTap: isFullyOnTrip
@@ -255,7 +263,7 @@ class ItemsScreen extends ConsumerWidget {
               },
         leading: Stack(
           children: [
-            _getCategoryIcon(item.category),
+            _getCategoryIcon(context, item.category),
             if (hasAnyOnTrip) StatusIconOverlay.onTrip(),
           ],
         ),
@@ -297,10 +305,10 @@ class ItemsScreen extends ConsumerWidget {
                 fontWeight: FontWeight.bold,
                 color: isFullyOnTrip
                     ? appColors.itemOnTrip
-                    : colorScheme.onSurface.withOpacity(0.7),
+                    : colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: context.spacingSm),
             // Bottone elimina
             IconButton(
               icon: Icon(
@@ -308,24 +316,25 @@ class ItemsScreen extends ConsumerWidget {
                 color: hasAnyOnTrip
                     ? AppColors.disabled
                     : AppColors.destructive,
+                size: context.iconSizeMd,
               ),
               onPressed: hasAnyOnTrip
                   ? null
                   : () async {
                       final confirmed = await showDialog<bool>(
                         context: context,
-                        builder: (context) => AlertDialog(
+                        builder: (dialogContext) => AlertDialog(
                           title: const Text('Elimina oggetto'),
                           content: Text(
                             'Sei sicuro di voler eliminare "${item.name}"?',
                           ),
                           actions: [
                             TextButton(
-                              onPressed: () => context.pop(false),
+                              onPressed: () => dialogContext.pop(false),
                               child: const Text('Annulla'),
                             ),
                             TextButton(
-                              onPressed: () => context.pop(true),
+                              onPressed: () => dialogContext.pop(true),
                               child: const Text(
                                 'Elimina',
                                 style: TextStyle(color: AppColors.destructive),
@@ -347,16 +356,17 @@ class ItemsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _getCategoryIcon(ItemCategory category) {
+  Widget _getCategoryIcon(BuildContext context, ItemCategory category) {
+    final size = context.iconSizeMd;
     switch (category) {
       case ItemCategory.vestiti:
-        return const Icon(Icons.checkroom);
+        return Icon(Icons.checkroom, size: size);
       case ItemCategory.toiletries:
-        return const Icon(Icons.spa);
+        return Icon(Icons.spa, size: size);
       case ItemCategory.elettronica:
-        return const Icon(Icons.devices);
+        return Icon(Icons.devices, size: size);
       case ItemCategory.varie:
-        return const Icon(Icons.category);
+        return Icon(Icons.category, size: size);
     }
   }
 }

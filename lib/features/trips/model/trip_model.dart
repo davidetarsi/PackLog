@@ -50,6 +50,8 @@ class TripModel with _$TripModel {
     DateTime? returnDateTime,
     /// Casa di destinazione (opzionale)
     String? destinationHouseId,
+    /// Viaggio salvato/preferito
+    @Default(false) bool isSaved,
     required DateTime createdAt,
     required DateTime updatedAt,
   }) = _TripModel;

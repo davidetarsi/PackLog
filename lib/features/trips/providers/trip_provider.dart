@@ -92,5 +92,29 @@ class TripNotifier extends _$TripNotifier {
       state = AsyncError(error, stackTrace);
     }
   }
+
+  /// Toggle dello stato salvato/preferito di un viaggio
+  Future<void> toggleSaved(String tripId) async {
+    repository ??= await ref.read(tripRepositoryProvider.future);
+    try {
+      final trips = state.value;
+      if (trips == null) return;
+
+      final tripIndex = trips.indexWhere((t) => t.id == tripId);
+      if (tripIndex == -1) return;
+
+      final trip = trips[tripIndex];
+      final updatedTrip = trip.copyWith(
+        isSaved: !trip.isSaved,
+        updatedAt: DateTime.now(),
+      );
+
+      await repository!.updateTrip(updatedTrip);
+      final newTrips = await repository!.getAllTrips();
+      state = AsyncData(newTrips);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
+  }
 }
 

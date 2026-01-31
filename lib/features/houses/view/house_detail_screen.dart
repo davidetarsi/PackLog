@@ -26,18 +26,18 @@ class HouseDetailScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.home_outlined,
-                    size: 64,
+                    size: context.iconSizeHero,
                     color: AppColors.disabled,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: context.spacingMd),
+                  Text(
                     'La casa richiesta non è stata trovata.',
-                    style: TextStyle(fontSize: 18),
+                    style: TextStyle(fontSize: context.fontSizeXl),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: context.spacingXl),
                   ElevatedButton.icon(
                     onPressed: () => context.go('/'),
                     icon: const Icon(Icons.home),
@@ -111,14 +111,14 @@ class HouseDetailScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
-                size: 64,
+                size: context.iconSizeHero,
                 color: AppColors.destructive,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacingMd),
               Text('Errore: $error'),
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacingMd),
               ElevatedButton(
                 onPressed: () {
                   ref.read(houseNotifierProvider.notifier).refresh();

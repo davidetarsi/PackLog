@@ -25,17 +25,17 @@ class TripDetailScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.luggage_outlined,
-                    size: 64,
+                    size: context.iconSizeHero,
                     color: AppColors.disabled,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: context.spacingMd),
+                  Text(
                     'Lista non trovata',
-                    style: TextStyle(fontSize: 18),
+                    style: TextStyle(fontSize: context.fontSizeXl),
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: context.spacingXl),
                   ElevatedButton.icon(
                     onPressed: () => context.go('/trips'),
                     icon: const Icon(Icons.arrow_back),
@@ -106,7 +106,7 @@ class TripDetailScreen extends ConsumerWidget {
               // Header con progress
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: context.responsiveScreenPadding,
                 color: colorScheme.surfaceContainerHighest,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,10 +115,10 @@ class TripDetailScreen extends ConsumerWidget {
                       Text(
                         trip.description!,
                         style: TextStyle(
-                          color: colorScheme.onSurface.withOpacity(0.7),
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: context.spacingSm + 4),
                     ],
                     Row(
                       children: [
@@ -133,7 +133,7 @@ class TripDetailScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: context.spacingSm + 4),
                         Text(
                           '${trip.completedCount}/${trip.totalCount}',
                           style: TextStyle(
@@ -149,20 +149,23 @@ class TripDetailScreen extends ConsumerWidget {
               // Lista items
               Expanded(
                 child: trip.items.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text(
                           'Nessun oggetto nella lista',
-                          style: TextStyle(color: AppColors.disabled),
+                          style: TextStyle(
+                            color: AppColors.disabled,
+                            fontSize: context.fontSizeMd,
+                          ),
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(context.spacingSm),
                         itemCount: trip.items.length,
                         itemBuilder: (context, index) {
                           final item = trip.items[index];
                           return Card(
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
+                              borderRadius: context.responsiveBorderRadius(
                                 AppConstants.cardBorderRadius,
                               ),
                             ),
@@ -182,22 +185,22 @@ class TripDetailScreen extends ConsumerWidget {
                                       ? TextDecoration.lineThrough
                                       : null,
                                   color: item.isChecked
-                                      ? colorScheme.onSurface.withOpacity(0.5)
+                                      ? colorScheme.onSurface.withValues(alpha: 0.5)
                                       : null,
                                 ),
                               ),
                               subtitle: Text(
                                 item.category,
                                 style: TextStyle(
-                                  fontSize: 12,
-                                  color: colorScheme.onSurface.withOpacity(0.6),
+                                  fontSize: context.fontSizeSm,
+                                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                               ),
                               trailing: Text(
                                 'x${item.quantity}',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: colorScheme.onSurface.withOpacity(0.7),
+                                  color: colorScheme.onSurface.withValues(alpha: 0.7),
                                 ),
                               ),
                             ),
@@ -217,14 +220,14 @@ class TripDetailScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
-                size: 64,
+                size: context.iconSizeHero,
                 color: AppColors.destructive,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacingMd),
               Text('Errore: $error'),
-              const SizedBox(height: 16),
+              SizedBox(height: context.spacingMd),
               ElevatedButton(
                 onPressed: () {
                   ref.read(tripNotifierProvider.notifier).refresh();

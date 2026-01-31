@@ -969,7 +969,7 @@ class _QuantityPickerSheetState extends State<_QuantityPickerSheet> {
           const SizedBox(height: 8),
           Text(
             'Disponibili: ${widget.maxQuantity}',
-            style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+            style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
           const SizedBox(height: 24),
 
