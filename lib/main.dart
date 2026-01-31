@@ -16,6 +16,7 @@ class MyApp extends StatelessWidget {
       title: 'Stuff Tracker',
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.dark, // Forza il tema scuro
       routerConfig: appRouter,
     );
   }

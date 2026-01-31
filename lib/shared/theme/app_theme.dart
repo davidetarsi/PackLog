@@ -5,21 +5,65 @@ import '../constants/app_constants.dart';
 /// Tema principale dell'app.
 /// Definisce tutti gli stili globali per avere un design consistente.
 class AppTheme {
-  /// Tema chiaro
+  // === Colori principali del tema ===
+  static const Color _primaryOrange = Color.fromARGB(
+    255,
+    247,
+    100,
+    21,
+  ); // Arancione scuro
+  static const Color _primaryOrangeLight = Color(0xFFFF8A50);
+  static const Color _surfaceDark = Color(0xFF121212); // Nero
+  static const Color _surfaceContainerDark = Color(
+    0xFF1E1E1E,
+  ); // Grigio molto scuro
+  static const Color _surfaceContainerHighDark = Color(
+    0xFF2D2D2D,
+  ); // Grigio scuro
+
+  /// Tema chiaro (fallback, ma l'app userà principalmente il dark)
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color.fromARGB(255, 50, 127, 204),
+      seedColor: _primaryOrange,
       brightness: Brightness.light,
     );
 
     return _buildTheme(colorScheme, AppColorsExtension.light);
   }
 
-  /// Tema scuro
+  /// Tema scuro - Tema principale dell'app
   static ThemeData get dark {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color.fromARGB(255, 50, 127, 204),
-      brightness: Brightness.dark,
+    // ColorScheme personalizzato per tema scuro con arancione
+    const colorScheme = ColorScheme.dark(
+      // Colori primari (arancione)
+      primary: _primaryOrange,
+      onPrimary: Colors.white,
+      primaryContainer: Color(0xFF3D2000),
+      onPrimaryContainer: _primaryOrangeLight,
+      // Colori secondari
+      secondary: Color(0xFFFFB74D),
+      onSecondary: Color(0xFF1E1E1E),
+      secondaryContainer: Color(0xFF4A3000),
+      onSecondaryContainer: Color(0xFFFFDDB0),
+      // Colori terziari
+      tertiary: Color(0xFFFFCC80),
+      onTertiary: Color(0xFF1E1E1E),
+      // Superfici (nero/grigio scuro)
+      surface: _surfaceDark,
+      onSurface: Color(0xFFE8E8E8),
+      surfaceContainerLowest: Color(0xFF0D0D0D),
+      surfaceContainerLow: Color(0xFF1A1A1A),
+      surfaceContainer: _surfaceContainerDark,
+      surfaceContainerHigh: _surfaceContainerHighDark,
+      surfaceContainerHighest: Color(0xFF3A3A3A),
+      // Altri colori
+      error: Color(0xFFCF6679),
+      onError: Colors.black,
+      outline: Color(0xFF5C5C5C),
+      outlineVariant: Color(0xFF3A3A3A),
+      inverseSurface: Color(0xFFE8E8E8),
+      onInverseSurface: Color(0xFF1E1E1E),
+      inversePrimary: Color(0xFFBF360C),
     );
 
     return _buildTheme(colorScheme, AppColorsExtension.dark);

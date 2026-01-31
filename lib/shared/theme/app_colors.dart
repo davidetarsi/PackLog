@@ -4,52 +4,59 @@ import 'package:flutter/material.dart';
 /// Usa questi colori per stati specifici che non cambiano con light/dark mode.
 /// Per colori che devono adattarsi, usa Theme.of(context).colorScheme
 abstract class AppColors {
+  // === Colori principali del tema ===
+
+  /// Arancione scuro - colore principale dell'app
+  static const Color primaryOrange = Color.fromARGB(255, 237, 100, 26);
+  static const Color primaryOrangeLight = Color.fromARGB(255, 247, 144, 92);
+  static const Color primaryOrangeDark = Color.fromARGB(255, 215, 98, 62);
+
   // === Stati degli item ===
 
-  /// Item attualmente in viaggio (assente dalla casa)
-  static const Color itemOnTrip = Color(0xFFF57C00);
-  static const Color itemOnTripLight = Color(0xFFFFF3E0);
+  /// Item attualmente in viaggio (assente dalla casa) - usa arancione del tema
+  static const Color itemOnTrip = Color(0xFFFF8A50);
+  static const Color itemOnTripLight = Color(0xFF3D2000);
   static const Color itemOnTripDark = Color(0xFFE65100);
 
-  /// Item temporaneamente presente (in arrivo da un viaggio)
-  static const Color itemTemporary = Color(0xFF1976D2);
-  static const Color itemTemporaryLight = Color(0xFFE3F2FD);
-  static const Color itemTemporaryDark = Color(0xFF0D47A1);
+  /// Item temporaneamente presente (in arrivo da un viaggio) - usa blu/azzurro
+  static const Color itemTemporary = Color(0xFF42A5F5);
+  static const Color itemTemporaryLight = Color(0xFF1A3A5C);
+  static const Color itemTemporaryDark = Color(0xFF1976D2);
 
   // === Azioni ===
 
   /// Colore per azioni distruttive (elimina, rimuovi)
-  static const Color destructive = Color(0xFFD32F2F);
-  static const Color destructiveLight = Color(0xFFEF9A9A);
+  static const Color destructive = Color(0xFFCF6679);
+  static const Color destructiveLight = Color(0xFF5C2A2A);
 
   /// Colore per successo/conferma
-  static const Color success = Color(0xFF388E3C);
+  static const Color success = Color(0xFF4CAF50);
 
-  /// Colore per avvisi/warning
-  static const Color warning = Color(0xFFF57C00);
-  static const Color warningLight = Color(0xFFFFE0B2);
+  /// Colore per avvisi/warning - usa arancione
+  static const Color warning = Color(0xFFFF8A50);
+  static const Color warningLight = Color(0xFF3D2000);
 
   // === Colori neutri ===
 
   /// Colore per testo/icone disabilitati o secondari
-  static const Color disabled = Color(0xFF9E9E9E);
-  static const Color hint = Color(0xFF757575);
+  static const Color disabled = Color(0xFF6E6E6E);
+  static const Color hint = Color(0xFF9E9E9E);
 
   /// Colore bianco per testo su sfondi colorati
   static const Color onColored = Color(0xFFFFFFFF);
 
   /// Bordi e separatori
-  static const Color border = Color(0xFFE0E0E0);
+  static const Color border = Color(0xFF3A3A3A);
 
   // === Badge e indicatori ===
 
-  /// Badge quantità selezionata
-  static const Color badgeSelected = Color(0xFFE8DEF8);
-  static const Color badgeSelectedText = Color.fromARGB(255, 50, 127, 204);
+  /// Badge quantità selezionata - usa arancione
+  static const Color badgeSelected = Color(0xFF3D2000);
+  static const Color badgeSelectedText = Color(0xFFFF8A50);
 
   /// Badge quantità non selezionata
-  static const Color badgeUnselected = Color(0xFFE7E0EC);
-  static const Color badgeUnselectedText = Color(0xFF49454F);
+  static const Color badgeUnselected = Color(0xFF2D2D2D);
+  static const Color badgeUnselectedText = Color(0xFFB0B0B0);
 }
 
 /// Extension del tema per colori custom che supportano light/dark mode
@@ -73,22 +80,22 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
 
   /// Colori per light mode
   static const light = AppColorsExtension(
-    itemOnTrip: AppColors.itemOnTrip,
-    itemOnTripBackground: AppColors.itemOnTripLight,
+    itemOnTrip: AppColors.itemOnTripDark,
+    itemOnTripBackground: Color(0xFFFFF3E0),
     itemOnTripText: AppColors.itemOnTripDark,
-    itemTemporary: AppColors.itemTemporary,
-    itemTemporaryBackground: AppColors.itemTemporaryLight,
+    itemTemporary: AppColors.itemTemporaryDark,
+    itemTemporaryBackground: Color(0xFFE3F2FD),
     itemTemporaryText: AppColors.itemTemporaryDark,
   );
 
-  /// Colori per dark mode
+  /// Colori per dark mode - usa arancione del tema
   static const dark = AppColorsExtension(
-    itemOnTrip: Color(0xFFFFB74D),
-    itemOnTripBackground: Color(0xFF3E2723),
-    itemOnTripText: Color(0xFFFFCC80),
-    itemTemporary: Color(0xFF64B5F6),
-    itemTemporaryBackground: Color(0xFF0D47A1),
-    itemTemporaryText: Color(0xFF90CAF9),
+    itemOnTrip: AppColors.itemOnTrip, // Arancione chiaro
+    itemOnTripBackground: AppColors.itemOnTripLight, // Sfondo arancione scuro
+    itemOnTripText: AppColors.itemOnTrip,
+    itemTemporary: AppColors.itemTemporary, // Blu chiaro
+    itemTemporaryBackground: AppColors.itemTemporaryLight, // Sfondo blu scuro
+    itemTemporaryText: AppColors.itemTemporary,
   );
 
   @override
