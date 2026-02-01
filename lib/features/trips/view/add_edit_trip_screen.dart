@@ -10,6 +10,7 @@ import '../../items/model/item_model.dart';
 import '../../items/view/add_edit_item_screen.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/widgets/quantity_badge.dart';
+import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../shared/theme/theme.dart';
 
 class AddEditTripScreen extends ConsumerStatefulWidget {
@@ -32,6 +33,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
   String? _destinationHouseId;
+  String? _destinationLocationName;
 
   @override
   void initState() {
@@ -55,6 +57,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
         _departureDateTime = trip.departureDateTime;
         _returnDateTime = trip.returnDateTime;
         _destinationHouseId = trip.destinationHouseId;
+        _destinationLocationName = trip.destinationLocationName;
       });
     });
   }
@@ -178,6 +181,9 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                     departureDateTime: _departureDateTime,
                     returnDateTime: _returnDateTime,
                     destinationHouseId: _destinationHouseId,
+                    destinationLocationName: _destinationHouseId == null
+                        ? _destinationLocationName
+                        : null,
                     updatedAt: now,
                   );
             })()
@@ -191,6 +197,9 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
               departureDateTime: _departureDateTime,
               returnDateTime: _returnDateTime,
               destinationHouseId: _destinationHouseId,
+              destinationLocationName: _destinationHouseId == null
+                  ? _destinationLocationName
+                  : null,
               createdAt: now,
               updatedAt: now,
             );
@@ -435,6 +444,26 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                         const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Text('Errore: $e'),
                   ),
+                  
+                  // Campo di autocomplete località (visibile solo quando nessuna casa è selezionata)
+                  if (_destinationHouseId == null) ...[
+                    const SizedBox(height: 16),
+                    LocationAutocompleteField(
+                      initialValue: _destinationLocationName,
+                      labelText: 'Destinazione',
+                      hintText: 'Cerca città, regione o stato...',
+                      onLocationSelected: (location) {
+                        setState(() {
+                          _destinationLocationName = location.displayName;
+                        });
+                      },
+                      onTextChanged: (text) {
+                        setState(() {
+                          _destinationLocationName = text.isEmpty ? null : text;
+                        });
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 24),
 
                   // Sezione selezione items

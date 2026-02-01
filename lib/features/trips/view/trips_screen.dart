@@ -159,7 +159,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                   'Pronto per la tua\nprossima avventura?',
                   style: TextStyle(
                     fontSize: context.fontSizeHeading + 4,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.normal,
                     color: Colors.white,
                     height: 1.2,
                   ),
@@ -168,7 +168,11 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
               SizedBox(height: context.spacingSm),
               
               // Pill Tabs
-              _buildPillTabs(context, colorScheme),
+              Center(
+                child: _TripsFilterTabs(
+                  selectedTab: _selectedTab, 
+                onTabSelected: (tab) => setState(() => _selectedTab = tab)),
+              ),
               SizedBox(height: context.spacingMd),
               
               // Card grande del prossimo viaggio
@@ -182,7 +186,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                 _buildFilterEmptyState(context, colorScheme)
               else if (tripsForMasonry.isNotEmpty)
                 // Layout masonry
-                _buildMasonryLayout(context, tripsForMasonry),
+                _TripsMasonry(trips: tripsForMasonry),
             ],
           ),
         );
@@ -192,7 +196,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     );
   }
 
-  Widget _buildPillTabs(BuildContext context, ColorScheme colorScheme) {
+  /* Widget _buildPillTabs(BuildContext context, ColorScheme colorScheme) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -240,7 +244,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
         }).toList(),
       ),
     );
-  }
+  } 
 
   Widget _buildMasonryLayout(BuildContext context, List<TripModel> trips) {
     // Layout stile Google Keep masonry con due colonne
@@ -291,6 +295,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       ],
     );
   }
+  */
 
   Widget _buildEmptyState(BuildContext context) {
     return Center(
@@ -474,9 +479,12 @@ class _NextTripCard extends StatelessWidget {
                       vertical: context.spacingXs,
                     ),
                     decoration: BoxDecoration(
-                      color: isActive 
-                          ? colorScheme.primary
-                          : colorScheme.surfaceContainerHighest,
+                      border: Border.all(
+                        color: isActive 
+                            ? colorScheme.primary
+                            : colorScheme.surfaceContainerHighest,
+                        width: 1,
+                      ),
                       borderRadius: context.responsiveBorderRadius(12),
                     ),
                     child: Row(
@@ -539,6 +547,20 @@ class _NextTripCard extends StatelessWidget {
                     SizedBox(width: context.spacingXs),
                     Text(
                       _formatTripDates(trip),
+                      style: TextStyle(
+                        fontSize: context.fontSizeMd,
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.place,
+                      size: context.iconSizeSm,
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                    SizedBox(width: context.spacingXs),
+                    Text(
+                      trip.name,
                       style: TextStyle(
                         fontSize: context.fontSizeMd,
                         color: colorScheme.onSurface.withValues(alpha: 0.6),
@@ -770,6 +792,119 @@ class _TripCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TripsFilterTabs extends StatelessWidget {
+  final TripFilterTab selectedTab;
+  final ValueChanged<TripFilterTab> onTabSelected;
+
+  const _TripsFilterTabs({
+    required this.selectedTab,
+    required this.onTabSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: TripFilterTab.values.map((tab) {
+          final isSelected = selectedTab == tab;
+          return Padding(
+            padding: EdgeInsets.only(right: context.spacingSm),
+            child: GestureDetector(
+              onTap: () => onTabSelected(tab),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacingMd,
+                  vertical: context.spacingSm,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? colorScheme.primary
+                      : colorScheme.surfaceContainerHighest,
+                  borderRadius: context.responsiveBorderRadius(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? colorScheme.primary
+                        : colorScheme.outline.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  tab.label,
+                  style: TextStyle(
+                    fontSize: context.fontSizeMd,
+                    fontWeight:
+                        isSelected ? FontWeight.w600 : FontWeight.normal,
+                    color: isSelected
+                        ? colorScheme.onPrimary
+                        : colorScheme.onSurface.withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+
+class _TripsMasonry extends StatelessWidget {
+  final List<TripModel> trips;
+
+  const _TripsMasonry({required this.trips});
+
+  @override
+  Widget build(BuildContext context) {
+    final leftColumnTrips = <TripModel>[];
+    final rightColumnTrips = <TripModel>[];
+    double leftColumnHeight = 0;
+    double rightColumnHeight = 0;
+
+    for (final trip in trips) {
+      final cardHeight = _TripsScreenState._estimateCardHeight(trip);
+      if (leftColumnHeight <= rightColumnHeight) {
+        leftColumnTrips.add(trip);
+        leftColumnHeight += cardHeight + 8;
+      } else {
+        rightColumnTrips.add(trip);
+        rightColumnHeight += cardHeight + 8;
+      }
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            children: leftColumnTrips
+                .map((trip) => Padding(
+                      padding: EdgeInsets.only(bottom: context.spacingSm),
+                      child: _TripCard(trip: trip),
+                    ))
+                .toList(),
+          ),
+        ),
+        SizedBox(width: context.spacingSm),
+        Expanded(
+          child: Column(
+            children: rightColumnTrips
+                .map((trip) => Padding(
+                      padding: EdgeInsets.only(bottom: context.spacingSm),
+                      child: _TripCard(trip: trip),
+                    ))
+                .toList(),
+          ),
+        ),
+      ],
     );
   }
 }
