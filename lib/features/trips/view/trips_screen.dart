@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
+import '../../houses/providers/house_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 
@@ -402,10 +403,33 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 }
 
 /// Card grande per il prossimo viaggio (occupa 2 colonne)
-class _NextTripCard extends StatelessWidget {
+class _NextTripCard extends ConsumerWidget {
   final TripModel trip;
 
   const _NextTripCard({required this.trip});
+
+  /// Ottiene il nome della destinazione (casa o località testuale)
+  String _getDestinationName(WidgetRef ref) {
+    // Se c'è una casa di destinazione, cerca il nome
+    if (trip.destinationHouseId != null) {
+      final housesAsync = ref.watch(houseNotifierProvider);
+      final houses = housesAsync.valueOrNull;
+      if (houses != null) {
+        final house = houses.where((h) => h.id == trip.destinationHouseId).firstOrNull;
+        if (house != null) {
+          return house.name;
+        }
+      }
+      return 'Casa sconosciuta';
+    }
+    
+    // Altrimenti usa la località testuale
+    if (trip.destinationLocationName != null && trip.destinationLocationName!.isNotEmpty) {
+      return trip.destinationLocationName!;
+    }
+    
+    return 'Nessuna destinazione';
+  }
 
   String _formatTripDates(TripModel trip) {
     if (trip.departureDateTime == null) return '';
@@ -444,7 +468,7 @@ class _NextTripCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final isActive = trip.isActive;
 
@@ -559,12 +583,16 @@ class _NextTripCard extends StatelessWidget {
                       color: colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                     SizedBox(width: context.spacingXs),
-                    Text(
-                      trip.name,
-                      style: TextStyle(
-                        fontSize: context.fontSizeMd,
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
+                    //Flexible(
+                      //child: 
+                      Text(
+                        _getDestinationName(ref),
+                        style: TextStyle(
+                          fontSize: context.fontSizeMd,
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      //),
                     ),
                   ],
                 ),
