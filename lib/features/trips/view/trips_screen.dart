@@ -65,7 +65,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       });
       return activeTrips.first;
     }
-    
+
     // Altrimenti cerca il prossimo viaggio futuro
     final upcomingTrips = trips.where((t) => t.isUpcoming).toList();
     if (upcomingTrips.isNotEmpty) {
@@ -77,7 +77,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       });
       return upcomingTrips.first;
     }
-    
+
     return null;
   }
 
@@ -98,7 +98,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   /// Ordina i viaggi (più recenti prima per passati, più vicini prima per prossimi)
   List<TripModel> _sortTrips(List<TripModel> trips) {
     final sorted = List<TripModel>.from(trips);
-    
+
     if (_selectedTab == TripFilterTab.past) {
       // Passati: più recenti prima
       sorted.sort((a, b) {
@@ -114,7 +114,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
         return aDeparture.compareTo(bDeparture);
       });
     }
-    
+
     return sorted;
   }
 
@@ -132,10 +132,12 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
         final nextTrip = _findNextTrip(trips);
         final filteredTrips = _filterTrips(trips, nextTrip);
         final sortedTrips = _sortTrips(filteredTrips);
-        
+
         // Rimuovi il prossimo viaggio dalla lista se stiamo mostrando la card grande
-        final showNextTripCard = nextTrip != null && 
-            (_selectedTab == TripFilterTab.upcoming || _selectedTab == TripFilterTab.all);
+        final showNextTripCard =
+            nextTrip != null &&
+            (_selectedTab == TripFilterTab.upcoming ||
+                _selectedTab == TripFilterTab.all);
         final tripsForMasonry = showNextTripCard
             ? sortedTrips.where((t) => t.id != nextTrip.id).toList()
             : sortedTrips;
@@ -167,21 +169,22 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                 ),
               ),
               SizedBox(height: context.spacingSm),
-              
+
               // Pill Tabs
               Center(
                 child: _TripsFilterTabs(
-                  selectedTab: _selectedTab, 
-                onTabSelected: (tab) => setState(() => _selectedTab = tab)),
+                  selectedTab: _selectedTab,
+                  onTabSelected: (tab) => setState(() => _selectedTab = tab),
+                ),
               ),
               SizedBox(height: context.spacingMd),
-              
+
               // Card grande del prossimo viaggio
               if (showNextTripCard) ...[
                 _NextTripCard(trip: nextTrip),
                 SizedBox(height: context.spacingSm),
               ],
-              
+
               // Stato vuoto per il filtro corrente
               if (tripsForMasonry.isEmpty && !showNextTripCard)
                 _buildFilterEmptyState(context, colorScheme)
@@ -332,7 +335,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   Widget _buildFilterEmptyState(BuildContext context, ColorScheme colorScheme) {
     String message;
     IconData icon;
-    
+
     switch (_selectedTab) {
       case TripFilterTab.upcoming:
         message = 'Nessun viaggio in programma';
@@ -351,18 +354,14 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
         icon = Icons.luggage_outlined;
         break;
     }
-    
+
     return Center(
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: context.spacingXl * 2),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: context.iconSizeHero,
-              color: AppColors.disabled,
-            ),
+            Icon(icon, size: context.iconSizeHero, color: AppColors.disabled),
             SizedBox(height: context.spacingMd),
             Text(
               message,
@@ -415,40 +414,55 @@ class _NextTripCard extends ConsumerWidget {
       final housesAsync = ref.watch(houseNotifierProvider);
       final houses = housesAsync.valueOrNull;
       if (houses != null) {
-        final house = houses.where((h) => h.id == trip.destinationHouseId).firstOrNull;
+        final house = houses
+            .where((h) => h.id == trip.destinationHouseId)
+            .firstOrNull;
         if (house != null) {
           return house.name;
         }
       }
       return 'Casa sconosciuta';
     }
-    
+
     // Altrimenti usa la località testuale
-    if (trip.destinationLocationName != null && trip.destinationLocationName!.isNotEmpty) {
+    if (trip.destinationLocationName != null &&
+        trip.destinationLocationName!.isNotEmpty) {
       return trip.destinationLocationName!;
     }
-    
+
     return 'Nessuna destinazione';
   }
 
   String _formatTripDates(TripModel trip) {
     if (trip.departureDateTime == null) return '';
-    
+
     final departure = trip.departureDateTime!;
-    final months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 
-                   'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
-    
+    final months = [
+      'Gen',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mag',
+      'Giu',
+      'Lug',
+      'Ago',
+      'Set',
+      'Ott',
+      'Nov',
+      'Dic',
+    ];
+
     String formatDate(DateTime date) {
       return '${date.day} ${months[date.month - 1]}';
     }
-    
+
     String formatTime(DateTime date) {
       return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     }
-    
+
     if (trip.returnDateTime != null) {
       final returnDate = trip.returnDateTime!;
-      if (departure.day == returnDate.day && 
+      if (departure.day == returnDate.day &&
           departure.month == returnDate.month &&
           departure.year == returnDate.year) {
         // Stesso giorno
@@ -457,7 +471,7 @@ class _NextTripCard extends ConsumerWidget {
         return '${formatDate(departure)} - ${formatDate(returnDate)}';
       }
     }
-    
+
     return '${formatDate(departure)} • ${formatTime(departure)}';
   }
 
@@ -477,14 +491,18 @@ class _NextTripCard extends ConsumerWidget {
       margin: EdgeInsets.zero,
       color: colorScheme.surfaceContainerHigh,
       shape: RoundedRectangleBorder(
-        borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius + 4),
+        borderRadius: context.responsiveBorderRadius(
+          AppConstants.cardBorderRadius + 4,
+        ),
         side: BorderSide(
           color: colorScheme.outline.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
       child: InkWell(
-        borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius + 4),
+        borderRadius: context.responsiveBorderRadius(
+          AppConstants.cardBorderRadius + 4,
+        ),
         onTap: () {
           context.push('/trips/${trip.id}');
         },
@@ -504,7 +522,7 @@ class _NextTripCard extends ConsumerWidget {
                     ),
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: isActive 
+                        color: isActive
                             ? colorScheme.primary
                             : colorScheme.surfaceContainerHighest,
                         width: 1,
@@ -517,7 +535,7 @@ class _NextTripCard extends ConsumerWidget {
                         Icon(
                           isActive ? Icons.flight_takeoff : Icons.schedule,
                           size: context.iconSizeSm,
-                          color: isActive 
+                          color: isActive
                               ? colorScheme.onPrimary
                               : colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
@@ -527,7 +545,7 @@ class _NextTripCard extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: context.fontSizeSm,
                             fontWeight: FontWeight.w600,
-                            color: isActive 
+                            color: isActive
                                 ? colorScheme.onPrimary
                                 : colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
@@ -546,7 +564,7 @@ class _NextTripCard extends ConsumerWidget {
                 ],
               ),
               SizedBox(height: context.spacingSm + 4),
-              
+
               // Titolo
               Text(
                 trip.name,
@@ -557,7 +575,7 @@ class _NextTripCard extends ConsumerWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              
+
               // Date
               if (trip.departureDateTime != null) ...[
                 SizedBox(height: context.spacingXs),
@@ -584,20 +602,20 @@ class _NextTripCard extends ConsumerWidget {
                     ),
                     SizedBox(width: context.spacingXs),
                     //Flexible(
-                      //child: 
-                      Text(
-                        _getDestinationName(ref),
-                        style: TextStyle(
-                          fontSize: context.fontSizeMd,
-                          color: colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                    //child:
+                    Text(
+                      _getDestinationName(ref),
+                      style: TextStyle(
+                        fontSize: context.fontSizeMd,
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                      overflow: TextOverflow.ellipsis,
                       //),
                     ),
                   ],
                 ),
               ],
-              
+
               // Descrizione
               if (trip.description != null) ...[
                 SizedBox(height: context.spacingXs),
@@ -611,9 +629,9 @@ class _NextTripCard extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
-              
+
               SizedBox(height: context.spacingMd),
-              
+
               // Progress bar e conteggio items
               if (trip.items.isNotEmpty) ...[
                 Row(
@@ -685,11 +703,15 @@ class _TripCard extends StatelessWidget {
       elevation: 2,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
+        borderRadius: context.responsiveBorderRadius(
+          AppConstants.cardBorderRadius,
+        ),
         side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
       ),
       child: InkWell(
-        borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
+        borderRadius: context.responsiveBorderRadius(
+          AppConstants.cardBorderRadius,
+        ),
         onTap: () {
           context.push('/trips/${trip.id}');
         },
@@ -763,7 +785,9 @@ class _TripCard extends StatelessWidget {
               ...List.generate(itemsToShow, (index) {
                 final item = trip.items[index];
                 return Padding(
-                  padding: EdgeInsets.symmetric(vertical: context.spacingXs / 2),
+                  padding: EdgeInsets.symmetric(
+                    vertical: context.spacingXs / 2,
+                  ),
                   child: Row(
                     children: [
                       Icon(
@@ -868,8 +892,9 @@ class _TripsFilterTabs extends StatelessWidget {
                   tab.label,
                   style: TextStyle(
                     fontSize: context.fontSizeMd,
-                    fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                     color: isSelected
                         ? colorScheme.onPrimary
                         : colorScheme.onSurface.withValues(alpha: 0.8),
@@ -883,7 +908,6 @@ class _TripsFilterTabs extends StatelessWidget {
     );
   }
 }
-
 
 class _TripsMasonry extends StatelessWidget {
   final List<TripModel> trips;
@@ -914,10 +938,12 @@ class _TripsMasonry extends StatelessWidget {
         Expanded(
           child: Column(
             children: leftColumnTrips
-                .map((trip) => Padding(
-                      padding: EdgeInsets.only(bottom: context.spacingSm),
-                      child: _TripCard(trip: trip),
-                    ))
+                .map(
+                  (trip) => Padding(
+                    padding: EdgeInsets.only(bottom: context.spacingSm),
+                    child: _TripCard(trip: trip),
+                  ),
+                )
                 .toList(),
           ),
         ),
@@ -925,10 +951,12 @@ class _TripsMasonry extends StatelessWidget {
         Expanded(
           child: Column(
             children: rightColumnTrips
-                .map((trip) => Padding(
-                      padding: EdgeInsets.only(bottom: context.spacingSm),
-                      child: _TripCard(trip: trip),
-                    ))
+                .map(
+                  (trip) => Padding(
+                    padding: EdgeInsets.only(bottom: context.spacingSm),
+                    child: _TripCard(trip: trip),
+                  ),
+                )
                 .toList(),
           ),
         ),
