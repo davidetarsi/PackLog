@@ -6,205 +6,31 @@ import 'package:http/http.dart' as http;
 
 import '../config/api_keys.dart';
 import '../constants/app_constants.dart';
-
-/// Tipo di località
-enum LocationType {
-  city,
-  state,
-  country,
-  other,
-}
-
-/// Modello per rappresentare una località restituita dall'API Geoapify
-class LocationSuggestion {
-  final String placeId;
-  final String displayName;
-  final String? name; // Nome principale (città, regione o stato)
-  final String? city;
-  final String? state;
-  final String? country;
-  final LocationType locationType;
-  final double? lat;
-  final double? lon;
-
-  const LocationSuggestion({
-    required this.placeId,
-    required this.displayName,
-    this.name,
-    this.city,
-    this.state,
-    this.country,
-    this.locationType = LocationType.other,
-    this.lat,
-    this.lon,
-  });
-
-  factory LocationSuggestion.fromGeoapifyJson(Map<String, dynamic> json) {
-    final properties = json['properties'] as Map<String, dynamic>? ?? {};
-    
-    // Ottieni il tipo di risultato dall'API
-    final resultType = properties['result_type'] as String? ?? '';
-    final city = properties['city'] as String?;
-    final state = properties['state'] as String?;
-    final county = properties['county'] as String?;
-    final country = properties['country'] as String?;
-    final formatted = properties['formatted'] as String? ?? '';
-    final name = properties['name'] as String?;
-    
-    // Determina il tipo di località basandosi PRINCIPALMENTE su result_type
-    LocationType locationType;
-    String? mainName;
-    
-    // L'API restituisce result_type che è la fonte più affidabile
-    switch (resultType) {
-      case 'country':
-        locationType = LocationType.country;
-        // Per i paesi, usa SEMPRE il campo 'country' che è nella lingua richiesta (italiano)
-        // Il campo 'name' spesso è in inglese (es. "Turkey" invece di "Turchia")
-        mainName = country ?? name;
-        break;
-        
-      case 'state':
-      case 'region':
-      case 'county':
-      case 'province':
-        locationType = LocationType.state;
-        mainName = state ?? county ?? name;
-        break;
-        
-      case 'city':
-      case 'town':
-      case 'village':
-      case 'municipality':
-        locationType = LocationType.city;
-        mainName = city ?? name;
-        break;
-        
-      case 'postcode':
-      case 'suburb':
-      case 'district':
-      case 'locality':
-      case 'neighbourhood':
-        // Questi sono sottotipi di città/luoghi
-        if (city != null) {
-          locationType = LocationType.city;
-          mainName = city;
-        } else if (state != null || county != null) {
-          locationType = LocationType.state;
-          mainName = state ?? county;
-        } else {
-          locationType = LocationType.other;
-          mainName = name ?? country;
-        }
-        break;
-        
-      default:
-        // Fallback: cerca di dedurre dal contesto
-        if (city == null && state == null && county == null && country != null && name == country) {
-          // Probabilmente un paese
-          locationType = LocationType.country;
-          mainName = country;
-        } else if (city == null && (state != null || county != null)) {
-          // Probabilmente una regione/stato
-          locationType = LocationType.state;
-          mainName = state ?? county ?? name;
-        } else if (city != null) {
-          // Probabilmente una città
-          locationType = LocationType.city;
-          mainName = city;
-        } else {
-          locationType = LocationType.other;
-          mainName = name ?? city ?? state ?? county ?? country;
-        }
-    }
-    
-    // Costruisci il displayName in italiano
-    // Preferisci costruire un nome pulito invece di usare 'formatted' che può essere misto
-    String displayName;
-    final parts = <String>[];
-    
-    if (mainName != null) {
-      parts.add(mainName);
-    }
-    
-    // Aggiungi contesto in base al tipo
-    if (locationType == LocationType.city) {
-      if (state != null && state != mainName) {
-        parts.add(state);
-      }
-      if (country != null) {
-        parts.add(country);
-      }
-    } else if (locationType == LocationType.state) {
-      if (country != null && country != mainName) {
-        parts.add(country);
-      }
-    }
-    // Per i paesi, non aggiungere nulla
-    
-    displayName = parts.isNotEmpty ? parts.join(', ') : formatted;
-    
-    // Fallback al formatted se displayName è vuoto
-    if (displayName.isEmpty) {
-      displayName = formatted;
-    }
-
-    return LocationSuggestion(
-      placeId: properties['place_id'] as String? ?? '',
-      displayName: displayName,
-      name: mainName,
-      city: city,
-      state: state,
-      country: country,
-      locationType: locationType,
-      lat: (properties['lat'] as num?)?.toDouble(),
-      lon: (properties['lon'] as num?)?.toDouble(),
-    );
-  }
-  
-  /// Chiave univoca per la deduplicazione (nome + tipo + paese)
-  String get deduplicationKey {
-    final normalizedName = (name ?? displayName).toLowerCase().trim();
-    return '$normalizedName|${locationType.name}|${country?.toLowerCase() ?? ''}';
-  }
-
-  @override
-  String toString() => displayName;
-  
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is LocationSuggestion && 
-           (other.placeId == placeId || other.displayName == displayName);
-  }
-  
-  @override
-  int get hashCode => displayName.hashCode;
-}
+import '../model/model.dart';
 
 /// Widget riutilizzabile per l'autocomplete delle località.
 /// Usa l'API Geoapify per cercare città, regioni e stati.
-/// 
+///
 /// I suggerimenti appaiono dalla terza lettera digitata.
 class LocationAutocompleteField extends StatefulWidget {
   /// Valore iniziale del campo
   final String? initialValue;
-  
+
   /// Callback chiamata quando viene selezionata una località
-  final ValueChanged<LocationSuggestion>? onLocationSelected;
-  
+  final ValueChanged<LocationSuggestionModel>? onLocationSelected;
+
   /// Callback chiamata quando il testo cambia (anche senza selezione)
   final ValueChanged<String>? onTextChanged;
-  
+
   /// Label del campo
   final String? labelText;
-  
+
   /// Hint del campo
   final String? hintText;
-  
+
   /// Numero minimo di caratteri per iniziare la ricerca
   final int minCharsForSearch;
-  
+
   /// Ritardo in millisecondi prima di effettuare la ricerca (debounce)
   final int debounceMs;
 
@@ -228,12 +54,12 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final LayerLink _layerLink = LayerLink();
-  
+
   OverlayEntry? _overlayEntry;
-  List<LocationSuggestion> _suggestions = [];
+  List<LocationSuggestionModel> _suggestions = [];
   bool _isLoading = false;
   Timer? _debounceTimer;
-  
+
   // Per evitare di fare ricerche dopo aver selezionato
   bool _ignoreNextChange = false;
 
@@ -269,13 +95,13 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       _ignoreNextChange = false;
       return;
     }
-    
+
     final text = _controller.text;
     widget.onTextChanged?.call(text);
-    
+
     // Cancella il timer precedente
     _debounceTimer?.cancel();
-    
+
     if (text.length < widget.minCharsForSearch) {
       _removeOverlay();
       setState(() {
@@ -283,7 +109,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       });
       return;
     }
-    
+
     // Debounce: aspetta prima di fare la richiesta
     _debounceTimer = Timer(
       Duration(milliseconds: widget.debounceMs),
@@ -293,21 +119,21 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
 
   Future<void> _searchLocations(String query) async {
     if (!mounted) return;
-    
+
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       final suggestions = await _fetchLocationSuggestions(query);
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         _suggestions = suggestions;
         _isLoading = false;
       });
-      
+
       if (suggestions.isNotEmpty && _focusNode.hasFocus) {
         _showOverlay();
       } else {
@@ -315,7 +141,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       }
     } catch (e) {
       if (!mounted) return;
-      
+
       setState(() {
         _suggestions = [];
         _isLoading = false;
@@ -324,19 +150,16 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
     }
   }
 
-  Future<List<LocationSuggestion>> _fetchLocationSuggestions(
+  Future<List<LocationSuggestionModel>> _fetchLocationSuggestions(
     String query,
   ) async {
-    final uri = Uri.https(
-      'api.geoapify.com',
-      '/v1/geocode/autocomplete',
-      {
-        'text': query,
-        'apiKey': ApiKeys.geoapify,
-        'lang': 'it',
-        'limit': '10', // Richiedi più risultati per avere varietà dopo deduplicazione
-      },
-    );
+    final uri = Uri.https('api.geoapify.com', '/v1/geocode/autocomplete', {
+      'text': query,
+      'apiKey': ApiKeys.geoapify,
+      'lang': 'it',
+      'limit':
+          '10', // Richiedi più risultati per avere varietà dopo deduplicazione
+    });
 
     final response = await http.get(uri);
 
@@ -345,32 +168,32 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
     }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final features = json['features'] as List<dynamic>? ?? [];
 
-    // Converti i risultati
-    final suggestions = features
-        .map((feature) => LocationSuggestion.fromGeoapifyJson(
-              feature as Map<String, dynamic>,
-            ))
+    // Usa il modello Freezed per il parsing automatico del JSON
+    final geoapifyResponse = GeoapifyResponseModel.fromJson(json);
+
+    // Converti i risultati Geoapify in LocationSuggestionModel
+    final suggestions = geoapifyResponse.features
+        .map((feature) => LocationSuggestionModel.fromGeoapifyFeature(feature))
         .where((s) => s.displayName.isNotEmpty)
         .toList();
-    
+
     // Rimuovi duplicati basandosi sulla chiave di deduplicazione (nome + tipo + paese)
     final seen = <String>{};
-    final uniqueSuggestions = <LocationSuggestion>[];
+    final uniqueSuggestions = <LocationSuggestionModel>[];
     for (final suggestion in suggestions) {
       if (seen.add(suggestion.deduplicationKey)) {
         uniqueSuggestions.add(suggestion);
       }
     }
-    
+
     // Limita a massimo 5 risultati
     return uniqueSuggestions.take(5).toList();
   }
 
   void _showOverlay() {
     _removeOverlay();
-    
+
     _overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
         width: _getFieldWidth(),
@@ -380,15 +203,13 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
           offset: Offset(0, _getFieldHeight() + 4),
           child: Material(
             elevation: 8,
-            borderRadius: BorderRadius.circular(
-              AppConstants.cardBorderRadius,
-            ),
+            borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
             child: _buildSuggestionsList(),
           ),
         ),
       ),
     );
-    
+
     Overlay.of(context).insert(_overlayEntry!);
   }
 
@@ -409,7 +230,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
 
   Widget _buildSuggestionsList() {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     if (_isLoading) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -427,11 +248,11 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
         ),
       );
     }
-    
+
     if (_suggestions.isEmpty) {
       return const SizedBox.shrink();
     }
-    
+
     return Container(
       constraints: const BoxConstraints(maxHeight: 250),
       decoration: BoxDecoration(
@@ -451,54 +272,23 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
     );
   }
 
-  Widget _buildSuggestionTile(LocationSuggestion suggestion, int index) {
+  Widget _buildSuggestionTile(LocationSuggestionModel suggestion, int index) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     // Scegli l'icona in base al tipo di località
-    IconData icon;
-    switch (suggestion.locationType) {
-      case LocationType.country:
-        icon = Icons.flag_outlined;
-        break;
-      case LocationType.state:
-        icon = Icons.map_outlined;
-        break;
-      case LocationType.city:
-        icon = Icons.location_city_outlined;
-        break;
-      case LocationType.other:
-        icon = Icons.location_on_outlined;
-        break;
-    }
-    
+    final icon = switch (suggestion.locationType) {
+      LocationType.country => Icons.flag_outlined,
+      LocationType.state => Icons.map_outlined,
+      LocationType.city => Icons.location_city_outlined,
+      LocationType.other => Icons.location_on_outlined,
+    };
+
     // Costruisci il sottotitolo con le info aggiuntive
-    String? subtitle;
-    final parts = <String>[];
-    
-    // Per le città, mostra stato e paese
-    if (suggestion.locationType == LocationType.city) {
-      if (suggestion.state != null && suggestion.state != suggestion.name) {
-        parts.add(suggestion.state!);
-      }
-      if (suggestion.country != null) {
-        parts.add(suggestion.country!);
-      }
-    } 
-    // Per le regioni/stati, mostra solo il paese
-    else if (suggestion.locationType == LocationType.state) {
-      if (suggestion.country != null && suggestion.country != suggestion.name) {
-        parts.add(suggestion.country!);
-      }
-    }
-    // Per i paesi, nessun sottotitolo
-    
-    if (parts.isNotEmpty) {
-      subtitle = parts.join(', ');
-    }
-    
+    final subtitle = _buildSubtitle(suggestion);
+
     // Usa il nome principale, oppure il displayName come fallback
     final title = suggestion.name ?? suggestion.displayName;
-    
+
     return InkWell(
       onTap: () => _selectSuggestion(suggestion),
       child: Container(
@@ -514,11 +304,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              size: 20,
-              color: colorScheme.primary,
-            ),
+            Icon(icon, size: 20, color: colorScheme.primary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -548,7 +334,39 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
     );
   }
 
-  void _selectSuggestion(LocationSuggestion suggestion) {
+  /// Costruisce il sottotitolo in base al tipo di località
+  String? _buildSubtitle(LocationSuggestionModel suggestion) {
+    final parts = <String>[];
+
+    switch (suggestion.locationType) {
+      case LocationType.city:
+        // Per le città, mostra stato e paese
+        if (suggestion.state != null && suggestion.state != suggestion.name) {
+          parts.add(suggestion.state!);
+        }
+        if (suggestion.country != null) {
+          parts.add(suggestion.country!);
+        }
+        break;
+
+      case LocationType.state:
+        // Per le regioni/stati, mostra solo il paese
+        if (suggestion.country != null &&
+            suggestion.country != suggestion.name) {
+          parts.add(suggestion.country!);
+        }
+        break;
+
+      case LocationType.country:
+      case LocationType.other:
+        // Per i paesi e altri, nessun sottotitolo
+        break;
+    }
+
+    return parts.isNotEmpty ? parts.join(', ') : null;
+  }
+
+  void _selectSuggestion(LocationSuggestionModel suggestion) {
     _ignoreNextChange = true;
     _controller.text = suggestion.displayName;
     _removeOverlay();

@@ -10,4 +10,5 @@ export 'location_autocomplete_field.dart';
 export 'main_shell.dart';
 export 'quantity_badge.dart';
 export 'status_icon_overlay.dart';
+export 'trip_summary_card.dart';
 
