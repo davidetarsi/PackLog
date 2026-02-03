@@ -6,6 +6,8 @@ import '../../features/items/view/add_edit_item_screen.dart';
 import '../../features/trips/view/trips_page.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/add_edit_trip_screen.dart';
+import '../../features/trips/view/edit_trip_info_screen.dart';
+import '../../features/trips/view/edit_trip_items_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -86,6 +88,30 @@ final appRouter = GoRouter(
           return const _ErrorScreen(message: 'ID lista non valido');
         }
         return AddEditTripScreen(tripId: id);
+      },
+    ),
+    GoRoute(
+      path: '/trips/:id/edit-info',
+      name: 'trip-edit-info',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        if (id == null || id.isEmpty) {
+          return const _ErrorScreen(message: 'ID viaggio non valido');
+        }
+        return EditTripInfoScreen(tripId: id);
+      },
+    ),
+    GoRoute(
+      path: '/trips/:id/edit-items',
+      name: 'trip-edit-items',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        if (id == null || id.isEmpty) {
+          return const _ErrorScreen(message: 'ID viaggio non valido');
+        }
+        return EditTripItemsScreen(tripId: id);
       },
     ),
     // Route per creare item senza casa preselezionata (fuori dalla shell)

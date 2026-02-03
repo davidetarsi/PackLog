@@ -89,7 +89,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                           left: context.spacingSm,
                           right: context.spacingSm,
                           top: context.spacingXs,
-                          bottom: context.spacingXl * 3, // Spazio per i bottoni
+                          bottom: context.spacingXl * 4, // Spazio per i bottoni
                         ),
                         itemCount: filteredItems.length,
                         itemBuilder: (context, index) {
@@ -108,10 +108,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               FloatingActionButtonLocation.centerFloat,
           floatingActionButton: _BottomActionButtons(
             onDelete: () => _showDeleteDialog(context, trip),
-            onEdit: () => context.push('/trips/${widget.tripId}/edit'),
-            onEditItems: () {
-              // TODO: Implementare modifica oggetti
-            },
+            onEdit: () => context.push('/trips/${widget.tripId}/edit-info'),
+            onEditItems: () =>
+                context.push('/trips/${widget.tripId}/edit-items'),
           ),
         );
       },
@@ -250,51 +249,56 @@ class _CategoryFilterTabs extends StatelessWidget {
 
     return SizedBox(
       height: 40,
-      child: ListView.builder(
+      child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
         padding: EdgeInsets.symmetric(horizontal: context.spacingSm),
-        itemCount: TripItemFilterTab.values.length,
-        itemBuilder: (context, index) {
-          final tab = TripItemFilterTab.values[index];
-          final isSelected = selectedTab == tab;
-          return Padding(
-            padding: EdgeInsets.only(right: context.spacingSm),
-            child: GestureDetector(
-              onTap: () => onTabSelected(tab),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacingMd,
-                  vertical: context.spacingSm,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? colorScheme.primary
-                      : colorScheme.surfaceContainerHighest,
+        child: Row(
+          children: TripItemFilterTab.values.map((tab) {
+            final isSelected = selectedTab == tab;
+            return Padding(
+              padding: EdgeInsets.only(right: context.spacingSm),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
                   borderRadius: context.responsiveBorderRadius(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? colorScheme.primary
-                        : colorScheme.outline.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  tab.label,
-                  style: TextStyle(
-                    fontSize: context.fontSizeMd,
-                    fontWeight: isSelected
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                    color: isSelected
-                        ? colorScheme.onPrimary
-                        : colorScheme.onSurface.withValues(alpha: 0.8),
+                  onTap: () => onTabSelected(tab),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.spacingMd,
+                      vertical: context.spacingSm,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? colorScheme.primary
+                          : colorScheme.surfaceContainerHighest,
+                      borderRadius: context.responsiveBorderRadius(20),
+                      border: Border.all(
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.outline.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      tab.label,
+                      style: TextStyle(
+                        fontSize: context.fontSizeMd,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? colorScheme.onPrimary
+                            : colorScheme.onSurface.withValues(alpha: 0.8),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          }).toList(),
+        ),
       ),
     );
   }

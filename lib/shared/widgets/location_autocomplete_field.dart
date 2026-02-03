@@ -34,6 +34,9 @@ class LocationAutocompleteField extends StatefulWidget {
   /// Ritardo in millisecondi prima di effettuare la ricerca (debounce)
   final int debounceMs;
 
+  /// Se mostrare il bordo del campo di input
+  final bool showBorder;
+
   const LocationAutocompleteField({
     super.key,
     this.initialValue,
@@ -43,6 +46,7 @@ class LocationAutocompleteField extends StatefulWidget {
     this.hintText,
     this.minCharsForSearch = 3,
     this.debounceMs = 300,
+    this.showBorder = true,
   });
 
   @override
@@ -384,13 +388,35 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
         decoration: InputDecoration(
           labelText: widget.labelText ?? 'Destinazione',
           hintText: widget.hintText ?? 'Cerca città, regione o stato...',
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          ),
-          prefixIcon: const Icon(Icons.search),
+          border: widget.showBorder
+              ? OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.inputBorderRadius,
+                  ),
+                )
+              : InputBorder.none,
+          enabledBorder: widget.showBorder
+              ? OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.inputBorderRadius,
+                  ),
+                )
+              : InputBorder.none,
+          focusedBorder: widget.showBorder
+              ? OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.inputBorderRadius,
+                  ),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                )
+              : InputBorder.none,
+          prefixIcon: null,
           suffixIcon: _controller.text.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear),
+                  icon: const Icon(Icons.clear, color: Colors.orange),
                   onPressed: () {
                     _controller.clear();
                     widget.onTextChanged?.call('');
