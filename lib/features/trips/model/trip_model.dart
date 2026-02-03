@@ -1,6 +1,7 @@
 // ignore_for_file: non_abstract_class_inherits_abstract_member
 
 import 'package:freezed_annotation/freezed_annotation.dart';
+import '../../../shared/model/location_suggestion_model.dart';
 
 part 'trip_model.freezed.dart';
 part 'trip_model.g.dart';
@@ -9,8 +10,10 @@ part 'trip_model.g.dart';
 enum TripStatus {
   /// Il viaggio non è ancora iniziato
   upcoming,
+
   /// Il viaggio è in corso
   active,
+
   /// Il viaggio è terminato
   completed,
 }
@@ -25,6 +28,7 @@ class TripItem with _$TripItem {
     required String name,
     required String category,
     required int quantity,
+
     /// ID della casa di origine dell'oggetto (default vuoto per retrocompatibilità)
     @Default('') String originHouseId,
     @Default(false) bool isChecked,
@@ -44,14 +48,25 @@ class TripModel with _$TripModel {
     required String name,
     String? description,
     @Default([]) List<TripItem> items,
+
     /// Data e ora di partenza
     DateTime? departureDateTime,
+
     /// Data e ora di ritorno
     DateTime? returnDateTime,
+
     /// Casa di destinazione (opzionale)
     String? destinationHouseId,
-    /// Nome della località di destinazione (quando non si seleziona una casa)
+
+    /// Località di destinazione completa (quando non si seleziona una casa)
+    /// Include coordinate, tipo di località, etc.
+    LocationSuggestionModel? destinationLocation,
+
+    /// Nome della località di destinazione (retrocompatibilità)
+    /// Se destinationLocation è presente, viene ignorato
+    @Deprecated('Usa destinationLocation invece')
     String? destinationLocationName,
+
     /// Viaggio salvato/preferito
     @Default(false) bool isSaved,
     required DateTime createdAt,
@@ -68,27 +83,36 @@ class TripModel with _$TripModel {
     );
   }
 
+  /// Restituisce il nome della destinazione (dalla location o dal campo legacy)
+  String? get destinationDisplayName {
+    if (destinationLocation != null) {
+      return destinationLocation!.displayName;
+    }
+    // ignore: deprecated_member_use_from_same_package
+    return destinationLocationName;
+  }
+
   /// Determina lo stato attuale del viaggio
   TripStatus get status {
     final now = DateTime.now();
-    
+
     if (departureDateTime == null) {
       return TripStatus.upcoming;
     }
-    
+
     if (now.isBefore(departureDateTime!)) {
       return TripStatus.upcoming;
     }
-    
+
     if (returnDateTime == null) {
       // Se non c'è data di ritorno, il viaggio è attivo dopo la partenza
       return TripStatus.active;
     }
-    
+
     if (now.isAfter(returnDateTime!)) {
       return TripStatus.completed;
     }
-    
+
     return TripStatus.active;
   }
 
@@ -114,4 +138,3 @@ class TripModel with _$TripModel {
   factory TripModel.fromJson(Map<String, dynamic> json) =>
       _$TripModelFromJson(json);
 }
-

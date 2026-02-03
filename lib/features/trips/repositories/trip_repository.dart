@@ -1,17 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../model/trip_model.dart';
-import '../repositories/local_trip_repository.dart';
+import '../../../core/database/database_provider.dart';
+import '../../../core/database/services/persistence_services.dart';
+import 'drift_trip_repository.dart';
 
 part 'trip_repository.g.dart';
 
 @Riverpod(keepAlive: true)
-Future<TripRepository> tripRepository(Ref ref) async {
-  final sharedPreferences = await SharedPreferences.getInstance();
-  final repository = LocalTripRepository(sharedPreferences);
-  await repository.init();
-  return repository;
+TripRepository tripRepository(Ref ref) {
+  final database = ref.watch(appDatabaseProvider);
+  final dbService = ref.watch(databaseServiceProvider);
+  return DriftTripRepository(database.tripsDao, dbService);
 }
 
 abstract class TripRepository {
@@ -22,4 +22,3 @@ abstract class TripRepository {
   Future<bool> deleteTrip(String id);
   Future<void> updateTrip(TripModel model);
 }
-

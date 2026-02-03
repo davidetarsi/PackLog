@@ -10,13 +10,13 @@ class HouseNotifier extends _$HouseNotifier {
 
   @override
   Future<List<HouseModel>> build() async {
-    repository = await ref.watch(houseRepositoryProvider.future);
+    repository = ref.watch(houseRepositoryProvider);
     final houses = await repository!.getAllHouses();
     return houses;
   }
 
   Future<void> addHouse(HouseModel model) async {
-    repository ??= await ref.read(houseRepositoryProvider.future);
+    repository ??= ref.read(houseRepositoryProvider);
     state = const AsyncLoading();
     try {
       await repository!.addHouse(model);
@@ -28,7 +28,7 @@ class HouseNotifier extends _$HouseNotifier {
   }
 
   Future<void> updateHouse(HouseModel model) async {
-    repository ??= await ref.read(houseRepositoryProvider.future);
+    repository ??= ref.read(houseRepositoryProvider);
     state = const AsyncLoading();
     try {
       await repository!.updateHouse(model);
@@ -40,7 +40,7 @@ class HouseNotifier extends _$HouseNotifier {
   }
 
   Future<void> deleteHouse(String id) async {
-    repository ??= await ref.read(houseRepositoryProvider.future);
+    repository ??= ref.read(houseRepositoryProvider);
     state = const AsyncLoading();
     try {
       await repository!.deleteHouse(id);
@@ -52,7 +52,7 @@ class HouseNotifier extends _$HouseNotifier {
   }
 
   Future<void> refresh() async {
-    repository ??= await ref.read(houseRepositoryProvider.future);
+    repository ??= ref.read(houseRepositoryProvider);
     state = const AsyncLoading();
     try {
       final houses = await repository!.getAllHouses();
@@ -62,4 +62,3 @@ class HouseNotifier extends _$HouseNotifier {
     }
   }
 }
-

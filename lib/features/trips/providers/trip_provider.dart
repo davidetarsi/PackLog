@@ -10,13 +10,13 @@ class TripNotifier extends _$TripNotifier {
 
   @override
   Future<List<TripModel>> build() async {
-    repository ??= await ref.watch(tripRepositoryProvider.future);
+    repository ??= ref.watch(tripRepositoryProvider);
     final trips = await repository!.getAllTrips();
     return trips;
   }
 
   Future<void> addTrip(TripModel model) async {
-    repository ??= await ref.read(tripRepositoryProvider.future);
+    repository ??= ref.read(tripRepositoryProvider);
     state = const AsyncLoading();
     try {
       await repository!.addTrip(model);
@@ -28,7 +28,7 @@ class TripNotifier extends _$TripNotifier {
   }
 
   Future<void> updateTrip(TripModel model) async {
-    repository ??= await ref.read(tripRepositoryProvider.future);
+    repository ??= ref.read(tripRepositoryProvider);
     state = const AsyncLoading();
     try {
       await repository!.updateTrip(model);
@@ -40,7 +40,7 @@ class TripNotifier extends _$TripNotifier {
   }
 
   Future<void> deleteTrip(String id) async {
-    repository ??= await ref.read(tripRepositoryProvider.future);
+    repository ??= ref.read(tripRepositoryProvider);
     state = const AsyncLoading();
     try {
       await repository!.deleteTrip(id);
@@ -52,7 +52,7 @@ class TripNotifier extends _$TripNotifier {
   }
 
   Future<void> toggleItemCheck(String tripId, String itemId) async {
-    repository ??= await ref.read(tripRepositoryProvider.future);
+    repository ??= ref.read(tripRepositoryProvider);
     try {
       final trips = state.value;
       if (trips == null) return;
@@ -83,7 +83,7 @@ class TripNotifier extends _$TripNotifier {
   }
 
   Future<void> refresh() async {
-    repository ??= await ref.read(tripRepositoryProvider.future);
+    repository ??= ref.read(tripRepositoryProvider);
     state = const AsyncLoading();
     try {
       final trips = await repository!.getAllTrips();
@@ -95,7 +95,7 @@ class TripNotifier extends _$TripNotifier {
 
   /// Toggle dello stato salvato/preferito di un viaggio
   Future<void> toggleSaved(String tripId) async {
-    repository ??= await ref.read(tripRepositoryProvider.future);
+    repository ??= ref.read(tripRepositoryProvider);
     try {
       final trips = state.value;
       if (trips == null) return;
@@ -117,4 +117,3 @@ class TripNotifier extends _$TripNotifier {
     }
   }
 }
-

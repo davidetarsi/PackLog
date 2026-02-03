@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/houses/providers/house_provider.dart';
 import '../../features/houses/model/house_model.dart';
 import '../constants/app_constants.dart';
+import '../model/location_suggestion_model.dart';
 import '../theme/theme.dart';
 import 'location_autocomplete_field.dart';
 
@@ -28,7 +29,11 @@ class TripInfoForm extends ConsumerStatefulWidget {
   /// ID casa destinazione iniziale
   final String? initialDestinationHouseId;
   
-  /// Nome località destinazione iniziale
+  /// Località destinazione iniziale (modello completo)
+  final LocationSuggestionModel? initialDestinationLocation;
+  
+  /// Nome località destinazione iniziale (retrocompatibilità)
+  @Deprecated('Usa initialDestinationLocation invece')
   final String? initialDestinationLocationName;
   
   /// Callback quando i dati cambiano
@@ -38,7 +43,7 @@ class TripInfoForm extends ConsumerStatefulWidget {
     DateTime? departureDateTime,
     DateTime? returnDateTime,
     String? destinationHouseId,
-    String? destinationLocationName,
+    LocationSuggestionModel? destinationLocation,
   }) onChanged;
 
   const TripInfoForm({
@@ -48,6 +53,8 @@ class TripInfoForm extends ConsumerStatefulWidget {
     this.initialDepartureDateTime,
     this.initialReturnDateTime,
     this.initialDestinationHouseId,
+    this.initialDestinationLocation,
+    @Deprecated('Usa initialDestinationLocation invece')
     this.initialDestinationLocationName,
     required this.onChanged,
   });
@@ -62,7 +69,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
   String? _destinationHouseId;
-  String? _destinationLocationName;
+  LocationSuggestionModel? _destinationLocation;
 
   // Colore arancione per le icone
   static const Color _accentColor = Colors.orange;
@@ -75,7 +82,19 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     _departureDateTime = widget.initialDepartureDateTime;
     _returnDateTime = widget.initialReturnDateTime;
     _destinationHouseId = widget.initialDestinationHouseId;
-    _destinationLocationName = widget.initialDestinationLocationName;
+    _destinationLocation = widget.initialDestinationLocation;
+    
+    // Retrocompatibilità: se non c'è destinationLocation ma c'è destinationLocationName,
+    // crea un modello minimale
+    // ignore: deprecated_member_use_from_same_package
+    if (_destinationLocation == null && widget.initialDestinationLocationName != null) {
+      // ignore: deprecated_member_use_from_same_package
+      _destinationLocation = LocationSuggestionModel(
+        placeId: '',
+        // ignore: deprecated_member_use_from_same_package
+        displayName: widget.initialDestinationLocationName!,
+      );
+    }
   }
 
   @override
@@ -94,8 +113,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       departureDateTime: _departureDateTime,
       returnDateTime: _returnDateTime,
       destinationHouseId: _destinationHouseId,
-      destinationLocationName: _destinationHouseId == null 
-          ? _destinationLocationName 
+      destinationLocation: _destinationHouseId == null 
+          ? _destinationLocation 
           : null,
     );
   }
@@ -209,7 +228,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       setState(() {
         _destinationHouseId = selected.isEmpty ? null : selected;
         if (_destinationHouseId != null) {
-          _destinationLocationName = null;
+          _destinationLocation = null;
         }
       });
       _notifyChanged();
@@ -296,7 +315,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
               ),
               // Linea arancione di collegamento
               Padding(
-                padding: EdgeInsets.only(left: 27),
+                padding: const EdgeInsets.only(left: 27),
                 child: Row(
                   children: [
                     Container(
@@ -381,19 +400,29 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                       SizedBox(width: context.spacingMd),
                       Expanded(
                         child: LocationAutocompleteField(
-                          initialValue: _destinationLocationName,
+                          initialValue: _destinationLocation?.displayName,
                           labelText: null,
                           hintText: 'Cerca città, regione o stato...',
                           showBorder: false,
                           onLocationSelected: (location) {
                             setState(() {
-                              _destinationLocationName = location.displayName;
+                              _destinationLocation = location;
                             });
                             _notifyChanged();
                           },
                           onTextChanged: (text) {
+                            // Se l'utente digita manualmente senza selezionare,
+                            // creiamo un modello minimale con solo il displayName
                             setState(() {
-                              _destinationLocationName = text.isEmpty ? null : text;
+                              if (text.isEmpty) {
+                                _destinationLocation = null;
+                              } else if (_destinationLocation?.displayName != text) {
+                                // L'utente sta digitando, crea un modello temporaneo
+                                _destinationLocation = LocationSuggestionModel(
+                                  placeId: '',
+                                  displayName: text,
+                                );
+                              }
                             });
                             _notifyChanged();
                           },
@@ -445,7 +474,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                       color: colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
                     _formatDateTimeLine(dateTime),
                     style: TextStyle(
@@ -511,7 +540,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                         color: colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       value,
                       style: TextStyle(

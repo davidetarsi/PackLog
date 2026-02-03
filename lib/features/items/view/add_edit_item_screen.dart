@@ -8,6 +8,7 @@ import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/error_retry_dialog.dart';
 
 /// Mostra il bottom sheet per creare o modificare un item
 Future<void> showAddEditItemSheet(
@@ -196,28 +197,28 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
               updatedAt: now,
             );
 
-      try {
-        if (widget.itemId != null) {
-          await ref
-              .read(itemNotifierProvider(houseId).notifier)
-              .updateItem(item);
-        } else {
-          await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Errore: $e')));
-          setState(() => _isLoading = false);
-          return;
-        }
-      }
+      final isEditing = widget.itemId != null;
+      final success = await ErrorRetryDialog.executeWithRetry(
+        context: context,
+        operation: () async {
+          if (isEditing) {
+            await ref.read(itemNotifierProvider(houseId).notifier).updateItem(item);
+          } else {
+            await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
+          }
+        },
+        errorTitle: 'Errore di salvataggio',
+        errorMessage: isEditing
+            ? 'Impossibile salvare le modifiche all\'oggetto.'
+            : 'Impossibile creare l\'oggetto.',
+      );
 
       if (mounted) {
         setState(() => _isLoading = false);
-        widget.onItemSaved?.call(item.id, houseId);
-        Navigator.pop(context);
+        if (success) {
+          widget.onItemSaved?.call(item.id, houseId);
+          Navigator.pop(context);
+        }
       }
     }
   }
@@ -701,29 +702,28 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               updatedAt: now,
             );
 
-      try {
-        if (widget.itemId != null) {
-          await ref
-              .read(itemNotifierProvider(houseId).notifier)
-              .updateItem(item);
-        } else {
-          await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Errore: $e')));
-          setState(() => _isLoading = false);
-          return;
-        }
-      }
+      final isEditing = widget.itemId != null;
+      final success = await ErrorRetryDialog.executeWithRetry(
+        context: context,
+        operation: () async {
+          if (isEditing) {
+            await ref.read(itemNotifierProvider(houseId).notifier).updateItem(item);
+          } else {
+            await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
+          }
+        },
+        errorTitle: 'Errore di salvataggio',
+        errorMessage: isEditing
+            ? 'Impossibile salvare le modifiche all\'oggetto.'
+            : 'Impossibile creare l\'oggetto.',
+      );
 
       if (mounted) {
         setState(() => _isLoading = false);
-        // Chiama il callback se presente
-        widget.onItemSaved?.call(item.id, houseId);
-        context.pop();
+        if (success) {
+          widget.onItemSaved?.call(item.id, houseId);
+          context.pop();
+        }
       }
     }
   }

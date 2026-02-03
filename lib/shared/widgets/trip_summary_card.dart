@@ -31,7 +31,7 @@ class TripSummaryCard extends ConsumerWidget {
     this.onTap,
   });
 
-  /// Ottiene il nome della destinazione (casa o località testuale)
+  /// Ottiene il nome della destinazione (casa o località)
   String _getDestinationName(WidgetRef ref) {
     // Se c'è una casa di destinazione, cerca il nome
     if (trip.destinationHouseId != null) {
@@ -48,10 +48,10 @@ class TripSummaryCard extends ConsumerWidget {
       return 'Casa sconosciuta';
     }
 
-    // Altrimenti usa la località testuale
-    if (trip.destinationLocationName != null &&
-        trip.destinationLocationName!.isNotEmpty) {
-      return trip.destinationLocationName!;
+    // Usa il getter che gestisce sia il nuovo modello che il campo legacy
+    final displayName = trip.destinationDisplayName;
+    if (displayName != null && displayName.isNotEmpty) {
+      return displayName;
     }
 
     return 'Nessuna destinazione';

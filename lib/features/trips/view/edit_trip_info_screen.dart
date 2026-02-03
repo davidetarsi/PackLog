@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
+import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/trip_info_form.dart';
 
 /// Schermata per modificare solo le info del viaggio (nome, date, destinazione).
@@ -27,7 +29,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
   String? _destinationHouseId;
-  String? _destinationLocationName;
+  LocationSuggestionModel? _destinationLocation;
 
   @override
   void initState() {
@@ -47,7 +49,16 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
           _departureDateTime = trip.departureDateTime;
           _returnDateTime = trip.returnDateTime;
           _destinationHouseId = trip.destinationHouseId;
-          _destinationLocationName = trip.destinationLocationName;
+          _destinationLocation = trip.destinationLocation;
+          // Retrocompatibilità: se non c'è destinationLocation ma c'è destinationLocationName
+          // ignore: deprecated_member_use_from_same_package
+          if (_destinationLocation == null && trip.destinationLocationName != null) {
+            _destinationLocation = LocationSuggestionModel(
+              placeId: '',
+              // ignore: deprecated_member_use_from_same_package
+              displayName: trip.destinationLocationName!,
+            );
+          }
         });
       }
     });
@@ -85,26 +96,23 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
       departureDateTime: _departureDateTime,
       returnDateTime: _returnDateTime,
       destinationHouseId: _destinationHouseId,
-      destinationLocationName: _destinationHouseId == null
-          ? _destinationLocationName
+      destinationLocation: _destinationHouseId == null
+          ? _destinationLocation
           : null,
       updatedAt: DateTime.now(),
     );
 
-    try {
-      await ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip);
-      if (mounted) {
+    final success = await ErrorRetryDialog.executeWithRetry(
+      context: context,
+      operation: () => ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip),
+      errorTitle: 'Errore di salvataggio',
+      errorMessage: 'Impossibile salvare le modifiche al viaggio.',
+    );
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (success) {
         context.pop();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
       }
     }
   }
@@ -142,14 +150,14 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
                 initialDepartureDateTime: _departureDateTime,
                 initialReturnDateTime: _returnDateTime,
                 initialDestinationHouseId: _destinationHouseId,
-                initialDestinationLocationName: _destinationLocationName,
+                initialDestinationLocation: _destinationLocation,
                 onChanged: ({
                   name,
                   description,
                   departureDateTime,
                   returnDateTime,
                   destinationHouseId,
-                  destinationLocationName,
+                  destinationLocation,
                 }) {
                   setState(() {
                     if (name != null) _name = name;
@@ -157,7 +165,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
                     _departureDateTime = departureDateTime;
                     _returnDateTime = returnDateTime;
                     _destinationHouseId = destinationHouseId;
-                    _destinationLocationName = destinationLocationName;
+                    _destinationLocation = destinationLocation;
                   });
                 },
               ),

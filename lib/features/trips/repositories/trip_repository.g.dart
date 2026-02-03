@@ -6,11 +6,11 @@ part of 'trip_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$tripRepositoryHash() => r'69229f9dae51795803cb2d9c3757d65e8a10c6c2';
+String _$tripRepositoryHash() => r'02d3987040ad4f99cbbbb93ec06d1b54ddbe757d';
 
 /// See also [tripRepository].
 @ProviderFor(tripRepository)
-final tripRepositoryProvider = FutureProvider<TripRepository>.internal(
+final tripRepositoryProvider = Provider<TripRepository>.internal(
   tripRepository,
   name: r'tripRepositoryProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -22,6 +22,6 @@ final tripRepositoryProvider = FutureProvider<TripRepository>.internal(
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef TripRepositoryRef = FutureProviderRef<TripRepository>;
+typedef TripRepositoryRef = ProviderRef<TripRepository>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

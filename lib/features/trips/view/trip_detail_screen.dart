@@ -5,6 +5,7 @@ import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/trip_summary_card.dart';
 
 /// Enum per le tab di filtro delle categorie
@@ -224,9 +225,15 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         ],
       ),
     );
-    if (confirmed == true) {
-      await ref.read(tripNotifierProvider.notifier).deleteTrip(widget.tripId);
-      if (context.mounted) {
+    if (confirmed == true && context.mounted) {
+      final success = await ErrorRetryDialog.executeWithRetry(
+        context: context,
+        operation: () =>
+            ref.read(tripNotifierProvider.notifier).deleteTrip(widget.tripId),
+        errorTitle: 'Errore di eliminazione',
+        errorMessage: 'Impossibile eliminare il viaggio "${trip.name}".',
+      );
+      if (success && context.mounted) {
         context.go('/trips');
       }
     }

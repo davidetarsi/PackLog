@@ -9,6 +9,7 @@ import '../../items/providers/item_provider.dart';
 import '../../items/model/item_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/error_retry_dialog.dart';
 
 /// Schermata per modificare solo gli oggetti del viaggio.
 class EditTripItemsScreen extends ConsumerStatefulWidget {
@@ -58,20 +59,17 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
       updatedAt: DateTime.now(),
     );
 
-    try {
-      await ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip);
-      if (mounted) {
+    final success = await ErrorRetryDialog.executeWithRetry(
+      context: context,
+      operation: () => ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip),
+      errorTitle: 'Errore di salvataggio',
+      errorMessage: 'Impossibile salvare gli oggetti del viaggio.',
+    );
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (success) {
         context.pop();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
       }
     }
   }

@@ -10,13 +10,13 @@ class ItemNotifier extends _$ItemNotifier {
 
   @override
   Future<List<ItemModel>> build(String houseId) async {
-    repository = await ref.watch(itemRepositoryProvider.future);
+    repository = ref.watch(itemRepositoryProvider);
     final items = await repository!.getItemsByHouseId(houseId);
     return items;
   }
 
   Future<void> addItem(ItemModel model) async {
-    repository ??= await ref.read(itemRepositoryProvider.future);
+    repository ??= ref.read(itemRepositoryProvider);
     state = const AsyncLoading();
     try {
       await repository!.addItem(model);
@@ -28,7 +28,7 @@ class ItemNotifier extends _$ItemNotifier {
   }
 
   Future<void> updateItem(ItemModel model) async {
-    repository ??= await ref.read(itemRepositoryProvider.future);
+    repository ??= ref.read(itemRepositoryProvider);
     state = const AsyncLoading();
     try {
       await repository!.updateItem(model);
@@ -40,7 +40,7 @@ class ItemNotifier extends _$ItemNotifier {
   }
 
   Future<void> deleteItem(String id, String houseId) async {
-    repository ??= await ref.read(itemRepositoryProvider.future);
+    repository ??= ref.read(itemRepositoryProvider);
     state = const AsyncLoading();
     try {
       await repository!.deleteItem(id);
@@ -52,7 +52,7 @@ class ItemNotifier extends _$ItemNotifier {
   }
 
   Future<void> refresh(String houseId) async {
-    repository ??= await ref.read(itemRepositoryProvider.future);
+    repository ??= ref.read(itemRepositoryProvider);
     state = const AsyncLoading();
     try {
       final items = await repository!.getItemsByHouseId(houseId);
@@ -62,4 +62,3 @@ class ItemNotifier extends _$ItemNotifier {
     }
   }
 }
-

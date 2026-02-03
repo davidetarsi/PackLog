@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../model/house_model.dart';
 import '../providers/house_provider.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/widgets/error_retry_dialog.dart';
 
 /// Mostra il bottom sheet per creare o modificare una casa
 Future<void> showAddEditHouseSheet(BuildContext context, {String? houseId}) {
@@ -91,25 +92,27 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
               updatedAt: now,
             );
 
-      try {
-        if (widget.houseId != null) {
-          await ref.read(houseNotifierProvider.notifier).updateHouse(house);
-        } else {
-          await ref.read(houseNotifierProvider.notifier).addHouse(house);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Errore: $e')),
-          );
-          setState(() => _isLoading = false);
-          return;
-        }
-      }
+      final isEditing = widget.houseId != null;
+      final success = await ErrorRetryDialog.executeWithRetry(
+        context: context,
+        operation: () async {
+          if (isEditing) {
+            await ref.read(houseNotifierProvider.notifier).updateHouse(house);
+          } else {
+            await ref.read(houseNotifierProvider.notifier).addHouse(house);
+          }
+        },
+        errorTitle: 'Errore di salvataggio',
+        errorMessage: isEditing
+            ? 'Impossibile salvare le modifiche alla casa.'
+            : 'Impossibile creare la casa.',
+      );
 
       if (mounted) {
         setState(() => _isLoading = false);
-        Navigator.pop(context);
+        if (success) {
+          Navigator.pop(context);
+        }
       }
     }
   }
@@ -303,25 +306,27 @@ class _AddEditHouseScreenState extends ConsumerState<AddEditHouseScreen> {
               updatedAt: now,
             );
 
-      try {
-        if (widget.houseId != null) {
-          await ref.read(houseNotifierProvider.notifier).updateHouse(house);
-        } else {
-          await ref.read(houseNotifierProvider.notifier).addHouse(house);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Errore: $e')),
-          );
-          setState(() => _isLoading = false);
-          return;
-        }
-      }
+      final isEditing = widget.houseId != null;
+      final success = await ErrorRetryDialog.executeWithRetry(
+        context: context,
+        operation: () async {
+          if (isEditing) {
+            await ref.read(houseNotifierProvider.notifier).updateHouse(house);
+          } else {
+            await ref.read(houseNotifierProvider.notifier).addHouse(house);
+          }
+        },
+        errorTitle: 'Errore di salvataggio',
+        errorMessage: isEditing
+            ? 'Impossibile salvare le modifiche alla casa.'
+            : 'Impossibile creare la casa.',
+      );
 
       if (mounted) {
         setState(() => _isLoading = false);
-        context.pop();
+        if (success) {
+          context.pop();
+        }
       }
     }
   }

@@ -1,17 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../model/house_model.dart';
-import '../repositories/local_house_repository.dart';
+import '../../../core/database/database_provider.dart';
+import '../../../core/database/services/persistence_services.dart';
+import 'drift_house_repository.dart';
 
 part 'house_repository.g.dart';
 
 @Riverpod(keepAlive: true)
-Future<HouseRepository> houseRepository(Ref ref) async {
-  final sharedPreferences = await SharedPreferences.getInstance();
-  final repository = LocalHouseRepository(sharedPreferences);
-  await repository.init();
-  return repository;
+HouseRepository houseRepository(Ref ref) {
+  final database = ref.watch(appDatabaseProvider);
+  final dbService = ref.watch(databaseServiceProvider);
+  return DriftHouseRepository(database.housesDao, dbService);
 }
 
 abstract class HouseRepository {
@@ -22,4 +22,3 @@ abstract class HouseRepository {
   Future<bool> deleteHouse(String id);
   Future<void> updateHouse(HouseModel model);
 }
-

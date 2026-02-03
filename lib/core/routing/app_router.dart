@@ -76,7 +76,7 @@ final appRouter = GoRouter(
       path: '/new-trip',
       name: 'trip-new',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const AddEditTripScreen(),
+      builder: (context, state) => const AddTripScreen(),
     ),
     GoRoute(
       path: '/trips/:id/edit',
@@ -87,7 +87,7 @@ final appRouter = GoRouter(
         if (id == null || id.isEmpty) {
           return const _ErrorScreen(message: 'ID lista non valido');
         }
-        return AddEditTripScreen(tripId: id);
+        return AddTripScreen(tripId: id);
       },
     ),
     GoRoute(

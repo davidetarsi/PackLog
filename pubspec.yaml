@@ -48,6 +48,12 @@ dependencies:
 
   # Storage
   shared_preferences: ^2.3.0
+  
+  # Database
+  drift: ^2.22.1
+  sqlite3_flutter_libs: ^0.5.28
+  path_provider: ^2.1.5
+  path: ^1.9.0
 
   # Utilities
   uuid: ^4.5.0
@@ -71,6 +77,7 @@ dev_dependencies:
   json_serializable: ^6.8.0
   freezed: ^2.5.7
   riverpod_generator: ^2.3.5
+  drift_dev: ^2.22.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -43,6 +43,11 @@ _$TripModelImpl _$$TripModelImplFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['returnDateTime'] as String),
       destinationHouseId: json['destinationHouseId'] as String?,
+      destinationLocation: json['destinationLocation'] == null
+          ? null
+          : LocationSuggestionModel.fromJson(
+              json['destinationLocation'] as Map<String, dynamic>,
+            ),
       destinationLocationName: json['destinationLocationName'] as String?,
       isSaved: json['isSaved'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
@@ -58,6 +63,7 @@ Map<String, dynamic> _$$TripModelImplToJson(_$TripModelImpl instance) =>
       'departureDateTime': instance.departureDateTime?.toIso8601String(),
       'returnDateTime': instance.returnDateTime?.toIso8601String(),
       'destinationHouseId': instance.destinationHouseId,
+      'destinationLocation': instance.destinationLocation,
       'destinationLocationName': instance.destinationLocationName,
       'isSaved': instance.isSaved,
       'createdAt': instance.createdAt.toIso8601String(),

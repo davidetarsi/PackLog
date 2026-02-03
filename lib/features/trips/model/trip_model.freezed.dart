@@ -317,7 +317,14 @@ mixin _$TripModel {
   /// Casa di destinazione (opzionale)
   String? get destinationHouseId => throw _privateConstructorUsedError;
 
-  /// Nome della località di destinazione (quando non si seleziona una casa)
+  /// Località di destinazione completa (quando non si seleziona una casa)
+  /// Include coordinate, tipo di località, etc.
+  LocationSuggestionModel? get destinationLocation =>
+      throw _privateConstructorUsedError;
+
+  /// Nome della località di destinazione (retrocompatibilità)
+  /// Se destinationLocation è presente, viene ignorato
+  @Deprecated('Usa destinationLocation invece')
   String? get destinationLocationName => throw _privateConstructorUsedError;
 
   /// Viaggio salvato/preferito
@@ -348,11 +355,15 @@ abstract class $TripModelCopyWith<$Res> {
     DateTime? departureDateTime,
     DateTime? returnDateTime,
     String? destinationHouseId,
+    LocationSuggestionModel? destinationLocation,
+    @Deprecated('Usa destinationLocation invece')
     String? destinationLocationName,
     bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
   });
+
+  $LocationSuggestionModelCopyWith<$Res>? get destinationLocation;
 }
 
 /// @nodoc
@@ -377,6 +388,7 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
     Object? departureDateTime = freezed,
     Object? returnDateTime = freezed,
     Object? destinationHouseId = freezed,
+    Object? destinationLocation = freezed,
     Object? destinationLocationName = freezed,
     Object? isSaved = null,
     Object? createdAt = null,
@@ -412,6 +424,10 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
                 ? _value.destinationHouseId
                 : destinationHouseId // ignore: cast_nullable_to_non_nullable
                       as String?,
+            destinationLocation: freezed == destinationLocation
+                ? _value.destinationLocation
+                : destinationLocation // ignore: cast_nullable_to_non_nullable
+                      as LocationSuggestionModel?,
             destinationLocationName: freezed == destinationLocationName
                 ? _value.destinationLocationName
                 : destinationLocationName // ignore: cast_nullable_to_non_nullable
@@ -432,6 +448,22 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
           as $Val,
     );
   }
+
+  /// Create a copy of TripModel
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $LocationSuggestionModelCopyWith<$Res>? get destinationLocation {
+    if (_value.destinationLocation == null) {
+      return null;
+    }
+
+    return $LocationSuggestionModelCopyWith<$Res>(_value.destinationLocation!, (
+      value,
+    ) {
+      return _then(_value.copyWith(destinationLocation: value) as $Val);
+    });
+  }
 }
 
 /// @nodoc
@@ -451,11 +483,16 @@ abstract class _$$TripModelImplCopyWith<$Res>
     DateTime? departureDateTime,
     DateTime? returnDateTime,
     String? destinationHouseId,
+    LocationSuggestionModel? destinationLocation,
+    @Deprecated('Usa destinationLocation invece')
     String? destinationLocationName,
     bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
   });
+
+  @override
+  $LocationSuggestionModelCopyWith<$Res>? get destinationLocation;
 }
 
 /// @nodoc
@@ -479,6 +516,7 @@ class __$$TripModelImplCopyWithImpl<$Res>
     Object? departureDateTime = freezed,
     Object? returnDateTime = freezed,
     Object? destinationHouseId = freezed,
+    Object? destinationLocation = freezed,
     Object? destinationLocationName = freezed,
     Object? isSaved = null,
     Object? createdAt = null,
@@ -514,6 +552,10 @@ class __$$TripModelImplCopyWithImpl<$Res>
             ? _value.destinationHouseId
             : destinationHouseId // ignore: cast_nullable_to_non_nullable
                   as String?,
+        destinationLocation: freezed == destinationLocation
+            ? _value.destinationLocation
+            : destinationLocation // ignore: cast_nullable_to_non_nullable
+                  as LocationSuggestionModel?,
         destinationLocationName: freezed == destinationLocationName
             ? _value.destinationLocationName
             : destinationLocationName // ignore: cast_nullable_to_non_nullable
@@ -546,7 +588,8 @@ class _$TripModelImpl extends _TripModel {
     this.departureDateTime,
     this.returnDateTime,
     this.destinationHouseId,
-    this.destinationLocationName,
+    this.destinationLocation,
+    @Deprecated('Usa destinationLocation invece') this.destinationLocationName,
     this.isSaved = false,
     required this.createdAt,
     required this.updatedAt,
@@ -583,8 +626,15 @@ class _$TripModelImpl extends _TripModel {
   @override
   final String? destinationHouseId;
 
-  /// Nome della località di destinazione (quando non si seleziona una casa)
+  /// Località di destinazione completa (quando non si seleziona una casa)
+  /// Include coordinate, tipo di località, etc.
   @override
+  final LocationSuggestionModel? destinationLocation;
+
+  /// Nome della località di destinazione (retrocompatibilità)
+  /// Se destinationLocation è presente, viene ignorato
+  @override
+  @Deprecated('Usa destinationLocation invece')
   final String? destinationLocationName;
 
   /// Viaggio salvato/preferito
@@ -598,7 +648,7 @@ class _$TripModelImpl extends _TripModel {
 
   @override
   String toString() {
-    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocationName: $destinationLocationName, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocation: $destinationLocation, destinationLocationName: $destinationLocationName, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -617,6 +667,8 @@ class _$TripModelImpl extends _TripModel {
                 other.returnDateTime == returnDateTime) &&
             (identical(other.destinationHouseId, destinationHouseId) ||
                 other.destinationHouseId == destinationHouseId) &&
+            (identical(other.destinationLocation, destinationLocation) ||
+                other.destinationLocation == destinationLocation) &&
             (identical(
                   other.destinationLocationName,
                   destinationLocationName,
@@ -640,6 +692,7 @@ class _$TripModelImpl extends _TripModel {
     departureDateTime,
     returnDateTime,
     destinationHouseId,
+    destinationLocation,
     destinationLocationName,
     isSaved,
     createdAt,
@@ -669,6 +722,8 @@ abstract class _TripModel extends TripModel {
     final DateTime? departureDateTime,
     final DateTime? returnDateTime,
     final String? destinationHouseId,
+    final LocationSuggestionModel? destinationLocation,
+    @Deprecated('Usa destinationLocation invece')
     final String? destinationLocationName,
     final bool isSaved,
     required final DateTime createdAt,
@@ -700,8 +755,15 @@ abstract class _TripModel extends TripModel {
   @override
   String? get destinationHouseId;
 
-  /// Nome della località di destinazione (quando non si seleziona una casa)
+  /// Località di destinazione completa (quando non si seleziona una casa)
+  /// Include coordinate, tipo di località, etc.
   @override
+  LocationSuggestionModel? get destinationLocation;
+
+  /// Nome della località di destinazione (retrocompatibilità)
+  /// Se destinationLocation è presente, viene ignorato
+  @override
+  @Deprecated('Usa destinationLocation invece')
   String? get destinationLocationName;
 
   /// Viaggio salvato/preferito

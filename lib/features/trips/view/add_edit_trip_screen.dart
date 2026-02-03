@@ -4,20 +4,22 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
+import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/trip_info_form.dart';
 import '../../../shared/widgets/trip_items_selector.dart';
 
-class AddEditTripScreen extends ConsumerStatefulWidget {
+class AddTripScreen extends ConsumerStatefulWidget {
   final String? tripId;
 
-  const AddEditTripScreen({super.key, this.tripId});
+  const AddTripScreen({super.key, this.tripId});
 
   @override
-  ConsumerState<AddEditTripScreen> createState() => _AddEditTripScreenState();
+  ConsumerState<AddTripScreen> createState() => _AddTripScreenState();
 }
 
-class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
+class _AddTripScreenState extends ConsumerState<AddTripScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
@@ -27,7 +29,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
   String? _destinationHouseId;
-  String? _destinationLocationName;
+  LocationSuggestionModel? _destinationLocation;
   List<TripItem> _selectedItems = [];
 
   @override
@@ -51,7 +53,17 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
         _departureDateTime = trip.departureDateTime;
         _returnDateTime = trip.returnDateTime;
         _destinationHouseId = trip.destinationHouseId;
-        _destinationLocationName = trip.destinationLocationName;
+        _destinationLocation = trip.destinationLocation;
+        // Retrocompatibilità: se non c'è destinationLocation ma c'è destinationLocationName
+        // ignore: deprecated_member_use_from_same_package
+        if (_destinationLocation == null &&
+            trip.destinationLocationName != null) {
+          _destinationLocation = LocationSuggestionModel(
+            placeId: '',
+            // ignore: deprecated_member_use_from_same_package
+            displayName: trip.destinationLocationName!,
+          );
+        }
         _selectedItems = List.from(trip.items);
       });
     });
@@ -59,11 +71,11 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
 
   Future<void> _saveTrip() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (_name.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Il nome è obbligatorio')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Il nome è obbligatorio')));
       return;
     }
 
@@ -87,18 +99,20 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
             final tripsAsync = ref.read(tripNotifierProvider);
             final trips = tripsAsync.value;
             if (trips == null) throw StateError('Lista non trovata');
-            return trips.firstWhere((t) => t.id == widget.tripId).copyWith(
-              name: _name.trim(),
-              description: _description,
-              items: _selectedItems,
-              departureDateTime: _departureDateTime,
-              returnDateTime: _returnDateTime,
-              destinationHouseId: _destinationHouseId,
-              destinationLocationName: _destinationHouseId == null
-                  ? _destinationLocationName
-                  : null,
-              updatedAt: now,
-            );
+            return trips
+                .firstWhere((t) => t.id == widget.tripId)
+                .copyWith(
+                  name: _name.trim(),
+                  description: _description,
+                  items: _selectedItems,
+                  departureDateTime: _departureDateTime,
+                  returnDateTime: _returnDateTime,
+                  destinationHouseId: _destinationHouseId,
+                  destinationLocation: _destinationHouseId == null
+                      ? _destinationLocation
+                      : null,
+                  updatedAt: now,
+                );
           })()
         : TripModel(
             id: const Uuid().v4(),
@@ -108,32 +122,34 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
             departureDateTime: _departureDateTime,
             returnDateTime: _returnDateTime,
             destinationHouseId: _destinationHouseId,
-            destinationLocationName: _destinationHouseId == null
-                ? _destinationLocationName
+            destinationLocation: _destinationHouseId == null
+                ? _destinationLocation
                 : null,
             createdAt: now,
             updatedAt: now,
           );
 
-    try {
-      if (widget.tripId != null) {
-        await ref.read(tripNotifierProvider.notifier).updateTrip(trip);
-      } else {
-        await ref.read(tripNotifierProvider.notifier).addTrip(trip);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore: $e')),
-        );
-        setState(() => _isLoading = false);
-        return;
-      }
-    }
+    final isEditing = widget.tripId != null;
+    final success = await ErrorRetryDialog.executeWithRetry(
+      context: context,
+      operation: () async {
+        if (isEditing) {
+          await ref.read(tripNotifierProvider.notifier).updateTrip(trip);
+        } else {
+          await ref.read(tripNotifierProvider.notifier).addTrip(trip);
+        }
+      },
+      errorTitle: 'Errore di salvataggio',
+      errorMessage: isEditing
+          ? 'Impossibile salvare le modifiche al viaggio.'
+          : 'Impossibile creare il viaggio.',
+    );
 
     if (mounted) {
       setState(() => _isLoading = false);
-      context.pop();
+      if (success) {
+        context.pop();
+      }
     }
   }
 
@@ -143,7 +159,9 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.tripId != null ? 'Modifica viaggio' : 'Nuovo viaggio'),
+        title: Text(
+          widget.tripId != null ? 'Modifica viaggio' : 'Nuovo viaggio',
+        ),
       ),
       body: Form(
         key: _formKey,
@@ -177,28 +195,29 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                     initialDepartureDateTime: _departureDateTime,
                     initialReturnDateTime: _returnDateTime,
                     initialDestinationHouseId: _destinationHouseId,
-                    initialDestinationLocationName: _destinationLocationName,
-                    onChanged: ({
-                      name,
-                      description,
-                      departureDateTime,
-                      returnDateTime,
-                      destinationHouseId,
-                      destinationLocationName,
-                    }) {
-                      setState(() {
-                        if (name != null) _name = name;
-                        _description = description;
-                        _departureDateTime = departureDateTime;
-                        _returnDateTime = returnDateTime;
-                        _destinationHouseId = destinationHouseId;
-                        _destinationLocationName = destinationLocationName;
-                      });
-                    },
+                    initialDestinationLocation: _destinationLocation,
+                    onChanged:
+                        ({
+                          name,
+                          description,
+                          departureDateTime,
+                          returnDateTime,
+                          destinationHouseId,
+                          destinationLocation,
+                        }) {
+                          setState(() {
+                            if (name != null) _name = name;
+                            _description = description;
+                            _departureDateTime = departureDateTime;
+                            _returnDateTime = returnDateTime;
+                            _destinationHouseId = destinationHouseId;
+                            _destinationLocation = destinationLocation;
+                          });
+                        },
                   ),
-                  
+
                   SizedBox(height: context.spacingLg),
-                  
+
                   // Sezione Oggetti
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -232,7 +251,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                     ],
                   ),
                   SizedBox(height: context.spacingSm),
-                  
+
                   // Lista oggetti (shrinkWrap per scroll globale)
                   TripItemsSelector(
                     selectedItems: _selectedItems,
@@ -246,7 +265,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                 ],
               ),
             ),
-            
+
             // BOTTONE FISSO IN BASSO
             Positioned(
               left: 0,
@@ -289,10 +308,7 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
           height: 56,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: colorScheme.primary,
-              width: 2,
-            ),
+            border: Border.all(color: colorScheme.primary, width: 2),
           ),
           child: Center(
             child: _isLoading
@@ -307,13 +323,12 @@ class _AddEditTripScreenState extends ConsumerState<AddEditTripScreen> {
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.save,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                      Icon(Icons.save, color: colorScheme.onSurfaceVariant),
                       SizedBox(width: context.spacingSm),
                       Text(
-                        widget.tripId != null ? 'Salva modifiche' : 'Crea viaggio',
+                        widget.tripId != null
+                            ? 'Salva modifiche'
+                            : 'Crea viaggio',
                         style: TextStyle(
                           fontSize: context.fontSizeLg,
                           fontWeight: FontWeight.w600,
