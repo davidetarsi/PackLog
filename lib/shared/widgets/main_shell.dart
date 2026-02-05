@@ -170,24 +170,21 @@ class _MainShellState extends ConsumerState<MainShell>
                         _CreatePillTab(
                           icon: Icons.luggage,
                           label: 'Viaggio',
-                          color: colorScheme.primaryContainer,
-                          iconColor: colorScheme.onPrimaryContainer,
+                          colorScheme: colorScheme,
                           onTap: _onCreateTrip,
                         ),
                         SizedBox(height: context.spacingSm),
                         _CreatePillTab(
                           icon: Icons.inventory_2,
                           label: 'Oggetto',
-                          color: colorScheme.secondaryContainer,
-                          iconColor: colorScheme.onSecondaryContainer,
+                          colorScheme: colorScheme,
                           onTap: _onCreateItem,
                         ),
                         SizedBox(height: context.spacingSm),
                         _CreatePillTab(
                           icon: Icons.home,
                           label: 'Casa',
-                          color: colorScheme.tertiaryContainer,
-                          iconColor: colorScheme.onTertiaryContainer,
+                          colorScheme: colorScheme,
                           onTap: _onCreateHouse,
                         ),
                       ],
@@ -321,22 +318,20 @@ class _NavItem extends StatelessWidget {
 class _CreatePillTab extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color color;
-  final Color iconColor;
+  final ColorScheme colorScheme;
   final VoidCallback onTap;
 
   const _CreatePillTab({
     required this.icon,
     required this.label,
-    required this.color,
-    required this.iconColor,
+    required this.colorScheme,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: color,
+      color: colorScheme.primaryContainer,
       borderRadius: context.responsiveBorderRadius(
         AppConstants.pillBorderRadius,
       ),
@@ -354,14 +349,14 @@ class _CreatePillTab extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: context.responsive(22), color: iconColor),
+              Icon(icon, size: context.responsive(22), color: colorScheme.onPrimaryContainer),
               SizedBox(width: context.spacingSm + 2),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: context.responsiveFont(15),
                   fontWeight: FontWeight.w600,
-                  color: iconColor,
+                  color: colorScheme.onPrimaryContainer,
                 ),
               ),
             ],

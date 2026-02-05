@@ -24,6 +24,15 @@ mixin _$HouseModel {
   String get id => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
   String? get description => throw _privateConstructorUsedError;
+
+  /// Località della casa (da LocationAutocompleteField)
+  LocationSuggestionModel? get location => throw _privateConstructorUsedError;
+
+  /// Nome dell'icona Material scelta dall'utente (es. 'home', 'apartment', 'cottage')
+  String get iconName => throw _privateConstructorUsedError;
+
+  /// Se questa è la casa principale dell'utente
+  bool get isPrimary => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime get updatedAt => throw _privateConstructorUsedError;
 
@@ -48,9 +57,14 @@ abstract class $HouseModelCopyWith<$Res> {
     String id,
     String name,
     String? description,
+    LocationSuggestionModel? location,
+    String iconName,
+    bool isPrimary,
     DateTime createdAt,
     DateTime updatedAt,
   });
+
+  $LocationSuggestionModelCopyWith<$Res>? get location;
 }
 
 /// @nodoc
@@ -71,6 +85,9 @@ class _$HouseModelCopyWithImpl<$Res, $Val extends HouseModel>
     Object? id = null,
     Object? name = null,
     Object? description = freezed,
+    Object? location = freezed,
+    Object? iconName = null,
+    Object? isPrimary = null,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -88,6 +105,18 @@ class _$HouseModelCopyWithImpl<$Res, $Val extends HouseModel>
                 ? _value.description
                 : description // ignore: cast_nullable_to_non_nullable
                       as String?,
+            location: freezed == location
+                ? _value.location
+                : location // ignore: cast_nullable_to_non_nullable
+                      as LocationSuggestionModel?,
+            iconName: null == iconName
+                ? _value.iconName
+                : iconName // ignore: cast_nullable_to_non_nullable
+                      as String,
+            isPrimary: null == isPrimary
+                ? _value.isPrimary
+                : isPrimary // ignore: cast_nullable_to_non_nullable
+                      as bool,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -99,6 +128,20 @@ class _$HouseModelCopyWithImpl<$Res, $Val extends HouseModel>
           )
           as $Val,
     );
+  }
+
+  /// Create a copy of HouseModel
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $LocationSuggestionModelCopyWith<$Res>? get location {
+    if (_value.location == null) {
+      return null;
+    }
+
+    return $LocationSuggestionModelCopyWith<$Res>(_value.location!, (value) {
+      return _then(_value.copyWith(location: value) as $Val);
+    });
   }
 }
 
@@ -115,9 +158,15 @@ abstract class _$$HouseModelImplCopyWith<$Res>
     String id,
     String name,
     String? description,
+    LocationSuggestionModel? location,
+    String iconName,
+    bool isPrimary,
     DateTime createdAt,
     DateTime updatedAt,
   });
+
+  @override
+  $LocationSuggestionModelCopyWith<$Res>? get location;
 }
 
 /// @nodoc
@@ -137,6 +186,9 @@ class __$$HouseModelImplCopyWithImpl<$Res>
     Object? id = null,
     Object? name = null,
     Object? description = freezed,
+    Object? location = freezed,
+    Object? iconName = null,
+    Object? isPrimary = null,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -154,6 +206,18 @@ class __$$HouseModelImplCopyWithImpl<$Res>
             ? _value.description
             : description // ignore: cast_nullable_to_non_nullable
                   as String?,
+        location: freezed == location
+            ? _value.location
+            : location // ignore: cast_nullable_to_non_nullable
+                  as LocationSuggestionModel?,
+        iconName: null == iconName
+            ? _value.iconName
+            : iconName // ignore: cast_nullable_to_non_nullable
+                  as String,
+        isPrimary: null == isPrimary
+            ? _value.isPrimary
+            : isPrimary // ignore: cast_nullable_to_non_nullable
+                  as bool,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -174,6 +238,9 @@ class _$HouseModelImpl extends _HouseModel {
     required this.id,
     required this.name,
     this.description,
+    this.location,
+    this.iconName = 'home',
+    this.isPrimary = false,
     required this.createdAt,
     required this.updatedAt,
   }) : super._();
@@ -187,6 +254,20 @@ class _$HouseModelImpl extends _HouseModel {
   final String name;
   @override
   final String? description;
+
+  /// Località della casa (da LocationAutocompleteField)
+  @override
+  final LocationSuggestionModel? location;
+
+  /// Nome dell'icona Material scelta dall'utente (es. 'home', 'apartment', 'cottage')
+  @override
+  @JsonKey()
+  final String iconName;
+
+  /// Se questa è la casa principale dell'utente
+  @override
+  @JsonKey()
+  final bool isPrimary;
   @override
   final DateTime createdAt;
   @override
@@ -194,7 +275,7 @@ class _$HouseModelImpl extends _HouseModel {
 
   @override
   String toString() {
-    return 'HouseModel(id: $id, name: $name, description: $description, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'HouseModel(id: $id, name: $name, description: $description, location: $location, iconName: $iconName, isPrimary: $isPrimary, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -206,6 +287,12 @@ class _$HouseModelImpl extends _HouseModel {
             (identical(other.name, name) || other.name == name) &&
             (identical(other.description, description) ||
                 other.description == description) &&
+            (identical(other.location, location) ||
+                other.location == location) &&
+            (identical(other.iconName, iconName) ||
+                other.iconName == iconName) &&
+            (identical(other.isPrimary, isPrimary) ||
+                other.isPrimary == isPrimary) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -214,8 +301,17 @@ class _$HouseModelImpl extends _HouseModel {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, name, description, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    runtimeType,
+    id,
+    name,
+    description,
+    location,
+    iconName,
+    isPrimary,
+    createdAt,
+    updatedAt,
+  );
 
   /// Create a copy of HouseModel
   /// with the given fields replaced by the non-null parameter values.
@@ -236,6 +332,9 @@ abstract class _HouseModel extends HouseModel {
     required final String id,
     required final String name,
     final String? description,
+    final LocationSuggestionModel? location,
+    final String iconName,
+    final bool isPrimary,
     required final DateTime createdAt,
     required final DateTime updatedAt,
   }) = _$HouseModelImpl;
@@ -250,6 +349,18 @@ abstract class _HouseModel extends HouseModel {
   String get name;
   @override
   String? get description;
+
+  /// Località della casa (da LocationAutocompleteField)
+  @override
+  LocationSuggestionModel? get location;
+
+  /// Nome dell'icona Material scelta dall'utente (es. 'home', 'apartment', 'cottage')
+  @override
+  String get iconName;
+
+  /// Se questa è la casa principale dell'utente
+  @override
+  bool get isPrimary;
   @override
   DateTime get createdAt;
   @override

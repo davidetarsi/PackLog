@@ -5,11 +5,68 @@ import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
 import '../../../shared/theme/theme.dart';
 import 'add_edit_house_screen.dart';
+import '../../../shared/constants/house_icons.dart';
+import '../../../shared/widgets/error_retry_dialog.dart';
 
 class HouseDetailScreen extends ConsumerWidget {
   final String houseId;
 
   const HouseDetailScreen({super.key, required this.houseId});
+
+  Future<void> _setPrimary(BuildContext context, WidgetRef ref, String houseName) async {
+    final success = await ErrorRetryDialog.executeWithRetry(
+      context: context,
+      operation: () async {
+        await ref.read(houseNotifierProvider.notifier).setPrimaryHouse(houseId);
+      },
+      errorTitle: 'Errore',
+      errorMessage: 'Impossibile impostare "$houseName" come casa principale.',
+    );
+
+    if (success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('"$houseName" è ora la casa principale')),
+      );
+    }
+  }
+
+  Future<void> _showDeleteDialog(BuildContext context, WidgetRef ref, String houseName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Elimina casa'),
+        content: Text('Sei sicuro di voler eliminare "$houseName"?'),
+        actions: [
+          TextButton(
+            onPressed: () => context.pop(false),
+            child: const Text('Annulla'),
+          ),
+          TextButton(
+            onPressed: () => context.pop(true),
+            child: const Text(
+              'Elimina',
+              style: TextStyle(color: AppColors.destructive),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final success = await ErrorRetryDialog.executeWithRetry(
+        context: context,
+        operation: () async {
+          await ref.read(houseNotifierProvider.notifier).deleteHouse(houseId);
+        },
+        errorTitle: 'Errore',
+        errorMessage: 'Impossibile eliminare "$houseName".',
+      );
+
+      if (success && context.mounted) {
+        context.go('/');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -49,54 +106,89 @@ class HouseDetailScreen extends ConsumerWidget {
           );
         }
         final house = matchingHouses.first;
+        final colorScheme = Theme.of(context).colorScheme;
+        
         return Scaffold(
           appBar: AppBar(
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: () => context.pop(),
             ),
-            title: Text(house.name),
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  HouseIcons.getIcon(house.iconName),
+                  color: colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(house.name),
+                /* if (house.isPrimary) ...[
+                  const SizedBox(width: 8),
+                  Icon(Icons.bookmark, size: 14, color: colorScheme.primary),
+                ], */
+              ],
+            ),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () {
-                  showAddEditHouseSheet(context, houseId: houseId);
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) async {
+                  switch (value) {
+                    case 'edit':
+                      showAddEditHouseSheet(context, houseId: houseId);
+                      break;
+                    case 'set_primary':
+                      await _setPrimary(context, ref, house.name);
+                      break;
+                    case 'delete':
+                      await _showDeleteDialog(context, ref, house.name);
+                      break;
+                  }
                 },
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () async {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Elimina casa'),
-                      content: Text(
-                        'Sei sicuro di voler eliminare "${house.name}"?',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => context.pop(false),
-                          child: const Text('Annulla'),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit),
+                        SizedBox(width: 12),
+                        Text('Modifica'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'set_primary',
+                    enabled: !house.isPrimary,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.star,
+                          color: house.isPrimary ? AppColors.disabled : colorScheme.primary,
                         ),
-                        TextButton(
-                          onPressed: () => context.pop(true),
-                          child: const Text(
-                            'Elimina',
-                            style: TextStyle(color: AppColors.destructive),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Imposta come principale',
+                          style: TextStyle(
+                            color: house.isPrimary ? AppColors.disabled : null,
                           ),
                         ),
                       ],
                     ),
-                  );
-                  if (confirmed == true) {
-                    await ref
-                        .read(houseNotifierProvider.notifier)
-                        .deleteHouse(houseId);
-                    if (context.mounted) {
-                      context.go('/');
-                    }
-                  }
-                },
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, color: AppColors.destructive),
+                        SizedBox(width: 12),
+                        Text(
+                          'Elimina',
+                          style: TextStyle(color: AppColors.destructive),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

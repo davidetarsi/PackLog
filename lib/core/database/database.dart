@@ -34,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -74,6 +74,22 @@ class AppDatabase extends _$AppDatabase {
           
           // 4. Rinomina la nuova tabella
           await customStatement('ALTER TABLE trip_item_entries_new RENAME TO trip_item_entries');
+        }
+
+        if (from < 3) {
+          // Migrazione v2 -> v3: Aggiungi campi location, iconName, isPrimary alla tabella houses
+          
+          await customStatement('ALTER TABLE houses ADD COLUMN location_place_id TEXT');
+          await customStatement('ALTER TABLE houses ADD COLUMN location_display_name TEXT');
+          await customStatement('ALTER TABLE houses ADD COLUMN location_name TEXT');
+          await customStatement('ALTER TABLE houses ADD COLUMN location_city TEXT');
+          await customStatement('ALTER TABLE houses ADD COLUMN location_state TEXT');
+          await customStatement('ALTER TABLE houses ADD COLUMN location_country TEXT');
+          await customStatement('ALTER TABLE houses ADD COLUMN location_type TEXT');
+          await customStatement('ALTER TABLE houses ADD COLUMN location_lat REAL');
+          await customStatement('ALTER TABLE houses ADD COLUMN location_lon REAL');
+          await customStatement("ALTER TABLE houses ADD COLUMN icon_name TEXT NOT NULL DEFAULT 'home'");
+          await customStatement('ALTER TABLE houses ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0');
         }
       },
       beforeOpen: (details) async {

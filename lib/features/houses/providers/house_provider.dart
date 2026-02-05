@@ -61,4 +61,31 @@ class HouseNotifier extends _$HouseNotifier {
       state = AsyncError(error, stackTrace);
     }
   }
+
+  /// Imposta una casa come principale.
+  /// Rimuove automaticamente lo stato "principale" da tutte le altre case.
+  Future<void> setPrimaryHouse(String houseId) async {
+    repository ??= ref.read(houseRepositoryProvider);
+    state = const AsyncLoading();
+    try {
+      final houses = await repository!.getAllHouses();
+      
+      // Aggiorna ogni casa: solo quella selezionata sarà isPrimary = true
+      for (final house in houses) {
+        if (house.isPrimary && house.id != houseId) {
+          // Rimuovi isPrimary da altre case
+          await repository!.updateHouse(house.copyWith(isPrimary: false));
+        } else if (!house.isPrimary && house.id == houseId) {
+          // Imposta isPrimary sulla casa selezionata
+          await repository!.updateHouse(house.copyWith(isPrimary: true));
+        }
+      }
+      
+      // Ricarica le case aggiornate
+      final updatedHouses = await repository!.getAllHouses();
+      state = AsyncData(updatedHouses);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
+  }
 }

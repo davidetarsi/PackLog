@@ -6,6 +6,9 @@ import '../model/house_model.dart';
 import '../providers/house_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/widgets/location_autocomplete_field.dart';
+import '../../../shared/model/location_suggestion_model.dart';
+import '../../../shared/constants/house_icons.dart';
 
 /// Mostra il bottom sheet per creare o modificare una casa
 Future<void> showAddEditHouseSheet(BuildContext context, {String? houseId}) {
@@ -30,8 +33,12 @@ class AddEditHouseSheet extends ConsumerStatefulWidget {
 class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
   bool _isLoading = false;
+
+  // Nuovi campi
+  LocationSuggestionModel? _selectedLocation;
+  String _locationText = '';
+  String _selectedIconName = 'home';
 
   @override
   void initState() {
@@ -50,7 +57,9 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
       );
       setState(() {
         _nameController.text = house.name;
-        _descriptionController.text = house.description ?? '';
+        _selectedLocation = house.location;
+        _locationText = house.location?.displayName ?? '';
+        _selectedIconName = house.iconName;
       });
     });
   }
@@ -58,36 +67,47 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
   @override
   void dispose() {
     _nameController.dispose();
-    _descriptionController.dispose();
     super.dispose();
   }
 
   Future<void> _saveHouse() async {
     if (_formKey.currentState!.validate()) {
+      // Valida che la località sia stata selezionata
+      if (_selectedLocation == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Seleziona una località')),
+        );
+        return;
+      }
+
       setState(() => _isLoading = true);
 
       final now = DateTime.now();
+      final housesAsync = ref.read(houseNotifierProvider);
+      final existingHouses = housesAsync.value ?? [];
+      
+      // Determina se questa sarà la prima casa (e quindi principale)
+      final willBePrimary = widget.houseId == null && existingHouses.isEmpty;
+
       final house = widget.houseId != null
           ? (() {
-              final housesAsync = ref.read(houseNotifierProvider);
-              final houses = housesAsync.value;
-              if (houses == null) {
+              if (existingHouses.isEmpty) {
                 throw StateError('Casa non trovata');
               }
-              return houses.firstWhere((h) => h.id == widget.houseId).copyWith(
-                    name: _nameController.text.trim(),
-                    description: _descriptionController.text.trim().isEmpty
-                        ? null
-                        : _descriptionController.text.trim(),
-                    updatedAt: now,
-                  );
+              final existing = existingHouses.firstWhere((h) => h.id == widget.houseId);
+              return existing.copyWith(
+                name: _nameController.text.trim(),
+                location: _selectedLocation,
+                iconName: _selectedIconName,
+                updatedAt: now,
+              );
             })()
           : HouseModel(
               id: const Uuid().v4(),
               name: _nameController.text.trim(),
-              description: _descriptionController.text.trim().isEmpty
-                  ? null
-                  : _descriptionController.text.trim(),
+              location: _selectedLocation,
+              iconName: _selectedIconName,
+              isPrimary: willBePrimary,
               createdAt: now,
               updatedAt: now,
             );
@@ -115,6 +135,89 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
         }
       }
     }
+  }
+
+  /// Mostra il picker per scegliere l'icona
+  void _showIconPicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Scegli un\'icona',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 300,
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    childAspectRatio: 1,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemCount: HouseIcons.all.length,
+                  itemBuilder: (context, index) {
+                    final iconName = HouseIcons.all.keys.elementAt(index);
+                    final iconData = HouseIcons.all[iconName]!;
+                    final isSelected = iconName == _selectedIconName;
+
+                    return InkWell(
+                      onTap: () {
+                        setState(() => _selectedIconName = iconName);
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey.shade300,
+                            width: isSelected ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              iconData,
+                              size: 32,
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.grey.shade700,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              HouseIcons.getDisplayName(iconName),
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    fontSize: 9,
+                                    color: isSelected
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Colors.grey.shade700,
+                                  ),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -167,7 +270,7 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
                 children: [
                   TextFormField(
                     controller: _nameController,
-                    autofocus: true,
+                    autofocus: widget.houseId == null,
                     decoration: InputDecoration(
                       labelText: 'Nome *',
                       border: OutlineInputBorder(
@@ -183,16 +286,39 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _descriptionController,
-                    decoration: InputDecoration(
-                      labelText: 'Descrizione',
-                      border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(AppConstants.inputBorderRadius),
+                  // LocationAutocompleteField
+                  LocationAutocompleteField(
+                    labelText: 'Località *',
+                    hintText: 'Cerca città, regione o stato...',
+                    onLocationSelected: (location) {
+                      setState(() {
+                        _selectedLocation = location;
+                        _locationText = location.displayName;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Icon Picker
+                  InkWell(
+                    onTap: _showIconPicker,
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Icona',
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppConstants.inputBorderRadius),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(HouseIcons.getIcon(_selectedIconName)),
+                          const SizedBox(width: 12),
+                          Text(HouseIcons.getDisplayName(_selectedIconName)),
+                          const Spacer(),
+                          const Icon(Icons.arrow_drop_down),
+                        ],
                       ),
                     ),
-                    maxLines: 2,
                   ),
                 ],
               ),
@@ -246,8 +372,12 @@ class AddEditHouseScreen extends ConsumerStatefulWidget {
 class _AddEditHouseScreenState extends ConsumerState<AddEditHouseScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
   bool _isLoading = false;
+
+  // Nuovi campi
+  LocationSuggestionModel? _selectedLocation;
+  String _locationText = '';
+  String _selectedIconName = 'home';
 
   @override
   void initState() {
@@ -265,43 +395,58 @@ class _AddEditHouseScreenState extends ConsumerState<AddEditHouseScreen> {
         orElse: () => throw StateError('Casa non trovata'),
       );
       _nameController.text = house.name;
-      _descriptionController.text = house.description ?? '';
+      setState(() {
+        _selectedLocation = house.location;
+        _locationText = house.location?.displayName ?? '';
+        _selectedIconName = house.iconName;
+      });
     });
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _descriptionController.dispose();
     super.dispose();
   }
 
   Future<void> _saveHouse() async {
     if (_formKey.currentState!.validate()) {
+      // Valida che la località sia stata selezionata
+      if (_selectedLocation == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Seleziona una località')),
+        );
+        return;
+      }
+
       setState(() => _isLoading = true);
       
       final now = DateTime.now();
+      final housesAsync = ref.read(houseNotifierProvider);
+      final existingHouses = housesAsync.value ?? [];
+      
+      // Determina se questa sarà la prima casa (e quindi principale)
+      final willBePrimary = widget.houseId == null && existingHouses.isEmpty;
+
       final house = widget.houseId != null
           ? (() {
-              final housesAsync = ref.read(houseNotifierProvider);
-              final houses = housesAsync.value;
-              if (houses == null) {
+              if (existingHouses.isEmpty) {
                 throw StateError('Casa non trovata');
               }
-              return houses.firstWhere((h) => h.id == widget.houseId).copyWith(
-                    name: _nameController.text.trim(),
-                    description: _descriptionController.text.trim().isEmpty
-                        ? null
-                        : _descriptionController.text.trim(),
-                    updatedAt: now,
-                  );
+              final existing = existingHouses.firstWhere((h) => h.id == widget.houseId);
+              return existing.copyWith(
+                name: _nameController.text.trim(),
+                location: _selectedLocation,
+                iconName: _selectedIconName,
+                updatedAt: now,
+              );
             })()
           : HouseModel(
               id: const Uuid().v4(),
               name: _nameController.text.trim(),
-              description: _descriptionController.text.trim().isEmpty
-                  ? null
-                  : _descriptionController.text.trim(),
+              location: _selectedLocation,
+              iconName: _selectedIconName,
+              isPrimary: willBePrimary,
               createdAt: now,
               updatedAt: now,
             );
@@ -331,6 +476,89 @@ class _AddEditHouseScreenState extends ConsumerState<AddEditHouseScreen> {
     }
   }
 
+  /// Mostra il picker per scegliere l'icona
+  void _showIconPicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Scegli un\'icona',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 300,
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    childAspectRatio: 1,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemCount: HouseIcons.all.length,
+                  itemBuilder: (context, index) {
+                    final iconName = HouseIcons.all.keys.elementAt(index);
+                    final iconData = HouseIcons.all[iconName]!;
+                    final isSelected = iconName == _selectedIconName;
+
+                    return InkWell(
+                      onTap: () {
+                        setState(() => _selectedIconName = iconName);
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey.shade300,
+                            width: isSelected ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              iconData,
+                              size: 32,
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.grey.shade700,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              HouseIcons.getDisplayName(iconName),
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    fontSize: 9,
+                                    color: isSelected
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Colors.grey.shade700,
+                                  ),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -344,6 +572,7 @@ class _AddEditHouseScreenState extends ConsumerState<AddEditHouseScreen> {
           children: [
             TextFormField(
               controller: _nameController,
+              autofocus: widget.houseId == null,
               decoration: InputDecoration(
                 labelText: 'Nome *',
                 border: OutlineInputBorder(
@@ -358,15 +587,39 @@ class _AddEditHouseScreenState extends ConsumerState<AddEditHouseScreen> {
               },
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: InputDecoration(
-                labelText: 'Descrizione',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+            // LocationAutocompleteField
+            LocationAutocompleteField(
+              labelText: 'Località *',
+              initialValue: _locationText,
+              onLocationSelected: (location) {
+                setState(() {
+                  _selectedLocation = location;
+                  _locationText = location.displayName;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            // Icon Picker
+            InkWell(
+              onTap: _showIconPicker,
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: 'Icona',
+                  border: OutlineInputBorder(
+                    borderRadius:
+                        BorderRadius.circular(AppConstants.inputBorderRadius),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(HouseIcons.getIcon(_selectedIconName)),
+                    const SizedBox(width: 12),
+                    Text(HouseIcons.getDisplayName(_selectedIconName)),
+                    const Spacer(),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
                 ),
               ),
-              maxLines: 3,
             ),
             const SizedBox(height: 32),
             ElevatedButton(
@@ -388,4 +641,3 @@ class _AddEditHouseScreenState extends ConsumerState<AddEditHouseScreen> {
     );
   }
 }
-

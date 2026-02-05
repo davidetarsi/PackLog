@@ -5,6 +5,9 @@ import 'house_repository.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/houses_dao.dart';
 import '../../../core/database/services/database_service.dart';
+import '../../../shared/model/location_suggestion_model.dart';
+import '../../../shared/model/location_type.dart';
+import '../../../core/database/converters/location_type_converter.dart';
 
 /// Implementazione del repository House usando Drift (SQLite).
 /// 
@@ -110,20 +113,55 @@ class DriftHouseRepository implements HouseRepository {
   // === Conversioni ===
 
   HouseModel _toModel(House house) {
+    // Ricostruisci LocationSuggestionModel se disponibile
+    LocationSuggestionModel? location;
+    if (house.locationPlaceId != null && house.locationDisplayName != null) {
+      location = LocationSuggestionModel(
+        placeId: house.locationPlaceId!,
+        displayName: house.locationDisplayName!,
+        name: house.locationName,
+        city: house.locationCity,
+        state: house.locationState,
+        country: house.locationCountry,
+        locationType: house.locationType != null
+            ? LocationTypeConverter.fromDatabase(house.locationType!)
+            : LocationType.other,
+        lat: house.locationLat,
+        lon: house.locationLon,
+      );
+    }
+
     return HouseModel(
       id: house.id,
       name: house.name,
       description: house.description,
+      location: location,
+      iconName: house.iconName,
+      isPrimary: house.isPrimary,
       createdAt: house.createdAt,
       updatedAt: house.updatedAt,
     );
   }
 
   HousesCompanion _toCompanion(HouseModel model) {
+    // Estrai i campi location se disponibile
+    final loc = model.location;
+    
     return HousesCompanion(
       id: Value(model.id),
       name: Value(model.name),
       description: Value(model.description),
+      locationPlaceId: Value(loc?.placeId),
+      locationDisplayName: Value(loc?.displayName),
+      locationName: Value(loc?.name),
+      locationCity: Value(loc?.city),
+      locationState: Value(loc?.state),
+      locationCountry: Value(loc?.country),
+      locationType: Value(loc != null ? LocationTypeConverter.toDatabase(loc.locationType) : null),
+      locationLat: Value(loc?.lat),
+      locationLon: Value(loc?.lon),
+      iconName: Value(model.iconName),
+      isPrimary: Value(model.isPrimary),
       createdAt: Value(model.createdAt),
       updatedAt: Value(model.updatedAt),
     );
