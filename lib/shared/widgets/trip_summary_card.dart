@@ -217,9 +217,9 @@ class TripSummaryCard extends ConsumerWidget {
     );
 
     return Card(
-      elevation: 4,
+      elevation: 0,
       margin: EdgeInsets.zero,
-      color: colorScheme.surfaceContainerHigh,
+      color: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: context.responsiveBorderRadius(
           AppConstants.cardBorderRadius + 4,

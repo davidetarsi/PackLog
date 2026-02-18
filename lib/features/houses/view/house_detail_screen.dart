@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
-import '../../../shared/theme/theme.dart';
 import 'add_edit_house_screen.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/design_system/design_system.dart';
 
 class HouseDetailScreen extends ConsumerWidget {
   final String houseId;
@@ -31,25 +31,10 @@ class HouseDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _showDeleteDialog(BuildContext context, WidgetRef ref, String houseName) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Elimina casa'),
-        content: Text('Sei sicuro di voler eliminare "$houseName"?'),
-        actions: [
-          TextButton(
-            onPressed: () => context.pop(false),
-            child: const Text('Annulla'),
-          ),
-          TextButton(
-            onPressed: () => context.pop(true),
-            child: const Text(
-              'Elimina',
-              style: TextStyle(color: AppColors.destructive),
-            ),
-          ),
-        ],
-      ),
+      itemType: 'casa',
+      itemName: houseName,
     );
 
     if (confirmed == true && context.mounted) {
@@ -79,28 +64,13 @@ class HouseDetailScreen extends ConsumerWidget {
           // Casa non trovata - mostra schermata di errore invece di reindirizzare
           return Scaffold(
             appBar: AppBar(title: const Text('Casa non trovata')),
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.home_outlined,
-                    size: context.iconSizeHero,
-                    color: AppColors.disabled,
-                  ),
-                  SizedBox(height: context.spacingMd),
-                  Text(
-                    'La casa richiesta non è stata trovata.',
-                    style: TextStyle(fontSize: context.fontSizeXl),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: context.spacingXl),
-                  ElevatedButton.icon(
-                    onPressed: () => context.go('/'),
-                    icon: const Icon(Icons.home),
-                    label: const Text('Torna alla lista case'),
-                  ),
-                ],
+            body: EmptyState(
+              icon: Icons.home_outlined,
+              title: 'La casa richiesta non è stata trovata.',
+              action: ElevatedButton.icon(
+                onPressed: () => context.go('/'),
+                icon: const Icon(Icons.home),
+                label: const Text('Torna alla lista case'),
               ),
             ),
           );
@@ -123,10 +93,6 @@ class HouseDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(house.name),
-                /* if (house.isPrimary) ...[
-                  const SizedBox(width: 8),
-                  Icon(Icons.bookmark, size: 14, color: colorScheme.primary),
-                ], */
               ],
             ),
             actions: [
@@ -162,15 +128,11 @@ class HouseDetailScreen extends ConsumerWidget {
                     child: Row(
                       children: [
                         Icon(
-                          Icons.star,
-                          color: house.isPrimary ? AppColors.disabled : colorScheme.primary,
+                          Icons.bookmark_outlined,
                         ),
                         const SizedBox(width: 12),
                         Text(
                           'Imposta come principale',
-                          style: TextStyle(
-                            color: house.isPrimary ? AppColors.disabled : null,
-                          ),
                         ),
                       ],
                     ),
@@ -179,11 +141,11 @@ class HouseDetailScreen extends ConsumerWidget {
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(Icons.delete, color: AppColors.destructive),
+                        Icon(Icons.delete,
+                         ),
                         SizedBox(width: 12),
                         Text(
                           'Elimina',
-                          style: TextStyle(color: AppColors.destructive),
                         ),
                       ],
                     ),
@@ -199,26 +161,9 @@ class HouseDetailScreen extends ConsumerWidget {
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, stack) => Scaffold(
         appBar: AppBar(title: const Text('Errore')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: context.iconSizeHero,
-                color: AppColors.destructive,
-              ),
-              SizedBox(height: context.spacingMd),
-              Text('Errore: $error'),
-              SizedBox(height: context.spacingMd),
-              ElevatedButton(
-                onPressed: () {
-                  ref.read(houseNotifierProvider.notifier).refresh();
-                },
-                child: const Text('Riprova'),
-              ),
-            ],
-          ),
+        body: ErrorState(
+          error: error,
+          onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
         ),
       ),
     );

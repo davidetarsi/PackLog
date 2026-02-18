@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'error_empty_theme_extension.dart';
 import '../constants/app_constants.dart';
 
 /// Tema principale dell'app.
@@ -181,7 +182,12 @@ class AppTheme {
       ),
 
       // === Extensions ===
-      extensions: [appColors],
+      extensions: [
+        appColors,
+        colorScheme.brightness == Brightness.dark
+            ? ErrorEmptyThemeExtension.darkDefaults
+            : ErrorEmptyThemeExtension.lightDefaults,
+      ],
     );
   }
 }

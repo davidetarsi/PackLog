@@ -2,6 +2,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../../shared/model/location_suggestion_model.dart';
+import '../../items/model/item_model.dart';
 
 part 'trip_model.freezed.dart';
 part 'trip_model.g.dart';
@@ -26,7 +27,7 @@ class TripItem with _$TripItem {
   factory TripItem({
     required String id,
     required String name,
-    required String category,
+    required ItemCategory category,
     required int quantity,
 
     /// ID della casa di origine dell'oggetto (default vuoto per retrocompatibilità)
@@ -62,11 +63,6 @@ class TripModel with _$TripModel {
     /// Include coordinate, tipo di località, etc.
     LocationSuggestionModel? destinationLocation,
 
-    /// Nome della località di destinazione (retrocompatibilità)
-    /// Se destinationLocation è presente, viene ignorato
-    @Deprecated('Usa destinationLocation invece')
-    String? destinationLocationName,
-
     /// Viaggio salvato/preferito
     @Default(false) bool isSaved,
     required DateTime createdAt,
@@ -83,13 +79,9 @@ class TripModel with _$TripModel {
     );
   }
 
-  /// Restituisce il nome della destinazione (dalla location o dal campo legacy)
+  /// Restituisce il nome della destinazione
   String? get destinationDisplayName {
-    if (destinationLocation != null) {
-      return destinationLocation!.displayName;
-    }
-    // ignore: deprecated_member_use_from_same_package
-    return destinationLocationName;
+    return destinationLocation?.displayName;
   }
 
   /// Determina lo stato attuale del viaggio

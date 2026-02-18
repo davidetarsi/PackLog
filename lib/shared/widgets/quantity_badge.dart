@@ -117,7 +117,7 @@ class OnTripBadge extends StatelessWidget {
       ),
       child: const Text(
         'In viaggio',
-        style: TextStyle(color: AppColors.onColored, fontSize: 10),
+        style: TextStyle(color: AppColors.onColored, fontSize: 14),
       ),
     );
   }

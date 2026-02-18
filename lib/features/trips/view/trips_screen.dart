@@ -6,6 +6,8 @@ import '../model/trip_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/trip_summary_card.dart';
+import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/design_system/design_system.dart';
 
 /// Enum per le tab di filtro
 enum TripFilterTab {
@@ -161,7 +163,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                 child: Text(
                   'Pronto per la tua\nprossima avventura?',
                   style: TextStyle(
-                    fontSize: context.fontSizeHeading + 4,
+                    fontSize: context.fontSizeHeading,
                     fontWeight: FontWeight.normal,
                     color: Colors.white,
                     height: 1.2,
@@ -172,9 +174,11 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 
               // Pill Tabs
               Center(
-                child: _TripsFilterTabs(
-                  selectedTab: _selectedTab,
-                  onTabSelected: (tab) => setState(() => _selectedTab = tab),
+                child: AppPillTab<TripFilterTab>(
+                  items: TripFilterTab.values,
+                  selectedItem: _selectedTab,
+                  getLabel: (tab) => tab.label,
+                  onSelected: (tab) => setState(() => _selectedTab = tab),
                 ),
               ),
               SizedBox(height: context.spacingMd),
@@ -203,135 +207,12 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     );
   }
 
-  /* Widget _buildPillTabs(BuildContext context, ColorScheme colorScheme) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: TripFilterTab.values.map((tab) {
-          final isSelected = _selectedTab == tab;
-          return Padding(
-            padding: EdgeInsets.only(right: context.spacingSm),
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedTab = tab;
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacingMd,
-                  vertical: context.spacingSm,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? colorScheme.primary
-                      : colorScheme.surfaceContainerHighest,
-                  borderRadius: context.responsiveBorderRadius(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? colorScheme.primary
-                        : colorScheme.outline.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  tab.label,
-                  style: TextStyle(
-                    fontSize: context.fontSizeMd,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    color: isSelected
-                        ? colorScheme.onPrimary
-                        : colorScheme.onSurface.withValues(alpha: 0.8),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  } 
-
-  Widget _buildMasonryLayout(BuildContext context, List<TripModel> trips) {
-    // Layout stile Google Keep masonry con due colonne
-    final leftColumnTrips = <TripModel>[];
-    final rightColumnTrips = <TripModel>[];
-    double leftColumnHeight = 0;
-    double rightColumnHeight = 0;
-
-    for (final trip in trips) {
-      final cardHeight = _estimateCardHeight(trip);
-      if (leftColumnHeight <= rightColumnHeight) {
-        leftColumnTrips.add(trip);
-        leftColumnHeight += cardHeight + 8;
-      } else {
-        rightColumnTrips.add(trip);
-        rightColumnHeight += cardHeight + 8;
-      }
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            children: leftColumnTrips
-                .map(
-                  (trip) => Padding(
-                    padding: EdgeInsets.only(bottom: context.spacingSm),
-                    child: _TripCard(trip: trip),
-                  ),
-                )
-                .toList(),
-          ),
-        ),
-        SizedBox(width: context.spacingSm),
-        Expanded(
-          child: Column(
-            children: rightColumnTrips
-                .map(
-                  (trip) => Padding(
-                    padding: EdgeInsets.only(bottom: context.spacingSm),
-                    child: _TripCard(trip: trip),
-                  ),
-                )
-                .toList(),
-          ),
-        ),
-      ],
-    );
-  }
-  */
 
   Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.luggage_outlined,
-            size: context.iconSizeHero,
-            color: AppColors.disabled,
-          ),
-          SizedBox(height: context.spacingMd),
-          Text(
-            'Nessun viaggio',
-            style: TextStyle(
-              fontSize: context.fontSizeXl,
-              color: AppColors.disabled,
-            ),
-          ),
-          SizedBox(height: context.spacingSm),
-          Text(
-            'Crea il tuo primo viaggio',
-            style: TextStyle(
-              fontSize: context.fontSizeMd,
-              color: AppColors.disabled,
-            ),
-          ),
-        ],
-      ),
+    return const EmptyState(
+      icon: Icons.luggage_outlined,
+      title: 'Nessun viaggio',
+      subtitle: 'Crea il tuo primo viaggio',
     );
   }
 
@@ -358,48 +239,19 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
         break;
     }
 
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: context.spacingXl * 2),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: context.iconSizeHero, color: AppColors.disabled),
-            SizedBox(height: context.spacingMd),
-            Text(
-              message,
-              style: TextStyle(
-                fontSize: context.fontSizeLg,
-                color: AppColors.disabled,
-              ),
-            ),
-          ],
-        ),
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: context.spacingXl * 2),
+      child: EmptyState(
+        icon: icon,
+        title: message,
       ),
     );
   }
 
   Widget _buildErrorState(BuildContext context, WidgetRef ref, Object error) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: context.iconSizeHero,
-            color: AppColors.destructive,
-          ),
-          SizedBox(height: context.spacingMd),
-          Text('Errore: $error'),
-          SizedBox(height: context.spacingMd),
-          ElevatedButton(
-            onPressed: () {
-              ref.read(tripNotifierProvider.notifier).refresh();
-            },
-            child: const Text('Riprova'),
-          ),
-        ],
-      ),
+    return ErrorState(
+      error: error,
+      onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
     );
   }
 }
@@ -421,8 +273,9 @@ class _TripCard extends StatelessWidget {
         : trip.items.length;
 
     return Card(
-      elevation: 2,
+      elevation: 0,
       margin: EdgeInsets.zero,
+      color: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: context.responsiveBorderRadius(
           AppConstants.cardBorderRadius,
@@ -451,7 +304,7 @@ class _TripCard extends StatelessWidget {
                       trip.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: context.fontSizeLg,
+                        fontSize: context.fontSizeMd,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -473,7 +326,7 @@ class _TripCard extends StatelessWidget {
                 Text(
                   trip.description!,
                   style: TextStyle(
-                    fontSize: context.fontSizeSm,
+                    fontSize: context.fontSizeXs,
                     color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   maxLines: 1,
@@ -525,7 +378,7 @@ class _TripCard extends StatelessWidget {
                         child: Text(
                           item.name,
                           style: TextStyle(
-                            fontSize: context.fontSizeSm,
+                            fontSize: context.fontSizeXs,
                             decoration: item.isChecked
                                 ? TextDecoration.lineThrough
                                 : null,
@@ -564,67 +417,6 @@ class _TripCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _TripsFilterTabs extends StatelessWidget {
-  final TripFilterTab selectedTab;
-  final ValueChanged<TripFilterTab> onTabSelected;
-
-  const _TripsFilterTabs({
-    required this.selectedTab,
-    required this.onTabSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: TripFilterTab.values.map((tab) {
-          final isSelected = selectedTab == tab;
-          return Padding(
-            padding: EdgeInsets.only(right: context.spacingSm),
-            child: GestureDetector(
-              onTap: () => onTabSelected(tab),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacingMd,
-                  vertical: context.spacingSm,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? colorScheme.primary
-                      : colorScheme.surfaceContainerHighest,
-                  borderRadius: context.responsiveBorderRadius(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? colorScheme.primary
-                        : colorScheme.outline.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  tab.label,
-                  style: TextStyle(
-                    fontSize: context.fontSizeMd,
-                    fontWeight: isSelected
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                    color: isSelected
-                        ? colorScheme.onPrimary
-                        : colorScheme.onSurface.withValues(alpha: 0.8),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
       ),
     );
   }

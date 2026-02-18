@@ -224,7 +224,7 @@ class MigrationService {
             id: Value(item.id),
             tripId: Value(trip.id),
             name: Value(item.name),
-            category: Value(item.category),
+            category: Value(item.category.name),
             quantity: Value(item.quantity),
             originHouseId: Value(item.originHouseId),
             isChecked: Value(item.isChecked),

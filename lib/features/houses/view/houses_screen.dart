@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
-import '../providers/house_deletion_provider.dart';
 import '../providers/house_stats_provider.dart';
 import '../model/house_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/constants/house_icons.dart';
+import '../../../shared/design_system/design_system.dart';
 
 class HousesScreen extends ConsumerWidget {
   const HousesScreen({super.key});
@@ -21,33 +21,10 @@ class HousesScreen extends ConsumerWidget {
       body: housesAsync.when(
         data: (houses) {
           if (houses.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.home_outlined,
-                    size: context.iconSizeHero,
-                    color: AppColors.disabled,
-                  ),
-                  SizedBox(height: context.spacingMd),
-                  Text(
-                    'Nessuna casa',
-                    style: TextStyle(
-                      fontSize: context.fontSizeXl,
-                      color: AppColors.disabled,
-                    ),
-                  ),
-                  SizedBox(height: context.spacingSm),
-                  Text(
-                    'Aggiungi la tua prima casa',
-                    style: TextStyle(
-                      fontSize: context.fontSizeMd,
-                      color: AppColors.disabled,
-                    ),
-                  ),
-                ],
-              ),
+            return const EmptyState(
+              icon: Icons.home_outlined,
+              title: 'Nessuna casa',
+              subtitle: 'Aggiungi la tua prima casa',
             );
           }
 
@@ -71,26 +48,9 @@ class HousesScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: context.iconSizeHero,
-                color: AppColors.destructive,
-              ),
-              SizedBox(height: context.spacingMd),
-              Text('Errore: $error'),
-              SizedBox(height: context.spacingMd),
-              ElevatedButton(
-                onPressed: () {
-                  ref.read(houseNotifierProvider.notifier).refresh();
-                },
-                child: const Text('Riprova'),
-              ),
-            ],
-          ),
+        error: (error, stack) => ErrorState(
+          error: error,
+          onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
         ),
       ),
     );
@@ -109,16 +69,14 @@ class _HouseCard extends ConsumerWidget {
 
     return Card(
       margin: context.responsiveSymmetricPadding(horizontal: 16, vertical: 8),
-      elevation: 2,
+      elevation: 0,
+      color: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: context.responsiveBorderRadius(
-          AppConstants.cardBorderRadius,
+          AppConstants.cardBorderRadius + 4,
         ),
         side: BorderSide(
           color:
-          /*  house.isPrimary 
-              ? colorScheme.primary 
-              :  */
               colorScheme.outline.withValues(alpha: 0.2),
           width: /* house.isPrimary ? 1.5 : */ 1,
         ),
@@ -127,7 +85,7 @@ class _HouseCard extends ConsumerWidget {
         children: [
           InkWell(
             borderRadius: context.responsiveBorderRadius(
-              AppConstants.cardBorderRadius,
+              AppConstants.cardBorderRadius + 4,
             ),
             onTap: () {
               context.push('/houses/${house.id}');
@@ -261,71 +219,6 @@ class _HouseCard extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _showDeleteDialog(BuildContext context, WidgetRef ref) async {
-    // Verifica se la casa può essere eliminata
-    final deletionCheck = await ref.read(
-      canDeleteHouseProvider(house.id).future,
-    );
-
-    if (!context.mounted) return;
-
-    if (!deletionCheck.canDelete) {
-      // Mostra dialogo informativo sul perché non può essere eliminata
-      showDialog(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Impossibile eliminare'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.warning_amber,
-                color: AppColors.warning,
-                size: dialogContext.iconSizeXl,
-              ),
-              SizedBox(height: dialogContext.spacingMd),
-              Text(deletionCheck.reason ?? 'La casa non può essere eliminata.'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
-    // Conferma eliminazione
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Elimina casa'),
-        content: Text('Sei sicuro di voler eliminare "${house.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annulla'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Elimina',
-              style: TextStyle(color: AppColors.destructive),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && context.mounted) {
-      await ref.read(houseNotifierProvider.notifier).deleteHouse(house.id);
-    }
   }
 }
 

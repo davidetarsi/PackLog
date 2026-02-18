@@ -23,7 +23,7 @@ TripItem _$TripItemFromJson(Map<String, dynamic> json) {
 mixin _$TripItem {
   String get id => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
-  String get category => throw _privateConstructorUsedError;
+  ItemCategory get category => throw _privateConstructorUsedError;
   int get quantity => throw _privateConstructorUsedError;
 
   /// ID della casa di origine dell'oggetto (default vuoto per retrocompatibilità)
@@ -48,7 +48,7 @@ abstract class $TripItemCopyWith<$Res> {
   $Res call({
     String id,
     String name,
-    String category,
+    ItemCategory category,
     int quantity,
     String originHouseId,
     bool isChecked,
@@ -90,7 +90,7 @@ class _$TripItemCopyWithImpl<$Res, $Val extends TripItem>
             category: null == category
                 ? _value.category
                 : category // ignore: cast_nullable_to_non_nullable
-                      as String,
+                      as ItemCategory,
             quantity: null == quantity
                 ? _value.quantity
                 : quantity // ignore: cast_nullable_to_non_nullable
@@ -121,7 +121,7 @@ abstract class _$$TripItemImplCopyWith<$Res>
   $Res call({
     String id,
     String name,
-    String category,
+    ItemCategory category,
     int quantity,
     String originHouseId,
     bool isChecked,
@@ -162,7 +162,7 @@ class __$$TripItemImplCopyWithImpl<$Res>
         category: null == category
             ? _value.category
             : category // ignore: cast_nullable_to_non_nullable
-                  as String,
+                  as ItemCategory,
         quantity: null == quantity
             ? _value.quantity
             : quantity // ignore: cast_nullable_to_non_nullable
@@ -200,7 +200,7 @@ class _$TripItemImpl extends _TripItem {
   @override
   final String name;
   @override
-  final String category;
+  final ItemCategory category;
   @override
   final int quantity;
 
@@ -264,7 +264,7 @@ abstract class _TripItem extends TripItem {
   factory _TripItem({
     required final String id,
     required final String name,
-    required final String category,
+    required final ItemCategory category,
     required final int quantity,
     final String originHouseId,
     final bool isChecked,
@@ -279,7 +279,7 @@ abstract class _TripItem extends TripItem {
   @override
   String get name;
   @override
-  String get category;
+  ItemCategory get category;
   @override
   int get quantity;
 
@@ -322,11 +322,6 @@ mixin _$TripModel {
   LocationSuggestionModel? get destinationLocation =>
       throw _privateConstructorUsedError;
 
-  /// Nome della località di destinazione (retrocompatibilità)
-  /// Se destinationLocation è presente, viene ignorato
-  @Deprecated('Usa destinationLocation invece')
-  String? get destinationLocationName => throw _privateConstructorUsedError;
-
   /// Viaggio salvato/preferito
   bool get isSaved => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -356,8 +351,6 @@ abstract class $TripModelCopyWith<$Res> {
     DateTime? returnDateTime,
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
-    @Deprecated('Usa destinationLocation invece')
-    String? destinationLocationName,
     bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
@@ -389,7 +382,6 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
     Object? returnDateTime = freezed,
     Object? destinationHouseId = freezed,
     Object? destinationLocation = freezed,
-    Object? destinationLocationName = freezed,
     Object? isSaved = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -428,10 +420,6 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
                 ? _value.destinationLocation
                 : destinationLocation // ignore: cast_nullable_to_non_nullable
                       as LocationSuggestionModel?,
-            destinationLocationName: freezed == destinationLocationName
-                ? _value.destinationLocationName
-                : destinationLocationName // ignore: cast_nullable_to_non_nullable
-                      as String?,
             isSaved: null == isSaved
                 ? _value.isSaved
                 : isSaved // ignore: cast_nullable_to_non_nullable
@@ -484,8 +472,6 @@ abstract class _$$TripModelImplCopyWith<$Res>
     DateTime? returnDateTime,
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
-    @Deprecated('Usa destinationLocation invece')
-    String? destinationLocationName,
     bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
@@ -517,7 +503,6 @@ class __$$TripModelImplCopyWithImpl<$Res>
     Object? returnDateTime = freezed,
     Object? destinationHouseId = freezed,
     Object? destinationLocation = freezed,
-    Object? destinationLocationName = freezed,
     Object? isSaved = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -556,10 +541,6 @@ class __$$TripModelImplCopyWithImpl<$Res>
             ? _value.destinationLocation
             : destinationLocation // ignore: cast_nullable_to_non_nullable
                   as LocationSuggestionModel?,
-        destinationLocationName: freezed == destinationLocationName
-            ? _value.destinationLocationName
-            : destinationLocationName // ignore: cast_nullable_to_non_nullable
-                  as String?,
         isSaved: null == isSaved
             ? _value.isSaved
             : isSaved // ignore: cast_nullable_to_non_nullable
@@ -589,7 +570,6 @@ class _$TripModelImpl extends _TripModel {
     this.returnDateTime,
     this.destinationHouseId,
     this.destinationLocation,
-    @Deprecated('Usa destinationLocation invece') this.destinationLocationName,
     this.isSaved = false,
     required this.createdAt,
     required this.updatedAt,
@@ -631,12 +611,6 @@ class _$TripModelImpl extends _TripModel {
   @override
   final LocationSuggestionModel? destinationLocation;
 
-  /// Nome della località di destinazione (retrocompatibilità)
-  /// Se destinationLocation è presente, viene ignorato
-  @override
-  @Deprecated('Usa destinationLocation invece')
-  final String? destinationLocationName;
-
   /// Viaggio salvato/preferito
   @override
   @JsonKey()
@@ -648,7 +622,7 @@ class _$TripModelImpl extends _TripModel {
 
   @override
   String toString() {
-    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocation: $destinationLocation, destinationLocationName: $destinationLocationName, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocation: $destinationLocation, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -669,11 +643,6 @@ class _$TripModelImpl extends _TripModel {
                 other.destinationHouseId == destinationHouseId) &&
             (identical(other.destinationLocation, destinationLocation) ||
                 other.destinationLocation == destinationLocation) &&
-            (identical(
-                  other.destinationLocationName,
-                  destinationLocationName,
-                ) ||
-                other.destinationLocationName == destinationLocationName) &&
             (identical(other.isSaved, isSaved) || other.isSaved == isSaved) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
@@ -693,7 +662,6 @@ class _$TripModelImpl extends _TripModel {
     returnDateTime,
     destinationHouseId,
     destinationLocation,
-    destinationLocationName,
     isSaved,
     createdAt,
     updatedAt,
@@ -723,8 +691,6 @@ abstract class _TripModel extends TripModel {
     final DateTime? returnDateTime,
     final String? destinationHouseId,
     final LocationSuggestionModel? destinationLocation,
-    @Deprecated('Usa destinationLocation invece')
-    final String? destinationLocationName,
     final bool isSaved,
     required final DateTime createdAt,
     required final DateTime updatedAt,
@@ -759,12 +725,6 @@ abstract class _TripModel extends TripModel {
   /// Include coordinate, tipo di località, etc.
   @override
   LocationSuggestionModel? get destinationLocation;
-
-  /// Nome della località di destinazione (retrocompatibilità)
-  /// Se destinationLocation è presente, viene ignorato
-  @override
-  @Deprecated('Usa destinationLocation invece')
-  String? get destinationLocationName;
 
   /// Viaggio salvato/preferito
   @override

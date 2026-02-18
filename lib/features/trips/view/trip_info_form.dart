@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../features/houses/providers/house_provider.dart';
-import '../../features/houses/model/house_model.dart';
-import '../constants/app_constants.dart';
-import '../model/location_suggestion_model.dart';
-import '../theme/theme.dart';
-import 'location_autocomplete_field.dart';
+import '../../houses/providers/house_provider.dart';
+import '../../houses/model/house_model.dart';
+import '../../../shared/constants/app_constants.dart';
+import '../../../shared/model/location_suggestion_model.dart';
+import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/location_autocomplete_field.dart';
 
 /// Widget riutilizzabile per il form delle info del viaggio.
 /// 
@@ -31,10 +31,7 @@ class TripInfoForm extends ConsumerStatefulWidget {
   
   /// Località destinazione iniziale (modello completo)
   final LocationSuggestionModel? initialDestinationLocation;
-  
-  /// Nome località destinazione iniziale (retrocompatibilità)
-  @Deprecated('Usa initialDestinationLocation invece')
-  final String? initialDestinationLocationName;
+
   
   /// Callback quando i dati cambiano
   final void Function({
@@ -54,8 +51,6 @@ class TripInfoForm extends ConsumerStatefulWidget {
     this.initialReturnDateTime,
     this.initialDestinationHouseId,
     this.initialDestinationLocation,
-    @Deprecated('Usa initialDestinationLocation invece')
-    this.initialDestinationLocationName,
     required this.onChanged,
   });
 
@@ -84,17 +79,6 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     _destinationHouseId = widget.initialDestinationHouseId;
     _destinationLocation = widget.initialDestinationLocation;
     
-    // Retrocompatibilità: se non c'è destinationLocation ma c'è destinationLocationName,
-    // crea un modello minimale
-    // ignore: deprecated_member_use_from_same_package
-    if (_destinationLocation == null && widget.initialDestinationLocationName != null) {
-      // ignore: deprecated_member_use_from_same_package
-      _destinationLocation = LocationSuggestionModel(
-        placeId: '',
-        // ignore: deprecated_member_use_from_same_package
-        displayName: widget.initialDestinationLocationName!,
-      );
-    }
   }
 
   @override

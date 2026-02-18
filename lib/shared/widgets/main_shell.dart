@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../features/houses/view/settings_screen.dart';
 import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/items/view/add_edit_item_screen.dart';
@@ -169,21 +170,21 @@ class _MainShellState extends ConsumerState<MainShell>
                       children: [
                         _CreatePillTab(
                           icon: Icons.luggage,
-                          label: 'Viaggio',
+                          label: 'trips.add'.tr(),
                           colorScheme: colorScheme,
                           onTap: _onCreateTrip,
                         ),
                         SizedBox(height: context.spacingSm),
                         _CreatePillTab(
                           icon: Icons.inventory_2,
-                          label: 'Oggetto',
+                          label: 'items.add'.tr(),
                           colorScheme: colorScheme,
                           onTap: _onCreateItem,
                         ),
                         SizedBox(height: context.spacingSm),
                         _CreatePillTab(
                           icon: Icons.home,
-                          label: 'Casa',
+                          label: 'houses.add'.tr(),
                           colorScheme: colorScheme,
                           onTap: _onCreateHouse,
                         ),
@@ -224,21 +225,21 @@ class _MainShellState extends ConsumerState<MainShell>
               _NavItem(
                 icon: Icons.settings_outlined,
                 selectedIcon: Icons.settings,
-                label: 'Impostazioni',
+                label: 'common.settings'.tr(),
                 isSelected: false,
                 onTap: () => _onTabTapped(0),
               ),
               _NavItem(
                 icon: Icons.home_outlined,
                 selectedIcon: Icons.home,
-                label: 'Case',
+                label: 'navigation.houses'.tr(),
                 isSelected: selectedTabIndex == 1,
                 onTap: () => _onTabTapped(1),
               ),
               _NavItem(
                 icon: Icons.luggage_outlined,
                 selectedIcon: Icons.luggage,
-                label: 'Viaggi',
+                label: 'navigation.trips'.tr(),
                 isSelected: selectedTabIndex == 2,
                 onTap: () => _onTabTapped(2),
               ),
@@ -247,7 +248,7 @@ class _MainShellState extends ConsumerState<MainShell>
                     ? Icons.close
                     : Icons.add_circle_outline,
                 selectedIcon: Icons.add_circle,
-                label: _isCreateMenuOpen ? 'Chiudi' : 'Crea',
+                label: _isCreateMenuOpen ? 'common.close'.tr() : 'common.create'.tr(),
                 isSelected: _isCreateMenuOpen,
                 onTap: () => _onTabTapped(3),
               ),
@@ -283,8 +284,8 @@ class _NavItem extends StatelessWidget {
       borderRadius: context.responsiveBorderRadius(16),
       child: Container(
         padding: context.responsiveSymmetricPadding(
-          horizontal: 12,
-          vertical: 6,
+          horizontal: 10,
+          vertical: 4,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -297,11 +298,13 @@ class _NavItem extends StatelessWidget {
                   ? colorScheme.primary
                   : colorScheme.onSurfaceVariant,
             ),
-            SizedBox(height: context.spacingXs / 2),
+            SizedBox(height: context.spacingXs / 3),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: context.fontSizeXs,
+                fontSize: context.fontSizeSm,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 color: isSelected
                     ? colorScheme.primary

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../features/houses/providers/house_provider.dart';
-import '../../features/houses/model/house_model.dart';
-import '../../features/items/providers/item_provider.dart';
-import '../../features/items/model/item_model.dart';
-import '../../features/trips/model/trip_model.dart';
-import '../constants/app_constants.dart';
-import '../theme/theme.dart';
+import '../../houses/providers/house_provider.dart';
+import '../../houses/model/house_model.dart';
+import '../../items/providers/item_provider.dart';
+import '../../items/model/item_model.dart';
+import '../model/trip_model.dart';
+import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/app_pill_tab.dart';
 
 /// Widget riutilizzabile per selezionare gli oggetti da portare in viaggio.
 /// 
@@ -41,6 +42,14 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
 
   // Colore arancione per le icone
   static const Color _accentColor = Colors.orange;
+  
+  // Lista di opzioni categoria (include "Tutto" = null)
+  static final List<_CategoryFilterOption> _categoryOptions = [
+    _CategoryFilterOption('Tutto', null),
+    ...ItemCategory.values.map(
+      (cat) => _CategoryFilterOption(cat.displayName, cat),
+    ),
+  ];
 
   @override
   void initState() {
@@ -68,7 +77,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         _items.add(TripItem(
           id: item.id,
           name: item.name,
-          category: item.category.displayName,
+          category: item.category,
           quantity: newQuantity,
           originHouseId: houseId,
         ));
@@ -137,70 +146,26 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         SizedBox(
           height: 40,
           child: housesAsync.when(
-            data: (houses) => SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const ClampingScrollPhysics(),
-              child: Row(
-                children: houses.map((house) {
-                  final isSelected = _selectedHouseId == house.id;
-                  return Padding(
-                    padding: EdgeInsets.only(right: context.spacingSm),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: context.responsiveBorderRadius(20),
-                        onTap: () {
-                          setState(() {
-                            _selectedHouseId = isSelected ? null : house.id;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: context.spacingMd,
-                            vertical: context.spacingSm,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? _accentColor
-                                : colorScheme.surfaceContainerHighest,
-                            borderRadius: context.responsiveBorderRadius(20),
-                            border: Border.all(
-                              color: isSelected
-                                  ? _accentColor
-                                  : colorScheme.outline.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.home_outlined,
-                                size: 16,
-                                color: isSelected
-                                    ? Colors.white
-                                    : _accentColor,
-                              ),
-                              SizedBox(width: context.spacingXs),
-                              Text(
-                                house.name,
-                                style: TextStyle(
-                                  fontSize: context.fontSizeMd,
-                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : colorScheme.onSurface.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
+            data: (houses) {
+              // Trova l'house selezionato (può essere null)
+              final selectedHouse = houses.cast<HouseModel?>().firstWhere(
+                (h) => h?.id == _selectedHouseId,
+                orElse: () => null,
+              );
+              
+              return AppPillTab<HouseModel>.nullable(
+                items: houses,
+                selectedItem: selectedHouse,
+                getLabel: (house) => house.name,
+                getIcon: (house) => Icon(Icons.home_outlined, size: 16),
+                onSelected: (house) {
+                  setState(() {
+                    _selectedHouseId = house?.id;
+                  });
+                },
+                // Rimosso selectedColor per usare il theme default
+              );
+            },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Text('Errore: $e'),
           ),
@@ -220,68 +185,24 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         SizedBox(height: context.spacingXs),
         SizedBox(
           height: 40,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const ClampingScrollPhysics(),
-            child: Row(
-              children: [
-                _buildCategoryChip(context, colorScheme, null, 'Tutto'),
-                ...ItemCategory.values.map((cat) => 
-                  _buildCategoryChip(context, colorScheme, cat, cat.displayName),
-                ),
-              ],
+          child: AppPillTab<_CategoryFilterOption>(
+            items: _categoryOptions,
+            selectedItem: _categoryOptions.firstWhere(
+              (opt) => opt.category == _selectedCategory,
             ),
+            getLabel: (opt) => opt.label,
+            onSelected: (opt) {
+              setState(() {
+                _selectedCategory = opt.category;
+              });
+            },
+            // Rimossi tutti i colori custom per usare il theme default
           ),
         ),
       ],
     );
   }
 
-  Widget _buildCategoryChip(BuildContext context, ColorScheme colorScheme, ItemCategory? category, String label) {
-    final isSelected = _selectedCategory == category;
-    return Padding(
-      padding: EdgeInsets.only(right: context.spacingSm),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: context.responsiveBorderRadius(20),
-          onTap: () {
-            setState(() {
-              _selectedCategory = category;
-            });
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: EdgeInsets.symmetric(
-              horizontal: context.spacingMd,
-              vertical: context.spacingSm,
-            ),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? _accentColor.withValues(alpha: 0.2)
-                  : colorScheme.surfaceContainerHighest,
-              borderRadius: context.responsiveBorderRadius(20),
-              border: Border.all(
-                color: isSelected
-                    ? _accentColor
-                    : colorScheme.outline.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: context.fontSizeMd,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected
-                    ? _accentColor
-                    : colorScheme.onSurface.withValues(alpha: 0.8),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildItemsList(BuildContext context, ColorScheme colorScheme) {
     if (_selectedHouseId == null) {
@@ -613,4 +534,23 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
       ),
     );
   }
+}
+
+/// Helper class per rappresentare un'opzione di filtro categoria.
+/// Wrappa ItemCategory? per essere usata con AppPillTab.
+class _CategoryFilterOption {
+  final String label;
+  final ItemCategory? category;
+
+  const _CategoryFilterOption(this.label, this.category);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _CategoryFilterOption &&
+          runtimeType == other.runtimeType &&
+          category == other.category;
+
+  @override
+  int get hashCode => category.hashCode;
 }

@@ -386,6 +386,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
         controller: _controller,
         focusNode: _focusNode,
         decoration: InputDecoration(
+          floatingLabelBehavior: FloatingLabelBehavior.always,
           labelText: widget.labelText ?? 'Destinazione',
           hintText: widget.hintText ?? 'Cerca città, regione o stato...',
           border: widget.showBorder
@@ -399,6 +400,10 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
               ? OutlineInputBorder(
                   borderRadius: BorderRadius.circular(
                     AppConstants.inputBorderRadius,
+                  ),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outline,
+                    width: 1,
                   ),
                 )
               : InputBorder.none,

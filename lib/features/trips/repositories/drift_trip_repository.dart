@@ -7,6 +7,7 @@ import '../../../core/database/converters/location_type_converter.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/trips_dao.dart';
 import '../../../core/database/services/database_service.dart';
+import '../../items/model/item_model.dart';
 
 /// Implementazione del repository Trip usando Drift (SQLite).
 /// 
@@ -201,7 +202,7 @@ class DriftTripRepository implements TripRepository {
     return model.TripItem(
       id: entry.id,
       name: entry.name,
-      category: entry.category,
+      category: _parseCategory(entry.category),
       quantity: entry.quantity,
       originHouseId: entry.originHouseId,
       isChecked: entry.isChecked,
@@ -240,10 +241,45 @@ class DriftTripRepository implements TripRepository {
       id: Value(item.id),
       tripId: Value(tripId),
       name: Value(item.name),
-      category: Value(item.category),
+      category: Value(item.category.name),
       quantity: Value(item.quantity),
       originHouseId: Value(item.originHouseId),
       isChecked: Value(item.isChecked),
     );
+  }
+
+  /// Converte una stringa in ItemCategory
+  /// Supporta diversi formati per retrocompatibilità:
+  /// - "vestiti" (enum.name)
+  /// - "Vestiti" (displayName)
+  /// - case-insensitive
+  ItemCategory _parseCategory(String categoryString) {
+    if (categoryString.isEmpty) {
+      return ItemCategory.varie;
+    }
+    
+    try {
+      final normalized = categoryString.toLowerCase().trim();
+      
+      // Prova prima con match esatto su .name
+      for (final cat in ItemCategory.values) {
+        if (cat.name.toLowerCase() == normalized) {
+          return cat;
+        }
+      }
+      
+      // Prova con displayName (case-insensitive)
+      for (final cat in ItemCategory.values) {
+        if (cat.displayName.toLowerCase() == normalized) {
+          return cat;
+        }
+      }
+      
+      debugPrint('[TripRepo] Categoria non valida: "$categoryString", usando "varie"');
+      return ItemCategory.varie;
+    } catch (e) {
+      debugPrint('[TripRepo] Errore parsing categoria "$categoryString": $e, usando "varie"');
+      return ItemCategory.varie;
+    }
   }
 }

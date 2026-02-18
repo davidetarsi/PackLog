@@ -6,11 +6,10 @@
 /// ```
 library;
 
+export 'app_pill_tab.dart';
 export 'location_autocomplete_field.dart';
 export 'main_shell.dart';
 export 'quantity_badge.dart';
 export 'status_icon_overlay.dart';
-export 'trip_info_form.dart';
-export 'trip_items_selector.dart';
 export 'trip_summary_card.dart';
 

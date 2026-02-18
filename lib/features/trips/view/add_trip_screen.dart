@@ -7,8 +7,8 @@ import '../providers/trip_provider.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
-import '../../../shared/widgets/trip_info_form.dart';
-import '../../../shared/widgets/trip_items_selector.dart';
+import 'trip_info_form.dart';
+import 'trip_items_selector.dart';
 
 class AddTripScreen extends ConsumerStatefulWidget {
   final String? tripId;
@@ -54,16 +54,6 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
         _returnDateTime = trip.returnDateTime;
         _destinationHouseId = trip.destinationHouseId;
         _destinationLocation = trip.destinationLocation;
-        // Retrocompatibilità: se non c'è destinationLocation ma c'è destinationLocationName
-        // ignore: deprecated_member_use_from_same_package
-        if (_destinationLocation == null &&
-            trip.destinationLocationName != null) {
-          _destinationLocation = LocationSuggestionModel(
-            placeId: '',
-            // ignore: deprecated_member_use_from_same_package
-            displayName: trip.destinationLocationName!,
-          );
-        }
         _selectedItems = List.from(trip.items);
       });
     });
@@ -183,7 +173,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                   Text(
                     'Informazioni viaggio',
                     style: TextStyle(
-                      fontSize: context.fontSizeLg,
+                      fontSize: context.fontSizeMd,
                       fontWeight: FontWeight.bold,
                       color: colorScheme.onSurface,
                     ),
@@ -225,7 +215,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                       Text(
                         'Oggetti da portare',
                         style: TextStyle(
-                          fontSize: context.fontSizeLg,
+                          fontSize: context.fontSizeMd,
                           fontWeight: FontWeight.bold,
                           color: colorScheme.onSurface,
                         ),
@@ -242,7 +232,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                         child: Text(
                           '${_selectedItems.length} selezionati',
                           style: TextStyle(
-                            fontSize: context.fontSizeSm,
+                            fontSize: context.fontSizeXs,
                             fontWeight: FontWeight.w600,
                             color: colorScheme.onPrimaryContainer,
                           ),
@@ -330,7 +320,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                             ? 'Salva modifiche'
                             : 'Crea viaggio',
                         style: TextStyle(
-                          fontSize: context.fontSizeLg,
+                          fontSize: context.fontSizeMd,
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurfaceVariant,
                         ),

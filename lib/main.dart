@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'core/database/database.dart';
 import 'core/database/migration_service.dart';
 import 'core/database/services/backup_service.dart';
@@ -12,10 +13,23 @@ void main() async {
   // Assicura che i widget Flutter siano inizializzati
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Inizializza easy_localization
+  await EasyLocalization.ensureInitialized();
+  
   // Inizializza i servizi di persistenza in modo robusto
   await _initializePersistence();
   
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [
+        Locale('it', 'IT'),
+        Locale('en', 'US'),
+      ],
+      path: 'assets/translations',
+      fallbackLocale: const Locale('it', 'IT'),
+      child: const ProviderScope(child: MyApp()),
+    ),
+  );
 }
 
 /// Inizializza tutti i servizi di persistenza in modo robusto.
@@ -118,6 +132,10 @@ class MyApp extends StatelessWidget {
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.dark,
       routerConfig: appRouter,
+      // Localization configuration
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
+      locale: context.locale,
     );
   }
 }

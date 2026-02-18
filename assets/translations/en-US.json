@@ -1,0 +1,132 @@
+{
+  "app_name": "Stuff Tracker",
+  
+  "navigation": {
+    "home": "Home",
+    "houses": "Houses",
+    "trips": "Trips",
+    "profile": "Profile"
+  },
+  
+  "houses": {
+    "title": "My Houses",
+    "add": "Add House",
+    "edit": "Edit House",
+    "delete": "Delete House",
+    "no_houses": "No houses",
+    "no_houses_subtitle": "Add your first house",
+    "name_required": "Name*",
+    "location_required": "Location*",
+    "location_hint": "Search for a location...",
+    "select_icon": "Select an icon",
+    "set_primary": "Set as primary",
+    "is_primary": "Primary house",
+    "primary_house_set": "\"{}\" is now the primary house",
+    "total_items": "{} items saved",
+    "badge_in_trip": "On trip",
+    "badge_guest": "Guest",
+    "cannot_delete_title": "Cannot delete",
+    "cannot_delete_has_items": "The house contains items. Move or delete them first.",
+    "cannot_delete_in_trips": "Some items are currently on trips. Complete or delete trips first.",
+    "delete_confirmation": "Are you sure you want to delete \"{}\"?",
+    "house_not_found": "House not found",
+    "house_not_found_message": "The requested house was not found.",
+    "back_to_houses": "Back to houses"
+  },
+  
+  "items": {
+    "add": "Add Item",
+    "edit": "Edit Item",
+    "delete": "Delete Item",
+    "no_items": "No items",
+    "no_items_subtitle": "Add your first item",
+    "name_required": "Name*",
+    "category": "Category",
+    "description": "Description",
+    "quantity": "Quantity",
+    "in_house": "At home",
+    "in_transit": "In transit",
+    "in_transit_subtitle": "{} items arriving",
+    "from_house": "From {}",
+    "delete_confirmation": "Are you sure you want to delete \"{}\"?",
+    "item_deleted": "Item deleted"
+  },
+  
+  "categories": {
+    "vestiti": "Clothes",
+    "toiletries": "Toiletries",
+    "elettronica": "Electronics",
+    "varie": "Misc",
+    "items_count": "{} items"
+  },
+  
+  "trips": {
+    "title": "Trips",
+    "add": "New Trip",
+    "edit": "Edit Trip",
+    "edit_info": "Edit Trip Info",
+    "edit_items": "Edit Items",
+    "delete": "Delete Trip",
+    "no_trips": "No trips",
+    "no_trips_subtitle": "Create your first trip",
+    "name_required": "Name*",
+    "description": "Description",
+    "destination": "Destination",
+    "destination_hint": "House or location...",
+    "departure_date": "Departure date",
+    "departure_time": "Departure time",
+    "return_date": "Return date",
+    "return_time": "Return time",
+    "select_items": "Select items",
+    "no_items_selected": "No items selected",
+    "filter_all": "All",
+    "next_trip": "Next trip",
+    "upcoming": "Upcoming",
+    "active": "Active",
+    "completed": "Completed",
+    "saved": "Saved",
+    "no_upcoming": "No upcoming trips",
+    "no_past": "No past trips",
+    "no_saved": "No saved trips",
+    "progress": "{} ready ({}%)",
+    "delete_confirmation": "Are you sure you want to delete \"{}\"?",
+    "confirm_all_arrived": "Confirm all arrived",
+    "all_items_confirmed": "All items confirmed",
+    "no_destination": "No destination"
+  },
+  
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "close": "Close",
+    "back": "Back",
+    "retry": "Retry",
+    "error": "Error",
+    "success": "Success",
+    "loading": "Loading...",
+    "search": "Search...",
+    "select": "Select",
+    "all": "All",
+    "settings": "Settings"
+  },
+  
+  "errors": {
+    "generic": "An error occurred",
+    "save_failed": "Unable to save",
+    "delete_failed": "Unable to delete \"{}\"",
+    "load_failed": "Unable to load data",
+    "operation_failed": "Operation failed",
+    "retry_message": "Do you want to retry?"
+  },
+  
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "about": "About"
+  }
+}

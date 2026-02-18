@@ -10,7 +10,7 @@ _$TripItemImpl _$$TripItemImplFromJson(Map<String, dynamic> json) =>
     _$TripItemImpl(
       id: json['id'] as String,
       name: json['name'] as String,
-      category: json['category'] as String,
+      category: $enumDecode(_$ItemCategoryEnumMap, json['category']),
       quantity: (json['quantity'] as num).toInt(),
       originHouseId: json['originHouseId'] as String? ?? '',
       isChecked: json['isChecked'] as bool? ?? false,
@@ -20,11 +20,18 @@ Map<String, dynamic> _$$TripItemImplToJson(_$TripItemImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
-      'category': instance.category,
+      'category': _$ItemCategoryEnumMap[instance.category]!,
       'quantity': instance.quantity,
       'originHouseId': instance.originHouseId,
       'isChecked': instance.isChecked,
     };
+
+const _$ItemCategoryEnumMap = {
+  ItemCategory.vestiti: 'vestiti',
+  ItemCategory.toiletries: 'toiletries',
+  ItemCategory.elettronica: 'elettronica',
+  ItemCategory.varie: 'varie',
+};
 
 _$TripModelImpl _$$TripModelImplFromJson(Map<String, dynamic> json) =>
     _$TripModelImpl(
@@ -48,7 +55,6 @@ _$TripModelImpl _$$TripModelImplFromJson(Map<String, dynamic> json) =>
           : LocationSuggestionModel.fromJson(
               json['destinationLocation'] as Map<String, dynamic>,
             ),
-      destinationLocationName: json['destinationLocationName'] as String?,
       isSaved: json['isSaved'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
@@ -64,7 +70,6 @@ Map<String, dynamic> _$$TripModelImplToJson(_$TripModelImpl instance) =>
       'returnDateTime': instance.returnDateTime?.toIso8601String(),
       'destinationHouseId': instance.destinationHouseId,
       'destinationLocation': instance.destinationLocation,
-      'destinationLocationName': instance.destinationLocationName,
       'isSaved': instance.isSaved,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),

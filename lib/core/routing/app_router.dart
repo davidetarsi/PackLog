@@ -5,7 +5,7 @@ import '../../features/houses/view/house_detail_screen.dart';
 import '../../features/items/view/add_edit_item_screen.dart';
 import '../../features/trips/view/trips_page.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
-import '../../features/trips/view/add_edit_trip_screen.dart';
+import '../../features/trips/view/add_trip_screen.dart';
 import '../../features/trips/view/edit_trip_info_screen.dart';
 import '../../features/trips/view/edit_trip_items_screen.dart';
 import '../../shared/widgets/main_shell.dart';

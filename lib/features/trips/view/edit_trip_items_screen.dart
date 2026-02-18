@@ -3,13 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
-import '../../houses/providers/house_provider.dart';
-import '../../houses/model/house_model.dart';
-import '../../items/providers/item_provider.dart';
-import '../../items/model/item_model.dart';
-import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import 'trip_items_selector.dart';
 
 /// Schermata per modificare solo gli oggetti del viaggio.
 class EditTripItemsScreen extends ConsumerStatefulWidget {
@@ -25,10 +21,6 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
   bool _isLoading = false;
   TripModel? _trip;
   List<TripItem> _selectedItems = [];
-  String? _selectedHouseId;
-  ItemCategory? _selectedCategory;
-
-  static const Color _accentColor = Colors.orange;
 
   @override
   void initState() {
@@ -74,43 +66,9 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
     }
   }
 
-  int _getSelectedQuantity(String itemId) {
-    final selected = _selectedItems.where((i) => i.id == itemId).firstOrNull;
-    return selected?.quantity ?? 0;
-  }
-
-  void _updateItemQuantity(ItemModel item, String houseId, int newQuantity) {
-    setState(() {
-      _selectedItems.removeWhere((i) => i.id == item.id);
-      if (newQuantity > 0) {
-        _selectedItems.add(TripItem(
-          id: item.id,
-          name: item.name,
-          category: item.category.displayName,
-          quantity: newQuantity,
-          originHouseId: houseId,
-        ));
-      }
-    });
-  }
-
-  IconData _getCategoryIcon(ItemCategory category) {
-    switch (category) {
-      case ItemCategory.vestiti:
-        return Icons.checkroom;
-      case ItemCategory.toiletries:
-        return Icons.shower;
-      case ItemCategory.elettronica:
-        return Icons.devices;
-      case ItemCategory.varie:
-        return Icons.category;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final housesAsync = ref.watch(houseNotifierProvider);
 
     if (_trip == null) {
       return Scaffold(
@@ -137,7 +95,7 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
               child: Text(
                 '${_selectedItems.length} oggetti',
                 style: TextStyle(
-                  fontSize: context.fontSizeSm,
+                  fontSize: context.fontSizeXs,
                   fontWeight: FontWeight.w600,
                   color: colorScheme.onPrimaryContainer,
                 ),
@@ -148,24 +106,21 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
       ),
       body: Stack(
         children: [
-          // Contenuto scrollabile
-            SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.only(
-                left: context.spacingSm,
-                right: context.spacingSm,
-                top: context.spacingSm,
-                bottom: 130, // Spazio per il bottone fisso
-              ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Filtri
-                _buildFilters(context, colorScheme, housesAsync),
-                SizedBox(height: context.spacingMd),
-                // Items
-                _buildItemsContent(context, colorScheme),
-              ],
+          // Widget riutilizzabile per la selezione degli items
+          Padding(
+            padding: EdgeInsets.only(
+              left: context.spacingSm,
+              right: context.spacingSm,
+              top: context.spacingSm,
+            ),
+            child: TripItemsSelector(
+              selectedItems: _selectedItems,
+              onSelectionChanged: (items) {
+                setState(() {
+                  _selectedItems = items;
+                });
+              },
+              shrinkWrap: false,
             ),
           ),
           
@@ -193,316 +148,6 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildFilters(BuildContext context, ColorScheme colorScheme, AsyncValue<List<HouseModel>> housesAsync) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Seleziona casa',
-          style: TextStyle(
-            fontSize: context.fontSizeSm,
-            color: colorScheme.onSurface.withValues(alpha: 0.7),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        SizedBox(height: context.spacingXs),
-        SizedBox(
-          height: 40,
-          child: housesAsync.when(
-            data: (houses) => SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const ClampingScrollPhysics(),
-              child: Row(
-                children: houses.map((house) {
-                  final isSelected = _selectedHouseId == house.id;
-                  return Padding(
-                    padding: EdgeInsets.only(right: context.spacingSm),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: context.responsiveBorderRadius(20),
-                        onTap: () {
-                          setState(() {
-                            _selectedHouseId = isSelected ? null : house.id;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: context.spacingMd,
-                            vertical: context.spacingSm,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected ? _accentColor : colorScheme.surfaceContainerHighest,
-                            borderRadius: context.responsiveBorderRadius(20),
-                            border: Border.all(
-                              color: isSelected ? _accentColor : colorScheme.outline.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.home_outlined,
-                                size: 16,
-                                color: isSelected ? Colors.white : _accentColor,
-                              ),
-                              SizedBox(width: context.spacingXs),
-                              Text(
-                                house.name,
-                                style: TextStyle(
-                                  fontSize: context.fontSizeMd,
-                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                  color: isSelected ? Colors.white : colorScheme.onSurface.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Errore: $e'),
-          ),
-        ),
-        SizedBox(height: context.spacingMd),
-        Text(
-          'Categoria',
-          style: TextStyle(
-            fontSize: context.fontSizeSm,
-            color: colorScheme.onSurface.withValues(alpha: 0.7),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        SizedBox(height: context.spacingXs),
-        SizedBox(
-          height: 40,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const ClampingScrollPhysics(),
-            child: Row(
-              children: [
-                _buildCategoryChip(context, colorScheme, null, 'Tutto'),
-                ...ItemCategory.values.map((cat) => 
-                  _buildCategoryChip(context, colorScheme, cat, cat.displayName),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategoryChip(BuildContext context, ColorScheme colorScheme, ItemCategory? category, String label) {
-    final isSelected = _selectedCategory == category;
-    return Padding(
-      padding: EdgeInsets.only(right: context.spacingSm),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: context.responsiveBorderRadius(20),
-          onTap: () => setState(() => _selectedCategory = category),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: EdgeInsets.symmetric(
-              horizontal: context.spacingMd,
-              vertical: context.spacingSm,
-            ),
-            decoration: BoxDecoration(
-              color: isSelected ? _accentColor.withValues(alpha: 0.2) : colorScheme.surfaceContainerHighest,
-              borderRadius: context.responsiveBorderRadius(20),
-              border: Border.all(
-                color: isSelected ? _accentColor : colorScheme.outline.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: context.fontSizeMd,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? _accentColor : colorScheme.onSurface.withValues(alpha: 0.8),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItemsContent(BuildContext context, ColorScheme colorScheme) {
-    if (_selectedHouseId == null) {
-      return Padding(
-        padding: EdgeInsets.symmetric(vertical: context.spacingXl),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.home_outlined,
-                size: context.iconSizeHero,
-                color: _accentColor.withValues(alpha: 0.5),
-              ),
-              SizedBox(height: context.spacingMd),
-              Text(
-                'Seleziona una casa per vedere gli oggetti',
-                style: TextStyle(
-                  color: AppColors.disabled,
-                  fontSize: context.fontSizeMd,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final itemsAsync = ref.watch(itemNotifierProvider(_selectedHouseId!));
-
-    return itemsAsync.when(
-      data: (items) {
-        final filteredItems = _selectedCategory == null
-            ? items
-            : items.where((i) => i.category == _selectedCategory).toList();
-
-        if (filteredItems.isEmpty) {
-          return Padding(
-            padding: EdgeInsets.symmetric(vertical: context.spacingXl),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: context.iconSizeHero,
-                    color: _accentColor.withValues(alpha: 0.5),
-                  ),
-                  SizedBox(height: context.spacingMd),
-                  Text(
-                    _selectedCategory == null
-                        ? 'Nessun oggetto in questa casa'
-                        : 'Nessun oggetto in "${_selectedCategory!.displayName}"',
-                    style: TextStyle(
-                      color: AppColors.disabled,
-                      fontSize: context.fontSizeMd,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        // Usa Column, NON ListView - tutto scorre insieme
-        return Column(
-          children: filteredItems.map((item) => _buildItemCard(context, colorScheme, item)).toList(),
-        );
-      },
-      loading: () => const Padding(
-        padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => Padding(
-        padding: const EdgeInsets.all(32),
-        child: Center(child: Text('Errore: $e')),
-      ),
-    );
-  }
-
-  Widget _buildItemCard(BuildContext context, ColorScheme colorScheme, ItemModel item) {
-    final selectedQuantity = _getSelectedQuantity(item.id);
-    final maxQuantity = item.quantity ?? 1;
-    final isSelected = selectedQuantity > 0;
-
-    return Card(
-      margin: EdgeInsets.only(bottom: context.spacingSm),
-      shape: RoundedRectangleBorder(
-        borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
-        side: BorderSide(
-          color: isSelected ? _accentColor.withValues(alpha: 0.5) : colorScheme.outline.withValues(alpha: 0.2),
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      color: isSelected ? _accentColor.withValues(alpha: 0.1) : colorScheme.surface,
-      child: Padding(
-        padding: EdgeInsets.all(context.spacingSm),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: context.responsiveBorderRadius(12),
-              ),
-              child: Icon(_getCategoryIcon(item.category), color: _accentColor),
-            ),
-            SizedBox(width: context.spacingSm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    style: TextStyle(fontSize: context.fontSizeMd, fontWeight: FontWeight.w500),
-                  ),
-                  Text(
-                    'Disponibili: $maxQuantity',
-                    style: TextStyle(fontSize: context.fontSizeSm, color: colorScheme.onSurface.withValues(alpha: 0.6)),
-                  ),
-                ],
-              ),
-            ),
-            if (maxQuantity == 1)
-              Checkbox(
-                value: isSelected,
-                activeColor: _accentColor,
-                onChanged: (_) => _updateItemQuantity(item, _selectedHouseId!, isSelected ? 0 : 1),
-              )
-            else
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.remove_circle_outline,
-                      color: selectedQuantity > 0 ? _accentColor : colorScheme.onSurface.withValues(alpha: 0.3),
-                    ),
-                    onPressed: selectedQuantity > 0 ? () => _updateItemQuantity(item, _selectedHouseId!, selectedQuantity - 1) : null,
-                  ),
-                  SizedBox(
-                    width: 40,
-                    child: Text(
-                      '$selectedQuantity',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: context.fontSizeLg,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected ? _accentColor : colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.add_circle_outline,
-                      color: selectedQuantity < maxQuantity ? _accentColor : colorScheme.onSurface.withValues(alpha: 0.3),
-                    ),
-                    onPressed: selectedQuantity < maxQuantity ? () => _updateItemQuantity(item, _selectedHouseId!, selectedQuantity + 1) : null,
-                  ),
-                ],
-              ),
-          ],
-        ),
       ),
     );
   }
@@ -537,7 +182,7 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
                       Text(
                         'Salva oggetti',
                         style: TextStyle(
-                          fontSize: context.fontSizeLg,
+                          fontSize: context.fontSizeMd,
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurfaceVariant,
                         ),

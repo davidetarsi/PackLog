@@ -18,13 +18,13 @@ class AppSpacing {
   static const double iconHero = 64;
 
   // === Font size base ===
-  static const double fontXs = 10;
-  static const double fontSm = 12;
-  static const double fontMd = 14;
-  static const double fontLg = 16;
-  static const double fontXl = 18;
-  static const double fontTitle = 20;
-  static const double fontHeading = 24;
+  static const double fontXs = 14;
+  static const double fontSm = 16;
+  static const double fontMd = 18;
+  static const double fontLg = 20;
+  static const double fontXl = 22;
+  static const double fontTitle = 24;
+  static const double fontHeading = 28;
 
   // === Padding predefiniti ===
 

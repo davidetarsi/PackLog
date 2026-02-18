@@ -3,21 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
+import '../../items/model/item_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/trip_summary_card.dart';
+import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/design_system/design_system.dart';
 
 /// Enum per le tab di filtro delle categorie
 enum TripItemFilterTab {
   all('Tutto', null),
-  vestiti('Vestiti', 'Vestiti'),
-  toiletries('Toiletries', 'Toiletries'),
-  elettronica('Elettronica', 'Elettronica'),
-  varie('Varie', 'Varie');
+  vestiti('Vestiti', ItemCategory.vestiti),
+  toiletries('Toiletries', ItemCategory.toiletries),
+  elettronica('Elettronica', ItemCategory.elettronica),
+  varie('Varie', ItemCategory.varie);
 
   final String label;
-  final String? categoryFilter;
+  final ItemCategory? categoryFilter;
   const TripItemFilterTab(this.label, this.categoryFilter);
 }
 
@@ -75,9 +78,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               ),
 
               // Pill tabs per filtrare per categoria
-              _CategoryFilterTabs(
-                selectedTab: _selectedTab,
-                onTabSelected: (tab) => setState(() => _selectedTab = tab),
+              AppPillTab<TripItemFilterTab>(
+                items: TripItemFilterTab.values,
+                selectedItem: _selectedTab,
+                getLabel: (tab) => tab.label,
+                onSelected: (tab) => setState(() => _selectedTab = tab),
+                height: 40,
+                scrollPadding: EdgeInsets.symmetric(horizontal: context.spacingSm),
               ),
               SizedBox(height: context.spacingSm),
 
@@ -124,27 +131,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   Widget _buildNotFoundScreen(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Lista non trovata')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.luggage_outlined,
-              size: context.iconSizeHero,
-              color: AppColors.disabled,
-            ),
-            SizedBox(height: context.spacingMd),
-            Text(
-              'Lista non trovata',
-              style: TextStyle(fontSize: context.fontSizeXl),
-            ),
-            SizedBox(height: context.spacingXl),
-            ElevatedButton.icon(
-              onPressed: () => context.go('/trips'),
-              icon: const Icon(Icons.arrow_back),
-              label: const Text('Torna alle liste'),
-            ),
-          ],
+      body: EmptyState(
+        icon: Icons.luggage_outlined,
+        title: 'Lista non trovata',
+        action: ElevatedButton.icon(
+          onPressed: () => context.go('/trips'),
+          icon: const Icon(Icons.arrow_back),
+          label: const Text('Torna alle liste'),
         ),
       ),
     );
@@ -155,75 +148,27 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         ? 'Nessun oggetto nella lista'
         : 'Nessun oggetto in "${_selectedTab.label}"';
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.inventory_2_outlined,
-            size: context.iconSizeHero,
-            color: AppColors.disabled,
-          ),
-          SizedBox(height: context.spacingMd),
-          Text(
-            message,
-            style: TextStyle(
-              color: AppColors.disabled,
-              fontSize: context.fontSizeMd,
-            ),
-          ),
-        ],
-      ),
+    return EmptyState(
+      icon: Icons.inventory_2_outlined,
+      title: message,
     );
   }
 
   Widget _buildErrorScreen(BuildContext context, Object error) {
     return Scaffold(
       appBar: AppBar(title: const Text('Errore')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: context.iconSizeHero,
-              color: AppColors.destructive,
-            ),
-            SizedBox(height: context.spacingMd),
-            Text('Errore: $error'),
-            SizedBox(height: context.spacingMd),
-            ElevatedButton(
-              onPressed: () {
-                ref.read(tripNotifierProvider.notifier).refresh();
-              },
-              child: const Text('Riprova'),
-            ),
-          ],
-        ),
+      body: ErrorState(
+        error: error,
+        onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
       ),
     );
   }
 
   Future<void> _showDeleteDialog(BuildContext context, TripModel trip) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Elimina lista'),
-        content: Text('Sei sicuro di voler eliminare "${trip.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => context.pop(false),
-            child: const Text('Annulla'),
-          ),
-          TextButton(
-            onPressed: () => context.pop(true),
-            child: const Text(
-              'Elimina',
-              style: TextStyle(color: AppColors.destructive),
-            ),
-          ),
-        ],
-      ),
+      itemType: 'lista',
+      itemName: trip.name,
     );
     if (confirmed == true && context.mounted) {
       final success = await ErrorRetryDialog.executeWithRetry(
@@ -237,77 +182,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         context.go('/trips');
       }
     }
-  }
-}
-
-/// Pill tabs per filtrare gli items per categoria
-class _CategoryFilterTabs extends StatelessWidget {
-  final TripItemFilterTab selectedTab;
-  final ValueChanged<TripItemFilterTab> onTabSelected;
-
-  const _CategoryFilterTabs({
-    required this.selectedTab,
-    required this.onTabSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SizedBox(
-      height: 40,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const ClampingScrollPhysics(),
-        padding: EdgeInsets.symmetric(horizontal: context.spacingSm),
-        child: Row(
-          children: TripItemFilterTab.values.map((tab) {
-            final isSelected = selectedTab == tab;
-            return Padding(
-              padding: EdgeInsets.only(right: context.spacingSm),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: context.responsiveBorderRadius(20),
-                  onTap: () => onTabSelected(tab),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: context.spacingMd,
-                      vertical: context.spacingSm,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? colorScheme.primary
-                          : colorScheme.surfaceContainerHighest,
-                      borderRadius: context.responsiveBorderRadius(20),
-                      border: Border.all(
-                        color: isSelected
-                            ? colorScheme.primary
-                            : colorScheme.outline.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      tab.label,
-                      style: TextStyle(
-                        fontSize: context.fontSizeMd,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                        color: isSelected
-                            ? colorScheme.onPrimary
-                            : colorScheme.onSurface.withValues(alpha: 0.8),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
   }
 }
 
@@ -489,9 +363,9 @@ class _TripItemCard extends ConsumerWidget {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      item.category,
+                      item.category.name,
                       style: TextStyle(
-                        fontSize: context.fontSizeSm,
+                        fontSize: context.fontSizeXs,
                         color: colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
@@ -512,7 +386,7 @@ class _TripItemCard extends ConsumerWidget {
                 child: Text(
                   'x${item.quantity}',
                   style: TextStyle(
-                    fontSize: context.fontSizeMd,
+                    fontSize: context.fontSizeXs,
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
