@@ -1,8 +1,9 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
-import '../../../shared/design_system/design_system.dart';
+import '../../../shared/helpers/design_system.dart';
 import 'item_form_content.dart';
 
 /// Mostra il bottom sheet per creare o modificare un item
@@ -60,7 +61,7 @@ class AddEditItemSheet extends StatelessWidget {
               child: Row(
                 children: [
                   Text(
-                    itemId != null ? 'Modifica oggetto' : 'Nuovo oggetto',
+                    itemId != null ? 'items.edit'.tr() : 'items.add_new'.tr(),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const Spacer(),
@@ -111,7 +112,7 @@ class AddEditItemScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(itemId != null ? 'Modifica oggetto' : 'Nuovo oggetto'),
+        title: Text(itemId != null ? 'items.edit'.tr() : 'items.add_new'.tr()),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

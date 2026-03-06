@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stuff_tracker_2/features/items/view/item_category.dart';
@@ -6,7 +7,7 @@ import '../providers/item_provider.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
-import '../../../shared/design_system/design_system.dart';
+import '../../../shared/helpers/design_system.dart';
 import 'add_edit_item_screen.dart';
 
 class ItemCard extends ConsumerWidget {
@@ -128,16 +129,16 @@ class _ItemPopupMenu extends ConsumerWidget {
         if (value == 'delete') await _handleDelete(context, ref);
       },
       itemBuilder: (context) => [
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'edit',
-          child: Row(children: [Icon(Icons.edit), SizedBox(width: 12), Text('Modifica')]),
+          child: Row(children: [const Icon(Icons.edit), const SizedBox(width: 12), Text('common.edit'.tr())]),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'delete',
           child: Row(children: [
-            Icon(Icons.delete, color: AppColors.destructive),
-            SizedBox(width: 12),
-            Text('Elimina', style: TextStyle(color: AppColors.destructive)),
+            const Icon(Icons.delete, color: AppColors.destructive),
+            const SizedBox(width: 12),
+            Text('common.delete'.tr(), style: const TextStyle(color: AppColors.destructive)),
           ]),
         ),
       ],
@@ -147,7 +148,7 @@ class _ItemPopupMenu extends ConsumerWidget {
   Future<void> _handleDelete(BuildContext context, WidgetRef ref) async {
     final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
-      itemType: 'oggetto',
+      itemType: 'common.item_type'.tr(),
       itemName: item.name,
     );
 
@@ -155,8 +156,8 @@ class _ItemPopupMenu extends ConsumerWidget {
       await ErrorRetryDialog.executeWithRetry(
         context: context,
         operation: () => ref.read(itemNotifierProvider(houseId).notifier).deleteItem(item.id, houseId),
-        errorTitle: 'Errore',
-        errorMessage: 'Impossibile eliminare "${item.name}".',
+        errorTitle: 'common.error'.tr(),
+        errorMessage: 'errors.delete_item_failed'.tr(args: [item.name]),
       );
     }
   }

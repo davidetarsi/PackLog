@@ -4,7 +4,7 @@ import '../repositories/item_repository.dart';
 
 part 'item_provider.g.dart';
 
-@Riverpod(keepAlive: true)
+@riverpod
 class ItemNotifier extends _$ItemNotifier {
   ItemRepository? repository;
 

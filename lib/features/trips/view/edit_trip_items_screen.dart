@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -54,8 +55,8 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
     final success = await ErrorRetryDialog.executeWithRetry(
       context: context,
       operation: () => ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip),
-      errorTitle: 'Errore di salvataggio',
-      errorMessage: 'Impossibile salvare gli oggetti del viaggio.',
+      errorTitle: 'errors.save_error'.tr(),
+      errorMessage: 'errors.save_trip_items_failed'.tr(),
     );
 
     if (mounted) {
@@ -72,14 +73,14 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
 
     if (_trip == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Modifica oggetti')),
+        appBar: AppBar(title: Text('trips.edit_items'.tr())),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Modifica oggetti'),
+        title: Text('trips.edit_items'.tr()),
         actions: [
           Center(
             child: Container(
@@ -93,7 +94,7 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
                 borderRadius: context.responsiveBorderRadius(12),
               ),
               child: Text(
-                '${_selectedItems.length} oggetti',
+                'common.items_count'.tr(args: [_selectedItems.length.toString()]),
                 style: TextStyle(
                   fontSize: context.fontSizeXs,
                   fontWeight: FontWeight.w600,
@@ -180,7 +181,7 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
                       Icon(Icons.save, color: colorScheme.onSurfaceVariant),
                       SizedBox(width: context.spacingSm),
                       Text(
-                        'Salva oggetti',
+                        'trips.save_items'.tr(),
                         style: TextStyle(
                           fontSize: context.fontSizeMd,
                           fontWeight: FontWeight.w600,

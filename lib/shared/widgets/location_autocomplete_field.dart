@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -387,8 +388,8 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
         focusNode: _focusNode,
         decoration: InputDecoration(
           floatingLabelBehavior: FloatingLabelBehavior.always,
-          labelText: widget.labelText ?? 'Destinazione',
-          hintText: widget.hintText ?? 'Cerca città, regione o stato...',
+          labelText: widget.labelText ?? 'common.destination'.tr(),
+          hintText: widget.hintText ?? 'common.search_location_hint'.tr(),
           border: widget.showBorder
               ? OutlineInputBorder(
                   borderRadius: BorderRadius.circular(

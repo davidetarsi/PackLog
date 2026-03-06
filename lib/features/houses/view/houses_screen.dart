@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +8,7 @@ import '../model/house_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/constants/house_icons.dart';
-import '../../../shared/design_system/design_system.dart';
+import '../../../shared/helpers/design_system.dart';
 
 class HousesScreen extends ConsumerWidget {
   const HousesScreen({super.key});
@@ -17,14 +18,14 @@ class HousesScreen extends ConsumerWidget {
     final housesAsync = ref.watch(houseNotifierProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Case')),
+      appBar: AppBar(title: Text('houses.title'.tr())),
       body: housesAsync.when(
         data: (houses) {
           if (houses.isEmpty) {
-            return const EmptyState(
+            return EmptyState(
               icon: Icons.home_outlined,
-              title: 'Nessuna casa',
-              subtitle: 'Aggiungi la tua prima casa',
+              title: 'houses.no_houses'.tr(),
+              subtitle: 'houses.no_houses_subtitle'.tr(),
             );
           }
 
@@ -176,7 +177,7 @@ class _HouseCard extends ConsumerWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '${stats.totalItems} oggetti salvati',
+                          'houses.total_items'.tr(args: [stats.totalItems.toString()]),
                           style: TextStyle(
                             fontSize: context.fontSizeSm,
                             color: colorScheme.onSurface.withValues(alpha: 0.6),
@@ -185,14 +186,14 @@ class _HouseCard extends ConsumerWidget {
                         const Spacer(),
                         if (stats.hasItemsInTrip)
                           _Badge(
-                            label: 'In viaggio',
+                            label: 'houses.badge_in_trip'.tr(),
                             color: colorScheme.primary,
                           ),
                         if (stats.hasItemsInTrip && stats.hasTemporaryItems)
                           const SizedBox(width: 8),
                         if (stats.hasTemporaryItems)
                           _Badge(
-                            label: 'Ospite',
+                            label: 'houses.badge_guest'.tr(),
                             color: Colors.blue,
                           ),
                       ],

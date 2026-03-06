@@ -1,14 +1,18 @@
+import 'package:easy_localization/easy_localization.dart';
+
 /// Tipo di località geografica
 enum LocationType {
   /// Città, paese o villaggio
-  city('Città'),
+  city('location_types.city'),
   /// Stato, regione o provincia
-  state('Regione'),
+  state('location_types.state'),
   /// Nazione/Paese
-  country('Paese'),
+  country('location_types.country'),
   /// Altro tipo non classificato
-  other('Altro');
+  other('location_types.other');
 
-  final String displayName;
-  const LocationType(this.displayName);
+  final String _key;
+  const LocationType(this._key);
+  
+  String get displayName => _key.tr();
 }

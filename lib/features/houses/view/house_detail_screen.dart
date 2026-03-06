@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,7 +7,7 @@ import '../../items/view/items_screen.dart';
 import 'add_edit_house_screen.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
-import '../../../shared/design_system/design_system.dart';
+import '../../../shared/helpers/design_system.dart';
 
 class HouseDetailScreen extends ConsumerWidget {
   final String houseId;
@@ -19,13 +20,13 @@ class HouseDetailScreen extends ConsumerWidget {
       operation: () async {
         await ref.read(houseNotifierProvider.notifier).setPrimaryHouse(houseId);
       },
-      errorTitle: 'Errore',
-      errorMessage: 'Impossibile impostare "$houseName" come casa principale.',
+      errorTitle: 'common.error'.tr(),
+      errorMessage: 'errors.set_primary_failed'.tr(args: [houseName]),
     );
 
     if (success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('"$houseName" è ora la casa principale')),
+        SnackBar(content: Text('houses.primary_house_set'.tr(args: [houseName]))),
       );
     }
   }
@@ -33,7 +34,7 @@ class HouseDetailScreen extends ConsumerWidget {
   Future<void> _showDeleteDialog(BuildContext context, WidgetRef ref, String houseName) async {
     final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
-      itemType: 'casa',
+      itemType: 'common.house_type'.tr(),
       itemName: houseName,
     );
 
@@ -43,8 +44,8 @@ class HouseDetailScreen extends ConsumerWidget {
         operation: () async {
           await ref.read(houseNotifierProvider.notifier).deleteHouse(houseId);
         },
-        errorTitle: 'Errore',
-        errorMessage: 'Impossibile eliminare "$houseName".',
+        errorTitle: 'common.error'.tr(),
+        errorMessage: 'errors.delete_failed'.tr(args: [houseName]),
       );
 
       if (success && context.mounted) {
@@ -63,14 +64,14 @@ class HouseDetailScreen extends ConsumerWidget {
         if (matchingHouses.isEmpty) {
           // Casa non trovata - mostra schermata di errore invece di reindirizzare
           return Scaffold(
-            appBar: AppBar(title: const Text('Casa non trovata')),
+            appBar: AppBar(title: Text('houses.house_not_found'.tr())),
             body: EmptyState(
               icon: Icons.home_outlined,
-              title: 'La casa richiesta non è stata trovata.',
+              title: 'houses.house_not_found_message'.tr(),
               action: ElevatedButton.icon(
                 onPressed: () => context.go('/'),
                 icon: const Icon(Icons.home),
-                label: const Text('Torna alla lista case'),
+                label: Text('houses.back_to_houses'.tr()),
               ),
             ),
           );
@@ -112,13 +113,13 @@ class HouseDetailScreen extends ConsumerWidget {
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'edit',
                     child: Row(
                       children: [
-                        Icon(Icons.edit),
-                        SizedBox(width: 12),
-                        Text('Modifica'),
+                        const Icon(Icons.edit),
+                        const SizedBox(width: 12),
+                        Text('common.edit'.tr()),
                       ],
                     ),
                   ),
@@ -132,21 +133,18 @@ class HouseDetailScreen extends ConsumerWidget {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          'Imposta come principale',
+                          'houses.set_as_primary'.tr(),
                         ),
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(Icons.delete,
-                         ),
-                        SizedBox(width: 12),
-                        Text(
-                          'Elimina',
-                        ),
+                        const Icon(Icons.delete),
+                        const SizedBox(width: 12),
+                        Text('common.delete'.tr()),
                       ],
                     ),
                   ),
@@ -160,7 +158,7 @@ class HouseDetailScreen extends ConsumerWidget {
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, stack) => Scaffold(
-        appBar: AppBar(title: const Text('Errore')),
+        appBar: AppBar(title: Text('common.error'.tr())),
         body: ErrorState(
           error: error,
           onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),

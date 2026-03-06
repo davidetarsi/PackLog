@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../items/providers/item_provider.dart';
@@ -57,10 +58,12 @@ Future<HouseDeletionBlocker> canDeleteHouse(Ref ref, String houseId) async {
 
   // Determina se può essere eliminata
   if (itemsCount > 0) {
+    final itemWord = itemsCount == 1 
+        ? 'houses.item_singular'.tr() 
+        : 'houses.item_plural'.tr();
     return HouseDeletionBlocker(
       canDelete: false,
-      reason: 'La casa contiene $itemsCount oggett${itemsCount == 1 ? 'o' : 'i'}. '
-              'Rimuovi tutti gli oggetti prima di eliminare la casa.',
+      reason: 'houses.cannot_delete_has_items_count'.tr(args: [itemsCount.toString(), itemWord]),
       itemsCount: itemsCount,
       tripsAsOriginCount: tripsAsOriginCount,
       tripsAsDestinationCount: tripsAsDestinationCount,
@@ -70,15 +73,21 @@ Future<HouseDeletionBlocker> canDeleteHouse(Ref ref, String houseId) async {
   if (tripsAsOriginCount > 0 || tripsAsDestinationCount > 0) {
     final reasons = <String>[];
     if (tripsAsOriginCount > 0) {
-      reasons.add('$tripsAsOriginCount viagg${tripsAsOriginCount == 1 ? 'io attivo/programmato contiene' : 'i attivi/programmati contengono'} oggetti provenienti da questa casa');
+      final tripMessage = tripsAsOriginCount == 1
+          ? 'houses.trips_contain_items_singular'.tr(args: [tripsAsOriginCount.toString()])
+          : 'houses.trips_contain_items_plural'.tr(args: [tripsAsOriginCount.toString()]);
+      reasons.add(tripMessage);
     }
     if (tripsAsDestinationCount > 0) {
-      reasons.add('$tripsAsDestinationCount viagg${tripsAsDestinationCount == 1 ? 'io attivo/programmato ha' : 'i attivi/programmati hanno'} questa casa come destinazione');
+      final tripMessage = tripsAsDestinationCount == 1
+          ? 'houses.trips_has_destination_singular'.tr(args: [tripsAsDestinationCount.toString()])
+          : 'houses.trips_has_destination_plural'.tr(args: [tripsAsDestinationCount.toString()]);
+      reasons.add(tripMessage);
     }
 
     return HouseDeletionBlocker(
       canDelete: false,
-      reason: '${reasons.join('. ')}. Attendi la fine dei viaggi o eliminali prima di eliminare la casa.',
+      reason: '${reasons.join('. ')}. ${'houses.wait_trips_end'.tr()}',
       itemsCount: itemsCount,
       tripsAsOriginCount: tripsAsOriginCount,
       tripsAsDestinationCount: tripsAsDestinationCount,

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stuff_tracker_2/features/items/view/item_category_section.dart';
@@ -6,7 +7,7 @@ import '../model/item_model.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../../shared/theme/theme.dart';
-import '../../../shared/design_system/design_system.dart';
+import '../../../shared/helpers/design_system.dart';
 import 'in_transit_section.dart';
 
 class ItemsScreen extends ConsumerWidget {
@@ -37,10 +38,10 @@ class ItemsScreen extends ConsumerWidget {
               final hasTemporaryItems = temporaryItems.isNotEmpty;
 
               if (items.isEmpty && !hasTemporaryItems) {
-                return const EmptyState(
+                return EmptyState(
                   icon: Icons.inventory_2_outlined,
-                  title: 'Nessun oggetto',
-                  subtitle: 'Aggiungi il tuo primo oggetto',
+                  title: 'items.no_items'.tr(),
+                  subtitle: 'items.no_items_subtitle'.tr(),
                 );
               }
 
@@ -66,7 +67,7 @@ class ItemsScreen extends ConsumerWidget {
                       if (itemsByCategory.isNotEmpty) ...[
                       SizedBox(height: context.spacingSm),
                       Text(
-                        'In casa',
+                        'common.at_house'.tr(),
                         style: TextStyle(
                           fontSize: context.fontSizeLg,
                           fontWeight: FontWeight.bold,
@@ -90,7 +91,7 @@ class ItemsScreen extends ConsumerWidget {
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stack) => Center(
-                  child: Text('Errore nel caricamento delle case: $error'),
+                  child: Text('common.error_loading_houses'.tr(namedArgs: {'error': error.toString()})),
                 ),
               );
             },

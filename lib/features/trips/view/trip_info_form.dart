@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../houses/providers/house_provider.dart';
@@ -109,7 +110,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       initialDate: _departureDateTime ?? DateTime.now(),
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-      helpText: 'Seleziona data di partenza',
+      helpText: 'trips.select_departure_date'.tr(),
     );
     if (date == null || !mounted) return;
 
@@ -118,7 +119,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       initialTime: _departureDateTime != null
           ? TimeOfDay.fromDateTime(_departureDateTime!)
           : TimeOfDay.now(),
-      helpText: 'Seleziona ora di partenza',
+      helpText: 'trips.select_departure_time'.tr(),
     );
     if (time == null || !mounted) return;
 
@@ -141,7 +142,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       initialDate: initialDate,
       firstDate: _departureDateTime ?? DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-      helpText: 'Seleziona data di ritorno',
+      helpText: 'trips.select_return_date'.tr(),
     );
     if (date == null || !mounted) return;
 
@@ -150,7 +151,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       initialTime: _returnDateTime != null
           ? TimeOfDay.fromDateTime(_returnDateTime!)
           : TimeOfDay.now(),
-      helpText: 'Seleziona ora di ritorno',
+      helpText: 'trips.select_return_time'.tr(),
     );
     if (time == null || !mounted) return;
 
@@ -171,14 +172,14 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Seleziona casa di destinazione',
+              'trips.select_destination_house'.tr(),
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.cancel_outlined, color: _accentColor),
-            title: const Text('Nessuna (inserisci località)'),
+            title: Text('common.none_insert_location'.tr()),
             trailing: _destinationHouseId == null
                 ? const Icon(Icons.check, color: _accentColor)
                 : null,
@@ -220,10 +221,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   }
 
   String _formatDateTimeLine(DateTime? dateTime) {
-    if (dateTime == null) return 'Tocca per impostare';
-    final months = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
-    return '${dateTime.day} ${months[dateTime.month - 1]} ${dateTime.year} • '
-        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    if (dateTime == null) return 'common.tap_to_set'.tr();
+    return '${DateFormat('d MMM y').format(dateTime)} • ${DateFormat('HH:mm').format(dateTime)}';
   }
 
   @override
@@ -251,7 +250,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
               fontWeight: FontWeight.bold,
             ),
             decoration: InputDecoration(
-              hintText: 'Nome del viaggio...',
+              hintText: 'trips.name_hint'.tr(),
               hintStyle: TextStyle(
                 color: colorScheme.onSurface.withValues(alpha: 0.4),
                 fontWeight: FontWeight.normal,
@@ -264,7 +263,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
             onChanged: (_) => _notifyChanged(),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Il nome è obbligatorio';
+                return 'common.name_required_validation'.tr();
               }
               return null;
             },
@@ -289,7 +288,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                 context,
                 colorScheme,
                 icon: Icons.calendar_month_outlined,
-                label: 'Partenza',
+                label: 'common.departure'.tr(),
                 dateTime: _departureDateTime,
                 onTap: _pickDepartureDateTime,
                 onClear: () {
@@ -315,7 +314,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                 context,
                 colorScheme,
                 icon: Icons.calendar_month_outlined,
-                label: 'Ritorno',
+                label: 'common.return'.tr(),
                 dateTime: _returnDateTime,
                 onTap: _pickReturnDateTime,
                 onClear: () {
@@ -346,7 +345,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                   context,
                   colorScheme,
                   icon: Icons.home_outlined,
-                  label: 'Casa di arrivo',
+                  label: 'common.arrival_house'.tr(),
                   value: _getSelectedHouseName(houses),
                   hasValue: _destinationHouseId != null,
                   onTap: () => _showDestinationHousePicker(houses),
@@ -363,7 +362,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                 ),
                 error: (e, _) => Padding(
                   padding: EdgeInsets.all(context.spacingMd),
-                  child: Text('Errore: $e'),
+                  child: Text('${'common.error'.tr()}: $e'),
                 ),
               ),
               // Location autocomplete (solo se nessuna casa selezionata)
@@ -386,7 +385,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                         child: LocationAutocompleteField(
                           initialValue: _destinationLocation?.displayName,
                           labelText: null,
-                          hintText: 'Cerca città, regione o stato...',
+                          hintText: 'trips.destination_hint'.tr(),
                           showBorder: false,
                           onLocationSelected: (location) {
                             setState(() {
@@ -552,9 +551,9 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
 
   String _getSelectedHouseName(List<HouseModel> houses) {
     if (_destinationHouseId == null) {
-      return 'Nessuna selezionata';
+      return 'common.none_selected'.tr();
     }
     final house = houses.where((h) => h.id == _destinationHouseId).firstOrNull;
-    return house?.name ?? 'Casa sconosciuta';
+    return house?.name ?? 'common.unknown_house'.tr();
   }
 }

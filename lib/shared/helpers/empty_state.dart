@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/error_empty_theme_extension.dart';
+import '../theme/error_empty_theme_extension.dart';
 
 /// Widget standardizzato per stati vuoti.
 /// 

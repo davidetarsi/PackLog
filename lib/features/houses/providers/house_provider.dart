@@ -4,7 +4,7 @@ import '../repositories/house_repository.dart';
 
 part 'house_provider.g.dart';
 
-@Riverpod(keepAlive: true)
+@riverpod
 class HouseNotifier extends _$HouseNotifier {
   HouseRepository? repository;
 

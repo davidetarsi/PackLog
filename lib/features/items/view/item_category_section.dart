@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:stuff_tracker_2/features/items/model/item_model.dart';
 import 'package:stuff_tracker_2/features/items/view/item_card.dart';
@@ -35,7 +36,7 @@ class ItemCategorySection extends StatelessWidget {
               category.displayName,
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: context.fontSizeMd),
             ),
-            subtitle: Text('${items.length} oggetti', style: TextStyle(fontSize: context.fontSizeXs)),
+            subtitle: Text('common.items_count'.tr(args: [items.length.toString()]), style: TextStyle(fontSize: context.fontSizeXs)),
             children: items.map((item) {
               return ItemCard(
                 item: item,

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -60,7 +61,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     
     if (_name.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Il nome è obbligatorio')),
+        SnackBar(content: Text('common.required_field_error'.tr())),
       );
       return;
     }
@@ -71,8 +72,8 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     if (_departureDateTime != null && _returnDateTime != null) {
       if (_returnDateTime!.isBefore(_departureDateTime!)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('La data di ritorno deve essere dopo la partenza'),
+          SnackBar(
+            content: Text('common.return_before_departure_error'.tr()),
           ),
         );
         return;
@@ -96,8 +97,8 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     final success = await ErrorRetryDialog.executeWithRetry(
       context: context,
       operation: () => ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip),
-      errorTitle: 'Errore di salvataggio',
-      errorMessage: 'Impossibile salvare le modifiche al viaggio.',
+      errorTitle: 'errors.save_error'.tr(),
+      errorMessage: 'errors.save_trip_failed'.tr(),
     );
 
     if (mounted) {
@@ -114,14 +115,14 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
 
     if (_trip == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Modifica info')),
+        appBar: AppBar(title: Text('trips.edit_info'.tr())),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Modifica info viaggio'),
+        title: Text('trips.edit_info'.tr()),
       ),
       body: Form(
         key: _formKey,
@@ -226,7 +227,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
                       ),
                       SizedBox(width: context.spacingSm),
                       Text(
-                        'Salva modifiche',
+                        'common.save_changes'.tr(),
                         style: TextStyle(
                           fontSize: context.fontSizeMd,
                           fontWeight: FontWeight.w600,

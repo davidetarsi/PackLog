@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -65,7 +66,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
     if (_name.trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Il nome è obbligatorio')));
+      ).showSnackBar(SnackBar(content: Text('common.required_field_error'.tr())));
       return;
     }
 
@@ -73,8 +74,8 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
     if (_departureDateTime != null && _returnDateTime != null) {
       if (_returnDateTime!.isBefore(_departureDateTime!)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('La data di ritorno deve essere dopo la partenza'),
+          SnackBar(
+            content: Text('common.return_before_departure_error'.tr()),
           ),
         );
         return;
@@ -129,10 +130,10 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
           await ref.read(tripNotifierProvider.notifier).addTrip(trip);
         }
       },
-      errorTitle: 'Errore di salvataggio',
+      errorTitle: 'errors.save_error'.tr(),
       errorMessage: isEditing
-          ? 'Impossibile salvare le modifiche al viaggio.'
-          : 'Impossibile creare il viaggio.',
+          ? 'errors.save_trip_failed'.tr()
+          : 'errors.create_trip_failed'.tr(),
     );
 
     if (mounted) {
@@ -150,7 +151,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.tripId != null ? 'Modifica viaggio' : 'Nuovo viaggio',
+          widget.tripId != null ? 'trips.edit'.tr() : 'trips.add_new'.tr(),
         ),
       ),
       body: Form(
@@ -171,7 +172,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                 children: [
                   // Sezione Info Viaggio
                   Text(
-                    'Informazioni viaggio',
+                    'trips.trip_info'.tr(),
                     style: TextStyle(
                       fontSize: context.fontSizeMd,
                       fontWeight: FontWeight.bold,
@@ -213,7 +214,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Oggetti da portare',
+                        'trips.items_to_bring'.tr(),
                         style: TextStyle(
                           fontSize: context.fontSizeMd,
                           fontWeight: FontWeight.bold,
@@ -230,7 +231,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                           borderRadius: context.responsiveBorderRadius(12),
                         ),
                         child: Text(
-                          '${_selectedItems.length} selezionati',
+                          'common.items_selected'.tr(args: [_selectedItems.length.toString()]),
                           style: TextStyle(
                             fontSize: context.fontSizeXs,
                             fontWeight: FontWeight.w600,
@@ -317,8 +318,8 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                       SizedBox(width: context.spacingSm),
                       Text(
                         widget.tripId != null
-                            ? 'Salva modifiche'
-                            : 'Crea viaggio',
+                            ? 'common.save_changes'.tr()
+                            : 'trips.create_trip'.tr(),
                         style: TextStyle(
                           fontSize: context.fontSizeMd,
                           fontWeight: FontWeight.w600,

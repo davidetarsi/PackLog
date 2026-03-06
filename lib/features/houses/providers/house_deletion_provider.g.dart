@@ -6,7 +6,7 @@ part of 'house_deletion_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$canDeleteHouseHash() => r'e91b8517bc7e3d6806257e90fde5cd1a6b82434a';
+String _$canDeleteHouseHash() => r'd7023ad3549946b43b32fb7b45d337c7fd533bd2';
 
 /// Copied from Dart SDK
 class _SystemHash {

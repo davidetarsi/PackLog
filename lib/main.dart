@@ -8,6 +8,7 @@ import 'core/database/services/backup_service.dart';
 import 'core/database/services/data_integrity_service.dart';
 import 'core/routing/app_router.dart';
 import 'shared/theme/app_theme.dart';
+import 'shared/providers/theme_provider.dart';
 
 void main() async {
   // Assicura che i widget Flutter siano inizializzati
@@ -121,16 +122,18 @@ Future<void> _createAutoBackup() async {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeModeAsync = ref.watch(themeModeNotifierProvider);
+    
     return MaterialApp.router(
       title: 'Stuff Tracker',
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.dark,
+      themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
       routerConfig: appRouter,
       // Localization configuration
       localizationsDelegates: context.localizationDelegates,

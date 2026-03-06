@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../houses/providers/house_provider.dart';
@@ -45,7 +46,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
   
   // Lista di opzioni categoria (include "Tutto" = null)
   static final List<_CategoryFilterOption> _categoryOptions = [
-    _CategoryFilterOption('Tutto', null),
+    _CategoryFilterOption('common.all'.tr(), null),
     ...ItemCategory.values.map(
       (cat) => _CategoryFilterOption(cat.displayName, cat),
     ),
@@ -135,7 +136,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
       children: [
         // Filtro casa
         Text(
-          'Seleziona casa',
+          'common.select_house'.tr(),
           style: TextStyle(
             fontSize: context.fontSizeSm,
             color: colorScheme.onSurface.withValues(alpha: 0.7),
@@ -167,7 +168,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Errore: $e'),
+              error: (e, _) => Text('${'common.error'.tr()}: $e'),
           ),
         ),
         
@@ -175,7 +176,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         
         // Filtro categoria
         Text(
-          'Categoria',
+          'common.category'.tr(),
           style: TextStyle(
             fontSize: context.fontSizeSm,
             color: colorScheme.onSurface.withValues(alpha: 0.7),
@@ -232,7 +233,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Errore: $e')),
+      error: (e, _) => Center(child: Text('${'common.error'.tr()}: $e')),
     );
   }
 
@@ -271,7 +272,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
       ),
       error: (e, _) => Padding(
         padding: EdgeInsets.all(context.spacingLg),
-        child: Center(child: Text('Errore: $e')),
+        child: Center(child: Text('${'common.error'.tr()}: $e')),
       ),
     );
   }
@@ -292,7 +293,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             ),
             SizedBox(height: context.spacingMd),
             Text(
-              'Seleziona una casa per vedere gli oggetti',
+              'trips.select_house_to_view_items'.tr(),
               style: TextStyle(
                 color: AppColors.disabled,
                 fontSize: context.fontSizeMd,
@@ -322,8 +323,8 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             SizedBox(height: context.spacingMd),
             Text(
               _selectedCategory == null
-                  ? 'Nessun oggetto in questa casa'
-                  : 'Nessun oggetto in "${_selectedCategory!.displayName}"',
+                  ? 'common.no_items_in_house'.tr()
+                  : 'common.no_items_in_category'.tr(namedArgs: {'category': _selectedCategory!.displayName}),
               style: TextStyle(
                 color: AppColors.disabled,
                 fontSize: context.fontSizeMd,
@@ -354,7 +355,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               ),
               SizedBox(height: context.spacingMd),
               Text(
-                'Seleziona una casa per vedere gli oggetti',
+                'trips.select_house_to_view_items'.tr(),
                 style: TextStyle(
                   color: AppColors.disabled,
                   fontSize: context.fontSizeMd,
@@ -387,8 +388,8 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               SizedBox(height: context.spacingMd),
               Text(
                 _selectedCategory == null
-                    ? 'Nessun oggetto in questa casa'
-                    : 'Nessun oggetto in "${_selectedCategory!.displayName}"',
+                    ? 'common.no_items_in_house'.tr()
+                    : 'common.no_items_in_category'.tr(namedArgs: {'category': _selectedCategory!.displayName}),
                 style: TextStyle(
                   color: AppColors.disabled,
                   fontSize: context.fontSizeMd,
@@ -454,7 +455,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
                     ),
                   ),
                   Text(
-                    'Disponibili: $maxQuantity',
+                    'common.available_quantity'.tr(args: [maxQuantity.toString()]),
                     style: TextStyle(
                       fontSize: context.fontSizeSm,
                       color: colorScheme.onSurface.withValues(alpha: 0.6),

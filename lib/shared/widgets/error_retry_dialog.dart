@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 /// Risultato del dialog di errore.
@@ -28,10 +29,10 @@ class ErrorRetryDialog {
   /// [ErrorDialogResult.cancel] se annulla.
   static Future<ErrorDialogResult> show({
     required BuildContext context,
-    String title = 'Errore',
+    String? title,
     required String message,
-    String retryText = 'Riprova',
-    String cancelText = 'Annulla',
+    String? retryText,
+    String? cancelText,
     IconData icon = Icons.error_outline,
     Color? iconColor,
   }) async {
@@ -72,7 +73,7 @@ class ErrorRetryDialog {
   static Future<bool> executeWithRetry({
     required BuildContext context,
     required Future<void> Function() operation,
-    String errorTitle = 'Errore',
+    String? errorTitle,
     required String errorMessage,
     VoidCallback? onSuccess,
   }) async {
@@ -89,7 +90,7 @@ class ErrorRetryDialog {
         final result = await show(
           context: context,
           title: errorTitle,
-          message: '$errorMessage\n\nVuoi riprovare?',
+          message: '$errorMessage\n\n${'common.retry_question'.tr()}',
         );
         
         if (result == ErrorDialogResult.cancel) {
@@ -102,10 +103,10 @@ class ErrorRetryDialog {
 }
 
 class _ErrorDialog extends StatelessWidget {
-  final String title;
+  final String? title;
   final String message;
-  final String retryText;
-  final String cancelText;
+  final String? retryText;
+  final String? cancelText;
   final IconData icon;
   final Color iconColor;
 
@@ -129,7 +130,7 @@ class _ErrorDialog extends StatelessWidget {
         color: iconColor,
       ),
       title: Text(
-        title,
+        title ?? 'common.error'.tr(),
         textAlign: TextAlign.center,
       ),
       content: Text(
@@ -143,13 +144,13 @@ class _ErrorDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, ErrorDialogResult.cancel),
-          child: Text(cancelText),
+          child: Text(cancelText ?? 'common.cancel'.tr()),
         ),
         const SizedBox(width: 8),
         FilledButton.icon(
           onPressed: () => Navigator.pop(context, ErrorDialogResult.retry),
           icon: const Icon(Icons.refresh),
-          label: Text(retryText),
+          label: Text(retryText ?? 'common.retry'.tr()),
         ),
       ],
     );

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -99,7 +100,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Seleziona quantità',
+              'common.select_quantity'.tr(),
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
@@ -134,7 +135,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
       if (_selectedHouseId == null) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Seleziona una casa')));
+        ).showSnackBar(SnackBar(content: Text('common.select_house'.tr())));
         return;
       }
 
@@ -187,10 +188,10 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
             await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
           }
         },
-        errorTitle: 'Errore di salvataggio',
+        errorTitle: 'errors.save_error'.tr(),
         errorMessage: isEditing
-            ? 'Impossibile salvare le modifiche all\'oggetto.'
-            : 'Impossibile creare l\'oggetto.',
+            ? 'errors.save_item_failed'.tr()
+            : 'errors.create_item_failed'.tr(),
       );
 
       if (mounted) {
@@ -215,7 +216,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
             housesAsync.when(
               data: (houses) => _buildHouseSelector(houses),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('Errore: $e'),
+              error: (e, _) => Text('${' common.error'.tr()}: $e'),
             ),
             SizedBox(height: context.spacingMd),
           ],
@@ -223,7 +224,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
             controller: _nameController,
             autofocus: !_needsHouseSelection,
             decoration: InputDecoration(
-              labelText: 'Nome *',
+              labelText: 'items.name_label'.tr(),
               border: OutlineInputBorder(
                 borderRadius: context.responsiveBorderRadius(
                   AppConstants.inputBorderRadius,
@@ -232,7 +233,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Il nome è obbligatorio';
+                return 'common.name_required_validation'.tr();
               }
               return null;
             },
@@ -245,7 +246,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
                 child: DropdownButtonFormField<ItemCategory>(
                   initialValue: _selectedCategory,
                   decoration: InputDecoration(
-                    labelText: 'Categoria',
+                    labelText: 'items.category_label'.tr(),
                     border: OutlineInputBorder(
                       borderRadius: context.responsiveBorderRadius(
                         AppConstants.inputBorderRadius,
@@ -274,7 +275,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
                   onTap: _showQuantityPicker,
                   child: InputDecorator(
                     decoration: InputDecoration(
-                      labelText: 'Qtà',
+                      labelText: 'items.quantity_label'.tr(),
                       border: OutlineInputBorder(
                         borderRadius: context.responsiveBorderRadius(
                           AppConstants.inputBorderRadius,
@@ -294,7 +295,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
           TextFormField(
             controller: _descriptionController,
             decoration: InputDecoration(
-              labelText: 'Descrizione',
+              labelText: 'items.description_label'.tr(),
               border: OutlineInputBorder(
                 borderRadius: context.responsiveBorderRadius(
                   AppConstants.inputBorderRadius,
@@ -320,7 +321,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
                     width: context.responsive(20),
                     child: const CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(widget.itemId != null ? 'Salva' : 'Crea'),
+                : Text(widget.itemId != null ? 'common.save'.tr() : 'common.create'.tr()),
           ),
         ],
       ),
@@ -345,7 +346,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
             SizedBox(width: context.spacingSm),
             Expanded(
               child: Text(
-                'Nessuna casa disponibile. Crea prima una casa.',
+                'items.no_houses_available'.tr(),
                 style: TextStyle(color: AppColors.warning),
               ),
             ),
@@ -361,7 +362,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
       onTap: () => _showHousePicker(houses),
       child: InputDecorator(
         decoration: InputDecoration(
-          labelText: 'Casa *',
+          labelText: 'items.house_label'.tr(),
           border: OutlineInputBorder(
             borderRadius: context.responsiveBorderRadius(
               AppConstants.inputBorderRadius,
@@ -379,7 +380,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
                           orElse: () => houses.first,
                         )
                         .name
-                  : 'Seleziona una casa',
+                  : 'items.select_house_prompt'.tr(),
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: _selectedHouseId == null ? AppColors.disabled : null,
               ),
@@ -400,7 +401,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
           Padding(
             padding: sheetContext.responsiveScreenPadding,
             child: Text(
-              'Seleziona casa',
+              'common.select_house'.tr(),
               style: Theme.of(sheetContext).textTheme.titleLarge,
             ),
           ),

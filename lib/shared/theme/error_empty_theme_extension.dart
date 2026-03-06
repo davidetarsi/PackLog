@@ -99,7 +99,7 @@ class ErrorEmptyThemeExtension extends ThemeExtension<ErrorEmptyThemeExtension> 
     ),
     errorStateIconSize: 80,
     errorStateIconColor: AppColors.destructive,
-    errorStateRetryLabel: 'Riprova',
+    errorStateRetryLabel: 'common.retry',
     
     // Spacing
     stateSpacingMd: 16,
@@ -132,7 +132,7 @@ class ErrorEmptyThemeExtension extends ThemeExtension<ErrorEmptyThemeExtension> 
     ),
     errorStateIconSize: 80,
     errorStateIconColor: Colors.red.shade700,
-    errorStateRetryLabel: 'Riprova',
+    errorStateRetryLabel: 'common.retry',
     
     // Spacing
     stateSpacingMd: 16,

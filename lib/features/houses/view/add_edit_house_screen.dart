@@ -1,7 +1,8 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/constants/app_constants.dart';
-import '../../../shared/design_system/design_system.dart';
+import '../../../shared/helpers/design_system.dart';
 import 'house_form_content.dart';
 
 /// Mostra il bottom sheet per creare o modificare una casa
@@ -40,7 +41,7 @@ class AddEditHouseSheet extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  houseId != null ? 'Modifica casa' : 'Nuova casa',
+                  houseId != null ? 'houses.edit'.tr() : 'houses.add_new'.tr(),
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const Spacer(),
@@ -79,7 +80,7 @@ class AddEditHouseScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(houseId != null ? 'Modifica casa' : 'Nuova casa'),
+        title: Text(houseId != null ? 'houses.edit'.tr() : 'houses.add_new'.tr()),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

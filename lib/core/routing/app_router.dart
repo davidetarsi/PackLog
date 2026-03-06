@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/houses/view/houses_screen.dart';
@@ -55,7 +56,7 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'];
         if (id == null || id.isEmpty) {
-          return const _ErrorScreen(message: 'ID casa non valido');
+          return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
         }
         return HouseDetailScreen(houseId: id);
       },
@@ -67,7 +68,7 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'];
         if (id == null || id.isEmpty) {
-          return const _ErrorScreen(message: 'ID viaggio non valido');
+          return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
         }
         return TripDetailScreen(tripId: id);
       },
@@ -85,7 +86,7 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'];
         if (id == null || id.isEmpty) {
-          return const _ErrorScreen(message: 'ID lista non valido');
+          return _ErrorScreen(message: 'errors.invalid_list_id'.tr());
         }
         return AddTripScreen(tripId: id);
       },
@@ -97,7 +98,7 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'];
         if (id == null || id.isEmpty) {
-          return const _ErrorScreen(message: 'ID viaggio non valido');
+          return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
         }
         return EditTripInfoScreen(tripId: id);
       },
@@ -109,7 +110,7 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'];
         if (id == null || id.isEmpty) {
-          return const _ErrorScreen(message: 'ID viaggio non valido');
+          return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
         }
         return EditTripItemsScreen(tripId: id);
       },
@@ -123,7 +124,7 @@ final appRouter = GoRouter(
     ),
   ],
   errorBuilder: (context, state) => Scaffold(
-    appBar: AppBar(title: const Text('Errore')),
+    appBar: AppBar(title: Text('common.error'.tr())),
     body: Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -131,14 +132,14 @@ final appRouter = GoRouter(
           const Icon(Icons.error_outline, size: 64, color: Colors.red),
           const SizedBox(height: 16),
           Text(
-            'Errore di navigazione: ${state.error}',
+            'common.navigation_error'.tr(args: [state.error.toString()]),
             style: const TextStyle(fontSize: 18),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => context.go('/'),
-            child: const Text('Torna alla home'),
+            child: Text('common.back_to_home'.tr()),
           ),
         ],
       ),
@@ -154,7 +155,7 @@ class _ErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Errore')),
+      appBar: AppBar(title: Text('common.error'.tr())),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -169,7 +170,7 @@ class _ErrorScreen extends StatelessWidget {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => context.go('/'),
-              child: const Text('Torna alla home'),
+              child: Text('common.back_to_home'.tr()),
             ),
           ],
         ),

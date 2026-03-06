@@ -1,5 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import '../../theme/error_empty_theme_extension.dart';
+import '../theme/error_empty_theme_extension.dart';
 
 /// Widget standardizzato per stati di errore.
 /// 
@@ -79,7 +80,7 @@ class ErrorState extends StatelessWidget {
           Padding(
             padding: EdgeInsets.symmetric(horizontal: theme.stateSpacingMd),
             child: Text(
-              message ?? 'Errore: $error',
+              message ?? '${'common.error_prefix'.tr()} $error',
               style: messageStyle ?? theme.errorStateMessage,
               textAlign: TextAlign.center,
             ),
@@ -87,7 +88,7 @@ class ErrorState extends StatelessWidget {
           SizedBox(height: theme.stateSpacingMd),
           ElevatedButton(
             onPressed: onRetry,
-            child: Text(retryLabel ?? theme.errorStateRetryLabel),
+            child: Text(retryLabel ?? theme.errorStateRetryLabel.tr()),
           ),
         ],
       ),

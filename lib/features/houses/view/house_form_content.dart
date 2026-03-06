@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -67,7 +68,7 @@ class _HouseFormContentState extends ConsumerState<HouseFormContent> {
     if (_formKey.currentState!.validate()) {
       if (_selectedLocation == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Seleziona una località')),
+          SnackBar(content: Text('common.select_location'.tr())),
         );
         return;
       }
@@ -113,10 +114,10 @@ class _HouseFormContentState extends ConsumerState<HouseFormContent> {
             await ref.read(houseNotifierProvider.notifier).addHouse(house);
           }
         },
-        errorTitle: 'Errore di salvataggio',
+        errorTitle: 'errors.save_error'.tr(),
         errorMessage: isEditing
-            ? 'Impossibile salvare le modifiche alla casa.'
-            : 'Impossibile creare la casa.',
+            ? 'errors.save_house_failed'.tr()
+            : 'errors.create_house_failed'.tr(),
       );
 
       if (mounted) {
@@ -139,23 +140,23 @@ class _HouseFormContentState extends ConsumerState<HouseFormContent> {
             controller: _nameController,
             autofocus: widget.houseId == null,
             decoration: InputDecoration(
-              labelText: 'Nome *',
+              labelText: 'houses.name_label'.tr(),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
               ),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Il nome è obbligatorio';
+                return 'common.name_required_validation'.tr();
               }
               return null;
             },
           ),
           const SizedBox(height: 24),
           LocationAutocompleteField(
-            labelText: 'Località *',
+            labelText: 'houses.location_label'.tr(),
             initialValue: _locationText,
-            hintText: 'Cerca città, regione o stato...',
+            hintText: 'houses.location_hint'.tr(),
             showBorder: true,
             onLocationSelected: (location) {
               setState(() {
@@ -168,7 +169,7 @@ class _HouseFormContentState extends ConsumerState<HouseFormContent> {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Icona',
+              'common.icon'.tr(),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -233,7 +234,7 @@ class _HouseFormContentState extends ConsumerState<HouseFormContent> {
                     width: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(widget.houseId != null ? 'Salva' : 'Crea'),
+                : Text(widget.houseId != null ? 'common.save'.tr() : 'common.create'.tr()),
           ),
         ],
       ),

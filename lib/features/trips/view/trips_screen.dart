@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,17 +8,19 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/trip_summary_card.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
-import '../../../shared/design_system/design_system.dart';
+import '../../../shared/helpers/design_system.dart';
 
 /// Enum per le tab di filtro
 enum TripFilterTab {
-  upcoming('Prossimi'),
-  past('Passati'),
-  saved('Salvati'),
-  all('Tutti');
+  upcoming('trips.filter_upcoming'),
+  past('trips.filter_past'),
+  saved('trips.filter_saved'),
+  all('trips.filter_all');
 
-  final String label;
-  const TripFilterTab(this.label);
+  final String labelKey;
+  const TripFilterTab(this.labelKey);
+  
+  String get label => labelKey.tr();
 }
 
 class TripsScreen extends ConsumerStatefulWidget {
@@ -30,29 +33,7 @@ class TripsScreen extends ConsumerStatefulWidget {
 class _TripsScreenState extends ConsumerState<TripsScreen> {
   TripFilterTab _selectedTab = TripFilterTab.upcoming;
 
-  /// Stima l'altezza di una card in base al suo contenuto
-  static double _estimateCardHeight(TripModel trip) {
-    const maxPreviewItems = 5;
-    double height = 60; // Base: titolo + padding
-
-    if (trip.description != null) {
-      height += 20; // Descrizione
-    }
-
-    if (trip.items.isNotEmpty) {
-      height += 40; // Progress bar + counter + spacing
-      final itemsToShow = trip.items.length > maxPreviewItems
-          ? maxPreviewItems
-          : trip.items.length;
-      height += itemsToShow * 24; // Ogni item ~24px
-
-      if (trip.items.length > maxPreviewItems) {
-        height += 20; // "+N altri"
-      }
-    }
-
-    return height;
-  }
+  
 
   /// Trova il prossimo viaggio più vicino (in corso o futuro)
   TripModel? _findNextTrip(List<TripModel> trips) {
@@ -161,7 +142,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                   vertical: context.spacingSm,
                 ),
                 child: Text(
-                  'Pronto per la tua\nprossima avventura?',
+                  'trips.welcome_title'.tr(),
                   style: TextStyle(
                     fontSize: context.fontSizeHeading,
                     fontWeight: FontWeight.normal,
@@ -209,10 +190,10 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 
 
   Widget _buildEmptyState(BuildContext context) {
-    return const EmptyState(
+    return EmptyState(
       icon: Icons.luggage_outlined,
-      title: 'Nessun viaggio',
-      subtitle: 'Crea il tuo primo viaggio',
+      title: 'trips.no_trips'.tr(),
+      subtitle: 'trips.no_trips_subtitle'.tr(),
     );
   }
 
@@ -222,19 +203,19 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 
     switch (_selectedTab) {
       case TripFilterTab.upcoming:
-        message = 'Nessun viaggio in programma';
+        message = 'trips.no_upcoming'.tr();
         icon = Icons.calendar_today_outlined;
         break;
       case TripFilterTab.past:
-        message = 'Nessun viaggio passato';
+        message = 'trips.no_past'.tr();
         icon = Icons.history_outlined;
         break;
       case TripFilterTab.saved:
-        message = 'Nessun viaggio salvato';
+        message = 'trips.no_saved'.tr();
         icon = Icons.bookmark_border_outlined;
         break;
       case TripFilterTab.all:
-        message = 'Nessun viaggio';
+        message = 'errors.no_trips'.tr();
         icon = Icons.luggage_outlined;
         break;
     }
@@ -406,7 +387,7 @@ class _TripCard extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.only(top: context.spacingXs),
                   child: Text(
-                    '+${trip.items.length - _maxPreviewItems} altri',
+                    'trips.more_items'.tr(args: [(trip.items.length - _maxPreviewItems).toString()]),
                     style: TextStyle(
                       fontSize: context.fontSizeXs + 1,
                       color: colorScheme.onSurface.withValues(alpha: 0.5),
@@ -427,6 +408,30 @@ class _TripsMasonry extends StatelessWidget {
 
   const _TripsMasonry({required this.trips});
 
+  /// Stima l'altezza di una card in base al suo contenuto
+  static double _estimateCardHeight(TripModel trip) {
+    const maxPreviewItems = 5;
+    double height = 60; // Base: titolo + padding
+
+    if (trip.description != null) {
+      height += 20; // Descrizione
+    }
+
+    if (trip.items.isNotEmpty) {
+      height += 40; // Progress bar + counter + spacing
+      final itemsToShow = trip.items.length > maxPreviewItems
+          ? maxPreviewItems
+          : trip.items.length;
+      height += itemsToShow * 24; // Ogni item ~24px
+
+      if (trip.items.length > maxPreviewItems) {
+        height += 20; // "+N altri"
+      }
+    }
+
+    return height;
+  }
+
   @override
   Widget build(BuildContext context) {
     final leftColumnTrips = <TripModel>[];
@@ -435,7 +440,7 @@ class _TripsMasonry extends StatelessWidget {
     double rightColumnHeight = 0;
 
     for (final trip in trips) {
-      final cardHeight = _TripsScreenState._estimateCardHeight(trip);
+      final cardHeight = _estimateCardHeight(trip);
       if (leftColumnHeight <= rightColumnHeight) {
         leftColumnTrips.add(trip);
         leftColumnHeight += cardHeight + 8;

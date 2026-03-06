@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:stuff_tracker_2/features/items/view/in_transit_item_card.dart';
 import 'package:stuff_tracker_2/features/trips/model/trip_model.dart';
@@ -34,14 +35,14 @@ class InTransitSection extends StatelessWidget {
               size: context.iconSizeMd,
             ),
             title: Text(
-              'Temporanei',
+              'common.temporaries'.tr(),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: colorScheme.onSurface,
               ),
             ),
             subtitle: Text(
-              '${items.length} oggetti',
+              'common.items_count'.tr(args: [items.length.toString()]),
               style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7)),
             ),
             children: items.map((item) {
@@ -49,7 +50,7 @@ class InTransitSection extends StatelessWidget {
               final originHouse = matchingHouses.isNotEmpty ? matchingHouses.first : null;
               return InTransitItemCard(
                 item: item,
-                originHouseName: originHouse?.name ?? 'Casa sconosciuta',
+                originHouseName: originHouse?.name ?? 'common.unknown_house'.tr(),
               );
             }).toList(),
           ),

@@ -7,12 +7,12 @@
 library;
 
 // Components
-export 'components/empty_state.dart';
-export 'components/error_state.dart';
-export 'components/bottom_sheet_handle.dart';
+export 'empty_state.dart';
+export 'error_state.dart';
+export 'bottom_sheet_handle.dart';
 
 // Helpers
-export 'helpers/dialog_helpers.dart';
+export 'dialog_helpers.dart';
 
 // Theme Extension (necessaria per context.errorEmptyTheme)
 export '../theme/error_empty_theme_extension.dart';

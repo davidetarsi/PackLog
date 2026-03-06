@@ -1,5 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import '../../theme/theme.dart';
+import '../theme/theme.dart';
 
 /// Helper per i dialog comuni dell'applicazione.
 class DialogHelpers {
@@ -30,20 +31,20 @@ class DialogHelpers {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(customTitle ?? 'Elimina $itemType'),
+        title: Text(customTitle ?? 'dialogs.delete_title'.tr(args: [itemType])),
         content: Text(
-          customMessage ?? 'Sei sicuro di voler eliminare "$itemName"?',
+          customMessage ?? 'dialogs.delete_message'.tr(args: [itemName]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Annulla'),
+            child: Text('dialogs.cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text(
-              'Elimina',
-              style: TextStyle(color: AppColors.destructive),
+            child: Text(
+              'dialogs.delete_confirm'.tr(),
+              style: const TextStyle(color: AppColors.destructive),
             ),
           ),
         ],
@@ -71,8 +72,8 @@ class DialogHelpers {
     required BuildContext context,
     required String title,
     required String message,
-    String confirmLabel = 'Conferma',
-    String cancelLabel = 'Annulla',
+    String? confirmLabel,
+    String? cancelLabel,
     bool isDestructive = false,
   }) async {
     final confirmed = await showDialog<bool>(
@@ -83,12 +84,12 @@ class DialogHelpers {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(cancelLabel),
+            child: Text(cancelLabel ?? 'common.cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(
-              confirmLabel,
+              confirmLabel ?? 'common.confirm'.tr(),
               style: isDestructive
                   ? const TextStyle(color: AppColors.destructive)
                   : null,
@@ -115,7 +116,7 @@ class DialogHelpers {
     required BuildContext context,
     required String title,
     required String message,
-    String okLabel = 'OK',
+    String? okLabel,
     IconData? icon,
     Color? iconColor,
   }) async {
@@ -140,7 +141,7 @@ class DialogHelpers {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text(okLabel),
+            child: Text(okLabel ?? 'common.ok'.tr()),
           ),
         ],
       ),

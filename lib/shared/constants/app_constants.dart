@@ -3,6 +3,13 @@ class AppConstants {
   static const String itemsKey = 'items';
   static const String tripsKey = 'trips';
 
+  // Backup Constants
+  /// Prefisso per i file di backup del database
+  static const String backupFilePrefix = 'stuff-tracker-db';
+  
+  /// Estensione per i file di database
+  static const String databaseFileExtension = '.db';
+
   // UI Constants
   static const double cardBorderRadius = 12.0;
 

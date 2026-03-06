@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,19 +10,21 @@ import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/trip_summary_card.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
-import '../../../shared/design_system/design_system.dart';
+import '../../../shared/helpers/design_system.dart';
 
 /// Enum per le tab di filtro delle categorie
 enum TripItemFilterTab {
-  all('Tutto', null),
-  vestiti('Vestiti', ItemCategory.vestiti),
-  toiletries('Toiletries', ItemCategory.toiletries),
-  elettronica('Elettronica', ItemCategory.elettronica),
-  varie('Varie', ItemCategory.varie);
+  all('trips.filter_all', null),
+  vestiti('categories.vestiti', ItemCategory.vestiti),
+  toiletries('categories.toiletries', ItemCategory.toiletries),
+  elettronica('categories.elettronica', ItemCategory.elettronica),
+  varie('categories.varie', ItemCategory.varie);
 
-  final String label;
+  final String labelKey;
   final ItemCategory? categoryFilter;
-  const TripItemFilterTab(this.label, this.categoryFilter);
+  const TripItemFilterTab(this.labelKey, this.categoryFilter);
+  
+  String get label => labelKey.tr();
 }
 
 class TripDetailScreen extends ConsumerStatefulWidget {
@@ -67,7 +70,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               icon: const Icon(Icons.arrow_back),
               onPressed: () => context.pop(),
             ),
-            title: const Text('Dettaglio viaggio'),
+            title: Text('common.trip_detail'.tr()),
           ),
           body: Column(
             children: [
@@ -130,14 +133,14 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
 
   Widget _buildNotFoundScreen(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Lista non trovata')),
+      appBar: AppBar(title: Text('common.not_found'.tr())),
       body: EmptyState(
         icon: Icons.luggage_outlined,
-        title: 'Lista non trovata',
+        title: 'common.not_found'.tr(),
         action: ElevatedButton.icon(
           onPressed: () => context.go('/trips'),
           icon: const Icon(Icons.arrow_back),
-          label: const Text('Torna alle liste'),
+          label: Text('common.back_to_list'.tr()),
         ),
       ),
     );
@@ -145,8 +148,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
 
   Widget _buildEmptyItemsState(BuildContext context, ColorScheme colorScheme) {
     final message = _selectedTab == TripItemFilterTab.all
-        ? 'Nessun oggetto nella lista'
-        : 'Nessun oggetto in "${_selectedTab.label}"';
+        ? 'trips.no_items_in_list'.tr()
+        : 'trips.no_items_in_category_filter'.tr(args: [_selectedTab.label]);
 
     return EmptyState(
       icon: Icons.inventory_2_outlined,
@@ -156,7 +159,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
 
   Widget _buildErrorScreen(BuildContext context, Object error) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Errore')),
+      appBar: AppBar(title: Text('common.error'.tr())),
       body: ErrorState(
         error: error,
         onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
@@ -167,7 +170,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   Future<void> _showDeleteDialog(BuildContext context, TripModel trip) async {
     final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
-      itemType: 'lista',
+      itemType: 'common.list_type'.tr(),
       itemName: trip.name,
     );
     if (confirmed == true && context.mounted) {
@@ -175,8 +178,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         context: context,
         operation: () =>
             ref.read(tripNotifierProvider.notifier).deleteTrip(widget.tripId),
-        errorTitle: 'Errore di eliminazione',
-        errorMessage: 'Impossibile eliminare il viaggio "${trip.name}".',
+        errorTitle: 'errors.delete_error'.tr(),
+        errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
       );
       if (success && context.mounted) {
         context.go('/trips');
@@ -251,7 +254,7 @@ class _BottomActionButtons extends StatelessWidget {
                       Icon(Icons.checklist, color: iconColor, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        'Modifica oggetti',
+                        'trips.edit_items'.tr(),
                         style: TextStyle(
                           color: iconColor,
                           fontWeight: FontWeight.w600,

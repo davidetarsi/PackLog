@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
@@ -93,7 +94,7 @@ class OnTripQuantityBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        showPartial ? '$text in viaggio' : 'In viaggio',
+        showPartial ? '$text ${'common.in_transit'.tr().toLowerCase()}' : 'common.in_transit'.tr(),
         style: const TextStyle(
           color: AppColors.itemOnTripDark,
           fontSize: 10,
@@ -115,9 +116,9 @@ class OnTripBadge extends StatelessWidget {
         color: AppColors.itemOnTrip,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Text(
-        'In viaggio',
-        style: TextStyle(color: AppColors.onColored, fontSize: 14),
+      child: Text(
+        'common.in_transit'.tr(),
+        style: const TextStyle(color: AppColors.onColored, fontSize: 14),
       ),
     );
   }
@@ -135,9 +136,9 @@ class TemporaryBadge extends StatelessWidget {
         color: AppColors.itemTemporary,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Text(
-        'Temporaneo',
-        style: TextStyle(color: AppColors.onColored, fontSize: 10),
+      child: Text(
+        'common.temporary'.tr(),
+        style: const TextStyle(color: AppColors.onColored, fontSize: 10),
       ),
     );
   }

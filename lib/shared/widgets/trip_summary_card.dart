@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/trips/model/trip_model.dart';
@@ -45,7 +46,7 @@ class TripSummaryCard extends ConsumerWidget {
           return house.name;
         }
       }
-      return 'Casa sconosciuta';
+      return 'common.unknown_house'.tr();
     }
 
     // Usa il getter che gestisce sia il nuovo modello che il campo legacy
@@ -54,24 +55,20 @@ class TripSummaryCard extends ConsumerWidget {
       return displayName;
     }
 
-    return 'Nessuna destinazione';
+    return 'common.no_destination'.tr();
   }
 
   String _formatTripDates() {
     if (trip.departureDateTime == null) return '';
 
     final departure = trip.departureDateTime!;
-    final months = [
-      'Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu',
-      'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic',
-    ];
 
     String formatDate(DateTime date) {
-      return '${date.day} ${months[date.month - 1]}';
+      return DateFormat('d MMM').format(date);
     }
 
     String formatTime(DateTime date) {
-      return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      return DateFormat('HH:mm').format(date);
     }
 
     if (trip.returnDateTime != null) {
@@ -188,7 +185,11 @@ class TripSummaryCard extends ConsumerWidget {
             children: [
               // Testo progresso
               Text(
-                '${trip.completedCount}/${trip.totalCount} pronti ($percentageInt%)',
+                'common.items_ready'.tr(args: [
+                  trip.completedCount.toString(),
+                  trip.totalCount.toString(),
+                  percentageInt.toString(),
+                ]),
                 style: TextStyle(
                   fontSize: context.fontSizeSm,
                   color: colorScheme.onSurface.withValues(alpha: 0.7),

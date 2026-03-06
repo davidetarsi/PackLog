@@ -6,7 +6,7 @@ part of 'item_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$itemNotifierHash() => r'7d0b5ae176d9bf10bc9e2057c4670cd5c11ef357';
+String _$itemNotifierHash() => r'ee0cdf7fd61206bc19263eb0ed3f9ebf96133973';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -29,7 +29,8 @@ class _SystemHash {
   }
 }
 
-abstract class _$ItemNotifier extends BuildlessAsyncNotifier<List<ItemModel>> {
+abstract class _$ItemNotifier
+    extends BuildlessAutoDisposeAsyncNotifier<List<ItemModel>> {
   late final String houseId;
 
   FutureOr<List<ItemModel>> build(String houseId);
@@ -73,7 +74,8 @@ class ItemNotifierFamily extends Family<AsyncValue<List<ItemModel>>> {
 
 /// See also [ItemNotifier].
 class ItemNotifierProvider
-    extends AsyncNotifierProviderImpl<ItemNotifier, List<ItemModel>> {
+    extends
+        AutoDisposeAsyncNotifierProviderImpl<ItemNotifier, List<ItemModel>> {
   /// See also [ItemNotifier].
   ItemNotifierProvider(String houseId)
     : this._internal(
@@ -123,7 +125,8 @@ class ItemNotifierProvider
   }
 
   @override
-  AsyncNotifierProviderElement<ItemNotifier, List<ItemModel>> createElement() {
+  AutoDisposeAsyncNotifierProviderElement<ItemNotifier, List<ItemModel>>
+  createElement() {
     return _ItemNotifierProviderElement(this);
   }
 
@@ -143,13 +146,14 @@ class ItemNotifierProvider
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin ItemNotifierRef on AsyncNotifierProviderRef<List<ItemModel>> {
+mixin ItemNotifierRef on AutoDisposeAsyncNotifierProviderRef<List<ItemModel>> {
   /// The parameter `houseId` of this provider.
   String get houseId;
 }
 
 class _ItemNotifierProviderElement
-    extends AsyncNotifierProviderElement<ItemNotifier, List<ItemModel>>
+    extends
+        AutoDisposeAsyncNotifierProviderElement<ItemNotifier, List<ItemModel>>
     with ItemNotifierRef {
   _ItemNotifierProviderElement(super.provider);
 

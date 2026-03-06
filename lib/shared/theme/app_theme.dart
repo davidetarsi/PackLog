@@ -22,11 +22,38 @@ class AppTheme {
     0xFF2D2D2D,
   ); // Grigio scuro
 
-  /// Tema chiaro (fallback, ma l'app userà principalmente il dark)
+  /// Tema chiaro - Palette curata con arancione su sfondo bianco/grigio chiaro
   static ThemeData get light {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: _primaryOrange,
-      brightness: Brightness.light,
+    const colorScheme = ColorScheme.light(
+      // Colori primari (arancione)
+      primary: _primaryOrange,
+      onPrimary: Color.fromARGB(255, 240, 226, 212),
+      primaryContainer: Color(0xFFFFE0CC), // Arancione molto chiaro
+      onPrimaryContainer: Color(0xFF5C2000),
+      // Colori secondari
+      secondary: Color(0xFFFF8A50),
+      onSecondary: Color.fromARGB(255, 206, 205, 205),
+      secondaryContainer: Color(0xFFFFE0CC),
+      onSecondaryContainer: Color(0xFF5C2000),
+      // Colori terziari
+      tertiary: Color(0xFFFFAB73),
+      onTertiary: Color.fromARGB(213, 255, 255, 255),
+      // Superfici (bianco/grigio chiaro)
+      surface: Color(0xFFFAFAFA), // Grigio chiarissimo
+      onSurface: Color(0xFF1C1C1C),
+      surfaceContainerLowest: Colors.white,
+      surfaceContainerLow: Color(0xFFF5F5F5),
+      surfaceContainer: Color(0xFFEFEFEF),
+      surfaceContainerHigh: Color(0xFFE8E8E8),
+      surfaceContainerHighest: Color(0xFFE0E0E0),
+      // Altri colori
+      error: Color(0xFFB00020),
+      onError: Colors.white,
+      outline: Color(0xFFBDBDBD),
+      outlineVariant: Color(0xFFE0E0E0),
+      inverseSurface: Color(0xFF2D2D2D),
+      onInverseSurface: Color(0xFFF5F5F5),
+      inversePrimary: Color(0xFFFFAB73),
     );
 
     return _buildTheme(colorScheme, AppColorsExtension.light);

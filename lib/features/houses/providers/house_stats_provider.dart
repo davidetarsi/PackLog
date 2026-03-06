@@ -19,7 +19,7 @@ class HouseStats {
 }
 
 /// Provider che calcola le statistiche per una casa specifica
-@Riverpod(keepAlive: true)
+@riverpod
 Future<HouseStats> houseStats(Ref ref, String houseId) async {
   // Ottieni tutti gli oggetti della casa
   final itemsAsync = ref.watch(itemNotifierProvider(houseId));

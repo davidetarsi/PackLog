@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:stuff_tracker_2/features/items/view/item_category.dart';
 import 'package:stuff_tracker_2/features/trips/model/trip_model.dart';
@@ -32,7 +33,7 @@ class InTransitItemCard extends StatelessWidget {
             Icon(Icons.local_shipping, size: 14, color: colorScheme.primary),
             const SizedBox(width: 4),
             Text(
-              'Da $originHouseName',
+              '${'common.from'.tr()} $originHouseName',
               style: TextStyle(color: colorScheme.primary, fontSize: 14),
             ),
           ],
