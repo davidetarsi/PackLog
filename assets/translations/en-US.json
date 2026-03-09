@@ -32,6 +32,8 @@
     "cannot_delete_title": "Cannot delete",
     "cannot_delete_has_items": "The house contains items. Move or delete them first.",
     "cannot_delete_has_items_count": "The house contains {} {}. Remove all items before deleting the house.",
+    "permanent_items_count": "{} items in the house",
+    "temporary_items_count": "{} items on a trip",
     "item_singular": "item",
     "item_plural": "items",
     "cannot_delete_in_trips": "Some items are currently on trips. Complete or delete trips first.",
@@ -66,6 +68,7 @@
     "quantity_label": "Qty",
     "house_label": "House *",
     "space_label": "Space",
+    "select_space": "Select a space",
     "in_house": "At home",
     "in_transit": "In transit",
     "in_transit_subtitle": "{} items arriving",
@@ -97,13 +100,13 @@
     "no_spaces": "No spaces",
     "no_spaces_subtitle": "Spaces help you organize items",
     "all_items": "All",
-    "general_pool": "General Pool",
+    "default": "Default",
     "name_required": "Name*",
     "name_label": "Name *",
     "name_hint": "E.g. Bedroom Closet, Garage...",
     "select_icon": "Select an icon (optional)",
     "delete_confirmation": "Are you sure you want to delete \"{}\"?",
-    "delete_warning": "Items in this space will return to the house's general pool",
+    "delete_warning": "Items in this space will return to the house's Default",
     "space_deleted": "Space \"{}\" deleted"
   },
   "luggages": {
@@ -127,7 +130,8 @@
     "in_use_by_trips": "Used in {} {}",
     "trip_singular": "trip",
     "trip_plural": "trips",
-    "luggage_deleted": "Luggage \"{}\" deleted"
+    "luggage_deleted": "Luggage \"{}\" deleted",
+    "manage": "Manage luggages"
   },
   "house_icons": {
     "home": "Home",

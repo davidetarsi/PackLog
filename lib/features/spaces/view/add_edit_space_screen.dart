@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../model/space_model.dart';
 import '../providers/space_provider.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -126,6 +127,8 @@ class _AddEditSpaceSheetState extends ConsumerState<AddEditSpaceSheet> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
+        // Invalida il provider per aggiornare le tabs immediatamente
+        ref.invalidate(spacesByHouseProvider(widget.houseId));
         Navigator.pop(context);
       }
     }
@@ -243,28 +246,11 @@ class _AddEditSpaceSheetState extends ConsumerState<AddEditSpaceSheet> {
 
   Widget _buildIconSelector() {
     final colorScheme = Theme.of(context).colorScheme;
-    final icons = {
-      'meeting_room': Icons.meeting_room,
-      'kitchen': Icons.kitchen,
-      'bed': Icons.bed,
-      'living': Icons.living,
-      'bathroom': Icons.bathroom,
-      'door_sliding': Icons.door_sliding,
-      'garage': Icons.garage,
-      'yard': Icons.yard,
-      'balcony': Icons.balcony,
-      'storage': Icons.storage,
-      'workspaces': Icons.workspaces,
-      'dining': Icons.restaurant,
-      'desk': Icons.desk,
-      'chair': Icons.chair,
-      'shelves': Icons.shelves,
-    };
 
     return Wrap(
       spacing: context.spacingSm,
       runSpacing: context.spacingSm,
-      children: icons.entries.map((entry) {
+      children: SpaceIcons.all.entries.map((entry) {
         final iconName = entry.key;
         final iconData = entry.value;
         final isSelected = _selectedIconName == iconName;

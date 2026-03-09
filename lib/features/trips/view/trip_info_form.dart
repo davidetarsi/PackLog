@@ -127,7 +127,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       _departureDateTime = DateTime(
         date.year, date.month, date.day, time.hour, time.minute,
       );
-      final autoReturn = _departureDateTime!.add(const Duration(hours: 12));
+      final autoReturn = _departureDateTime!.add(const Duration(hours: 1));
       if (_returnDateTime == null || _returnDateTime!.isBefore(_departureDateTime!)) {
         _returnDateTime = autoReturn;
       }

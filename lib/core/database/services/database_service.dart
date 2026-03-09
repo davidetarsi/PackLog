@@ -84,7 +84,7 @@ class DatabaseService {
   }) async {
     int attempts = 0;
     int delayMs = config.initialDelayMs;
-    Exception? lastError;
+    Object? lastError;
 
     while (attempts < config.maxAttempts) {
       attempts++;
@@ -101,7 +101,7 @@ class DatabaseService {
         
         return DatabaseResult.success(result, attempts: attempts);
       } catch (e) {
-        lastError = e as Exception;
+        lastError = e;
         
         debugPrint(
           '[DatabaseService] ${operationName ?? 'Operazione'} '

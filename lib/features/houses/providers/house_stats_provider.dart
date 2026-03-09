@@ -28,8 +28,8 @@ Future<HouseStats> houseStats(Ref ref, String houseId) async {
   // Ottieni tutti i viaggi
   final tripsAsync = await ref.watch(tripNotifierProvider.future);
   
-  // Filtra solo i viaggi attivi (non completati)
-  final activeTrips = tripsAsync.where((trip) => !trip.isCompleted).toList();
+  // Filtra solo i viaggi effettivamente in corso (non upcoming né completed)
+  final activeTrips = tripsAsync.where((trip) => trip.isActive).toList();
   
   // Calcola se ci sono oggetti della casa in viaggio
   bool hasItemsInTrip = false;

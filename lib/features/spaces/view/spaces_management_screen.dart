@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/space_model.dart';
 import '../providers/space_provider.dart';
 import '../../items/repositories/item_repository.dart';
-import '../../../shared/constants/house_icons.dart';
+import '../../items/providers/item_provider.dart';
+import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -86,6 +87,10 @@ class SpacesManagementSheet extends ConsumerWidget {
       );
 
       if (success && context.mounted) {
+        // Invalida i provider per aggiornare immediatamente la UI
+        ref.invalidate(spacesByHouseProvider(houseId));
+        ref.invalidate(itemNotifierProvider(houseId));
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('spaces.space_deleted'.tr(args: [space.name]))),
         );
@@ -154,7 +159,7 @@ class SpacesManagementSheet extends ConsumerWidget {
                       child: ListTile(
                         leading: Icon(
                           space.iconName != null
-                              ? HouseIcons.getIcon(space.iconName!)
+                              ? SpaceIcons.getIcon(space.iconName!)
                               : Icons.meeting_room,
                           color: colorScheme.primary,
                           size: context.iconSizeMd,
@@ -172,6 +177,7 @@ class SpacesManagementSheet extends ConsumerWidget {
                                 );
                                 if (context.mounted) {
                                   ref.invalidate(spacesByHouseProvider(houseId));
+                                  ref.invalidate(itemNotifierProvider(houseId));
                                 }
                                 break;
                               case 'delete':
@@ -222,6 +228,7 @@ class SpacesManagementSheet extends ConsumerWidget {
                   await showAddEditSpaceSheet(context, houseId: houseId);
                   if (context.mounted) {
                     ref.invalidate(spacesByHouseProvider(houseId));
+                    ref.invalidate(itemNotifierProvider(houseId));
                   }
                 },
                 icon: const Icon(Icons.add),

@@ -111,14 +111,14 @@ class OnTripBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
         color: AppColors.itemOnTrip,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
         'common.in_transit'.tr(),
-        style: const TextStyle(color: AppColors.onColored, fontSize: 14),
+        style: const TextStyle(color: AppColors.onColored, fontSize: 11),
       ),
     );
   }
