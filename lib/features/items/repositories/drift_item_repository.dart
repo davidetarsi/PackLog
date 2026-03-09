@@ -131,6 +131,67 @@ class DriftItemRepository implements ItemRepository {
 
   // === Conversioni ===
 
+  @override
+  Future<List<ItemModel>> getItemsBySpaceId(String houseId, String spaceId) async {
+    final result = await _dbService.executeWithRetry(
+      () => _dao.getItemsBySpaceId(houseId, spaceId),
+      operationName: 'getItemsBySpaceId(house: $houseId, space: $spaceId)',
+    );
+    
+    if (!result.success) {
+      debugPrint('[ItemRepo] Errore caricando items per spazio: ${result.error}');
+      return [];
+    }
+    
+    return result.data!.map(_toModel).toList();
+  }
+
+  @override
+  Future<List<ItemModel>> getItemsInGeneralPool(String houseId) async {
+    final result = await _dbService.executeWithRetry(
+      () => _dao.getItemsInGeneralPool(houseId),
+      operationName: 'getItemsInGeneralPool($houseId)',
+    );
+    
+    if (!result.success) {
+      debugPrint('[ItemRepo] Errore caricando items pool generale: ${result.error}');
+      return [];
+    }
+    
+    return result.data!.map(_toModel).toList();
+  }
+
+  @override
+  Future<int> countItemsBySpace(String spaceId) async {
+    final result = await _dbService.executeWithRetry(
+      () => _dao.countItemsBySpace(spaceId),
+      operationName: 'countItemsBySpace($spaceId)',
+    );
+    
+    if (!result.success) {
+      debugPrint('[ItemRepo] Errore contando items per spazio: ${result.error}');
+      return 0;
+    }
+    
+    return result.data!;
+  }
+
+  /// Stream reattivo degli oggetti filtrati per spazio
+  Stream<List<ItemModel>> watchItemsBySpaceId(String houseId, String spaceId) {
+    return _dao.watchItemsBySpaceId(houseId, spaceId).map(
+      (items) => items.map(_toModel).toList(),
+    );
+  }
+
+  /// Stream reattivo degli oggetti nel pool generale
+  Stream<List<ItemModel>> watchItemsInGeneralPool(String houseId) {
+    return _dao.watchItemsInGeneralPool(houseId).map(
+      (items) => items.map(_toModel).toList(),
+    );
+  }
+
+  // === Conversioni ===
+
   ItemModel _toModel(Item item) {
     return ItemModel(
       id: item.id,
@@ -139,6 +200,7 @@ class DriftItemRepository implements ItemRepository {
       category: ItemCategoryConverter.fromDatabase(item.category),
       description: item.description,
       quantity: item.quantity,
+      spaceId: item.spaceId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     );
@@ -152,6 +214,7 @@ class DriftItemRepository implements ItemRepository {
       category: Value(ItemCategoryConverter.toDatabase(model.category)),
       description: Value(model.description),
       quantity: Value(model.quantity),
+      spaceId: Value(model.spaceId),
       createdAt: Value(model.createdAt),
       updatedAt: Value(model.updatedAt),
     );

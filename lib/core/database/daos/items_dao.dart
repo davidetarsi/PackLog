@@ -56,4 +56,54 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       batch.insertAll(items, itemsList);
     });
   }
+
+  // === Space Filtering Methods ===
+
+  /// Ottiene gli oggetti di una casa filtrati per spazio specifico
+  Future<List<Item>> getItemsBySpaceId(String houseId, String spaceId) {
+    return (select(items)
+          ..where((i) => i.houseId.equals(houseId) & i.spaceId.equals(spaceId)))
+        .get();
+  }
+
+  /// Ottiene gli oggetti nel pool generale di una casa (spaceId == null)
+  Future<List<Item>> getItemsInGeneralPool(String houseId) {
+    return (select(items)
+          ..where((i) => i.houseId.equals(houseId) & i.spaceId.isNull()))
+        .get();
+  }
+
+  /// Stream degli oggetti filtrati per spazio
+  Stream<List<Item>> watchItemsBySpaceId(String houseId, String spaceId) {
+    return (select(items)
+          ..where((i) => i.houseId.equals(houseId) & i.spaceId.equals(spaceId)))
+        .watch();
+  }
+
+  /// Stream degli oggetti nel pool generale
+  Stream<List<Item>> watchItemsInGeneralPool(String houseId) {
+    return (select(items)
+          ..where((i) => i.houseId.equals(houseId) & i.spaceId.isNull()))
+        .watch();
+  }
+
+  /// Conta gli oggetti in uno spazio specifico
+  Future<int> countItemsBySpace(String spaceId) async {
+    final query = selectOnly(items)
+      ..addColumns([items.id.count()])
+      ..where(items.spaceId.equals(spaceId));
+    
+    final result = await query.getSingleOrNull();
+    return result?.read(items.id.count()) ?? 0;
+  }
+
+  /// Conta gli oggetti nel pool generale di una casa
+  Future<int> countItemsInGeneralPool(String houseId) async {
+    final query = selectOnly(items)
+      ..addColumns([items.id.count()])
+      ..where(items.houseId.equals(houseId) & items.spaceId.isNull());
+    
+    final result = await query.getSingleOrNull();
+    return result?.read(items.id.count()) ?? 0;
+  }
 }

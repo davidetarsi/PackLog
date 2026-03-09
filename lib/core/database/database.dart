@@ -8,9 +8,14 @@ import 'tables/houses_table.dart';
 import 'tables/items_table.dart';
 import 'tables/trips_table.dart';
 import 'tables/trip_items_table.dart';
+import 'tables/spaces_table.dart';
+import 'tables/luggages_table.dart';
+import 'tables/trip_luggage_entries_table.dart';
 import 'daos/houses_dao.dart';
 import 'daos/items_dao.dart';
 import 'daos/trips_dao.dart';
+import 'daos/spaces_dao.dart';
+import 'daos/luggages_dao.dart';
 
 part 'database.g.dart';
 
@@ -19,11 +24,14 @@ part 'database.g.dart';
 /// Contiene tutte le tabelle:
 /// - [Houses]: le case/luoghi dove sono conservati gli oggetti
 /// - [Items]: gli oggetti, ognuno appartiene a una casa
+/// - [Spaces]: spazi/armadi all'interno delle case (flat structure)
+/// - [Luggages]: bagagli riutilizzabili associati a case
 /// - [Trips]: i viaggi
-/// - [TripItemEntries]: gli oggetti associati a ogni viaggio
+/// - [TripItemEntries]: gli oggetti associati a ogni viaggio (snapshot pattern)
+/// - [TripLuggageEntries]: junction table per la relazione M:N trips-luggages
 @DriftDatabase(
-  tables: [Houses, Items, Trips, TripItemEntries],
-  daos: [HousesDao, ItemsDao, TripsDao],
+  tables: [Houses, Items, Spaces, Luggages, Trips, TripItemEntries, TripLuggageEntries],
+  daos: [HousesDao, ItemsDao, SpacesDao, LuggagesDao, TripsDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -34,7 +42,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -90,6 +98,77 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('ALTER TABLE houses ADD COLUMN location_lon REAL');
           await customStatement("ALTER TABLE houses ADD COLUMN icon_name TEXT NOT NULL DEFAULT 'home'");
           await customStatement('ALTER TABLE houses ADD COLUMN is_primary INTEGER NOT NULL DEFAULT 0');
+        }
+
+        if (from < 4) {
+          // Migrazione v3 -> v4: Aggiungi Spaces e Luggages
+          
+          // ═══════════════════════════════════════════════════════════
+          // STEP 1: Crea tabella Spaces
+          // ═══════════════════════════════════════════════════════════
+          // 
+          // Spazi/armadi all'interno delle case per organizzazione granulare.
+          // Struttura FLAT (no nested spaces) per evitare Recursive CTE.
+          await customStatement('''
+            CREATE TABLE spaces (
+              id TEXT NOT NULL PRIMARY KEY,
+              house_id TEXT NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
+              name TEXT NOT NULL CHECK(length(name) >= 1 AND length(name) <= 100),
+              icon_name TEXT,
+              created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+          
+          // ═══════════════════════════════════════════════════════════
+          // STEP 2: Crea tabella Luggages
+          // ═══════════════════════════════════════════════════════════
+          // 
+          // Bagagli riutilizzabili associati a case.
+          // NON usano snapshot pattern, sono entità globali linkate ai viaggi.
+          await customStatement('''
+            CREATE TABLE luggages (
+              id TEXT NOT NULL PRIMARY KEY,
+              house_id TEXT NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
+              name TEXT NOT NULL CHECK(length(name) >= 1 AND length(name) <= 100),
+              size_type TEXT NOT NULL,
+              volume_liters INTEGER,
+              created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+          
+          // ═══════════════════════════════════════════════════════════
+          // STEP 3: Crea junction table TripLuggageEntries (M:N)
+          // ═══════════════════════════════════════════════════════════
+          // 
+          // Relazione Many-to-Many tra Trips e Luggages.
+          // Cascade delete su entrambe le FK: eliminando trip o luggage,
+          // la entry viene eliminata automaticamente.
+          await customStatement('''
+            CREATE TABLE trip_luggage_entries (
+              trip_id TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+              luggage_id TEXT NOT NULL REFERENCES luggages(id) ON DELETE CASCADE,
+              PRIMARY KEY (trip_id, luggage_id)
+            )
+          ''');
+          
+          // ═══════════════════════════════════════════════════════════
+          // STEP 4: Aggiungi space_id a Items table
+          // ═══════════════════════════════════════════════════════════
+          // 
+          // NULLABLE: Se null, l'oggetto appartiene al pool generale della casa.
+          // ON DELETE SET NULL: Eliminando uno spazio, gli oggetti tornano
+          // al pool generale SENZA essere cancellati (data preservation).
+          // 
+          // Trade-off: Usiamo ALTER TABLE invece di ricreare la tabella
+          // per preservare tutti i dati esistenti. Gli oggetti esistenti
+          // avranno space_id = NULL (pool generale).
+          await customStatement('''
+            ALTER TABLE items 
+            ADD COLUMN space_id TEXT 
+            REFERENCES spaces(id) ON DELETE SET NULL
+          ''');
         }
       },
       beforeOpen: (details) async {

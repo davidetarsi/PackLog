@@ -3,6 +3,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../items/model/item_model.dart';
+import '../../luggages/model/luggage_model.dart';
 
 part 'trip_model.freezed.dart';
 part 'trip_model.g.dart';
@@ -62,6 +63,9 @@ class TripModel with _$TripModel {
     /// Località di destinazione completa (quando non si seleziona una casa)
     /// Include coordinate, tipo di località, etc.
     LocationSuggestionModel? destinationLocation,
+
+    /// Bagagli associati al viaggio (relazione M:N via junction table)
+    @Default([]) List<LuggageModel> luggages,
 
     /// Viaggio salvato/preferito
     @Default(false) bool isSaved,
@@ -126,6 +130,17 @@ class TripModel with _$TripModel {
   /// Percentuale di completamento
   double get completionPercentage =>
       totalCount > 0 ? completedCount / totalCount : 0;
+
+  /// Conta il numero di bagagli associati al viaggio
+  int get luggageCount => luggages.length;
+
+  /// Calcola il volume totale dei bagagli (in litri)
+  int get totalLuggageVolume {
+    return luggages.fold<int>(
+      0,
+      (sum, luggage) => sum + (luggage.effectiveVolumeLiters ?? 0),
+    );
+  }
 
   factory TripModel.fromJson(Map<String, dynamic> json) =>
       _$TripModelFromJson(json);

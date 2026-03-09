@@ -43,6 +43,11 @@ class ItemModel with _$ItemModel {
     required ItemCategory category,
     String? description,
     int? quantity,
+    
+    /// ID dello spazio a cui appartiene l'oggetto (opzionale).
+    /// Se null, l'oggetto appartiene al pool generale della casa.
+    String? spaceId,
+    
     required DateTime createdAt,
     required DateTime updatedAt,
   }) = _ItemModel;

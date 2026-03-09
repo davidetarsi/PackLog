@@ -4,7 +4,7 @@ import '../repositories/trip_repository.dart';
 
 part 'trip_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class TripNotifier extends _$TripNotifier {
   TripRepository? repository;
 

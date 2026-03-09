@@ -27,6 +27,10 @@ mixin _$ItemModel {
   ItemCategory get category => throw _privateConstructorUsedError;
   String? get description => throw _privateConstructorUsedError;
   int? get quantity => throw _privateConstructorUsedError;
+
+  /// ID dello spazio a cui appartiene l'oggetto (opzionale).
+  /// Se null, l'oggetto appartiene al pool generale della casa.
+  String? get spaceId => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime get updatedAt => throw _privateConstructorUsedError;
 
@@ -52,6 +56,7 @@ abstract class $ItemModelCopyWith<$Res> {
     ItemCategory category,
     String? description,
     int? quantity,
+    String? spaceId,
     DateTime createdAt,
     DateTime updatedAt,
   });
@@ -78,6 +83,7 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
     Object? category = null,
     Object? description = freezed,
     Object? quantity = freezed,
+    Object? spaceId = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -107,6 +113,10 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
                 ? _value.quantity
                 : quantity // ignore: cast_nullable_to_non_nullable
                       as int?,
+            spaceId: freezed == spaceId
+                ? _value.spaceId
+                : spaceId // ignore: cast_nullable_to_non_nullable
+                      as String?,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -137,6 +147,7 @@ abstract class _$$ItemModelImplCopyWith<$Res>
     ItemCategory category,
     String? description,
     int? quantity,
+    String? spaceId,
     DateTime createdAt,
     DateTime updatedAt,
   });
@@ -162,6 +173,7 @@ class __$$ItemModelImplCopyWithImpl<$Res>
     Object? category = null,
     Object? description = freezed,
     Object? quantity = freezed,
+    Object? spaceId = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -191,6 +203,10 @@ class __$$ItemModelImplCopyWithImpl<$Res>
             ? _value.quantity
             : quantity // ignore: cast_nullable_to_non_nullable
                   as int?,
+        spaceId: freezed == spaceId
+            ? _value.spaceId
+            : spaceId // ignore: cast_nullable_to_non_nullable
+                  as String?,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -214,6 +230,7 @@ class _$ItemModelImpl extends _ItemModel {
     required this.category,
     this.description,
     this.quantity,
+    this.spaceId,
     required this.createdAt,
     required this.updatedAt,
   }) : super._();
@@ -233,6 +250,11 @@ class _$ItemModelImpl extends _ItemModel {
   final String? description;
   @override
   final int? quantity;
+
+  /// ID dello spazio a cui appartiene l'oggetto (opzionale).
+  /// Se null, l'oggetto appartiene al pool generale della casa.
+  @override
+  final String? spaceId;
   @override
   final DateTime createdAt;
   @override
@@ -240,7 +262,7 @@ class _$ItemModelImpl extends _ItemModel {
 
   @override
   String toString() {
-    return 'ItemModel(id: $id, houseId: $houseId, name: $name, category: $category, description: $description, quantity: $quantity, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'ItemModel(id: $id, houseId: $houseId, name: $name, category: $category, description: $description, quantity: $quantity, spaceId: $spaceId, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -257,6 +279,7 @@ class _$ItemModelImpl extends _ItemModel {
                 other.description == description) &&
             (identical(other.quantity, quantity) ||
                 other.quantity == quantity) &&
+            (identical(other.spaceId, spaceId) || other.spaceId == spaceId) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -273,6 +296,7 @@ class _$ItemModelImpl extends _ItemModel {
     category,
     description,
     quantity,
+    spaceId,
     createdAt,
     updatedAt,
   );
@@ -299,6 +323,7 @@ abstract class _ItemModel extends ItemModel {
     required final ItemCategory category,
     final String? description,
     final int? quantity,
+    final String? spaceId,
     required final DateTime createdAt,
     required final DateTime updatedAt,
   }) = _$ItemModelImpl;
@@ -319,6 +344,11 @@ abstract class _ItemModel extends ItemModel {
   String? get description;
   @override
   int? get quantity;
+
+  /// ID dello spazio a cui appartiene l'oggetto (opzionale).
+  /// Se null, l'oggetto appartiene al pool generale della casa.
+  @override
+  String? get spaceId;
   @override
   DateTime get createdAt;
   @override

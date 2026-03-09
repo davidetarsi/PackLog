@@ -5,9 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
+import '../../luggages/providers/luggage_provider.dart';
+import '../../luggages/model/luggage_model.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/helpers/design_system.dart';
 import 'trip_info_form.dart';
 import 'trip_items_selector.dart';
 
@@ -32,6 +35,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
   String? _destinationHouseId;
   LocationSuggestionModel? _destinationLocation;
   List<TripItem> _selectedItems = [];
+  List<LuggageModel> _selectedLuggages = [];
 
   @override
   void initState() {
@@ -56,6 +60,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
         _destinationHouseId = trip.destinationHouseId;
         _destinationLocation = trip.destinationLocation;
         _selectedItems = List.from(trip.items);
+        _selectedLuggages = List.from(trip.luggages);
       });
     });
   }
@@ -96,6 +101,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                   name: _name.trim(),
                   description: _description,
                   items: _selectedItems,
+                  luggages: _selectedLuggages,
                   departureDateTime: _departureDateTime,
                   returnDateTime: _returnDateTime,
                   destinationHouseId: _destinationHouseId,
@@ -110,6 +116,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
             name: _name.trim(),
             description: _description,
             items: _selectedItems,
+            luggages: _selectedLuggages,
             departureDateTime: _departureDateTime,
             returnDateTime: _returnDateTime,
             destinationHouseId: _destinationHouseId,
@@ -253,6 +260,44 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                       });
                     },
                   ),
+
+                  SizedBox(height: context.spacingLg),
+
+                  // Sezione Bagagli
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'luggages.title'.tr(),
+                        style: TextStyle(
+                          fontSize: context.fontSizeMd,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.spacingSm,
+                          vertical: context.spacingXs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondaryContainer,
+                          borderRadius: context.responsiveBorderRadius(12),
+                        ),
+                        child: Text(
+                          'common.luggages_selected'.tr(args: [_selectedLuggages.length.toString()]),
+                          style: TextStyle(
+                            fontSize: context.fontSizeXs,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: context.spacingSm),
+
+                  _buildLuggageSelector(),
                 ],
               ),
             ),
@@ -331,6 +376,70 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLuggageSelector() {
+    final luggagesAsync = ref.watch(luggageNotifierProvider);
+
+    return luggagesAsync.when(
+      data: (allLuggages) {
+        if (allLuggages.isEmpty) {
+          return EmptyState(
+            icon: Icons.luggage_outlined,
+            title: 'luggages.no_luggages'.tr(),
+            subtitle: 'luggages.no_luggages_subtitle'.tr(),
+          );
+        }
+
+        return Wrap(
+          spacing: context.spacingSm,
+          runSpacing: context.spacingSm,
+          children: allLuggages.map((luggage) {
+            final isSelected = _selectedLuggages.any((l) => l.id == luggage.id);
+            final colorScheme = Theme.of(context).colorScheme;
+
+            return FilterChip(
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.luggage,
+                    size: context.iconSizeSm,
+                    color: isSelected ? colorScheme.onSecondaryContainer : colorScheme.onSurface,
+                  ),
+                  SizedBox(width: context.spacingXs),
+                  Text(luggage.name),
+                  SizedBox(width: context.spacingXs),
+                  Text(
+                    '(${luggage.effectiveVolumeLiters ?? 0}L)',
+                    style: TextStyle(
+                      fontSize: context.fontSizeXs,
+                      color: isSelected
+                          ? colorScheme.onSecondaryContainer.withValues(alpha: 0.7)
+                          : colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedLuggages.add(luggage);
+                  } else {
+                    _selectedLuggages.removeWhere((l) => l.id == luggage.id);
+                  }
+                });
+              },
+              backgroundColor: Colors.transparent,
+              selectedColor: colorScheme.secondaryContainer,
+            );
+          }).toList(),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => const SizedBox.shrink(),
     );
   }
 }

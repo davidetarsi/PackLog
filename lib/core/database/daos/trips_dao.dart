@@ -2,11 +2,13 @@ import 'package:drift/drift.dart';
 import '../database.dart';
 import '../tables/trips_table.dart';
 import '../tables/trip_items_table.dart';
+import '../tables/luggages_table.dart';
+import '../tables/trip_luggage_entries_table.dart';
 
 part 'trips_dao.g.dart';
 
 /// DAO per le operazioni CRUD sui viaggi e i loro oggetti.
-@DriftAccessor(tables: [Trips, TripItemEntries])
+@DriftAccessor(tables: [Trips, TripItemEntries, Luggages, TripLuggageEntries])
 class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   TripsDao(super.db);
 
@@ -93,4 +95,83 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
       }
     });
   }
+
+  // === OPTIMIZED BATCH LOADING (Avoid N+1) ===
+
+  /// Ottiene tutti i trip items per tutti i viaggi in una singola query.
+  /// 
+  /// Returns: Map with tripId as key and List of TripItemEntry as value
+  /// 
+  /// Performance: O(1) query invece di O(N) queries per N trips.
+  Future<Map<String, List<TripItemEntry>>> getAllTripItemsGrouped() async {
+    final allTripItems = await select(tripItemEntries).get();
+    
+    final Map<String, List<TripItemEntry>> grouped = {};
+    for (final item in allTripItems) {
+      grouped.putIfAbsent(item.tripId, () => []).add(item);
+    }
+    
+    return grouped;
+  }
+
+  /// Ottiene tutti i bagagli associati a viaggi, raggruppati per trip_id.
+  /// 
+  /// Esegue un singolo JOIN tra luggages e trip_luggage_entries.
+  /// Returns: Map with tripId as key and List of Luggage as value
+  /// 
+  /// Performance: O(1) query invece di O(N) queries per N trips.
+  Future<Map<String, List<Luggage>>> getAllTripLuggagesGrouped() async {
+    final query = select(luggages).join([
+      innerJoin(
+        tripLuggageEntries,
+        tripLuggageEntries.luggageId.equalsExp(luggages.id),
+      ),
+    ]);
+
+    final results = await query.get();
+    
+    final Map<String, List<Luggage>> grouped = {};
+    for (final row in results) {
+      final luggage = row.readTable(luggages);
+      final tripId = row.readTable(tripLuggageEntries).tripId;
+      grouped.putIfAbsent(tripId, () => []).add(luggage);
+    }
+    
+    return grouped;
+  }
+
+  /// Ottiene un viaggio con tutti i suoi dati in un'unica chiamata ottimizzata.
+  /// 
+  /// Performance: 3 queries parallele invece di 1 + N per items + M per luggages.
+  Future<TripWithRelations?> getTripByIdWithRelations(String id) async {
+    final trip = await getTripById(id);
+    if (trip == null) return null;
+
+    // Esegui in parallelo per massima performance
+    final results = await Future.wait([
+      getTripItemsByTripId(id),
+      db.luggagesDao.getLuggagesByTrip(id),
+    ]);
+
+    return TripWithRelations(
+      trip: trip,
+      items: results[0] as List<TripItemEntry>,
+      luggages: results[1] as List<Luggage>,
+    );
+  }
+}
+
+/// Classe di supporto per raggruppare dati relazionali di un trip.
+/// 
+/// Usato dal DAO per restituire trip + items + luggages in un'unica struttura.
+class TripWithRelations {
+  final Trip trip;
+  final List<TripItemEntry> items;
+  final List<Luggage> luggages;
+
+  TripWithRelations({
+    required this.trip,
+    required this.items,
+    required this.luggages,
+  });
 }

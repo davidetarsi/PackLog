@@ -7,7 +7,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:stuff_tracker_2/features/houses/providers/house_provider.dart';
 import 'package:stuff_tracker_2/features/houses/providers/house_stats_provider.dart';
+import 'package:stuff_tracker_2/features/items/providers/item_provider.dart';
 import 'package:stuff_tracker_2/features/trips/providers/trip_provider.dart';
+import 'package:stuff_tracker_2/features/spaces/providers/space_provider.dart';
+import 'package:stuff_tracker_2/features/luggages/providers/luggage_provider.dart';
 import 'package:stuff_tracker_2/shared/constants/app_constants.dart';
 import '../database_provider.dart';
 import '../exceptions/backup_exceptions.dart';
@@ -276,6 +279,15 @@ class BackupController extends _$BackupController {
     debugPrint('  ↳ Houses provider...');
     ref.invalidate(houseNotifierProvider);
     
+    debugPrint('  ↳ Items provider...');
+    ref.invalidate(itemNotifierProvider);
+    
+    debugPrint('  ↳ Spaces provider...');
+    ref.invalidate(spaceNotifierProvider);
+    
+    debugPrint('  ↳ Luggages provider...');
+    ref.invalidate(luggageNotifierProvider);
+    
     debugPrint('  ↳ House Stats provider (tutti)...');
     ref.invalidate(houseStatsProvider);
     
@@ -284,7 +296,7 @@ class BackupController extends _$BackupController {
     
     // Step 4: Aspetta che i provider principali si ricarichino
     debugPrint('  ↳ Attendo ricaricamento provider...');
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 800));
     
     debugPrint('[BackupController] ✅ Invalidazione completa terminata');
   }

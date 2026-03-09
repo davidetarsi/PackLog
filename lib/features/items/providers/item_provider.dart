@@ -4,7 +4,7 @@ import '../repositories/item_repository.dart';
 
 part 'item_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class ItemNotifier extends _$ItemNotifier {
   ItemRepository? repository;
 
@@ -13,6 +13,18 @@ class ItemNotifier extends _$ItemNotifier {
     repository = ref.watch(itemRepositoryProvider);
     final items = await repository!.getItemsByHouseId(houseId);
     return items;
+  }
+
+  /// Filtra gli items per spazio specifico
+  Future<List<ItemModel>> getItemsBySpace(String houseId, String spaceId) async {
+    repository ??= ref.read(itemRepositoryProvider);
+    return repository!.getItemsBySpaceId(houseId, spaceId);
+  }
+
+  /// Ottiene gli items nel pool generale (senza spazio assegnato)
+  Future<List<ItemModel>> getItemsInGeneralPool(String houseId) async {
+    repository ??= ref.read(itemRepositoryProvider);
+    return repository!.getItemsInGeneralPool(houseId);
   }
 
   Future<void> addItem(ItemModel model) async {

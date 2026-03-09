@@ -6,6 +6,7 @@ import '../model/item_model.dart';
 import '../providers/item_provider.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
+import '../../spaces/providers/space_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -35,6 +36,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
   int _selectedQuantity = 1;
   bool _isLoading = false;
   String? _selectedHouseId;
+  String? _selectedSpaceId;
 
   static const List<int> _quantityOptions = [
     1,
@@ -80,6 +82,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
         _descriptionController.text = item.description ?? '';
         _selectedQuantity = item.quantity ?? 1;
         _selectedCategory = item.category;
+        _selectedSpaceId = item.spaceId;
       });
     });
   }
@@ -162,6 +165,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
                         : _descriptionController.text.trim(),
                     category: _selectedCategory,
                     quantity: quantity,
+                    spaceId: _selectedSpaceId,
                     updatedAt: now,
                   );
             })()
@@ -174,6 +178,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
                   : _descriptionController.text.trim(),
               category: _selectedCategory,
               quantity: quantity,
+              spaceId: _selectedSpaceId,
               createdAt: now,
               updatedAt: now,
             );
@@ -292,6 +297,10 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
             ],
           ),
           SizedBox(height: context.spacingMd),
+          if (_selectedHouseId != null)
+            _buildSpaceSelector(),
+          if (_selectedHouseId != null)
+            SizedBox(height: context.spacingMd),
           TextFormField(
             controller: _descriptionController,
             decoration: InputDecoration(
@@ -435,7 +444,47 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
       ),
     );
     if (selected != null) {
-      setState(() => _selectedHouseId = selected);
+      setState(() {
+        _selectedHouseId = selected;
+        _selectedSpaceId = null;
+      });
     }
+  }
+
+  Widget _buildSpaceSelector() {
+    final spacesAsync = ref.watch(spacesByHouseProvider(_selectedHouseId!));
+
+    return spacesAsync.when(
+      data: (spaces) {
+        return DropdownButtonFormField<String?>(
+          initialValue: _selectedSpaceId,
+          decoration: InputDecoration(
+            labelText: 'items.space_label'.tr(),
+            border: OutlineInputBorder(
+              borderRadius: context.responsiveBorderRadius(
+                AppConstants.inputBorderRadius,
+              ),
+            ),
+          ),
+          items: [
+            DropdownMenuItem<String?>(
+              value: null,
+              child: Text('spaces.general_pool'.tr()),
+            ),
+            ...spaces.map((space) {
+              return DropdownMenuItem<String?>(
+                value: space.id,
+                child: Text(space.name),
+              );
+            }),
+          ],
+          onChanged: (value) {
+            setState(() => _selectedSpaceId = value);
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => const SizedBox.shrink(),
+    );
   }
 }
