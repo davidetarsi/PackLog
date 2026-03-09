@@ -60,6 +60,24 @@ class LocalItemRepository implements ItemRepository {
     }
   }
 
+  @override
+  Future<List<ItemModel>> getItemsBySpaceId(String houseId, String spaceId) async {
+    // Legacy repository non supporta spaces
+    return [];
+  }
+
+  @override
+  Future<List<ItemModel>> getItemsInGeneralPool(String houseId) async {
+    // Legacy repository: tutti gli items sono nel pool generale
+    return getItemsByHouseId(houseId);
+  }
+
+  @override
+  Future<int> countItemsBySpace(String spaceId) async {
+    // Legacy repository non supporta spaces
+    return 0;
+  }
+
   Future<void> _saveItems(List<ItemModel> items) async {
     final itemsJson = items.map((i) => jsonEncode(i.toJson())).toList();
     await _sharedPreferences.setStringList(AppConstants.itemsKey, itemsJson);

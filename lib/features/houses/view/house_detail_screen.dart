@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
+import '../../spaces/view/spaces_management_screen.dart';
+import '../../luggages/view/luggages_management_screen.dart';
 import 'add_edit_house_screen.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -101,6 +103,12 @@ class HouseDetailScreen extends ConsumerWidget {
                 icon: const Icon(Icons.more_vert),
                 onSelected: (value) async {
                   switch (value) {
+                    case 'manage_spaces':
+                      await showSpacesManagementSheet(context, houseId: houseId);
+                      break;
+                    case 'manage_luggages':
+                      await showLuggagesManagementSheet(context, houseId: houseId);
+                      break;
                     case 'edit':
                       showAddEditHouseSheet(context, houseId: houseId);
                       break;
@@ -113,6 +121,27 @@ class HouseDetailScreen extends ConsumerWidget {
                   }
                 },
                 itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'manage_spaces',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.meeting_room),
+                        const SizedBox(width: 12),
+                        Text('spaces.manage'.tr()),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'manage_luggages',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.luggage),
+                        const SizedBox(width: 12),
+                        Text('luggages.manage'.tr()),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
                   PopupMenuItem(
                     value: 'edit',
                     child: Row(

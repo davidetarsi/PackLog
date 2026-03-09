@@ -163,6 +163,31 @@ class TripSummaryCard extends ConsumerWidget {
                         ),
                       ],
                     ),
+
+                    // Badge Bagagli
+                    if (trip.luggageCount > 0) ...[
+                      SizedBox(height: context.spacingXs),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.luggage,
+                            size: context.iconSizeSm,
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                          SizedBox(width: context.spacingXs),
+                          Text(
+                            'common.luggages_count'.tr(args: [
+                              trip.luggageCount.toString(),
+                              trip.totalLuggageVolume.toString(),
+                            ]),
+                            style: TextStyle(
+                              fontSize: context.fontSizeMd,
+                              color: colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

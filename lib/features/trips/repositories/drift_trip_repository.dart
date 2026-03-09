@@ -6,20 +6,24 @@ import '../../../shared/model/location_suggestion_model.dart';
 import '../../../core/database/converters/location_type_converter.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/trips_dao.dart';
+import '../../../core/database/daos/luggages_dao.dart';
 import '../../../core/database/services/database_service.dart';
 import '../../items/model/item_model.dart';
+import '../../luggages/model/luggage_model.dart';
+import '../../../core/database/converters/luggage_size_converter.dart';
 
 /// Implementazione del repository Trip usando Drift (SQLite).
 /// 
 /// Fornisce operazioni robuste con:
 /// - Retry automatico per operazioni fallite
-/// - Transazioni atomiche per viaggio + items
+/// - Transazioni atomiche per viaggio + items + luggages
 /// - Logging delle operazioni
 class DriftTripRepository implements TripRepository {
   final TripsDao _dao;
+  final LuggagesDao _luggagesDao;
   final DatabaseService _dbService;
 
-  DriftTripRepository(this._dao, this._dbService);
+  DriftTripRepository(this._dao, this._luggagesDao, this._dbService);
 
   @override
   Future<bool> init() async {
@@ -28,7 +32,7 @@ class DriftTripRepository implements TripRepository {
 
   @override
   Future<void> addTrip(model.TripModel trip) async {
-    // Usa transazione atomica per garantire che viaggio e items
+    // Usa transazione atomica per garantire che viaggio, items e luggages
     // siano salvati insieme o non salvati affatto
     final result = await _dbService.executeAtomicWithRetry(
       () async {
@@ -42,6 +46,12 @@ class DriftTripRepository implements TripRepository {
           ).toList();
           await _dao.insertMultipleTripItems(tripItems);
         }
+        
+        // Inserisci le associazioni con i bagagli (junction table)
+        if (trip.luggages.isNotEmpty) {
+          final luggageIds = trip.luggages.map((l) => l.id).toList();
+          await _luggagesDao.replaceTripLuggages(trip.id, luggageIds);
+        }
       },
       operationName: 'addTrip(${trip.name})',
       config: RetryConfig.criticalConfig,
@@ -51,18 +61,22 @@ class DriftTripRepository implements TripRepository {
       throw Exception('Impossibile aggiungere il viaggio: ${result.error}');
     }
     
-    debugPrint('[TripRepo] Viaggio aggiunto: ${trip.name} con ${trip.items.length} items');
+    debugPrint('[TripRepo] Viaggio aggiunto: ${trip.name} con ${trip.items.length} items e ${trip.luggages.length} bagagli');
   }
 
   @override
   Future<model.TripModel> getTripById(String id) async {
     final result = await _dbService.executeWithRetry(
       () async {
-        final trip = await _dao.getTripById(id);
-        if (trip == null) return null;
+        // Usa il metodo ottimizzato del DAO con queries parallele
+        final tripWithRelations = await _dao.getTripByIdWithRelations(id);
+        if (tripWithRelations == null) return null;
         
-        final tripItems = await _dao.getTripItemsByTripId(id);
-        return _toModel(trip, tripItems);
+        return _toModel(
+          tripWithRelations.trip,
+          tripWithRelations.items,
+          tripWithRelations.luggages,
+        );
       },
       operationName: 'getTripById($id)',
     );
@@ -78,17 +92,43 @@ class DriftTripRepository implements TripRepository {
   Future<List<model.TripModel>> getAllTrips() async {
     final result = await _dbService.executeWithRetry(
       () async {
-        final trips = await _dao.getAllTrips();
-        final List<model.TripModel> models = [];
+        // ═══════════════════════════════════════════════════════════
+        // OPTIMIZED BATCH LOADING - Risolve N+1 Query Problem
+        // ═══════════════════════════════════════════════════════════
+        // 
+        // Invece di:
+        //   1 query per getAllTrips() +
+        //   N queries per getTripItemsByTripId() +
+        //   N queries per getLuggagesByTrip()
+        //   = 1 + 2N queries totali 😱
+        // 
+        // Usiamo:
+        //   1 query per getAllTrips() +
+        //   1 query per tutti i trip_items (grouped) +
+        //   1 query per tutti i luggages (grouped)
+        //   = 3 queries totali 🚀
+        // ═══════════════════════════════════════════════════════════
         
+        // Query 1: Load all trips
+        final trips = await _dao.getAllTrips();
+        
+        // Query 2: Load all trip items for all trips (batch)
+        final itemsGrouped = await _dao.getAllTripItemsGrouped();
+        
+        // Query 3: Load all luggages for all trips (batch)
+        final luggagesGrouped = await _dao.getAllTripLuggagesGrouped();
+        
+        // In-memory matching (O(N) - molto veloce)
+        final List<model.TripModel> models = [];
         for (final trip in trips) {
           try {
-            final tripItems = await _dao.getTripItemsByTripId(trip.id);
-            models.add(_toModel(trip, tripItems));
+            final tripItems = itemsGrouped[trip.id] ?? [];
+            final luggages = luggagesGrouped[trip.id] ?? [];
+            models.add(_toModel(trip, tripItems, luggages));
           } catch (e) {
             // Se un viaggio ha problemi, logga ma continua con gli altri
-            debugPrint('[TripRepo] Errore caricando items per viaggio ${trip.id}: $e');
-            models.add(_toModel(trip, []));
+            debugPrint('[TripRepo] Errore mappando viaggio ${trip.id}: $e');
+            models.add(_toModel(trip, [], []));
           }
         }
         
@@ -136,6 +176,10 @@ class DriftTripRepository implements TripRepository {
           (item) => _toTripItemCompanion(trip.id, item),
         ).toList();
         await _dao.replaceTripItems(trip.id, tripItems);
+        
+        // Sostituisci tutte le associazioni con i bagagli
+        final luggageIds = trip.luggages.map((l) => l.id).toList();
+        await _luggagesDao.replaceTripLuggages(trip.id, luggageIds);
       },
       operationName: 'updateTrip(${trip.name})',
       config: RetryConfig.criticalConfig,
@@ -145,20 +189,28 @@ class DriftTripRepository implements TripRepository {
       throw Exception('Impossibile aggiornare il viaggio: ${result.error}');
     }
     
-    debugPrint('[TripRepo] Viaggio aggiornato: ${trip.name} con ${trip.items.length} items');
+    debugPrint('[TripRepo] Viaggio aggiornato: ${trip.name} con ${trip.items.length} items e ${trip.luggages.length} bagagli');
   }
 
-  /// Stream reattivo di tutti i viaggi
+  /// Stream reattivo di tutti i viaggi.
+  /// 
+  /// Usa batch loading ottimizzato per evitare N+1 queries.
   Stream<List<model.TripModel>> watchAllTrips() {
     return _dao.watchAllTrips().asyncMap((trips) async {
+      // Batch load di tutti i dati relazionali (2 queries totali)
+      final itemsGrouped = await _dao.getAllTripItemsGrouped();
+      final luggagesGrouped = await _dao.getAllTripLuggagesGrouped();
+      
+      // In-memory matching
       final List<model.TripModel> models = [];
       for (final trip in trips) {
         try {
-          final tripItems = await _dao.getTripItemsByTripId(trip.id);
-          models.add(_toModel(trip, tripItems));
+          final tripItems = itemsGrouped[trip.id] ?? [];
+          final luggages = luggagesGrouped[trip.id] ?? [];
+          models.add(_toModel(trip, tripItems, luggages));
         } catch (e) {
           debugPrint('[TripRepo] Errore nello stream per viaggio ${trip.id}: $e');
-          models.add(_toModel(trip, []));
+          models.add(_toModel(trip, [], []));
         }
       }
       return models;
@@ -167,7 +219,11 @@ class DriftTripRepository implements TripRepository {
 
   // === Conversioni ===
 
-  model.TripModel _toModel(Trip trip, List<TripItemEntry> tripItems) {
+  model.TripModel _toModel(
+    Trip trip,
+    List<TripItemEntry> tripItems,
+    List<Luggage> luggages,
+  ) {
     LocationSuggestionModel? destinationLocation;
     if (trip.locationDisplayName != null && trip.locationDisplayName!.isNotEmpty) {
       destinationLocation = LocationSuggestionModel(
@@ -192,6 +248,7 @@ class DriftTripRepository implements TripRepository {
       returnDateTime: trip.returnDateTime,
       destinationHouseId: trip.destinationHouseId,
       destinationLocation: destinationLocation,
+      luggages: luggages.map(_luggageToModel).toList(),
       isSaved: trip.isSaved,
       createdAt: trip.createdAt,
       updatedAt: trip.updatedAt,
@@ -206,6 +263,18 @@ class DriftTripRepository implements TripRepository {
       quantity: entry.quantity,
       originHouseId: entry.originHouseId,
       isChecked: entry.isChecked,
+    );
+  }
+
+  LuggageModel _luggageToModel(Luggage luggage) {
+    return LuggageModel(
+      id: luggage.id,
+      houseId: luggage.houseId,
+      name: luggage.name,
+      sizeType: const LuggageSizeConverter().fromSql(luggage.sizeType),
+      volumeLiters: luggage.volumeLiters,
+      createdAt: luggage.createdAt,
+      updatedAt: luggage.updatedAt,
     );
   }
 

@@ -1,9 +1,11 @@
 import 'package:drift/drift.dart';
 import 'houses_table.dart';
+import 'spaces_table.dart';
 
 /// Tabella per gli oggetti.
 /// 
 /// Ogni oggetto appartiene a una casa (foreign key).
+/// Opzionalmente, può appartenere a uno spazio specifico della casa.
 class Items extends Table {
   /// ID univoco dell'oggetto (UUID)
   TextColumn get id => text()();
@@ -22,6 +24,12 @@ class Items extends Table {
   
   /// Quantità dell'oggetto
   IntColumn get quantity => integer().nullable()();
+  
+  /// ID dello spazio a cui appartiene l'oggetto (opzionale).
+  /// Se null, l'oggetto appartiene al pool generale della casa.
+  /// ON DELETE SET NULL: se lo spazio viene eliminato, l'oggetto
+  /// torna al pool generale senza essere cancellato.
+  TextColumn get spaceId => text().nullable().references(Spaces, #id, onDelete: KeyAction.setNull)();
   
   /// Data di creazione
   DateTimeColumn get createdAt => dateTime()();

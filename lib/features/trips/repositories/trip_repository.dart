@@ -11,7 +11,11 @@ part 'trip_repository.g.dart';
 TripRepository tripRepository(Ref ref) {
   final database = ref.watch(appDatabaseProvider);
   final dbService = ref.watch(databaseServiceProvider);
-  return DriftTripRepository(database.tripsDao, dbService);
+  return DriftTripRepository(
+    database.tripsDao,
+    database.luggagesDao,
+    dbService,
+  );
 }
 
 abstract class TripRepository {
