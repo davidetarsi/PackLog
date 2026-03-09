@@ -103,11 +103,25 @@ class BackupController extends _$BackupController {
       // Export fisico del database
       final exportedFile = await backupService.exportData(destinationPath);
       
-      // Invalida SOLO il database provider per permettere nuove connessioni
+      // Invalida il database provider per permettere nuove connessioni
       // (necessario perché abbiamo chiamato .close() durante l'export)
-      // NON invalidiamo i provider dei dati perché l'export non modifica nulla
       debugPrint('[BackupController] 🔄 Invalidazione database provider...');
       ref.invalidate(appDatabaseProvider);
+      
+      // Aspetta riconnessione e invalida family providers per sicurezza
+      await Future.delayed(const Duration(milliseconds: 300));
+      final housesAsync = ref.read(houseNotifierProvider);
+      if (housesAsync.hasValue && housesAsync.value != null) {
+        for (final house in housesAsync.value!) {
+          ref.invalidate(itemNotifierProvider(house.id));
+          ref.invalidate(houseStatsProvider(house.id));
+          ref.invalidate(spacesByHouseProvider(house.id));
+          ref.invalidate(spaceCountByHouseProvider(house.id));
+          ref.invalidate(luggagesByHouseProvider(house.id));
+          ref.invalidate(luggageCountByHouseProvider(house.id));
+        }
+      }
+      
       debugPrint('[BackupController] ✅ Database provider invalidato');
       
       final stat = await exportedFile.stat();
@@ -124,6 +138,18 @@ class BackupController extends _$BackupController {
       
       // Invalida comunque il provider per ripristinare lo stato
       ref.invalidate(appDatabaseProvider);
+      await Future.delayed(const Duration(milliseconds: 300));
+      final housesAsync = ref.read(houseNotifierProvider);
+      if (housesAsync.hasValue && housesAsync.value != null) {
+        for (final house in housesAsync.value!) {
+          ref.invalidate(itemNotifierProvider(house.id));
+          ref.invalidate(houseStatsProvider(house.id));
+          ref.invalidate(spacesByHouseProvider(house.id));
+          ref.invalidate(spaceCountByHouseProvider(house.id));
+          ref.invalidate(luggagesByHouseProvider(house.id));
+          ref.invalidate(luggageCountByHouseProvider(house.id));
+        }
+      }
       
       rethrow;
     }
@@ -279,8 +305,38 @@ class BackupController extends _$BackupController {
     debugPrint('  ↳ Houses provider...');
     ref.invalidate(houseNotifierProvider);
     
-    debugPrint('  ↳ Items provider...');
-    ref.invalidate(itemNotifierProvider);
+    // Aspetta che le case si ricarichino per invalidare i family providers
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    // Step 4: Invalida family providers per ogni casa
+    final housesAsync = ref.read(houseNotifierProvider);
+    if (housesAsync.hasValue && housesAsync.value != null) {
+      final houses = housesAsync.value!;
+      debugPrint('  ↳ Invalidazione family providers per ${houses.length} case...');
+      
+      for (final house in houses) {
+        debugPrint('    • Items provider per casa: ${house.name}');
+        ref.invalidate(itemNotifierProvider(house.id));
+        
+        debugPrint('    • House Stats provider per casa: ${house.name}');
+        ref.invalidate(houseStatsProvider(house.id));
+        
+        debugPrint('    • Spaces provider per casa: ${house.name}');
+        ref.invalidate(spacesByHouseProvider(house.id));
+        ref.invalidate(spaceCountByHouseProvider(house.id));
+        
+        debugPrint('    • Luggages provider per casa: ${house.name}');
+        ref.invalidate(luggagesByHouseProvider(house.id));
+        ref.invalidate(luggageCountByHouseProvider(house.id));
+      }
+    } else {
+      // Fallback: invalida i provider globali
+      debugPrint('  ↳ Items provider (globale)...');
+      ref.invalidate(itemNotifierProvider);
+      
+      debugPrint('  ↳ House Stats provider (globale)...');
+      ref.invalidate(houseStatsProvider);
+    }
     
     debugPrint('  ↳ Spaces provider...');
     ref.invalidate(spaceNotifierProvider);
@@ -288,15 +344,12 @@ class BackupController extends _$BackupController {
     debugPrint('  ↳ Luggages provider...');
     ref.invalidate(luggageNotifierProvider);
     
-    debugPrint('  ↳ House Stats provider (tutti)...');
-    ref.invalidate(houseStatsProvider);
-    
     debugPrint('  ↳ Trips provider...');
     ref.invalidate(tripNotifierProvider);
     
-    // Step 4: Aspetta che i provider principali si ricarichino
-    debugPrint('  ↳ Attendo ricaricamento provider...');
-    await Future.delayed(const Duration(milliseconds: 800));
+    // Step 5: Aspetta che i provider si ricarichino
+    debugPrint('  ↳ Attendo ricaricamento completo provider...');
+    await Future.delayed(const Duration(milliseconds: 1000));
     
     debugPrint('[BackupController] ✅ Invalidazione completa terminata');
   }
@@ -314,7 +367,7 @@ class BackupController extends _$BackupController {
       debugPrint('[BackupController] ✅ Safety backup importato');
       
       // Invalida tutti i provider per ricaricare completamente l'app
-      _invalidateAllProviders();
+      await _invalidateAllProviders();
       
     } catch (e, stack) {
       throw BackupRollbackException(

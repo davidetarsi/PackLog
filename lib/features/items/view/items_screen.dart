@@ -9,6 +9,7 @@ import '../../houses/providers/house_provider.dart';
 import '../../spaces/providers/space_provider.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/widgets/app_pill_tab.dart';
 import 'in_transit_section.dart';
 
 class ItemsScreen extends ConsumerStatefulWidget {
@@ -27,17 +28,6 @@ class ItemsScreen extends ConsumerStatefulWidget {
 
 class _ItemsScreenState extends ConsumerState<ItemsScreen> {
   String? _selectedSpaceId;
-
-  String _getSpaceFilterLabel(String? spaceId, List spaces, int generalPoolCount, Map<String, int> spaceCounts) {
-    if (spaceId == null) {
-      return 'spaces.all_items'.tr();
-    } else if (spaceId == 'general_pool') {
-      return '${'spaces.general_pool'.tr()} ($generalPoolCount)';
-    } else {
-      final space = spaces.firstWhere((s) => s.id == spaceId);
-      return '${space.name} (${spaceCounts[spaceId] ?? 0})';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,30 +48,27 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
 
               return spacesAsync.when(
                 data: (spaces) {
+                  // Verifica se lo spazio selezionato esiste ancora
+                  // (potrebbe essere stato eliminato)
+                  if (_selectedSpaceId != null && 
+                      _selectedSpaceId != 'default' && 
+                      !spaces.any((s) => s.id == _selectedSpaceId)) {
+                    // Spazio eliminato: resetta a "tutti gli items"
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() => _selectedSpaceId = null);
+                      }
+                    });
+                  }
+                  
                   // Filtra items in base allo spazio selezionato
                   final List<ItemModel> filteredItems;
                   if (_selectedSpaceId == null) {
                     filteredItems = allItems;
-                  } else if (_selectedSpaceId == 'general_pool') {
+                  } else if (_selectedSpaceId == 'default') {
                     filteredItems = allItems.where((item) => item.spaceId == null).toList();
                   } else {
                     filteredItems = allItems.where((item) => item.spaceId == _selectedSpaceId).toList();
-                  }
-
-                  if (filteredItems.isEmpty && !hasTemporaryItems && _selectedSpaceId != null) {
-                    return EmptyState(
-                      icon: Icons.inventory_2_outlined,
-                      title: 'items.no_items'.tr(),
-                      subtitle: 'items.no_items_in_space'.tr(),
-                    );
-                  }
-
-                  if (allItems.isEmpty && !hasTemporaryItems) {
-                    return EmptyState(
-                      icon: Icons.inventory_2_outlined,
-                      title: 'items.no_items'.tr(),
-                      subtitle: 'items.no_items_subtitle'.tr(),
-                    );
                   }
 
                   // Raggruppa items filtrati per categoria
@@ -99,102 +86,95 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
 
                   return housesAsync.when(
                     data: (houses) {
-                      final colorScheme = Theme.of(context).colorScheme;
+                      // Crea lista tabs: All Items + Default + Spaces
+                      final List<String?> tabItems = [
+                        null, // All items
+                        'default', // Default space
+                        ...spaces.map((s) => s.id),
+                      ];
                       
                       return Column(
                         children: [
-                          // Space Filter Tabs
+                          // Space Filter Tabs (usa AppPillTab per coerenza)
                           if (spaces.isNotEmpty) ...[
-                            Container(
-                              width: double.infinity,
+                            Padding(
                               padding: EdgeInsets.only(
                                 left: context.spacingMd,
                                 top: context.spacingSm,
                                 bottom: context.spacingSm,
                               ),
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: [
-                                    null,
-                                    'general_pool',
-                                    ...spaces.map((s) => s.id),
-                                  ].map((spaceId) {
-                                    final isSelected = _selectedSpaceId == spaceId;
-                                    final label = _getSpaceFilterLabel(
-                                      spaceId,
-                                      spaces,
-                                      generalPoolCount,
-                                      spaceCounts,
-                                    );
-
-                                    return Padding(
-                                      padding: EdgeInsets.only(right: context.spacingSm),
-                                      child: FilterChip(
-                                        label: Text(label),
-                                        selected: isSelected,
-                                        showCheckmark: false,
-                                        onSelected: (selected) {
-                                          setState(() {
-                                            _selectedSpaceId = spaceId;
-                                          });
-                                        },
-                                        backgroundColor: Colors.transparent,
-                                        selectedColor: colorScheme.primary,
-                                        labelStyle: TextStyle(
-                                          color: isSelected
-                                              ? colorScheme.onPrimary
-                                              : colorScheme.onSurface.withValues(alpha: 0.8),
-                                        ),
-                                        side: BorderSide(
-                                          color: isSelected
-                                              ? colorScheme.primary
-                                              : colorScheme.outline.withValues(alpha: 0.3),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
+                              child: AppPillTab<String?>.nullable(
+                                items: tabItems,
+                                selectedItem: _selectedSpaceId,
+                                getLabel: (spaceId) {
+                                if (spaceId == null) {
+                                  return 'spaces.all_items'.tr();
+                                } else if (spaceId == 'default') {
+                                  return '${'spaces.default'.tr()} ($generalPoolCount)';
+                                  } else {
+                                    final space = spaces.firstWhere((s) => s.id == spaceId);
+                                    return '${space.name} (${spaceCounts[spaceId] ?? 0})';
+                                  }
+                                },
+                                onSelected: (String? spaceId) {
+                                  setState(() {
+                                    _selectedSpaceId = spaceId;
+                                  });
+                                },
+                                scrollPadding: EdgeInsets.zero,
                               ),
                             ),
                           ],
                           Expanded(
-                            child: ListView(
-                              padding: context.responsiveScreenPadding,
-                              children: [
-                                // Sezione items temporanei (da viaggi attivi)
-                                if (hasTemporaryItems && _selectedSpaceId == null) ...[
-                                  InTransitSection(
-                                    items: temporaryItems,
-                                    houses: houses,
-                                  ),
-                                  SizedBox(height: context.spacingMd),
-                                ],
-                                if (itemsByCategory.isNotEmpty) ...[
-                                  SizedBox(height: context.spacingSm),
-                                  Text(
-                                    'common.at_house'.tr(),
-                                    style: TextStyle(
-                                      fontSize: context.fontSizeLg,
-                                      fontWeight: FontWeight.bold,
+                            child: () {
+                              // Mostra empty state se nessun item filtrato
+                              if (filteredItems.isEmpty && !hasTemporaryItems) {
+                                return EmptyState(
+                                  icon: Icons.inventory_2_outlined,
+                                  title: 'items.no_items'.tr(),
+                                  subtitle: _selectedSpaceId != null
+                                      ? 'items.no_items_in_space'.tr()
+                                      : 'items.no_items_subtitle'.tr(),
+                                );
+                              }
+                              
+                              return ListView(
+                                padding: context.responsiveScreenPadding,
+                                children: [
+                                  // Sezione items temporanei (da viaggi attivi)
+                                  if (hasTemporaryItems && _selectedSpaceId == null) ...[
+                                    InTransitSection(
+                                      items: temporaryItems,
+                                      houses: houses,
                                     ),
-                                  ),
-                                  SizedBox(height: context.spacingSm),
-                                  // Items raggruppati per categoria
-                                  ...itemsByCategory.entries.map((entry) {
-                                    final category = entry.key;
-                                    final categoryItems = entry.value;
+                                    SizedBox(height: context.spacingMd),
+                                  ],
+                                  if (itemsByCategory.isNotEmpty) ...[
+                                    SizedBox(height: context.spacingSm),
+                                    Text(
+                                      'common.at_house'.tr(),
+                                      style: TextStyle(
+                                        fontSize: context.fontSizeLg,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: context.spacingSm),
+                                    // Items raggruppati per categoria
+                                    ...itemsByCategory.entries.map((entry) {
+                                      final category = entry.key;
+                                      final categoryItems = entry.value;
 
-                                    return ItemCategorySection(
-                                      category: category,
-                                      items: categoryItems,
-                                      houseId: widget.houseId,
-                                      itemQuantitiesOnTrip: itemQuantitiesOnTrip,
-                                    );
-                                  }),
+                                      return ItemCategorySection(
+                                        category: category,
+                                        items: categoryItems,
+                                        houseId: widget.houseId,
+                                        itemQuantitiesOnTrip: itemQuantitiesOnTrip,
+                                      );
+                                    }),
+                                  ],
                                 ],
-                              ],
-                            ),
+                              );
+                            }(),
                           ),
                         ],
                       );

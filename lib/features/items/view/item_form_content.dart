@@ -8,6 +8,7 @@ import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
 import '../../spaces/providers/space_provider.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 
@@ -456,35 +457,109 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
 
     return spacesAsync.when(
       data: (spaces) {
-        return DropdownButtonFormField<String?>(
-          initialValue: _selectedSpaceId,
-          decoration: InputDecoration(
-            labelText: 'items.space_label'.tr(),
-            border: OutlineInputBorder(
-              borderRadius: context.responsiveBorderRadius(
-                AppConstants.inputBorderRadius,
+        return InkWell(
+          borderRadius: context.responsiveBorderRadius(
+            AppConstants.inputBorderRadius,
+          ),
+          onTap: () => _showSpacePicker(spaces),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'items.space_label'.tr(),
+              border: OutlineInputBorder(
+                borderRadius: context.responsiveBorderRadius(
+                  AppConstants.inputBorderRadius,
+                ),
               ),
             ),
-          ),
-          items: [
-            DropdownMenuItem<String?>(
-              value: null,
-              child: Text('spaces.general_pool'.tr()),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _selectedSpaceId != null
+                      ? spaces
+                            .firstWhere(
+                              (s) => s.id == _selectedSpaceId,
+                              orElse: () => spaces.first,
+                            )
+                            .name
+                      : 'spaces.default'.tr(),
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                Icon(Icons.arrow_drop_down, size: context.iconSizeMd),
+              ],
             ),
-            ...spaces.map((space) {
-              return DropdownMenuItem<String?>(
-                value: space.id,
-                child: Text(space.name),
-              );
-            }),
-          ],
-          onChanged: (value) {
-            setState(() => _selectedSpaceId = value);
-          },
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => const SizedBox.shrink(),
     );
+  }
+
+  Future<void> _showSpacePicker(List spaces) async {
+    const defaultSpaceSentinel = '_default_space_sentinel_';
+    
+    final selected = await showModalBottomSheet<String?>(
+      context: context,
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: sheetContext.responsiveScreenPadding,
+            child: Text(
+              'items.select_space'.tr(),
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
+          ),
+          const Divider(),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                // Default space option
+                ListTile(
+                  leading: Icon(Icons.inventory_2, size: sheetContext.iconSizeMd),
+                  title: Text('spaces.default'.tr()),
+                  trailing: _selectedSpaceId == null
+                      ? Icon(
+                          Icons.check,
+                          color: AppColors.success,
+                          size: sheetContext.iconSizeMd,
+                        )
+                      : null,
+                  onTap: () => Navigator.pop(sheetContext, defaultSpaceSentinel),
+                ),
+                // Spaces
+                ...spaces.map((space) {
+                  return ListTile(
+                    leading: Icon(
+                      space.iconName != null
+                          ? SpaceIcons.getIcon(space.iconName!)
+                          : Icons.meeting_room,
+                      size: sheetContext.iconSizeMd,
+                    ),
+                    title: Text(space.name),
+                    trailing: _selectedSpaceId == space.id
+                        ? Icon(
+                            Icons.check,
+                            color: AppColors.success,
+                            size: sheetContext.iconSizeMd,
+                          )
+                        : null,
+                    onTap: () => Navigator.pop(sheetContext, space.id),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (selected != null) {
+      setState(() {
+        _selectedSpaceId = selected == defaultSpaceSentinel ? null : selected;
+      });
+    }
   }
 }

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
+import '../../items/providers/item_provider.dart';
+import '../../trips/providers/trip_items_status_provider.dart';
 import '../../spaces/view/spaces_management_screen.dart';
 import '../../luggages/view/luggages_management_screen.dart';
 import 'add_edit_house_screen.dart';
@@ -34,6 +36,61 @@ class HouseDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _showDeleteDialog(BuildContext context, WidgetRef ref, String houseName) async {
+    // Verifica se ci sono oggetti nella casa (fissi o in viaggio)
+    final itemsAsync = ref.read(itemNotifierProvider(houseId));
+    final temporaryItems = ref.read(temporaryItemsInHouseProvider(houseId));
+    
+    final permanentItemsCount = itemsAsync.value?.length ?? 0;
+    final temporaryItemsCount = temporaryItems.length;
+    final totalItemsCount = permanentItemsCount + temporaryItemsCount;
+    
+    if (totalItemsCount > 0) {
+      // Casa contiene oggetti: mostra errore e impedisci eliminazione
+      if (!context.mounted) return;
+      
+      await showDialog(
+        context: context,
+        builder: (dialogContext) {
+          final theme = Theme.of(dialogContext);
+          return AlertDialog(
+            title: Text('common.error'.tr()),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('houses.cannot_delete_has_items'.tr()),
+                const SizedBox(height: 16),
+                if (permanentItemsCount > 0)
+                  Text(
+                    '• ${'houses.permanent_items_count'.tr(args: [permanentItemsCount.toString()])}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                if (temporaryItemsCount > 0)
+                  Text(
+                    '• ${'houses.temporary_items_count'.tr(args: [temporaryItemsCount.toString()])}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text('common.ok'.tr()),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+    
+    // Nessun oggetto: procedi con la conferma di eliminazione
     final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
       itemType: 'common.house_type'.tr(),
