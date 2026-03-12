@@ -77,9 +77,9 @@ class _MainShellState extends ConsumerState<MainShell>
       context: context,
       isScrollControlled: true,
       builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
+        initialChildSize: 0.8,
         minChildSize: 0.5,
-        maxChildSize: 0.9,
+        maxChildSize: 1,
         expand: false,
         builder: (context, scrollController) => const SettingsScreen(),
       ),

@@ -145,8 +145,8 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                   'trips.welcome_title'.tr(),
                   style: TextStyle(
                     fontSize: context.fontSizeHeading,
-                    fontWeight: FontWeight.normal,
-                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
                     height: 1.2,
                   ),
                 ),

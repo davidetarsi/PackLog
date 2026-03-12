@@ -9,7 +9,7 @@ class TripsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('trips.title'.tr()),
+        //title: Text('trips.title'.tr()),
       ),
       body: const TripsScreen(),
     );

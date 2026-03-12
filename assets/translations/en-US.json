@@ -10,7 +10,7 @@
   
   "houses": {
     "title": "My Houses",
-    "add": "Add House",
+    "add": "House",
     "add_new": "New House",
     "edit": "Edit House",
     "delete": "Delete House",
@@ -156,7 +156,7 @@
   
   "trips": {
     "title": "Trips",
-    "add": "New Trip",
+    "add": "Trip",
     "add_new": "New Trip",
     "create_trip": "Create trip",
     "edit": "Edit Trip",

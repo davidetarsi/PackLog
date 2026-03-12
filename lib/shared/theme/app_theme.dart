@@ -98,7 +98,7 @@ class AppTheme {
   }
 
   // Font family dell'app
-  static const String fontFamily = 'serif';
+  static const String fontFamily = 'sans-serif';
 
   static ThemeData _buildTheme(
     ColorScheme colorScheme,
@@ -193,6 +193,11 @@ class AppTheme {
         scrolledUnderElevation: 1,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
+        titleTextStyle: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: colorScheme.onSurface,
+          fontSize: 24
+        ),
       ),
 
       // === Bottom Sheet Theme ===

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:stuff_tracker_2/features/items/view/item_category.dart';
 import 'package:stuff_tracker_2/features/trips/model/trip_model.dart';
 import 'package:stuff_tracker_2/shared/theme/app_spacing.dart';
+import 'package:stuff_tracker_2/shared/theme/app_theme.dart';
 
 /// Card specifica per oggetti in transito
 class InTransitItemCard extends StatelessWidget {
@@ -18,10 +19,11 @@ class InTransitItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final appColors = context.appColors;
     
     return Card(
       margin: EdgeInsets.only(bottom: context.spacingSm),
-      color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+      color: appColors.itemTemporaryBackground.withValues(alpha: 0.6),
       child: ListTile(
         leading: CategoryIcon(category: item.category),
         title: Text(

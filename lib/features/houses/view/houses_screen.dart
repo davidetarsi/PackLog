@@ -4,21 +4,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
 import '../providers/house_stats_provider.dart';
+import '../../trips/providers/trip_provider.dart';
 import '../model/house_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/design_system.dart';
 
-class HousesScreen extends ConsumerWidget {
+class HousesScreen extends ConsumerStatefulWidget {
   const HousesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HousesScreen> createState() => _HousesScreenState();
+}
+
+class _HousesScreenState extends ConsumerState<HousesScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Invalida i viaggi per ricalcolare lo stato (active/completed)
+    // ogni volta che la schermata viene montata
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(tripNotifierProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final housesAsync = ref.watch(houseNotifierProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('houses.title'.tr())),
+      appBar: AppBar(),//title: Text('houses.title'.tr())),
       body: housesAsync.when(
         data: (houses) {
           if (houses.isEmpty) {
