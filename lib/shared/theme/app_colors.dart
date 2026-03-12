@@ -81,10 +81,10 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   /// Colori per light mode
   static const light = AppColorsExtension(
     itemOnTrip: AppColors.itemOnTripDark,
-    itemOnTripBackground: Color(0xFFFFF3E0),
+    itemOnTripBackground: Color.fromARGB(255, 223, 223, 223),
     itemOnTripText: AppColors.itemOnTripDark,
     itemTemporary: AppColors.itemTemporaryDark,
-    itemTemporaryBackground: Color(0xFFE3F2FD),
+    itemTemporaryBackground: Color.fromARGB(255, 223, 223, 223),
     itemTemporaryText: AppColors.itemTemporaryDark,
   );
 

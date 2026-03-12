@@ -5,6 +5,7 @@ import 'package:stuff_tracker_2/features/items/view/item_category_section.dart';
 import '../providers/item_provider.dart';
 import '../model/item_model.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
+import '../../trips/providers/trip_provider.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../spaces/providers/space_provider.dart';
 import '../../../shared/theme/theme.dart';
@@ -28,6 +29,16 @@ class ItemsScreen extends ConsumerStatefulWidget {
 
 class _ItemsScreenState extends ConsumerState<ItemsScreen> {
   String? _selectedSpaceId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Invalida i viaggi per ricalcolare lo stato (active/completed)
+    // ogni volta che la schermata viene montata
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(tripNotifierProvider);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
