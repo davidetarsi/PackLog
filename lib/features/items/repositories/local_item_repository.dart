@@ -61,6 +61,15 @@ class LocalItemRepository implements ItemRepository {
   }
 
   @override
+  Future<void> insertMultipleItems(List<ItemModel> models) async {
+    if (models.isEmpty) return;
+    
+    final items = await getAllItems();
+    final updatedItems = [...items, ...models];
+    await _saveItems(updatedItems);
+  }
+
+  @override
   Future<List<ItemModel>> getItemsBySpaceId(String houseId, String spaceId) async {
     // Legacy repository non supporta spaces
     return [];

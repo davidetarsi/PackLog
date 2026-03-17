@@ -9,6 +9,9 @@ import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/add_trip_screen.dart';
 import '../../features/trips/view/edit_trip_info_screen.dart';
 import '../../features/trips/view/edit_trip_items_screen.dart';
+import '../../features/bulk_creation/view/house_selection_screen.dart';
+import '../../features/bulk_creation/view/template_selection_screen.dart';
+import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -121,6 +124,37 @@ final appRouter = GoRouter(
       name: 'item-new-global',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AddEditItemScreen(),
+    ),
+    // Route per la creazione massiva di item da template
+    GoRoute(
+      path: '/bulk-creation/select-house',
+      name: 'bulk-house-selection',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const HouseSelectionScreen(),
+    ),
+    GoRoute(
+      path: '/bulk-creation/templates/:houseId',
+      name: 'bulk-template-selection',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final houseId = state.pathParameters['houseId'];
+        if (houseId == null || houseId.isEmpty) {
+          return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
+        }
+        return TemplateSelectionScreen(houseId: houseId);
+      },
+    ),
+    GoRoute(
+      path: '/bulk-creation/items/:houseId',
+      name: 'bulk-item-list',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final houseId = state.pathParameters['houseId'];
+        if (houseId == null || houseId.isEmpty) {
+          return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
+        }
+        return BulkItemListScreen(houseId: houseId);
+      },
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

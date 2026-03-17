@@ -536,4 +536,200 @@ void main() {
       expect(generalPoolItems.first.name, equals('General Pool Item'));
     });
   });
+
+  group('DriftItemRepository - Batch Operations', () {
+    test('insertMultipleItems should save all items in a single transaction', () async {
+      // === ARRANGE ===
+      final houseId = 'test-house-batch';
+      await database.housesDao.insertHouse(HousesCompanion.insert(
+        id: houseId,
+        name: 'Batch Test House',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      final now = DateTime.now();
+      final itemModels = [
+        ItemModel(
+          id: 'batch-item-1',
+          houseId: houseId,
+          name: 'Shirt',
+          category: ItemCategory.vestiti,
+          quantity: 3,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        ItemModel(
+          id: 'batch-item-2',
+          houseId: houseId,
+          name: 'Laptop',
+          category: ItemCategory.elettronica,
+          quantity: 1,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        ItemModel(
+          id: 'batch-item-3',
+          houseId: houseId,
+          name: 'Toothbrush',
+          category: ItemCategory.toiletries,
+          quantity: 2,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
+
+      // === ACT ===
+      await repository.insertMultipleItems(itemModels);
+
+      // === ASSERT ===
+      final allItems = await repository.getAllItems();
+      expect(allItems, hasLength(3));
+
+      final shirt = allItems.firstWhere((i) => i.id == 'batch-item-1');
+      expect(shirt.name, 'Shirt');
+      expect(shirt.category, ItemCategory.vestiti);
+      expect(shirt.quantity, 3);
+
+      final laptop = allItems.firstWhere((i) => i.id == 'batch-item-2');
+      expect(laptop.category, ItemCategory.elettronica);
+
+      final toothbrush = allItems.firstWhere((i) => i.id == 'batch-item-3');
+      expect(toothbrush.category, ItemCategory.toiletries);
+      expect(toothbrush.quantity, 2);
+    });
+
+    test('insertMultipleItems should handle empty list gracefully', () async {
+      // === ARRANGE ===
+      final emptyList = <ItemModel>[];
+
+      // === ACT ===
+      await repository.insertMultipleItems(emptyList);
+
+      // === ASSERT ===
+      final allItems = await repository.getAllItems();
+      expect(allItems, isEmpty);
+    });
+
+    test('insertMultipleItems should throw on constraint violation', () async {
+      // === ARRANGE ===
+      final nonExistentHouseId = 'ghost-house';
+      final now = DateTime.now();
+
+      final itemModels = [
+        ItemModel(
+          id: 'orphan-item',
+          houseId: nonExistentHouseId,
+          name: 'Orphan Item',
+          category: ItemCategory.varie,
+          quantity: 1,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
+
+      // === ACT & ASSERT ===
+      // Should throw exception due to foreign key constraint
+      expect(
+        () => repository.insertMultipleItems(itemModels),
+        throwsException,
+      );
+    });
+
+    test('insertMultipleItems should be atomic - rollback on partial failure', () async {
+      // === ARRANGE ===
+      final houseId = 'test-house-atomic';
+      await database.housesDao.insertHouse(HousesCompanion.insert(
+        id: houseId,
+        name: 'Atomic Test House',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      final now = DateTime.now();
+
+      // First, insert a valid item
+      await repository.addItem(ItemModel(
+        id: 'pre-existing-item',
+        houseId: houseId,
+        name: 'Pre-existing',
+        category: ItemCategory.varie,
+        quantity: 1,
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      // Try to insert batch with duplicate ID (should fail)
+      final itemModels = [
+        ItemModel(
+          id: 'new-item-1',
+          houseId: houseId,
+          name: 'New Item',
+          category: ItemCategory.varie,
+          quantity: 1,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        ItemModel(
+          id: 'pre-existing-item', // DUPLICATE - violates PRIMARY KEY
+          houseId: houseId,
+          name: 'Duplicate',
+          category: ItemCategory.varie,
+          quantity: 1,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
+
+      // === ACT & ASSERT ===
+      expect(
+        () => repository.insertMultipleItems(itemModels),
+        throwsException,
+      );
+
+      // Verify transaction rolled back: only 1 item (pre-existing) should exist
+      final allItems = await repository.getAllItems();
+      expect(allItems, hasLength(1));
+      expect(allItems.first.id, 'pre-existing-item');
+    });
+
+    test('insertMultipleItems should handle large batches efficiently', () async {
+      // === ARRANGE ===
+      final houseId = 'test-house-perf';
+      await database.housesDao.insertHouse(HousesCompanion.insert(
+        id: houseId,
+        name: 'Performance Test House',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      final now = DateTime.now();
+      final itemModels = List.generate(100, (index) {
+        return ItemModel(
+          id: 'perf-item-$index',
+          houseId: houseId,
+          name: 'Item $index',
+          category: ItemCategory.varie,
+          quantity: index % 10 + 1,
+          createdAt: now,
+          updatedAt: now,
+        );
+      });
+
+      // === ACT ===
+      final stopwatch = Stopwatch()..start();
+      await repository.insertMultipleItems(itemModels);
+      stopwatch.stop();
+
+      // === ASSERT ===
+      final allItems = await repository.getAllItems();
+      expect(allItems, hasLength(100));
+
+      // Batch insert should be significantly faster than individual inserts
+      // (In-memory SQLite should handle 100 items in <1 second)
+      expect(stopwatch.elapsedMilliseconds, lessThan(1000),
+          reason: 'Batch insert took ${stopwatch.elapsedMilliseconds}ms');
+    });
+  });
 }
+

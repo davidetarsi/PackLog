@@ -115,6 +115,28 @@ class DriftItemRepository implements ItemRepository {
     debugPrint('[ItemRepo] Oggetto aggiornato: ${model.name}');
   }
 
+  @override
+  Future<void> insertMultipleItems(List<ItemModel> models) async {
+    if (models.isEmpty) {
+      debugPrint('[ItemRepo] insertMultipleItems: lista vuota, skip');
+      return;
+    }
+
+    final companions = models.map(_toCompanion).toList();
+    
+    final result = await _dbService.executeWithRetry(
+      () => _dao.insertMultipleItems(companions),
+      operationName: 'insertMultipleItems(${models.length} items)',
+      config: RetryConfig.criticalConfig,
+    );
+    
+    if (!result.success) {
+      throw Exception('Impossibile inserire gli oggetti: ${result.error}');
+    }
+    
+    debugPrint('[ItemRepo] ${models.length} oggetti inseriti con successo');
+  }
+
   /// Stream reattivo di tutti gli oggetti
   Stream<List<ItemModel>> watchAllItems() {
     return _dao.watchAllItems().map(

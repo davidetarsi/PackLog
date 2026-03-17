@@ -121,6 +121,11 @@ class _MainShellState extends ConsumerState<MainShell>
     showAddEditHouseSheet(context);
   }
 
+  void _onCreateBulk() {
+    _closeCreateMenu();
+    context.push('/bulk-creation/select-house');
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -180,6 +185,13 @@ class _MainShellState extends ConsumerState<MainShell>
                           label: 'items.add'.tr(),
                           colorScheme: colorScheme,
                           onTap: _onCreateItem,
+                        ),
+                        SizedBox(height: context.spacingSm),
+                        _CreatePillTab(
+                          icon: Icons.grid_view,
+                          label: 'bulk_creation.add_from_template'.tr(),
+                          colorScheme: colorScheme,
+                          onTap: _onCreateBulk,
                         ),
                         SizedBox(height: context.spacingSm),
                         _CreatePillTab(

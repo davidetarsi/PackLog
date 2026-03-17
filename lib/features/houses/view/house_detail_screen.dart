@@ -166,6 +166,11 @@ class HouseDetailScreen extends ConsumerWidget {
                     case 'manage_luggages':
                       await showLuggagesManagementSheet(context, houseId: houseId);
                       break;
+                    case 'bulk_add':
+                      if (context.mounted) {
+                        context.push('/bulk-creation/templates/$houseId');
+                      }
+                      break;
                     case 'edit':
                       showAddEditHouseSheet(context, houseId: houseId);
                       break;
@@ -195,6 +200,16 @@ class HouseDetailScreen extends ConsumerWidget {
                         const Icon(Icons.luggage),
                         const SizedBox(width: 12),
                         Text('luggages.manage'.tr()),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'bulk_add',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.grid_view),
+                        const SizedBox(width: 12),
+                        Text('bulk_creation.add_from_template'.tr()),
                       ],
                     ),
                   ),

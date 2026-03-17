@@ -354,5 +354,21 @@
     "invalid_sqlite_file": "The file to import is not a valid SQLite database",
     "downloads_unavailable": "Downloads directory not available on this platform",
     "rollback_impossible": "Unable to restore safety backup"
+  },
+  "bulk_creation": {
+    "add_from_template": "Add from Template",
+    "select_house": "Select House",
+    "select_templates": "Choose Templates",
+    "select_at_least_one": "Select at least one template",
+    "continue_with_items": "Continue with {count} items",
+    "edit_items": "Edit Items",
+    "no_items": "No items to add",
+    "item_name_hint": "Item name",
+    "add_manual_item": "Add manual item:",
+    "gender_male": "Male",
+    "gender_female": "Female",
+    "gender_neutral": "Neutral",
+    "save_failed": "Error saving items",
+    "save_success": "{count} items added successfully!"
   }
 }
