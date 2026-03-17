@@ -33,3 +33,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 //Cursor IDE Rules
 - use only 1 worktree and don't generate any other worktree than the principal
+
+//Update Rules
+- When you modify some files, remember always to update the same files tests 
+(if they exist) and the file ARCHITECTURE.md with corresponding changes

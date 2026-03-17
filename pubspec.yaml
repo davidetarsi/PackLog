@@ -83,6 +83,7 @@ dev_dependencies:
   freezed: ^2.5.7
   riverpod_generator: ^2.3.5
   drift_dev: ^2.22.1
+  mocktail: ^1.0.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
