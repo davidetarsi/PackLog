@@ -33,61 +33,57 @@ class ItemCard extends ConsumerWidget {
     final isFullyOnTrip = quantityOnTrip > 0 && availableQuantity == 0;
     final hasAnyOnTrip = quantityOnTrip > 0;
 
-    return Card(
-      margin: EdgeInsets.only(bottom: context.spacingSm),
-      color: isFullyOnTrip ? appColors.itemOnTripBackground.withValues(alpha: 0.6) : null,
-      child: ListTile(
-        onTap: isFullyOnTrip ? null : () => _onEdit(context),
-        leading: Stack(
-          children: [
-            CategoryIcon(category: item.category),
-            //if (hasAnyOnTrip) StatusIconOverlay.onTrip(),
-          ],
-        ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                item.name,
-                style: TextStyle(fontSize: context.fontSizeSm),
-                //style: isFullyOnTrip ? TextStyle(color: appColors.itemOnTripText) : null,
-              ),
+    return UniversalItemTile(
+      backgroundColor: isFullyOnTrip ? appColors.itemOnTripBackground.withValues(alpha: 0.6) : null,
+      onTap: isFullyOnTrip ? null : () => _onEdit(context),
+      leading: Stack(
+        children: [
+          CategoryIcon(category: item.category),
+          //if (hasAnyOnTrip) StatusIconOverlay.onTrip(),
+        ],
+      ),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              item.name,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: context.fontSizeSm),
             ),
-            if (isFullyOnTrip) const OnTripBadge(),
-            if (isPartiallyOnTrip)
-              OnTripQuantityBadge(
-                quantity: quantityOnTrip,
-                totalQuantity: totalQuantity,
-              ),
-          ],
-        ),
-        subtitle: item.description != null
-            ? Text(
-                item.description!,
-                style: isFullyOnTrip ? TextStyle(color: appColors.itemOnTrip) : null,
-              )
-            : null,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              isPartiallyOnTrip ? 'x$availableQuantity/$totalQuantity' : 'x$totalQuantity',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                /* color: isFullyOnTrip
-                    ? appColors.itemOnTripText
-                    : colorScheme.onSurface.withValues(alpha: 0.7), */
-                    color: colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
+          ),
+          if (isFullyOnTrip) const OnTripBadge(),
+          if (isPartiallyOnTrip)
+            OnTripQuantityBadge(
+              quantity: quantityOnTrip,
+              totalQuantity: totalQuantity,
             ),
-            _ItemPopupMenu(
-              item: item,
-              houseId: houseId,
-              enabled: !hasAnyOnTrip,
-              onEdit: () => _onEdit(context),
+        ],
+      ),
+      subtitle: item.description != null
+          ? Text(
+              item.description!,
+              style: isFullyOnTrip ? TextStyle(color: appColors.itemOnTrip) : null,
+            )
+          : null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            isPartiallyOnTrip ? 'x$availableQuantity/$totalQuantity' : 'x$totalQuantity',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              /* color: isFullyOnTrip
+                  ? appColors.itemOnTripText
+                  : colorScheme.onSurface.withValues(alpha: 0.7), */
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
             ),
-          ],
-        ),
+          ),
+          _ItemPopupMenu(
+            item: item,
+            houseId: houseId,
+            enabled: !hasAnyOnTrip,
+            onEdit: () => _onEdit(context),
+          ),
+        ],
       ),
     );
   }
@@ -138,7 +134,7 @@ class _ItemPopupMenu extends ConsumerWidget {
           child: Row(children: [
             const Icon(Icons.delete, color: AppColors.destructive),
             const SizedBox(width: 12),
-            Text('common.delete'.tr(), style: const TextStyle(color: AppColors.destructive)),
+            Text('common.delete'.tr(), style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.destructive)),
           ]),
         ),
       ],

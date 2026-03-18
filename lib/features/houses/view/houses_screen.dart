@@ -34,8 +34,7 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
     final housesAsync = ref.watch(houseNotifierProvider);
 
     return Scaffold(
-      appBar: AppBar(),//title: Text('houses.title'.tr())),
-      body: housesAsync.when(
+      body: SafeArea(child: housesAsync.when(
         data: (houses) {
           if (houses.isEmpty) {
             return EmptyState(
@@ -54,7 +53,8 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
             });
 
           return ListView.builder(
-            padding: const EdgeInsets.only(
+            padding:  EdgeInsets.only(
+              top: context.spacingMd,
               bottom: AppConstants.floatingNavBarPadding,
             ),
             itemCount: sortedHouses.length,
@@ -70,6 +70,7 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
           onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
         ),
       ),
+    ),
     );
   }
 }
@@ -255,7 +256,7 @@ class _Badge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
         border: Border.all(
           color: color.withValues(alpha: 0.3),
           width: 1,

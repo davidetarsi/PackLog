@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/houses/view/houses_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
-import '../../features/items/view/add_edit_item_screen.dart';
 import '../../features/trips/view/trips_page.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/add_trip_screen.dart';
@@ -117,13 +116,6 @@ final appRouter = GoRouter(
         }
         return EditTripItemsScreen(tripId: id);
       },
-    ),
-    // Route per creare item senza casa preselezionata (fuori dalla shell)
-    GoRoute(
-      path: '/items/new',
-      name: 'item-new-global',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const AddEditItemScreen(),
     ),
     // Route per la creazione massiva di item da template
     GoRoute(

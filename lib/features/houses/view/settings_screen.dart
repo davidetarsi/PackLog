@@ -7,6 +7,7 @@ import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/providers/last_export_path_provider.dart';
 import '../../../core/database/controllers/backup_controller.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/constants/app_constants.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -154,14 +155,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'backup.file_saved_in'.tr(),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
                     ),
                     child: SelectableText(
                       result.path,
@@ -403,7 +406,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       children: [
         Text(
           'settings.title'.tr(),
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 24),
         
@@ -537,7 +542,7 @@ class _LanguageTile extends StatelessWidget {
     
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -545,7 +550,7 @@ class _LanguageTile extends StatelessWidget {
             color: isSelected ? colorScheme.primary : colorScheme.outline.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
           color: isSelected ? colorScheme.primaryContainer.withValues(alpha: 0.3) : null,
         ),
         child: Row(
@@ -598,7 +603,7 @@ class _ThemeTile extends StatelessWidget {
     
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -606,7 +611,7 @@ class _ThemeTile extends StatelessWidget {
             color: isSelected ? colorScheme.primary : colorScheme.outline.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
           color: isSelected ? colorScheme.primaryContainer.withValues(alpha: 0.3) : null,
         ),
         child: Row(

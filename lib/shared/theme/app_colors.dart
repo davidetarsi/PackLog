@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 abstract class AppColors {
   // === Colori principali del tema ===
 
-  /// Arancione scuro - colore principale dell'app
-  static const Color primaryOrange = Color.fromARGB(255, 214, 103, 49);
-  static const Color primaryOrangeLight = Color.fromARGB(255, 247, 144, 92);
-  static const Color primaryOrangeDark = primaryOrange;
+  /// Primary orange for light theme (#FF8A50)
+  static const Color primaryOrangeLight = Color(0xFFFF8A50);
+  /// Primary orange for dark theme (#F76415)
+  static const Color primaryOrangeDark = Color(0xFFF76415);
 
   // === Stati degli item ===
 

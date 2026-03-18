@@ -39,7 +39,13 @@ class BulkCreationState with _$BulkCreationState {
   }) = _BulkCreationState;
 
   /// Restituisce tutti gli item da visualizzare (template + manuali).
-  List<DraftItem> get allItems => [...templateDerivedItems, ...manualItems];
+  /// CRITICAL: Ordina per insertionIndex per preservare l'ordine originale
+  /// e prevenire UI jumps quando gli item vengono spostati tra le liste.
+  List<DraftItem> get allItems {
+    final combined = [...templateDerivedItems, ...manualItems];
+    combined.sort((a, b) => a.insertionIndex.compareTo(b.insertionIndex));
+    return combined;
+  }
 
   /// Verifica se ci sono item da salvare.
   bool get hasItems => allItems.isNotEmpty;

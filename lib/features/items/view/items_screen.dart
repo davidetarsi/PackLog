@@ -150,7 +150,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                               }
                               
                               return ListView(
-                                padding: context.responsiveScreenPadding,
+                                padding: EdgeInsets.all(context.spacingMd),
                                 children: [
                                   // Sezione items temporanei (da viaggi attivi)
                                   if (hasTemporaryItems && _selectedSpaceId == null) ...[
@@ -191,9 +191,13 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                       );
                     },
                     loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (error, stack) => Center(
-                      child: Text('common.error_loading_houses'.tr(namedArgs: {'error': error.toString()})),
-                    ),
+            error: (error, stack) => ErrorState(
+              error: error,
+              onRetry: () => ref.invalidate(houseNotifierProvider),
+              message: 'common.error_loading_houses'.tr(
+                namedArgs: {'error': error.toString()},
+              ),
+            ),
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),

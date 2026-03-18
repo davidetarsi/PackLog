@@ -17,19 +17,23 @@ class ItemFormContent extends ConsumerStatefulWidget {
   final String? houseId;
   final String? itemId;
   final void Function(String itemId, String houseId) onSaved;
+  final bool showButtons;
+  final ValueChanged<bool>? onLoadingChanged;
 
   const ItemFormContent({
     super.key,
     this.houseId,
     this.itemId,
     required this.onSaved,
+    this.showButtons = true,
+    this.onLoadingChanged,
   });
 
   @override
-  ConsumerState<ItemFormContent> createState() => _ItemFormContentState();
+  ConsumerState<ItemFormContent> createState() => ItemFormContentState();
 }
 
-class _ItemFormContentState extends ConsumerState<ItemFormContent> {
+class ItemFormContentState extends ConsumerState<ItemFormContent> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -38,6 +42,17 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
   bool _isLoading = false;
   String? _selectedHouseId;
   String? _selectedSpaceId;
+
+  /// Espone il metodo di salvataggio per uso esterno
+  Future<void> save() => _saveItem();
+
+  /// Espone lo stato di loading
+  bool get isLoading => _isLoading;
+
+  void _setLoading(bool value) {
+    setState(() => _isLoading = value);
+    widget.onLoadingChanged?.call(value);
+  }
 
   static const List<int> _quantityOptions = [
     1,
@@ -143,7 +158,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
         return;
       }
 
-      setState(() => _isLoading = true);
+      _setLoading(true);
 
       final now = DateTime.now();
       final quantity = _selectedQuantity;
@@ -201,7 +216,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
       );
 
       if (mounted) {
-        setState(() => _isLoading = false);
+        _setLoading(false);
         if (success) {
           widget.onSaved(item.id, houseId);
         }
@@ -314,25 +329,27 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
             ),
             maxLines: 2,
           ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: _isLoading ? null : _saveItem,
-            style: ElevatedButton.styleFrom(
-              padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-              shape: RoundedRectangleBorder(
-                borderRadius: context.responsiveBorderRadius(
-                  AppConstants.inputBorderRadius,
+          if (widget.showButtons) ...[
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _saveItem,
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: context.spacingMd),
+                shape: RoundedRectangleBorder(
+                  borderRadius: context.responsiveBorderRadius(
+                    AppConstants.inputBorderRadius,
+                  ),
                 ),
               ),
+              child: _isLoading
+                  ? SizedBox(
+                      height: context.responsive(20),
+                      width: context.responsive(20),
+                      child: const CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(widget.itemId != null ? 'common.save'.tr() : 'common.create'.tr()),
             ),
-            child: _isLoading
-                ? SizedBox(
-                    height: context.responsive(20),
-                    width: context.responsive(20),
-                    child: const CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(widget.itemId != null ? 'common.save'.tr() : 'common.create'.tr()),
-          ),
+          ],
         ],
       ),
     );

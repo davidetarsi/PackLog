@@ -10,6 +10,8 @@ import '../../luggages/model/luggage_model.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/widgets/sticky_cta_scaffold.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
 import 'trip_info_form.dart';
 import 'trip_items_selector.dart';
@@ -146,7 +148,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
-        context.pop();
+        context.go('/trips');
       }
     }
   }
@@ -155,7 +157,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
+    return StickyCtaScaffold(
       appBar: AppBar(
         title: Text(
           widget.tripId != null ? 'trips.edit'.tr() : 'trips.add_new'.tr(),
@@ -163,17 +165,14 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: Stack(
-          children: [
-            // CONTENUTO SCROLLABILE
-            SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.only(
-                left: context.spacingSm,
-                right: context.spacingSm,
-                top: context.spacingSm,
-                bottom: 130, // Spazio per il bottone fisso
-              ),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: context.spacingSm,
+            right: context.spacingSm,
+            top: context.spacingSm,
+            bottom: context.spacingMd,
+          ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -301,80 +300,14 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                 ],
               ),
             ),
-
-            // BOTTONE FISSO IN BASSO
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: EdgeInsets.all(context.spacingMd),
-                decoration: BoxDecoration(
-                  color: colorScheme.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: _buildSaveButton(context, colorScheme),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSaveButton(BuildContext context, ColorScheme colorScheme) {
-    return Material(
-      color: colorScheme.surface,
-      borderRadius: BorderRadius.circular(28),
-      elevation: 0,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(28),
-        onTap: _isLoading ? null : _saveTrip,
-        child: Container(
-          width: double.infinity,
-          height: 56,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: colorScheme.primary, width: 2),
           ),
-          child: Center(
-            child: _isLoading
-                ? SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: colorScheme.primary,
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.save, color: colorScheme.onSurfaceVariant),
-                      SizedBox(width: context.spacingSm),
-                      Text(
-                        widget.tripId != null
-                            ? 'common.save_changes'.tr()
-                            : 'trips.create_trip'.tr(),
-                        style: TextStyle(
-                          fontSize: context.fontSizeMd,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
+      bottomContent: UniversalActionBar(
+        primaryLabel: widget.tripId != null
+            ? 'common.save_changes'.tr()
+            : 'trips.create_trip'.tr(),
+        primaryIcon: Icons.save,
+        onPrimaryPressed: _isLoading ? null : _saveTrip,
+        isLoading: _isLoading,
       ),
     );
   }

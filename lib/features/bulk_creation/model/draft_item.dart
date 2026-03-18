@@ -26,6 +26,10 @@ class DraftItem with _$DraftItem {
 
     /// Quantità (default: 1, minimo: 1)
     @Default(1) int quantity,
+
+    /// Indice di inserimento per preservare l'ordine originale nella UI
+    /// (previene che gli item saltino di posizione quando vengono modificati)
+    @Default(0) int insertionIndex,
   }) = _DraftItem;
 
   /// Restituisce il nome normalizzato per il confronto e il merge.

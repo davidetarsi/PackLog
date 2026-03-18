@@ -4,13 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
+import '../../items/view/add_edit_item_screen.dart';
 import '../../items/providers/item_provider.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
 import '../../spaces/view/spaces_management_screen.dart';
 import '../../luggages/view/luggages_management_screen.dart';
 import 'add_edit_house_screen.dart';
 import '../../../shared/constants/house_icons.dart';
+import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/widgets/circular_action_button.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
 
 class HouseDetailScreen extends ConsumerWidget {
@@ -18,7 +22,88 @@ class HouseDetailScreen extends ConsumerWidget {
 
   const HouseDetailScreen({super.key, required this.houseId});
 
-  Future<void> _setPrimary(BuildContext context, WidgetRef ref, String houseName) async {
+  void _showManageSheet(BuildContext context, WidgetRef ref, String houseId, bool isPrimary, String houseName) {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: Text('houses.edit_info'.tr()),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                showAddEditHouseSheet(context, houseId: houseId);
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.bookmark,
+                color: isPrimary ? null : Theme.of(sheetContext).colorScheme.primary,
+              ),
+              title: Text('houses.set_as_primary'.tr()),
+              enabled: !isPrimary,
+              onTap: isPrimary
+                  ? null
+                  : () {
+                      Navigator.pop(sheetContext);
+                      _setPrimaryHouse(context, ref, houseName);
+                    },
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.meeting_room),
+              title: Text('spaces.manage'.tr()),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                await showSpacesManagementSheet(context, houseId: houseId);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.luggage),
+              title: Text('luggages.manage'.tr()),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                await showLuggagesManagementSheet(context, houseId: houseId);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddItemsSheet(BuildContext context, String houseId) {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.add),
+              title: Text('houses.add_single_item'.tr()),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                await showAddEditItemSheet(context, houseId: houseId);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.grid_view),
+              title: Text('bulk_creation.add_from_template'.tr()),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                context.push('/bulk-creation/templates/$houseId');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _setPrimaryHouse(BuildContext context, WidgetRef ref, String houseName) async {
     final success = await ErrorRetryDialog.executeWithRetry(
       context: context,
       operation: () async {
@@ -63,16 +148,14 @@ class HouseDetailScreen extends ConsumerWidget {
                 if (permanentItemsCount > 0)
                   Text(
                     '• ${'houses.permanent_items_count'.tr(args: [permanentItemsCount.toString()])}',
-                    style: TextStyle(
-                      fontSize: 14,
+                    style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.error,
                     ),
                   ),
                 if (temporaryItemsCount > 0)
                   Text(
                     '• ${'houses.temporary_items_count'.tr(args: [temporaryItemsCount.toString()])}',
-                    style: TextStyle(
-                      fontSize: 14,
+                    style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.error,
                     ),
                   ),
@@ -142,7 +225,7 @@ class HouseDetailScreen extends ConsumerWidget {
           appBar: AppBar(
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.pop(),
+              onPressed: () => context.go('/'),
             ),
             title: Row(
               mainAxisSize: MainAxisSize.min,
@@ -155,105 +238,35 @@ class HouseDetailScreen extends ConsumerWidget {
                 Text(house.name),
               ],
             ),
-            actions: [
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                onSelected: (value) async {
-                  switch (value) {
-                    case 'manage_spaces':
-                      await showSpacesManagementSheet(context, houseId: houseId);
-                      break;
-                    case 'manage_luggages':
-                      await showLuggagesManagementSheet(context, houseId: houseId);
-                      break;
-                    case 'bulk_add':
-                      if (context.mounted) {
-                        context.push('/bulk-creation/templates/$houseId');
-                      }
-                      break;
-                    case 'edit':
-                      showAddEditHouseSheet(context, houseId: houseId);
-                      break;
-                    case 'set_primary':
-                      await _setPrimary(context, ref, house.name);
-                      break;
-                    case 'delete':
-                      await _showDeleteDialog(context, ref, house.name);
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'manage_spaces',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.meeting_room),
-                        const SizedBox(width: 12),
-                        Text('spaces.manage'.tr()),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'manage_luggages',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.luggage),
-                        const SizedBox(width: 12),
-                        Text('luggages.manage'.tr()),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'bulk_add',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.grid_view),
-                        const SizedBox(width: 12),
-                        Text('bulk_creation.add_from_template'.tr()),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuDivider(),
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.edit),
-                        const SizedBox(width: 12),
-                        Text('common.edit'.tr()),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'set_primary',
-                    enabled: !house.isPrimary,
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.bookmark_outlined,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'houses.set_as_primary'.tr(),
-                        ),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.delete),
-                        const SizedBox(width: 12),
-                        Text('common.delete'.tr()),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ),
           body: ItemsScreen(houseId: houseId, houseName: house.name),
+          bottomNavigationBar: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: context.spacingMd,
+                right: context.spacingMd,
+                top: context.spacingMd,
+                bottom: context.spacingSm,
+              ),
+              child: UniversalActionBar(
+                horizontalPadding: 0,
+                primaryLabel: 'houses.manage'.tr(),
+                primaryIcon: Icons.settings,
+                onPrimaryPressed: () => _showManageSheet(context, ref, houseId, house.isPrimary, house.name),
+                leftAction: CircularActionButton(
+                  icon: Icons.delete_outline,
+                  onPressed: () => _showDeleteDialog(context, ref, house.name),
+                  color: colorScheme.error, // Icona rossa
+                  showBorder: true,
+                ),
+                rightAction: CircularActionButton(
+                  icon: Icons.add,
+                  onPressed: () => _showAddItemsSheet(context, houseId),
+                  showBorder: true,
+                ),
+              ),
+            ),
+          ),
         );
       },
       loading: () =>

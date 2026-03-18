@@ -43,6 +43,24 @@ const List<TravelTemplate> kTravelTemplates = [
         defaultQuantity: 1,
       ),
       TemplateItemDef(
+        name: 'Rasoio',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+        targetGenders: [UserGender.male],
+      ),
+      TemplateItemDef(
+        name: 'Schiuma da barba',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+        targetGenders: [UserGender.male],
+      ),
+      TemplateItemDef(
+        name: 'Trucchi',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+        targetGenders: [UserGender.female],
+      ),
+      TemplateItemDef(
         name: 'Caricabatterie smartphone',
         category: ItemCategory.elettronica,
         defaultQuantity: 1,
@@ -108,6 +126,36 @@ const List<TravelTemplate> kTravelTemplates = [
         name: 'Deodorante',
         category: ItemCategory.toiletries,
         defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Rasoio',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+        targetGenders: [UserGender.male],
+      ),
+      TemplateItemDef(
+        name: 'Schiuma da barba',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+        targetGenders: [UserGender.male],
+      ),
+      TemplateItemDef(
+        name: 'Trucchi',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+        targetGenders: [UserGender.female],
+      ),
+      TemplateItemDef(
+        name: 'Assorbenti',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+        targetGenders: [UserGender.female],
+      ),
+      TemplateItemDef(
+        name: 'Piastra per capelli',
+        category: ItemCategory.elettronica,
+        defaultQuantity: 1,
+        targetGenders: [UserGender.female],
       ),
       TemplateItemDef(
         name: 'Caricabatterie smartphone',
@@ -292,6 +340,24 @@ const List<TravelTemplate> kTravelTemplates = [
         name: 'Doposole',
         category: ItemCategory.toiletries,
         defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Rasoio',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+        targetGenders: [UserGender.male],
+      ),
+      TemplateItemDef(
+        name: 'Trucchi waterproof',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+        targetGenders: [UserGender.female],
+      ),
+      TemplateItemDef(
+        name: 'Assorbenti',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+        targetGenders: [UserGender.female],
       ),
       TemplateItemDef(
         name: 'Occhiali da sole',

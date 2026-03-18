@@ -2,7 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:stuff_tracker_2/features/items/model/item_model.dart';
 import 'package:stuff_tracker_2/features/items/view/item_card.dart';
-import 'package:stuff_tracker_2/features/items/view/item_category.dart';
+import 'package:stuff_tracker_2/shared/widgets/category_section_header.dart';
 import 'package:stuff_tracker_2/shared/theme/app_spacing.dart';
 
 /// Sezione collassabile per categoria
@@ -31,12 +31,18 @@ class ItemCategorySection extends StatelessWidget {
             initiallyExpanded: true,
             tilePadding: EdgeInsets.symmetric(horizontal: context.spacingSm),
             childrenPadding: EdgeInsets.zero,
-            leading: CategoryIcon(category: category, size: context.iconSizeLg),
-            title: Text(
-              category.displayName,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: context.fontSizeMd),
+            title: CategorySectionHeader(
+              category: category,
+              iconSize: context.iconSizeLg,
+              horizontalPadding: 0,
+              verticalPadding: 0,
+              trailing: Text(
+                'common.items_count'.tr(args: [items.length.toString()]),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
             ),
-            subtitle: Text('common.items_count'.tr(args: [items.length.toString()]), style: TextStyle(fontSize: context.fontSizeXs)),
             children: items.map((item) {
               return ItemCard(
                 item: item,

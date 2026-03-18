@@ -1,8 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../shared/constants/app_constants.dart';
-import '../../../shared/helpers/design_system.dart';
+import '../../../shared/widgets/standard_bottom_sheet_layout.dart';
 import 'house_form_content.dart';
 
 /// Mostra il bottom sheet per creare o modificare una casa
@@ -16,55 +15,43 @@ Future<void> showAddEditHouseSheet(BuildContext context, {String? houseId}) {
 }
 
 /// Bottom sheet per creare o modificare una casa
-class AddEditHouseSheet extends StatelessWidget {
+class AddEditHouseSheet extends StatefulWidget {
   final String? houseId;
 
   const AddEditHouseSheet({super.key, this.houseId});
 
   @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+  State<AddEditHouseSheet> createState() => _AddEditHouseSheetState();
+}
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: EdgeInsets.only(bottom: bottomPadding),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const BottomSheetHandle(),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Text(
-                  houseId != null ? 'houses.edit'.tr() : 'houses.add_new'.tr(),
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              0,
-              16,
-              16 + AppConstants.bottomSheetBottomPadding,
-            ),
-            child: HouseFormContent(
-              houseId: houseId,
-              onSaved: () => Navigator.pop(context),
-            ),
-          ),
-        ],
+class _AddEditHouseSheetState extends State<AddEditHouseSheet> {
+  final GlobalKey<HouseFormContentState> _formKey = GlobalKey();
+  bool _isLoading = false;
+
+  void _handleSave() {
+    _formKey.currentState?.save();
+  }
+
+  void _handleLoadingChanged(bool loading) {
+    setState(() => _isLoading = loading);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StandardBottomSheetLayout(
+      title: widget.houseId != null
+          ? 'houses.edit'.tr()
+          : 'houses.add_new'.tr(),
+      onCancel: () => Navigator.pop(context),
+      onSave: _handleSave,
+      isLoading: _isLoading,
+      saveLabel: widget.houseId != null ? 'common.save'.tr() : 'common.create'.tr(),
+      child: HouseFormContent(
+        key: _formKey,
+        houseId: widget.houseId,
+        onSaved: () => Navigator.pop(context),
+        showButtons: false,
+        onLoadingChanged: _handleLoadingChanged,
       ),
     );
   }
@@ -87,7 +74,7 @@ class AddEditHouseScreen extends StatelessWidget {
         children: [
           HouseFormContent(
             houseId: houseId,
-            onSaved: () => context.pop(),
+            onSaved: () => context.go('/'),
           ),
         ],
       ),

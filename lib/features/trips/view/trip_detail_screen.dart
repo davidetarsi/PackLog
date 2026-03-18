@@ -7,9 +7,12 @@ import '../model/trip_model.dart';
 import '../../items/model/item_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/trip_summary_card.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/circular_action_button.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
 
 /// Enum per le tab di filtro delle categorie
@@ -68,7 +71,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           appBar: AppBar(
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.pop(),
+              onPressed: () => context.go('/trips'),
             ),
             title: Text('common.trip_detail'.tr()),
           ),
@@ -96,12 +99,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 child: filteredItems.isEmpty
                     ? _buildEmptyItemsState(context, colorScheme)
                     : ListView.builder(
-                        padding: EdgeInsets.only(
-                          left: context.spacingSm,
-                          right: context.spacingSm,
-                          top: context.spacingXs,
-                          bottom: context.spacingXl * 4, // Spazio per i bottoni
-                        ),
+                        padding: EdgeInsets.all(context.spacingSm),
                         itemCount: filteredItems.length,
                         itemBuilder: (context, index) {
                           final item = filteredItems[index];
@@ -114,14 +112,32 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               ),
             ],
           ),
-          // Bottoni floating in basso
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.centerFloat,
-          floatingActionButton: _BottomActionButtons(
-            onDelete: () => _showDeleteDialog(context, trip),
-            onEdit: () => context.push('/trips/${widget.tripId}/edit-info'),
-            onEditItems: () =>
-                context.push('/trips/${widget.tripId}/edit-items'),
+          // Action bar unificata in basso
+          bottomNavigationBar: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: context.spacingMd,
+                right: context.spacingMd,
+                top: context.spacingMd,
+                bottom: context.spacingSm,
+              ),
+              child: UniversalActionBar(
+                horizontalPadding: 0,
+                primaryLabel: 'trips.edit_items'.tr(),
+                primaryIcon: Icons.checklist,
+                onPrimaryPressed: () => context.push('/trips/${widget.tripId}/edit-items'),
+                leftAction: CircularActionButton(
+                  icon: Icons.delete_outline,
+                  onPressed: () => _showDeleteDialog(context, trip),
+                  showBorder: true,
+                ),
+                rightAction: CircularActionButton(
+                  icon: Icons.edit_calendar,
+                  onPressed: () => context.push('/trips/${widget.tripId}/edit-info'),
+                  showBorder: true,
+                ),
+              ),
+            ),
           ),
         );
       },
@@ -189,113 +205,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
 }
 
 /// Bottoni di azione in basso
-class _BottomActionButtons extends StatelessWidget {
-  final VoidCallback onDelete;
-  final VoidCallback onEdit;
-  final VoidCallback onEditItems;
-
-  const _BottomActionButtons({
-    required this.onDelete,
-    required this.onEdit,
-    required this.onEditItems,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final iconColor = colorScheme.onSurfaceVariant;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacingSm),
-      child: Row(
-        children: [
-          // Bottone elimina (sinistra, ovale orizzontale)
-          Material(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
-            elevation: 2,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(28),
-              onTap: onDelete,
-              child: Container(
-                width: 56,
-                height: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: iconColor, width: 2),
-                ),
-                child: Icon(Icons.delete_outline, color: iconColor, size: 22),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Bottone centrale (modifica oggetti) - pill tab
-          Expanded(
-            child: Material(
-              color: colorScheme.surface,
-              borderRadius: BorderRadius.circular(28),
-              elevation: 2,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(28),
-                onTap: onEditItems,
-                child: Container(
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: colorScheme.primary, width: 2),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.checklist, color: iconColor, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'trips.edit_items'.tr(),
-                        style: TextStyle(
-                          color: iconColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: context.fontSizeMd,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Bottone modifica viaggio (destra, ovale orizzontale)
-          Material(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
-            elevation: 2,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(28),
-              onTap: onEdit,
-              child: Container(
-                width: 56,
-                height: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: iconColor, width: 2),
-                ),
-                child: Icon(Icons.edit_calendar, color: iconColor, size: 22),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Card per un singolo item del viaggio
 class _TripItemCard extends ConsumerWidget {
   final TripItem item;

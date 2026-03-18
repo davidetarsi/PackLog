@@ -21,7 +21,7 @@ class HouseSelectionScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => context.pop(),
+          onPressed: () => context.go('/'),
         ),
         title: Text('bulk_creation.select_house'.tr()),
       ),
@@ -55,10 +55,9 @@ class HouseSelectionScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => EmptyState(
-          icon: Icons.error_outline,
-          title: 'common.error'.tr(),
-          subtitle: err.toString(),
+        error: (err, stack) => ErrorState(
+          error: err,
+          onRetry: () => ref.invalidate(houseNotifierProvider),
         ),
       ),
     );

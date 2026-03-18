@@ -49,6 +49,9 @@ class TripSummaryCard extends ConsumerWidget {
       return 'common.unknown_house'.tr();
     }
 
+    /// Widget di supporto per creare i badge informativi orizzontali
+  
+
     // Usa il getter che gestisce sia il nuovo modello che il campo legacy
     final displayName = trip.destinationDisplayName;
     if (displayName != null && displayName.isNotEmpty) {
@@ -93,7 +96,7 @@ class TripSummaryCard extends ConsumerWidget {
     final formattedDates = _formatTripDates();
     final percentageInt = (trip.completionPercentage * 100).toInt();
 
-    Widget cardContent = Padding(
+    /* Widget cardContent = Padding(
       padding: EdgeInsets.all(context.spacingMd),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,6 +226,137 @@ class TripSummaryCard extends ConsumerWidget {
               SizedBox(height: context.spacingXs),
               
               // Barra progresso
+              ClipRRect(
+                borderRadius: context.responsiveBorderRadius(4),
+                child: LinearProgressIndicator(
+                  value: trip.completionPercentage,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    trip.completionPercentage == 1.0
+                        ? AppColors.success
+                        : colorScheme.primary,
+                  ),
+                  minHeight: 8,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ); */
+
+    Widget buildBadge(BuildContext context, IconData icon, String text, ColorScheme colorScheme) {
+    return Container(
+      // SPAZIATURA INTERNA: Puoi aumentarla se il bottone ti sembra troppo "stretto"
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        // COLORE DI SFONDO: Attualmente usa un grigio molto chiaro e semi-trasparente
+        //color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: context.responsiveBorderRadius(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon, 
+            // GRANDEZZA ICONA: Alzala a 16 o 18 se ingrandisci il testo
+            size: context.responsive(16), 
+            // COLORE ICONA: Attualmente usa il colore del testo standard al 80% di opacità
+            color: colorScheme.onSurface.withValues(alpha: 0.8)
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                // GRANDEZZA TESTO: Qui puoi mettere 13 o 14 per stare tranquillo
+                fontSize: context.fontSizeSm, 
+                // COLORE TESTO: Deve essere identico a quello dell'icona per coerenza
+                color: colorScheme.onSurface.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+    Widget cardContent = Padding(
+      padding: EdgeInsets.all(context.spacingMd),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Riga Superiore: Nome Viaggio e Icona Aereo
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  trip.name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: context.fontSizeXl + 2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              SizedBox(width: context.spacingSm),
+              Icon(
+                Icons.flight_takeoff,
+                size: context.iconSizeLg + 8,
+                color: colorScheme.primary,
+              ),
+            ],
+          ),
+          
+          SizedBox(height: context.spacingSm),
+          
+          // 2. Wrap di Badge orizzontali (Date, Luogo, Bagagli)
+          Wrap(
+            spacing: context.responsive(8), // Spazio orizzontale tra i badge
+            runSpacing: context.responsive(8), // Spazio verticale se vanno a capo
+            children: [
+              if (formattedDates.isNotEmpty)
+                buildBadge(context, Icons.calendar_today_outlined, formattedDates, colorScheme),
+              
+              buildBadge(context, Icons.place, destinationName, colorScheme),
+
+              if (trip.luggageCount > 0)
+                buildBadge(
+                  context, 
+                  Icons.luggage, 
+                  'common.luggages_count'.tr(args: [
+                    trip.luggageCount.toString(),
+                    trip.totalLuggageVolume.toString(),
+                  ]), 
+                  colorScheme
+                ),
+            ],
+          ),
+          
+          SizedBox(height: context.spacingMd),
+          
+          // 3. Barra progresso e conteggio (Invariata dalla tua versione)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'common.items_ready'.tr(args: [
+                  trip.completedCount.toString(),
+                  trip.totalCount.toString(),
+                  //percentageInt.toString(),
+                ]),
+                style: TextStyle(
+                  fontSize: context.fontSizeSm,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+              SizedBox(height: context.spacingXs),
               ClipRRect(
                 borderRadius: context.responsiveBorderRadius(4),
                 child: LinearProgressIndicator(

@@ -6,6 +6,10 @@ import '../data/templates_data.dart';
 import '../model/user_gender.dart';
 import '../providers/bulk_creation_provider.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/sticky_cta_scaffold.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
+import '../../items/model/item_model.dart';
 
 /// Schermata di selezione dei template di viaggio.
 /// 
@@ -43,13 +47,13 @@ class _TemplateSelectionScreenState
     final previewItemCount = state.allItems.length;
     final selectedTemplatesCount = state.selectedTemplateKeys.length;
 
-    return Scaffold(
+    return StickyCtaScaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             notifier.reset();
-            context.pop();
+            context.go('/houses/${widget.houseId}');
           },
         ),
         title: Text('bulk_creation.select_templates'.tr()),
@@ -68,7 +72,7 @@ class _TemplateSelectionScreenState
               padding: EdgeInsets.all(context.spacingMd),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                childAspectRatio: 0.9,
+                childAspectRatio: 0.8,
                 mainAxisSpacing: context.spacingMd,
                 crossAxisSpacing: context.spacingMd,
               ),
@@ -82,58 +86,21 @@ class _TemplateSelectionScreenState
                   isSelected: isSelected,
                   onTap: () => notifier.toggleTemplate(template.key),
                   colorScheme: colorScheme,
+                  selectedGender: state.gender,
                 );
               },
             ),
           ),
         ],
       ),
-
-      // Bottom CTA
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(context.spacingMd),
-          child: FilledButton(
-            onPressed: previewItemCount > 0
-                ? () => context.push('/bulk-creation/items/${widget.houseId}')
-                : null,
-            style: FilledButton.styleFrom(
-              padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  previewItemCount > 0
-                      ? 'bulk_creation.continue_with_items'.tr(
-                          namedArgs: {'count': previewItemCount.toString()},
-                        )
-                      : 'bulk_creation.select_at_least_one'.tr(),
-                ),
-                if (selectedTemplatesCount > 0) ...[
-                  SizedBox(width: context.spacingSm),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: context.spacingSm,
-                      vertical: context.spacingXs,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer,
-                      borderRadius: context.responsiveBorderRadius(8),
-                    ),
-                    child: Text(
-                      selectedTemplatesCount.toString(),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onPrimaryContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
+      bottomContent: UniversalActionBar(
+        primaryLabel: selectedTemplatesCount > 0
+            ? 'bulk_creation.continue_with_items'.tr(
+                namedArgs: {'count': previewItemCount.toString()},
+              )
+            : 'bulk_creation.continue_without_templates'.tr(),
+        //primaryIcon: Icons.arrow_forward,
+        onPrimaryPressed: () => context.push('/bulk-creation/items/${widget.houseId}'),
       ),
     );
   }
@@ -151,40 +118,34 @@ class _GenderPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Container(
       margin: EdgeInsets.all(context.spacingMd),
-      child: SegmentedButton<UserGender>(
-        segments: [
-          ButtonSegment(
-            value: UserGender.male,
-            label: Text('bulk_creation.gender_male'.tr()),
-            icon: const Icon(Icons.man),
-          ),
-          ButtonSegment(
-            value: UserGender.female,
-            label: Text('bulk_creation.gender_female'.tr()),
-            icon: const Icon(Icons.woman),
-          ),
-          ButtonSegment(
-            value: UserGender.neutral,
-            label: Text('bulk_creation.gender_neutral'.tr()),
-            icon: const Icon(Icons.person),
-          ),
-        ],
-        selected: {selectedGender},
-        onSelectionChanged: (Set<UserGender> selection) {
-          onGenderChanged(selection.first);
+      alignment: Alignment.center,
+      child: AppPillTab<UserGender>(
+        items: UserGender.values,
+        selectedItem: selectedGender,
+        getLabel: (gender) {
+          switch (gender) {
+            case UserGender.male:
+              return 'bulk_creation.gender_male'.tr();
+            case UserGender.female:
+              return 'bulk_creation.gender_female'.tr();
+            case UserGender.neutral:
+              return 'bulk_creation.gender_neutral'.tr();
+          }
         },
-        style: ButtonStyle(
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return colorScheme.primaryContainer;
-            }
-            return colorScheme.surfaceContainerHighest;
-          }),
-        ),
+        getIcon: (gender) {
+          switch (gender) {
+            case UserGender.male:
+              return const Icon(Icons.man, size: 16);
+            case UserGender.female:
+              return const Icon(Icons.woman, size: 16);
+            case UserGender.neutral:
+              return const Icon(Icons.person, size: 16);
+          }
+        },
+        onSelected: onGenderChanged,
+        scrollPadding: EdgeInsets.symmetric(horizontal: context.spacingMd),
       ),
     );
   }
@@ -196,16 +157,20 @@ class _TemplateCard extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final ColorScheme colorScheme;
+  final UserGender selectedGender;
 
   const _TemplateCard({
     required this.template,
     required this.isSelected,
     required this.onTap,
     required this.colorScheme,
+    required this.selectedGender,
   });
 
   @override
   Widget build(BuildContext context) {
+    final categoryCounts = template.getCategoryCountsByGender(selectedGender);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -229,39 +194,50 @@ class _TemplateCard extends StatelessWidget {
               Padding(
                 padding: EdgeInsets.all(context.spacingMd),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Icon(
-                      IconData(
-                        _getIconCodePoint(template.icon),
-                        fontFamily: 'MaterialIcons',
-                      ),
-                      size: context.responsive(48),
-                      color: isSelected
-                          ? colorScheme.primary
-                          : colorScheme.onSurfaceVariant,
-                    ),
-                    SizedBox(height: context.spacingSm),
-                    Text(
-                      template.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected
-                                ? colorScheme.primary
-                                : colorScheme.onSurface,
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          IconData(
+                            _getIconCodePoint(template.icon),
+                            fontFamily: 'MaterialIcons',
                           ),
-                      textAlign: TextAlign.center,
+                          size: context.responsive(40),
+                          color: isSelected
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                        SizedBox(height: context.spacingSm),
+                        Text(
+                          template.name,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                color: isSelected
+                                    ? colorScheme.primary
+                                    : colorScheme.onSurface,
+                              ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: context.spacingXs),
+                        Text(
+                          template.description,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    SizedBox(height: context.spacingXs),
-                    Text(
-                      template.description,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    
+                    // Category badges in 2x2 grid
+                    _buildCategoryBadgesGrid(context, categoryCounts),
                   ],
                 ),
               ),
@@ -291,6 +267,77 @@ class _TemplateCard extends StatelessWidget {
     );
   }
 
+  Widget _buildCategoryBadgesGrid(BuildContext context, Map<ItemCategory, int> categoryCounts) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildCategoryBadge(context, ItemCategory.vestiti, categoryCounts[ItemCategory.vestiti] ?? 0),
+            ),
+            SizedBox(width: context.spacingXs),
+            Expanded(
+              child: _buildCategoryBadge(context, ItemCategory.toiletries, categoryCounts[ItemCategory.toiletries] ?? 0),
+            ),
+          ],
+        ),
+        SizedBox(height: context.spacingXs),
+        Row(
+          children: [
+            Expanded(
+              child: _buildCategoryBadge(context, ItemCategory.elettronica, categoryCounts[ItemCategory.elettronica] ?? 0),
+            ),
+            SizedBox(width: context.spacingXs),
+            Expanded(
+              child: _buildCategoryBadge(context, ItemCategory.varie, categoryCounts[ItemCategory.varie] ?? 0),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryBadge(BuildContext context, ItemCategory category, int count) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacingXs,
+        vertical: context.spacingXs,
+      ),
+      decoration: BoxDecoration(
+        color: count > 0 
+            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.8)
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: context.responsiveBorderRadius(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            _getCategoryIcon(category),
+            size: context.responsive(16),
+            color: count > 0
+                ? colorScheme.onSurface
+                : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
+          SizedBox(width: 4),
+          Text(
+            count.toString(),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: count > 0
+                      ? colorScheme.onSurface
+                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
   int _getIconCodePoint(String iconName) {
     final iconMap = {
       'weekend': Icons.weekend.codePoint,
@@ -301,5 +348,18 @@ class _TemplateCard extends StatelessWidget {
       'terrain': Icons.terrain.codePoint,
     };
     return iconMap[iconName] ?? Icons.card_travel.codePoint;
+  }
+
+  IconData _getCategoryIcon(ItemCategory category) {
+    switch (category) {
+      case ItemCategory.vestiti:
+        return Icons.checkroom;
+      case ItemCategory.toiletries:
+        return Icons.soap;
+      case ItemCategory.elettronica:
+        return Icons.devices;
+      case ItemCategory.varie:
+        return Icons.category;
+    }
   }
 }

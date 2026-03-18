@@ -52,6 +52,8 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
   /// Se l'item è derivato da un template, lo sposta in manualItems
   /// con un nuovo UUID (non più l'ID deterministico del template).
   /// Se è già manuale, lo aggiorna in place.
+  /// 
+  /// CRITICAL: Preserva l'insertionIndex per mantenere la posizione nella UI.
   void renameItem(String itemId, String newName) {
     // Cerca l'item nei template-derived
     final templateItemIndex = state.templateDerivedItems
@@ -59,10 +61,12 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
 
     if (templateItemIndex != -1) {
       // Item da template: spostalo in manualItems con nuovo UUID e nome
+      // CRITICAL: Preserva insertionIndex per mantenere la posizione nella lista
       final item = state.templateDerivedItems[templateItemIndex];
       final updatedItem = item.copyWith(
         id: _uuid.v4(), // Nuovo UUID per item manuale
         name: newName,
+        // insertionIndex viene preservato automaticamente da copyWith
       );
 
       final updatedTemplateDerived = List<DraftItem>.from(state.templateDerivedItems)
@@ -83,7 +87,7 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
         .indexWhere((item) => item.id == itemId);
 
     if (manualItemIndex != -1) {
-      // Item manuale: aggiornalo direttamente (mantieni UUID originale)
+      // Item manuale: aggiornalo direttamente (mantieni UUID e insertionIndex originali)
       final item = state.manualItems[manualItemIndex];
       final updatedItem = item.copyWith(name: newName);
 
@@ -98,6 +102,8 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
   /// 
   /// Garantisce che la quantità non scenda mai sotto 1.
   /// Se l'item è derivato da template, lo sposta in manualItems con nuovo UUID.
+  /// 
+  /// CRITICAL: Preserva l'insertionIndex per mantenere la posizione nella UI.
   void updateQuantity(String itemId, int delta) {
     // Cerca l'item nei template-derived
     final templateItemIndex = state.templateDerivedItems
@@ -105,11 +111,13 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
 
     if (templateItemIndex != -1) {
       // Item da template: spostalo in manualItems con nuovo UUID e quantità aggiornata
+      // CRITICAL: Preserva insertionIndex per mantenere la posizione nella lista
       final item = state.templateDerivedItems[templateItemIndex];
       final newQuantity = (item.quantity + delta).clamp(1, 999);
       final updatedItem = item.copyWith(
         id: _uuid.v4(), // Nuovo UUID per item manuale
         quantity: newQuantity,
+        // insertionIndex viene preservato automaticamente da copyWith
       );
 
       final updatedTemplateDerived = List<DraftItem>.from(state.templateDerivedItems)
@@ -130,7 +138,7 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
         .indexWhere((item) => item.id == itemId);
 
     if (manualItemIndex != -1) {
-      // Item manuale: aggiornalo direttamente (mantieni UUID originale)
+      // Item manuale: aggiornalo direttamente (mantieni UUID e insertionIndex originali)
       final item = state.manualItems[manualItemIndex];
       final newQuantity = (item.quantity + delta).clamp(1, 999);
       final updatedItem = item.copyWith(quantity: newQuantity);
@@ -164,18 +172,33 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
   /// 
   /// L'item viene creato con un nome placeholder "Nuovo oggetto"
   /// e un UUID univoco. Viene aggiunto a manualItems.
-  void addManualItem(ItemCategory category) {
+  /// 
+  /// CRITICAL: Assegna un insertionIndex alla fine della lista corrente
+  /// per posizionare il nuovo item dopo tutti gli esistenti.
+  /// 
+  /// Restituisce l'ID del nuovo item per permettere auto-scroll e auto-focus.
+  String addManualItem(ItemCategory category) {
+    final newItemId = _uuid.v4();
+    
+    // Calcola il prossimo insertionIndex: max corrente + 1
+    final maxIndex = state.allItems.isEmpty
+        ? -1
+        : state.allItems.map((item) => item.insertionIndex).reduce((a, b) => a > b ? a : b);
+    
     final newItem = DraftItem(
-      id: _uuid.v4(),
+      id: newItemId,
       name: 'Nuovo oggetto',
       category: category,
       quantity: 1,
+      insertionIndex: maxIndex + 1,
     );
 
     final updatedManualItems = List<DraftItem>.from(state.manualItems)
       ..add(newItem);
 
     state = state.copyWith(manualItems: updatedManualItems);
+    
+    return newItemId;
   }
 
   /// Imposta la casa di destinazione.
@@ -233,9 +256,11 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
 
       if (manualItemIndex != -1) {
         // Item trovato in manualItems: incrementa la sua quantità
+        // CRITICAL: Preserva insertionIndex per mantenere la posizione
         final existingManualItem = updatedManualItems[manualItemIndex];
         final updatedManualItem = existingManualItem.copyWith(
           quantity: existingManualItem.quantity + templateItem.defaultQuantity,
+          // insertionIndex viene preservato automaticamente da copyWith
         );
         updatedManualItems[manualItemIndex] = updatedManualItem;
         
@@ -264,21 +289,38 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
 
     // Step 3: Converti il merge map in lista di DraftItem con ID DETERMINISTICI
     // CRITICAL FIX #1: Usa ID basati su categoria + nome normalizzato per stabilità widget keys
+    // CRITICAL: Preserva gli insertionIndex esistenti per item già presenti,
+    // assegna nuovi index solo per item nuovi
+    final existingIndexMap = <String, int>{};
+    
+    // Mappa gli index degli item template esistenti prima del rebuild
+    for (final item in state.templateDerivedItems) {
+      existingIndexMap[item.id] = item.insertionIndex;
+    }
+    
+    // Trova il prossimo insertionIndex disponibile
+    int nextAvailableIndex = state.allItems.isEmpty
+        ? 0
+        : state.allItems.map((i) => i.insertionIndex).reduce((a, b) => a > b ? a : b) + 1;
+    
     final List<DraftItem> rebuiltItems = mergeMap.values.map((mergedItem) {
+      final itemId = 'tpl_${mergedItem.category.name}_${mergedItem.normalizedName}';
+      
+      // Preserva l'index se l'item già esisteva, altrimenti assegna nuovo
+      final insertionIndex = existingIndexMap[itemId] ?? nextAvailableIndex++;
+      
       return DraftItem(
-        id: 'tpl_${mergedItem.category.name}_${mergedItem.normalizedName}',
+        id: itemId,
         name: mergedItem.displayName!,
         category: mergedItem.category,
         quantity: mergedItem.quantity,
+        insertionIndex: insertionIndex,
       );
     }).toList();
 
-    // Step 4: Ordina per categoria e poi per nome (per UX coerente)
-    rebuiltItems.sort((a, b) {
-      final categoryComparison = a.category.index.compareTo(b.category.index);
-      if (categoryComparison != 0) return categoryComparison;
-      return a.name.compareTo(b.name);
-    });
+    // Step 4: REMOVED SORTING - Items must maintain insertion order to prevent UI jumps
+    // Gli item mantengono l'ordine in cui vengono inseriti dal merge map
+    // Questo previene che la lista si riordini quando l'utente modifica un item
 
     // Step 5: Aggiorna lo stato con ENTRAMBE le liste
     state = state.copyWith(

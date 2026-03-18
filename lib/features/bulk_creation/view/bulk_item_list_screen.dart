@@ -6,6 +6,11 @@ import '../../items/model/item_model.dart';
 import '../model/draft_item.dart';
 import '../providers/bulk_creation_provider.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/widgets/quantity_stepper.dart';
+import '../../../shared/widgets/category_section_header.dart';
+import '../../../shared/widgets/sticky_cta_scaffold.dart';
+import '../../../shared/widgets/universal_item_tile.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/theme/app_spacing.dart';
 
 /// Schermata di editing massivo degli item aggregati dai template.
@@ -26,6 +31,15 @@ class BulkItemListScreen extends ConsumerStatefulWidget {
 
 class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
   bool _isSaving = false;
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _itemKeys = {};
+  String? _lastAddedItemId;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _handleSave() async {
     if (_isSaving) return;
@@ -64,37 +78,75 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
     }
   }
 
+  void _handleAddManualItem(ItemCategory category) {
+    final notifier = ref.read(bulkCreationNotifierProvider.notifier);
+    final newItemId = notifier.addManualItem(category);
+    
+    setState(() {
+      _lastAddedItemId = newItemId;
+      _itemKeys[newItemId] = GlobalKey();
+    });
+
+    // Auto-scroll e auto-focus dopo il rebuild
+    // Usa un delay leggermente più lungo per dare tempo al widget di renderizzarsi
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) _scrollToItem(newItemId);
+      });
+    });
+  }
+
+  void _scrollToItem(String itemId, {int retryCount = 0}) {
+    if (!mounted || !_scrollController.hasClients) return;
+    
+    final key = _itemKeys[itemId];
+    if (key?.currentContext == null) {
+      // Widget non ancora renderizzato, retry fino a 5 volte
+      if (retryCount < 5) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) _scrollToItem(itemId, retryCount: retryCount + 1);
+        });
+      }
+      return;
+    }
+
+    // Widget trovato: scroll preciso alla sua posizione
+    try {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+        alignment: 0.3, // Posiziona l'item al 30% dall'alto dello schermo
+      );
+    } catch (e) {
+      // Fallback silenzioso se ensureVisible fallisce
+      debugPrint('Failed to scroll to item: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(bulkCreationNotifierProvider);
-    final notifier = ref.read(bulkCreationNotifierProvider.notifier);
     final colorScheme = Theme.of(context).colorScheme;
 
     final itemsByCategory = _groupItemsByCategory(state.allItems);
 
-    return Scaffold(
+    // Cleanup keys for deleted items
+    _itemKeys.removeWhere((id, key) => 
+      !state.allItems.any((item) => item.id == id));
+    
+    // Create keys for new items
+    for (final item in state.allItems) {
+      _itemKeys.putIfAbsent(item.id, () => GlobalKey());
+    }
+
+    return StickyCtaScaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () => context.go('/bulk-creation/templates/${widget.houseId}'),
         ),
         title: Text('bulk_creation.edit_items'.tr()),
-        actions: [
-          if (_isSaving)
-            Padding(
-              padding: EdgeInsets.all(context.spacingMd),
-              child: SizedBox(
-                width: context.responsive(24),
-                height: context.responsive(24),
-                child: const CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.save),
-              onPressed: state.allItems.isNotEmpty ? _handleSave : null,
-            ),
-        ],
       ),
       body: state.allItems.isEmpty
           ? Center(
@@ -115,6 +167,7 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
               ),
             )
           : ListView.builder(
+              controller: _scrollController,
               padding: EdgeInsets.all(context.spacingMd),
               itemCount: itemsByCategory.keys.length,
               itemBuilder: (context, index) {
@@ -124,26 +177,46 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
                 return _CategorySection(
                   category: category,
                   items: items,
+                  itemKeys: _itemKeys,
+                  lastAddedItemId: _lastAddedItemId,
                   colorScheme: colorScheme,
                 );
               },
             ),
-
-      // Bottom bar with category buttons
-      bottomNavigationBar: _CategoryButtonBar(
-        onCategorySelected: (category) => notifier.addManualItem(category),
+      bottomContent: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _CategoryButtonBar(
+            onCategorySelected: _handleAddManualItem,
+          ),
+          SizedBox(height: context.spacingMd),
+          UniversalActionBar(
+            primaryLabel: 'common.save'.tr(),
+            primaryIcon: Icons.save,
+            onPrimaryPressed: state.allItems.isNotEmpty && !_isSaving ? _handleSave : null,
+            isLoading: _isSaving,
+          ),
+        ],
       ),
     );
   }
 
   Map<ItemCategory, List<DraftItem>> _groupItemsByCategory(List<DraftItem> items) {
+    // Usa LinkedHashMap per preservare l'ordine di inserimento
     final Map<ItemCategory, List<DraftItem>> grouped = {};
 
+    // Raggruppa mantenendo l'ordine originale degli item
     for (final item in items) {
       grouped.putIfAbsent(item.category, () => []).add(item);
     }
 
-    return grouped;
+    // Ordina le chiavi per categoria (enum index) ma NON gli item dentro
+    final sortedMap = Map.fromEntries(
+      grouped.entries.toList()
+        ..sort((a, b) => a.key.index.compareTo(b.key.index)),
+    );
+
+    return sortedMap;
   }
 }
 
@@ -151,11 +224,15 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
 class _CategorySection extends StatelessWidget {
   final ItemCategory category;
   final List<DraftItem> items;
+  final Map<String, GlobalKey> itemKeys;
+  final String? lastAddedItemId;
   final ColorScheme colorScheme;
 
   const _CategorySection({
     required this.category,
     required this.items,
+    required this.itemKeys,
+    required this.lastAddedItemId,
     required this.colorScheme,
   });
 
@@ -165,66 +242,22 @@ class _CategorySection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Category Header
-        Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: context.spacingSm,
-            vertical: context.spacingXs,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                _getCategoryIcon(category),
-                size: context.responsive(20),
-                color: colorScheme.primary,
-              ),
-              SizedBox(width: context.spacingSm),
-              Text(
-                _getCategoryName(category),
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-            ],
-          ),
-        ),
+        CategorySectionHeader(category: category),
         SizedBox(height: context.spacingSm),
 
         // Items in this category
         ...items.map((item) => Padding(
+              key: itemKeys[item.id],
               padding: EdgeInsets.only(bottom: context.spacingSm),
-              child: BulkItemRow(item: item),
+              child: BulkItemRow(
+                item: item,
+                autoFocus: item.id == lastAddedItemId,
+              ),
             )),
 
         SizedBox(height: context.spacingMd),
       ],
     );
-  }
-
-  IconData _getCategoryIcon(ItemCategory category) {
-    switch (category) {
-      case ItemCategory.vestiti:
-        return Icons.checkroom;
-      case ItemCategory.toiletries:
-        return Icons.soap;
-      case ItemCategory.elettronica:
-        return Icons.devices;
-      case ItemCategory.varie:
-        return Icons.category;
-    }
-  }
-
-  String _getCategoryName(ItemCategory category) {
-    switch (category) {
-      case ItemCategory.vestiti:
-        return 'items.category_vestiti'.tr();
-      case ItemCategory.toiletries:
-        return 'items.category_toiletries'.tr();
-      case ItemCategory.elettronica:
-        return 'items.category_elettronica'.tr();
-      case ItemCategory.varie:
-        return 'items.category_varie'.tr();
-    }
   }
 }
 
@@ -234,8 +267,13 @@ class _CategorySection extends StatelessWidget {
 /// per evitare rebuild loops e keyboard drop quando lo stato cambia.
 class BulkItemRow extends ConsumerStatefulWidget {
   final DraftItem item;
+  final bool autoFocus;
 
-  const BulkItemRow({super.key, required this.item});
+  const BulkItemRow({
+    super.key,
+    required this.item,
+    this.autoFocus = false,
+  });
 
   @override
   ConsumerState<BulkItemRow> createState() => _BulkItemRowState();
@@ -256,6 +294,19 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
     // CRITICAL: Solo quando l'utente finisce di editare (perde focus)
     // chiamiamo il notifier. Questo previene rebuild loops e keyboard drop.
     _focusNode.addListener(_onFocusChange);
+
+    // Auto-focus se questo è un item appena aggiunto
+    if (widget.autoFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _focusNode.requestFocus();
+          _controller.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: _controller.text.length,
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -316,82 +367,36 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
     final notifier = ref.read(bulkCreationNotifierProvider.notifier);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacingMd,
-        vertical: context.spacingSm,
-      ),
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: colorScheme.outlineVariant,
-          width: 1,
+    return UniversalItemTile(
+      useListTile: false,
+      borderColor: colorScheme.outlineVariant,
+      borderWidth: 1,
+      title: TextField(
+        controller: _controller,
+        focusNode: _focusNode,
+        style: Theme.of(context).textTheme.bodyMedium,
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: context.spacingSm,
+            vertical: context.spacingXs,
+          ),
+          hintText: 'bulk_creation.item_name_hint'.tr(),
         ),
-        borderRadius: context.responsiveBorderRadius(12),
+        onSubmitted: _onSubmitted,
       ),
-      child: Row(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Name TextField (inline editing)
-          Expanded(
-            flex: 3,
-            child: TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              style: Theme.of(context).textTheme.bodyMedium,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: context.spacingSm,
-                  vertical: context.spacingXs,
-                ),
-                hintText: 'bulk_creation.item_name_hint'.tr(),
-              ),
-              onSubmitted: _onSubmitted,
-            ),
+          QuantityStepper(
+            value: widget.item.quantity,
+            onChanged: (delta) {
+              notifier.updateQuantity(widget.item.id, delta - widget.item.quantity);
+            },
+            minValue: 1,
           ),
-
           SizedBox(width: context.spacingSm),
-
-          // Quantity controls
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.remove_circle_outline),
-                onPressed: widget.item.quantity > 1
-                    ? () => notifier.updateQuantity(widget.item.id, -1)
-                    : null,
-                iconSize: context.responsive(24),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                visualDensity: VisualDensity.compact,
-              ),
-              SizedBox(width: context.spacingXs),
-              Container(
-                constraints: BoxConstraints(minWidth: context.responsive(32)),
-                alignment: Alignment.center,
-                child: Text(
-                  widget.item.quantity.toString(),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ),
-              SizedBox(width: context.spacingXs),
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                onPressed: () => notifier.updateQuantity(widget.item.id, 1),
-                iconSize: context.responsive(24),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          ),
-
-          SizedBox(width: context.spacingSm),
-
-          // Delete button
           IconButton(
             icon: const Icon(Icons.close),
             onPressed: () => notifier.deleteItem(widget.item.id),
@@ -419,23 +424,13 @@ class _CategoryButtonBar extends ConsumerWidget {
 
     return SafeArea(
       child: Container(
-        padding: EdgeInsets.all(context.spacingMd),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainer,
-          boxShadow: [
-            BoxShadow(
-              color: colorScheme.shadow.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
+        padding: EdgeInsets.all(context.spacingSm),    
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'bulk_creation.add_manual_item'.tr(),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
             ),
@@ -450,7 +445,7 @@ class _CategoryButtonBar extends ConsumerWidget {
                     colorScheme: colorScheme,
                   ),
                 ),
-                SizedBox(width: context.spacingSm),
+                SizedBox(width: context.spacingXs),
                 Expanded(
                   child: _CategoryButton(
                     icon: Icons.devices,
@@ -459,9 +454,27 @@ class _CategoryButtonBar extends ConsumerWidget {
                     colorScheme: colorScheme,
                   ),
                 ),
+                SizedBox(width: context.spacingXs),
+                Expanded(
+                  child: _CategoryButton(
+                    icon: Icons.soap,
+                    label: 'items.category_toiletries'.tr(),
+                    onTap: () => onCategorySelected(ItemCategory.toiletries),
+                    colorScheme: colorScheme,
+                  ),
+                ),
+                SizedBox(width: context.spacingXs),
+                Expanded(
+                  child: _CategoryButton(
+                    icon: Icons.category,
+                    label: 'items.category_varie'.tr(),
+                    onTap: () => onCategorySelected(ItemCategory.varie),
+                    colorScheme: colorScheme,
+                  ),
+                ),
               ],
             ),
-            SizedBox(height: context.spacingSm),
+            /* SizedBox(height: context.spacingSm),
             Row(
               children: [
                 Expanded(
@@ -482,7 +495,7 @@ class _CategoryButtonBar extends ConsumerWidget {
                   ),
                 ),
               ],
-            ),
+            ), */
           ],
         ),
       ),
@@ -509,6 +522,8 @@ class _CategoryButton extends StatelessWidget {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         padding: EdgeInsets.symmetric(
           horizontal: context.spacingSm,
           vertical: context.spacingMd,
@@ -517,7 +532,7 @@ class _CategoryButton extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: context.responsive(24)),
+          Icon(icon, size: context.responsive(20)),
           SizedBox(height: context.spacingXs),
           Text(
             label,

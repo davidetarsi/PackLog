@@ -6,6 +6,7 @@ import '../providers/luggage_provider.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 import 'add_edit_luggage_screen.dart';
 
 /// Mostra il bottom sheet per gestire i bagagli di una casa
@@ -199,27 +200,31 @@ class LuggagesManagementSheet extends ConsumerWidget {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(
-                child: Text('common.error'.tr()),
+              error: (error, stack) => ErrorState(
+                error: error,
+                onRetry: () => ref.invalidate(luggageNotifierProvider),
               ),
             ),
           ),
           SafeArea(
             top: false,
             child: Padding(
-              padding: EdgeInsets.all(context.spacingMd),
-              child: ElevatedButton.icon(
-                onPressed: () async {
+              padding: EdgeInsets.only(
+                left: context.spacingMd,
+                right: context.spacingMd,
+                top: context.spacingMd,
+                bottom: context.spacingSm,
+              ),
+              child: UniversalActionBar(
+                horizontalPadding: 0,
+                primaryLabel: 'luggages.add_new'.tr(),
+                primaryIcon: Icons.add,
+                onPrimaryPressed: () async {
                   await showAddEditLuggageSheet(context, houseId: houseId);
                   if (context.mounted) {
                     ref.invalidate(luggagesByHouseProvider(houseId));
                   }
                 },
-                icon: const Icon(Icons.add),
-                label: Text('luggages.add_new'.tr()),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48),
-                ),
               ),
             ),
           ),
