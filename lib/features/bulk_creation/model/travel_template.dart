@@ -48,7 +48,8 @@ class TravelTemplate {
     final Map<ItemCategory, int> counts = {};
 
     for (final item in filteredItems) {
-      counts[item.category] = (counts[item.category] ?? 0) + 1;
+      counts[item.category] = (counts[item.category] ?? 0) + item.defaultQuantity; 
+      //+1 instead of item.defaultquantity to count only the item without the quantity
     }
 
     return counts;

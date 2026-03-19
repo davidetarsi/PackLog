@@ -43,6 +43,9 @@ class UniversalItemTile extends StatelessWidget {
   /// Callback al tap sulla tile (opzionale)
   final VoidCallback? onTap;
 
+  /// Callback al long press sulla tile (opzionale, es: delete)
+  final VoidCallback? onLongPress;
+
   /// Colore background custom (default: theme surface)
   final Color? backgroundColor;
 
@@ -69,6 +72,7 @@ class UniversalItemTile extends StatelessWidget {
     this.trailing,
     this.showInTransitOverlay = false,
     this.onTap,
+    this.onLongPress,
     this.backgroundColor,
     this.borderColor,
     this.borderWidth,
@@ -86,6 +90,7 @@ class UniversalItemTile extends StatelessWidget {
         : _buildCustomRowLayout(context);
 
     Widget tile = Card(
+      elevation: 0.5,
       margin: margin ?? EdgeInsets.only(bottom: context.spacingSm),
       color: backgroundColor,
       shape: borderColor != null
@@ -127,6 +132,7 @@ class UniversalItemTile extends StatelessWidget {
   Widget _buildListTileLayout(BuildContext context) {
     return ListTile(
       onTap: onTap,
+      onLongPress: onLongPress,
       leading: leading,
       title: title,
       subtitle: subtitle,

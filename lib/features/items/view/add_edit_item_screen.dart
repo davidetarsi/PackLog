@@ -1,6 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/item_provider.dart';
 import '../../../shared/widgets/standard_bottom_sheet_layout.dart';
+import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/helpers/dialog_helpers.dart';
 import 'item_form_content.dart';
 
 /// Mostra il bottom sheet per creare o modificare un item
@@ -23,7 +27,7 @@ Future<void> showAddEditItemSheet(
 }
 
 /// Bottom sheet per creare o modificare un item
-class AddEditItemSheet extends StatefulWidget {
+class AddEditItemSheet extends ConsumerStatefulWidget {
   final String? houseId;
   final String? itemId;
   final void Function(String itemId, String houseId)? onItemSaved;
@@ -36,10 +40,10 @@ class AddEditItemSheet extends StatefulWidget {
   });
 
   @override
-  State<AddEditItemSheet> createState() => _AddEditItemSheetState();
+  ConsumerState<AddEditItemSheet> createState() => _AddEditItemSheetState();
 }
 
-class _AddEditItemSheetState extends State<AddEditItemSheet> {
+class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
   final GlobalKey<ItemFormContentState> _formKey = GlobalKey();
   bool _isLoading = false;
 
@@ -51,6 +55,34 @@ class _AddEditItemSheetState extends State<AddEditItemSheet> {
     setState(() => _isLoading = loading);
   }
 
+  /// Gestisce l'eliminazione dell'item (stessa logica del kebab menu)
+  Future<void> _handleDelete() async {
+    if (widget.itemId == null || widget.houseId == null) return;
+
+    // Ottieni il nome dell'item dal form (TextField)
+    final itemName = _formKey.currentState?.itemName ?? 'items.this_item'.tr();
+
+    // Conferma eliminazione
+    final confirmed = await DialogHelpers.showDeleteConfirmation(
+      context: context,
+      itemType: 'common.item_type'.tr(),
+      itemName: itemName,
+    );
+
+    if (confirmed == true && mounted) {
+      // Chiudi il bottom sheet prima di eliminare
+      Navigator.pop(context);
+      
+      // Esegui eliminazione con retry
+      await ErrorRetryDialog.executeWithRetry(
+        context: context,
+        operation: () => ref.read(itemNotifierProvider(widget.houseId!).notifier).deleteItem(widget.itemId!, widget.houseId!),
+        errorTitle: 'common.error'.tr(),
+        errorMessage: 'errors.delete_item_failed'.tr(args: [itemName]),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StandardBottomSheetLayout(
@@ -59,6 +91,8 @@ class _AddEditItemSheetState extends State<AddEditItemSheet> {
           : 'items.add_new'.tr(),
       onCancel: () => Navigator.pop(context),
       onSave: _handleSave,
+      showDeleteButton: widget.itemId != null, // Solo in edit mode
+      onDelete: widget.itemId != null ? _handleDelete : null,
       isLoading: _isLoading,
       saveLabel: widget.itemId != null ? 'common.save'.tr() : 'common.create'.tr(),
       child: ItemFormContent(
@@ -68,7 +102,7 @@ class _AddEditItemSheetState extends State<AddEditItemSheet> {
         onSaved: (itemId, houseId) {
           widget.onItemSaved?.call(itemId, houseId);
           Navigator.pop(context);
-        },
+        },        
         showButtons: false,
         onLoadingChanged: _handleLoadingChanged,
       ),

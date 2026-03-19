@@ -4,7 +4,7 @@ import '../model/travel_template.dart';
 import '../model/user_gender.dart';
 
 /// Template di viaggio predefiniti per la creazione massiva di item.
-/// 
+///
 /// Ogni template contiene una lista di oggetti comunemente necessari
 /// per quel tipo di viaggio, con filtri per genere dove appropriato.
 const List<TravelTemplate> kTravelTemplates = [
@@ -17,6 +17,21 @@ const List<TravelTemplate> kTravelTemplates = [
     icon: 'weekend',
     description: 'Viaggio breve di 2-3 giorni',
     items: [
+      TemplateItemDef(
+        name: 'Documenti d\'identità / Passaporto',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Portafoglio e contanti',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Chiavi di casa',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
       TemplateItemDef(
         name: 'T-shirt',
         category: ItemCategory.vestiti,
@@ -33,12 +48,22 @@ const List<TravelTemplate> kTravelTemplates = [
         defaultQuantity: 3,
       ),
       TemplateItemDef(
+        name: 'Pigiama / Camicia da notte',
+        category: ItemCategory.vestiti,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
         name: 'Spazzolino da denti',
         category: ItemCategory.toiletries,
         defaultQuantity: 1,
       ),
       TemplateItemDef(
         name: 'Dentifricio',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Deodorante',
         category: ItemCategory.toiletries,
         defaultQuantity: 1,
       ),
@@ -66,7 +91,17 @@ const List<TravelTemplate> kTravelTemplates = [
         defaultQuantity: 1,
       ),
       TemplateItemDef(
+        name: 'Cuffie / Auricolari',
+        category: ItemCategory.elettronica,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
         name: 'Occhiali da sole',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Libro / E-reader',
         category: ItemCategory.varie,
         defaultQuantity: 1,
       ),
@@ -82,6 +117,21 @@ const List<TravelTemplate> kTravelTemplates = [
     icon: 'flight',
     description: 'Viaggio di una settimana o più',
     items: [
+      TemplateItemDef(
+        name: 'Documenti d\'identità / Passaporto',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Portafoglio e contanti',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Chiavi di casa',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
       TemplateItemDef(
         name: 'T-shirt',
         category: ItemCategory.vestiti,
@@ -101,6 +151,11 @@ const List<TravelTemplate> kTravelTemplates = [
         name: 'Calzini',
         category: ItemCategory.vestiti,
         defaultQuantity: 7,
+      ),
+      TemplateItemDef(
+        name: 'Pigiama / Camicia da notte',
+        category: ItemCategory.vestiti,
+        defaultQuantity: 2,
       ),
       TemplateItemDef(
         name: 'Giacca',
@@ -168,7 +223,17 @@ const List<TravelTemplate> kTravelTemplates = [
         defaultQuantity: 1,
       ),
       TemplateItemDef(
+        name: 'Cuffie / Auricolari',
+        category: ItemCategory.elettronica,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
         name: 'Occhiali da sole',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Libro / E-reader',
         category: ItemCategory.varie,
         defaultQuantity: 1,
       ),
@@ -184,6 +249,21 @@ const List<TravelTemplate> kTravelTemplates = [
     icon: 'business_center',
     description: 'Viaggio di lavoro professionale',
     items: [
+      TemplateItemDef(
+        name: 'Documenti d\'identità / Passaporto',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Portafoglio e contanti',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Chiavi di casa',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
       TemplateItemDef(
         name: 'Camicia elegante',
         category: ItemCategory.vestiti,
@@ -205,10 +285,20 @@ const List<TravelTemplate> kTravelTemplates = [
         defaultQuantity: 1,
       ),
       TemplateItemDef(
+        name: 'Cintura',
+        category: ItemCategory.vestiti,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
         name: 'Cravatta',
         category: ItemCategory.vestiti,
         defaultQuantity: 2,
         targetGenders: [UserGender.male],
+      ),
+      TemplateItemDef(
+        name: 'Pigiama',
+        category: ItemCategory.vestiti,
+        defaultQuantity: 1,
       ),
       TemplateItemDef(
         name: 'Laptop',
@@ -226,6 +316,11 @@ const List<TravelTemplate> kTravelTemplates = [
         defaultQuantity: 1,
       ),
       TemplateItemDef(
+        name: 'Cuffie / Auricolari',
+        category: ItemCategory.elettronica,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
         name: 'Blocco appunti',
         category: ItemCategory.varie,
         defaultQuantity: 1,
@@ -234,6 +329,11 @@ const List<TravelTemplate> kTravelTemplates = [
         name: 'Penna',
         category: ItemCategory.varie,
         defaultQuantity: 2,
+      ),
+      TemplateItemDef(
+        name: 'Biglietti da visita',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
       ),
     ],
   ),
@@ -247,6 +347,21 @@ const List<TravelTemplate> kTravelTemplates = [
     icon: 'laptop_mac',
     description: 'Viaggio prolungato con lavoro remoto',
     items: [
+      TemplateItemDef(
+        name: 'Documenti d\'identità / Passaporto',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Portafoglio e contanti',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Chiavi di casa',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
       TemplateItemDef(
         name: 'Laptop',
         category: ItemCategory.elettronica,
@@ -264,6 +379,16 @@ const List<TravelTemplate> kTravelTemplates = [
       ),
       TemplateItemDef(
         name: 'Cuffie noise-cancelling',
+        category: ItemCategory.elettronica,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Hard Disk / SSD esterno',
+        category: ItemCategory.elettronica,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Mouse e Mousepad',
         category: ItemCategory.elettronica,
         defaultQuantity: 1,
       ),
@@ -293,6 +418,11 @@ const List<TravelTemplate> kTravelTemplates = [
         defaultQuantity: 2,
       ),
       TemplateItemDef(
+        name: 'Pigiama',
+        category: ItemCategory.vestiti,
+        defaultQuantity: 2,
+      ),
+      TemplateItemDef(
         name: 'Kit toilette completo',
         category: ItemCategory.toiletries,
         defaultQuantity: 1,
@@ -310,12 +440,22 @@ const List<TravelTemplate> kTravelTemplates = [
     description: 'Viaggio al mare o in località balneare',
     items: [
       TemplateItemDef(
-        name: 'Costume da bagno',
-        category: ItemCategory.vestiti,
-        defaultQuantity: 2,
+        name: 'Documenti d\'identità / Passaporto',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
       ),
       TemplateItemDef(
-        name: 'Bikini',
+        name: 'Portafoglio e contanti',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Chiavi di casa',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Bikini / Costume intero',
         category: ItemCategory.vestiti,
         defaultQuantity: 2,
         targetGenders: [UserGender.female],
@@ -325,6 +465,11 @@ const List<TravelTemplate> kTravelTemplates = [
         category: ItemCategory.vestiti,
         defaultQuantity: 2,
         targetGenders: [UserGender.male],
+      ),
+      TemplateItemDef(
+        name: 'Pigiama / Camicia da notte',
+        category: ItemCategory.vestiti,
+        defaultQuantity: 1,
       ),
       TemplateItemDef(
         name: 'Asciugamano mare',
@@ -379,6 +524,16 @@ const List<TravelTemplate> kTravelTemplates = [
         category: ItemCategory.varie,
         defaultQuantity: 1,
       ),
+      TemplateItemDef(
+        name: 'Cuffie / Auricolari',
+        category: ItemCategory.elettronica,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Libro / E-reader',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
     ],
   ),
 
@@ -391,6 +546,21 @@ const List<TravelTemplate> kTravelTemplates = [
     icon: 'terrain',
     description: 'Escursioni in montagna e trekking',
     items: [
+      TemplateItemDef(
+        name: 'Documenti d\'identità / Passaporto',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Portafoglio e contanti',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Chiavi di casa',
+        category: ItemCategory.varie,
+        defaultQuantity: 1,
+      ),
       TemplateItemDef(
         name: 'Zaino da trekking',
         category: ItemCategory.varie,
@@ -422,12 +592,22 @@ const List<TravelTemplate> kTravelTemplates = [
         defaultQuantity: 4,
       ),
       TemplateItemDef(
+        name: 'Pigiama',
+        category: ItemCategory.vestiti,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
         name: 'Borraccia',
         category: ItemCategory.varie,
         defaultQuantity: 1,
       ),
       TemplateItemDef(
         name: 'Crema solare alta protezione',
+        category: ItemCategory.toiletries,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Antizanzare',
         category: ItemCategory.toiletries,
         defaultQuantity: 1,
       ),
@@ -443,6 +623,16 @@ const List<TravelTemplate> kTravelTemplates = [
       ),
       TemplateItemDef(
         name: 'Power bank',
+        category: ItemCategory.elettronica,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Bussola / GPS',
+        category: ItemCategory.elettronica,
+        defaultQuantity: 1,
+      ),
+      TemplateItemDef(
+        name: 'Cuffie / Auricolari',
         category: ItemCategory.elettronica,
         defaultQuantity: 1,
       ),

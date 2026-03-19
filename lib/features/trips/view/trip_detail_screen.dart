@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
 import '../../items/model/item_model.dart';
-import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -13,6 +12,7 @@ import '../../../shared/widgets/trip_summary_card.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
+import '../../../shared/widgets/universal_item_tile.dart';
 import '../../../shared/helpers/design_system.dart';
 
 /// Enum per le tab di filtro delle categorie
@@ -216,95 +216,49 @@ class _TripItemCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Card(
-      margin: EdgeInsets.only(bottom: context.spacingSm),
-      shape: RoundedRectangleBorder(
-        borderRadius: context.responsiveBorderRadius(
-          AppConstants.cardBorderRadius,
-        ),
-        side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
-      ),
-      child: InkWell(
-        borderRadius: context.responsiveBorderRadius(
-          AppConstants.cardBorderRadius,
-        ),
-        onTap: () {
-          ref
-              .read(tripNotifierProvider.notifier)
-              .toggleItemCheck(tripId, item.id);
+    return UniversalItemTile(
+      onTap: () {
+        ref.read(tripNotifierProvider.notifier).toggleItemCheck(tripId, item.id);
+      },
+      leading: Checkbox(
+        value: item.isChecked,
+        onChanged: (_) {
+          ref.read(tripNotifierProvider.notifier).toggleItemCheck(tripId, item.id);
         },
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: context.spacingSm,
-            vertical: context.spacingSm,
-          ),
-          child: Row(
-            children: [
-              // Checkbox
-              Checkbox(
-                value: item.isChecked,
-                onChanged: (_) {
-                  ref
-                      .read(tripNotifierProvider.notifier)
-                      .toggleItemCheck(tripId, item.id);
-                },
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-
-              SizedBox(width: context.spacingXs),
-
-              // Nome e categoria
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      style: TextStyle(
-                        fontSize: context.fontSizeMd,
-                        fontWeight: FontWeight.w500,
-                        decoration: item.isChecked
-                            ? TextDecoration.lineThrough
-                            : null,
-                        color: item.isChecked
-                            ? colorScheme.onSurface.withValues(alpha: 0.5)
-                            : colorScheme.onSurface,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      item.category.name,
-                      style: TextStyle(
-                        fontSize: context.fontSizeXs,
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Quantità
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacingSm,
-                  vertical: context.spacingXs,
-                ),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: context.responsiveBorderRadius(8),
-                ),
-                child: Text(
-                  'x${item.quantity}',
-                  style: TextStyle(
-                    fontSize: context.fontSizeXs,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-              ),
-            ],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+      title: Text(
+        item.name,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+          decoration: item.isChecked ? TextDecoration.lineThrough : null,
+          color: item.isChecked
+              ? colorScheme.onSurface.withValues(alpha: 0.5)
+              : colorScheme.onSurface,
+        ),
+      ),
+      subtitle: Text(
+        item.category.name,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacingSm,
+          vertical: context.spacingXs,
+        ),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: context.responsiveBorderRadius(8),
+        ),
+        child: Text(
+          'x${item.quantity}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: colorScheme.onSurface.withValues(alpha: 0.7),
           ),
         ),
       ),

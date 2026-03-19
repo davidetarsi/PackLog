@@ -44,7 +44,7 @@ class _TemplateSelectionScreenState
     final notifier = ref.read(bulkCreationNotifierProvider.notifier);
     final colorScheme = Theme.of(context).colorScheme;
 
-    final previewItemCount = state.allItems.length;
+    final previewItemCount = state.totalItemsCount;
     final selectedTemplatesCount = state.selectedTemplateKeys.length;
 
     return StickyCtaScaffold(
@@ -308,8 +308,8 @@ class _TemplateCard extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: count > 0 
-            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.8)
-            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.1)  //it was 0.8
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),  //it was 0.3
         borderRadius: context.responsiveBorderRadius(8),
       ),
       child: Row(

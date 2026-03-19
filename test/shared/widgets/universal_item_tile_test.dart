@@ -81,6 +81,28 @@ void main() {
       expect(tapped, true);
     });
 
+    testWidgets('calls onLongPress when tile is long-pressed', (tester) async {
+      // Arrange
+      var longPressed = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: UniversalItemTile(
+              title: const Text('Long-pressable Item'),
+              onLongPress: () => longPressed = true,
+            ),
+          ),
+        ),
+      );
+
+      // Act
+      await tester.longPress(find.byType(ListTile));
+      await tester.pumpAndSettle();
+
+      // Assert
+      expect(longPressed, true);
+    });
+
     testWidgets('applies custom backgroundColor', (tester) async {
       // Arrange
       const customColor = Colors.red;

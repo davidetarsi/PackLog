@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:stuff_tracker_2/shared/theme/app_colors.dart';
 import '../helpers/bottom_sheet_handle.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
@@ -47,6 +48,9 @@ class StandardBottomSheetLayout extends StatelessWidget {
   /// Callback quando si preme Salva
   final VoidCallback onSave;
 
+  /// Callback quando si preme Elimina
+  final VoidCallback? onDelete;
+
   /// Se true, mostra loading e disabilita i bottoni
   final bool isLoading;
 
@@ -56,15 +60,20 @@ class StandardBottomSheetLayout extends StatelessWidget {
   /// Se true, mostra il bottone annulla (default: true)
   final bool showCancelButton;
 
+  /// Se true, mostra il bottone elimina (default: false)
+  final bool showDeleteButton;
+
   const StandardBottomSheetLayout({
     super.key,
     required this.title,
     required this.child,
     required this.onCancel,
     required this.onSave,
+    this.onDelete,
     this.isLoading = false,
     this.saveLabel,
     this.showCancelButton = true,
+    this.showDeleteButton = false,
   });
 
   @override
@@ -143,10 +152,18 @@ class StandardBottomSheetLayout extends StatelessWidget {
                 primaryIcon: Icons.save,
                 onPrimaryPressed: isLoading ? null : onSave,
                 isLoading: isLoading,
-                leftAction: showCancelButton
+                rightAction: showCancelButton
                     ? CircularActionButton(
                         icon: Icons.close,
                         onPressed: isLoading ? null : onCancel,
+                        showBorder: true,
+                      )
+                    : null,
+                leftAction: showDeleteButton
+                    ? CircularActionButton(
+                        icon: Icons.delete_outline,
+                        color: AppColors.destructive,
+                        onPressed: isLoading ? null : onDelete,
                         showBorder: true,
                       )
                     : null,

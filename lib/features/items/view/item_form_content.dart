@@ -49,6 +49,9 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
   /// Espone lo stato di loading
   bool get isLoading => _isLoading;
 
+  /// Espone il nome corrente dell'item (per dialog di conferma)
+  String get itemName => _nameController.text.trim();
+
   void _setLoading(bool value) {
     setState(() => _isLoading = value);
     widget.onLoadingChanged?.call(value);

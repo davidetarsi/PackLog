@@ -235,9 +235,9 @@ class _MainShellState extends ConsumerState<MainShell>
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _NavItem(
-                icon: Icons.settings_outlined,
-                selectedIcon: Icons.settings,
-                label: 'common.settings'.tr(),
+                icon: Icons.person_3_outlined,
+                selectedIcon: Icons.person_3,
+                label: 'common.profile'.tr(),
                 isSelected: false,
                 onTap: () => _onTabTapped(0),
               ),

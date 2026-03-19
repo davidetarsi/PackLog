@@ -58,6 +58,7 @@
     "add_new": "New Item",
     "edit": "Edit Item",
     "delete": "Delete Item",
+    "this_item": "this item",
     "select_house_prompt": "Select a house",
     "no_houses_available": "No houses available. Create a house first.",
     "no_items": "No items",
@@ -256,6 +257,7 @@
     "required_field_error": "The field is required",
     "on_trip": "On trip",
     "in_transit": "In transit",
+    "here": "here",
     "temporary": "Temporary",
     "temporaries": "Temporary",
     "at_house": "At home",
@@ -282,7 +284,9 @@
     "return_before_departure_error": "Return date must be after departure",
     "ok": "OK",
     "back_to_home": "Back to home",
-    "navigation_error": "Navigation error: {}"
+    "navigation_error": "Navigation error: {}",
+    "profile": "Profilo"
+
   },
   
   "errors": {

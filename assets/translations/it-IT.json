@@ -55,6 +55,7 @@
     "add_new": "Nuovo oggetto",
     "edit": "Modifica oggetto",
     "delete": "Elimina oggetto",
+    "this_item": "questo oggetto",
     "select_house_prompt": "Seleziona una casa",
     "no_houses_available": "Nessuna casa disponibile. Crea prima una casa.",
     "no_items": "Nessun oggetto",
@@ -254,6 +255,7 @@
     "required_field_error": "Il campo è obbligatorio",
     "on_trip": "In viaggio",
     "in_transit": "In viaggio",
+    "here": "qui",
     "temporary": "Temporaneo",
     "temporaries": "Temporanei",
     "at_house": "In casa",
@@ -280,7 +282,8 @@
     "return_before_departure_error": "La data di ritorno deve essere dopo la partenza",
     "ok": "OK",
     "back_to_home": "Torna alla home",
-    "navigation_error": "Errore di navigazione: {}"
+    "navigation_error": "Errore di navigazione: {}",
+    "profile": "Profilo"
   },
   "errors": {
     "generic": "Si è verificato un errore",
@@ -357,7 +360,7 @@
     "rollback_impossible": "Impossibile ripristinare il backup di sicurezza"
   },
   "bulk_creation": {
-    "add_from_template": "Aggiungi da Template",
+    "add_from_template": "Template",
     "select_house": "Seleziona Casa",
     "select_templates": "Scegli Template",
     "select_at_least_one": "Seleziona almeno un template",
