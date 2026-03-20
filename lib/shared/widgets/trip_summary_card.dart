@@ -251,7 +251,7 @@ class TripSummaryCard extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         // COLORE DI SFONDO: Attualmente usa un grigio molto chiaro e semi-trasparente
-        //color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        color: colorScheme.surfaceContainerLow,
         borderRadius: context.responsiveBorderRadius(6),
       ),
       child: Row(
@@ -341,7 +341,7 @@ class TripSummaryCard extends ConsumerWidget {
           
           SizedBox(height: context.spacingMd),
           
-          // 3. Barra progresso e conteggio (Invariata dalla tua versione)
+          // 3. Barra progresso e conteggio
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

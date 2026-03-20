@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import '../model/trip_model.dart' as model;
 import 'trip_repository.dart';
 import '../../../shared/model/location_suggestion_model.dart';
@@ -161,6 +162,25 @@ class DriftTripRepository implements TripRepository {
     
     debugPrint('[TripRepo] Viaggio eliminato: $id');
     return result.data! > 0;
+  }
+
+  @override
+  Future<String> duplicateTrip(String originalTripId) async {
+    final newTripId = const Uuid().v4();
+    
+    // Usa transazione atomica per copiare viaggio + tutti gli items
+    final result = await _dbService.executeAtomicWithRetry(
+      () => _dao.duplicateTrip(originalTripId, newTripId),
+      operationName: 'duplicateTrip($originalTripId)',
+      config: RetryConfig.criticalConfig,
+    );
+    
+    if (!result.success) {
+      throw Exception('Impossibile duplicare il viaggio: ${result.error}');
+    }
+    
+    debugPrint('[TripRepo] Viaggio duplicato: $originalTripId -> $newTripId');
+    return newTripId;
   }
 
   @override

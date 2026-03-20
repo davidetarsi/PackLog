@@ -82,6 +82,23 @@ class TripNotifier extends _$TripNotifier {
     }
   }
 
+  /// Duplica un viaggio (Deep Copy: viaggio + tutti gli items)
+  /// 
+  /// Returns: ID del nuovo viaggio creato
+  Future<String> duplicateTrip(String tripId) async {
+    repository ??= ref.read(tripRepositoryProvider);
+    state = const AsyncLoading();
+    try {
+      final newTripId = await repository!.duplicateTrip(tripId);
+      final trips = await repository!.getAllTrips();
+      state = AsyncData(trips);
+      return newTripId;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
+  }
+
   Future<void> refresh() async {
     repository ??= ref.read(tripRepositoryProvider);
     state = const AsyncLoading();

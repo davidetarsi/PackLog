@@ -96,6 +96,69 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
     });
   }
 
+  /// Duplica un viaggio con tutti i suoi oggetti (Deep Copy con transazione atomica)
+  /// 
+  /// Crea un nuovo viaggio con:
+  /// - Nuovo UUID
+  /// - Nome: "$originalName (Copia)"
+  /// - Tutti gli oggetti copiati (preservando nome, categoria, quantità)
+  /// 
+  /// Returns: ID del nuovo viaggio creato
+  /// Throws: Exception se il viaggio originale non esiste
+  Future<String> duplicateTrip(String originalTripId, String newTripId) async {
+    return await transaction(() async {
+      // 1. Leggi il viaggio originale
+      final originalTrip = await getTripById(originalTripId);
+      if (originalTrip == null) {
+        throw Exception('Trip $originalTripId not found');
+      }
+
+      // 2. Crea il nuovo viaggio con nome "(Copia)"
+      final now = DateTime.now();
+      final newTrip = TripsCompanion.insert(
+        id: newTripId,
+        name: '${originalTrip.name} (Copia)',
+        description: Value(originalTrip.description),
+        departureDateTime: Value(originalTrip.departureDateTime),
+        returnDateTime: Value(originalTrip.returnDateTime),
+        destinationHouseId: Value(originalTrip.destinationHouseId),
+        locationPlaceId: Value(originalTrip.locationPlaceId),
+        locationDisplayName: Value(originalTrip.locationDisplayName),
+        locationName: Value(originalTrip.locationName),
+        locationCity: Value(originalTrip.locationCity),
+        locationState: Value(originalTrip.locationState),
+        locationCountry: Value(originalTrip.locationCountry),
+        locationType: Value(originalTrip.locationType),
+        locationLat: Value(originalTrip.locationLat),
+        locationLon: Value(originalTrip.locationLon),
+        isSaved: Value(originalTrip.isSaved),
+        createdAt: now,
+        updatedAt: now,
+      );
+      await insertTrip(newTrip);
+
+      // 3. Copia tutti i trip_items preservando tutti i campi
+      final originalItems = await getTripItemsByTripId(originalTripId);
+      if (originalItems.isNotEmpty) {
+        final List<TripItemEntriesCompanion> copiedItems = originalItems.map((item) {
+          return TripItemEntriesCompanion.insert(
+            id: item.id,  // Mantiene lo stesso ID dell'item (composite key con tripId)
+            tripId: newTripId,  // Nuovo trip ID
+            name: item.name,
+            category: item.category,
+            quantity: Value(item.quantity),
+            originHouseId: Value(item.originHouseId),
+            isChecked: const Value(false),  // Reset checked state
+          );
+        }).toList();
+        
+        await insertMultipleTripItems(copiedItems);
+      }
+
+      return newTripId;
+    });
+  }
+
   // === OPTIMIZED BATCH LOADING (Avoid N+1) ===
 
   /// Ottiene tutti i trip items per tutti i viaggi in una singola query.

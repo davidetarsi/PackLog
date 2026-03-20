@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:stuff_tracker_2/shared/config/app_config.dart';
 import 'core/database/database.dart';
 import 'core/database/migration_service.dart';
 import 'core/database/services/backup_service.dart';
@@ -13,6 +14,9 @@ import 'shared/providers/theme_provider.dart';
 void main() async {
   // Assicura che i widget Flutter siano inizializzati
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Validazione delle API keys
+  AppConfig.validate();
   
   // Inizializza easy_localization
   await EasyLocalization.ensureInitialized();

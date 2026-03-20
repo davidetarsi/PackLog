@@ -872,4 +872,123 @@ void main() {
       expect(groupedLuggages[trip2Id]!.first.sizeType, equals('hold_baggage'));
     });
   });
+
+  group('TripsDao - Duplicate Trip (Deep Copy)', () {
+    test('should duplicate trip with all items in atomic transaction', () async {
+      // === ARRANGE ===
+      // Create a house
+      final houseId = 'test-house-dup';
+      await database.housesDao.insertHouse(HousesCompanion.insert(
+        id: houseId,
+        name: 'Test House',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      // Create original trip
+      final originalTripId = 'original-trip-id';
+      final originalTrip = TripsCompanion.insert(
+        id: originalTripId,
+        name: 'Summer 2026',
+        description: const Value('Beach vacation'),
+        departureDateTime: Value(DateTime(2026, 7, 1)),
+        returnDateTime: Value(DateTime(2026, 7, 15)),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await database.tripsDao.insertTrip(originalTrip);
+
+      // Add items to original trip
+      final tripItems = [
+        TripItemEntriesCompanion.insert(
+          id: 'item-1',
+          tripId: originalTripId,
+          name: 'Sunscreen',
+          category: 'toiletries',
+          quantity: const Value(2),
+          originHouseId: Value(houseId),
+          isChecked: const Value(true),
+        ),
+        TripItemEntriesCompanion.insert(
+          id: 'item-2',
+          tripId: originalTripId,
+          name: 'T-shirt',
+          category: 'vestiti',
+          quantity: const Value(5),
+          originHouseId: Value(houseId),
+          isChecked: const Value(false),
+        ),
+      ];
+      await database.tripsDao.insertMultipleTripItems(tripItems);
+
+      // === ACT ===
+      final newTripId = 'duplicated-trip-id';
+      await database.tripsDao.duplicateTrip(originalTripId, newTripId);
+
+      // === ASSERT ===
+      // 1. Verify new trip exists with "(Copia)" suffix
+      final duplicatedTrip = await database.tripsDao.getTripById(newTripId);
+      expect(duplicatedTrip != null, true);
+      expect(duplicatedTrip!.name, 'Summer 2026 (Copia)');
+      expect(duplicatedTrip.description, 'Beach vacation');
+      expect(duplicatedTrip.departureDateTime, DateTime(2026, 7, 1));
+      expect(duplicatedTrip.returnDateTime, DateTime(2026, 7, 15));
+
+      // 2. Verify original trip still exists
+      final originalTripCheck = await database.tripsDao.getTripById(originalTripId);
+      expect(originalTripCheck != null, true);
+
+      // 3. Verify items were copied to new trip
+      final duplicatedItems = await database.tripsDao.getTripItemsByTripId(newTripId);
+      expect(duplicatedItems.length, 2);
+      
+      // 4. Verify item data preserved
+      final sunscreenCopy = duplicatedItems.firstWhere((i) => i.name == 'Sunscreen');
+      expect(sunscreenCopy.category, 'toiletries');
+      expect(sunscreenCopy.quantity, 2);
+      expect(sunscreenCopy.isChecked, false); // ✅ Reset to unchecked
+      expect(sunscreenCopy.tripId, newTripId);
+
+      final tshirtCopy = duplicatedItems.firstWhere((i) => i.name == 'T-shirt');
+      expect(tshirtCopy.category, 'vestiti');
+      expect(tshirtCopy.quantity, 5);
+      expect(tshirtCopy.isChecked, false); // ✅ Reset to unchecked
+
+      // 5. Verify original items unchanged
+      final originalItems = await database.tripsDao.getTripItemsByTripId(originalTripId);
+      expect(originalItems.length, 2);
+      expect(originalItems.firstWhere((i) => i.name == 'Sunscreen').isChecked, true);
+    });
+
+    test('should throw exception when duplicating non-existent trip', () async {
+      // === ACT & ASSERT ===
+      expect(
+        () => database.tripsDao.duplicateTrip('non-existent-trip', 'new-id'),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('should handle trip with no items', () async {
+      // === ARRANGE ===
+      final originalTripId = 'empty-trip-id';
+      await database.tripsDao.insertTrip(TripsCompanion.insert(
+        id: originalTripId,
+        name: 'Empty Trip',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      // === ACT ===
+      final newTripId = 'duplicated-empty-trip';
+      await database.tripsDao.duplicateTrip(originalTripId, newTripId);
+
+      // === ASSERT ===
+      final duplicatedTrip = await database.tripsDao.getTripById(newTripId);
+      expect(duplicatedTrip != null, true);
+      expect(duplicatedTrip!.name, 'Empty Trip (Copia)');
+      
+      final duplicatedItems = await database.tripsDao.getTripItemsByTripId(newTripId);
+      expect(duplicatedItems.length, 0);
+    });
+  });
 }

@@ -14,6 +14,7 @@ import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/widgets/universal_item_tile.dart';
 import '../../../shared/helpers/design_system.dart';
+import 'trip_management_sheet.dart';
 
 /// Enum per le tab di filtro delle categorie
 enum TripItemFilterTab {
@@ -123,17 +124,17 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               ),
               child: UniversalActionBar(
                 horizontalPadding: 0,
-                primaryLabel: 'trips.edit_items'.tr(),
-                primaryIcon: Icons.checklist,
-                onPrimaryPressed: () => context.push('/trips/${widget.tripId}/edit-items'),
+                primaryLabel: 'trips.manage'.tr(),
+                primaryIcon: Icons.settings,
+                onPrimaryPressed: () => _showManageSheet(context),
                 leftAction: CircularActionButton(
                   icon: Icons.delete_outline,
                   onPressed: () => _showDeleteDialog(context, trip),
                   showBorder: true,
                 ),
                 rightAction: CircularActionButton(
-                  icon: Icons.edit_calendar,
-                  onPressed: () => context.push('/trips/${widget.tripId}/edit-info'),
+                  icon: Icons.copy,
+                  onPressed: () => _handleDuplicate(context, trip),
                   showBorder: true,
                 ),
               ),
@@ -181,6 +182,41 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
       ),
     );
+  }
+
+  /// Apre il bottom sheet per gestire il viaggio
+  Future<void> _showManageSheet(BuildContext context) async {
+    await showTripManagementSheet(context, tripId: widget.tripId);
+  }
+
+  /// Gestisce la duplicazione del viaggio (Deep Copy)
+  Future<void> _handleDuplicate(BuildContext context, TripModel trip) async {
+    try {
+      final newTripId = await ref.read(tripNotifierProvider.notifier).duplicateTrip(widget.tripId);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('trips.duplicate_success'.tr(args: [trip.name])),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        
+        // Naviga al nuovo viaggio duplicato
+        context.push('/trips/$newTripId');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('errors.duplicate_trip_failed'.tr(args: [trip.name])),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _showDeleteDialog(BuildContext context, TripModel trip) async {
