@@ -8,6 +8,7 @@ import '../../items/providers/item_provider.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'add_edit_space_screen.dart';
@@ -92,8 +93,9 @@ class SpacesManagementSheet extends ConsumerWidget {
         ref.invalidate(spacesByHouseProvider(houseId));
         ref.invalidate(itemNotifierProvider(houseId));
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('spaces.space_deleted'.tr(args: [space.name]))),
+        AppSnackBar.showSuccess(
+          context,
+          'spaces.space_deleted'.tr(args: [space.name]),
         );
       }
     }

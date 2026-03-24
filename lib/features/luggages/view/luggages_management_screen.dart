@@ -5,6 +5,7 @@ import '../model/luggage_model.dart';
 import '../providers/luggage_provider.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'add_edit_luggage_screen.dart';
@@ -79,8 +80,9 @@ class LuggagesManagementSheet extends ConsumerWidget {
       );
 
       if (success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('luggages.luggage_deleted'.tr(args: [luggage.name]))),
+        AppSnackBar.showSuccess(
+          context,
+          'luggages.luggage_deleted'.tr(args: [luggage.name]),
         );
       }
     }

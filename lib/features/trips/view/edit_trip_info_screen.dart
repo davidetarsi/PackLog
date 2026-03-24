@@ -6,6 +6,7 @@ import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
@@ -62,9 +63,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     if (!_formKey.currentState!.validate()) return;
     
     if (_name.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('common.required_field_error'.tr())),
-      );
+      AppSnackBar.showWarning(context, 'common.required_field_error'.tr());
       return;
     }
 
@@ -73,10 +72,9 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     // Validazione date
     if (_departureDateTime != null && _returnDateTime != null) {
       if (_returnDateTime!.isBefore(_departureDateTime!)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('common.return_before_departure_error'.tr()),
-          ),
+        AppSnackBar.showWarning(
+          context,
+          'common.return_before_departure_error'.tr(),
         );
         return;
       }
@@ -106,7 +104,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
-        context.go('/trips/${widget.tripId}');
+        context.pop();
       }
     }
   }

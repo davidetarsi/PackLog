@@ -21,7 +21,7 @@ class HouseSelectionScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => context.go('/'),
+          onPressed: () => context.pop(),
         ),
         title: Text('bulk_creation.select_house'.tr()),
       ),

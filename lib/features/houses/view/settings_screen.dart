@@ -7,6 +7,7 @@ import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/providers/last_export_path_provider.dart';
 import '../../../core/database/controllers/backup_controller.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/constants/app_constants.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -119,12 +120,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
         // Mostra messaggio di successo
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('backup.export_success'.tr()),
-              backgroundColor: Colors.green,
-            ),
-          );
+          AppSnackBar.showSuccess(context, 'backup.export_success'.tr());
         }
       } catch (shareError) {
         // Fallback: Share non disponibile (simulatore o plugin non configurato)
@@ -211,13 +207,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
       // Mostra errore SOLO se l'export è fallito (non se ha fallito solo la share)
       if (exportResult == null && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('backup.export_failed'.tr()),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        AppSnackBar.showError(context, 'backup.export_failed'.tr());
       }
     }
   }
@@ -267,11 +257,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (!controller.validateImportFileName(filePath)) {
         debugPrint('[SettingsScreen] ❌ Nome file non valido');
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('backup.import_validation_failed'.tr()),
-              backgroundColor: Colors.red,
-            ),
+          AppSnackBar.showError(
+            context,
+            'backup.import_validation_failed'.tr(),
           );
         }
         return;
@@ -305,16 +293,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (context.mounted) {
         if (importResult.success) {
           debugPrint('[SettingsScreen] ✅ Import completato con successo');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('backup.import_success'.tr())),
-          );
+          AppSnackBar.showSuccess(context, 'backup.import_success'.tr());
         } else {
           debugPrint('[SettingsScreen] ❌ Import fallito: ${importResult.errorMessage}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(importResult.errorMessage ?? 'backup.import_failed'.tr()),
-              backgroundColor: Colors.red,
-            ),
+          AppSnackBar.showError(
+            context,
+            importResult.errorMessage ?? 'backup.import_failed'.tr(),
           );
         }
       }
@@ -324,12 +308,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       // Chiudi loading dialog se aperto
       if (context.mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('backup.critical_error'.tr()),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.showError(context, 'backup.critical_error'.tr());
       }
     }
   }

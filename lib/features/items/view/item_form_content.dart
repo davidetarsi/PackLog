@@ -8,6 +8,7 @@ import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
 import '../../spaces/providers/space_provider.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -155,9 +156,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
   Future<void> _saveItem() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedHouseId == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('common.select_house'.tr())));
+        AppSnackBar.showWarning(context, 'common.select_house'.tr());
         return;
       }
 

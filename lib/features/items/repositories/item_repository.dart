@@ -34,4 +34,18 @@ abstract class ItemRepository {
   
   /// Conta gli oggetti in uno spazio specifico
   Future<int> countItemsBySpace(String spaceId);
+
+  /// Sposta [itemIds] da [fromHouseId] a [toHouseId] in una singola query SQL.
+  ///
+  /// La query filtra per `house_id = fromHouseId`: solo gli item che si trovano
+  /// *ancora* nella casa di origine vengono spostati. Item già trasferiti o
+  /// manualmente ricollocati altrove non vengono modificati.
+  ///
+  /// Usato da [TripNotifier._transferItemsForCompletedTrips] per trasferire
+  /// gli item al completamento di un viaggio inter-casa, senza il pattern N+1.
+  Future<void> moveItemsToHouse(
+    List<String> itemIds,
+    String fromHouseId,
+    String toHouseId,
+  );
 }

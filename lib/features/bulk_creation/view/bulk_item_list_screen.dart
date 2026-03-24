@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../items/model/item_model.dart';
 import '../model/draft_item.dart';
 import '../providers/bulk_creation_provider.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/quantity_stepper.dart';
 import '../../../shared/widgets/category_section_header.dart';
@@ -48,12 +49,24 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
     setState(() => _isSaving = true);
 
     final notifier = ref.read(bulkCreationNotifierProvider.notifier);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final navigator = GoRouter.of(context);
+
+    // Il conteggio è catturato DENTRO l'operation per due motivi:
+    // 1. saveToDatabase() chiama reset() al termine, azzerando lo stato.
+    // 2. In caso di retry, la variabile viene re-acquisita dallo stato aggiornato,
+    //    evitando di mostrare il conteggio di un tentativo precedente.
+    // Usiamo totalItemsCount (somma delle quantità) e non allItems.length
+    // (tipi distinti): se l'utente aggiunge 1 item con quantità 5, il
+    // messaggio deve dire "5 oggetti aggiunti", non "1 oggetto aggiunto".
+    int savedCount = 0;
 
     final success = await ErrorRetryDialog.executeWithRetry(
       context: context,
-      operation: () => notifier.saveToDatabase(),
+      operation: () async {
+        savedCount =
+            ref.read(bulkCreationNotifierProvider).totalItemsCount;
+        await notifier.saveToDatabase();
+      },
       errorTitle: 'common.error'.tr(),
       errorMessage: 'bulk_creation.save_failed'.tr(),
     );
@@ -63,13 +76,10 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
     setState(() => _isSaving = false);
 
     if (success) {
-      final itemCount = ref.read(bulkCreationNotifierProvider).allItems.length;
-      
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Text('bulk_creation.save_success'.tr(
-            namedArgs: {'count': itemCount.toString()},
-          )),
+      AppSnackBar.showSuccess(
+        context,
+        'bulk_creation.save_success'.tr(
+          namedArgs: {'count': savedCount.toString()},
         ),
       );
 
@@ -144,7 +154,7 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/bulk-creation/templates/${widget.houseId}'),
+          onPressed: () => context.pop(),
         ),
         title: Text('bulk_creation.edit_items'.tr()),
       ),

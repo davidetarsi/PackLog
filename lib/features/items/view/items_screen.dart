@@ -40,6 +40,16 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
     });
   }
 
+  /// Aggiorna simultaneamente gli item della casa e lo stato dei viaggi.
+  ///
+  /// Entrambi i provider vengono ricaricati in parallelo per garantire che:
+  /// - la lista item sia aggiornata (aggiunte/modifiche esterne)
+  /// - i badge "in viaggio" / "ospite" riflettano lo stato corrente dei viaggi
+  Future<void> _onRefresh() => Future.wait([
+        ref.refresh(itemNotifierProvider(widget.houseId).future),
+        ref.refresh(tripNotifierProvider.future),
+      ]);
+
   @override
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(itemNotifierProvider(widget.houseId));
@@ -140,16 +150,34 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                             child: () {
                               // Mostra empty state se nessun item filtrato
                               if (filteredItems.isEmpty && !hasTemporaryItems) {
-                                return EmptyState(
-                                  icon: Icons.inventory_2_outlined,
-                                  title: 'items.no_items'.tr(),
-                                  subtitle: _selectedSpaceId != null
-                                      ? 'items.no_items_in_space'.tr()
-                                      : 'items.no_items_subtitle'.tr(),
+                                return RefreshIndicator(
+                                  onRefresh: _onRefresh,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  child: LayoutBuilder(
+                                    builder: (_, constraints) =>
+                                        SingleChildScrollView(
+                                      physics:
+                                          const AlwaysScrollableScrollPhysics(),
+                                      child: SizedBox(
+                                        height: constraints.maxHeight,
+                                        child: EmptyState(
+                                          icon: Icons.inventory_2_outlined,
+                                          title: 'items.no_items'.tr(),
+                                          subtitle: _selectedSpaceId != null
+                                              ? 'items.no_items_in_space'.tr()
+                                              : 'items.no_items_subtitle'.tr(),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 );
                               }
-                              
-                              return ListView(
+
+                              return RefreshIndicator(
+                                onRefresh: _onRefresh,
+                                color: Theme.of(context).colorScheme.primary,
+                                child: ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
                                 padding: EdgeInsets.all(context.spacingMd),
                                 children: [
                                   // Sezione items temporanei (da viaggi attivi)
@@ -184,7 +212,8 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                                     }),
                                   ],
                                 ],
-                              );
+                                ),
+                              ); // RefreshIndicator
                             }(),
                           ),
                         ],

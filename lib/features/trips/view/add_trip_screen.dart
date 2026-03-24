@@ -13,6 +13,7 @@ import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import 'trip_info_form.dart';
 import 'trip_items_selector.dart';
 
@@ -71,19 +72,16 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_name.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('common.required_field_error'.tr())));
+      AppSnackBar.showWarning(context, 'common.required_field_error'.tr());
       return;
     }
 
     // Validazione date
     if (_departureDateTime != null && _returnDateTime != null) {
       if (_returnDateTime!.isBefore(_departureDateTime!)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('common.return_before_departure_error'.tr()),
-          ),
+        AppSnackBar.showWarning(
+          context,
+          'common.return_before_departure_error'.tr(),
         );
         return;
       }
