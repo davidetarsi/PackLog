@@ -53,7 +53,7 @@ class _TemplateSelectionScreenState
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             notifier.reset();
-            context.go('/houses/${widget.houseId}');
+            context.pop();
           },
         ),
         title: Text('bulk_creation.select_templates'.tr()),

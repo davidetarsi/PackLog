@@ -6,6 +6,7 @@ import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../items/repositories/item_repository.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'trip_items_selector.dart';
@@ -44,13 +45,34 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
     });
   }
 
+  /// Normalizza i [TripItem] con [originHouseId] vuoto recuperando la casa
+  /// reale dell'[ItemModel] corrispondente. Questo sistema in modo idempotente
+  /// i dati creati prima che il campo venisse introdotto.
+  Future<List<TripItem>> _normalizeItemOrigins(List<TripItem> items) async {
+    final itemRepo = ref.read(itemRepositoryProvider);
+    return Future.wait(
+      items.map((tripItem) async {
+        if (tripItem.originHouseId.isNotEmpty) return tripItem;
+        try {
+          final itemModel = await itemRepo.getItemById(tripItem.id);
+          return tripItem.copyWith(originHouseId: itemModel.houseId);
+        } catch (_) {
+          return tripItem;
+        }
+      }),
+    );
+  }
+
   Future<void> _saveChanges() async {
     if (_trip == null) return;
 
     setState(() => _isLoading = true);
 
+    // Normalizza item legacy con originHouseId vuoto prima del salvataggio.
+    final normalizedItems = await _normalizeItemOrigins(_selectedItems);
+
     final updatedTrip = _trip!.copyWith(
-      items: _selectedItems,
+      items: normalizedItems,
       updatedAt: DateTime.now(),
     );
 
@@ -64,7 +86,7 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
-        context.go('/trips/${widget.tripId}');
+        context.pop();
       }
     }
   }

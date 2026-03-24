@@ -30,6 +30,36 @@ android {
         versionName = flutter.versionName
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // FLAVOR DIMENSIONS
+    // Definisce l'asse di variazione degli ambienti. Ogni flavor deve
+    // appartenere esattamente a una dimension: questo ci protegge da
+    // combinazioni di build ambigue in futuro (es. "env + tier").
+    // ─────────────────────────────────────────────────────────────────────────
+    flavorDimensions += "app_environment"
+
+    productFlavors {
+        // ── DEV ──────────────────────────────────────────────────────────────
+        // Installabile in parallelo alla build prod grazie all'applicationIdSuffix.
+        // Il suffisso ".dev" garantisce che i due APK non si sovrascrivano sul
+        // dispositivo del developer, preservando i dati di produzione.
+        create("dev") {
+            dimension = "app_environment"
+            applicationIdSuffix = ".dev"
+            // resValue inietta la stringa nell'R.string generato dal flavor,
+            // sovrascrivendo l'eventuale valore in res/values/strings.xml.
+            resValue("string", "app_name", "StuffTracker Dev")
+        }
+
+        // ── PROD ─────────────────────────────────────────────────────────────
+        // Build destinata agli utenti finali: nessun suffisso all'applicationId,
+        // nome pulito senza indicatori di ambiente.
+        create("prod") {
+            dimension = "app_environment"
+            resValue("string", "app_name", "StuffTracker")
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

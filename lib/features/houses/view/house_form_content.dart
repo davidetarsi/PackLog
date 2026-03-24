@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../model/house_model.dart';
 import '../providers/house_provider.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../shared/model/location_suggestion_model.dart';
@@ -82,9 +83,7 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
   Future<void> _saveHouse() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedLocation == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('common.select_location'.tr())),
-        );
+        AppSnackBar.showWarning(context, 'common.select_location'.tr());
         return;
       }
 

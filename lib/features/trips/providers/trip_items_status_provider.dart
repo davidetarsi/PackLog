@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
+import '../../items/providers/item_provider.dart';
 
 part 'trip_items_status_provider.g.dart';
 
@@ -77,10 +78,22 @@ ItemTripStatus itemTripStatus(Ref ref, String itemId) {
   );
 }
 
-/// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica
+/// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica.
+///
+/// Retrocompatibilità: item con [TripItem.originHouseId] vuoto (creati con versioni
+/// precedenti dell'app) vengono considerati appartenenti a questa casa se l'[ItemModel]
+/// corrispondente è attualmente in essa. Questo evita che oggetti "orfani" scompaiano
+/// dai badge "in viaggio" dopo aggiornamenti dello schema dati.
 @riverpod
 Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
   final tripsAsync = ref.watch(tripNotifierProvider);
+  // Fallback retrocompatibilità: item con originHouseId vuoto vengono risolti
+  // verificando a quale casa appartiene effettivamente l'ItemModel.
+  final houseItemIdSet = ref
+      .watch(itemNotifierProvider(houseId))
+      .valueOrNull
+      ?.map((i) => i.id)
+      .toSet() ?? {};
 
   return tripsAsync.when(
     data: (trips) {
@@ -88,7 +101,10 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
       for (final trip in trips) {
         if (trip.isActive) {
           for (final item in trip.items) {
-            if (item.originHouseId == houseId) {
+            final belongsToThisHouse = item.originHouseId == houseId ||
+                (item.originHouseId.isEmpty &&
+                    houseItemIdSet.contains(item.id));
+            if (belongsToThisHouse) {
               itemIds.add(item.id);
             }
           }
@@ -101,13 +117,21 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
   );
 }
 
-/// Provider che fornisce le quantità in viaggio per ogni item di una casa
-/// Restituisce una mappa {itemId: quantitàInViaggio}
+/// Provider che fornisce le quantità in viaggio per ogni item di una casa.
+/// Restituisce una mappa {itemId: quantitàInViaggio}.
 /// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
-/// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
+/// non la somma di tutti i viaggi (per gestire viaggi sovrapposti).
+///
+/// Applica la stessa logica di retrocompatibilità di [itemsOnTripFromHouseProvider]:
+/// item con [TripItem.originHouseId] vuoto vengono risolti tramite [itemNotifierProvider].
 @riverpod
 Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
   final tripsAsync = ref.watch(tripNotifierProvider);
+  final houseItemIdSet = ref
+      .watch(itemNotifierProvider(houseId))
+      .valueOrNull
+      ?.map((i) => i.id)
+      .toSet() ?? {};
 
   return tripsAsync.when(
     data: (trips) {
@@ -117,7 +141,10 @@ Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
       for (final trip in trips) {
         if (trip.isActive) {
           for (final item in trip.items) {
-            if (item.originHouseId == houseId) {
+            final belongsToThisHouse = item.originHouseId == houseId ||
+                (item.originHouseId.isEmpty &&
+                    houseItemIdSet.contains(item.id));
+            if (belongsToThisHouse) {
               itemIds.add(item.id);
             }
           }

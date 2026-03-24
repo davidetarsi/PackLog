@@ -107,9 +107,27 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return tripsAsync.when(
+      // skipLoadingOnRefresh è true di default in Riverpod 2: quando l'utente
+      // fa pull-to-refresh, l'ultimo dataset rimane visibile sotto il
+      // RefreshIndicator spinner anziché mostrare un CircularProgressIndicator
+      // sovrapposto, garantendo una UX fluida e senza sfarfallio.
       data: (trips) {
         if (trips.isEmpty) {
-          return _buildEmptyState(context);
+          // Lo stato vuoto deve essere scrollabile affinché il gesto di
+          // pull-to-refresh sia riconosciuto anche a lista vuota.
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(tripNotifierProvider.future),
+            color: colorScheme.primary,
+            child: LayoutBuilder(
+              builder: (_, constraints) => SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: constraints.maxHeight,
+                  child: _buildEmptyState(context),
+                ),
+              ),
+            ),
+          );
         }
 
         final nextTrip = _findNextTrip(trips);
@@ -125,16 +143,23 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
             ? sortedTrips.where((t) => t.id != nextTrip.id).toList()
             : sortedTrips;
 
-        return SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: context.spacingSm,
-            right: context.spacingSm,
-            top: context.spacingSm,
-            bottom: AppConstants.floatingNavBarPadding,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        return RefreshIndicator(
+          onRefresh: () async => ref.refresh(tripNotifierProvider.future),
+          color: colorScheme.primary,
+          child: SingleChildScrollView(
+            // AlwaysScrollableScrollPhysics garantisce che il gesto di
+            // pull-to-refresh funzioni anche quando il contenuto non riempie
+            // lo schermo (es. pochi viaggi).
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              left: context.spacingSm,
+              right: context.spacingSm,
+              top: context.spacingSm,
+              bottom: AppConstants.floatingNavBarPadding,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // Titolo di benvenuto
               Padding(
                 padding: EdgeInsets.symmetric(
@@ -181,7 +206,8 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                 _TripsMasonry(trips: tripsForMasonry),
             ],
           ),
-        );
+        ),
+      ); // RefreshIndicator
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => _buildErrorState(context, ref, error),

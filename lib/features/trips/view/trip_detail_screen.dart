@@ -14,6 +14,7 @@ import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/widgets/universal_item_tile.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import 'trip_management_sheet.dart';
 
 /// Enum per le tab di filtro delle categorie
@@ -72,7 +73,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           appBar: AppBar(
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.go('/trips'),
+              onPressed: () => context.pop(),
             ),
             title: Text('common.trip_detail'.tr()),
           ),
@@ -155,7 +156,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         icon: Icons.luggage_outlined,
         title: 'common.not_found'.tr(),
         action: ElevatedButton.icon(
-          onPressed: () => context.go('/trips'),
+          onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back),
           label: Text('common.back_to_list'.tr()),
         ),
@@ -195,25 +196,18 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       final newTripId = await ref.read(tripNotifierProvider.notifier).duplicateTrip(widget.tripId);
       
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('trips.duplicate_success'.tr(args: [trip.name])),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnackBar.showSuccess(
+          context,
+          'trips.duplicate_success'.tr(args: [trip.name]),
         );
-        
         // Naviga al nuovo viaggio duplicato
         context.push('/trips/$newTripId');
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('errors.duplicate_trip_failed'.tr(args: [trip.name])),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnackBar.showError(
+          context,
+          'errors.duplicate_trip_failed'.tr(args: [trip.name]),
         );
       }
     }
@@ -234,7 +228,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
       );
       if (success && context.mounted) {
-        context.go('/trips');
+        context.pop();
       }
     }
   }

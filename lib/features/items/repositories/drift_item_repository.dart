@@ -212,6 +212,37 @@ class DriftItemRepository implements ItemRepository {
     );
   }
 
+  /// Sposta [itemIds] da [fromHouseId] a [toHouseId] con una singola query SQL.
+  ///
+  /// Delega al DAO la query bulk; il filtro `AND house_id = fromHouseId`
+  /// garantisce che solo gli item ancora nella casa di partenza vengano mossi.
+  @override
+  Future<void> moveItemsToHouse(
+    List<String> itemIds,
+    String fromHouseId,
+    String toHouseId,
+  ) async {
+    if (itemIds.isEmpty) return;
+
+    final result = await _dbService.executeWithRetry(
+      () => _dao.moveItemsToHouse(itemIds, fromHouseId, toHouseId),
+      operationName:
+          'moveItemsToHouse(${itemIds.length} items: $fromHouseId -> $toHouseId)',
+      config: RetryConfig.criticalConfig,
+    );
+
+    if (!result.success) {
+      throw Exception(
+        'Impossibile spostare ${itemIds.length} oggetti '
+        'da $fromHouseId a $toHouseId: ${result.error}',
+      );
+    }
+
+    debugPrint(
+      '[ItemRepo] ${itemIds.length} oggetti spostati da $fromHouseId a $toHouseId',
+    );
+  }
+
   // === Conversioni ===
 
   ItemModel _toModel(Item item) {

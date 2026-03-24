@@ -154,6 +154,141 @@ void main() {
       );
     });
 
+    test('moveItemsToHouse should move items still at fromHouseId', () async {
+      // === ARRANGE ===
+      final houseAId = 'house-origin';
+      final houseBId = 'house-destination';
+
+      for (final id in [houseAId, houseBId]) {
+        await database.housesDao.insertHouse(HousesCompanion.insert(
+          id: id,
+          name: 'House $id',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ));
+      }
+
+      final itemIds = ['move-item-1', 'move-item-2', 'move-item-3'];
+      for (final id in itemIds) {
+        await database.itemsDao.insertItem(ItemsCompanion.insert(
+          id: id,
+          houseId: houseAId,
+          name: 'Item $id',
+          category: 'varie',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ));
+      }
+
+      // === ACT ===
+      await database.itemsDao.moveItemsToHouse(itemIds, houseAId, houseBId);
+
+      // === ASSERT ===
+      final movedItems = await database.itemsDao.getItemsByHouseId(houseBId);
+      expect(movedItems.length, 3);
+      expect(movedItems.every((i) => i.houseId == houseBId), isTrue);
+      expect(movedItems.every((i) => i.spaceId == null), isTrue,
+          reason: 'spaceId must be cleared on transfer');
+
+      final remainingInA = await database.itemsDao.getItemsByHouseId(houseAId);
+      expect(remainingInA, isEmpty);
+    });
+
+    test(
+        'moveItemsToHouse MUST NOT move items not at fromHouseId '
+        '(regression test for pull-to-refresh bug)', () async {
+      // This test verifies the critical fix: items already relocated to a
+      // different house (e.g., because they are currently on an active trip)
+      // must NOT be moved when a previously-completed trip is reprocessed.
+      //
+      // Scenario:
+      //   - T_old completed: House A → House C (item is in the candidate list)
+      //   - Item is currently at House B (moved there by an active trip)
+      //   - Reprocessing T_old must NOT move the item to House C.
+
+      // === ARRANGE ===
+      final houseAId = 'house-a';
+      final houseBId = 'house-b';
+      final houseCId = 'house-c';
+
+      for (final id in [houseAId, houseBId, houseCId]) {
+        await database.housesDao.insertHouse(HousesCompanion.insert(
+          id: id,
+          name: 'House $id',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ));
+      }
+
+      // Item is currently in House B (relocated, not House A anymore)
+      await database.itemsDao.insertItem(ItemsCompanion.insert(
+        id: 'relocated-item',
+        houseId: houseBId,
+        name: 'Relocated Item',
+        category: 'varie',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      // === ACT: reprocess T_old (completed, A → C) ===
+      // fromHouseId = houseAId but item is at houseB → WHERE clause mismatch
+      await database.itemsDao
+          .moveItemsToHouse(['relocated-item'], houseAId, houseCId);
+
+      // === ASSERT: item must remain in House B, untouched ===
+      final itemsInB = await database.itemsDao.getItemsByHouseId(houseBId);
+      expect(itemsInB.length, 1, reason: 'Item must still be in House B');
+      expect(itemsInB.first.id, 'relocated-item');
+
+      final itemsInC = await database.itemsDao.getItemsByHouseId(houseCId);
+      expect(itemsInC, isEmpty,
+          reason: 'Item must NOT have been moved to House C');
+    });
+
+    test('moveItemsToHouse should be idempotent', () async {
+      // === ARRANGE ===
+      final houseAId = 'idem-house-a';
+      final houseBId = 'idem-house-b';
+      for (final id in [houseAId, houseBId]) {
+        await database.housesDao.insertHouse(HousesCompanion.insert(
+          id: id,
+          name: 'House $id',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ));
+      }
+
+      await database.itemsDao.insertItem(ItemsCompanion.insert(
+        id: 'idempotent-item',
+        houseId: houseAId,
+        name: 'Idempotent Item',
+        category: 'varie',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      // === ACT: move once, then rerun (simulates repeated TripNotifier builds) ===
+      await database.itemsDao
+          .moveItemsToHouse(['idempotent-item'], houseAId, houseBId);
+      // Second call: item is now at B, fromHouseId is still A → no-op
+      await database.itemsDao
+          .moveItemsToHouse(['idempotent-item'], houseAId, houseBId);
+
+      // === ASSERT ===
+      final itemsInB = await database.itemsDao.getItemsByHouseId(houseBId);
+      expect(itemsInB.length, 1,
+          reason: 'Exactly one item in B after idempotent calls');
+
+      final itemsInA = await database.itemsDao.getItemsByHouseId(houseAId);
+      expect(itemsInA, isEmpty);
+    });
+
+    test('moveItemsToHouse should skip gracefully on empty list', () async {
+      await database.itemsDao.moveItemsToHouse([], 'any-a', 'any-b');
+      final allItems = await database.itemsDao.getAllItems();
+      expect(allItems, isEmpty);
+    });
+
     test('insertMultipleItems should be atomic - all or nothing', () async {
       // === ARRANGE ===
       final houseId = 'test-house-1';

@@ -16,6 +16,7 @@ import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 
 class HouseDetailScreen extends ConsumerWidget {
   final String houseId;
@@ -114,8 +115,9 @@ class HouseDetailScreen extends ConsumerWidget {
     );
 
     if (success && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('houses.primary_house_set'.tr(args: [houseName]))),
+      AppSnackBar.showSuccess(
+        context,
+        'houses.primary_house_set'.tr(args: [houseName]),
       );
     }
   }

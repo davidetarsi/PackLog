@@ -537,6 +537,162 @@ void main() {
     });
   });
 
+  group('DriftItemRepository - Bulk Move Operations', () {
+    test('moveItemsToHouse should relocate items still at fromHouseId', () async {
+      // === ARRANGE ===
+      const houseAId = 'bulk-move-house-a';
+      const houseBId = 'bulk-move-house-b';
+
+      for (final id in [houseAId, houseBId]) {
+        await database.housesDao.insertHouse(HousesCompanion.insert(
+          id: id,
+          name: 'House $id',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ));
+      }
+
+      final now = DateTime.now();
+      final itemsInA = [
+        ItemModel(id: 'bm-item-1', houseId: houseAId, name: 'Shirt',  category: ItemCategory.vestiti,    createdAt: now, updatedAt: now),
+        ItemModel(id: 'bm-item-2', houseId: houseAId, name: 'Laptop', category: ItemCategory.elettronica, createdAt: now, updatedAt: now),
+        ItemModel(id: 'bm-item-3', houseId: houseAId, name: 'Keys',   category: ItemCategory.varie,       createdAt: now, updatedAt: now),
+      ];
+      for (final item in itemsInA) {
+        await repository.addItem(item);
+      }
+
+      // === ACT ===
+      final ids = itemsInA.map((i) => i.id).toList();
+      await repository.moveItemsToHouse(ids, houseAId, houseBId);
+
+      // === ASSERT ===
+      final inB = await repository.getItemsByHouseId(houseBId);
+      expect(inB.length, 3);
+      expect(inB.every((i) => i.houseId == houseBId), isTrue);
+      expect(inB.every((i) => i.spaceId == null), isTrue,
+          reason: 'All items must land in the general pool of house B');
+
+      final inA = await repository.getItemsByHouseId(houseAId);
+      expect(inA, isEmpty);
+    });
+
+    test(
+        'moveItemsToHouse MUST NOT move items not at fromHouseId '
+        '(regression test for pull-to-refresh bug)', () async {
+      // Verifies the critical fix: items belonging to an active trip (not at
+      // the old completed trip's origin anymore) must not be incorrectly moved.
+      //
+      // Scenario:
+      //   - T_old completed: A → C  (item was originally from A)
+      //   - Item is now at B  (moved there by the active T_new: A → B)
+      //   - Reprocessing T_old must NOT touch the item.
+
+      // === ARRANGE ===
+      const houseAId = 'reg-house-a';
+      const houseBId = 'reg-house-b';
+      const houseCId = 'reg-house-c';
+
+      for (final id in [houseAId, houseBId, houseCId]) {
+        await database.housesDao.insertHouse(HousesCompanion.insert(
+          id: id, name: 'House $id',
+          createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        ));
+      }
+
+      final now = DateTime.now();
+      // Item is currently at B, not at A
+      final item = ItemModel(
+        id: 'reg-item',
+        houseId: houseBId,
+        name: 'Item at B',
+        category: ItemCategory.varie,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.addItem(item);
+
+      // === ACT: reprocess T_old (fromHouseId = A, item is at B) ===
+      await repository.moveItemsToHouse([item.id], houseAId, houseCId);
+
+      // === ASSERT: item still at B, NOT moved to C ===
+      final itemsInB = await repository.getItemsByHouseId(houseBId);
+      expect(itemsInB.length, 1,
+          reason: 'Item must remain in B — it was not at A when the query ran');
+      expect(itemsInB.first.id, item.id);
+
+      final itemsInC = await repository.getItemsByHouseId(houseCId);
+      expect(itemsInC, isEmpty,
+          reason: 'Item must NOT have been moved to C');
+    });
+
+    test('moveItemsToHouse should be idempotent (move then re-run)', () async {
+      // === ARRANGE ===
+      const houseAId = 'idem-a';
+      const houseBId = 'idem-b';
+      for (final id in [houseAId, houseBId]) {
+        await database.housesDao.insertHouse(HousesCompanion.insert(
+          id: id, name: 'Idempotent House $id',
+          createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        ));
+      }
+
+      final now = DateTime.now();
+      final item = ItemModel(
+        id: 'idem-item', houseId: houseAId, name: 'Idempotent',
+        category: ItemCategory.varie, createdAt: now, updatedAt: now,
+      );
+      await repository.addItem(item);
+
+      // === ACT: move once, then rerun (item is now at B, fromHouseId=A → no-op) ===
+      await repository.moveItemsToHouse([item.id], houseAId, houseBId);
+      await repository.moveItemsToHouse([item.id], houseAId, houseBId);
+
+      // === ASSERT ===
+      final inB = await repository.getItemsByHouseId(houseBId);
+      expect(inB.length, 1);
+
+      final inA = await repository.getItemsByHouseId(houseAId);
+      expect(inA, isEmpty);
+    });
+
+    test('moveItemsToHouse with empty list should be a no-op', () async {
+      await expectLater(
+        repository.moveItemsToHouse([], 'any-a', 'any-b'),
+        completes,
+      );
+    });
+
+    test('moveItemsToHouse should only affect specified IDs', () async {
+      // === ARRANGE ===
+      const houseAId = 'selective-house-a';
+      const houseBId = 'selective-house-b';
+
+      for (final id in [houseAId, houseBId]) {
+        await database.housesDao.insertHouse(HousesCompanion.insert(
+          id: id, name: 'House $id',
+          createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        ));
+      }
+
+      final now = DateTime.now();
+      await repository.addItem(ItemModel(id: 'sel-1', houseId: houseAId, name: 'To Move',   category: ItemCategory.varie, createdAt: now, updatedAt: now));
+      await repository.addItem(ItemModel(id: 'sel-2', houseId: houseAId, name: 'Stay Here', category: ItemCategory.varie, createdAt: now, updatedAt: now));
+
+      // === ACT: move only sel-1 ===
+      await repository.moveItemsToHouse(['sel-1'], houseAId, houseBId);
+
+      // === ASSERT ===
+      final inA = await repository.getItemsByHouseId(houseAId);
+      expect(inA.length, 1);
+      expect(inA.first.id, 'sel-2');
+
+      final inB = await repository.getItemsByHouseId(houseBId);
+      expect(inB.length, 1);
+      expect(inB.first.id, 'sel-1');
+    });
+  });
+
   group('DriftItemRepository - Batch Operations', () {
     test('insertMultipleItems should save all items in a single transaction', () async {
       // === ARRANGE ===
