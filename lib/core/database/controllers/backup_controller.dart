@@ -5,13 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:stuff_tracker_2/features/houses/providers/house_provider.dart';
-import 'package:stuff_tracker_2/features/houses/providers/house_stats_provider.dart';
-import 'package:stuff_tracker_2/features/items/providers/item_provider.dart';
-import 'package:stuff_tracker_2/features/trips/providers/trip_provider.dart';
-import 'package:stuff_tracker_2/features/spaces/providers/space_provider.dart';
-import 'package:stuff_tracker_2/features/luggages/providers/luggage_provider.dart';
-import 'package:stuff_tracker_2/shared/constants/app_constants.dart';
+import 'package:pack_log/features/houses/providers/house_provider.dart';
+import 'package:pack_log/features/houses/providers/house_stats_provider.dart';
+import 'package:pack_log/features/items/providers/item_provider.dart';
+import 'package:pack_log/features/trips/providers/trip_provider.dart';
+import 'package:pack_log/features/spaces/providers/space_provider.dart';
+import 'package:pack_log/features/luggages/providers/luggage_provider.dart';
+import 'package:pack_log/shared/constants/app_constants.dart';
 import '../database_provider.dart';
 import '../exceptions/backup_exceptions.dart';
 import '../services/backup_service.dart';
@@ -378,51 +378,100 @@ class BackupController extends _$BackupController {
     }
   }
 
-  /// Esporta il database in un file temporaneo per condivisione.
-  /// 
-  /// Utile per permettere all'utente di salvare/condividere il database.
-  /// Il file viene creato nella directory temporanea del sistema.
-  /// 
+  /// Esporta il database nella cartella Download dell'utente.
+  ///
+  /// Tenta di salvare nella **cartella Download pubblica** del dispositivo
+  /// (visibile nel file manager) usando [_resolveDownloadsDirectory].
+  /// Se non è accessibile in scrittura (Android 11+ senza permessi), ricade
+  /// sulla directory specifica dell'app fornita da [getDownloadsDirectory].
+  ///
   /// **Nome file:** `stuff-tracker-db-[ddmmyyyy].db`
   /// Esempio: `stuff-tracker-db-17022026.db`
   Future<ExportResult> exportToTemporaryFile() async {
-    try {
-      debugPrint('[BackupController] Preparazione export con nome file specifico');
-      
-      // Usa la directory Downloads per rendere il file accessibile all'utente
-      final downloadsDir = await getDownloadsDirectory();
-      
-      if (downloadsDir == null) {
-        throw ExportFailedException(
-          'backup.downloads_unavailable'.tr(),
-        );
-      }
-      
-      // Crea la directory Downloads se non esiste
-      if (!await downloadsDir.exists()) {
-        debugPrint('[BackupController] 📁 Directory Downloads non esiste, la creo...');
-        await downloadsDir.create(recursive: true);
-        debugPrint('[BackupController] ✅ Directory Downloads creata');
-      }
-      
-      final now = DateTime.now();
-      
-      // Formato: [prefix]-[ddmmyyyy].db
-      final day = now.day.toString().padLeft(2, '0');
-      final month = now.month.toString().padLeft(2, '0');
-      final year = now.year.toString();
-      final fileName = '${AppConstants.backupFilePrefix}-$day$month$year${AppConstants.databaseFileExtension}';
-      
-      final destinationPath = p.join(downloadsDir.path, fileName);
-      
-      debugPrint('[BackupController] 📁 Directory export: ${downloadsDir.path}');
-      debugPrint('[BackupController] 📄 Nome file export: $fileName');
-      debugPrint('[BackupController] 📂 Path completo: $destinationPath');
+    debugPrint('[BackupController] Preparazione export con nome file specifico');
 
-      return await exportDatabase(destinationPath);
-    } catch (e) {
-      rethrow;
+    final downloadsDir = await _resolveDownloadsDirectory();
+
+    if (downloadsDir == null) {
+      throw ExportFailedException(
+        'backup.downloads_unavailable'.tr(),
+      );
     }
+
+    // Crea la directory se per qualche motivo non esiste
+    if (!await downloadsDir.exists()) {
+      debugPrint('[BackupController] 📁 Directory Downloads non esiste, la creo...');
+      await downloadsDir.create(recursive: true);
+    }
+
+    final now = DateTime.now();
+    final day = now.day.toString().padLeft(2, '0');
+    final month = now.month.toString().padLeft(2, '0');
+    final year = now.year.toString();
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+    final second = now.second.toString().padLeft(2, '0');
+    final fileName =
+        '${AppConstants.backupFilePrefix}-$day$month$year-$hour$minute$second${AppConstants.databaseFileExtension}';
+
+    final destinationPath = p.join(downloadsDir.path, fileName);
+
+    debugPrint('[BackupController] 📁 Directory export: ${downloadsDir.path}');
+    debugPrint('[BackupController] 📄 Nome file export: $fileName');
+    debugPrint('[BackupController] 📂 Path completo: $destinationPath');
+
+    return await exportDatabase(destinationPath);
+  }
+
+  /// Risolve la directory di destinazione ottimale per l'export.
+  ///
+  /// **Android**: tenta in ordine i percorsi della cartella Download pubblica
+  /// (`/storage/emulated/0/Download` e variante con `s`). Per ciascuno verifica
+  /// l'effettivo accesso in scrittura con un file temporaneo. Se nessun percorso
+  /// pubblico è scrivibile (Android 11+ senza [MANAGE_EXTERNAL_STORAGE]), ricade
+  /// su [getDownloadsDirectory] che restituisce la directory privata dell'app.
+  ///
+  /// **iOS / Desktop**: delegato direttamente a [getDownloadsDirectory].
+  Future<Directory?> _resolveDownloadsDirectory() async {
+    if (Platform.isAndroid) {
+      // Percorsi standard della cartella Download pubblica su Android.
+      // Disponibili senza permessi aggiuntivi su Android ≤ 9.
+      // Su Android 10, accessibili grazie a requestLegacyExternalStorage="true".
+      // Su Android 11+, la scrittura diretta fallisce: fallback su path_provider.
+      const androidPublicPaths = [
+        '/storage/emulated/0/Download',
+        '/storage/emulated/0/Downloads',
+      ];
+
+      for (final candidatePath in androidPublicPaths) {
+        final dir = Directory(candidatePath);
+        if (!await dir.exists()) continue;
+
+        // Verifica accesso in scrittura con un file sentinel temporaneo
+        final testFile = File(p.join(dir.path, '.tmp_write_test'));
+        try {
+          await testFile.create();
+          await testFile.delete();
+          debugPrint(
+            '[BackupController] ✅ Cartella Download pubblica accessibile: $candidatePath',
+          );
+          return dir;
+        } catch (_) {
+          debugPrint(
+            '[BackupController] ⚠️ $candidatePath non scrivibile, provo alternativa...',
+          );
+        }
+      }
+
+      debugPrint(
+        '[BackupController] ⚠️ Cartella Download pubblica non accessibile '
+        '(Android 11+?), uso directory privata via path_provider.',
+      );
+    }
+
+    // Fallback: directory Downloads specifica dell'app
+    // (es. /Android/data/<pkg>/files/Downloads).
+    return getDownloadsDirectory();
   }
 
   /// Valida che un file di import abbia il nome corretto.

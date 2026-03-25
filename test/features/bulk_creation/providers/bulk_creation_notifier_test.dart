@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:stuff_tracker_2/features/items/model/item_model.dart';
-import 'package:stuff_tracker_2/features/items/repositories/item_repository.dart';
-import 'package:stuff_tracker_2/features/items/providers/item_provider.dart';
-import 'package:stuff_tracker_2/features/bulk_creation/providers/bulk_creation_provider.dart';
-import 'package:stuff_tracker_2/features/bulk_creation/model/user_gender.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/items/providers/item_provider.dart';
+import 'package:pack_log/features/bulk_creation/providers/bulk_creation_provider.dart';
+import 'package:pack_log/features/bulk_creation/model/user_gender.dart';
 
 /// Mock del repository degli item.
 class MockItemRepository extends Mock implements ItemRepository {}

@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
 import '../../items/view/add_edit_item_screen.dart';
@@ -223,7 +224,7 @@ class HouseDetailScreen extends ConsumerWidget {
         final house = matchingHouses.first;
         final colorScheme = Theme.of(context).colorScheme;
         
-        return Scaffold(
+        return StickyCtaScaffold(
           appBar: AppBar(
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
@@ -242,15 +243,7 @@ class HouseDetailScreen extends ConsumerWidget {
             ),
           ),
           body: ItemsScreen(houseId: houseId, houseName: house.name),
-          bottomNavigationBar: SafeArea(
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: context.spacingMd,
-                right: context.spacingMd,
-                top: context.spacingMd,
-                bottom: context.spacingSm,
-              ),
-              child: UniversalActionBar(
+          bottomContent: UniversalActionBar(
                 horizontalPadding: 0,
                 primaryLabel: 'houses.manage'.tr(),
                 primaryIcon: Icons.settings,
@@ -267,8 +260,6 @@ class HouseDetailScreen extends ConsumerWidget {
                   showBorder: true,
                 ),
               ),
-            ),
-          ),
         );
       },
       loading: () =>

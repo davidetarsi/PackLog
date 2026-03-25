@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:stuff_tracker_2/features/items/view/item_category.dart';
+import 'package:pack_log/features/items/view/item_category.dart';
 import '../model/item_model.dart';
 import '../providers/item_provider.dart';
 import '../../../shared/widgets/widgets.dart';

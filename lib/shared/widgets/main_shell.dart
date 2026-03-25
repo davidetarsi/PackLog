@@ -246,7 +246,7 @@ class _MainShellState extends ConsumerState<MainShell>
               borderRadius: context.responsiveBorderRadius(
                 AppConstants.pillBorderRadius,
               ),
-              boxShadow: [
+               boxShadow: [
                 BoxShadow(
                   color: colorScheme.shadow.withValues(alpha: 0.15),
                   blurRadius: 8,

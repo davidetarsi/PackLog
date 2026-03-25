@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart' hide isNull, isNotNull;
-import 'package:stuff_tracker_2/core/database/database.dart';
+import 'package:pack_log/core/database/database.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for SpacesDao.

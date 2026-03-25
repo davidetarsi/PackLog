@@ -269,7 +269,7 @@ class MyApp extends ConsumerWidget {
         ref.watch(themeModeNotifierProvider);
 
     return MaterialApp.router(
-      title: 'Stuff Tracker',
+      title: 'Pack Log',
       // Il banner "DEBUG" è visibile solo in dev per non disorientare
       // gli utenti in produzione con indicatori tecnici.
       debugShowCheckedModeBanner: environment == Environment.dev,

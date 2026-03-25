@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
 import '../../items/model/item_model.dart';
@@ -69,7 +70,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         final trip = matchingTrips.first;
         final filteredItems = _filterItems(trip.items);
 
-        return Scaffold(
+        return StickyCtaScaffold(
           appBar: AppBar(
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
@@ -115,15 +116,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
             ],
           ),
           // Action bar unificata in basso
-          bottomNavigationBar: SafeArea(
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: context.spacingMd,
-                right: context.spacingMd,
-                top: context.spacingMd,
-                bottom: context.spacingSm,
-              ),
-              child: UniversalActionBar(
+          bottomContent: UniversalActionBar(
                 horizontalPadding: 0,
                 primaryLabel: 'trips.manage'.tr(),
                 primaryIcon: Icons.settings,
@@ -138,9 +131,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                   onPressed: () => _handleDuplicate(context, trip),
                   showBorder: true,
                 ),
-              ),
-            ),
-          ),
+              ),          
         );
       },
       loading: () =>

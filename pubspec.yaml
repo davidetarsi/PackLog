@@ -1,4 +1,4 @@
-name: stuff_tracker_2
+name: pack_log
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.10.4
@@ -84,6 +84,7 @@ dev_dependencies:
   riverpod_generator: ^2.3.5
   drift_dev: ^2.22.1
   mocktail: ^1.0.4
+  flutter_launcher_icons: "^0.14.4"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -125,3 +126,13 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Configurazione flutter_launcher_icons (top-level, NON dentro dev_dependencies).
+# Esegui `dart run flutter_launcher_icons` per generare le icone.
+flutter_launcher_icons:
+  android: "ic_launcher_foreground"
+  ios: true
+  image_path: "assets/icon/app_icon_foreground.png"
+  # Configurazione Adaptive Icons per Android 8.0+
+  adaptive_icon_background: "#FFE6C5"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"

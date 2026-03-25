@@ -1,7 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:stuff_tracker_2/features/items/view/item_category_section.dart';
+import 'package:pack_log/features/items/view/item_category_section.dart';
+
 import '../providers/item_provider.dart';
 import '../model/item_model.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
@@ -173,45 +174,93 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                                 );
                               }
 
+                              // Snapshot della mappa in lista per indicizzazione
+                              // O(1) nel builder: evita elementAt() su un Iterable.
+                              final categoryEntries =
+                                  itemsByCategory.entries.toList();
+
                               return RefreshIndicator(
                                 onRefresh: _onRefresh,
                                 color: Theme.of(context).colorScheme.primary,
-                                child: ListView(
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                padding: EdgeInsets.all(context.spacingMd),
-                                children: [
-                                  // Sezione items temporanei (da viaggi attivi)
-                                  if (hasTemporaryItems && _selectedSpaceId == null) ...[
-                                    InTransitSection(
-                                      items: temporaryItems,
-                                      houses: houses,
-                                    ),
-                                    SizedBox(height: context.spacingMd),
-                                  ],
-                                  if (itemsByCategory.isNotEmpty) ...[
-                                    SizedBox(height: context.spacingSm),
-                                    Text(
-                                      'common.at_house'.tr(),
-                                      style: TextStyle(
-                                        fontSize: context.fontSizeLg,
-                                        fontWeight: FontWeight.bold,
+                                child: CustomScrollView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  slivers: [
+                                    // ── Sezione In Transito ──────────────
+                                    if (hasTemporaryItems &&
+                                        _selectedSpaceId == null) ...[
+                                      SliverPadding(
+                                        padding: EdgeInsets.fromLTRB(
+                                          context.spacingMd,
+                                          context.spacingMd,
+                                          context.spacingMd,
+                                          0,
+                                        ),
+                                        sliver: SliverToBoxAdapter(
+                                          child: InTransitSection(
+                                            items: temporaryItems,
+                                            houses: houses,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                    SizedBox(height: context.spacingSm),
-                                    // Items raggruppati per categoria
-                                    ...itemsByCategory.entries.map((entry) {
-                                      final category = entry.key;
-                                      final categoryItems = entry.value;
+                                      SliverToBoxAdapter(
+                                        child:
+                                            SizedBox(height: context.spacingMd),
+                                      ),
+                                    ],
 
-                                      return ItemCategorySection(
-                                        category: category,
-                                        items: categoryItems,
-                                        houseId: widget.houseId,
-                                        itemQuantitiesOnTrip: itemQuantitiesOnTrip,
-                                      );
-                                    }),
+                                    // ── Intestazione "In casa" ───────────
+                                    if (itemsByCategory.isNotEmpty)
+                                      SliverPadding(
+                                        padding: EdgeInsets.fromLTRB(
+                                          context.spacingMd,
+                                          // Se la sezione InTransito non è
+                                          // presente, aggiungi il top padding
+                                          // dell'intera lista.
+                                          (hasTemporaryItems &&
+                                                  _selectedSpaceId == null)
+                                              ? context.spacingSm
+                                              : context.spacingMd,
+                                          context.spacingMd,
+                                          context.spacingSm,
+                                        ),
+                                        sliver: SliverToBoxAdapter(
+                                          child: Text(
+                                            'common.at_house'.tr(),
+                                            style: TextStyle(
+                                              fontSize: context.fontSizeLg,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+
+                                    // ── Categorie (SliverMainAxisGroup, items lazy) ──
+                                    // Ogni ItemCategorySection è un
+                                    // SliverMainAxisGroup: il SliverList.builder
+                                    // interno non usa shrinkWrap e istanzia le
+                                    // ItemCard solo quando entrano nel viewport,
+                                    // eliminando il Raster Jank del precedente
+                                    // ExpansionTile + shrinkWrap.
+                                    for (final entry in categoryEntries)
+                                      SliverPadding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: context.spacingMd,
+                                        ),
+                                        sliver: ItemCategorySection(
+                                          category: entry.key,
+                                          items: entry.value,
+                                          houseId: widget.houseId,
+                                          itemQuantitiesOnTrip:
+                                              itemQuantitiesOnTrip,
+                                        ),
+                                      ),
+
+                                    // ── Spaziatura finale ─────────────────
+                                    SliverToBoxAdapter(
+                                      child: SizedBox(height: context.spacingMd),
+                                    ),
                                   ],
-                                ],
                                 ),
                               ); // RefreshIndicator
                             }(),

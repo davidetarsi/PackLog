@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stuff_tracker_2/shared/widgets/circular_action_button.dart';
+import 'package:pack_log/shared/widgets/circular_action_button.dart';
 
 void main() {
   group('CircularActionButton', () {

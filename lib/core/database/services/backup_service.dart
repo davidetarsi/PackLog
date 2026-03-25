@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:pack_log/shared/constants/app_constants.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,23 +53,102 @@ class BackupInfo {
 class BackupService {
   static const String _lastBackupKey = 'last_backup_timestamp';
   static const String _dbFileName = 'stuff_tracker.db';
-  static const String _backupFolderName = 'backups';
+
+  /// Nome della sottocartella pubblica per i backup automatici.
+  /// Creata dentro la cartella Download del dispositivo, visibile
+  /// nel file manager senza app aggiuntive.
+  static const String _publicBackupFolderName = 'PackLogAutomaticBackups';
+
+  /// Fallback: usato quando la cartella Download pubblica non è scrivibile
+  /// (es. Android 11+ senza permessi aggiuntivi).
+  static const String _privateBackupFolderName = 'backups';
   
   final BackupConfig _config;
   
   BackupService({BackupConfig config = BackupConfig.defaultConfig}) 
       : _config = config;
 
-  /// Ottiene il percorso della cartella dei backup.
+  /// Ritorna il percorso della directory dove vengono salvati i backup automatici.
+  ///
+  /// Utile per mostrare all'utente dove viene creata la copia di sicurezza
+  /// prima di un'operazione di import.
+  Future<String> getBackupDirectoryPath() async {
+    final dir = await _getBackupDirectory();
+    return dir.path;
+  }
+
+  /// Ottiene la directory per i backup automatici.
+  ///
+  /// **Strategia a due livelli:**
+  /// 1. Tenta `<Download pubblico>/automaticBackupPackLog/` (visibile nel
+  ///    file manager). Funziona su Android ≤ 10 con il permesso
+  ///    `WRITE_EXTERNAL_STORAGE` e `requestLegacyExternalStorage="true"`.
+  /// 2. Fallback su `<documenti privati app>/backups/` se il percorso
+  ///    pubblico non è scrivibile (Android 11+ senza permessi speciali).
+  ///
+  /// La directory viene creata automaticamente se non esiste.
   Future<Directory> _getBackupDirectory() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final backupDir = Directory(p.join(appDir.path, _backupFolderName));
-    
-    if (!await backupDir.exists()) {
-      await backupDir.create(recursive: true);
+    if (Platform.isAndroid) {
+      final publicDir = await _resolvePublicBackupDirectory();
+      if (publicDir != null) return publicDir;
     }
-    
-    return backupDir;
+
+    // Fallback: directory privata dell'app
+    final appDir = await getApplicationDocumentsDirectory();
+    final fallbackDir = Directory(p.join(appDir.path, _privateBackupFolderName));
+    if (!await fallbackDir.exists()) {
+      await fallbackDir.create(recursive: true);
+    }
+    return fallbackDir;
+  }
+
+  /// Tenta di risolvere `<Download pubblico>/automaticBackupPackLog/` su Android.
+  ///
+  /// Prova i percorsi standard della cartella Download pubblica in ordine.
+  /// Per ciascuno verifica l'accesso in scrittura con un file sentinel
+  /// temporaneo prima di restituire la directory.
+  /// Ritorna `null` se nessun percorso è accessibile in scrittura.
+  Future<Directory?> _resolvePublicBackupDirectory() async {
+    const androidPublicPaths = [
+      '/storage/emulated/0/Download',
+      '/storage/emulated/0/Downloads',
+    ];
+
+    for (final basePath in androidPublicPaths) {
+      final baseDir = Directory(basePath);
+      if (!await baseDir.exists()) continue;
+
+      final backupDir = Directory(p.join(basePath, _publicBackupFolderName));
+
+      // Crea la sottocartella se non esiste
+      if (!await backupDir.exists()) {
+        try {
+          await backupDir.create(recursive: true);
+        } catch (_) {
+          debugPrint(
+            '[BackupService] ⚠️ Impossibile creare $backupDir, provo alternativa...',
+          );
+          continue;
+        }
+      }
+
+      // Verifica accesso in scrittura con un file sentinel
+      final testFile = File(p.join(backupDir.path, '.tmp_write_test'));
+      try {
+        await testFile.create();
+        await testFile.delete();
+        debugPrint(
+          '[BackupService] ✅ Cartella backup pubblica: ${backupDir.path}',
+        );
+        return backupDir;
+      } catch (_) {
+        debugPrint(
+          '[BackupService] ⚠️ ${backupDir.path} non scrivibile, provo alternativa...',
+        );
+      }
+    }
+
+    return null;
   }
 
   /// Ottiene il percorso del database principale.
@@ -93,7 +173,8 @@ class BackupService {
       final timestamp = DateTime.now().toIso8601String()
           .replaceAll(':', '-')
           .replaceAll('.', '-');
-      final backupFileName = 'backup_$timestamp.db';
+      final backupPrefix = AppConstants.backupFilePrefix;
+      final backupFileName = 'auto_backup_${backupPrefix}_$timestamp.db';
       final backupPath = p.join(backupDir.path, backupFileName);
 
       // Copia il database

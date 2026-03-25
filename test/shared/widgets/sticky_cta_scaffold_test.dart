@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stuff_tracker_2/shared/widgets/sticky_cta_scaffold.dart';
+import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 
 void main() {
   group('StickyCtaScaffold', () {

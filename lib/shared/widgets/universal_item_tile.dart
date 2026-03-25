@@ -90,7 +90,8 @@ class UniversalItemTile extends StatelessWidget {
         : _buildCustomRowLayout(context);
 
     Widget tile = Card(
-      elevation: 0.5,
+      elevation: 0,
+      shadowColor: Colors.transparent,
       margin: margin ?? EdgeInsets.only(bottom: context.spacingSm),
       color: backgroundColor,
       shape: borderColor != null
