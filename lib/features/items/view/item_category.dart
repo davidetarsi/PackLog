@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:stuff_tracker_2/features/items/model/item_model.dart';
-import 'package:stuff_tracker_2/shared/theme/theme.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
+
 
 class CategoryIcon extends StatelessWidget {
   final ItemCategory category;

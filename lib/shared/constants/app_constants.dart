@@ -5,7 +5,7 @@ class AppConstants {
 
   // Backup Constants
   /// Prefisso per i file di backup del database
-  static const String backupFilePrefix = 'stuff-tracker-db';
+  static const String backupFilePrefix = 'pack-log-export-db';
   
   /// Estensione per i file di database
   static const String databaseFileExtension = '.db';

@@ -128,7 +128,10 @@ class _PrimaryPillButton extends StatelessWidget {
     return Material(
       color: colorScheme.surface,
       borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-      elevation: 2,
+      // elevation: 0 elimina il layer di ombra nel compositing: quando la barra
+      // fluttua sopra liste scorrevoli, ogni frame non richiede un shadow pass
+      // separato sull'engine Impeller.
+      elevation: 0,
       child: InkWell(
         borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
         onTap: isEnabled ? onPressed : null,
@@ -137,6 +140,9 @@ class _PrimaryPillButton extends StatelessWidget {
           height: 56,
           padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
           decoration: BoxDecoration(
+            // Nessun colore qui: il colore di sfondo è già gestito da Material.
+            // Aggiungere color in BoxDecoration causerebbe un layer di pittura
+            // aggiuntivo sovrapposto a quello di Material.
             borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
             border: Border.all(
               color: isEnabled ? colorScheme.primary : colorScheme.outline,
@@ -151,6 +157,9 @@ class _PrimaryPillButton extends StatelessWidget {
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: colorScheme.primary,
+                      // strokeAlignCenter evita artefatti di anti-aliasing
+                      // sul bordo esterno durante l'animazione di rotazione.
+                      strokeAlign: CircularProgressIndicator.strokeAlignCenter,
                     ),
                   ),
                 )

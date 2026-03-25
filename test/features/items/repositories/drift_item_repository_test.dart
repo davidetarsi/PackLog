@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stuff_tracker_2/core/database/database.dart';
-import 'package:stuff_tracker_2/core/database/services/database_service.dart';
-import 'package:stuff_tracker_2/features/items/model/item_model.dart';
-import 'package:stuff_tracker_2/features/items/repositories/drift_item_repository.dart';
+import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/core/database/services/database_service.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/repositories/drift_item_repository.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for DriftItemRepository.

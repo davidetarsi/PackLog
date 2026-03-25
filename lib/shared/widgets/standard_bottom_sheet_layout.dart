@@ -1,6 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:stuff_tracker_2/shared/theme/app_colors.dart';
+import 'package:pack_log/shared/theme/app_colors.dart';
 import '../helpers/bottom_sheet_handle.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';

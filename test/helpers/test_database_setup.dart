@@ -1,5 +1,5 @@
 import 'package:drift/native.dart';
-import 'package:stuff_tracker_2/core/database/database.dart';
+import 'package:pack_log/core/database/database.dart';
 
 /// Helper per creare database in-memory per test unitari.
 /// 

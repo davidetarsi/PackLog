@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stuff_tracker_2/core/database/database.dart';
+import 'package:pack_log/core/database/database.dart';
 import '../helpers/test_database_setup.dart';
 
 /// Test per validare il corretto funzionamento del test database helper.

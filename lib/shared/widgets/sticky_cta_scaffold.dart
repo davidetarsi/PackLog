@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:stuff_tracker_2/shared/theme/app_spacing.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
 
 /// Scaffold standardizzato con CTA (Call-To-Action) sticky in basso.
 /// 
@@ -48,7 +48,7 @@ class StickyCtaScaffold extends StatelessWidget {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: ctaBackgroundColor ?? colorScheme.surface,
-          boxShadow: showCtaShadow
+          /*boxShadow: showCtaShadow
               ? [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.1),
@@ -56,7 +56,7 @@ class StickyCtaScaffold extends StatelessWidget {
                     offset: const Offset(0, -2),
                   ),
                 ]
-              : null,
+              : null, */
         ),
         child: SafeArea(
           child: Padding(

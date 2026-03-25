@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stuff_tracker_2/shared/model/location_suggestion_model.dart';
-import 'package:stuff_tracker_2/shared/model/location_type.dart';
+import 'package:pack_log/shared/model/location_suggestion_model.dart';
+import 'package:pack_log/shared/model/location_type.dart';
 
 /// Unit tests for LocationSuggestionModel domain logic.
 /// 

@@ -276,6 +276,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
         // Card Date - Layout verticale
         Card(
           margin: EdgeInsets.zero,
+          elevation: 0,
+          color: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
             side: BorderSide(
@@ -332,6 +334,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
         // Card Destinazione
         Card(
           margin: EdgeInsets.zero,
+          elevation: 0,
+          color: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
             side: BorderSide(

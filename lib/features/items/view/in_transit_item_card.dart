@@ -1,8 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:stuff_tracker_2/features/items/view/item_category.dart';
-import 'package:stuff_tracker_2/features/trips/model/trip_model.dart';
-import 'package:stuff_tracker_2/shared/widgets/universal_item_tile.dart';
+import 'package:pack_log/features/items/view/item_category.dart';
+import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/shared/widgets/universal_item_tile.dart';
 
 /// Card specifica per oggetti in transito
 class InTransitItemCard extends StatelessWidget {

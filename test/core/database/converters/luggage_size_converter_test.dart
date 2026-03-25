@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stuff_tracker_2/core/database/converters/luggage_size_converter.dart';
-import 'package:stuff_tracker_2/features/luggages/model/luggage_model.dart';
+import 'package:pack_log/core/database/converters/luggage_size_converter.dart';
+import 'package:pack_log/features/luggages/model/luggage_model.dart';
 
 /// Unit tests for LuggageSizeConverter (Drift TypeConverter).
 /// 
