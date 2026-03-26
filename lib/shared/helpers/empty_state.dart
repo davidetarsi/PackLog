@@ -51,6 +51,14 @@ class EmptyState extends StatelessWidget {
   /// Dimensione dell'icona (se null, usa la dimensione dal tema)
   final double? iconSize;
 
+  /// Callback opzionale invocata al tap sull'intero widget.
+  /// Se fornita, il widget diventa tappabile (InkWell).
+  final VoidCallback? onTap;
+
+  /// Testo del hint mostrato sotto il subtitle quando [onTap] è fornito.
+  /// Suggerisce all'utente che può toccare per eseguire un'azione.
+  final String? tapHint;
+
   const EmptyState({
     super.key,
     required this.icon,
@@ -61,41 +69,65 @@ class EmptyState extends StatelessWidget {
     this.titleStyle,
     this.subtitleStyle,
     this.iconSize,
+    this.onTap,
+    this.tapHint,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = context.errorEmptyTheme;
     
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: iconSize ?? theme.emptyStateIconSize,
-            color: iconColor ?? theme.emptyStateIconColor,
+    final content = Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(height: theme.stateSpacingLg),
+              Icon(
+                icon,
+                size: iconSize ?? theme.emptyStateIconSize,
+                color: iconColor ?? theme.emptyStateIconColor,
+              ),
+              SizedBox(height: theme.stateSpacingMd),
+              Text(
+                title,
+                style: titleStyle ?? theme.emptyStateTitle,
+                textAlign: TextAlign.center,
+              ),
+              if (subtitle != null && tapHint == null) ...[
+                SizedBox(height: theme.stateSpacingSm),
+                Text(
+                  subtitle!,
+                  style: subtitleStyle ?? theme.emptyStateSubtitle,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              if (tapHint != null) ...[
+                SizedBox(height: theme.stateSpacingSm),
+                Text(
+                  tapHint!,
+                  style: theme.emptyStateSubtitle.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              if (action != null) ...[
+                SizedBox(height: theme.stateSpacingLg),
+                action!,
+              ],
+            ],
           ),
-          SizedBox(height: theme.stateSpacingMd),
-          Text(
-            title,
-            style: titleStyle ?? theme.emptyStateTitle,
-            textAlign: TextAlign.center,
-          ),
-          if (subtitle != null) ...[
-            SizedBox(height: theme.stateSpacingSm),
-            Text(
-              subtitle!,
-              style: subtitleStyle ?? theme.emptyStateSubtitle,
-              textAlign: TextAlign.center,
-            ),
-          ],
-          if (action != null) ...[
-            SizedBox(height: theme.stateSpacingLg),
-            action!,
-          ],
-        ],
-      ),
-    );
+        );
+
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: content,
+      );
+    }
+
+    return content;
   }
 }
