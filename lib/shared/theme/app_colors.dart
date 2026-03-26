@@ -7,7 +7,7 @@ abstract class AppColors {
   // === Colori principali del tema ===
 
   /// Primary orange for light theme (#FF8A50)
-  static const Color primaryOrangeLight = Color(0xFFFF8A50);
+  static const Color primaryOrangeLight = Color(0xFFF76415);
   /// Primary orange for dark theme (#F76415)
   static const Color primaryOrangeDark = Color(0xFFF76415);
 

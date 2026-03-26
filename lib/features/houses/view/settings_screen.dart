@@ -139,9 +139,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       debugPrint('[SettingsScreen] 📥 Utente ha richiesto import database');
 
-      // Step 1: Recupera il path del backup di sicurezza da mostrare nel dialog
+      // Step 1: Recupera il path della cartella Download (stessa usata per export)
       final backupDirPath = await ref
-          .read(backupServiceProvider)
+          .read(backupControllerProvider.notifier)
           .getBackupDirectoryPath();
 
       if (!context.mounted) return;
@@ -157,7 +157,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         return;
       }
 
-      // Step 2: Seleziona file
+      // Step 2: Crea il safety backup IMMEDIATAMENTE dopo la conferma dell'utente,
+      // PRIMA di aprire il file picker. In questo modo il backup è garantito
+      // anche se l'utente annulla il picker o se l'import fallisce in seguito.
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (ctx) => AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text('backup.creating_safety_backup'.tr()),
+                ],
+              ),
+            ),
+      );
+
+      final controller = ref.read(backupControllerProvider.notifier);
+      String? preCreatedBackupPath;
+      try {
+        preCreatedBackupPath = await controller.createSafetyBackup();
+        debugPrint(
+          '[SettingsScreen] ✅ Safety backup creato preventivamente: $preCreatedBackupPath',
+        );
+      } catch (e) {
+        debugPrint('[SettingsScreen] ❌ Safety backup fallito: $e');
+        if (context.mounted) {
+          Navigator.of(context).pop();
+          AppSnackBar.showError(context, 'backup.safety_backup_failed'.tr());
+        }
+        return;
+      }
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // Chiudi loading del safety backup
+
+      // Step 3: Seleziona file
       debugPrint('[SettingsScreen] 📂 Apertura file picker...');
       final result = await FilePicker.platform.pickFiles(
         type: FileType.any,
@@ -179,8 +217,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
       debugPrint('[SettingsScreen] 📂 File selezionato: $filePath');
 
-      // Step 3: Valida nome file
-      final controller = ref.read(backupControllerProvider.notifier);
+      // Step 4: Valida nome file
       if (!controller.validateImportFileName(filePath)) {
         debugPrint('[SettingsScreen] ❌ Nome file non valido');
         if (context.mounted) {
@@ -192,7 +229,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         return;
       }
 
-      // Step 4: Mostra loading
+      // Step 5: Mostra loading
       if (!context.mounted) return;
       showDialog(
         context: context,
@@ -209,9 +246,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       );
 
-      // Step 5: Import database (con disaster recovery)
+      // Step 6: Import database (passa il backup già creato per non ricrearlo)
       debugPrint('[SettingsScreen] 🚀 Avvio import con disaster recovery...');
-      final importResult = await controller.importDatabase(filePath);
+      final importResult = await controller.importDatabase(
+        filePath,
+        preCreatedBackupPath: preCreatedBackupPath,
+      );
 
       // Chiudi loading dialog
       if (context.mounted) Navigator.of(context).pop();

@@ -107,89 +107,89 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return tripsAsync.when(
-      // skipLoadingOnRefresh è true di default in Riverpod 2: quando l'utente
-      // fa pull-to-refresh, l'ultimo dataset rimane visibile sotto il
-      // RefreshIndicator spinner anziché mostrare un CircularProgressIndicator
-      // sovrapposto, garantendo una UX fluida e senza sfarfallio.
-      data: (trips) {
-        if (trips.isEmpty) {
-          // Lo stato vuoto deve essere scrollabile affinché il gesto di
-          // pull-to-refresh sia riconosciuto anche a lista vuota.
-          return RefreshIndicator(
-            onRefresh: () async => ref.refresh(tripNotifierProvider.future),
-            color: colorScheme.primary,
-            child: LayoutBuilder(
-              builder: (_, constraints) => SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: SizedBox(
-                  height: constraints.maxHeight,
-                  child: _buildEmptyState(context),
-                ),
-              ),
-            ),
-          );
-        }
-
-        final nextTrip = _findNextTrip(trips);
-        final filteredTrips = _filterTrips(trips, nextTrip);
-        final sortedTrips = _sortTrips(filteredTrips);
-
-        // Rimuovi il prossimo viaggio dalla lista se stiamo mostrando la card grande
-        final showNextTripCard =
-            nextTrip != null &&
-            (_selectedTab == TripFilterTab.upcoming ||
-                _selectedTab == TripFilterTab.all);
-        final tripsForMasonry = showNextTripCard
-            ? sortedTrips.where((t) => t.id != nextTrip.id).toList()
-            : sortedTrips;
-
-        return RefreshIndicator(
-          onRefresh: () async => ref.refresh(tripNotifierProvider.future),
-          color: colorScheme.primary,
-          child: SingleChildScrollView(
-            // AlwaysScrollableScrollPhysics garantisce che il gesto di
-            // pull-to-refresh funzioni anche quando il contenuto non riempie
-            // lo schermo (es. pochi viaggi).
+      data: (trips) => _buildTripsContent(context, ref, colorScheme, trips),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => RefreshIndicator(
+        onRefresh: () => ref.refresh(tripNotifierProvider.future),
+        color: colorScheme.primary,
+        child: LayoutBuilder(
+          builder: (_, constraints) => SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(
-              left: context.spacingSm,
-              right: context.spacingSm,
-              top: context.spacingSm,
-              bottom: AppConstants.floatingNavBarPadding,
+            child: SizedBox(
+              height: constraints.maxHeight,
+              child: _buildErrorState(context, ref, error),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-              // Titolo di benvenuto
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacingXs,
-                  vertical: context.spacingSm,
-                ),
-                child: Text(
-                  'trips.welcome_title'.tr(),
-                  style: TextStyle(
-                    fontSize: context.fontSizeHeading,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
-                    height: 1.2,
-                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+
+  /// Costruisce il contenuto principale. Titolo e filtri sono SEMPRE visibili,
+  /// indipendentemente dal fatto che la lista sia vuota o meno.
+  Widget _buildTripsContent(
+    BuildContext context,
+    WidgetRef ref,
+    ColorScheme colorScheme,
+    List<TripModel> trips,
+  ) {
+    final nextTrip = _findNextTrip(trips);
+    final filteredTrips = _filterTrips(trips, nextTrip);
+    final sortedTrips = _sortTrips(filteredTrips);
+
+    final showNextTripCard =
+        nextTrip != null &&
+        (_selectedTab == TripFilterTab.upcoming ||
+            _selectedTab == TripFilterTab.all);
+    final tripsForMasonry = showNextTripCard
+        ? sortedTrips.where((t) => t.id != nextTrip.id).toList()
+        : sortedTrips;
+
+    return RefreshIndicator(
+      onRefresh: () => ref.refresh(tripNotifierProvider.future),
+      color: colorScheme.primary,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.only(
+          left: context.spacingSm,
+          right: context.spacingSm,
+          top: context.spacingSm,
+          bottom: AppConstants.floatingNavBarPadding,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacingXs,
+                vertical: context.spacingSm,
+              ),
+              child: Text(
+                'trips.welcome_title'.tr(),
+                style: TextStyle(
+                  fontSize: context.fontSizeHeading,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                  height: 1.2,
                 ),
               ),
-              SizedBox(height: context.spacingSm),
+            ),
+            SizedBox(height: context.spacingSm),
 
-              // Pill Tabs
-              Center(
-                child: AppPillTab<TripFilterTab>(
-                  items: TripFilterTab.values,
-                  selectedItem: _selectedTab,
-                  getLabel: (tab) => tab.label,
-                  onSelected: (tab) => setState(() => _selectedTab = tab),
-                ),
+            Center(
+              child: AppPillTab<TripFilterTab>(
+                items: TripFilterTab.values,
+                selectedItem: _selectedTab,
+                getLabel: (tab) => tab.label,
+                onSelected: (tab) => setState(() => _selectedTab = tab),
               ),
-              SizedBox(height: context.spacingMd),
+            ),
+            SizedBox(height: context.spacingMd),
 
-              // Card grande del prossimo viaggio
+            if (trips.isEmpty)
+              _buildEmptyState(context)
+            else ...[
               if (showNextTripCard) ...[
                 TripSummaryCard(
                   trip: nextTrip,
@@ -198,22 +198,16 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                 SizedBox(height: context.spacingSm),
               ],
 
-              // Stato vuoto per il filtro corrente
               if (tripsForMasonry.isEmpty && !showNextTripCard)
                 _buildFilterEmptyState(context, colorScheme)
               else if (tripsForMasonry.isNotEmpty)
-                // Layout masonry
                 _TripsMasonry(trips: tripsForMasonry),
             ],
-          ),
+          ],
         ),
-      ); // RefreshIndicator
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => _buildErrorState(context, ref, error),
+      ),
     );
   }
-
 
   Widget _buildEmptyState(BuildContext context) {
     return EmptyState(

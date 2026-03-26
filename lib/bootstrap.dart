@@ -163,11 +163,15 @@ Future<void> _initializePersistence() async {
 
     await _runMigration(database, prefs);
     await _checkDataIntegrity(database);
-    await _createAutoBackup();
 
-    // Chiudiamo la connessione temporanea: i provider la riapriranno
-    // in modo lazy e indipendente quando necessario.
+    // CRITICO: chiudi il DB PRIMA del backup automatico.
+    // BackupService copia il file raw: in WAL mode il file .db principale
+    // non contiene le transazioni più recenti finché la connessione è aperta.
+    // Chiudere qui fa flushed il WAL nel file principale e rilascia i lock,
+    // garantendo che la copia sia completa e non corrotta.
     await database.close();
+
+    await _createAutoBackup();
 
     debugPrint('[Bootstrap] ✅ Persistenza inizializzata con successo');
   } catch (e, stackTrace) {
