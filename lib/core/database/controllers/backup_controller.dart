@@ -75,8 +75,6 @@ BackupService backupService(Ref ref) {
 /// ```
 @riverpod
 class BackupController extends _$BackupController {
-  static const String _safetyBackupReason = 'Safety backup before import';
-
   @override
   FutureOr<void> build() {
     // Stato iniziale: nessuna operazione in corso
@@ -155,23 +153,187 @@ class BackupController extends _$BackupController {
     }
   }
 
+  static const String _dbFileName = 'stuff_tracker.db';
+  static const String _safetyBackupPrefix = 'safety-backup-';
+  static const int _maxSafetyBackups = 5;
+
+  /// Percorso del file database principale nell'app documents directory.
+  Future<String> _getDatabasePath() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    return p.join(appDir.path, _dbFileName);
+  }
+
+  /// Verifica che un file sia un database SQLite valido (magic bytes).
+  Future<bool> _validateSqliteFile(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) return false;
+      final stat = await file.stat();
+      if (stat.size == 0) return false;
+      final bytes = await file.openRead(0, 16).first;
+      final header = String.fromCharCodes(bytes.take(16));
+      return header.startsWith('SQLite format 3');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Sostituisce il database corrente con un file sorgente.
+  ///
+  /// Esegue clean wipe di .db, .db-wal, .db-shm e copia il sorgente.
+  /// NON chiude nessuna connessione Drift — il chiamante è responsabile
+  /// di aver già chiuso il DB (tramite export o invalidazione provider).
+  Future<void> _replaceDatabase(String sourcePath) async {
+    final dbPath = await _getDatabasePath();
+
+    debugPrint('[BackupController] 🧹 Clean wipe files esistenti...');
+    for (final suffix in ['', '-wal', '-shm']) {
+      final file = File('$dbPath$suffix');
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('  ✓ Eliminato: ${p.basename('$dbPath$suffix')}');
+      }
+    }
+
+    debugPrint('[BackupController] 📋 Copia nuovo database...');
+    final sourceFile = File(sourcePath);
+    await sourceFile.copy(dbPath);
+
+    final newDb = File(dbPath);
+    if (!await newDb.exists()) {
+      throw ImportFailedException('Database non trovato dopo la copia');
+    }
+    final stat = await newDb.stat();
+    if (stat.size == 0) {
+      throw ImportFailedException('Database vuoto dopo la copia');
+    }
+    debugPrint(
+      '[BackupController] ✅ Database sostituito con successo (${stat.size} bytes)',
+    );
+  }
+
+  /// Ritorna il percorso della cartella dove vengono salvati i safety backup.
+  ///
+  /// Su Android 11+ le sottocartelle di Download non sono affidabili
+  /// (Scoped Storage impedisce indicizzazione MediaStore e visibilità nel
+  /// file manager), quindi i safety backup sono nella root di Download,
+  /// stessa cartella degli export manuali.
+  Future<String> getBackupDirectoryPath() async {
+    final dir = await _resolveDownloadsDirectory();
+    return dir?.path ?? (await getApplicationDocumentsDirectory()).path;
+  }
+
+  /// Crea immediatamente un backup di sicurezza del database corrente.
+  ///
+  /// Salva il backup direttamente nella cartella Download (stessa degli
+  /// export manuali). Su Android 11+ le sottocartelle di Download non sono
+  /// affidabili (Scoped Storage), quindi usiamo la root con un prefisso
+  /// `safety-backup-` per distinguerli.
+  ///
+  /// Dopo il salvataggio, elimina automaticamente i backup più vecchi
+  /// mantenendo solo i [_maxSafetyBackups] più recenti.
+  ///
+  /// **IMPORTANTE**: dopo questa chiamata il database viene chiuso e
+  /// [appDatabaseProvider] viene invalidato.
+  Future<String> createSafetyBackup() async {
+    debugPrint('[BackupController] 🛡️ Creazione safety backup preventivo...');
+
+    final backupDir = await _resolveDownloadsDirectory();
+    if (backupDir == null) {
+      throw ExportFailedException('backup.downloads_unavailable'.tr());
+    }
+
+    final now = DateTime.now();
+    final ts =
+        '${now.day.toString().padLeft(2, '0')}'
+        '${now.month.toString().padLeft(2, '0')}'
+        '${now.year}'
+        '-${now.hour.toString().padLeft(2, '0')}'
+        '${now.minute.toString().padLeft(2, '0')}'
+        '${now.second.toString().padLeft(2, '0')}';
+    final fileName =
+        '$_safetyBackupPrefix${AppConstants.backupFilePrefix}-$ts'
+        '${AppConstants.databaseFileExtension}';
+    final destPath = p.join(backupDir.path, fileName);
+
+    debugPrint('[BackupController] 📂 Destinazione: $destPath');
+
+    final backupService = ref.read(databaseBackupServiceProvider);
+    final backupFile = await backupService.exportData(destPath);
+
+    debugPrint(
+      '[BackupController] ✅ Safety backup creato: ${p.basename(backupFile.path)}',
+    );
+
+    // exportData() ha chiuso il DB. Invalidiamo il provider perché il
+    // prossimo accesso crei una connessione fresca.
+    ref.invalidate(appDatabaseProvider);
+
+    // Pulizia asincrona dei backup più vecchi (fire-and-forget, non blocca l'import)
+    _cleanOldSafetyBackups(backupDir).catchError((e) {
+      debugPrint('[BackupController] ⚠️ Pulizia backup fallita: $e');
+    });
+
+    return backupFile.path;
+  }
+
+  /// Elimina i safety backup più vecchi, mantenendo solo i
+  /// [_maxSafetyBackups] più recenti.
+  Future<void> _cleanOldSafetyBackups(Directory backupDir) async {
+    try {
+      final safetyFiles = await backupDir
+          .list()
+          .where(
+            (entity) =>
+                entity is File &&
+                p.basename(entity.path).startsWith(_safetyBackupPrefix),
+          )
+          .cast<File>()
+          .toList();
+
+      if (safetyFiles.length <= _maxSafetyBackups) return;
+
+      // Ordina per data di modifica (più recente prima)
+      safetyFiles.sort((a, b) {
+        final aStat = a.statSync();
+        final bStat = b.statSync();
+        return bStat.modified.compareTo(aStat.modified);
+      });
+
+      final toDelete = safetyFiles.sublist(_maxSafetyBackups);
+      for (final file in toDelete) {
+        await file.delete();
+        debugPrint(
+          '[BackupController] 🗑️ Backup eliminato: ${p.basename(file.path)}',
+        );
+      }
+      debugPrint(
+        '[BackupController] ✅ Pulizia completata: '
+        '${toDelete.length} backup rimossi, $_maxSafetyBackups mantenuti',
+      );
+    } catch (e) {
+      debugPrint('[BackupController] ⚠️ Errore pulizia backup: $e');
+    }
+  }
+
   /// Importa un database da un file esterno, sostituendo quello corrente.
-  /// 
-  /// **Disaster Recovery Flow:**
-  /// 1. Valida nome file (deve iniziare con "stuff-tracker-db")
-  /// 2. Crea safety backup del DB corrente
-  /// 3. Valida il file da importare (SQLite magic bytes)
-  /// 4. Chiude il database
-  /// 5. Clean wipe (elimina .sqlite, .sqlite-wal, .sqlite-shm)
-  /// 6. Copia il nuovo database
-  /// 7. Valida il nuovo database
-  /// 8. Se qualcosa fallisce -> ROLLBACK automatico dal safety backup
-  /// 9. Invalida il provider per ricreare connessione
-  /// 
-  /// **Returns:**
-  /// - [ImportResult]: Risultato dell'operazione (success o failure con messaggio)
-  Future<ImportResult> importDatabase(String sourcePath) async {
-    String? safetyBackupPath;
+  ///
+  /// Se [preCreatedBackupPath] è fornito, salta la creazione del safety
+  /// backup (già fatto da [createSafetyBackup]). In questo caso il DB è
+  /// già CHIUSO e [appDatabaseProvider] è già invalidato.
+  ///
+  /// **ARCHITETTURA**: non usa [SqliteBackupService.importData] perché
+  /// quel metodo tenta di chiudere la connessione Drift interna, ma dopo
+  /// [createSafetyBackup] il vecchio DB è già chiuso e il provider
+  /// invalidato — creare un nuovo [SqliteBackupService] produce un
+  /// database MAI aperto il cui `.close()` lancia un'eccezione.
+  /// Operiamo direttamente sui file (clean wipe + copy) per evitare
+  /// qualsiasi interazione con Drift durante la sostituzione.
+  Future<ImportResult> importDatabase(
+    String sourcePath, {
+    String? preCreatedBackupPath,
+  }) async {
+    String? safetyBackupPath = preCreatedBackupPath;
 
     try {
       debugPrint('');
@@ -189,92 +351,68 @@ class BackupController extends _$BackupController {
       }
       debugPrint('[BackupController] ✅ Nome file valido');
 
-      final backupService = ref.read(databaseBackupServiceProvider);
-      final legacyBackupService = ref.read(backupServiceProvider);
-
-      // STEP 1: Crea safety backup prima di qualsiasi operazione
-      debugPrint('');
-      debugPrint('[BackupController] ➤ STEP 1: Creazione safety backup...');
-      safetyBackupPath = await legacyBackupService.createBackup(
-        reason: _safetyBackupReason,
-      );
-      
-      if (safetyBackupPath == null) {
-        debugPrint('[BackupController] ❌ Safety backup fallito');
-        throw ImportFailedException(
-          'backup.safety_backup_failed'.tr(),
+      // STEP 1: Safety backup
+      if (safetyBackupPath != null) {
+        debugPrint('');
+        debugPrint(
+          '[BackupController] ✅ STEP 1: Safety backup già creato: '
+          '${p.basename(safetyBackupPath)}',
         );
+      } else {
+        debugPrint('');
+        debugPrint('[BackupController] ➤ STEP 1: Creazione safety backup...');
+        safetyBackupPath = await createSafetyBackup();
       }
-      
-      debugPrint('[BackupController] ✅ Safety backup creato: ${p.basename(safetyBackupPath)}');
 
-      // STEP 2: Valida il file sorgente PRIMA di procedere
+      // STEP 2: Valida il file sorgente (lettura header, no connessione DB)
       debugPrint('');
       debugPrint('[BackupController] ➤ STEP 2: Validazione file SQLite...');
-      final isValid = await backupService.validateDatabaseFile(sourcePath);
+      final isValid = await _validateSqliteFile(sourcePath);
       if (!isValid) {
-        debugPrint('[BackupController] ❌ File non valido (non è un database SQLite)');
+        debugPrint('[BackupController] ❌ File non valido');
         throw ImportValidationException(
           'backup.invalid_sqlite_file'.tr(),
         );
       }
       debugPrint('[BackupController] ✅ File SQLite valido');
 
-      // STEP 3: Import del database (chiude DB, clean wipe, copia)
+      // STEP 3: Sostituzione diretta dei file (NO Drift, NO .close())
       debugPrint('');
-      debugPrint('[BackupController] ➤ STEP 3: Import database...');
-      await backupService.importData(sourcePath);
-      debugPrint('[BackupController] ✅ Database importato fisicamente');
+      debugPrint('[BackupController] ➤ STEP 3: Sostituzione database...');
+      await _replaceDatabase(sourcePath);
 
-      // STEP 4: Invalida TUTTI i provider per ricreare connessione fresca
+      // STEP 4: Invalida TUTTI i provider → nuova connessione al nuovo file
       debugPrint('');
-      debugPrint('[BackupController] ➤ STEP 4: Invalidazione completa provider...');
+      debugPrint('[BackupController] ➤ STEP 4: Invalidazione provider...');
       await _invalidateAllProviders();
-      debugPrint('[BackupController] ✅ Tutti i provider invalidati e ricaricati');
-      
+      debugPrint('[BackupController] ✅ Provider ricaricati');
+
       debugPrint('');
       debugPrint('═══════════════════════════════════════════════════');
       debugPrint('[BackupController] 🎉 IMPORT COMPLETATO CON SUCCESSO');
       debugPrint('═══════════════════════════════════════════════════');
-      debugPrint('');
-      
+
       return const ImportResult.success();
-      
     } catch (e) {
       debugPrint('');
       debugPrint('═══════════════════════════════════════════════════');
       debugPrint('[BackupController] ❌ IMPORT FALLITO: $e');
       debugPrint('═══════════════════════════════════════════════════');
-      
-      // DISASTER RECOVERY: Ripristina dal safety backup
+
       if (safetyBackupPath != null) {
-        debugPrint('');
-        debugPrint('[BackupController] 🔄 AVVIO ROLLBACK AUTOMATICO...');
-        debugPrint('[BackupController] 📂 Safety backup: ${p.basename(safetyBackupPath)}');
-        
+        debugPrint('[BackupController] 🔄 ROLLBACK AUTOMATICO...');
         try {
-          await _performRollback(safetyBackupPath);
-          
-          debugPrint('');
+          await _replaceDatabase(safetyBackupPath);
+          await _invalidateAllProviders();
           debugPrint('[BackupController] ✅ ROLLBACK COMPLETATO');
-          debugPrint('[BackupController] Database ripristinato allo stato precedente');
-          debugPrint('');
         } catch (rollbackError) {
-          // Questo è il worst-case scenario: import fallito E rollback fallito
-          debugPrint('');
-          debugPrint('═══════════════════════════════════════════════════');
-          debugPrint('[BackupController] 🔥 CRITICAL ERROR: ROLLBACK FALLITO');
-          debugPrint('[BackupController] Errore: $rollbackError');
-          debugPrint('[BackupController] Database potrebbe essere in stato inconsistente!');
-          debugPrint('═══════════════════════════════════════════════════');
-          debugPrint('');
-          
-          return ImportResult.failure(
-            'backup.critical_error'.tr(),
+          debugPrint(
+            '[BackupController] 🔥 ROLLBACK FALLITO: $rollbackError',
           );
+          return ImportResult.failure('backup.critical_error'.tr());
         }
       }
-      
+
       return ImportResult.failure(
         e is ImportValidationException
             ? 'backup.import_validation_failed'.tr()
@@ -283,99 +421,49 @@ class BackupController extends _$BackupController {
     }
   }
 
-  /// Invalida tutti i provider dell'app per forzare il reload completo dopo import/export.
-  /// 
-  /// Questo metodo:
-  /// 1. Invalida il database provider (ricreerà la connessione)
-  /// 2. Aspetta un breve delay per permettere la riconnessione
-  /// 3. Invalida tutti i provider che dipendono dal database
+  /// Invalida tutti i provider dell'app e ATTENDE il loro ricaricamento.
+  ///
+  /// Usa `ref.invalidate` + `await ref.read(...future)` per garantire
+  /// che i dati siano realmente disponibili prima di restituire il controllo.
   Future<void> _invalidateAllProviders() async {
-    debugPrint('[BackupController] 🔄 Invalidazione completa di tutti i provider:');
-    
-    // Step 1: Invalida il database
-    debugPrint('  ↳ Database provider...');
-    ref.invalidate(appDatabaseProvider);
-    
-    // Step 2: Breve delay per permettere la riconnessione del database
-    debugPrint('  ↳ Attendo riconnessione database...');
-    await Future.delayed(const Duration(milliseconds: 500));
-    debugPrint('  ↳ Database pronto ✅');
-    
-    // Step 3: Invalida tutti i provider dipendenti
-    debugPrint('  ↳ Houses provider...');
-    ref.invalidate(houseNotifierProvider);
-    
-    // Aspetta che le case si ricarichino per invalidare i family providers
-    await Future.delayed(const Duration(milliseconds: 300));
-    
-    // Step 4: Invalida family providers per ogni casa
-    final housesAsync = ref.read(houseNotifierProvider);
-    if (housesAsync.hasValue && housesAsync.value != null) {
-      final houses = housesAsync.value!;
-      debugPrint('  ↳ Invalidazione family providers per ${houses.length} case...');
-      
-      for (final house in houses) {
-        debugPrint('    • Items provider per casa: ${house.name}');
-        ref.invalidate(itemNotifierProvider(house.id));
-        
-        debugPrint('    • House Stats provider per casa: ${house.name}');
-        ref.invalidate(houseStatsProvider(house.id));
-        
-        debugPrint('    • Spaces provider per casa: ${house.name}');
-        ref.invalidate(spacesByHouseProvider(house.id));
-        ref.invalidate(spaceCountByHouseProvider(house.id));
-        
-        debugPrint('    • Luggages provider per casa: ${house.name}');
-        ref.invalidate(luggagesByHouseProvider(house.id));
-        ref.invalidate(luggageCountByHouseProvider(house.id));
-      }
-    } else {
-      // Fallback: invalida i provider globali
-      debugPrint('  ↳ Items provider (globale)...');
-      ref.invalidate(itemNotifierProvider);
-      
-      debugPrint('  ↳ House Stats provider (globale)...');
-      ref.invalidate(houseStatsProvider);
-    }
-    
-    debugPrint('  ↳ Spaces provider...');
-    ref.invalidate(spaceNotifierProvider);
-    
-    debugPrint('  ↳ Luggages provider...');
-    ref.invalidate(luggageNotifierProvider);
-    
-    debugPrint('  ↳ Trips provider...');
-    ref.invalidate(tripNotifierProvider);
-    
-    // Step 5: Aspetta che i provider si ricarichino
-    debugPrint('  ↳ Attendo ricaricamento completo provider...');
-    await Future.delayed(const Duration(milliseconds: 1000));
-    
-    debugPrint('[BackupController] ✅ Invalidazione completa terminata');
-  }
+    debugPrint('[BackupController] 🔄 Invalidazione completa provider...');
 
-  /// Esegue il rollback dal safety backup.
-  /// 
-  /// **CRITICAL**: Se questa operazione fallisce, siamo in uno stato inconsistente.
-  Future<void> _performRollback(String safetyBackupPath) async {
+    // Step 1: Ricrea la connessione al database (nuovo file dopo import/rollback).
+    ref.invalidate(appDatabaseProvider);
+
+    // Step 2: Invalida tutti i data provider. L'ordine non conta perché
+    // sono tutti invalidati prima di essere riletti.
+    ref.invalidate(houseNotifierProvider);
+    ref.invalidate(tripNotifierProvider);
+    ref.invalidate(spaceNotifierProvider);
+    ref.invalidate(luggageNotifierProvider);
+
+    // Step 3: Attende che i provider principali abbiano effettivamente
+    // terminato la query al nuovo database. Se uno dei due fallisce,
+    // lo logga ma non blocca l'intero flusso.
+    debugPrint('  ↳ Attendo reload Houses + Trips...');
     try {
-      debugPrint('[BackupController] 🔄 Import safety backup...');
-      final backupService = ref.read(databaseBackupServiceProvider);
-      
-      // Import del safety backup (clean wipe + copia)
-      await backupService.importData(safetyBackupPath);
-      debugPrint('[BackupController] ✅ Safety backup importato');
-      
-      // Invalida tutti i provider per ricaricare completamente l'app
-      await _invalidateAllProviders();
-      
-    } catch (e, stack) {
-      throw BackupRollbackException(
-        'backup.rollback_impossible'.tr(),
-        originalError: e,
-        stackTrace: stack,
-      );
+      await Future.wait([
+        ref.read(houseNotifierProvider.future),
+        ref.read(tripNotifierProvider.future),
+      ]);
+    } catch (e) {
+      debugPrint('[BackupController] ⚠️ Errore reload provider: $e');
     }
+    debugPrint('  ↳ Houses e Trips ricaricati ✅');
+
+    // Step 4: Invalida family providers per ogni casa caricata.
+    final houses = ref.read(houseNotifierProvider).valueOrNull ?? [];
+    for (final house in houses) {
+      ref.invalidate(itemNotifierProvider(house.id));
+      ref.invalidate(houseStatsProvider(house.id));
+      ref.invalidate(spacesByHouseProvider(house.id));
+      ref.invalidate(spaceCountByHouseProvider(house.id));
+      ref.invalidate(luggagesByHouseProvider(house.id));
+      ref.invalidate(luggageCountByHouseProvider(house.id));
+    }
+
+    debugPrint('[BackupController] ✅ Invalidazione completata');
   }
 
   /// Esporta il database nella cartella Download dell'utente.
@@ -447,10 +535,12 @@ class BackupController extends _$BackupController {
         final dir = Directory(candidatePath);
         if (!await dir.exists()) continue;
 
-        // Verifica accesso in scrittura con un file sentinel temporaneo
+        // Verifica accesso in scrittura con byte reali (non File.create()
+        // che crea un file vuoto: alcune ROM Android permettono la creazione
+        // di file vuoti ma bloccano scritture con dati effettivi).
         final testFile = File(p.join(dir.path, '.tmp_write_test'));
         try {
-          await testFile.create();
+          await testFile.writeAsBytes([0x53, 0x51, 0x4C]); // 'SQL'
           await testFile.delete();
           debugPrint(
             '[BackupController] ✅ Cartella Download pubblica accessibile: $candidatePath',
@@ -475,14 +565,20 @@ class BackupController extends _$BackupController {
   }
 
   /// Valida che un file di import abbia il nome corretto.
-  /// 
-  /// Il nome deve iniziare con il prefisso definito in AppConstants per essere accettato.
+  ///
+  /// Accetta file che iniziano con il prefisso standard di export
+  /// (`pack-log-export-db`) oppure con il prefisso dei safety backup
+  /// (`safety-backup-pack-log-export-db`).
   bool validateImportFileName(String filePath) {
     final fileName = p.basename(filePath);
-    final isValid = fileName.startsWith(AppConstants.backupFilePrefix);
-    
-    debugPrint('[BackupController] Validazione nome file: $fileName -> ${isValid ? "✅ VALIDO" : "❌ INVALIDO"}');
-    
+    final isValid = fileName.startsWith(AppConstants.backupFilePrefix) ||
+        fileName.startsWith('$_safetyBackupPrefix${AppConstants.backupFilePrefix}');
+
+    debugPrint(
+      '[BackupController] Validazione nome file: $fileName -> '
+      '${isValid ? "✅ VALIDO" : "❌ INVALIDO"}',
+    );
+
     return isValid;
   }
 }
