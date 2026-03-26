@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:pack_log/shared/constants/app_constants.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,23 +53,112 @@ class BackupInfo {
 class BackupService {
   static const String _lastBackupKey = 'last_backup_timestamp';
   static const String _dbFileName = 'stuff_tracker.db';
-  static const String _backupFolderName = 'backups';
+
+  /// Nome della sottocartella pubblica per i backup automatici.
+  /// Creata dentro la cartella Download del dispositivo, visibile
+  /// nel file manager senza app aggiuntive.
+  static const String _publicBackupFolderName = 'PackLogAutomaticBackups';
+
+  /// Fallback: usato quando la cartella Download pubblica non è scrivibile
+  /// (es. Android 11+ senza permessi aggiuntivi).
+  static const String _privateBackupFolderName = 'backups';
   
   final BackupConfig _config;
   
   BackupService({BackupConfig config = BackupConfig.defaultConfig}) 
       : _config = config;
 
-  /// Ottiene il percorso della cartella dei backup.
+  /// Ritorna il percorso della directory dove vengono salvati i backup automatici.
+  ///
+  /// Utile per mostrare all'utente dove viene creata la copia di sicurezza
+  /// prima di un'operazione di import.
+  Future<String> getBackupDirectoryPath() async {
+    final dir = await _getBackupDirectory();
+    return dir.path;
+  }
+
+  /// Ottiene la directory per i backup automatici.
+  ///
+  /// **Strategia a due livelli:**
+  /// 1. Tenta `<Download pubblico>/automaticBackupPackLog/` (visibile nel
+  ///    file manager). Funziona su Android ≤ 10 con il permesso
+  ///    `WRITE_EXTERNAL_STORAGE` e `requestLegacyExternalStorage="true"`.
+  /// 2. Fallback su `<documenti privati app>/backups/` se il percorso
+  ///    pubblico non è scrivibile (Android 11+ senza permessi speciali).
+  ///
+  /// La directory viene creata automaticamente se non esiste.
   Future<Directory> _getBackupDirectory() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final backupDir = Directory(p.join(appDir.path, _backupFolderName));
-    
-    if (!await backupDir.exists()) {
-      await backupDir.create(recursive: true);
+    if (Platform.isAndroid) {
+      final publicDir = await _resolvePublicBackupDirectory();
+      if (publicDir != null) return publicDir;
     }
-    
-    return backupDir;
+
+    // Fallback: directory privata dell'app
+    final appDir = await getApplicationDocumentsDirectory();
+    final fallbackDir = Directory(p.join(appDir.path, _privateBackupFolderName));
+    if (!await fallbackDir.exists()) {
+      await fallbackDir.create(recursive: true);
+    }
+    return fallbackDir;
+  }
+
+  /// Tenta di risolvere `<Download pubblico>/automaticBackupPackLog/` su Android.
+  ///
+  /// **Ordine critico delle operazioni:**
+  /// 1. Verifica accesso in scrittura nella dir **parent** (root Download),
+  ///    usando byte reali (non un file vuoto) per simulare la copia reale del DB.
+  /// 2. Solo se il parent è scrivibile, crea/usa la sottocartella.
+  ///
+  /// Questo previene la creazione di cartelle orfane vuote: se il test di
+  /// scrittura fallisce, non viene creata nessuna directory e si passa al
+  /// path alternativo. Ritorna `null` se nessun percorso è accessibile.
+  Future<Directory?> _resolvePublicBackupDirectory() async {
+    const androidPublicPaths = [
+      '/storage/emulated/0/Download',
+      '/storage/emulated/0/Downloads',
+    ];
+
+    for (final basePath in androidPublicPaths) {
+      final baseDir = Directory(basePath);
+      if (!await baseDir.exists()) continue;
+
+      // STEP 1: Verifica accesso in scrittura nella dir ROOT prima di tutto.
+      // Si usa writeAsBytes() con byte reali (non File.create() che crea un
+      // file vuoto da 0 byte: alcune ROM Android permettono la creazione di
+      // file vuoti ma bloccano le scritture con dati effettivi).
+      final parentTestFile =
+          File(p.join(basePath, '.tmp_backup_write_test'));
+      try {
+        await parentTestFile.writeAsBytes([0x53, 0x51, 0x4C]); // 'SQL'
+        await parentTestFile.delete();
+      } catch (_) {
+        debugPrint(
+          '[BackupService] ⚠️ $basePath non scrivibile, provo alternativa...',
+        );
+        continue; // Niente cartelle orfane: non creiamo nulla qui
+      }
+
+      // STEP 2: Accesso confermato → ora crea/usa la sottocartella.
+      final backupDir =
+          Directory(p.join(basePath, _publicBackupFolderName));
+      if (!await backupDir.exists()) {
+        try {
+          await backupDir.create(recursive: true);
+        } catch (e) {
+          debugPrint(
+            '[BackupService] ⚠️ Impossibile creare sottocartella: $e',
+          );
+          continue;
+        }
+      }
+
+      debugPrint(
+        '[BackupService] ✅ Cartella backup pubblica: ${backupDir.path}',
+      );
+      return backupDir;
+    }
+
+    return null;
   }
 
   /// Ottiene il percorso del database principale.
@@ -77,8 +167,39 @@ class BackupService {
     return File(p.join(appDir.path, _dbFileName));
   }
 
+  /// Genera il percorso completo per un nuovo file di backup senza crearlo.
+  ///
+  /// Usato da [BackupController] quando vuole delegare la copia fisica a
+  /// [SqliteBackupService] (che gestisce correttamente il flush del WAL),
+  /// ma ha bisogno di conoscere in anticipo dove salvare il file.
+  /// Crea la directory di destinazione se non esiste.
+  Future<String> generateBackupFilePath() async {
+    final backupDir = await _getBackupDirectory();
+    final timestamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(':', '-')
+        .replaceAll('.', '-');
+    final backupFileName =
+        'auto_backup_${AppConstants.backupFilePrefix}_$timestamp.db';
+    return p.join(backupDir.path, backupFileName);
+  }
+
+  /// Registra il timestamp dell'ultimo backup riuscito.
+  ///
+  /// Va chiamato dopo che il file di backup è stato scritto con successo
+  /// (anche tramite [SqliteBackupService.exportData]).
+  Future<void> markBackupCreated() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_lastBackupKey, DateTime.now().millisecondsSinceEpoch);
+  }
+
   /// Crea un backup del database.
-  /// 
+  ///
+  /// ⚠️  ATTENZIONE: questo metodo copia il file raw dal disco. Va chiamato
+  /// solo quando la connessione Drift è già CHIUSA (WAL flushed), altrimenti
+  /// la copia potrebbe essere incompleta. Usa [generateBackupFilePath] +
+  /// [SqliteBackupService.exportData] quando la connessione è aperta.
+  ///
   /// Ritorna il percorso del backup creato, o null se fallisce.
   Future<String?> createBackup({String? reason}) async {
     try {
@@ -93,7 +214,8 @@ class BackupService {
       final timestamp = DateTime.now().toIso8601String()
           .replaceAll(':', '-')
           .replaceAll('.', '-');
-      final backupFileName = 'backup_$timestamp.db';
+      final backupPrefix = AppConstants.backupFilePrefix;
+      final backupFileName = 'auto_backup_${backupPrefix}_$timestamp.db';
       final backupPath = p.join(backupDir.path, backupFileName);
 
       // Copia il database

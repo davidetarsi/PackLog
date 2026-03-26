@@ -6,6 +6,9 @@ import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../items/repositories/item_repository.dart';
+import '../../../shared/widgets/sticky_cta_scaffold.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 import 'trip_items_selector.dart';
 
 /// Schermata per modificare solo gli oggetti del viaggio.
@@ -42,13 +45,34 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
     });
   }
 
+  /// Normalizza i [TripItem] con [originHouseId] vuoto recuperando la casa
+  /// reale dell'[ItemModel] corrispondente. Questo sistema in modo idempotente
+  /// i dati creati prima che il campo venisse introdotto.
+  Future<List<TripItem>> _normalizeItemOrigins(List<TripItem> items) async {
+    final itemRepo = ref.read(itemRepositoryProvider);
+    return Future.wait(
+      items.map((tripItem) async {
+        if (tripItem.originHouseId.isNotEmpty) return tripItem;
+        try {
+          final itemModel = await itemRepo.getItemById(tripItem.id);
+          return tripItem.copyWith(originHouseId: itemModel.houseId);
+        } catch (_) {
+          return tripItem;
+        }
+      }),
+    );
+  }
+
   Future<void> _saveChanges() async {
     if (_trip == null) return;
 
     setState(() => _isLoading = true);
 
+    // Normalizza item legacy con originHouseId vuoto prima del salvataggio.
+    final normalizedItems = await _normalizeItemOrigins(_selectedItems);
+
     final updatedTrip = _trip!.copyWith(
-      items: _selectedItems,
+      items: normalizedItems,
       updatedAt: DateTime.now(),
     );
 
@@ -78,7 +102,7 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
       );
     }
 
-    return Scaffold(
+    return StickyCtaScaffold(
       appBar: AppBar(
         title: Text('trips.edit_items'.tr()),
         actions: [
@@ -105,93 +129,23 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          // Widget riutilizzabile per la selezione degli items
-          Padding(
-            padding: EdgeInsets.only(
-              left: context.spacingSm,
-              right: context.spacingSm,
-              top: context.spacingSm,
-            ),
-            child: TripItemsSelector(
-              selectedItems: _selectedItems,
-              onSelectionChanged: (items) {
-                setState(() {
-                  _selectedItems = items;
-                });
-              },
-              shrinkWrap: false,
-            ),
-          ),
-          
-          // Bottone fisso in basso
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: EdgeInsets.all(context.spacingMd),
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                top: false,
-                child: _buildSaveButton(context, colorScheme),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSaveButton(BuildContext context, ColorScheme colorScheme) {
-    return Material(
-      color: colorScheme.surface,
-      borderRadius: BorderRadius.circular(28),
-      elevation: 0,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(28),
-        onTap: _isLoading ? null : _saveChanges,
-        child: Container(
-          width: double.infinity,
-          height: 56,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: colorScheme.primary, width: 2),
-          ),
-          child: Center(
-            child: _isLoading
-                ? SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.save, color: colorScheme.onSurfaceVariant),
-                      SizedBox(width: context.spacingSm),
-                      Text(
-                        'trips.save_items'.tr(),
-                        style: TextStyle(
-                          fontSize: context.fontSizeMd,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
+      body: Padding(
+        padding: EdgeInsets.all(context.spacingMd),
+        child: TripItemsSelector(
+          selectedItems: _selectedItems,
+          onSelectionChanged: (items) {
+            setState(() {
+              _selectedItems = items;
+            });
+          },
+          shrinkWrap: false,
         ),
+      ),
+      bottomContent: UniversalActionBar(
+        primaryLabel: 'trips.save_items'.tr(),
+        primaryIcon: Icons.save,
+        onPrimaryPressed: _isLoading ? null : _saveChanges,
+        isLoading: _isLoading,
       ),
     );
   }

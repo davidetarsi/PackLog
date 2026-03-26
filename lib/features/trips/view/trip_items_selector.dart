@@ -6,9 +6,10 @@ import '../../houses/model/house_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/model/item_model.dart';
 import '../model/trip_model.dart';
-import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/helpers/design_system.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/universal_item_tile.dart';
 
 /// Widget riutilizzabile per selezionare gli oggetti da portare in viaggio.
 /// 
@@ -168,7 +169,10 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('${'common.error'.tr()}: $e'),
+            error: (e, _) => ErrorState(
+              error: e,
+              onRetry: () => ref.invalidate(houseNotifierProvider),
+            ),
           ),
         ),
         
@@ -408,131 +412,105 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     final maxQuantity = item.quantity ?? 1;
     final isSelected = selectedQuantity > 0;
 
-    return Card(
-      margin: EdgeInsets.only(bottom: context.spacingSm),
-      shape: RoundedRectangleBorder(
-        borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
-        side: BorderSide(
-          color: isSelected 
-              ? _accentColor.withValues(alpha: 0.5)
-              : colorScheme.outline.withValues(alpha: 0.2),
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      color: isSelected 
+    return UniversalItemTile(
+      useListTile: false,
+      backgroundColor: isSelected 
           ? _accentColor.withValues(alpha: 0.1)
           : colorScheme.surface,
-      child: Padding(
-        padding: EdgeInsets.all(context.spacingSm),
-        child: Row(
-          children: [
-            // Icona categoria
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: context.responsiveBorderRadius(12),
-              ),
-              child: Icon(
-                _getCategoryIcon(item.category),
-                color: _accentColor,
-              ),
-            ),
-            
-            SizedBox(width: context.spacingSm),
-            
-            // Nome
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    style: TextStyle(
-                      fontSize: context.fontSizeMd,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    'common.available_quantity'.tr(args: [maxQuantity.toString()]),
-                    style: TextStyle(
-                      fontSize: context.fontSizeSm,
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Controlli quantità
-            if (maxQuantity == 1)
-              // Checkbox per quantità singola
-              Checkbox(
-                value: isSelected,
-                activeColor: _accentColor,
-                onChanged: (_) {
-                  _updateItemQuantity(
-                    item, 
-                    _selectedHouseId!, 
-                    isSelected ? 0 : 1,
-                  );
-                },
-              )
-            else
-              // Bottoni +/- per quantità multiple
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.remove_circle_outline,
-                      color: selectedQuantity > 0 
-                          ? _accentColor 
-                          : colorScheme.onSurface.withValues(alpha: 0.3),
-                    ),
-                    onPressed: selectedQuantity > 0
-                        ? () => _updateItemQuantity(
-                            item, 
-                            _selectedHouseId!, 
-                            selectedQuantity - 1,
-                          )
-                        : null,
-                  ),
-                  Container(
-                    width: 40,
-                    alignment: Alignment.center,
-                    child: Text(
-                      '$selectedQuantity',
-                      style: TextStyle(
-                        fontSize: context.fontSizeLg,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected 
-                            ? _accentColor 
-                            : colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.add_circle_outline,
-                      color: selectedQuantity < maxQuantity 
-                          ? _accentColor 
-                          : colorScheme.onSurface.withValues(alpha: 0.3),
-                    ),
-                    onPressed: selectedQuantity < maxQuantity
-                        ? () => _updateItemQuantity(
-                            item, 
-                            _selectedHouseId!, 
-                            selectedQuantity + 1,
-                          )
-                        : null,
-                  ),
-                ],
-              ),
-          ],
+      borderColor: isSelected 
+          ? _accentColor.withValues(alpha: 0.5)
+          : colorScheme.outline.withValues(alpha: 0.2),
+      borderWidth: isSelected ? 2 : 1,
+      contentPadding: EdgeInsets.all(context.spacingSm),
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: context.responsiveBorderRadius(12),
+        ),
+        child: Icon(
+          _getCategoryIcon(item.category),
+          color: _accentColor,
         ),
       ),
+      title: Text(
+        item.name,
+        style: TextStyle(
+          fontSize: context.fontSizeMd,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        'common.available_quantity'.tr(args: [maxQuantity.toString()]),
+        style: TextStyle(
+          fontSize: context.fontSizeSm,
+          color: colorScheme.onSurface.withValues(alpha: 0.6),
+        ),
+      ),
+      trailing: maxQuantity == 1
+          // Checkbox per quantità singola
+          ? Checkbox(
+              value: isSelected,
+              activeColor: _accentColor,
+              onChanged: (_) {
+                _updateItemQuantity(
+                  item, 
+                  _selectedHouseId!, 
+                  isSelected ? 0 : 1,
+                );
+              },
+            )
+          // Bottoni +/- per quantità multiple
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.remove_circle_outline,
+                    color: selectedQuantity > 0 
+                        ? _accentColor 
+                        : colorScheme.onSurface.withValues(alpha: 0.3),
+                  ),
+                  onPressed: selectedQuantity > 0
+                      ? () => _updateItemQuantity(
+                          item, 
+                          _selectedHouseId!, 
+                          selectedQuantity - 1,
+                        )
+                      : null,
+                ),
+                Container(
+                  width: 40,
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$selectedQuantity',
+                    style: TextStyle(
+                      fontSize: context.fontSizeLg,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected 
+                          ? _accentColor 
+                          : colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.add_circle_outline,
+                    color: selectedQuantity < maxQuantity 
+                        ? _accentColor 
+                        : colorScheme.onSurface.withValues(alpha: 0.3),
+                  ),
+                  onPressed: selectedQuantity < maxQuantity
+                      ? () => _updateItemQuantity(
+                          item, 
+                          _selectedHouseId!, 
+                          selectedQuantity + 1,
+                        )
+                      : null,
+                ),
+              ],
+            ),
     );
   }
 }

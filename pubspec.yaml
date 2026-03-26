@@ -1,4 +1,4 @@
-name: stuff_tracker_2
+name: pack_log
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.10.4
@@ -65,6 +65,8 @@ dependencies:
   easy_localization: ^3.0.7
   file_picker: ^10.3.10
   share_plus: ^12.0.1
+  url_launcher: ^6.3.2
+  package_info_plus: ^9.0.0
 
 dev_dependencies:
   flutter_test:
@@ -84,6 +86,7 @@ dev_dependencies:
   riverpod_generator: ^2.3.5
   drift_dev: ^2.22.1
   mocktail: ^1.0.4
+  flutter_launcher_icons: "^0.14.4"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -125,3 +128,15 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Configurazione flutter_launcher_icons.
+# Esegui `dart run flutter_launcher_icons` per generare le icone.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  # Icona classica (pre-Android 8): il PNG ha lo sfondo #FFE6C5 baked-in.
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true
+  # Android Adaptive Icons (8.0+): il sistema composita foreground su background.
+  adaptive_icon_background: "#FFE6C5"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground_clean.png"

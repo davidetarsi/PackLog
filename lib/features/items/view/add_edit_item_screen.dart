@@ -1,9 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import '../../../shared/constants/app_constants.dart';
-import '../../../shared/theme/theme.dart';
-import '../../../shared/helpers/design_system.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/item_provider.dart';
+import '../../../shared/widgets/standard_bottom_sheet_layout.dart';
+import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/helpers/dialog_helpers.dart';
 import 'item_form_content.dart';
 
 /// Mostra il bottom sheet per creare o modificare un item
@@ -26,7 +27,7 @@ Future<void> showAddEditItemSheet(
 }
 
 /// Bottom sheet per creare o modificare un item
-class AddEditItemSheet extends StatelessWidget {
+class AddEditItemSheet extends ConsumerStatefulWidget {
   final String? houseId;
   final String? itemId;
   final void Function(String itemId, String houseId)? onItemSaved;
@@ -39,94 +40,73 @@ class AddEditItemSheet extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(context.responsive(20)),
-        ),
-      ),
-      padding: EdgeInsets.only(bottom: bottomPadding),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const BottomSheetHandle(),
-            Padding(
-              padding: context.responsiveScreenPadding,
-              child: Row(
-                children: [
-                  Text(
-                    itemId != null ? 'items.edit'.tr() : 'items.add_new'.tr(),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.close, size: context.iconSizeMd),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.spacingMd,
-                0,
-                context.spacingMd,
-                context.spacingMd + AppConstants.bottomSheetBottomPadding,
-              ),
-              child: ItemFormContent(
-                houseId: houseId,
-                itemId: itemId,
-                onSaved: (itemId, houseId) {
-                  onItemSaved?.call(itemId, houseId);
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  ConsumerState<AddEditItemSheet> createState() => _AddEditItemSheetState();
 }
 
-/// Versione full-screen (mantenuta per retrocompatibilità con le route)
-class AddEditItemScreen extends StatelessWidget {
-  final String? houseId;
-  final String? itemId;
-  final void Function(String itemId, String houseId)? onItemSaved;
+class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
+  final GlobalKey<ItemFormContentState> _formKey = GlobalKey();
+  bool _isLoading = false;
 
-  const AddEditItemScreen({
-    super.key,
-    this.houseId,
-    this.itemId,
-    this.onItemSaved,
-  });
+  void _handleSave() {
+    _formKey.currentState?.save();
+  }
+
+  void _handleLoadingChanged(bool loading) {
+    setState(() => _isLoading = loading);
+  }
+
+  /// Gestisce l'eliminazione dell'item (stessa logica del kebab menu)
+  Future<void> _handleDelete() async {
+    if (widget.itemId == null || widget.houseId == null) return;
+
+    // Ottieni il nome dell'item dal form (TextField)
+    final itemName = _formKey.currentState?.itemName ?? 'items.this_item'.tr();
+
+    // Conferma eliminazione
+    final confirmed = await DialogHelpers.showDeleteConfirmation(
+      context: context,
+      itemType: 'common.item_type'.tr(),
+      itemName: itemName,
+    );
+
+    if (confirmed == true && mounted) {
+      // Chiudi il bottom sheet prima di eliminare
+      Navigator.pop(context);
+      
+      // Esegui eliminazione con retry
+      await ErrorRetryDialog.executeWithRetry(
+        context: context,
+        operation: () => ref.read(itemNotifierProvider(widget.houseId!).notifier).deleteItem(widget.itemId!, widget.houseId!),
+        errorTitle: 'common.error'.tr(),
+        errorMessage: 'errors.delete_item_failed'.tr(args: [itemName]),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(itemId != null ? 'items.edit'.tr() : 'items.add_new'.tr()),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          ItemFormContent(
-            houseId: houseId,
-            itemId: itemId,
-            onSaved: (itemId, houseId) {
-              onItemSaved?.call(itemId, houseId);
-              context.pop();
-            },
-          ),
-        ],
+    return StandardBottomSheetLayout(
+      title: widget.itemId != null
+          ? 'items.edit'.tr()
+          : 'items.add_new'.tr(),
+      onCancel: () => Navigator.pop(context),
+      onSave: _handleSave,
+      showDeleteButton: widget.itemId != null, // Solo in edit mode
+      onDelete: widget.itemId != null ? _handleDelete : null,
+      isLoading: _isLoading,
+      saveLabel: widget.itemId != null ? 'common.save'.tr() : 'common.create'.tr(),
+      child: ItemFormContent(
+        key: _formKey,
+        houseId: widget.houseId,
+        itemId: widget.itemId,
+        onSaved: (itemId, houseId) {
+          widget.onItemSaved?.call(itemId, houseId);
+          Navigator.pop(context);
+        },        
+        showButtons: false,
+        onLoadingChanged: _handleLoadingChanged,
       ),
     );
   }
 }
+

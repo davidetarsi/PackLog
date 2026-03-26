@@ -8,7 +8,9 @@ import '../../items/providers/item_provider.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 import 'add_edit_space_screen.dart';
 
 /// Mostra il bottom sheet per gestire gli spazi di una casa
@@ -91,8 +93,9 @@ class SpacesManagementSheet extends ConsumerWidget {
         ref.invalidate(spacesByHouseProvider(houseId));
         ref.invalidate(itemNotifierProvider(houseId));
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('spaces.space_deleted'.tr(args: [space.name]))),
+        AppSnackBar.showSuccess(
+          context,
+          'spaces.space_deleted'.tr(args: [space.name]),
         );
       }
     }
@@ -214,28 +217,32 @@ class SpacesManagementSheet extends ConsumerWidget {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(
-                child: Text('common.error'.tr()),
+              error: (error, stack) => ErrorState(
+                error: error,
+                onRetry: () => ref.invalidate(spaceNotifierProvider),
               ),
             ),
           ),
           SafeArea(
             top: false,
             child: Padding(
-              padding: EdgeInsets.all(context.spacingMd),
-              child: ElevatedButton.icon(
-                onPressed: () async {
+              padding: EdgeInsets.only(
+                left: context.spacingMd,
+                right: context.spacingMd,
+                top: context.spacingMd,
+                bottom: context.spacingSm,
+              ),
+              child: UniversalActionBar(
+                horizontalPadding: 0,
+                primaryLabel: 'spaces.add_new'.tr(),
+                primaryIcon: Icons.add,
+                onPrimaryPressed: () async {
                   await showAddEditSpaceSheet(context, houseId: houseId);
                   if (context.mounted) {
                     ref.invalidate(spacesByHouseProvider(houseId));
                     ref.invalidate(itemNotifierProvider(houseId));
                   }
                 },
-                icon: const Icon(Icons.add),
-                label: Text('spaces.add_new'.tr()),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48),
-                ),
               ),
             ),
           ),

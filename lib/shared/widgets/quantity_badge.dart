@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../constants/app_constants.dart';
 
 /// Badge per mostrare la quantità di un item.
 /// Può mostrare:
@@ -46,7 +47,7 @@ class QuantityBadge extends StatelessWidget {
         color: isSelected
             ? colorScheme.primaryContainer
             : colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppConstants.badgeBorderRadius),
       ),
       child: Text(
         text,
@@ -91,7 +92,7 @@ class OnTripQuantityBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: AppColors.itemOnTripLight,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       ),
       child: Text(
         showPartial ? '$text ${'common.in_transit'.tr().toLowerCase()}' : 'common.in_transit'.tr(),
@@ -114,7 +115,7 @@ class OnTripBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
         color: AppColors.itemOnTrip,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppConstants.badgeBorderRadius),
       ),
       child: Text(
         'common.in_transit'.tr(),
@@ -134,7 +135,7 @@ class TemporaryBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: AppColors.itemTemporary,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       ),
       child: Text(
         'common.temporary'.tr(),

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../model/house_model.dart';
 import '../providers/house_provider.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../shared/model/location_suggestion_model.dart';
@@ -14,18 +15,22 @@ import '../../../shared/constants/house_icons.dart';
 class HouseFormContent extends ConsumerStatefulWidget {
   final String? houseId;
   final void Function() onSaved;
+  final bool showButtons;
+  final ValueChanged<bool>? onLoadingChanged;
 
   const HouseFormContent({
     super.key,
     this.houseId,
     required this.onSaved,
+    this.showButtons = true,
+    this.onLoadingChanged,
   });
 
   @override
-  ConsumerState<HouseFormContent> createState() => _HouseFormContentState();
+  ConsumerState<HouseFormContent> createState() => HouseFormContentState();
 }
 
-class _HouseFormContentState extends ConsumerState<HouseFormContent> {
+class HouseFormContentState extends ConsumerState<HouseFormContent> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   bool _isLoading = false;
@@ -33,6 +38,17 @@ class _HouseFormContentState extends ConsumerState<HouseFormContent> {
   LocationSuggestionModel? _selectedLocation;
   String _locationText = '';
   String _selectedIconName = 'home';
+
+  /// Espone il metodo di salvataggio per uso esterno (es. StandardBottomSheetLayout)
+  Future<void> save() => _saveHouse();
+
+  /// Espone lo stato di loading
+  bool get isLoading => _isLoading;
+
+  void _setLoading(bool value) {
+    setState(() => _isLoading = value);
+    widget.onLoadingChanged?.call(value);
+  }
 
   @override
   void initState() {
@@ -67,13 +83,11 @@ class _HouseFormContentState extends ConsumerState<HouseFormContent> {
   Future<void> _saveHouse() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedLocation == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('common.select_location'.tr())),
-        );
+        AppSnackBar.showWarning(context, 'common.select_location'.tr());
         return;
       }
 
-      setState(() => _isLoading = true);
+      _setLoading(true);
 
       final now = DateTime.now();
       final housesAsync = ref.read(houseNotifierProvider);
@@ -121,7 +135,7 @@ class _HouseFormContentState extends ConsumerState<HouseFormContent> {
       );
 
       if (mounted) {
-        setState(() => _isLoading = false);
+        _setLoading(false);
         if (success) {
           widget.onSaved();
         }
@@ -197,7 +211,7 @@ class _HouseFormContentState extends ConsumerState<HouseFormContent> {
                 onTap: () {
                   setState(() => _selectedIconName = iconName);
                 },
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
                 child: Container(
                   decoration: BoxDecoration(
                     border: Border.all(
@@ -206,7 +220,7 @@ class _HouseFormContentState extends ConsumerState<HouseFormContent> {
                           : Colors.grey.shade300,
                       width: isSelected ? 2 : 1,
                     ),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
                   ),
                   child: Icon(
                     iconData,
@@ -219,23 +233,25 @@ class _HouseFormContentState extends ConsumerState<HouseFormContent> {
               );
             },
           ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: _isLoading ? null : _saveHouse,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+          if (widget.showButtons) ...[
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _saveHouse,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                ),
               ),
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(widget.houseId != null ? 'common.save'.tr() : 'common.create'.tr()),
             ),
-            child: _isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(widget.houseId != null ? 'common.save'.tr() : 'common.create'.tr()),
-          ),
+          ],
         ],
       ),
     );

@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/providers/last_export_path_provider.dart';
 import '../../../core/database/controllers/backup_controller.dart';
-import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/constants/app_constants.dart';
+import '../../../shared/config/app_config.dart';
+import '../../../shared/services/feedback_url_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -64,15 +68,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  /// Esporta il database e condivide il file
+  /// Esporta il database e salva il file nella cartella Download del dispositivo.
+  ///
+  /// Il file viene scritto direttamente su disco (nessun dialog di share).
+  /// Al termine mostra una [AppSnackBar] con il nome del file salvato e
+  /// aggiorna il path visibile nella UI tramite [lastExportPathProvider].
   Future<void> _handleExportDatabase(BuildContext context) async {
     ExportResult? exportResult;
-    
+
     try {
       debugPrint('[SettingsScreen] 📤 Utente ha richiesto export database');
-      
-      // Mostra loading
+
       if (!context.mounted) return;
+
+      // Mostra loading dialog durante l'operazione di I/O
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -88,133 +97,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       );
 
-      // Export database
+      // Salva il database nella cartella Download (pubblica o privata in base
+      // alla versione Android; vedi BackupController._resolveDownloadsDirectory)
       final controller = ref.read(backupControllerProvider.notifier);
       exportResult = await controller.exportToTemporaryFile();
 
-      debugPrint('[SettingsScreen] ✅ Export database completato con successo!');
-      debugPrint('[SettingsScreen] 📂 File: ${exportResult.path}');
+      debugPrint('[SettingsScreen] ✅ Export completato: ${exportResult.path}');
       debugPrint('[SettingsScreen] 📊 Dimensione: ${_formatFileSize(exportResult.sizeBytes)}');
 
-      // Salva il path dell'export per mostrarlo nell'UI
-      await ref.read(lastExportPathProvider.notifier).updateLastExportPath(exportResult.path);
-      debugPrint('[SettingsScreen] 💾 Path aggiornato nel provider: ${exportResult.path}');
+      // Aggiorna il path visibile nella sezione Backup sotto il pulsante
+      await ref
+          .read(lastExportPathProvider.notifier)
+          .updateLastExportPath(exportResult.path);
+
+      if (!context.mounted) return;
 
       // Chiudi loading dialog
-      if (context.mounted) Navigator.of(context).pop();
+      Navigator.of(context).pop();
 
-      // Tenta di condividere il file
-      debugPrint('[SettingsScreen] 📤 Tentativo condivisione file...');
-      
-      try {
-        final xFile = XFile(exportResult.path);
-        await Share.shareXFiles(
-          [xFile],
-          subject: 'backup.export_database'.tr(),
-          text: 'backup.file_size'.tr(args: [_formatFileSize(exportResult.sizeBytes)]),
-        );
-
-        debugPrint('[SettingsScreen] ✅ File condiviso con successo tramite share sheet');
-
-        // Mostra messaggio di successo
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('backup.export_success'.tr()),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (shareError) {
-        // Fallback: Share non disponibile (simulatore o plugin non configurato)
-        // MA l'export è RIUSCITO, quindi mostriamo successo + path
-        debugPrint('[SettingsScreen] ⚠️ Share non disponibile: $shareError');
-        debugPrint('[SettingsScreen] ℹ️ NOTA: Export riuscito, solo la condivisione non disponibile');
-        debugPrint('[SettingsScreen] 💡 Mostro dialog con path del file');
-        
-        // A questo punto exportResult è garantito non-null (export è riuscito)
-        final result = exportResult;
-        
-        if (context.mounted) {
-          await showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.green),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('backup.export_success'.tr())),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('backup.file_size'.tr(args: [_formatFileSize(result.sizeBytes)])),
-                  const SizedBox(height: 16),
-                  Text(
-                    'backup.file_saved_in'.tr(),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: SelectableText(
-                      result.path,
-                      style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '💡 ${'backup.share_unavailable_note'.tr()}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: Text('common.close'.tr()),
-                ),
-              ],
-            ),
-          );
-        }
-        
-        // NON mostriamo errore perché l'export è RIUSCITO
-        return;
-      }
+      // Snackbar con il nome del file salvato per comunicare all'utente
+      // dove trovare il backup (il path completo è visibile nell'UI)
+      AppSnackBar.showSuccess(
+        context,
+        'backup.export_saved_to'.tr(args: [p.basename(exportResult.path)]),
+      );
     } catch (e, stack) {
-      // Questo catch gestisce SOLO fallimenti dell'export stesso
-      debugPrint('[SettingsScreen] ❌ Export del database fallito: $e');
-      debugPrint('[SettingsScreen] Stack trace: $stack');
-      
-      // Chiudi loading dialog se aperto
+      debugPrint('[SettingsScreen] ❌ Export fallito: $e\n$stack');
+
+      // Chiudi loading dialog se ancora aperto
       if (context.mounted) {
         try {
           Navigator.of(context, rootNavigator: true).pop();
-        } catch (_) {
-          // Dialog già chiuso
-        }
+        } catch (_) {}
       }
 
-      // Mostra errore SOLO se l'export è fallito (non se ha fallito solo la share)
       if (exportResult == null && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('backup.export_failed'.tr()),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        AppSnackBar.showError(context, 'backup.export_failed'.tr());
       }
     }
   }
@@ -224,12 +142,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       debugPrint('[SettingsScreen] 📥 Utente ha richiesto import database');
 
-      // Step 1: Mostra warning dialog
-      final confirmed = await DialogHelpers.showConfirmation(
-        context: context,
-        title: 'backup.import_warning_title'.tr(),
-        message: 'backup.import_warning_message'.tr(),
-        isDestructive: true,
+      // Step 1: Recupera il path della cartella Download (stessa usata per export)
+      final backupDirPath = await ref
+          .read(backupControllerProvider.notifier)
+          .getBackupDirectoryPath();
+
+      if (!context.mounted) return;
+
+      // Step 1b: Mostra warning dialog con path del backup di sicurezza
+      final confirmed = await _showImportWarningDialog(
+        context,
+        backupDirPath: backupDirPath,
       );
 
       if (confirmed != true) {
@@ -237,7 +160,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         return;
       }
 
-      // Step 2: Seleziona file
+      // Step 2: Crea il safety backup IMMEDIATAMENTE dopo la conferma dell'utente,
+      // PRIMA di aprire il file picker. In questo modo il backup è garantito
+      // anche se l'utente annulla il picker o se l'import fallisce in seguito.
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (ctx) => AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text('backup.creating_safety_backup'.tr()),
+                ],
+              ),
+            ),
+      );
+
+      final controller = ref.read(backupControllerProvider.notifier);
+      String? preCreatedBackupPath;
+      try {
+        preCreatedBackupPath = await controller.createSafetyBackup();
+        debugPrint(
+          '[SettingsScreen] ✅ Safety backup creato preventivamente: $preCreatedBackupPath',
+        );
+      } catch (e) {
+        debugPrint('[SettingsScreen] ❌ Safety backup fallito: $e');
+        if (context.mounted) {
+          Navigator.of(context).pop();
+          AppSnackBar.showError(context, 'backup.safety_backup_failed'.tr());
+        }
+        return;
+      }
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // Chiudi loading del safety backup
+
+      // Step 3: Seleziona file
       debugPrint('[SettingsScreen] 📂 Apertura file picker...');
       final result = await FilePicker.platform.pickFiles(
         type: FileType.any,
@@ -259,22 +220,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
       debugPrint('[SettingsScreen] 📂 File selezionato: $filePath');
 
-      // Step 3: Valida nome file
-      final controller = ref.read(backupControllerProvider.notifier);
+      // Step 4: Valida nome file
       if (!controller.validateImportFileName(filePath)) {
         debugPrint('[SettingsScreen] ❌ Nome file non valido');
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('backup.import_validation_failed'.tr()),
-              backgroundColor: Colors.red,
-            ),
+          AppSnackBar.showError(
+            context,
+            'backup.import_validation_failed'.tr(),
           );
         }
         return;
       }
 
-      // Step 4: Mostra loading
+      // Step 5: Mostra loading
       if (!context.mounted) return;
       showDialog(
         context: context,
@@ -291,9 +249,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       );
 
-      // Step 5: Import database (con disaster recovery)
+      // Step 6: Import database (passa il backup già creato per non ricrearlo)
       debugPrint('[SettingsScreen] 🚀 Avvio import con disaster recovery...');
-      final importResult = await controller.importDatabase(filePath);
+      final importResult = await controller.importDatabase(
+        filePath,
+        preCreatedBackupPath: preCreatedBackupPath,
+      );
 
       // Chiudi loading dialog
       if (context.mounted) Navigator.of(context).pop();
@@ -302,16 +263,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (context.mounted) {
         if (importResult.success) {
           debugPrint('[SettingsScreen] ✅ Import completato con successo');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('backup.import_success'.tr())),
-          );
+          AppSnackBar.showSuccess(context, 'backup.import_success'.tr());
         } else {
           debugPrint('[SettingsScreen] ❌ Import fallito: ${importResult.errorMessage}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(importResult.errorMessage ?? 'backup.import_failed'.tr()),
-              backgroundColor: Colors.red,
-            ),
+          AppSnackBar.showError(
+            context,
+            importResult.errorMessage ?? 'backup.import_failed'.tr(),
           );
         }
       }
@@ -321,14 +278,75 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       // Chiudi loading dialog se aperto
       if (context.mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('backup.critical_error'.tr()),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.showError(context, 'backup.critical_error'.tr());
       }
     }
+  }
+
+  /// Dialog di conferma import con path della cartella di backup di sicurezza.
+  ///
+  /// Mostra all'utente dove verrà salvata la copia automatica prima
+  /// di procedere con la sostituzione del database.
+  Future<bool> _showImportWarningDialog(
+    BuildContext context, {
+    required String backupDirPath,
+  }) async {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('backup.import_warning_title'.tr()),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('backup.import_warning_message'.tr()),
+            const SizedBox(height: 16),
+            Text(
+              'backup.safety_backup_path_label'.tr(),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius:
+                    BorderRadius.circular(AppConstants.inputBorderRadius),
+              ),
+              child: SelectableText(
+                backupDirPath,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  color: colorScheme.primary.withValues(alpha: 0.85),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('common.cancel'.tr()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              'common.confirm'.tr(),
+              style: TextStyle(color: colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return confirmed ?? false;
   }
 
   /// Formatta la dimensione del file in modo leggibile
@@ -403,7 +421,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       children: [
         Text(
           'settings.title'.tr(),
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 24),
         
@@ -496,23 +516,113 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         
         const Divider(),
-        
+
+
+        // ── Sezione About ──────────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+          child: Text(
+            'settings.about_section_title'.tr(),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+
+        // Segnala errori / suggerimenti
+        ListTile(
+          leading: const Icon(Icons.feedback_outlined),
+          title: Text('settings.feedback'.tr()),
+          subtitle: Text('settings.feedback_subtitle'.tr()),
+          trailing: const Icon(Icons.open_in_new, size: 18),
+          onTap: () => _openFeedbackForm(context),
+        ),
+
+        // Visualizza progetto su GitHub
+        ListTile(
+          leading: const Icon(Icons.code),
+          title: Text('settings.view_project'.tr()),
+          subtitle: Text('settings.view_project_subtitle'.tr()),
+          trailing: const Icon(Icons.open_in_new, size: 18),
+          onTap: () => _launchUrl(context, AppConfig.githubUrl),
+        ),
+
         // Informazioni
         ListTile(
           leading: const Icon(Icons.info_outline),
           title: Text('settings.about'.tr()),
           subtitle: Text('${'common.version'.tr()} 1.0.0'),
         ),
-        const Divider(),
-        
+        //const Divider(),
+
         // Archiviazione
         ListTile(
           leading: const Icon(Icons.storage),
           title: Text('common.storage'.tr()),
           subtitle: Text('common.data_saved_locally'.tr()),
         ),
+
+        const Divider(),
       ],
     );
+  }
+
+  /// Apre [url] nel browser di sistema.
+  ///
+  /// Il parametro [mode] è opzionale e di default usa [LaunchMode.externalApplication],
+  /// che apre il link nel browser nativo. Passare un valore diverso permette di
+  /// forzare comportamenti alternativi (es. Chrome Custom Tabs / Safari View Controller)
+  /// senza duplicare la logica di error handling.
+  Future<void> _launchUrl(
+    BuildContext context,
+    String url, {
+    LaunchMode mode = LaunchMode.externalApplication,
+  }) async {
+    // launchUrl può lanciare PlatformException (es. canale non disponibile)
+    // oppure restituire false se il sistema non può gestire l'URL.
+    // Entrambi i casi vengono normalizzati in un unico messaggio d'errore.
+    try {
+      final uri = Uri.parse(url);
+      final launched = await launchUrl(uri, mode: mode);
+      if (!launched && context.mounted) {
+        AppSnackBar.showError(context, 'settings.open_link_error'.tr());
+      }
+    } catch (e) {
+      debugPrint('[SettingsScreen] ⚠️ Errore apertura URL ($url): $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'settings.open_link_error'.tr());
+      }
+    }
+  }
+
+  /// Costruisce l'URL del form di feedback con Context Injection (OS + versione app)
+  /// e lo apre in-app via Chrome Custom Tabs / Safari View Controller.
+  ///
+  /// ## Flusso
+  /// 1. [FeedbackUrlService.build] recupera versione app e SO in modo asincrono.
+  /// 2. L'URL risultante viene aperto con [LaunchMode.inAppBrowserView] per
+  ///    un'esperienza seamless senza uscire dall'app.
+  ///
+  /// Il try-catch gestisce sia errori di [PackageInfo] (es. ambienti non
+  /// supportati) sia errori di [url_launcher], centralizzando il feedback
+  /// all'utente in un unico punto.
+  Future<void> _openFeedbackForm(BuildContext context) async {
+    try {
+      final result = await FeedbackUrlService().build();
+      if (!context.mounted) return;
+      await _launchUrl(
+        context,
+        result.uri.toString(),
+        mode: LaunchMode.inAppBrowserView,
+      );
+    } catch (e) {
+      debugPrint('[SettingsScreen] ⚠️ Errore apertura form feedback: $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'settings.open_link_error'.tr());
+      }
+    }
   }
 }
 
@@ -537,7 +647,7 @@ class _LanguageTile extends StatelessWidget {
     
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -545,7 +655,7 @@ class _LanguageTile extends StatelessWidget {
             color: isSelected ? colorScheme.primary : colorScheme.outline.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
           color: isSelected ? colorScheme.primaryContainer.withValues(alpha: 0.3) : null,
         ),
         child: Row(
@@ -598,7 +708,7 @@ class _ThemeTile extends StatelessWidget {
     
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -606,7 +716,7 @@ class _ThemeTile extends StatelessWidget {
             color: isSelected ? colorScheme.primary : colorScheme.outline.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
           color: isSelected ? colorScheme.primaryContainer.withValues(alpha: 0.3) : null,
         ),
         child: Row(

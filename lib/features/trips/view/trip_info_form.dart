@@ -6,6 +6,7 @@ import '../../houses/model/house_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/helpers/design_system.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 
 /// Widget riutilizzabile per il form delle info del viaggio.
@@ -275,6 +276,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
         // Card Date - Layout verticale
         Card(
           margin: EdgeInsets.zero,
+          elevation: 0,
+          color: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
             side: BorderSide(
@@ -331,6 +334,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
         // Card Destinazione
         Card(
           margin: EdgeInsets.zero,
+          elevation: 0,
+          color: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
             side: BorderSide(
@@ -362,7 +367,10 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                 ),
                 error: (e, _) => Padding(
                   padding: EdgeInsets.all(context.spacingMd),
-                  child: Text('${'common.error'.tr()}: $e'),
+                  child: ErrorState(
+                    error: e,
+                    onRetry: () => ref.invalidate(houseNotifierProvider),
+                  ),
                 ),
               ),
               // Location autocomplete (solo se nessuna casa selezionata)

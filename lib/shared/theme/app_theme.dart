@@ -7,12 +7,9 @@ import '../constants/app_constants.dart';
 /// Definisce tutti gli stili globali per avere un design consistente.
 class AppTheme {
   // === Colori principali del tema ===
-  static const Color _primaryOrange = Color.fromARGB(
-    255,
-    247,
-    100,
-    21,
-  ); // Arancione scuro
+  /// Primary orange for dark theme (#F76415)
+  static const Color _primaryOrange = Color(0xFFF76415);
+  /// Primary orange for light theme (#FF8A50)
   static const Color _primaryOrangeLight = Color(0xFFFF8A50);
   static const Color _surfaceDark = Color(0xFF121212); // Nero
   static const Color _surfaceContainerDark = Color(
@@ -25,8 +22,8 @@ class AppTheme {
   /// Tema chiaro - Palette curata con arancione su sfondo bianco/grigio chiaro
   static ThemeData get light {
     const colorScheme = ColorScheme.light(
-      // Colori primari (arancione)
-      primary: _primaryOrange,
+      // Colori primari (arancione chiaro per light mode)
+      primary: _primaryOrangeLight,
       onPrimary: Color.fromARGB(255, 240, 226, 212),
       primaryContainer: Color(0xFFFFE0CC), // Arancione molto chiaro
       onPrimaryContainer: Color(0xFF5C2000),
@@ -210,7 +207,9 @@ class AppTheme {
 
       // === Dialog Theme ===
       dialogTheme: DialogThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.modalBorderRadius),
+        ),
       ),
 
       // === Extensions ===

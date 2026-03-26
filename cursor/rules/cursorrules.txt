@@ -37,3 +37,6 @@ dart run build_runner build --delete-conflicting-outputs
 //Update Rules
 - When you modify some files, remember always to update the same files tests 
 (if they exist) and the file ARCHITECTURE.md with corresponding changes
+
+// Document creation Rules
+- Don't create documentation .md if it's not requested by the user

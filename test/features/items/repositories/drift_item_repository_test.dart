@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stuff_tracker_2/core/database/database.dart';
-import 'package:stuff_tracker_2/core/database/services/database_service.dart';
-import 'package:stuff_tracker_2/features/items/model/item_model.dart';
-import 'package:stuff_tracker_2/features/items/repositories/drift_item_repository.dart';
+import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/core/database/services/database_service.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/repositories/drift_item_repository.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for DriftItemRepository.
@@ -536,4 +536,356 @@ void main() {
       expect(generalPoolItems.first.name, equals('General Pool Item'));
     });
   });
+
+  group('DriftItemRepository - Bulk Move Operations', () {
+    test('moveItemsToHouse should relocate items still at fromHouseId', () async {
+      // === ARRANGE ===
+      const houseAId = 'bulk-move-house-a';
+      const houseBId = 'bulk-move-house-b';
+
+      for (final id in [houseAId, houseBId]) {
+        await database.housesDao.insertHouse(HousesCompanion.insert(
+          id: id,
+          name: 'House $id',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ));
+      }
+
+      final now = DateTime.now();
+      final itemsInA = [
+        ItemModel(id: 'bm-item-1', houseId: houseAId, name: 'Shirt',  category: ItemCategory.vestiti,    createdAt: now, updatedAt: now),
+        ItemModel(id: 'bm-item-2', houseId: houseAId, name: 'Laptop', category: ItemCategory.elettronica, createdAt: now, updatedAt: now),
+        ItemModel(id: 'bm-item-3', houseId: houseAId, name: 'Keys',   category: ItemCategory.varie,       createdAt: now, updatedAt: now),
+      ];
+      for (final item in itemsInA) {
+        await repository.addItem(item);
+      }
+
+      // === ACT ===
+      final ids = itemsInA.map((i) => i.id).toList();
+      await repository.moveItemsToHouse(ids, houseAId, houseBId);
+
+      // === ASSERT ===
+      final inB = await repository.getItemsByHouseId(houseBId);
+      expect(inB.length, 3);
+      expect(inB.every((i) => i.houseId == houseBId), isTrue);
+      expect(inB.every((i) => i.spaceId == null), isTrue,
+          reason: 'All items must land in the general pool of house B');
+
+      final inA = await repository.getItemsByHouseId(houseAId);
+      expect(inA, isEmpty);
+    });
+
+    test(
+        'moveItemsToHouse MUST NOT move items not at fromHouseId '
+        '(regression test for pull-to-refresh bug)', () async {
+      // Verifies the critical fix: items belonging to an active trip (not at
+      // the old completed trip's origin anymore) must not be incorrectly moved.
+      //
+      // Scenario:
+      //   - T_old completed: A → C  (item was originally from A)
+      //   - Item is now at B  (moved there by the active T_new: A → B)
+      //   - Reprocessing T_old must NOT touch the item.
+
+      // === ARRANGE ===
+      const houseAId = 'reg-house-a';
+      const houseBId = 'reg-house-b';
+      const houseCId = 'reg-house-c';
+
+      for (final id in [houseAId, houseBId, houseCId]) {
+        await database.housesDao.insertHouse(HousesCompanion.insert(
+          id: id, name: 'House $id',
+          createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        ));
+      }
+
+      final now = DateTime.now();
+      // Item is currently at B, not at A
+      final item = ItemModel(
+        id: 'reg-item',
+        houseId: houseBId,
+        name: 'Item at B',
+        category: ItemCategory.varie,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.addItem(item);
+
+      // === ACT: reprocess T_old (fromHouseId = A, item is at B) ===
+      await repository.moveItemsToHouse([item.id], houseAId, houseCId);
+
+      // === ASSERT: item still at B, NOT moved to C ===
+      final itemsInB = await repository.getItemsByHouseId(houseBId);
+      expect(itemsInB.length, 1,
+          reason: 'Item must remain in B — it was not at A when the query ran');
+      expect(itemsInB.first.id, item.id);
+
+      final itemsInC = await repository.getItemsByHouseId(houseCId);
+      expect(itemsInC, isEmpty,
+          reason: 'Item must NOT have been moved to C');
+    });
+
+    test('moveItemsToHouse should be idempotent (move then re-run)', () async {
+      // === ARRANGE ===
+      const houseAId = 'idem-a';
+      const houseBId = 'idem-b';
+      for (final id in [houseAId, houseBId]) {
+        await database.housesDao.insertHouse(HousesCompanion.insert(
+          id: id, name: 'Idempotent House $id',
+          createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        ));
+      }
+
+      final now = DateTime.now();
+      final item = ItemModel(
+        id: 'idem-item', houseId: houseAId, name: 'Idempotent',
+        category: ItemCategory.varie, createdAt: now, updatedAt: now,
+      );
+      await repository.addItem(item);
+
+      // === ACT: move once, then rerun (item is now at B, fromHouseId=A → no-op) ===
+      await repository.moveItemsToHouse([item.id], houseAId, houseBId);
+      await repository.moveItemsToHouse([item.id], houseAId, houseBId);
+
+      // === ASSERT ===
+      final inB = await repository.getItemsByHouseId(houseBId);
+      expect(inB.length, 1);
+
+      final inA = await repository.getItemsByHouseId(houseAId);
+      expect(inA, isEmpty);
+    });
+
+    test('moveItemsToHouse with empty list should be a no-op', () async {
+      await expectLater(
+        repository.moveItemsToHouse([], 'any-a', 'any-b'),
+        completes,
+      );
+    });
+
+    test('moveItemsToHouse should only affect specified IDs', () async {
+      // === ARRANGE ===
+      const houseAId = 'selective-house-a';
+      const houseBId = 'selective-house-b';
+
+      for (final id in [houseAId, houseBId]) {
+        await database.housesDao.insertHouse(HousesCompanion.insert(
+          id: id, name: 'House $id',
+          createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        ));
+      }
+
+      final now = DateTime.now();
+      await repository.addItem(ItemModel(id: 'sel-1', houseId: houseAId, name: 'To Move',   category: ItemCategory.varie, createdAt: now, updatedAt: now));
+      await repository.addItem(ItemModel(id: 'sel-2', houseId: houseAId, name: 'Stay Here', category: ItemCategory.varie, createdAt: now, updatedAt: now));
+
+      // === ACT: move only sel-1 ===
+      await repository.moveItemsToHouse(['sel-1'], houseAId, houseBId);
+
+      // === ASSERT ===
+      final inA = await repository.getItemsByHouseId(houseAId);
+      expect(inA.length, 1);
+      expect(inA.first.id, 'sel-2');
+
+      final inB = await repository.getItemsByHouseId(houseBId);
+      expect(inB.length, 1);
+      expect(inB.first.id, 'sel-1');
+    });
+  });
+
+  group('DriftItemRepository - Batch Operations', () {
+    test('insertMultipleItems should save all items in a single transaction', () async {
+      // === ARRANGE ===
+      final houseId = 'test-house-batch';
+      await database.housesDao.insertHouse(HousesCompanion.insert(
+        id: houseId,
+        name: 'Batch Test House',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      final now = DateTime.now();
+      final itemModels = [
+        ItemModel(
+          id: 'batch-item-1',
+          houseId: houseId,
+          name: 'Shirt',
+          category: ItemCategory.vestiti,
+          quantity: 3,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        ItemModel(
+          id: 'batch-item-2',
+          houseId: houseId,
+          name: 'Laptop',
+          category: ItemCategory.elettronica,
+          quantity: 1,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        ItemModel(
+          id: 'batch-item-3',
+          houseId: houseId,
+          name: 'Toothbrush',
+          category: ItemCategory.toiletries,
+          quantity: 2,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
+
+      // === ACT ===
+      await repository.insertMultipleItems(itemModels);
+
+      // === ASSERT ===
+      final allItems = await repository.getAllItems();
+      expect(allItems, hasLength(3));
+
+      final shirt = allItems.firstWhere((i) => i.id == 'batch-item-1');
+      expect(shirt.name, 'Shirt');
+      expect(shirt.category, ItemCategory.vestiti);
+      expect(shirt.quantity, 3);
+
+      final laptop = allItems.firstWhere((i) => i.id == 'batch-item-2');
+      expect(laptop.category, ItemCategory.elettronica);
+
+      final toothbrush = allItems.firstWhere((i) => i.id == 'batch-item-3');
+      expect(toothbrush.category, ItemCategory.toiletries);
+      expect(toothbrush.quantity, 2);
+    });
+
+    test('insertMultipleItems should handle empty list gracefully', () async {
+      // === ARRANGE ===
+      final emptyList = <ItemModel>[];
+
+      // === ACT ===
+      await repository.insertMultipleItems(emptyList);
+
+      // === ASSERT ===
+      final allItems = await repository.getAllItems();
+      expect(allItems, isEmpty);
+    });
+
+    test('insertMultipleItems should throw on constraint violation', () async {
+      // === ARRANGE ===
+      final nonExistentHouseId = 'ghost-house';
+      final now = DateTime.now();
+
+      final itemModels = [
+        ItemModel(
+          id: 'orphan-item',
+          houseId: nonExistentHouseId,
+          name: 'Orphan Item',
+          category: ItemCategory.varie,
+          quantity: 1,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
+
+      // === ACT & ASSERT ===
+      // Should throw exception due to foreign key constraint
+      expect(
+        () => repository.insertMultipleItems(itemModels),
+        throwsException,
+      );
+    });
+
+    test('insertMultipleItems should be atomic - rollback on partial failure', () async {
+      // === ARRANGE ===
+      final houseId = 'test-house-atomic';
+      await database.housesDao.insertHouse(HousesCompanion.insert(
+        id: houseId,
+        name: 'Atomic Test House',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      final now = DateTime.now();
+
+      // First, insert a valid item
+      await repository.addItem(ItemModel(
+        id: 'pre-existing-item',
+        houseId: houseId,
+        name: 'Pre-existing',
+        category: ItemCategory.varie,
+        quantity: 1,
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      // Try to insert batch with duplicate ID (should fail)
+      final itemModels = [
+        ItemModel(
+          id: 'new-item-1',
+          houseId: houseId,
+          name: 'New Item',
+          category: ItemCategory.varie,
+          quantity: 1,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        ItemModel(
+          id: 'pre-existing-item', // DUPLICATE - violates PRIMARY KEY
+          houseId: houseId,
+          name: 'Duplicate',
+          category: ItemCategory.varie,
+          quantity: 1,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
+
+      // === ACT & ASSERT ===
+      expect(
+        () => repository.insertMultipleItems(itemModels),
+        throwsException,
+      );
+
+      // Verify transaction rolled back: only 1 item (pre-existing) should exist
+      final allItems = await repository.getAllItems();
+      expect(allItems, hasLength(1));
+      expect(allItems.first.id, 'pre-existing-item');
+    });
+
+    test('insertMultipleItems should handle large batches efficiently', () async {
+      // === ARRANGE ===
+      final houseId = 'test-house-perf';
+      await database.housesDao.insertHouse(HousesCompanion.insert(
+        id: houseId,
+        name: 'Performance Test House',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      final now = DateTime.now();
+      final itemModels = List.generate(100, (index) {
+        return ItemModel(
+          id: 'perf-item-$index',
+          houseId: houseId,
+          name: 'Item $index',
+          category: ItemCategory.varie,
+          quantity: index % 10 + 1,
+          createdAt: now,
+          updatedAt: now,
+        );
+      });
+
+      // === ACT ===
+      final stopwatch = Stopwatch()..start();
+      await repository.insertMultipleItems(itemModels);
+      stopwatch.stop();
+
+      // === ASSERT ===
+      final allItems = await repository.getAllItems();
+      expect(allItems, hasLength(100));
+
+      // Batch insert should be significantly faster than individual inserts
+      // (In-memory SQLite should handle 100 items in <1 second)
+      expect(stopwatch.elapsedMilliseconds, lessThan(1000),
+          reason: 'Batch insert took ${stopwatch.elapsedMilliseconds}ms');
+    });
+  });
 }
+

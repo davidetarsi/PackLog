@@ -72,16 +72,20 @@ class _MainShellState extends ConsumerState<MainShell>
     }
   }
 
+  /// Mostra la schermata delle impostazioni come bottom sheet.
+  ///
+  /// [FractionallySizedBox] con [heightFactor] fisso sostituisce il
+  /// precedente [DraggableScrollableSheet]: elimina il wrapper ridondante,
+  /// sblocca la gesture nativa di swipe-to-close e riduce l'overhead di
+  /// rendering senza perdere funzionalità.
   void _showSettings() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.8,
-        minChildSize: 0.5,
-        maxChildSize: 1,
-        expand: false,
-        builder: (context, scrollController) => const SettingsScreen(),
+      useSafeArea: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.9,
+        child: const SettingsScreen(),
       ),
     );
   }
@@ -121,6 +125,11 @@ class _MainShellState extends ConsumerState<MainShell>
     showAddEditHouseSheet(context);
   }
 
+  void _onCreateBulk() {
+    _closeCreateMenu();
+    context.push('/bulk-creation/select-house');
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -128,12 +137,29 @@ class _MainShellState extends ConsumerState<MainShell>
     final selectedTabIndex = currentIndex + 1;
 
     // Altezza tab bar + padding bottom - responsive
+    // 1. Recuperiamo lo spazio occupato dall'hardware di sistema (es. gesture bar)
+    final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
     final tabBarHeight = context.responsive(56.0);
-    final tabBarBottomPadding = context.responsive(30.0);
+    final tabBarBottomPadding = context.spacingMd;
     final tabBarTotalHeight =
-        tabBarHeight + tabBarBottomPadding + context.spacingMd;
+        tabBarHeight + bottomSafeArea + tabBarBottomPadding + context.spacingMd;
 
-    return Scaffold(
+    return PopScope<Object?>(
+      // Il pop di sistema è consentito solo quando il menu è chiuso.
+      // Quando il menu è aperto, intercettiamo il tasto "Indietro" per
+      // chiudere il menu invece di uscire dalla schermata corrente.
+      canPop: !_isCreateMenuOpen,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        // Se didPop è true il framework ha già gestito il pop (canPop era
+        // true), non c'è nulla da fare.
+        if (didPop) return;
+
+        // canPop era false → il menu era aperto. Lo chiudiamo con la sua
+        // animazione di uscita senza toccare la navigazione dello stack.
+        _closeCreateMenu();
+      },
+      child: Scaffold(
+      extendBody: true,
       body: Stack(
         children: [
           // Contenuto principale
@@ -183,6 +209,13 @@ class _MainShellState extends ConsumerState<MainShell>
                         ),
                         SizedBox(height: context.spacingSm),
                         _CreatePillTab(
+                          icon: Icons.grid_view,
+                          label: 'bulk_creation.add_from_template'.tr(),
+                          colorScheme: colorScheme,
+                          onTap: _onCreateBulk,
+                        ),
+                        SizedBox(height: context.spacingSm),
+                        _CreatePillTab(
                           icon: Icons.home,
                           label: 'houses.add'.tr(),
                           colorScheme: colorScheme,
@@ -196,68 +229,82 @@ class _MainShellState extends ConsumerState<MainShell>
             ),
         ],
       ),
-      extendBody: true,
-      bottomNavigationBar: Padding(
-        padding: EdgeInsets.fromLTRB(
-          context.spacingMd,
-          0,
-          context.spacingMd,
-          tabBarBottomPadding,
-        ),
-        child: Container(
-          height: tabBarHeight,
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainer,
-            borderRadius: context.responsiveBorderRadius(
-              AppConstants.pillBorderRadius,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.shadow.withValues(alpha: 0.15),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+      bottomNavigationBar: SafeArea(
+        bottom: true, 
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            context.spacingMd,
+            0,
+            context.spacingMd,
+            tabBarBottomPadding,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                icon: Icons.settings_outlined,
-                selectedIcon: Icons.settings,
-                label: 'common.settings'.tr(),
-                isSelected: false,
-                onTap: () => _onTabTapped(0),
+          child: Container(
+            height: tabBarHeight,
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainer,
+              borderRadius: context.responsiveBorderRadius(
+                AppConstants.pillBorderRadius,
               ),
-              _NavItem(
-                icon: Icons.home_outlined,
-                selectedIcon: Icons.home,
-                label: 'navigation.houses'.tr(),
-                isSelected: selectedTabIndex == 1,
-                onTap: () => _onTabTapped(1),
-              ),
-              _NavItem(
-                icon: Icons.luggage_outlined,
-                selectedIcon: Icons.luggage,
-                label: 'navigation.trips'.tr(),
-                isSelected: selectedTabIndex == 2,
-                onTap: () => _onTabTapped(2),
-              ),
-              _NavItem(
-                icon: _isCreateMenuOpen
-                    ? Icons.close
-                    : Icons.add_circle_outline,
-                selectedIcon: Icons.add_circle,
-                label: _isCreateMenuOpen ? 'common.close'.tr() : 'common.create'.tr(),
-                isSelected: _isCreateMenuOpen,
-                onTap: () => _onTabTapped(3),
-              ),
-            ],
+               boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _NavItem(
+                    icon: Icons.person_3_outlined,
+                    selectedIcon: Icons.person_3,
+                    label: 'common.profile'.tr(),
+                    isSelected: false,
+                    onTap: () => _onTabTapped(0),
+                  ),
+                ),
+                Expanded(
+                  child: _NavItem(
+                    icon: Icons.home_outlined,
+                    selectedIcon: Icons.home,
+                    label: 'navigation.houses'.tr(),
+                    isSelected: selectedTabIndex == 1,
+                    onTap: () => _onTabTapped(1),
+                  ),
+                ),
+                Expanded(
+                  child: _NavItem(
+                    icon: Icons.luggage_outlined,
+                    selectedIcon: Icons.luggage,
+                    label: 'navigation.trips'.tr(),
+                    isSelected: selectedTabIndex == 2,
+                    onTap: () => _onTabTapped(2),
+                  ),
+                ),
+                Expanded(
+                  child: _NavItem(
+                    icon: _isCreateMenuOpen
+                        ? Icons.close
+                        : Icons.add_circle_outline,
+                    selectedIcon: Icons.add_circle,
+                    label: _isCreateMenuOpen
+                        ? 'common.close'.tr()
+                        : 'common.create'.tr(),
+                    isSelected: _isCreateMenuOpen,
+                    onTap: () => _onTabTapped(3),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    );
-  }
+    ), // Scaffold
+  ); // PopScope
+  } // build
 }
 
 class _NavItem extends StatelessWidget {
@@ -282,36 +329,41 @@ class _NavItem extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: context.responsiveBorderRadius(16),
-      child: Container(
-        padding: context.responsiveSymmetricPadding(
-          horizontal: 10,
-          vertical: 4,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isSelected ? selectedIcon : icon,
-              size: context.responsive(22),
-              color: isSelected
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant,
-            ),
-            SizedBox(height: context.spacingXs / 3),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: context.fontSizeSm,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+      // Occupa tutta l'altezza disponibile nella Row della tab bar in modo
+      // che il Column possa centrarsi verticalmente senza overflow.
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: context.responsive(10)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isSelected ? selectedIcon : icon,
+                size: context.responsive(22),
                 color: isSelected
                     ? colorScheme.primary
                     : colorScheme.onSurfaceVariant,
               ),
-            ),
-          ],
+              SizedBox(height: context.spacingXs / 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  // fontSize leggermente ridotta per garantire che testo +
+                  // icona stiano sempre dentro tabBarHeight su ogni densità.
+                  fontSize: context.responsive(10),
+                  fontWeight:
+                      isSelected ? FontWeight.w600 : FontWeight.normal,
+                  color: isSelected
+                      ? colorScheme.primary
+                      : colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:stuff_tracker_2/features/items/model/item_model.dart';
-import 'package:stuff_tracker_2/features/trips/model/trip_model.dart';
-import 'package:stuff_tracker_2/features/trips/repositories/trip_repository.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 
 /// Mock implementation of TripRepository for testing.
 class MockTripRepository extends Mock implements TripRepository {}
