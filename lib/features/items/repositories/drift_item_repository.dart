@@ -115,6 +115,28 @@ class DriftItemRepository implements ItemRepository {
     debugPrint('[ItemRepo] Oggetto aggiornato: ${model.name}');
   }
 
+  @override
+  Future<void> insertMultipleItems(List<ItemModel> models) async {
+    if (models.isEmpty) {
+      debugPrint('[ItemRepo] insertMultipleItems: lista vuota, skip');
+      return;
+    }
+
+    final companions = models.map(_toCompanion).toList();
+    
+    final result = await _dbService.executeWithRetry(
+      () => _dao.insertMultipleItems(companions),
+      operationName: 'insertMultipleItems(${models.length} items)',
+      config: RetryConfig.criticalConfig,
+    );
+    
+    if (!result.success) {
+      throw Exception('Impossibile inserire gli oggetti: ${result.error}');
+    }
+    
+    debugPrint('[ItemRepo] ${models.length} oggetti inseriti con successo');
+  }
+
   /// Stream reattivo di tutti gli oggetti
   Stream<List<ItemModel>> watchAllItems() {
     return _dao.watchAllItems().map(
@@ -187,6 +209,37 @@ class DriftItemRepository implements ItemRepository {
   Stream<List<ItemModel>> watchItemsInGeneralPool(String houseId) {
     return _dao.watchItemsInGeneralPool(houseId).map(
       (items) => items.map(_toModel).toList(),
+    );
+  }
+
+  /// Sposta [itemIds] da [fromHouseId] a [toHouseId] con una singola query SQL.
+  ///
+  /// Delega al DAO la query bulk; il filtro `AND house_id = fromHouseId`
+  /// garantisce che solo gli item ancora nella casa di partenza vengano mossi.
+  @override
+  Future<void> moveItemsToHouse(
+    List<String> itemIds,
+    String fromHouseId,
+    String toHouseId,
+  ) async {
+    if (itemIds.isEmpty) return;
+
+    final result = await _dbService.executeWithRetry(
+      () => _dao.moveItemsToHouse(itemIds, fromHouseId, toHouseId),
+      operationName:
+          'moveItemsToHouse(${itemIds.length} items: $fromHouseId -> $toHouseId)',
+      config: RetryConfig.criticalConfig,
+    );
+
+    if (!result.success) {
+      throw Exception(
+        'Impossibile spostare ${itemIds.length} oggetti '
+        'da $fromHouseId a $toHouseId: ${result.error}',
+      );
+    }
+
+    debugPrint(
+      '[ItemRepo] ${itemIds.length} oggetti spostati da $fromHouseId a $toHouseId',
     );
   }
 

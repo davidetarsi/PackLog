@@ -1,13 +1,13 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:stuff_tracker_2/features/items/view/item_category.dart';
+import 'package:pack_log/features/items/view/item_category.dart';
 import '../model/item_model.dart';
 import '../providers/item_provider.dart';
-import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/dialog_helpers.dart';
 import 'add_edit_item_screen.dart';
 
 class ItemCard extends ConsumerWidget {
@@ -24,69 +24,96 @@ class ItemCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appColors = context.appColors;
     final colorScheme = Theme.of(context).colorScheme;
     
     final totalQuantity = item.quantity ?? 1;
     final availableQuantity = totalQuantity - quantityOnTrip;
-    final isPartiallyOnTrip = quantityOnTrip > 0 && availableQuantity > 0;
     final isFullyOnTrip = quantityOnTrip > 0 && availableQuantity == 0;
     final hasAnyOnTrip = quantityOnTrip > 0;
 
-    return Card(
-      margin: EdgeInsets.only(bottom: context.spacingSm),
-      color: isFullyOnTrip ? appColors.itemOnTripBackground.withValues(alpha: 0.6) : null,
-      child: ListTile(
-        onTap: isFullyOnTrip ? null : () => _onEdit(context),
-        leading: Stack(
+    // Costruisci subtitle dinamico
+    Widget? subtitle;
+    if (hasAnyOnTrip) {
+      // Mostra stato transito con color-coding
+      if (isFullyOnTrip) {
+        // Item completamente in viaggio: tutto in primary
+        subtitle = Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            CategoryIcon(category: item.category),
-            //if (hasAnyOnTrip) StatusIconOverlay.onTrip(),
-          ],
-        ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                item.name,
-                style: TextStyle(fontSize: context.fontSizeSm),
-                //style: isFullyOnTrip ? TextStyle(color: appColors.itemOnTripText) : null,
+            Icon(
+              Icons.flight_takeoff,
+              size: 12,
+              color: colorScheme.primary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'common.in_transit'.tr(),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            if (isFullyOnTrip) const OnTripBadge(),
-            if (isPartiallyOnTrip)
-              OnTripQuantityBadge(
-                quantity: quantityOnTrip,
-                totalQuantity: totalQuantity,
-              ),
           ],
-        ),
-        subtitle: item.description != null
-            ? Text(
-                item.description!,
-                style: isFullyOnTrip ? TextStyle(color: appColors.itemOnTrip) : null,
-              )
-            : null,
-        trailing: Row(
+        );
+      } else {
+        // Partial transit: parte qui (grigio), parte in viaggio (primary)
+        subtitle = Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              isPartiallyOnTrip ? 'x$availableQuantity/$totalQuantity' : 'x$totalQuantity',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                /* color: isFullyOnTrip
-                    ? appColors.itemOnTripText
-                    : colorScheme.onSurface.withValues(alpha: 0.7), */
-                    color: colorScheme.onSurface.withValues(alpha: 0.7),
+              '$availableQuantity ${'common.here'.tr()}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
-            _ItemPopupMenu(
-              item: item,
-              houseId: houseId,
-              enabled: !hasAnyOnTrip,
-              onEdit: () => _onEdit(context),
+            Text(
+              ' • ',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            Icon(
+              Icons.flight_takeoff,
+              size: 12,
+              color: colorScheme.primary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '$quantityOnTrip ${'common.in_transit'.tr().toLowerCase()}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
+        );
+      }
+    } else if (item.description != null) {
+      // Mostra descrizione se non in transito
+      subtitle = Text(
+        item.description!,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+
+    return UniversalItemTile(
+      onTap: isFullyOnTrip ? null : () => _onEdit(context),
+      onLongPress: hasAnyOnTrip ? null : () => _onDelete(context, ref),
+      leading: CategoryIcon(category: item.category),
+      title: Text(
+        item.name,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: subtitle,
+      trailing: Text(
+        'x$totalQuantity',
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: colorScheme.onSurface.withValues(alpha: 0.7),
         ),
       ),
     );
@@ -99,53 +126,8 @@ class ItemCard extends ConsumerWidget {
       itemId: item.id,
     );
   }
-}
 
-/// Menu azioni privato per ItemCard (Internal helper widget)
-class _ItemPopupMenu extends ConsumerWidget {
-  final ItemModel item;
-  final String houseId;
-  final bool enabled;
-  final VoidCallback onEdit;
-
-  const _ItemPopupMenu({
-    required this.item,
-    required this.houseId,
-    required this.enabled,
-    required this.onEdit,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return PopupMenuButton<String>(
-      icon: Icon(
-        Icons.more_vert,
-        color: enabled ? Theme.of(context).colorScheme.onSurface : AppColors.disabled,
-        size: context.iconSizeMd,
-      ),
-      enabled: enabled,
-      onSelected: (value) async {
-        if (value == 'edit') onEdit();
-        if (value == 'delete') await _handleDelete(context, ref);
-      },
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: 'edit',
-          child: Row(children: [const Icon(Icons.edit), const SizedBox(width: 12), Text('common.edit'.tr())]),
-        ),
-        PopupMenuItem(
-          value: 'delete',
-          child: Row(children: [
-            const Icon(Icons.delete, color: AppColors.destructive),
-            const SizedBox(width: 12),
-            Text('common.delete'.tr(), style: const TextStyle(color: AppColors.destructive)),
-          ]),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _handleDelete(BuildContext context, WidgetRef ref) async {
+  Future<void> _onDelete(BuildContext context, WidgetRef ref) async {
     final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
       itemType: 'common.item_type'.tr(),

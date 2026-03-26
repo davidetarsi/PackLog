@@ -1,13 +1,13 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart' hide isNull, isNotNull;
-import 'package:stuff_tracker_2/core/database/database.dart';
-import 'package:stuff_tracker_2/core/database/services/database_service.dart';
-import 'package:stuff_tracker_2/features/items/model/item_model.dart';
-import 'package:stuff_tracker_2/features/luggages/model/luggage_model.dart';
-import 'package:stuff_tracker_2/features/trips/model/trip_model.dart' as model;
-import 'package:stuff_tracker_2/features/trips/repositories/drift_trip_repository.dart';
-import 'package:stuff_tracker_2/shared/model/location_suggestion_model.dart';
-import 'package:stuff_tracker_2/shared/model/location_type.dart';
+import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/core/database/services/database_service.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/luggages/model/luggage_model.dart';
+import 'package:pack_log/features/trips/model/trip_model.dart' as model;
+import 'package:pack_log/features/trips/repositories/drift_trip_repository.dart';
+import 'package:pack_log/shared/model/location_suggestion_model.dart';
+import 'package:pack_log/shared/model/location_type.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for DriftTripRepository.

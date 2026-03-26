@@ -5,7 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import '../config/api_keys.dart';
+import '../config/app_config.dart';
 import '../constants/app_constants.dart';
 import '../model/model.dart';
 
@@ -160,7 +160,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
   ) async {
     final uri = Uri.https('api.geoapify.com', '/v1/geocode/autocomplete', {
       'text': query,
-      'apiKey': ApiKeys.geoapify,
+      'apiKey': AppConfig.geoapify,
       'lang': 'it',
       'limit':
           '10', // Richiedi più risultati per avere varietà dopo deduplicazione

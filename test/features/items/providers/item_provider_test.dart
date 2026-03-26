@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:stuff_tracker_2/features/items/model/item_model.dart';
-import 'package:stuff_tracker_2/features/items/providers/item_provider.dart';
-import 'package:stuff_tracker_2/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/providers/item_provider.dart';
+import 'package:pack_log/features/items/repositories/item_repository.dart';
 
 /// Mock implementation of ItemRepository for testing.
 /// Uses mocktail to stub repository methods without real database calls.

@@ -2,15 +2,21 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
 import '../../items/model/item_model.dart';
-import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/trip_summary_card.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/circular_action_button.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
+import '../../../shared/widgets/universal_item_tile.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
+import 'trip_management_sheet.dart';
 
 /// Enum per le tab di filtro delle categorie
 enum TripItemFilterTab {
@@ -64,7 +70,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         final trip = matchingTrips.first;
         final filteredItems = _filterItems(trip.items);
 
-        return Scaffold(
+        return StickyCtaScaffold(
           appBar: AppBar(
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
@@ -96,12 +102,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 child: filteredItems.isEmpty
                     ? _buildEmptyItemsState(context, colorScheme)
                     : ListView.builder(
-                        padding: EdgeInsets.only(
-                          left: context.spacingSm,
-                          right: context.spacingSm,
-                          top: context.spacingXs,
-                          bottom: context.spacingXl * 4, // Spazio per i bottoni
-                        ),
+                        padding: EdgeInsets.all(context.spacingSm),
                         itemCount: filteredItems.length,
                         itemBuilder: (context, index) {
                           final item = filteredItems[index];
@@ -114,15 +115,23 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               ),
             ],
           ),
-          // Bottoni floating in basso
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.centerFloat,
-          floatingActionButton: _BottomActionButtons(
-            onDelete: () => _showDeleteDialog(context, trip),
-            onEdit: () => context.push('/trips/${widget.tripId}/edit-info'),
-            onEditItems: () =>
-                context.push('/trips/${widget.tripId}/edit-items'),
-          ),
+          // Action bar unificata in basso
+          bottomContent: UniversalActionBar(
+                horizontalPadding: 0,
+                primaryLabel: 'trips.manage'.tr(),
+                primaryIcon: Icons.settings,
+                onPrimaryPressed: () => _showManageSheet(context),
+                leftAction: CircularActionButton(
+                  icon: Icons.delete_outline,
+                  onPressed: () => _showDeleteDialog(context, trip),
+                  showBorder: true,
+                ),
+                rightAction: CircularActionButton(
+                  icon: Icons.copy,
+                  onPressed: () => _handleDuplicate(context, trip),
+                  showBorder: true,
+                ),
+              ),          
         );
       },
       loading: () =>
@@ -138,7 +147,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         icon: Icons.luggage_outlined,
         title: 'common.not_found'.tr(),
         action: ElevatedButton.icon(
-          onPressed: () => context.go('/trips'),
+          onPressed: () => context.pop(),
           icon: const Icon(Icons.arrow_back),
           label: Text('common.back_to_list'.tr()),
         ),
@@ -167,6 +176,34 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     );
   }
 
+  /// Apre il bottom sheet per gestire il viaggio
+  Future<void> _showManageSheet(BuildContext context) async {
+    await showTripManagementSheet(context, tripId: widget.tripId);
+  }
+
+  /// Gestisce la duplicazione del viaggio (Deep Copy)
+  Future<void> _handleDuplicate(BuildContext context, TripModel trip) async {
+    try {
+      final newTripId = await ref.read(tripNotifierProvider.notifier).duplicateTrip(widget.tripId);
+      
+      if (context.mounted) {
+        AppSnackBar.showSuccess(
+          context,
+          'trips.duplicate_success'.tr(args: [trip.name]),
+        );
+        // Naviga al nuovo viaggio duplicato
+        context.push('/trips/$newTripId');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        AppSnackBar.showError(
+          context,
+          'errors.duplicate_trip_failed'.tr(args: [trip.name]),
+        );
+      }
+    }
+  }
+
   Future<void> _showDeleteDialog(BuildContext context, TripModel trip) async {
     final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
@@ -182,120 +219,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
       );
       if (success && context.mounted) {
-        context.go('/trips');
+        context.pop();
       }
     }
   }
 }
 
 /// Bottoni di azione in basso
-class _BottomActionButtons extends StatelessWidget {
-  final VoidCallback onDelete;
-  final VoidCallback onEdit;
-  final VoidCallback onEditItems;
-
-  const _BottomActionButtons({
-    required this.onDelete,
-    required this.onEdit,
-    required this.onEditItems,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final iconColor = colorScheme.onSurfaceVariant;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacingSm),
-      child: Row(
-        children: [
-          // Bottone elimina (sinistra, ovale orizzontale)
-          Material(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
-            elevation: 2,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(28),
-              onTap: onDelete,
-              child: Container(
-                width: 56,
-                height: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: iconColor, width: 2),
-                ),
-                child: Icon(Icons.delete_outline, color: iconColor, size: 22),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Bottone centrale (modifica oggetti) - pill tab
-          Expanded(
-            child: Material(
-              color: colorScheme.surface,
-              borderRadius: BorderRadius.circular(28),
-              elevation: 2,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(28),
-                onTap: onEditItems,
-                child: Container(
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: colorScheme.primary, width: 2),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.checklist, color: iconColor, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'trips.edit_items'.tr(),
-                        style: TextStyle(
-                          color: iconColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: context.fontSizeMd,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Bottone modifica viaggio (destra, ovale orizzontale)
-          Material(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
-            elevation: 2,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(28),
-              onTap: onEdit,
-              child: Container(
-                width: 56,
-                height: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: iconColor, width: 2),
-                ),
-                child: Icon(Icons.edit_calendar, color: iconColor, size: 22),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Card per un singolo item del viaggio
 class _TripItemCard extends ConsumerWidget {
   final TripItem item;
@@ -307,95 +237,49 @@ class _TripItemCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Card(
-      margin: EdgeInsets.only(bottom: context.spacingSm),
-      shape: RoundedRectangleBorder(
-        borderRadius: context.responsiveBorderRadius(
-          AppConstants.cardBorderRadius,
-        ),
-        side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
-      ),
-      child: InkWell(
-        borderRadius: context.responsiveBorderRadius(
-          AppConstants.cardBorderRadius,
-        ),
-        onTap: () {
-          ref
-              .read(tripNotifierProvider.notifier)
-              .toggleItemCheck(tripId, item.id);
+    return UniversalItemTile(
+      onTap: () {
+        ref.read(tripNotifierProvider.notifier).toggleItemCheck(tripId, item.id);
+      },
+      leading: Checkbox(
+        value: item.isChecked,
+        onChanged: (_) {
+          ref.read(tripNotifierProvider.notifier).toggleItemCheck(tripId, item.id);
         },
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: context.spacingSm,
-            vertical: context.spacingSm,
-          ),
-          child: Row(
-            children: [
-              // Checkbox
-              Checkbox(
-                value: item.isChecked,
-                onChanged: (_) {
-                  ref
-                      .read(tripNotifierProvider.notifier)
-                      .toggleItemCheck(tripId, item.id);
-                },
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-
-              SizedBox(width: context.spacingXs),
-
-              // Nome e categoria
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      style: TextStyle(
-                        fontSize: context.fontSizeMd,
-                        fontWeight: FontWeight.w500,
-                        decoration: item.isChecked
-                            ? TextDecoration.lineThrough
-                            : null,
-                        color: item.isChecked
-                            ? colorScheme.onSurface.withValues(alpha: 0.5)
-                            : colorScheme.onSurface,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      item.category.name,
-                      style: TextStyle(
-                        fontSize: context.fontSizeXs,
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Quantità
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacingSm,
-                  vertical: context.spacingXs,
-                ),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: context.responsiveBorderRadius(8),
-                ),
-                child: Text(
-                  'x${item.quantity}',
-                  style: TextStyle(
-                    fontSize: context.fontSizeXs,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-              ),
-            ],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+      title: Text(
+        item.name,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+          decoration: item.isChecked ? TextDecoration.lineThrough : null,
+          color: item.isChecked
+              ? colorScheme.onSurface.withValues(alpha: 0.5)
+              : colorScheme.onSurface,
+        ),
+      ),
+      subtitle: Text(
+        item.category.name,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacingSm,
+          vertical: context.spacingXs,
+        ),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: context.responsiveBorderRadius(8),
+        ),
+        child: Text(
+          'x${item.quantity}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: colorScheme.onSurface.withValues(alpha: 0.7),
           ),
         ),
       ),

@@ -106,4 +106,35 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     final result = await query.getSingleOrNull();
     return result?.read(items.id.count()) ?? 0;
   }
+
+  /// Sposta un set di oggetti da [fromHouseId] a [toHouseId] in una singola
+  /// query SQL:
+  /// `UPDATE items SET house_id = ? WHERE id IN (?) AND house_id = ?`
+  ///
+  /// Il filtro `AND house_id = fromHouseId` è **critico per la correttezza**:
+  /// garantisce che vengano spostati solo gli item che si trovano *ancora*
+  /// nella casa di partenza del viaggio. Se un item è già stato trasferito
+  /// (viaggio precedente completato) o si trova in un'altra casa per qualsiasi
+  /// motivo, la query lo ignora senza effetti collaterali.
+  ///
+  /// Azzera anche [spaceId]: gli oggetti arrivano nel pool generale della casa
+  /// di destinazione e l'utente potrà assegnarli a uno spazio in seguito.
+  Future<void> moveItemsToHouse(
+    List<String> itemIds,
+    String fromHouseId,
+    String toHouseId,
+  ) async {
+    if (itemIds.isEmpty) return;
+    await (update(items)
+          ..where(
+            (t) => t.id.isIn(itemIds) & t.houseId.equals(fromHouseId),
+          ))
+        .write(
+      ItemsCompanion(
+        houseId: Value(toHouseId),
+        spaceId: const Value(null),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
 }

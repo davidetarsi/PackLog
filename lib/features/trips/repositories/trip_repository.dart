@@ -25,4 +25,5 @@ abstract class TripRepository {
   Future<List<TripModel>> getAllTrips();
   Future<bool> deleteTrip(String id);
   Future<void> updateTrip(TripModel model);
+  Future<String> duplicateTrip(String tripId);
 }

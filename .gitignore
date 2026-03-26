@@ -51,6 +51,7 @@ app.*.map.json
 
 # Cursor related
 .cursor/
+.vscode/
 
 # API Keys - Non caricare su Git!
-lib/shared/config/api_keys.dart
+lib/shared/config/app_config.dart

@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stuff_tracker_2/features/items/model/item_model.dart';
-import 'package:stuff_tracker_2/features/luggages/model/luggage_model.dart';
-import 'package:stuff_tracker_2/features/trips/model/trip_model.dart';
-import 'package:stuff_tracker_2/shared/model/location_suggestion_model.dart';
-import 'package:stuff_tracker_2/shared/model/location_type.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/luggages/model/luggage_model.dart';
+import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/shared/model/location_suggestion_model.dart';
+import 'package:pack_log/shared/model/location_type.dart';
 
 /// Unit tests for TripModel domain logic.
 /// 

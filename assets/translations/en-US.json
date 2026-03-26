@@ -42,10 +42,16 @@
     "trips_has_destination_singular": "{} active/scheduled trip has this house as destination",
     "trips_has_destination_plural": "{} active/scheduled trips have this house as destination",
     "wait_trips_end": "Wait for trips to end or delete them before deleting the house",
+    "manage": "Manage",
+    "manage_sheet_title": "Manage House",
+    "edit_info": "Edit info",
+    "add_sheet_title": "Add Items",
+    "add_single_item": "Single item",
     "delete_confirmation": "Are you sure you want to delete \"{}\"?",
     "house_not_found": "House not found",
     "house_not_found_message": "The requested house was not found.",
-    "back_to_houses": "Back to houses"
+    "back_to_houses": "Back to houses",
+    "primary": "Primary"
   },
   
   "items": {
@@ -53,6 +59,7 @@
     "add_new": "New Item",
     "edit": "Edit Item",
     "delete": "Delete Item",
+    "this_item": "this item",
     "select_house_prompt": "Select a house",
     "no_houses_available": "No houses available. Create a house first.",
     "no_items": "No items",
@@ -163,6 +170,9 @@
     "edit_info": "Edit Trip Info",
     "edit_items": "Edit Items",
     "save_items": "Save items",
+    "manage": "Manage",
+    "manage_sheet_title": "Manage trip",
+    "duplicate_success": "\"{}\" duplicated successfully",
     "trip_info": "Trip information",
     "items_to_bring": "Items to bring",
     "delete": "Delete Trip",
@@ -170,6 +180,7 @@
     "more_items": "+{} more",
     "no_trips": "No trips",
     "no_trips_subtitle": "Create your first trip",
+    "no_trips_tap_hint": "Tap to create a new trip",
     "select_house_to_view_items": "Select a house to view items",
     "no_items_in_list": "No items in the list",
     "no_items_in_category_filter": "No items in \"{}\"",
@@ -251,6 +262,7 @@
     "required_field_error": "The field is required",
     "on_trip": "On trip",
     "in_transit": "In transit",
+    "here": "here",
     "temporary": "Temporary",
     "temporaries": "Temporary",
     "at_house": "At home",
@@ -277,7 +289,9 @@
     "return_before_departure_error": "Return date must be after departure",
     "ok": "OK",
     "back_to_home": "Back to home",
-    "navigation_error": "Navigation error: {}"
+    "navigation_error": "Navigation error: {}",
+    "profile": "Profilo"
+
   },
   
   "errors": {
@@ -288,6 +302,7 @@
     "delete_failed": "Unable to delete \"{}\"",
     "delete_item_failed": "Unable to delete \"{}\"",
     "delete_trip_failed": "Unable to delete trip \"{}\"",
+    "duplicate_trip_failed": "Unable to duplicate trip \"{}\"",
     "set_primary_failed": "Unable to set \"{}\" as primary house",
     "save_house_failed": "Unable to save changes to the house",
     "create_house_failed": "Unable to create the house",
@@ -318,19 +333,26 @@
   },
   
   "settings": {
-    "title": "Settings",
+    "title": "Profile",
     "language": "Language",
     "theme": "Theme",
     "theme_light": "Light",
     "theme_dark": "Dark",
     "theme_system": "System",
-    "about": "About"
+    "about": "About",
+    "about_section_title": "About",
+    "feedback": "Report bugs or send suggestions",
+    "feedback_subtitle": "Open the Google Form",
+    "view_project": "View project",
+    "view_project_subtitle": "GitHub repository",
+    "open_link_error": "Cannot open the link"
   },
   "backup": {
     "title": "Backup & Restore",
     "export_database": "Export database",
     "import_database": "Import database",
     "export_success": "Database exported successfully",
+    "export_saved_to": "File saved: {}",
     "export_failed": "Export failed",
     "import_success": "Database imported successfully",
     "import_failed": "Import failed",
@@ -346,6 +368,7 @@
     "rollback_success": "Database restored to previous state",
     "critical_error": "Critical error: unable to restore. Contact support.",
     "file_size": "File size: {}",
+    "safety_backup_path_label": "Safety backup saved in:",
     "file_saved_in": "File saved in:",
     "path_label": "Path:",
     "share_unavailable_note": "Note: Sharing not available on simulator",
@@ -354,5 +377,22 @@
     "invalid_sqlite_file": "The file to import is not a valid SQLite database",
     "downloads_unavailable": "Downloads directory not available on this platform",
     "rollback_impossible": "Unable to restore safety backup"
+  },
+  "bulk_creation": {
+    "add_from_template": "Add from Template",
+    "select_house": "Select House",
+    "select_templates": "Choose Templates",
+    "select_at_least_one": "Select at least one template",
+    "continue_with_items": "Continue with {count} items",
+    "continue_without_templates": "Continue without selecting any template",
+    "edit_items": "Edit Items",
+    "no_items": "No items to add",
+    "item_name_hint": "Item name",
+    "add_manual_item": "Add manual item:",
+    "gender_male": "Male",
+    "gender_female": "Female",
+    "gender_neutral": "Neutral",
+    "save_failed": "Error saving items",
+    "save_success": "{count} items added successfully!"
   }
 }

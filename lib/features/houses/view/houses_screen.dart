@@ -32,42 +32,66 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
   @override
   Widget build(BuildContext context) {
     final housesAsync = ref.watch(houseNotifierProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(),//title: Text('houses.title'.tr())),
-      body: housesAsync.when(
-        data: (houses) {
-          if (houses.isEmpty) {
-            return EmptyState(
-              icon: Icons.home_outlined,
-              title: 'houses.no_houses'.tr(),
-              subtitle: 'houses.no_houses_subtitle'.tr(),
+      body: SafeArea(
+        child: housesAsync.when(
+          data: (houses) {
+            if (houses.isEmpty) {
+              // Stato vuoto scrollabile: senza AlwaysScrollableScrollPhysics
+              // il gesto pull-to-refresh non verrebbe rilevato.
+              return RefreshIndicator(
+                onRefresh: () async =>
+                    ref.refresh(houseNotifierProvider.future),
+                color: colorScheme.primary,
+                child: LayoutBuilder(
+                  builder: (_, constraints) => SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: constraints.maxHeight,
+                      child: EmptyState(
+                        icon: Icons.home_outlined,
+                        title: 'houses.no_houses'.tr(),
+                        subtitle: 'houses.no_houses_subtitle'.tr(),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            // Ordina le case: prima quella principale, poi le altre
+            final sortedHouses = houses.toList()
+              ..sort((a, b) {
+                if (a.isPrimary && !b.isPrimary) return -1;
+                if (!a.isPrimary && b.isPrimary) return 1;
+                return 0;
+              });
+
+            return RefreshIndicator(
+              onRefresh: () async =>
+                  ref.refresh(houseNotifierProvider.future),
+              color: colorScheme.primary,
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(
+                  top: context.spacingMd,
+                  bottom: AppConstants.floatingNavBarPadding,
+                ),
+                itemCount: sortedHouses.length,
+                itemBuilder: (context, index) {
+                  final house = sortedHouses[index];
+                  return _HouseCard(house: house);
+                },
+              ),
             );
-          }
-
-          // Ordina le case: prima quella principale, poi le altre
-          final sortedHouses = houses.toList()
-            ..sort((a, b) {
-              if (a.isPrimary && !b.isPrimary) return -1;
-              if (!a.isPrimary && b.isPrimary) return 1;
-              return 0;
-            });
-
-          return ListView.builder(
-            padding: const EdgeInsets.only(
-              bottom: AppConstants.floatingNavBarPadding,
-            ),
-            itemCount: sortedHouses.length,
-            itemBuilder: (context, index) {
-              final house = sortedHouses[index];
-              return _HouseCard(house: house);
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => ErrorState(
-          error: error,
-          onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => ErrorState(
+            error: error,
+            onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
+          ),
         ),
       ),
     );
@@ -255,7 +279,7 @@ class _Badge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
         border: Border.all(
           color: color.withValues(alpha: 0.3),
           width: 1,

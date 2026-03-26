@@ -5,19 +5,26 @@ class AppConstants {
 
   // Backup Constants
   /// Prefisso per i file di backup del database
-  static const String backupFilePrefix = 'stuff-tracker-db';
+  static const String backupFilePrefix = 'pack-log-export-db';
   
   /// Estensione per i file di database
   static const String databaseFileExtension = '.db';
 
   // UI Constants
-  static const double cardBorderRadius = 12.0;
+  /// Border radius for cards (16.0)
+  static const double cardBorderRadius = 16.0;
 
-  /// Raggio per card a pillola (bordi completamente arrotondati)
+  /// Border radius for pill-shaped elements (fully rounded: 30.0)
   static const double pillBorderRadius = 30.0;
 
-  /// Raggio per i campi di input (TextFormField, Dropdown, etc.)
+  /// Border radius for input fields (TextFormField, Dropdown, etc.: 12.0)
   static const double inputBorderRadius = 12.0;
+
+  /// Border radius for badges and small UI elements (8.0)
+  static const double badgeBorderRadius = 8.0;
+
+  /// Border radius for dialogs and modals (20.0)
+  static const double modalBorderRadius = 20.0;
 
   /// Padding inferiore per le liste con floating navigation bar
   static const double floatingNavBarPadding = 80.0;

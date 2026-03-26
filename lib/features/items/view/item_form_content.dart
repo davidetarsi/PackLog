@@ -8,6 +8,7 @@ import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
 import '../../spaces/providers/space_provider.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -17,19 +18,23 @@ class ItemFormContent extends ConsumerStatefulWidget {
   final String? houseId;
   final String? itemId;
   final void Function(String itemId, String houseId) onSaved;
+  final bool showButtons;
+  final ValueChanged<bool>? onLoadingChanged;
 
   const ItemFormContent({
     super.key,
     this.houseId,
     this.itemId,
     required this.onSaved,
+    this.showButtons = true,
+    this.onLoadingChanged,
   });
 
   @override
-  ConsumerState<ItemFormContent> createState() => _ItemFormContentState();
+  ConsumerState<ItemFormContent> createState() => ItemFormContentState();
 }
 
-class _ItemFormContentState extends ConsumerState<ItemFormContent> {
+class ItemFormContentState extends ConsumerState<ItemFormContent> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -38,6 +43,20 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
   bool _isLoading = false;
   String? _selectedHouseId;
   String? _selectedSpaceId;
+
+  /// Espone il metodo di salvataggio per uso esterno
+  Future<void> save() => _saveItem();
+
+  /// Espone lo stato di loading
+  bool get isLoading => _isLoading;
+
+  /// Espone il nome corrente dell'item (per dialog di conferma)
+  String get itemName => _nameController.text.trim();
+
+  void _setLoading(bool value) {
+    setState(() => _isLoading = value);
+    widget.onLoadingChanged?.call(value);
+  }
 
   static const List<int> _quantityOptions = [
     1,
@@ -137,13 +156,11 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
   Future<void> _saveItem() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedHouseId == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('common.select_house'.tr())));
+        AppSnackBar.showWarning(context, 'common.select_house'.tr());
         return;
       }
 
-      setState(() => _isLoading = true);
+      _setLoading(true);
 
       final now = DateTime.now();
       final quantity = _selectedQuantity;
@@ -201,7 +218,7 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
       );
 
       if (mounted) {
-        setState(() => _isLoading = false);
+        _setLoading(false);
         if (success) {
           widget.onSaved(item.id, houseId);
         }
@@ -314,25 +331,27 @@ class _ItemFormContentState extends ConsumerState<ItemFormContent> {
             ),
             maxLines: 2,
           ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: _isLoading ? null : _saveItem,
-            style: ElevatedButton.styleFrom(
-              padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-              shape: RoundedRectangleBorder(
-                borderRadius: context.responsiveBorderRadius(
-                  AppConstants.inputBorderRadius,
+          if (widget.showButtons) ...[
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _saveItem,
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: context.spacingMd),
+                shape: RoundedRectangleBorder(
+                  borderRadius: context.responsiveBorderRadius(
+                    AppConstants.inputBorderRadius,
+                  ),
                 ),
               ),
+              child: _isLoading
+                  ? SizedBox(
+                      height: context.responsive(20),
+                      width: context.responsive(20),
+                      child: const CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(widget.itemId != null ? 'common.save'.tr() : 'common.create'.tr()),
             ),
-            child: _isLoading
-                ? SizedBox(
-                    height: context.responsive(20),
-                    width: context.responsive(20),
-                    child: const CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(widget.itemId != null ? 'common.save'.tr() : 'common.create'.tr()),
-          ),
+          ],
         ],
       ),
     );
