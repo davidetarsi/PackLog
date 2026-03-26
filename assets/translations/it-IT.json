@@ -48,7 +48,8 @@
     "delete_confirmation": "Sei sicuro di voler eliminare \"{}\"?",
     "house_not_found": "Casa non trovata",
     "house_not_found_message": "La casa richiesta non è stata trovata.",
-    "back_to_houses": "Torna alla lista case"
+    "back_to_houses": "Torna alla lista case",
+    "primary": "Principale"
   },
   "items": {
     "add": "Oggetto",
@@ -178,6 +179,7 @@
     "more_items": "+{} altri",
     "no_trips": "Nessun viaggio",
     "no_trips_subtitle": "Crea il tuo primo viaggio",
+    "no_trips_tap_hint": "Tocca per creare un nuovo viaggio",
     "select_house_to_view_items": "Seleziona una casa per vedere gli oggetti",
     "no_items_in_list": "Nessun oggetto nella lista",
     "no_items_in_category_filter": "Nessun oggetto in \"{}\"",
@@ -326,13 +328,19 @@
     "cancel": "Annulla"
   },
   "settings": {
-    "title": "Impostazioni",
+    "title": "Profilo",
     "language": "Lingua",
     "theme": "Tema",
     "theme_light": "Chiaro",
     "theme_dark": "Scuro",
     "theme_system": "Sistema",
-    "about": "Info"
+    "about": "Info",
+    "about_section_title": "About",
+    "feedback": "Segnala errori o invia suggerimenti",
+    "feedback_subtitle": "Apri il questionario Google",
+    "view_project": "Visualizza progetto",
+    "view_project_subtitle": "Repository GitHub",
+    "open_link_error": "Impossibile aprire il link"
   },
   "backup": {
     "title": "Backup & Ripristino",

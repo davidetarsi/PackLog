@@ -65,6 +65,8 @@ dependencies:
   easy_localization: ^3.0.7
   file_picker: ^10.3.10
   share_plus: ^12.0.1
+  url_launcher: ^6.3.2
+  package_info_plus: ^9.0.0
 
 dev_dependencies:
   flutter_test:
@@ -127,12 +129,14 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-# Configurazione flutter_launcher_icons (top-level, NON dentro dev_dependencies).
+# Configurazione flutter_launcher_icons.
 # Esegui `dart run flutter_launcher_icons` per generare le icone.
 flutter_launcher_icons:
-  android: "ic_launcher_foreground"
+  android: true
   ios: true
-  image_path: "assets/icon/app_icon_foreground.png"
-  # Configurazione Adaptive Icons per Android 8.0+
+  # Icona classica (pre-Android 8): il PNG ha lo sfondo #FFE6C5 baked-in.
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true
+  # Android Adaptive Icons (8.0+): il sistema composita foreground su background.
   adaptive_icon_background: "#FFE6C5"
-  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground_clean.png"

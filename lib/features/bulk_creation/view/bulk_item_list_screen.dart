@@ -83,8 +83,15 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
         ),
       );
 
-      // Naviga indietro alla schermata della casa
-      navigator.go('/houses/${widget.houseId}');
+      // Ricostruisce lo stack: root (lista case) + dettaglio casa in cima.
+      // go('/') resetta lo stack alla shell; il push va nel frame successivo
+      // perché GoRouter processa go() con una rebuild asincrona che
+      // sovrascriverebbe un push() chiamato nello stesso microtask.
+      final houseId = widget.houseId;
+      navigator.go('/');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        navigator.push('/houses/$houseId');
+      });
     }
   }
 

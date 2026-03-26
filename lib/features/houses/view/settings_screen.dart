@@ -3,11 +3,14 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/providers/last_export_path_provider.dart';
 import '../../../core/database/controllers/backup_controller.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/config/app_config.dart';
+import '../../../shared/services/feedback_url_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -513,23 +516,113 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         
         const Divider(),
-        
+
+
+        // ── Sezione About ──────────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+          child: Text(
+            'settings.about_section_title'.tr(),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+
+        // Segnala errori / suggerimenti
+        ListTile(
+          leading: const Icon(Icons.feedback_outlined),
+          title: Text('settings.feedback'.tr()),
+          subtitle: Text('settings.feedback_subtitle'.tr()),
+          trailing: const Icon(Icons.open_in_new, size: 18),
+          onTap: () => _openFeedbackForm(context),
+        ),
+
+        // Visualizza progetto su GitHub
+        ListTile(
+          leading: const Icon(Icons.code),
+          title: Text('settings.view_project'.tr()),
+          subtitle: Text('settings.view_project_subtitle'.tr()),
+          trailing: const Icon(Icons.open_in_new, size: 18),
+          onTap: () => _launchUrl(context, AppConfig.githubUrl),
+        ),
+
         // Informazioni
         ListTile(
           leading: const Icon(Icons.info_outline),
           title: Text('settings.about'.tr()),
           subtitle: Text('${'common.version'.tr()} 1.0.0'),
         ),
-        const Divider(),
-        
+        //const Divider(),
+
         // Archiviazione
         ListTile(
           leading: const Icon(Icons.storage),
           title: Text('common.storage'.tr()),
           subtitle: Text('common.data_saved_locally'.tr()),
         ),
+
+        const Divider(),
       ],
     );
+  }
+
+  /// Apre [url] nel browser di sistema.
+  ///
+  /// Il parametro [mode] è opzionale e di default usa [LaunchMode.externalApplication],
+  /// che apre il link nel browser nativo. Passare un valore diverso permette di
+  /// forzare comportamenti alternativi (es. Chrome Custom Tabs / Safari View Controller)
+  /// senza duplicare la logica di error handling.
+  Future<void> _launchUrl(
+    BuildContext context,
+    String url, {
+    LaunchMode mode = LaunchMode.externalApplication,
+  }) async {
+    // launchUrl può lanciare PlatformException (es. canale non disponibile)
+    // oppure restituire false se il sistema non può gestire l'URL.
+    // Entrambi i casi vengono normalizzati in un unico messaggio d'errore.
+    try {
+      final uri = Uri.parse(url);
+      final launched = await launchUrl(uri, mode: mode);
+      if (!launched && context.mounted) {
+        AppSnackBar.showError(context, 'settings.open_link_error'.tr());
+      }
+    } catch (e) {
+      debugPrint('[SettingsScreen] ⚠️ Errore apertura URL ($url): $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'settings.open_link_error'.tr());
+      }
+    }
+  }
+
+  /// Costruisce l'URL del form di feedback con Context Injection (OS + versione app)
+  /// e lo apre in-app via Chrome Custom Tabs / Safari View Controller.
+  ///
+  /// ## Flusso
+  /// 1. [FeedbackUrlService.build] recupera versione app e SO in modo asincrono.
+  /// 2. L'URL risultante viene aperto con [LaunchMode.inAppBrowserView] per
+  ///    un'esperienza seamless senza uscire dall'app.
+  ///
+  /// Il try-catch gestisce sia errori di [PackageInfo] (es. ambienti non
+  /// supportati) sia errori di [url_launcher], centralizzando il feedback
+  /// all'utente in un unico punto.
+  Future<void> _openFeedbackForm(BuildContext context) async {
+    try {
+      final result = await FeedbackUrlService().build();
+      if (!context.mounted) return;
+      await _launchUrl(
+        context,
+        result.uri.toString(),
+        mode: LaunchMode.inAppBrowserView,
+      );
+    } catch (e) {
+      debugPrint('[SettingsScreen] ⚠️ Errore apertura form feedback: $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'settings.open_link_error'.tr());
+      }
+    }
   }
 }
 

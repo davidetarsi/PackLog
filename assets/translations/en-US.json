@@ -50,7 +50,8 @@
     "delete_confirmation": "Are you sure you want to delete \"{}\"?",
     "house_not_found": "House not found",
     "house_not_found_message": "The requested house was not found.",
-    "back_to_houses": "Back to houses"
+    "back_to_houses": "Back to houses",
+    "primary": "Primary"
   },
   
   "items": {
@@ -179,6 +180,7 @@
     "more_items": "+{} more",
     "no_trips": "No trips",
     "no_trips_subtitle": "Create your first trip",
+    "no_trips_tap_hint": "Tap to create a new trip",
     "select_house_to_view_items": "Select a house to view items",
     "no_items_in_list": "No items in the list",
     "no_items_in_category_filter": "No items in \"{}\"",
@@ -331,13 +333,19 @@
   },
   
   "settings": {
-    "title": "Settings",
+    "title": "Profile",
     "language": "Language",
     "theme": "Theme",
     "theme_light": "Light",
     "theme_dark": "Dark",
     "theme_system": "System",
-    "about": "About"
+    "about": "About",
+    "about_section_title": "About",
+    "feedback": "Report bugs or send suggestions",
+    "feedback_subtitle": "Open the Google Form",
+    "view_project": "View project",
+    "view_project_subtitle": "GitHub repository",
+    "open_link_error": "Cannot open the link"
   },
   "backup": {
     "title": "Backup & Restore",

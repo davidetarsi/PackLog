@@ -48,7 +48,7 @@ android {
             applicationIdSuffix = ".dev"
             // resValue inietta la stringa nell'R.string generato dal flavor,
             // sovrascrivendo l'eventuale valore in res/values/strings.xml.
-            resValue("string", "app_name", "StuffTracker Dev")
+            resValue("string", "app_name", "PackLog Dev")
         }
 
         // ── PROD ─────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ android {
         // nome pulito senza indicatori di ambiente.
         create("prod") {
             dimension = "app_environment"
-            resValue("string", "app_name", "StuffTracker")
+            resValue("string", "app_name", "PackLog")
         }
     }
 
