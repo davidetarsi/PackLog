@@ -1,4 +1,4 @@
-# 📦 Stuff Tracker
+# <img src="assets/icon/app_icon_round.png" width="40" height="40" valign="bottom"> PackLog
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter Badge"/>
@@ -7,153 +7,121 @@
   <img src="https://img.shields.io/badge/Riverpod-000000?style=for-the-badge&logo=dart&logoColor=white" alt="Riverpod Badge"/>
 </p>
 
-**Stuff Tracker** è un'applicazione mobile multipiattaforma (iOS/Android) progettata per la gestione intelligente di oggetti personali distribuiti in diverse abitazioni e il tracking di viaggi e spostamenti. 
+**PackLog** is a cross-platform mobile application (iOS/Android) engineered for the intelligent management of personal belongings across multiple properties and real-time trip tracking.
 
-L'app risolve un problema estremamente pratico: dimenticare dove si trovano i propri oggetti quando si possiedono più case o si viaggia frequentemente.
+The app addresses a common logistical pain point: maintaining an accurate inventory of items when managing multiple residences or traveling frequently.
 
 ---
 
 ## 📱 Screenshots
 
 <p align="center">
-  <img src="screen_app/houses.png" width="22%" alt="Home Multi-Casa"/>
+  <img src="screen_app/houses.png" width="22%" alt="Multi-House Home"/>
   &nbsp;&nbsp;
-  <img src="screen_app/houses_trip.png" width="22%" alt="Home Multi-Casa in Transito"/>
+  <img src="screen_app/houses_trip.png" width="22%" alt="Transit View"/>
   &nbsp;&nbsp;
-  <img src="screen_app/house_detail.png" width="22%" alt="Dettaglio Inventario"/>
+  <img src="screen_app/house_detail.png" width="22%" alt="Inventory Detail"/>
   &nbsp;&nbsp;
-  <img src="screen_app/create.png" width="22%" alt="Crea"/>
+  <img src="screen_app/create.png" width="22%" alt="Create Item"/>
+  <br><br>
+  <img src="screen_app/new_trip.png" width="22%" alt="New Trip"/>
   &nbsp;&nbsp;
-  <img src="screen_app/new_trip.png" width="22%" alt="Nuovo viaggio"/>
+  <img src="screen_app/trips.png" width="22%" alt="Trips Overview"/>
   &nbsp;&nbsp;
-  <img src="screen_app/trips.png" width="22%" alt="Viaggi"/>
+  <img src="screen_app/trip_detail.png" width="22%" alt="Trip Details"/>
   &nbsp;&nbsp;
-  <img src="screen_app/trip_detail.png" width="22%" alt="Dettaglio viaggio"/>
-  &nbsp;&nbsp;
-  <img src="screen_app/settings.png" width="22%" alt="Impostazioni"/>
-  &nbsp;&nbsp;
+  <img src="screen_app/settings.png" width="22%" alt="Settings"/>
 </p>
 
 ---
 
-## ✨ Features Principali
+## ✨ Core Features
 
-* 🏠 **Gestione Multi-Abitazione (Houses):** CRUD completo con geolocalizzazione integrata tramite Geoapify, selezione di icone personalizzate e statistiche in tempo reale degli oggetti.
-* 🎒 **Gestione Inventario (Items):** Catalogazione in 4 categorie (Vestiti, Toiletries, Elettronica, Varie) con tracciamento delle quantità e stati dinamici per capire se un oggetto è "Disponibile" o "In Transito".
-* ✈️ **Gestione Viaggi (Trips):** Pianificazione spostamenti con timeline temporale, calcolo automatico dello stato (Upcoming, Active, Completed) e checklist dinamiche degli oggetti da portare.
-* 💾 **Disaster Recovery & Backup:** Sistema di export/import del database SQLite fisico con backup di sicurezza automatico pre-import, validazione dello schema post-import e rollback automatico in caso di corruzione dei dati.
-* 🎨 **UX/UI & i18n:** Supporto Tema Chiaro/Scuro/Sistema, Design System proprietario e internazionalizzazione completa (it-IT, en-US) senza stringhe hardcoded.
-
----
-
-## 🏗 Architettura e Scelte Progettuali (Il "Perché")
-
-Invece di procedere per tentativi, l'app è stata ingegnerizzata seguendo la **Feature-First Architecture** combinata con i principi della **Clean Architecture**. Questo garantisce una separazione netta delle responsabilità e un'elevata testabilità.
-
-Ecco i trade-off principali e le decisioni architetturali affrontate durante lo sviluppo:
-
-### 1️⃣ Database Relazionale (Drift) vs NoSQL (Hive/Isar)
-Sebbene soluzioni NoSQL offrano velocità di prototipazione, la scelta è ricaduta su **Drift (SQLite)** per via della necessità di gestire query complesse (join tra abitazioni, oggetti e viaggi), garantire l'integrità referenziale tramite Foreign Keys (con cascade deletes) e gestire migrazioni di schema robuste e type-safe a compile-time.
-
-### 2️⃣ Snapshot Pattern per i Viaggi
-Quando un utente inserisce un oggetto in un viaggio, il sistema non crea una semplice reference, ma una **copia indipendente (Snapshot)** dell'oggetto (`TripItem`). 
-> **Perché?** L'immutabilità garantisce che se l'utente modifica o elimina l'oggetto originale dalla casa settimane dopo, lo storico del viaggio passato non venga alterato. Il viaggio mantiene la sua autonomia.
-
-### 3️⃣ Backup Fisico vs Serializzazione JSON
-Il sistema di backup esporta il file fisico `.db`.
-> **Perché?** La copia a livello di file system è ordini di grandezza più veloce della serializzazione/deserializzazione JSON, azzera il rischio di perdita dati per errori di parsing e garantisce l'atomicità tipica delle transazioni SQLite.
-
-### 4️⃣ Post-Import Validation e Rollback
-Poiché Drift esegue le migrazioni in modalità *lazy* (solo alla prima query), un database importato e incompatibile causerebbe un crash ritardato e irrecuperabile. Il sistema di restore forza una riconnessione immediata (`SELECT 1`). Se il check fallisce per un mismatch di schema, l'app esegue un rollback trasparente utilizzando il safety backup generato al momento dell'import, garantendo stabilità assoluta.
+* 🏠 **Multi-Property Management (Houses):** Full CRUD with integrated geocoding via Geoapify, custom iconography, and real-time inventory analytics.
+* 🎒 **Inventory Engine (Items):** Categorized cataloging (Clothes, Toiletries, Electronics, Misc) with dynamic state tracking ("Available" vs. "In Transit").
+* ✈️ **Trip Planning (Trips):** Timeline-based logistics with automatic status calculation (Upcoming, Active, Completed) and dynamic packing checklists.
+* 💾 **Disaster Recovery & Backup:** Physical SQLite DB export/import system featuring automated pre-import safety backups, post-import schema validation, and atomic rollbacks in case of data corruption.
+* 🎨 **Enterprise UX/UI & i18n:** Adaptive Light/Dark/System themes, proprietary Design System, and full internationalization (it-IT, en-US) with zero hardcoded strings.
 
 ---
 
-## 💻 Stack Tecnologico (Il "Come")
+## 🏗 Architecture & Design Decisions (The "Why")
 
-Il progetto utilizza un toolchain moderno e fortemente tipizzato, rispettando i principi SOLID.
+PackLog is engineered using a **Feature-First Architecture** combined with **Clean Architecture** principles. This ensures a strict separation of concerns and high testability.
+
+### 1️⃣ Relational DB (Drift) vs. NoSQL (Hive/Isar)
+While NoSQL offers faster prototyping, I opted for **Drift (SQLite)** to handle complex relational queries (joins between houses, items, and trips), ensure referential integrity via Foreign Keys (with cascade deletes), and maintain type-safe schema migrations.
+
+### 2️⃣ Snapshot Pattern for Trips
+When an item is added to a trip, the system creates an independent **Snapshot (TripItem)** instead of a simple reference.
+> **Rationale:** Immutability ensures that if a user modifies or deletes the original item from a house weeks later, the historical data of past trips remains intact.
+
+### 3️⃣ Physical Backup vs. JSON Serialization
+The backup system performs a file-system level copy of the `.db` file.
+> **Rationale:** Physical copying is significantly faster than JSON serialization for large datasets, eliminates parsing overhead, and leverages SQLite's native atomic transaction guarantees.
+
+### 4️⃣ Post-Import Validation & Rollback
+Since Drift performs lazy migrations, an incompatible imported database could lead to delayed runtime crashes. PackLog forces an immediate connection check (`SELECT 1`). If the schema mismatch is detected, the app performs a transparent rollback using the safety backup, ensuring system stability.
+
+---
+
+## 💻 Tech Stack (The "How")
 
 * **Core:** Flutter 3.10+, Dart 3.10.4
-* **State Management:** Riverpod 2.5 (con code generation tramite `riverpod_annotation` per provider isolati e auto-dispose)
-* **Database:** Drift 2.22.1 (ORM SQLite)
-* **Routing:** GoRouter 14.2 (Routing dichiarativo, supporto per deep linking e `StatefulShellRoute`)
-* **Immutabilità & JSON:** Freezed, json_serializable
-* **API/Integrazioni:** Http (per Geoapify API)
-
-### 🗄 Struttura Database (SQLite)
-Il DB è alla versione 3 dello schema e comprende le seguenti entità principali:
-* `houses`: Tabella principale delle abitazioni con coordinate e flag `is_primary`.
-* `items`: Oggetti inventariati, collegati con FK a `houses(id)`.
-* `trips`: Spostamenti programmati con destinazione e date.
-* `trip_item_entries`: Tabella di associazione con chiave primaria composita `(id, trip_id)` che implementa lo Snapshot Pattern per gli oggetti portati in viaggio.
+* **State Management:** Riverpod 2.5 (Code generation via `riverpod_annotation` for isolated, auto-dispose providers).
+* **Database:** Drift 2.22.1 (SQLite ORM).
+* **Routing:** GoRouter 14.2 (Declarative routing with `StatefulShellRoute` support).
+* **Immutability:** Freezed & JSON Serializable.
+* **Network:** Http (Geoapify API integration).
 
 ---
 
-## 🚀 Setup & Installazione
+## 🚀 Getting Started
 
-### 📋 Prerequisiti
+### 📋 Prerequisites
 * Flutter SDK 3.10+
 * Dart 3.10.4+
-* Account [Geoapify](https://www.geoapify.com/) (per ottenere l'API Key gratuita)
+* A [Geoapify](https://www.geoapify.com/) API Key.
 
-### 🛠 Avvio Veloce
+### 🛠 Quick Start
 
-1. **Clona la repository**
-   ```bash
-   git clone [https://github.com/tuo-username/stuff-tracker.git](https://github.com/tuo-username/stuff-tracker.git)
-   cd stuff-tracker
-
+1.  **Clone the repository**
+    ```bash
+    git clone [https://github.com/your-username/packlog.git](https://github.com/your-username/packlog.git)
+    cd packlog
     ```
 
-2. **Scarica le dipendenze**
-```bash
-flutter pub get
+2.  **Install dependencies**
+    ```bash
+    flutter pub get
+    ```
 
-```
+3.  **Environment Configuration**
+    Create a `.env` file in the root directory:
+    ```env
+    GEOAPIFY_KEY=your_api_key_here
+    ```
 
+4.  **Code Generation**
+    *Crucial for generating Drift tables, Freezed models, and Riverpod providers.*
+    ```bash
+    dart run build_runner build --delete-conflicting-outputs
+    ```
 
-3. **Configura le API Keys (Gestione Segreti)**
-Il progetto richiede una chiave API per il geocoding. Per ragioni di sicurezza, le chiavi non sono versionate nel repository.
-* Crea un file chiamato `.env` nella cartella principale del progetto.
-* Inserisci la tua chiave Geoapify in questo formato:
-```env
-GEOAPIFY_KEY=la_tua_api_key_qui
-
-```
-
-
-
-
-4. **Genera il codice (Drift, Freezed, Riverpod)**
-> ⚠️ **Nota:** Questo passaggio è essenziale prima del primo avvio per creare le tabelle del DB, i model immutabili e i provider.
-
-
-```bash
-dart run build_runner build --delete-conflicting-outputs
-
-```
-
-
-5. **Avvia l'app**
-```bash
-flutter run
-
-```
-
-
-
-### ⚙️ Code Generation in Sviluppo
-
-Se stai lavorando attivamente sul codice e modifichi modelli o provider, avvia il watch mode per la rigenerazione automatica:
-
-```bash
-dart run build_runner watch
-
-```
+5.  **Run the application**
+    ```bash
+    flutter run
+    ```
 
 ---
 
-## 🧪 Testing e Manutenzione (WIP)
+## 🧪 Testing & Maintenance
 
-Il progetto è predisposto per abbracciare pratiche di **TDD (Test-Driven Development)**, supportato dall'astrazione dei Repository (`DriftHouseRepository` vs `HouseRepository`) che permette l'injection di mock durante i test.
+The project is designed for **TDD (Test-Driven Development)**, utilizing Repository pattern abstractions (`HouseRepository`) to allow seamless mock injection.
 
-È presente un sistema di `DataIntegrityService` che esegue health checks al lancio dell'app per individuare e riparare foreign keys orfane o inconsistenze.
+A `DataIntegrityService` runs health checks at startup to detect and repair orphaned foreign keys or data inconsistencies.
+
+---
+
+## 📄 License
+Distributed under the MIT License. See `LICENSE` for more information.
