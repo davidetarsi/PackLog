@@ -129,10 +129,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   // House actions (delete, set primary)
   // -------------------------------------------------------------------------
 
-  Future<void> _setPrimaryHouse(
-    BuildContext context,
-    String houseName,
-  ) async {
+  Future<void> _setPrimaryHouse(BuildContext context, String houseName) async {
     final success = await ErrorRetryDialog.executeWithRetry(
       context: context,
       operation: () async {
@@ -152,13 +149,11 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     }
   }
 
-  Future<void> _showDeleteDialog(
-    BuildContext context,
-    String houseName,
-  ) async {
+  Future<void> _showDeleteDialog(BuildContext context, String houseName) async {
     final itemsAsync = ref.read(itemNotifierProvider(widget.houseId));
-    final temporaryItems =
-        ref.read(temporaryItemsInHouseProvider(widget.houseId));
+    final temporaryItems = ref.read(
+      temporaryItemsInHouseProvider(widget.houseId),
+    );
 
     final permanentItemsCount = itemsAsync.value?.length ?? 0;
     final temporaryItemsCount = temporaryItems.length;
@@ -282,10 +277,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        AppSnackBar.showError(
-          context,
-          'errors.delete_error'.tr(),
-        );
+        AppSnackBar.showError(context, 'errors.delete_error'.tr());
       }
     }
   }
@@ -301,8 +293,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
 
     // Lista delle case disponibili come destinazione (esclude quella corrente).
     final allHouses = ref.read(houseNotifierProvider).value ?? [];
-    final otherHouses =
-        allHouses.where((h) => h.id != widget.houseId).toList();
+    final otherHouses = allHouses.where((h) => h.id != widget.houseId).toList();
 
     if (!context.mounted) return;
 
@@ -316,9 +307,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         return Container(
           decoration: BoxDecoration(
             color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(20),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: SafeArea(
             child: Column(
@@ -338,13 +327,14 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                   ),
                 ),
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Text(
                     'items.bulk_move_title'.tr(),
-                    style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
                 const Divider(height: 1),
@@ -354,9 +344,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                     child: Center(
                       child: Text(
                         'items.bulk_move_no_houses'.tr(),
-                        style: Theme.of(sheetContext)
-                            .textTheme
-                            .bodyMedium
+                        style: Theme.of(sheetContext).textTheme.bodyMedium
                             ?.copyWith(color: colorScheme.onSurfaceVariant),
                       ),
                     ),
@@ -394,18 +382,16 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
 
                           try {
                             await ref
-                                .read(itemNotifierProvider(widget.houseId)
-                                    .notifier)
+                                .read(
+                                  itemNotifierProvider(widget.houseId).notifier,
+                                )
                                 .bulkMove(selectedIds, house.id);
 
                             if (mounted) {
                               AppSnackBar.showSuccess(
                                 context,
                                 'items.bulk_move_success'.tr(
-                                  args: [
-                                    count.toString(),
-                                    destinationName,
-                                  ],
+                                  args: [count.toString(), destinationName],
                                 ),
                               );
                             }
@@ -504,9 +490,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               : 'items.select_all'.tr(),
           onPressed: () {
             if (allSelected) {
-              ref
-                  .read(itemSelectionNotifierProvider.notifier)
-                  .deselectAll();
+              ref.read(itemSelectionNotifierProvider.notifier).deselectAll();
             } else {
               ref
                   .read(itemSelectionNotifierProvider.notifier)
@@ -593,7 +577,8 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     // IDs di tutti gli item permanenti della casa: servono per "seleziona tutti".
     // Accesso diretto al valore cache del provider (senza await) per mantenere
     // la build sincrona.
-    final allItemIds = ref
+    final allItemIds =
+        ref
             .watch(itemNotifierProvider(widget.houseId))
             .value
             ?.map((i) => i.id)
@@ -651,11 +636,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
           // Bottom bar: transizione animata tra barra normale e barra selezione.
           bottomContent: AnimatedSwitcher(
             duration: _kModeSwitchDuration,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: child, 
-              ),
-              layoutBuilder: (currentChild, previousChildren) {
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
+            layoutBuilder: (currentChild, previousChildren) {
               return Stack(
                 alignment: Alignment.bottomCenter,
                 children: <Widget>[
@@ -666,18 +649,26 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
             },
             child: isSelectionMode
                 ? KeyedSubtree(
-                    key: const ValueKey('selection_bar'), // Aiuta l'AnimatedSwitcher
-                    child: _buildSelectionActionBar(context, colorScheme, hasSelection)
+                    key: const ValueKey(
+                      'selection_bar',
+                    ), // Aiuta l'AnimatedSwitcher
+                    child: _buildSelectionActionBar(
+                      context,
+                      colorScheme,
+                      hasSelection,
+                    ),
                   )
                 : KeyedSubtree(
-                    key: const ValueKey('normal_bar'), // Aiuta l'AnimatedSwitcher
+                    key: const ValueKey(
+                      'normal_bar',
+                    ), // Aiuta l'AnimatedSwitcher
                     child: _buildNormalActionBar(
                       context,
                       colorScheme,
                       widget.houseId,
                       house.isPrimary,
                       house.name,
-                    )
+                    ),
                   ),
           ),
         );

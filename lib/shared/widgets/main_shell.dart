@@ -140,151 +140,153 @@ class _MainShellState extends ConsumerState<MainShell>
         _closeCreateMenu();
       },
       child: Scaffold(
-      extendBody: true,
-      body: Stack(
-        children: [
-          // Contenuto principale
-          widget.navigationShell,
+        extendBody: true,
+        body: Stack(
+          children: [
+            // Contenuto principale
+            widget.navigationShell,
 
-          // Overlay scuro quando il menu è aperto
-          if (_isCreateMenuOpen)
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: _closeCreateMenu,
+            // Overlay scuro quando il menu è aperto
+            if (_isCreateMenuOpen)
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: _closeCreateMenu,
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+              ),
+
+            // Menu pill tabs sopra la tab bar
+            if (_isCreateMenuOpen)
+              Positioned(
+                right: context.spacingMd,
+                bottom: tabBarTotalHeight + context.spacingSm,
                 child: FadeTransition(
                   opacity: _fadeAnimation,
-                  child: Container(color: Colors.black.withValues(alpha: 0.5)),
-                ),
-              ),
-            ),
-
-          // Menu pill tabs sopra la tab bar
-          if (_isCreateMenuOpen)
-            Positioned(
-              right: context.spacingMd,
-              bottom: tabBarTotalHeight + context.spacingSm,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width / 2,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _CreatePillTab(
-                          icon: Icons.luggage,
-                          label: 'trips.add'.tr(),
-                          colorScheme: colorScheme,
-                          onTap: _onCreateTrip,
-                        ),
-                        SizedBox(height: context.spacingSm),
-                        _CreatePillTab(
-                          icon: Icons.inventory_2,
-                          label: 'items.add'.tr(),
-                          colorScheme: colorScheme,
-                          onTap: _onCreateItem,
-                        ),
-                        SizedBox(height: context.spacingSm),
-                        _CreatePillTab(
-                          icon: Icons.grid_view,
-                          label: 'bulk_creation.add_from_template'.tr(),
-                          colorScheme: colorScheme,
-                          onTap: _onCreateBulk,
-                        ),
-                        SizedBox(height: context.spacingSm),
-                        _CreatePillTab(
-                          icon: Icons.home,
-                          label: 'houses.add'.tr(),
-                          colorScheme: colorScheme,
-                          onTap: _onCreateHouse,
-                        ),
-                      ],
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width / 2,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          _CreatePillTab(
+                            icon: Icons.luggage,
+                            label: 'trips.add'.tr(),
+                            colorScheme: colorScheme,
+                            onTap: _onCreateTrip,
+                          ),
+                          SizedBox(height: context.spacingSm),
+                          _CreatePillTab(
+                            icon: Icons.inventory_2,
+                            label: 'items.add'.tr(),
+                            colorScheme: colorScheme,
+                            onTap: _onCreateItem,
+                          ),
+                          SizedBox(height: context.spacingSm),
+                          _CreatePillTab(
+                            icon: Icons.grid_view,
+                            label: 'bulk_creation.add_from_template'.tr(),
+                            colorScheme: colorScheme,
+                            onTap: _onCreateBulk,
+                          ),
+                          SizedBox(height: context.spacingSm),
+                          _CreatePillTab(
+                            icon: Icons.home,
+                            label: 'houses.add'.tr(),
+                            colorScheme: colorScheme,
+                            onTap: _onCreateHouse,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          bottom: true,
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              context.spacingMd,
+              0,
+              context.spacingMd,
+              tabBarBottomPadding,
             ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        bottom: true, 
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            context.spacingMd,
-            0,
-            context.spacingMd,
-            tabBarBottomPadding,
-          ),
-          child: Container(
-            height: tabBarHeight,
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainer,
-              borderRadius: context.responsiveBorderRadius(
-                AppConstants.pillBorderRadius,
+            child: Container(
+              height: tabBarHeight,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainer,
+                borderRadius: context.responsiveBorderRadius(
+                  AppConstants.pillBorderRadius,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadow.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-               boxShadow: [
-                BoxShadow(
-                  color: colorScheme.shadow.withValues(alpha: 0.15),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: _NavItem(
-                    icon: Icons.person_3_outlined,
-                    selectedIcon: Icons.person_3,
-                    label: 'common.profile'.tr(),
-                    isSelected: currentIndex == 0,
-                    onTap: () => _onTabTapped(0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _NavItem(
+                      icon: Icons.person_3_outlined,
+                      selectedIcon: Icons.person_3,
+                      label: 'common.profile'.tr(),
+                      isSelected: currentIndex == 0,
+                      onTap: () => _onTabTapped(0),
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: _NavItem(
-                    icon: Icons.home_outlined,
-                    selectedIcon: Icons.home,
-                    label: 'navigation.houses'.tr(),
-                    isSelected: currentIndex == 1,
-                    onTap: () => _onTabTapped(1),
+                  Expanded(
+                    child: _NavItem(
+                      icon: Icons.home_outlined,
+                      selectedIcon: Icons.home,
+                      label: 'navigation.houses'.tr(),
+                      isSelected: currentIndex == 1,
+                      onTap: () => _onTabTapped(1),
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: _NavItem(
-                    icon: Icons.luggage_outlined,
-                    selectedIcon: Icons.luggage,
-                    label: 'navigation.trips'.tr(),
-                    isSelected: currentIndex == 2,
-                    onTap: () => _onTabTapped(2),
+                  Expanded(
+                    child: _NavItem(
+                      icon: Icons.luggage_outlined,
+                      selectedIcon: Icons.luggage,
+                      label: 'navigation.trips'.tr(),
+                      isSelected: currentIndex == 2,
+                      onTap: () => _onTabTapped(2),
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: _NavItem(
-                    icon: _isCreateMenuOpen
-                        ? Icons.close
-                        : Icons.add_circle_outline,
-                    selectedIcon: Icons.add_circle,
-                    label: _isCreateMenuOpen
-                        ? 'common.close'.tr()
-                        : 'common.create'.tr(),
-                    isSelected: _isCreateMenuOpen,
-                    onTap: () => _onTabTapped(3),
+                  Expanded(
+                    child: _NavItem(
+                      icon: _isCreateMenuOpen
+                          ? Icons.close
+                          : Icons.add_circle_outline,
+                      selectedIcon: Icons.add_circle,
+                      label: _isCreateMenuOpen
+                          ? 'common.close'.tr()
+                          : 'common.create'.tr(),
+                      isSelected: _isCreateMenuOpen,
+                      onTap: () => _onTabTapped(3),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    ), // Scaffold
-  ); // PopScope
+      ), // Scaffold
+    ); // PopScope
   } // build
 }
 
@@ -336,8 +338,7 @@ class _NavItem extends StatelessWidget {
                   // fontSize leggermente ridotta per garantire che testo +
                   // icona stiano sempre dentro tabBarHeight su ogni densità.
                   fontSize: context.responsive(10),
-                  fontWeight:
-                      isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   color: isSelected
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant,
@@ -385,7 +386,11 @@ class _CreatePillTab extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: context.responsive(22), color: colorScheme.onPrimaryContainer),
+              Icon(
+                icon,
+                size: context.responsive(22),
+                color: colorScheme.onPrimaryContainer,
+              ),
               SizedBox(width: context.spacingSm + 2),
               Text(
                 label,
