@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/houses/view/houses_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
+import '../../features/profile/view/profile_screen.dart';
 import '../../features/trips/view/trips_page.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/add_trip_screen.dart';
@@ -14,6 +15,7 @@ import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _profileNavigatorKey = GlobalKey<NavigatorState>();
 final _housesNavigatorKey = GlobalKey<NavigatorState>();
 final _tripsNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -21,12 +23,23 @@ final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
   routes: [
-    // Shell con tab bar persistente per Case e Viaggi
+    // Shell con tab bar persistente (Profilo / Case / Viaggi)
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           MainShell(navigationShell: navigationShell),
       branches: [
-        // Branch 0: Case
+        // Branch 0: Profilo
+        StatefulShellBranch(
+          navigatorKey: _profileNavigatorKey,
+          routes: [
+            GoRoute(
+              path: '/profile',
+              name: 'profile',
+              builder: (context, state) => const ProfileScreen(),
+            ),
+          ],
+        ),
+        // Branch 1: Case
         StatefulShellBranch(
           navigatorKey: _housesNavigatorKey,
           routes: [
@@ -37,7 +50,7 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        // Branch 1: Viaggi
+        // Branch 2: Viaggi
         StatefulShellBranch(
           navigatorKey: _tripsNavigatorKey,
           routes: [

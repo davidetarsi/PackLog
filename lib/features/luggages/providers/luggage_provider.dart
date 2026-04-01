@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../model/luggage_model.dart';
 import '../repositories/luggage_repository.dart';
@@ -70,7 +71,7 @@ class LuggageNotifier extends _$LuggageNotifier {
 /// 
 /// Filtra i bagagli in base all'houseId e li mantiene in cache.
 @riverpod
-Future<List<LuggageModel>> luggagesByHouse(LuggagesByHouseRef ref, String houseId) async {
+Future<List<LuggageModel>> luggagesByHouse(Ref ref, String houseId) async {
   final repository = ref.watch(luggageRepositoryProvider);
   return repository.getLuggagesByHouseId(houseId);
 }
@@ -79,14 +80,14 @@ Future<List<LuggageModel>> luggagesByHouse(LuggagesByHouseRef ref, String houseI
 /// 
 /// Usa la junction table per caricare solo i bagagli associati.
 @riverpod
-Future<List<LuggageModel>> luggagesByTrip(LuggagesByTripRef ref, String tripId) async {
+Future<List<LuggageModel>> luggagesByTrip(Ref ref, String tripId) async {
   final repository = ref.watch(luggageRepositoryProvider);
   return repository.getLuggagesByTripId(tripId);
 }
 
 /// Provider per contare i bagagli di una casa.
 @riverpod
-Future<int> luggageCountByHouse(LuggageCountByHouseRef ref, String houseId) async {
+Future<int> luggageCountByHouse(Ref ref, String houseId) async {
   final repository = ref.watch(luggageRepositoryProvider);
   return repository.countLuggagesByHouse(houseId);
 }

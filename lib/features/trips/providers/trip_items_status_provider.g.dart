@@ -166,24 +166,44 @@ class _ItemTripStatusProviderElement
 }
 
 String _$itemsOnTripFromHouseHash() =>
-    r'a966d370037612460cb8fe7b38507a6f7089b010';
+    r'4c1c86146cf331d9a419400e4282cb0af566099a';
 
-/// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica
+/// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica.
+///
+/// Retrocompatibilità: item con [TripItem.originHouseId] vuoto (creati con versioni
+/// precedenti dell'app) vengono considerati appartenenti a questa casa se l'[ItemModel]
+/// corrispondente è attualmente in essa. Questo evita che oggetti "orfani" scompaiano
+/// dai badge "in viaggio" dopo aggiornamenti dello schema dati.
 ///
 /// Copied from [itemsOnTripFromHouse].
 @ProviderFor(itemsOnTripFromHouse)
 const itemsOnTripFromHouseProvider = ItemsOnTripFromHouseFamily();
 
-/// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica
+/// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica.
+///
+/// Retrocompatibilità: item con [TripItem.originHouseId] vuoto (creati con versioni
+/// precedenti dell'app) vengono considerati appartenenti a questa casa se l'[ItemModel]
+/// corrispondente è attualmente in essa. Questo evita che oggetti "orfani" scompaiano
+/// dai badge "in viaggio" dopo aggiornamenti dello schema dati.
 ///
 /// Copied from [itemsOnTripFromHouse].
 class ItemsOnTripFromHouseFamily extends Family<Set<String>> {
-  /// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica
+  /// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica.
+  ///
+  /// Retrocompatibilità: item con [TripItem.originHouseId] vuoto (creati con versioni
+  /// precedenti dell'app) vengono considerati appartenenti a questa casa se l'[ItemModel]
+  /// corrispondente è attualmente in essa. Questo evita che oggetti "orfani" scompaiano
+  /// dai badge "in viaggio" dopo aggiornamenti dello schema dati.
   ///
   /// Copied from [itemsOnTripFromHouse].
   const ItemsOnTripFromHouseFamily();
 
-  /// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica
+  /// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica.
+  ///
+  /// Retrocompatibilità: item con [TripItem.originHouseId] vuoto (creati con versioni
+  /// precedenti dell'app) vengono considerati appartenenti a questa casa se l'[ItemModel]
+  /// corrispondente è attualmente in essa. Questo evita che oggetti "orfani" scompaiano
+  /// dai badge "in viaggio" dopo aggiornamenti dello schema dati.
   ///
   /// Copied from [itemsOnTripFromHouse].
   ItemsOnTripFromHouseProvider call(String houseId) {
@@ -212,11 +232,21 @@ class ItemsOnTripFromHouseFamily extends Family<Set<String>> {
   String? get name => r'itemsOnTripFromHouseProvider';
 }
 
-/// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica
+/// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica.
+///
+/// Retrocompatibilità: item con [TripItem.originHouseId] vuoto (creati con versioni
+/// precedenti dell'app) vengono considerati appartenenti a questa casa se l'[ItemModel]
+/// corrispondente è attualmente in essa. Questo evita che oggetti "orfani" scompaiano
+/// dai badge "in viaggio" dopo aggiornamenti dello schema dati.
 ///
 /// Copied from [itemsOnTripFromHouse].
 class ItemsOnTripFromHouseProvider extends AutoDisposeProvider<Set<String>> {
-  /// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica
+  /// Provider che fornisce la lista degli item IDs attualmente in viaggio per una casa specifica.
+  ///
+  /// Retrocompatibilità: item con [TripItem.originHouseId] vuoto (creati con versioni
+  /// precedenti dell'app) vengono considerati appartenenti a questa casa se l'[ItemModel]
+  /// corrispondente è attualmente in essa. Questo evita che oggetti "orfani" scompaiano
+  /// dai badge "in viaggio" dopo aggiornamenti dello schema dati.
   ///
   /// Copied from [itemsOnTripFromHouse].
   ItemsOnTripFromHouseProvider(String houseId)
@@ -299,37 +329,49 @@ class _ItemsOnTripFromHouseProviderElement
 }
 
 String _$itemQuantitiesOnTripFromHouseHash() =>
-    r'cdb33f8709b7c17eb4c08a13cf87ead7bf839dcc';
+    r'81a0e6d20257d7b4673682e0ca9eb78b301c0788';
 
-/// Provider che fornisce le quantità in viaggio per ogni item di una casa
-/// Restituisce una mappa {itemId: quantitàInViaggio}
+/// Provider che fornisce le quantità in viaggio per ogni item di una casa.
+/// Restituisce una mappa {itemId: quantitàInViaggio}.
 /// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
-/// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
+/// non la somma di tutti i viaggi (per gestire viaggi sovrapposti).
+///
+/// Applica la stessa logica di retrocompatibilità di [itemsOnTripFromHouseProvider]:
+/// item con [TripItem.originHouseId] vuoto vengono risolti tramite [itemNotifierProvider].
 ///
 /// Copied from [itemQuantitiesOnTripFromHouse].
 @ProviderFor(itemQuantitiesOnTripFromHouse)
 const itemQuantitiesOnTripFromHouseProvider =
     ItemQuantitiesOnTripFromHouseFamily();
 
-/// Provider che fornisce le quantità in viaggio per ogni item di una casa
-/// Restituisce una mappa {itemId: quantitàInViaggio}
+/// Provider che fornisce le quantità in viaggio per ogni item di una casa.
+/// Restituisce una mappa {itemId: quantitàInViaggio}.
 /// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
-/// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
+/// non la somma di tutti i viaggi (per gestire viaggi sovrapposti).
+///
+/// Applica la stessa logica di retrocompatibilità di [itemsOnTripFromHouseProvider]:
+/// item con [TripItem.originHouseId] vuoto vengono risolti tramite [itemNotifierProvider].
 ///
 /// Copied from [itemQuantitiesOnTripFromHouse].
 class ItemQuantitiesOnTripFromHouseFamily extends Family<Map<String, int>> {
-  /// Provider che fornisce le quantità in viaggio per ogni item di una casa
-  /// Restituisce una mappa {itemId: quantitàInViaggio}
+  /// Provider che fornisce le quantità in viaggio per ogni item di una casa.
+  /// Restituisce una mappa {itemId: quantitàInViaggio}.
   /// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
-  /// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
+  /// non la somma di tutti i viaggi (per gestire viaggi sovrapposti).
+  ///
+  /// Applica la stessa logica di retrocompatibilità di [itemsOnTripFromHouseProvider]:
+  /// item con [TripItem.originHouseId] vuoto vengono risolti tramite [itemNotifierProvider].
   ///
   /// Copied from [itemQuantitiesOnTripFromHouse].
   const ItemQuantitiesOnTripFromHouseFamily();
 
-  /// Provider che fornisce le quantità in viaggio per ogni item di una casa
-  /// Restituisce una mappa {itemId: quantitàInViaggio}
+  /// Provider che fornisce le quantità in viaggio per ogni item di una casa.
+  /// Restituisce una mappa {itemId: quantitàInViaggio}.
   /// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
-  /// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
+  /// non la somma di tutti i viaggi (per gestire viaggi sovrapposti).
+  ///
+  /// Applica la stessa logica di retrocompatibilità di [itemsOnTripFromHouseProvider]:
+  /// item con [TripItem.originHouseId] vuoto vengono risolti tramite [itemNotifierProvider].
   ///
   /// Copied from [itemQuantitiesOnTripFromHouse].
   ItemQuantitiesOnTripFromHouseProvider call(String houseId) {
@@ -358,18 +400,24 @@ class ItemQuantitiesOnTripFromHouseFamily extends Family<Map<String, int>> {
   String? get name => r'itemQuantitiesOnTripFromHouseProvider';
 }
 
-/// Provider che fornisce le quantità in viaggio per ogni item di una casa
-/// Restituisce una mappa {itemId: quantitàInViaggio}
+/// Provider che fornisce le quantità in viaggio per ogni item di una casa.
+/// Restituisce una mappa {itemId: quantitàInViaggio}.
 /// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
-/// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
+/// non la somma di tutti i viaggi (per gestire viaggi sovrapposti).
+///
+/// Applica la stessa logica di retrocompatibilità di [itemsOnTripFromHouseProvider]:
+/// item con [TripItem.originHouseId] vuoto vengono risolti tramite [itemNotifierProvider].
 ///
 /// Copied from [itemQuantitiesOnTripFromHouse].
 class ItemQuantitiesOnTripFromHouseProvider
     extends AutoDisposeProvider<Map<String, int>> {
-  /// Provider che fornisce le quantità in viaggio per ogni item di una casa
-  /// Restituisce una mappa {itemId: quantitàInViaggio}
+  /// Provider che fornisce le quantità in viaggio per ogni item di una casa.
+  /// Restituisce una mappa {itemId: quantitàInViaggio}.
   /// Per ogni item, considera solo la quantità del viaggio PIÙ RECENTE che lo contiene,
-  /// non la somma di tutti i viaggi (per gestire viaggi sovrapposti)
+  /// non la somma di tutti i viaggi (per gestire viaggi sovrapposti).
+  ///
+  /// Applica la stessa logica di retrocompatibilità di [itemsOnTripFromHouseProvider]:
+  /// item con [TripItem.originHouseId] vuoto vengono risolti tramite [itemNotifierProvider].
   ///
   /// Copied from [itemQuantitiesOnTripFromHouse].
   ItemQuantitiesOnTripFromHouseProvider(String houseId)

@@ -55,6 +55,10 @@
   },
   
   "items": {
+    "category_vestiti": "Clothes",
+    "category_toiletries": "Toiletries",
+    "category_elettronica": "Electronics",
+    "category_varie": "Misc",
     "add": "Item",
     "add_new": "New Item",
     "edit": "Edit Item",
@@ -81,7 +85,17 @@
     "in_transit_subtitle": "{} items arriving",
     "from_house": "From {}",
     "delete_confirmation": "Are you sure you want to delete \"{}\"?",
-    "item_deleted": "Item deleted"
+    "item_deleted": "Item deleted",
+    "select_items": "Select items",
+    "selected_count": "{} selected",
+    "select_all": "Select all",
+    "deselect_all": "Deselect all",
+    "bulk_delete_confirm_title": "Delete {} items?",
+    "bulk_delete_confirm_body": "This action cannot be undone. The selected items will be permanently deleted.",
+    "bulk_delete_success": "{} items deleted",
+    "bulk_move_title": "Move to...",
+    "bulk_move_success": "{} items moved to {}",
+    "bulk_move_no_houses": "No other houses available"
   },
   
   "categories": {
@@ -290,8 +304,8 @@
     "ok": "OK",
     "back_to_home": "Back to home",
     "navigation_error": "Navigation error: {}",
-    "profile": "Profilo"
-
+    "profile": "Profile",
+    "move": "Move"
   },
   
   "errors": {
@@ -323,7 +337,9 @@
     "invalid_house_id": "Invalid house ID",
     "invalid_trip_id": "Invalid trip ID",
     "invalid_list_id": "Invalid list ID",
-    "no_trips": "No trips"
+    "no_trips": "No trips",
+    "no_items": "No items to save",
+    "target_house_id_not_set": "Target house ID not set. Unable to save items."
   },
   "dialogs": {
     "delete_title": "Delete {}",
@@ -379,12 +395,12 @@
     "rollback_impossible": "Unable to restore safety backup"
   },
   "bulk_creation": {
-    "add_from_template": "Add from Template",
+    "add_from_template": "Template",
     "select_house": "Select House",
     "select_templates": "Choose Templates",
     "select_at_least_one": "Select at least one template",
     "continue_with_items": "Continue with {count} items",
-    "continue_without_templates": "Continue without selecting any template",
+    "continue_without_templates": "Continue without selecting anything",
     "edit_items": "Edit Items",
     "no_items": "No items to add",
     "item_name_hint": "Item name",
@@ -393,6 +409,101 @@
     "gender_female": "Female",
     "gender_neutral": "Neutral",
     "save_failed": "Error saving items",
-    "save_success": "{count} items added successfully!"
+    "save_success": "{count} items added successfully!",
+    "new_item": "New item",
+    "templates": {
+      "weekend": {
+        "name": "Weekend",
+        "description": "Short trip of 2-3 days"
+      },
+      "long_trip": {
+        "name": "Long trip",
+        "description": "Trip of a week or more"
+      },
+      "business": {
+        "name": "Business trip",
+        "description": "Professional business trip"
+      },
+      "digital_nomad": {
+        "name": "Digital nomad",
+        "description": "Extended trip with remote work"
+      },
+      "beach": {
+        "name": "Beach holiday",
+        "description": "Beach or seaside trip"
+      },
+      "mountain": {
+        "name": "Mountain/Trekking",
+        "description": "Mountain hikes and trekking"
+      }
+    },
+    "items": {
+      "documenti_identita": "ID / Passport",
+      "portafoglio": "Wallet and cash",
+      "chiavi_casa": "House keys",
+      "tshirt": "T-shirt",
+      "jeans": "Jeans",
+      "biancheria_intima": "Underwear",
+      "pigiama_camicia": "Pajamas / Nightgown",
+      "pigiama": "Pajamas",
+      "spazzolino": "Toothbrush",
+      "dentifricio": "Toothpaste",
+      "deodorante": "Deodorant",
+      "shampoo": "Shampoo",
+      "rasoio": "Razor",
+      "schiuma_barba": "Shaving foam",
+      "trucchi": "Makeup",
+      "trucchi_waterproof": "Waterproof makeup",
+      "assorbenti": "Sanitary pads",
+      "crema_solare": "Sunscreen",
+      "crema_solare_alta": "High SPF sunscreen",
+      "doposole": "After-sun lotion",
+      "antizanzare": "Insect repellent",
+      "kit_toilette": "Full toiletry kit",
+      "caricabatterie_smartphone": "Smartphone charger",
+      "caricabatterie_laptop": "Laptop charger",
+      "cuffie": "Headphones / Earbuds",
+      "cuffie_noise_cancelling": "Noise-cancelling headphones",
+      "laptop": "Laptop",
+      "tablet": "Tablet",
+      "hard_disk": "External hard drive / SSD",
+      "mouse_wireless": "Wireless mouse",
+      "mouse_mousepad": "Mouse and mousepad",
+      "power_bank": "Power bank",
+      "adattatore_universale": "Universal adapter",
+      "cavo_hdmi": "HDMI cable",
+      "piastra_capelli": "Hair straightener",
+      "torcia": "Flashlight",
+      "bussola_gps": "Compass / GPS",
+      "occhiali_sole": "Sunglasses",
+      "libro_ereader": "Book / E-reader",
+      "pantaloni": "Trousers",
+      "pantaloni_eleganti": "Dress trousers",
+      "pantaloni_comodi": "Comfortable trousers",
+      "pantaloni_trekking": "Trekking trousers",
+      "calzini": "Socks",
+      "calzini_tecnici": "Technical socks",
+      "giacca": "Jacket",
+      "giacca_impermeabile": "Waterproof jacket",
+      "pile": "Fleece",
+      "camicia_elegante": "Dress shirt",
+      "scarpe_eleganti": "Dress shoes",
+      "cintura": "Belt",
+      "cravatta": "Tie",
+      "cappello": "Hat",
+      "infradito": "Flip flops",
+      "bikini": "Bikini / One-piece swimsuit",
+      "boxer_bagno": "Swimming trunks",
+      "scarponi_trekking": "Hiking boots",
+      "blocco_appunti": "Notepad",
+      "penna": "Pen",
+      "biglietti_visita": "Business cards",
+      "asciugamano_mare": "Beach towel",
+      "maschera_boccaglio": "Snorkel mask",
+      "zaino_trekking": "Trekking backpack",
+      "borraccia": "Water bottle",
+      "kit_primo_soccorso": "First aid kit",
+      "bastoncini_trekking": "Trekking poles"
+    }
   }
 }

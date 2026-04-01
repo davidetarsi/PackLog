@@ -94,7 +94,6 @@ class TripSummaryCard extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final destinationName = _getDestinationName(ref);
     final formattedDates = _formatTripDates();
-    final percentageInt = (trip.completionPercentage * 100).toInt();
 
     /* Widget cardContent = Padding(
       padding: EdgeInsets.all(context.spacingMd),

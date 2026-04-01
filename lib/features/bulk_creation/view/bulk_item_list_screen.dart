@@ -15,7 +15,7 @@ import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/theme/app_spacing.dart';
 
 /// Schermata di editing massivo degli item aggregati dai template.
-/// 
+///
 /// Permette all'utente di:
 /// - Rinominare item inline (TextField stabile)
 /// - Modificare quantità con pulsanti +/-
@@ -33,12 +33,23 @@ class BulkItemListScreen extends ConsumerStatefulWidget {
 class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
   bool _isSaving = false;
   final ScrollController _scrollController = ScrollController();
+
+  /// Mappa id → GlobalKey per il posizionamento scroll.
   final Map<String, GlobalKey> _itemKeys = {};
-  String? _lastAddedItemId;
+
+  /// Mappa id → FocusNode gestita dal parent per evitare il race condition
+  /// tastiera/scroll. Il parent chiama requestFocus() solo DOPO che
+  /// l'animazione di scroll è completata (await _scrollToItem).
+  final Map<String, FocusNode> _focusNodes = {};
 
   @override
   void dispose() {
     _scrollController.dispose();
+    // Dispone tutti i FocusNode rimasti (caso di uscita dalla schermata
+    // senza che il build li abbia già rimossi).
+    for (final node in _focusNodes.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -95,50 +106,62 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
     }
   }
 
+  /// Aggiunge un item manuale, richiede il focus immediatamente nel frame
+  /// successivo, e poi scorre per centrarlo dopo l'apertura della tastiera.
+  ///
+  /// ## Sequenza (zero lag percepito)
+  ///
+  /// ```
+  /// frame+1   requestFocus()  →  tastiera inizia ad aprirsi
+  /// +400 ms   _scrollToItemWhenKeyboardOpens()  →  schermo stabile, scroll
+  /// ```
+  ///
+  /// Richiedere il focus prima dello scroll elimina il lag percepito:
+  /// l'utente vede il cursore lampeggiare istantaneamente. Lo scroll avviene
+  /// dopo che la tastiera ha ridimensionato la viewport (≈300-400 ms),
+  /// così `ensureVisible` lavora sulle dimensioni finali e non va in conflitto
+  /// con il resize.
   void _handleAddManualItem(ItemCategory category) {
     final notifier = ref.read(bulkCreationNotifierProvider.notifier);
     final newItemId = notifier.addManualItem(category);
-    
+
     setState(() {
-      _lastAddedItemId = newItemId;
-      _itemKeys[newItemId] = GlobalKey();
+      _itemKeys.putIfAbsent(newItemId, () => GlobalKey());
+      _focusNodes.putIfAbsent(newItemId, () => FocusNode());
     });
 
-    // Auto-scroll e auto-focus dopo il rebuild
-    // Usa un delay leggermente più lungo per dare tempo al widget di renderizzarsi
+    // Frame successivo: il widget è nel layout tree (Column eager-renderizza
+    // tutto), quindi il context è disponibile immediatamente.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) _scrollToItem(newItemId);
-      });
+      if (mounted) {
+        _focusNodes[newItemId]?.requestFocus();
+        _scrollToItemWhenKeyboardOpens(newItemId);
+      }
     });
   }
 
-  void _scrollToItem(String itemId, {int retryCount = 0}) {
-    if (!mounted || !_scrollController.hasClients) return;
-    
-    final key = _itemKeys[itemId];
-    if (key?.currentContext == null) {
-      // Widget non ancora renderizzato, retry fino a 5 volte
-      if (retryCount < 5) {
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted) _scrollToItem(itemId, retryCount: retryCount + 1);
-        });
+  /// Scorre fino all'item dopo che la tastiera ha aperto e stabilizzato la
+  /// viewport (≈400 ms).
+  ///
+  /// Con `SingleChildScrollView + Column` tutti i widget sono già nel layout
+  /// tree, quindi non servono retry: il context è sempre disponibile.
+  void _scrollToItemWhenKeyboardOpens(String itemId) {
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      final key = _itemKeys[itemId];
+      if (key?.currentContext != null) {
+        try {
+          Scrollable.ensureVisible(
+            key!.currentContext!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            alignment: 0.5,
+          );
+        } catch (e) {
+          debugPrint('[BulkItemListScreen] scroll fallito: $e');
+        }
       }
-      return;
-    }
-
-    // Widget trovato: scroll preciso alla sua posizione
-    try {
-      Scrollable.ensureVisible(
-        key!.currentContext!,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-        alignment: 0.3, // Posiziona l'item al 30% dall'alto dello schermo
-      );
-    } catch (e) {
-      // Fallback silenzioso se ensureVisible fallisce
-      debugPrint('Failed to scroll to item: $e');
-    }
+    });
   }
 
   @override
@@ -148,13 +171,22 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
 
     final itemsByCategory = _groupItemsByCategory(state.allItems);
 
-    // Cleanup keys for deleted items
-    _itemKeys.removeWhere((id, key) => 
-      !state.allItems.any((item) => item.id == id));
-    
-    // Create keys for new items
+    // Rimuove key e focusNode per item eliminati, disponendo i FocusNode.
+    _itemKeys.removeWhere(
+      (id, _) => !state.allItems.any((item) => item.id == id),
+    );
+    _focusNodes.removeWhere((id, node) {
+      if (!state.allItems.any((item) => item.id == id)) {
+        node.dispose();
+        return true;
+      }
+      return false;
+    });
+
+    // Crea key e focusNode per item nuovi (idempotente grazie a putIfAbsent).
     for (final item in state.allItems) {
       _itemKeys.putIfAbsent(item.id, () => GlobalKey());
+      _focusNodes.putIfAbsent(item.id, () => FocusNode());
     }
 
     return StickyCtaScaffold(
@@ -183,22 +215,28 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
                 ],
               ),
             )
-          : ListView.builder(
+          // SingleChildScrollView + Column invece di ListView.builder:
+          // tutti i widget sono renderizzati subito (eager), garantendo che
+          // i GlobalKey context siano disponibili nel frame successivo a
+          // setState. ListView.builder non renderizza gli item fuori schermo,
+          // causando fallimenti dei lookup di GlobalKey e retry inutili.
+          // Il numero di categorie è piccolo (≤ 4), quindi non ci sono
+          // problemi di performance con il rendering eager.
+          : SingleChildScrollView(
               controller: _scrollController,
               padding: EdgeInsets.all(context.spacingMd),
-              itemCount: itemsByCategory.keys.length,
-              itemBuilder: (context, index) {
-                final category = itemsByCategory.keys.elementAt(index);
-                final items = itemsByCategory[category]!;
-
-                return _CategorySection(
-                  category: category,
-                  items: items,
-                  itemKeys: _itemKeys,
-                  lastAddedItemId: _lastAddedItemId,
-                  colorScheme: colorScheme,
-                );
-              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: itemsByCategory.entries.map((entry) {
+                  return _CategorySection(
+                    category: entry.key,
+                    items: entry.value,
+                    itemKeys: _itemKeys,
+                    focusNodes: _focusNodes,
+                    colorScheme: colorScheme,
+                  );
+                }).toList(),
+              ),
             ),
       bottomContent: Column(
         mainAxisSize: MainAxisSize.min,
@@ -210,7 +248,8 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
           UniversalActionBar(
             primaryLabel: 'common.save'.tr(),
             primaryIcon: Icons.save,
-            onPrimaryPressed: state.allItems.isNotEmpty && !_isSaving ? _handleSave : null,
+            onPrimaryPressed:
+                state.allItems.isNotEmpty && !_isSaving ? _handleSave : null,
             isLoading: _isSaving,
           ),
         ],
@@ -218,38 +257,42 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
     );
   }
 
-  Map<ItemCategory, List<DraftItem>> _groupItemsByCategory(List<DraftItem> items) {
-    // Usa LinkedHashMap per preservare l'ordine di inserimento
+  Map<ItemCategory, List<DraftItem>> _groupItemsByCategory(
+      List<DraftItem> items) {
     final Map<ItemCategory, List<DraftItem>> grouped = {};
 
-    // Raggruppa mantenendo l'ordine originale degli item
     for (final item in items) {
       grouped.putIfAbsent(item.category, () => []).add(item);
     }
 
-    // Ordina le chiavi per categoria (enum index) ma NON gli item dentro
-    final sortedMap = Map.fromEntries(
+    // Ordina per enum index, non per ordine di inserimento nella mappa.
+    return Map.fromEntries(
       grouped.entries.toList()
         ..sort((a, b) => a.key.index.compareTo(b.key.index)),
     );
-
-    return sortedMap;
   }
 }
+
+// ---------------------------------------------------------------------------
+// _CategorySection
+// ---------------------------------------------------------------------------
 
 /// Sezione per una categoria di item con header.
 class _CategorySection extends StatelessWidget {
   final ItemCategory category;
   final List<DraftItem> items;
   final Map<String, GlobalKey> itemKeys;
-  final String? lastAddedItemId;
+
+  /// FocusNode per ogni item, gestiti dal parent per il sequenziamento
+  /// scroll → focus.
+  final Map<String, FocusNode> focusNodes;
   final ColorScheme colorScheme;
 
   const _CategorySection({
     required this.category,
     required this.items,
     required this.itemKeys,
-    required this.lastAddedItemId,
+    required this.focusNodes,
     required this.colorScheme,
   });
 
@@ -258,17 +301,15 @@ class _CategorySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Category Header
         CategorySectionHeader(category: category),
         SizedBox(height: context.spacingSm),
 
-        // Items in this category
         ...items.map((item) => Padding(
               key: itemKeys[item.id],
               padding: EdgeInsets.only(bottom: context.spacingSm),
               child: BulkItemRow(
                 item: item,
-                autoFocus: item.id == lastAddedItemId,
+                focusNode: focusNodes[item.id]!,
               ),
             )),
 
@@ -278,18 +319,34 @@ class _CategorySection extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// BulkItemRow
+// ---------------------------------------------------------------------------
+
 /// Row per un singolo item con TextField inline stabile.
-/// 
-/// CRITICAL: Usa StatefulWidget con proprio TextEditingController
-/// per evitare rebuild loops e keyboard drop quando lo stato cambia.
+///
+/// ## Gestione focus
+///
+/// Il [focusNode] viene passato dal parent (`_BulkItemListScreenState`) e
+/// viene chiamato da lì **dopo** la fine dell'animazione di scroll.
+/// `BulkItemRow` NON gestisce l'auto-focus: è responsabilità esclusiva del
+/// parent sequenzializzare scroll → focus per evitare il race condition con
+/// il resize della tastiera.
+///
+/// ## CRITICAL: TextField stabile
+///
+/// Usa StatefulWidget con proprio TextEditingController per evitare rebuild
+/// loops e keyboard drop quando lo stato Riverpod cambia.
 class BulkItemRow extends ConsumerStatefulWidget {
   final DraftItem item;
-  final bool autoFocus;
+
+  /// FocusNode fornito e gestito dal parent. NON viene disposto qui.
+  final FocusNode focusNode;
 
   const BulkItemRow({
     super.key,
     required this.item,
-    this.autoFocus = false,
+    required this.focusNode,
   });
 
   @override
@@ -298,7 +355,6 @@ class BulkItemRow extends ConsumerStatefulWidget {
 
 class _BulkItemRowState extends ConsumerState<BulkItemRow> {
   late TextEditingController _controller;
-  late FocusNode _focusNode;
   String _lastCommittedName = '';
 
   @override
@@ -306,33 +362,25 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
     super.initState();
     _controller = TextEditingController(text: widget.item.name);
     _lastCommittedName = widget.item.name;
-    _focusNode = FocusNode();
 
-    // CRITICAL: Solo quando l'utente finisce di editare (perde focus)
-    // chiamiamo il notifier. Questo previene rebuild loops e keyboard drop.
-    _focusNode.addListener(_onFocusChange);
-
-    // Auto-focus se questo è un item appena aggiunto
-    if (widget.autoFocus) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _focusNode.requestFocus();
-          _controller.selection = TextSelection(
-            baseOffset: 0,
-            extentOffset: _controller.text.length,
-          );
-        }
-      });
-    }
+    // CRITICAL: aggiorna il provider solo quando il focus viene perso,
+    // non ad ogni keystroke. Previene rebuild loops e keyboard drop.
+    widget.focusNode.addListener(_onFocusChange);
   }
 
   @override
   void didUpdateWidget(BulkItemRow oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // CRITICAL: Aggiorna il controller SOLO se l'item.name è cambiato
+    // Migra il listener se il focusNode cambia (raro ma difensivo).
+    if (widget.focusNode != oldWidget.focusNode) {
+      oldWidget.focusNode.removeListener(_onFocusChange);
+      widget.focusNode.addListener(_onFocusChange);
+    }
+
+    // CRITICAL: aggiorna il controller SOLO se l'item.name è cambiato
     // da una fonte esterna (non dall'utente che sta digitando).
-    // Questo previene che il cursore salti durante la digitazione.
+    // Previene il salto del cursore durante la digitazione.
     if (widget.item.name != oldWidget.item.name &&
         widget.item.name != _controller.text) {
       _controller.text = widget.item.name;
@@ -342,15 +390,14 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
 
   @override
   void dispose() {
-    _focusNode.removeListener(_onFocusChange);
+    widget.focusNode.removeListener(_onFocusChange);
+    // NON disponiamo widget.focusNode: è di proprietà del parent.
     _controller.dispose();
-    _focusNode.dispose();
     super.dispose();
   }
 
   void _onFocusChange() {
-    if (!_focusNode.hasFocus) {
-      // Focus perso: committa il nuovo nome se è cambiato
+    if (!widget.focusNode.hasFocus) {
       final newName = _controller.text.trim();
       if (newName.isNotEmpty && newName != _lastCommittedName) {
         ref.read(bulkCreationNotifierProvider.notifier).renameItem(
@@ -359,7 +406,6 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
             );
         _lastCommittedName = newName;
       } else if (newName.isEmpty) {
-        // Nome vuoto: ripristina il nome precedente
         _controller.text = _lastCommittedName;
       }
     }
@@ -376,7 +422,7 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
     } else if (newName.isEmpty) {
       _controller.text = _lastCommittedName;
     }
-    _focusNode.unfocus();
+    widget.focusNode.unfocus();
   }
 
   @override
@@ -390,7 +436,7 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
       borderWidth: 1,
       title: TextField(
         controller: _controller,
-        focusNode: _focusNode,
+        focusNode: widget.focusNode,
         style: Theme.of(context).textTheme.bodyMedium,
         decoration: InputDecoration(
           border: InputBorder.none,
@@ -409,7 +455,8 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
           QuantityStepper(
             value: widget.item.quantity,
             onChanged: (delta) {
-              notifier.updateQuantity(widget.item.id, delta - widget.item.quantity);
+              notifier.updateQuantity(
+                  widget.item.id, delta - widget.item.quantity);
             },
             minValue: 1,
           ),
@@ -429,6 +476,10 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// _CategoryButtonBar
+// ---------------------------------------------------------------------------
+
 /// Barra inferiore con pulsanti per aggiungere item per categoria.
 class _CategoryButtonBar extends ConsumerWidget {
   final ValueChanged<ItemCategory> onCategorySelected;
@@ -441,7 +492,7 @@ class _CategoryButtonBar extends ConsumerWidget {
 
     return SafeArea(
       child: Container(
-        padding: EdgeInsets.all(context.spacingSm),    
+        padding: EdgeInsets.all(context.spacingSm),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -491,34 +542,16 @@ class _CategoryButtonBar extends ConsumerWidget {
                 ),
               ],
             ),
-            /* SizedBox(height: context.spacingSm),
-            Row(
-              children: [
-                Expanded(
-                  child: _CategoryButton(
-                    icon: Icons.soap,
-                    label: 'items.category_toiletries'.tr(),
-                    onTap: () => onCategorySelected(ItemCategory.toiletries),
-                    colorScheme: colorScheme,
-                  ),
-                ),
-                SizedBox(width: context.spacingSm),
-                Expanded(
-                  child: _CategoryButton(
-                    icon: Icons.category,
-                    label: 'items.category_varie'.tr(),
-                    onTap: () => onCategorySelected(ItemCategory.varie),
-                    colorScheme: colorScheme,
-                  ),
-                ),
-              ],
-            ), */
           ],
         ),
       ),
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// _CategoryButton
+// ---------------------------------------------------------------------------
 
 /// Pulsante per una categoria di item.
 class _CategoryButton extends StatelessWidget {

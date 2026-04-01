@@ -10,23 +10,23 @@ class TravelTemplate {
   /// Chiave univoca per identificare il template
   final String key;
 
-  /// Nome visualizzato del template
-  final String name;
+  /// Chiave i18n per il nome del template (usare `.tr()` nella UI)
+  final String nameKey;
 
   /// Nome dell'icona Material da visualizzare
   final String icon;
 
-  /// Descrizione del template
-  final String description;
+  /// Chiave i18n per la descrizione del template (usare `.tr()` nella UI)
+  final String descriptionKey;
 
   /// Lista di item predefiniti per questo template
   final List<TemplateItemDef> items;
 
   const TravelTemplate({
     required this.key,
-    required this.name,
+    required this.nameKey,
     required this.icon,
-    required this.description,
+    required this.descriptionKey,
     required this.items,
   });
 

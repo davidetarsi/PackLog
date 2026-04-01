@@ -3,11 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pack_log/features/items/view/item_category.dart';
 import '../model/item_model.dart';
-import '../providers/item_provider.dart';
+import '../providers/item_selection_provider.dart';
 import '../../../shared/widgets/widgets.dart';
-import '../../../shared/widgets/error_retry_dialog.dart';
-import '../../../shared/helpers/design_system.dart';
-import '../../../shared/helpers/dialog_helpers.dart';
 import 'add_edit_item_screen.dart';
 
 class ItemCard extends ConsumerWidget {
@@ -25,83 +22,94 @@ class ItemCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     final totalQuantity = item.quantity ?? 1;
     final availableQuantity = totalQuantity - quantityOnTrip;
     final isFullyOnTrip = quantityOnTrip > 0 && availableQuantity == 0;
     final hasAnyOnTrip = quantityOnTrip > 0;
 
-    // Costruisci subtitle dinamico
+    // Osserva lo stato della selezione multipla
+    final selectionState = ref.watch(itemSelectionNotifierProvider);
+    final isSelectionActive = selectionState.isActive;
+    final isSelected = selectionState.selectedIds.contains(item.id);
+
+    // Costruisci subtitle dinamico (solo in modalità normale)
     Widget? subtitle;
-    if (hasAnyOnTrip) {
-      // Mostra stato transito con color-coding
-      if (isFullyOnTrip) {
-        // Item completamente in viaggio: tutto in primary
-        subtitle = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.flight_takeoff,
-              size: 12,
-              color: colorScheme.primary,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              'common.in_transit'.tr(),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w600,
+    if (!isSelectionActive) {
+      if (hasAnyOnTrip) {
+        if (isFullyOnTrip) {
+          subtitle = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.flight_takeoff, size: 12, color: colorScheme.primary),
+              const SizedBox(width: 4),
+              Text(
+                'common.in_transit'.tr(),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
-        );
-      } else {
-        // Partial transit: parte qui (grigio), parte in viaggio (primary)
-        subtitle = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$availableQuantity ${'common.here'.tr()}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+            ],
+          );
+        } else {
+          subtitle = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$availableQuantity ${'common.here'.tr()}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-            Text(
-              ' • ',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+              Text(
+                ' • ',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-            Icon(
-              Icons.flight_takeoff,
-              size: 12,
-              color: colorScheme.primary,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '$quantityOnTrip ${'common.in_transit'.tr().toLowerCase()}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w600,
+              Icon(Icons.flight_takeoff, size: 12, color: colorScheme.primary),
+              const SizedBox(width: 4),
+              Text(
+                '$quantityOnTrip ${'common.in_transit'.tr().toLowerCase()}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+            ],
+          );
+        }
+      } else if (item.description != null) {
+        subtitle = Text(
+          item.description!,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
         );
       }
-    } else if (item.description != null) {
-      // Mostra descrizione se non in transito
-      subtitle = Text(
-        item.description!,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-        ),
-      );
     }
 
+    // In modalità selezione il leading diventa un Checkbox; altrimenti la categoria.
+    final Widget leading = isSelectionActive
+        ? Checkbox(
+            value: isSelected,
+            onChanged: (_) => ref
+                .read(itemSelectionNotifierProvider.notifier)
+                .toggleItem(item.id),
+            activeColor: colorScheme.primary,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          )
+        : CategoryIcon(category: item.category);
+
+    // Il colore di sfondo segnala visivamente la selezione.
+    final Color? bgColor = isSelected
+        ? colorScheme.primary.withValues(alpha: 0.08)
+        : null;
+
     return UniversalItemTile(
-      onTap: isFullyOnTrip ? null : () => _onEdit(context),
-      onLongPress: hasAnyOnTrip ? null : () => _onDelete(context, ref),
-      leading: CategoryIcon(category: item.category),
+      backgroundColor: bgColor,
+      leading: leading,
       title: Text(
         item.name,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -109,38 +117,41 @@ class ItemCard extends ConsumerWidget {
         ),
       ),
       subtitle: subtitle,
-      trailing: Text(
-        'x$totalQuantity',
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: colorScheme.onSurface.withValues(alpha: 0.7),
-        ),
-      ),
+      trailing: isSelectionActive
+          ? null
+          : Text(
+              'x$totalQuantity',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+      // In selection mode: tap tutta la card per selezionare/deselezionare.
+      // In normal mode: tap apre l'edit sheet (disabilitato se tutto in viaggio).
+      onTap: isSelectionActive
+          ? () => ref
+                .read(itemSelectionNotifierProvider.notifier)
+                .toggleItem(item.id)
+          : isFullyOnTrip
+              ? null
+              : () => _onEdit(context),
+      // Long press attiva la selezione multipla dal primo item premuto.
+      // Disabilitato se in selezione o se l'item è in viaggio.
+      onLongPress: isSelectionActive || hasAnyOnTrip
+          ? null
+          : () {
+              ref
+                  .read(itemSelectionNotifierProvider.notifier)
+                  .toggleMode();
+              ref
+                  .read(itemSelectionNotifierProvider.notifier)
+                  .toggleItem(item.id);
+            },
     );
   }
 
   void _onEdit(BuildContext context) {
-    showAddEditItemSheet(
-      context,
-      houseId: houseId,
-      itemId: item.id,
-    );
+    showAddEditItemSheet(context, houseId: houseId, itemId: item.id);
   }
 
-  Future<void> _onDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await DialogHelpers.showDeleteConfirmation(
-      context: context,
-      itemType: 'common.item_type'.tr(),
-      itemName: item.name,
-    );
-
-    if (confirmed == true && context.mounted) {
-      await ErrorRetryDialog.executeWithRetry(
-        context: context,
-        operation: () => ref.read(itemNotifierProvider(houseId).notifier).deleteItem(item.id, houseId),
-        errorTitle: 'common.error'.tr(),
-        errorMessage: 'errors.delete_item_failed'.tr(args: [item.name]),
-      );
-    }
-  }
 }
