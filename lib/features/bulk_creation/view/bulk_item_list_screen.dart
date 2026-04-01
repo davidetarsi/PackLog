@@ -356,6 +356,7 @@ class BulkItemRow extends ConsumerStatefulWidget {
 class _BulkItemRowState extends ConsumerState<BulkItemRow> {
   late TextEditingController _controller;
   String _lastCommittedName = '';
+  bool _hasReceivedFirstFocus = false;
 
   @override
   void initState() {
@@ -397,6 +398,15 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
   }
 
   void _onFocusChange() {
+    if (widget.focusNode.hasFocus && !_hasReceivedFirstFocus) {
+      _hasReceivedFirstFocus = true;
+      _controller.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _controller.text.length,
+      );
+      return;
+    }
+
     if (!widget.focusNode.hasFocus) {
       final newName = _controller.text.trim();
       if (newName.isNotEmpty && newName != _lastCommittedName) {
