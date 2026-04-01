@@ -35,19 +35,21 @@ void main() {
     // Initialize Flutter bindings for platform channel communication
     TestWidgetsFlutterBinding.ensureInitialized();
     
-    // Mock path_provider platform channel to return a test-writable directory
-    // This prevents "Binding has not yet been initialized" errors
-    const MethodChannel('plugins.flutter.io/path_provider')
-        .setMockMethodCallHandler((MethodCall methodCall) async {
-      if (methodCall.method == 'getDownloadsDirectory') {
-        // Return the system temp directory which is writable in tests
-        return Directory.systemTemp.path;
-      }
-      if (methodCall.method == 'getApplicationDocumentsDirectory') {
-        return Directory.systemTemp.path;
-      }
-      return null;
-    });
+    // Mock path_provider platform channel to return a test-writable directory.
+    // Uses the non-deprecated API introduced after v3.9.0-19.0.pre.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'),
+      (MethodCall methodCall) async {
+        if (methodCall.method == 'getDownloadsDirectory') {
+          return Directory.systemTemp.path;
+        }
+        if (methodCall.method == 'getApplicationDocumentsDirectory') {
+          return Directory.systemTemp.path;
+        }
+        return null;
+      },
+    );
     
     // Initialize mocks
     mockDatabaseBackupService = MockDatabaseBackupService();

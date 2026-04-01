@@ -6,8 +6,8 @@ import 'user_gender.dart';
 /// Rappresenta un oggetto "tipico" per un certo tipo di viaggio,
 /// con la possibilità di filtrarlo per genere dell'utente.
 class TemplateItemDef {
-  /// Nome dell'oggetto
-  final String name;
+  /// Chiave i18n per il nome dell'oggetto (usare `.tr()` nella UI / provider)
+  final String nameKey;
 
   /// Categoria dell'oggetto
   final ItemCategory category;
@@ -27,7 +27,7 @@ class TemplateItemDef {
   final List<UserGender>? targetGenders;
 
   const TemplateItemDef({
-    required this.name,
+    required this.nameKey,
     required this.category,
     this.defaultQuantity = 1,
     this.targetGenders,

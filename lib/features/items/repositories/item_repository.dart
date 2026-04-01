@@ -35,6 +35,11 @@ abstract class ItemRepository {
   /// Conta gli oggetti in uno spazio specifico
   Future<int> countItemsBySpace(String spaceId);
 
+  /// Elimina più oggetti in una singola query SQL.
+  ///
+  /// Idempotente: se [itemIds] è vuota non esegue operazioni.
+  Future<void> deleteItems(List<String> itemIds);
+
   /// Sposta [itemIds] da [fromHouseId] a [toHouseId] in una singola query SQL.
   ///
   /// La query filtra per `house_id = fromHouseId`: solo gli item che si trovano

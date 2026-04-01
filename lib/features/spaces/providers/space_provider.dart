@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../model/space_model.dart';
 import '../repositories/space_repository.dart';
@@ -70,14 +71,14 @@ class SpaceNotifier extends _$SpaceNotifier {
 /// 
 /// Filtra gli spazi in base all'houseId e li mantiene in cache.
 @riverpod
-Future<List<SpaceModel>> spacesByHouse(SpacesByHouseRef ref, String houseId) async {
+Future<List<SpaceModel>> spacesByHouse(Ref ref, String houseId) async {
   final repository = ref.watch(spaceRepositoryProvider);
   return repository.getSpacesByHouseId(houseId);
 }
 
 /// Provider per contare gli spazi di una casa.
 @riverpod
-Future<int> spaceCountByHouse(SpaceCountByHouseRef ref, String houseId) async {
+Future<int> spaceCountByHouse(Ref ref, String houseId) async {
   final repository = ref.watch(spaceRepositoryProvider);
   return repository.countSpacesByHouse(houseId);
 }

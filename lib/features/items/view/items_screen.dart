@@ -174,10 +174,14 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                                 );
                               }
 
-                              // Snapshot della mappa in lista per indicizzazione
-                              // O(1) nel builder: evita elementAt() su un Iterable.
-                              final categoryEntries =
-                                  itemsByCategory.entries.toList();
+                              // Snapshot della mappa ordinato per indice enum:
+                              // garantisce l'ordine canonico vestiti → toiletries →
+                              // elettronica → varie indipendentemente dall'ordine
+                              // con cui le categorie compaiono nella lista (che può
+                              // variare dopo spostamenti/eliminazioni bulk).
+                              final categoryEntries = itemsByCategory.entries
+                                  .toList()
+                                ..sort((a, b) => a.key.index.compareTo(b.key.index));
 
                               return RefreshIndicator(
                                 onRefresh: _onRefresh,

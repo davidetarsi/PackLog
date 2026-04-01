@@ -82,7 +82,17 @@
     "category_vestiti": "Vestiti",
     "category_toiletries": "Toiletries",
     "category_elettronica": "Elettronica",
-    "category_varie": "Varie"
+    "category_varie": "Varie",
+    "select_items": "Seleziona oggetti",
+    "selected_count": "{} selezionati",
+    "select_all": "Seleziona tutti",
+    "deselect_all": "Deseleziona tutti",
+    "bulk_delete_confirm_title": "Eliminare {} oggetti?",
+    "bulk_delete_confirm_body": "Questa azione è irreversibile. Gli oggetti selezionati verranno eliminati definitivamente.",
+    "bulk_delete_success": "{} oggetti eliminati",
+    "bulk_move_title": "Sposta in...",
+    "bulk_move_success": "{} oggetti spostati in {}",
+    "bulk_move_no_houses": "Nessun'altra casa disponibile"
   },
   "categories": {
     "vestiti": "Vestiti",
@@ -288,7 +298,8 @@
     "ok": "OK",
     "back_to_home": "Torna alla home",
     "navigation_error": "Errore di navigazione: {}",
-    "profile": "Profilo"
+    "profile": "Profilo",
+    "move": "Sposta"
   },
   "errors": {
     "generic": "Si è verificato un errore",
@@ -319,7 +330,9 @@
     "invalid_house_id": "ID casa non valido",
     "invalid_trip_id": "ID viaggio non valido",
     "invalid_list_id": "ID lista non valido",
-    "no_trips": "Nessun viaggio"
+    "no_trips": "Nessun viaggio",
+    "no_items": "Nessun oggetto da salvare",
+    "target_house_id_not_set": "ID casa non impostato. Impossibile salvare gli oggetti."
   },
   "dialogs": {
     "delete_title": "Elimina {}",
@@ -388,6 +401,101 @@
     "gender_female": "Donna",
     "gender_neutral": "Neutro",
     "save_failed": "Errore durante il salvataggio degli oggetti",
-    "save_success": "{count} oggetti aggiunti con successo!"
+    "save_success": "{count} oggetti aggiunti con successo!",
+    "new_item": "Nuovo oggetto",
+    "templates": {
+      "weekend": {
+        "name": "Weekend",
+        "description": "Viaggio breve di 2-3 giorni"
+      },
+      "long_trip": {
+        "name": "Viaggio lungo",
+        "description": "Viaggio di una settimana o più"
+      },
+      "business": {
+        "name": "Business trip",
+        "description": "Viaggio di lavoro professionale"
+      },
+      "digital_nomad": {
+        "name": "Nomade digitale",
+        "description": "Viaggio prolungato con lavoro remoto"
+      },
+      "beach": {
+        "name": "Vacanza al mare",
+        "description": "Viaggio al mare o in località balneare"
+      },
+      "mountain": {
+        "name": "Montagna/Trekking",
+        "description": "Escursioni in montagna e trekking"
+      }
+    },
+    "items": {
+      "documenti_identita": "Documenti d'identità / Passaporto",
+      "portafoglio": "Portafoglio e contanti",
+      "chiavi_casa": "Chiavi di casa",
+      "tshirt": "T-shirt",
+      "jeans": "Jeans",
+      "biancheria_intima": "Biancheria intima",
+      "pigiama_camicia": "Pigiama / Camicia da notte",
+      "pigiama": "Pigiama",
+      "spazzolino": "Spazzolino da denti",
+      "dentifricio": "Dentifricio",
+      "deodorante": "Deodorante",
+      "shampoo": "Shampoo",
+      "rasoio": "Rasoio",
+      "schiuma_barba": "Schiuma da barba",
+      "trucchi": "Trucchi",
+      "trucchi_waterproof": "Trucchi waterproof",
+      "assorbenti": "Assorbenti",
+      "crema_solare": "Crema solare",
+      "crema_solare_alta": "Crema solare alta protezione",
+      "doposole": "Doposole",
+      "antizanzare": "Antizanzare",
+      "kit_toilette": "Kit toilette completo",
+      "caricabatterie_smartphone": "Caricabatterie smartphone",
+      "caricabatterie_laptop": "Caricabatterie laptop",
+      "cuffie": "Cuffie / Auricolari",
+      "cuffie_noise_cancelling": "Cuffie noise-cancelling",
+      "laptop": "Laptop",
+      "tablet": "Tablet",
+      "hard_disk": "Hard Disk / SSD esterno",
+      "mouse_wireless": "Mouse wireless",
+      "mouse_mousepad": "Mouse e Mousepad",
+      "power_bank": "Power bank",
+      "adattatore_universale": "Adattatore universale",
+      "cavo_hdmi": "Cavo HDMI",
+      "piastra_capelli": "Piastra per capelli",
+      "torcia": "Torcia",
+      "bussola_gps": "Bussola / GPS",
+      "occhiali_sole": "Occhiali da sole",
+      "libro_ereader": "Libro / E-reader",
+      "pantaloni": "Pantaloni",
+      "pantaloni_eleganti": "Pantaloni eleganti",
+      "pantaloni_comodi": "Pantaloni comodi",
+      "pantaloni_trekking": "Pantaloni da trekking",
+      "calzini": "Calzini",
+      "calzini_tecnici": "Calzini tecnici",
+      "giacca": "Giacca",
+      "giacca_impermeabile": "Giacca impermeabile",
+      "pile": "Pile",
+      "camicia_elegante": "Camicia elegante",
+      "scarpe_eleganti": "Scarpe eleganti",
+      "cintura": "Cintura",
+      "cravatta": "Cravatta",
+      "cappello": "Cappello",
+      "infradito": "Infradito",
+      "bikini": "Bikini / Costume intero",
+      "boxer_bagno": "Boxer da bagno",
+      "scarponi_trekking": "Scarponi da trekking",
+      "blocco_appunti": "Blocco appunti",
+      "penna": "Penna",
+      "biglietti_visita": "Biglietti da visita",
+      "asciugamano_mare": "Asciugamano mare",
+      "maschera_boccaglio": "Maschera e boccaglio",
+      "zaino_trekking": "Zaino da trekking",
+      "borraccia": "Borraccia",
+      "kit_primo_soccorso": "Kit primo soccorso",
+      "bastoncini_trekking": "Bastoncini da trekking"
+    }
   }
 }

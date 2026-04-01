@@ -71,6 +71,8 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
     // Normalizza item legacy con originHouseId vuoto prima del salvataggio.
     final normalizedItems = await _normalizeItemOrigins(_selectedItems);
 
+    if (!mounted) return;
+
     final updatedTrip = _trip!.copyWith(
       items: normalizedItems,
       updatedAt: DateTime.now(),

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
+import 'package:pack_log/features/items/providers/item_selection_provider.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 
 /// Mock implementation of ItemRepository for testing.
@@ -694,6 +695,198 @@ void main() {
       expect(poolItems.first.spaceId, equals(null));
 
       verify(() => mockRepository.getItemsInGeneralPool(houseId)).called(1);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // bulkDelete
+  // ---------------------------------------------------------------------------
+  group('ItemNotifier - bulkDelete', () {
+    test('deletes items and refreshes the list', () async {
+      const houseId = 'house-bulk-delete';
+      final initialItems = [
+        ItemModel(
+          id: 'item-a',
+          houseId: houseId,
+          name: 'Alpha',
+          category: ItemCategory.varie,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        ItemModel(
+          id: 'item-b',
+          houseId: houseId,
+          name: 'Beta',
+          category: ItemCategory.varie,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      ];
+      final afterDelete = [initialItems[1]];
+
+      when(() => mockRepository.getItemsByHouseId(houseId))
+          .thenAnswer((_) async => initialItems);
+      when(() => mockRepository.deleteItems(['item-a']))
+          .thenAnswer((_) async {});
+      // Secondo invocazione: solo item-b rimane
+      var callCount = 0;
+      when(() => mockRepository.getItemsByHouseId(houseId)).thenAnswer((_) async {
+        callCount++;
+        return callCount == 1 ? initialItems : afterDelete;
+      });
+
+      final provider = itemNotifierProvider(houseId);
+      await container.read(provider.future);
+
+      await container.read(provider.notifier).bulkDelete(['item-a']);
+
+      final state = container.read(provider);
+      expect(state.value, hasLength(1));
+      expect(state.value!.first.id, equals('item-b'));
+      verify(() => mockRepository.deleteItems(['item-a'])).called(1);
+    });
+
+    test('no-op when itemIds is empty', () async {
+      const houseId = 'house-bulk-delete-empty';
+      when(() => mockRepository.getItemsByHouseId(houseId))
+          .thenAnswer((_) async => []);
+
+      await container.read(itemNotifierProvider(houseId).future);
+      await container.read(itemNotifierProvider(houseId).notifier).bulkDelete([]);
+
+      verifyNever(() => mockRepository.deleteItems(any()));
+    });
+
+    test('clears selection state after deletion', () async {
+      const houseId = 'house-bulk-delete-clear-sel';
+      when(() => mockRepository.getItemsByHouseId(houseId))
+          .thenAnswer((_) async => []);
+      when(() => mockRepository.deleteItems(any())).thenAnswer((_) async {});
+
+      await container.read(itemNotifierProvider(houseId).future);
+
+      // Pre-populate selection state
+      container.read(itemSelectionNotifierProvider.notifier).toggleMode();
+      container.read(itemSelectionNotifierProvider.notifier).toggleItem('x');
+      expect(container.read(itemSelectionNotifierProvider).isActive, isTrue);
+
+      await container.read(itemNotifierProvider(houseId).notifier).bulkDelete(['x']);
+
+      final sel = container.read(itemSelectionNotifierProvider);
+      expect(sel.isActive, isFalse);
+      expect(sel.selectedIds, isEmpty);
+    });
+
+    test('propagates repository exception', () async {
+      const houseId = 'house-bulk-delete-error';
+      when(() => mockRepository.getItemsByHouseId(houseId))
+          .thenAnswer((_) async => []);
+      when(() => mockRepository.deleteItems(['bad']))
+          .thenThrow(Exception('DB error'));
+
+      await container.read(itemNotifierProvider(houseId).future);
+
+      expect(
+        () => container
+            .read(itemNotifierProvider(houseId).notifier)
+            .bulkDelete(['bad']),
+        throwsException,
+      );
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // bulkMove
+  // ---------------------------------------------------------------------------
+  group('ItemNotifier - bulkMove', () {
+    test('moves items, refreshes source list, and invalidates destination', () async {
+      const houseId = 'house-origin';
+      const destId = 'house-dest';
+
+      final item = ItemModel(
+        id: 'item-x',
+        houseId: houseId,
+        name: 'Box',
+        category: ItemCategory.varie,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      var refreshCalls = 0;
+      when(() => mockRepository.getItemsByHouseId(houseId)).thenAnswer((_) async {
+        refreshCalls++;
+        return refreshCalls == 1 ? [item] : []; // vuoto dopo spostamento
+      });
+      when(() => mockRepository.moveItemsToHouse(['item-x'], houseId, destId))
+          .thenAnswer((_) async {});
+      // Destination provider is a different family instance; getItemsByHouseId
+      // for destId is called by the invalidated provider rebuild.
+      when(() => mockRepository.getItemsByHouseId(destId))
+          .thenAnswer((_) async => []);
+
+      await container.read(itemNotifierProvider(houseId).future);
+      await container
+          .read(itemNotifierProvider(houseId).notifier)
+          .bulkMove(['item-x'], destId);
+
+      // Source list is now empty
+      final state = container.read(itemNotifierProvider(houseId));
+      expect(state.value, isEmpty);
+      verify(() => mockRepository.moveItemsToHouse(['item-x'], houseId, destId))
+          .called(1);
+    });
+
+    test('no-op when itemIds is empty', () async {
+      const houseId = 'house-bulk-move-empty';
+      when(() => mockRepository.getItemsByHouseId(houseId))
+          .thenAnswer((_) async => []);
+
+      await container.read(itemNotifierProvider(houseId).future);
+      await container
+          .read(itemNotifierProvider(houseId).notifier)
+          .bulkMove([], 'any-dest');
+
+      verifyNever(() => mockRepository.moveItemsToHouse(any(), any(), any()));
+    });
+
+    test('clears selection state after move', () async {
+      const houseId = 'house-bulk-move-clear-sel';
+      const destId = 'dest-clear';
+      when(() => mockRepository.getItemsByHouseId(houseId))
+          .thenAnswer((_) async => []);
+      when(() => mockRepository.getItemsByHouseId(destId))
+          .thenAnswer((_) async => []);
+      when(() => mockRepository.moveItemsToHouse(any(), any(), any()))
+          .thenAnswer((_) async {});
+
+      await container.read(itemNotifierProvider(houseId).future);
+      container.read(itemSelectionNotifierProvider.notifier).toggleMode();
+      container.read(itemSelectionNotifierProvider.notifier).selectAll(['y']);
+
+      await container
+          .read(itemNotifierProvider(houseId).notifier)
+          .bulkMove(['y'], destId);
+
+      final sel = container.read(itemSelectionNotifierProvider);
+      expect(sel.isActive, isFalse);
+      expect(sel.selectedIds, isEmpty);
+    });
+
+    test('propagates repository exception', () async {
+      const houseId = 'house-bulk-move-error';
+      when(() => mockRepository.getItemsByHouseId(houseId))
+          .thenAnswer((_) async => []);
+      when(() => mockRepository.moveItemsToHouse(any(), any(), any()))
+          .thenThrow(Exception('move failed'));
+
+      await container.read(itemNotifierProvider(houseId).future);
+
+      expect(
+        () => container
+            .read(itemNotifierProvider(houseId).notifier)
+            .bulkMove(['z'], 'somewhere'),
+        throwsException,
+      );
     });
   });
 }

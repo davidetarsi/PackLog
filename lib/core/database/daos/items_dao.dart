@@ -107,6 +107,16 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     return result?.read(items.id.count()) ?? 0;
   }
 
+  /// Elimina più oggetti in una singola query SQL:
+  /// `DELETE FROM items WHERE id IN (?)`
+  ///
+  /// Idempotente: se la lista è vuota non esegue alcuna query.
+  /// Non verifica se gli item esistono — elimina silenziosamente quelli presenti.
+  Future<void> deleteItems(List<String> itemIds) async {
+    if (itemIds.isEmpty) return;
+    await (delete(items)..where((t) => t.id.isIn(itemIds))).go();
+  }
+
   /// Sposta un set di oggetti da [fromHouseId] a [toHouseId] in una singola
   /// query SQL:
   /// `UPDATE items SET house_id = ? WHERE id IN (?) AND house_id = ?`

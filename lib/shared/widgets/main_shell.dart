@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../features/houses/view/settings_screen.dart';
 import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/items/view/add_edit_item_screen.dart';
 import '../constants/app_constants.dart';
@@ -58,36 +57,17 @@ class _MainShellState extends ConsumerState<MainShell>
 
     switch (index) {
       case 0:
-        _showSettings();
-        break;
-      case 1:
+        // Branch 0: Profilo — naviga al root del branch preservando lo stack
         widget.navigationShell.goBranch(0, initialLocation: false);
-        break;
-      case 2:
+      case 1:
+        // Branch 1: Case
         widget.navigationShell.goBranch(1, initialLocation: false);
-        break;
+      case 2:
+        // Branch 2: Viaggi
+        widget.navigationShell.goBranch(2, initialLocation: false);
       case 3:
         _toggleCreateMenu();
-        break;
     }
-  }
-
-  /// Mostra la schermata delle impostazioni come bottom sheet.
-  ///
-  /// [FractionallySizedBox] con [heightFactor] fisso sostituisce il
-  /// precedente [DraggableScrollableSheet]: elimina il wrapper ridondante,
-  /// sblocca la gesture nativa di swipe-to-close e riduce l'overhead di
-  /// rendering senza perdere funzionalità.
-  void _showSettings() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => FractionallySizedBox(
-        heightFactor: 0.9,
-        child: const SettingsScreen(),
-      ),
-    );
   }
 
   void _toggleCreateMenu() {
@@ -133,8 +113,9 @@ class _MainShellState extends ConsumerState<MainShell>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    // currentIndex maps directly to the branch:
+    // 0 = Profile, 1 = Houses, 2 = Trips
     final currentIndex = widget.navigationShell.currentIndex;
-    final selectedTabIndex = currentIndex + 1;
 
     // Altezza tab bar + padding bottom - responsive
     // 1. Recuperiamo lo spazio occupato dall'hardware di sistema (es. gesture bar)
@@ -262,7 +243,7 @@ class _MainShellState extends ConsumerState<MainShell>
                     icon: Icons.person_3_outlined,
                     selectedIcon: Icons.person_3,
                     label: 'common.profile'.tr(),
-                    isSelected: false,
+                    isSelected: currentIndex == 0,
                     onTap: () => _onTabTapped(0),
                   ),
                 ),
@@ -271,7 +252,7 @@ class _MainShellState extends ConsumerState<MainShell>
                     icon: Icons.home_outlined,
                     selectedIcon: Icons.home,
                     label: 'navigation.houses'.tr(),
-                    isSelected: selectedTabIndex == 1,
+                    isSelected: currentIndex == 1,
                     onTap: () => _onTabTapped(1),
                   ),
                 ),
@@ -280,7 +261,7 @@ class _MainShellState extends ConsumerState<MainShell>
                     icon: Icons.luggage_outlined,
                     selectedIcon: Icons.luggage,
                     label: 'navigation.trips'.tr(),
-                    isSelected: selectedTabIndex == 2,
+                    isSelected: currentIndex == 2,
                     onTap: () => _onTabTapped(2),
                   ),
                 ),

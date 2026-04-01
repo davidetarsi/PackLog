@@ -12,7 +12,7 @@ import '../../../shared/widgets/universal_action_bar.dart';
 import '../../items/model/item_model.dart';
 
 /// Schermata di selezione dei template di viaggio.
-/// 
+///
 /// Permette all'utente di:
 /// - Selezionare il genere per filtrare gli item
 /// - Selezionare uno o più template di viaggio
@@ -34,7 +34,9 @@ class _TemplateSelectionScreenState
     super.initState();
     // Imposta la casa di destinazione all'avvio
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(bulkCreationNotifierProvider.notifier).setTargetHouse(widget.houseId);
+      ref
+          .read(bulkCreationNotifierProvider.notifier)
+          .setTargetHouse(widget.houseId);
     });
   }
 
@@ -79,7 +81,9 @@ class _TemplateSelectionScreenState
               itemCount: kTravelTemplates.length,
               itemBuilder: (context, index) {
                 final template = kTravelTemplates[index];
-                final isSelected = state.selectedTemplateKeys.contains(template.key);
+                final isSelected = state.selectedTemplateKeys.contains(
+                  template.key,
+                );
 
                 return _TemplateCard(
                   template: template,
@@ -100,7 +104,8 @@ class _TemplateSelectionScreenState
               )
             : 'bulk_creation.continue_without_templates'.tr(),
         //primaryIcon: Icons.arrow_forward,
-        onPrimaryPressed: () => context.push('/bulk-creation/items/${widget.houseId}'),
+        onPrimaryPressed: () =>
+            context.push('/bulk-creation/items/${widget.houseId}'),
       ),
     );
   }
@@ -201,10 +206,7 @@ class _TemplateCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          IconData(
-                            _getIconCodePoint(template.icon),
-                            fontFamily: 'MaterialIcons',
-                          ),
+                          _getTemplateIcon(template.icon),
                           size: context.responsive(40),
                           color: isSelected
                               ? colorScheme.primary
@@ -212,9 +214,12 @@ class _TemplateCard extends StatelessWidget {
                         ),
                         SizedBox(height: context.spacingSm),
                         Text(
-                          template.name,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          template.nameKey.tr(),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                                 color: isSelected
                                     ? colorScheme.primary
                                     : colorScheme.onSurface,
@@ -225,17 +230,16 @@ class _TemplateCard extends StatelessWidget {
                         ),
                         SizedBox(height: context.spacingXs),
                         Text(
-                          template.description,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
+                          template.descriptionKey.tr(),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
                           textAlign: TextAlign.center,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
-                    
+
                     // Category badges in 2x2 grid
                     _buildCategoryBadgesGrid(context, categoryCounts),
                   ],
@@ -267,18 +271,29 @@ class _TemplateCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryBadgesGrid(BuildContext context, Map<ItemCategory, int> categoryCounts) {
+  Widget _buildCategoryBadgesGrid(
+    BuildContext context,
+    Map<ItemCategory, int> categoryCounts,
+  ) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           children: [
             Expanded(
-              child: _buildCategoryBadge(context, ItemCategory.vestiti, categoryCounts[ItemCategory.vestiti] ?? 0),
+              child: _buildCategoryBadge(
+                context,
+                ItemCategory.vestiti,
+                categoryCounts[ItemCategory.vestiti] ?? 0,
+              ),
             ),
             SizedBox(width: context.spacingXs),
             Expanded(
-              child: _buildCategoryBadge(context, ItemCategory.toiletries, categoryCounts[ItemCategory.toiletries] ?? 0),
+              child: _buildCategoryBadge(
+                context,
+                ItemCategory.toiletries,
+                categoryCounts[ItemCategory.toiletries] ?? 0,
+              ),
             ),
           ],
         ),
@@ -286,11 +301,19 @@ class _TemplateCard extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _buildCategoryBadge(context, ItemCategory.elettronica, categoryCounts[ItemCategory.elettronica] ?? 0),
+              child: _buildCategoryBadge(
+                context,
+                ItemCategory.elettronica,
+                categoryCounts[ItemCategory.elettronica] ?? 0,
+              ),
             ),
             SizedBox(width: context.spacingXs),
             Expanded(
-              child: _buildCategoryBadge(context, ItemCategory.varie, categoryCounts[ItemCategory.varie] ?? 0),
+              child: _buildCategoryBadge(
+                context,
+                ItemCategory.varie,
+                categoryCounts[ItemCategory.varie] ?? 0,
+              ),
             ),
           ],
         ),
@@ -298,18 +321,26 @@ class _TemplateCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryBadge(BuildContext context, ItemCategory category, int count) {
+  Widget _buildCategoryBadge(
+    BuildContext context,
+    ItemCategory category,
+    int count,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: context.spacingXs,
         vertical: context.spacingXs,
       ),
       decoration: BoxDecoration(
-        color: count > 0 
-            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.1)  //it was 0.8
-            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),  //it was 0.3
+        color: count > 0
+            ? colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.1,
+              ) //it was 0.8
+            : colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.8,
+              ), //it was 0.3
         borderRadius: context.responsiveBorderRadius(8),
       ),
       child: Row(
@@ -327,27 +358,36 @@ class _TemplateCard extends StatelessWidget {
           Text(
             count.toString(),
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: count > 0
-                      ? colorScheme.onSurface
-                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                  fontWeight: FontWeight.bold,
-                ),
+              color: count > 0
+                  ? colorScheme.onSurface
+                  : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
     );
   }
 
-  int _getIconCodePoint(String iconName) {
-    final iconMap = {
-      'weekend': Icons.weekend.codePoint,
-      'flight': Icons.flight.codePoint,
-      'business_center': Icons.business_center.codePoint,
-      'laptop_mac': Icons.laptop_mac.codePoint,
-      'beach_access': Icons.beach_access.codePoint,
-      'terrain': Icons.terrain.codePoint,
-    };
-    return iconMap[iconName] ?? Icons.card_travel.codePoint;
+  IconData _getTemplateIcon(String iconName) {
+    // Usando uno switch (o una mappa di costanti), il compilatore
+    // riesce a mappare esattamente quali icone della classe Icons stiamo usando.
+    switch (iconName) {
+      case 'weekend':
+        return Icons.weekend;
+      case 'flight':
+        return Icons.flight;
+      case 'business_center':
+        return Icons.business_center;
+      case 'laptop_mac':
+        return Icons.laptop_mac;
+      case 'beach_access':
+        return Icons.beach_access;
+      case 'terrain':
+        return Icons.terrain;
+      default:
+        return Icons.card_travel;
+    }
   }
 
   IconData _getCategoryIcon(ItemCategory category) {

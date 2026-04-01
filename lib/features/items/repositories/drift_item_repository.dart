@@ -212,6 +212,26 @@ class DriftItemRepository implements ItemRepository {
     );
   }
 
+  /// Elimina [itemIds] con una singola query SQL `DELETE … WHERE id IN (?)`.
+  @override
+  Future<void> deleteItems(List<String> itemIds) async {
+    if (itemIds.isEmpty) return;
+
+    final result = await _dbService.executeWithRetry(
+      () => _dao.deleteItems(itemIds),
+      operationName: 'deleteItems(${itemIds.length} items)',
+      config: RetryConfig.criticalConfig,
+    );
+
+    if (!result.success) {
+      throw Exception(
+        'Impossibile eliminare ${itemIds.length} oggetti: ${result.error}',
+      );
+    }
+
+    debugPrint('[ItemRepo] ${itemIds.length} oggetti eliminati in bulk');
+  }
+
   /// Sposta [itemIds] da [fromHouseId] a [toHouseId] con una singola query SQL.
   ///
   /// Delega al DAO la query bulk; il filtro `AND house_id = fromHouseId`

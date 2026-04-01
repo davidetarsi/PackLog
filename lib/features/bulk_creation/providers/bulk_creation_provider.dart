@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 import '../../items/model/item_model.dart';
@@ -187,7 +188,7 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
     
     final newItem = DraftItem(
       id: newItemId,
-      name: 'Nuovo oggetto',
+      name: 'bulk_creation.new_item'.tr(),
       category: category,
       quantity: 1,
       insertionIndex: maxIndex + 1,
@@ -246,7 +247,11 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
     final List<DraftItem> updatedManualItems = List<DraftItem>.from(state.manualItems);
 
     for (final templateItem in allTemplateItems) {
-      final normalizedName = templateItem.name.toLowerCase().trim();
+      // Usa la chiave i18n come identificatore stabile per il merge/deduplicazione.
+      // La normalizzazione avviene sulla stringa tradotta così che il confronto
+      // con i manualItems (che contengono nomi tradotti) sia coerente.
+      final translatedName = templateItem.nameKey.tr();
+      final normalizedName = translatedName.toLowerCase().trim();
       final category = templateItem.category;
 
       // CRITICAL FIX #2: Verifica se questo item esiste già in manualItems
@@ -281,7 +286,7 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
         mergeMap[mergeKeyString] = _MergeKey(
           normalizedName: normalizedName,
           category: category,
-          displayName: templateItem.name, // Preserva la prima versione del nome
+          displayName: translatedName, // Nome tradotto al momento del rebuild
           quantity: templateItem.defaultQuantity,
         );
       }
@@ -346,11 +351,11 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
   Future<void> saveToDatabase() async {
     // Validazione
     if (state.targetHouseId == null) {
-      throw StateError('targetHouseId non impostato. Impossibile salvare gli item.');
+      throw StateError('bulk_creation.target_house_id_not_set'.tr());
     }
 
     if (state.allItems.isEmpty) {
-      throw StateError('Nessun item da salvare.');
+      throw StateError('bulk_creation.no_items'.tr());
     }
 
     // Mapping: DraftItem -> ItemModel

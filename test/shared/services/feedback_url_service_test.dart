@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:pack_log/shared/services/feedback_url_service.dart';
+import 'package:pack_log/features/profile/services/feedback_url_service.dart';
 
 /// Stub di [PackageInfo] usato nei test.
 ///

@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../model/item_model.dart';
 import '../repositories/item_repository.dart';
+import 'item_selection_provider.dart';
 
 part 'item_provider.g.dart';
 
@@ -72,5 +73,58 @@ class ItemNotifier extends _$ItemNotifier {
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
+  }
+
+  /// Elimina [itemIds] in una singola query SQL atomica.
+  ///
+  /// Al termine:
+  /// 1. La lista viene ricaricata dal DB per aggiornare la UI.
+  /// 2. La modalità selezione multipla viene azzerata.
+  ///
+  /// Lancia un'eccezione se l'operazione fallisce (il chiamante gestisce l'UI).
+  Future<void> bulkDelete(List<String> itemIds) async {
+    if (itemIds.isEmpty) return;
+    repository ??= ref.read(itemRepositoryProvider);
+
+    await repository!.deleteItems(itemIds);
+
+    // Aggiorna la lista locale senza passare per AsyncLoading
+    // per evitare un flash di schermata di caricamento.
+    final updated = await repository!.getItemsByHouseId(houseId);
+    state = AsyncData(updated);
+
+    // Esce dalla modalità selezione: l'utente ha completato l'operazione.
+    ref.read(itemSelectionNotifierProvider.notifier).clear();
+  }
+
+  /// Sposta [itemIds] dalla casa corrente ([houseId]) a [destinationHouseId]
+  /// in una singola query SQL atomica.
+  ///
+  /// Al termine:
+  /// 1. La lista della casa di origine viene ricaricata (gli item spariscono).
+  /// 2. La modalità selezione multipla viene azzerata.
+  /// 3. Il provider della casa di destinazione viene invalidato affinché
+  ///    mostri immediatamente i nuovi item se aperto.
+  ///
+  /// Lancia un'eccezione se l'operazione fallisce (il chiamante gestisce l'UI).
+  Future<void> bulkMove(
+    List<String> itemIds,
+    String destinationHouseId,
+  ) async {
+    if (itemIds.isEmpty) return;
+    repository ??= ref.read(itemRepositoryProvider);
+
+    // fromHouseId è sempre la casa corrente di questo notifier.
+    await repository!.moveItemsToHouse(itemIds, houseId, destinationHouseId);
+
+    // Aggiorna la lista sorgente senza flash di caricamento.
+    final updated = await repository!.getItemsByHouseId(houseId);
+    state = AsyncData(updated);
+
+    // Invalida la destinazione: se l'utente naviga lì troverà la lista fresca.
+    ref.invalidate(itemNotifierProvider(destinationHouseId));
+
+    // Esce dalla modalità selezione.
+    ref.read(itemSelectionNotifierProvider.notifier).clear();
   }
 }
