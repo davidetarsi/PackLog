@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -6,14 +9,12 @@ plugins {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// GESTIONE KEYSTORE DI PRODUZIONE
-// Legge i segreti crittografici dal file key.properties, se esiste.
-// In locale non esisterà (useremo debug), in CI/CD verrà creato dalla pipeline.
+// GESTIONE KEYSTORE DI PRODUZIONE (Kotlin DSL)
 // ─────────────────────────────────────────────────────────────────────────
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file('key.properties')
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -27,7 +28,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
@@ -43,62 +44,45 @@ android {
 
     // ─────────────────────────────────────────────────────────────────────────
     // FLAVOR DIMENSIONS
-    // Definisce l'asse di variazione degli ambienti. Ogni flavor deve
-    // appartenere esattamente a una dimension: questo ci protegge da
-    // combinazioni di build ambigue in futuro (es. "env + tier").
     // ─────────────────────────────────────────────────────────────────────────
     flavorDimensions += "app_environment"
 
     productFlavors {
-        // ── DEV ──────────────────────────────────────────────────────────────
-        // Installabile in parallelo alla build prod grazie all'applicationIdSuffix.
-        // Il suffisso ".dev" garantisce che i due APK non si sovrascrivano sul
-        // dispositivo del developer, preservando i dati di produzione.
         create("dev") {
             dimension = "app_environment"
             applicationIdSuffix = ".dev"
-            // resValue inietta la stringa nell'R.string generato dal flavor,
-            // sovrascrivendo l'eventuale valore in res/values/strings.xml.
             resValue("string", "app_name", "PackLog Dev")
         }
-
-        // ── PROD ─────────────────────────────────────────────────────────────
-        // Build destinata agli utenti finali: nessun suffisso all'applicationId,
-        // nome pulito senza indicatori di ambiente.
         create("prod") {
             dimension = "app_environment"
             resValue("string", "app_name", "PackLog")
         }
     }
 
-
     signingConfigs {
-        release {
-            // Controlla se abbiamo caricato i dati dal file properties
+        create("release") {
             if (keystorePropertiesFile.exists()) {
-                keyAlias = keystoreProperties['keyAlias']
-                keyPassword = keystoreProperties['keyPassword']
-                storeFile = file(keystoreProperties['storeFile'])
-                storePassword = keystoreProperties['storePassword']
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile") as String)
+                storePassword = keystoreProperties.getProperty("storePassword")
             }
+        }
+        
+        getByName("debug") {
+            // Mantiene la configurazione di default per il debug
         }
     }
 
     buildTypes {
-        release {
-            // Diciamo ad Android di usare la configurazione appena creata
-            // Invece di usare signingConfigs.getByName("debug")
-            signingConfig = signingConfigs.release
-            
-            // Best practice enterprise: abilitiamo R8 (ProGuard) per offuscare 
-            // e rimpicciolire l'APK di produzione, eliminando codice morto.
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
-
 
 flutter {
     source = "../.."
