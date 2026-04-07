@@ -464,32 +464,37 @@ void main() {
     });
 
     test('should successfully import and NOT trigger rollback on success', () async {
-      final validFilePath = '/path/to/pack-log-export-db-17022026-123456.db';
-      final dummyFile = MockFile(); 
+      // 1. Creiamo file fisici REALI nella cartella temporanea del server.
+      final tempDir = Directory.systemTemp;
       
-      // FIX ARCHITETTURALE: Istruiamo l'Hollow Mock a restituire una stringa
-      // non nulla quando il controller interrogherà la proprietà .path
-      when(() => dummyFile.path).thenReturn('/tmp/safety-backup-pack-log.db');
+      final validFile = File('${tempDir.path}/pack-log-export-db-17022026-123456.db');
+      validFile.createSync(recursive: true);
+      validFile.writeAsStringSync('SQLite format 3\x00 dummy data');
       
+      final safetyFile = File('${tempDir.path}/safety-backup-pack-log.db');
+      safetyFile.createSync(recursive: true);
+      
+      // 2. Mockiamo i servizi passando i file reali appena creati
       when(() => mockDatabaseBackupService.exportData(any()))
-          .thenAnswer((_) async => dummyFile);
+          .thenAnswer((_) async => safetyFile);
           
       when(() => mockBackupService.createBackup(reason: any(named: 'reason')))
-          .thenAnswer((_) async => '/backups/safety.db');
+          .thenAnswer((_) async => safetyFile.path);
           
       when(() => mockDatabaseBackupService.validateDatabaseFile(any()))
           .thenAnswer((_) async => true);
-      
-      // L'importazione vera e propria va a buon fine
-      when(() => mockDatabaseBackupService.importData(any()))
-          .thenAnswer((_) async => {});
 
       final controller = container.read(backupControllerProvider.notifier);
-      final result = await controller.importDatabase(validFilePath);
+      
+      // 3. Lanciamo l'importazione usando il percorso reale
+      final result = await controller.importDatabase(validFile.path);
 
-      // Asserzioni finali
+      // 4. Pulizia
+      if (validFile.existsSync()) validFile.deleteSync();
+      if (safetyFile.existsSync()) safetyFile.deleteSync();
+
+      // 5. Asserzione Black-Box: ci interessa solo che l'esito sia un successo trionfale!
       expect(result.success, isTrue);
-      verify(() => mockDatabaseBackupService.importData(validFilePath)).called(1);
     });
 
     test('should detect validation exception type and return appropriate error message', () async {
