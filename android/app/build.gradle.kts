@@ -5,8 +5,19 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// GESTIONE KEYSTORE DI PRODUZIONE
+// Legge i segreti crittografici dal file key.properties, se esiste.
+// In locale non esisterà (useremo debug), in CI/CD verrà creato dalla pipeline.
+// ─────────────────────────────────────────────────────────────────────────
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
-    namespace = "com.example.stuff_tracker_2"
+    namespace = "com.example.packlog"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +32,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.stuff_tracker_2"
+        applicationId = "com.example.packlog"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -60,14 +71,34 @@ android {
         }
     }
 
+
+    signingConfigs {
+        release {
+            // Controlla se abbiamo caricato i dati dal file properties
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties['keyAlias']
+                keyPassword = keystoreProperties['keyPassword']
+                storeFile = file(keystoreProperties['storeFile'])
+                storePassword = keystoreProperties['storePassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Diciamo ad Android di usare la configurazione appena creata
+            // Invece di usare signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.release
+            
+            // Best practice enterprise: abilitiamo R8 (ProGuard) per offuscare 
+            // e rimpicciolire l'APK di produzione, eliminando codice morto.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
+
 
 flutter {
     source = "../.."
