@@ -28,6 +28,13 @@ jobs:
       - name: 📦 Install Dependencies
         run: flutter pub get
 
+      - name: ⚙️ Generate Code (Freezed, Drift, Riverpod)
+        # Il flag -d (delete-conflicting-outputs) è vitale in CI per 
+        # evitare blocchi se ci sono rimasugli di cache
+        run: dart run build_runner build -d
+
+      # ... poi prosegui con flutter analyze o flutter build ...
+
       - name: 🏗️ Build DEV APK
         # Iniettiamo una chiave fittizia come da best practice
         run: flutter build apk --flavor dev --target lib/main_dev.dart --dart-define=GEO_API_KEY=DEV_KEY_PLACEHOLDER

@@ -29,6 +29,13 @@ jobs:
       - name: 📦 Install Dependencies
         run: flutter pub get
 
+      - name: ⚙️ Generate Code (Freezed, Drift, Riverpod)
+        # Il flag -d (delete-conflicting-outputs) è vitale in CI per 
+        # evitare blocchi se ci sono rimasugli di cache
+        run: dart run build_runner build -d
+
+      # ... poi prosegui con flutter analyze o flutter build ...
+
       - name: 🔐 Decode Android Keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
 
