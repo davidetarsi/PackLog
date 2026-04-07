@@ -465,26 +465,30 @@ void main() {
 
     test('should successfully import and NOT trigger rollback on success', () async {
       final validFilePath = '/path/to/pack-log-export-db-17022026-123456.db';
-      final dummyFile = MockFile(); // Creiamo un finto file per evitare il null
+      final dummyFile = MockFile(); 
       
-      // FIX: Mockiamo l'exportData che il controller usa per fare il safety backup
+      // FIX ARCHITETTURALE: Istruiamo l'Hollow Mock a restituire una stringa
+      // non nulla quando il controller interrogherà la proprietà .path
+      when(() => dummyFile.path).thenReturn('/tmp/safety-backup-pack-log.db');
+      
       when(() => mockDatabaseBackupService.exportData(any()))
           .thenAnswer((_) async => dummyFile);
           
       when(() => mockBackupService.createBackup(reason: any(named: 'reason')))
           .thenAnswer((_) async => '/backups/safety.db');
+          
       when(() => mockDatabaseBackupService.validateDatabaseFile(any()))
           .thenAnswer((_) async => true);
       
-      // Importazione perfetta
+      // L'importazione vera e propria va a buon fine
       when(() => mockDatabaseBackupService.importData(any()))
           .thenAnswer((_) async => {});
 
       final controller = container.read(backupControllerProvider.notifier);
       final result = await controller.importDatabase(validFilePath);
 
+      // Asserzioni finali
       expect(result.success, isTrue);
-      // Assicuriamoci che abbia chiamato l'importazione vera
       verify(() => mockDatabaseBackupService.importData(validFilePath)).called(1);
     });
 
