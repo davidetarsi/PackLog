@@ -131,12 +131,14 @@ flutter:
 
 # Configurazione flutter_launcher_icons.
 # Esegui `dart run flutter_launcher_icons` per generare le icone.
-flutter_launcher_icons:
-  android: true
-  ios: true
-  # Icona classica (pre-Android 8): il PNG ha lo sfondo #FFE6C5 baked-in.
-  image_path: "assets/icon/app_icon.png"
-  remove_alpha_ios: true
-  # Android Adaptive Icons (8.0+): il sistema composita foreground su background.
-  adaptive_icon_background: "#FFE6C5"
-  adaptive_icon_foreground: "assets/icon/app_icon_foreground_clean.png"
+
+# flutter_launcher_icons:
+# android: true
+#  ios: true
+#  # Icona classica (pre-Android 8): il PNG ha lo sfondo #FFE6C5 baked-in.
+#  image_path: "assets/icon/app_icon.png"
+#  remove_alpha_ios: true
+#  # Android Adaptive Icons (8.0+): il sistema composita foreground su background.
+#  adaptive_icon_background: "#FFE6C5"
+#  adaptive_icon_foreground: "assets/icon/app_icon_foreground_clean.png" 
+

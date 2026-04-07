@@ -148,7 +148,7 @@ class UniversalItemTile extends StatelessWidget {
       padding: contentPadding ??
           EdgeInsets.symmetric(
             horizontal: context.spacingMd,
-            vertical: context.spacingSm,
+            vertical: context.spacingXs,
           ),
       child: Row(
         children: [

@@ -10,7 +10,7 @@ class AppConfig {
   /// Documentazione: https://www.geoapify.com/
   static const String geoapify = String.fromEnvironment(
     'GEOAPIFY_KEY',
-    defaultValue: '0ed95eb1ce9e47a4baa2215f61db8e69',
+    defaultValue: 'MISSING_GEOAPIFY_KEY',
   );
 
   /// URL del questionario Google per segnalare errori o inviare suggerimenti.

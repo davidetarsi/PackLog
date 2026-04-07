@@ -1,0 +1,40 @@
+name: 🛠️ Build DEV
+
+on:
+  push:
+    branches: [ "develop" ]
+
+jobs:
+  build-dev-apk:
+    name: Build & Upload DEV APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      - name: 🏗️ Build DEV APK
+        # Iniettiamo una chiave fittizia come da best practice
+        run: flutter build apk --flavor dev --target lib/main_dev.dart --dart-define=GEO_API_KEY=DEV_KEY_PLACEHOLDER
+
+      - name: ☁️ Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-dev-release
+          path: build/app/outputs/flutter-apk/app-dev-release.apk
+          retention-days: 7
