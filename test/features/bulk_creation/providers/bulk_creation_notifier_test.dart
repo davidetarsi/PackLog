@@ -62,18 +62,16 @@ void main() {
     // ... lascia invariati gli altri test di questo file (should generate fresh UUIDs, ecc.) ...
 
     test('should throw StateError if no items to save', () async {
-      // === ARRANGE ===
       final notifier = container.read(bulkCreationNotifierProvider.notifier);
       notifier.setTargetHouse('test-house-1');
 
-      // === ACT & ASSERT ===
-      // Usa await expectLater e passa direttamente il Future, non una funzione anonima
       await expectLater(
         notifier.saveToDatabase(),
         throwsA(isA<StateError>().having(
           (e) => e.message,
           'message',
-          contains('targetHouseId non impostato'),
+          // FIX: Usiamo la chiave di localizzazione corretta che la tua app lancia
+          contains('bulk_creation.no_items'),
         )),
       );
 
