@@ -76,7 +76,15 @@ android {
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+            // Fallback dinamico di sicurezza:
+            // Se la pipeline ha creato key.properties (PROD), usa la firma release.
+            // Se non esiste (DEV in cloud o test in locale), usa la firma finta di debug.
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
+            
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
