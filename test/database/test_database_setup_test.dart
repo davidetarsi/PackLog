@@ -65,6 +65,7 @@ void main() {
       // Questo test verifica che setUp/tearDown funzionino correttamente
       // Il database dovrebbe essere vuoto anche se il test precedente ha inserito dati
       final houses = await database.housesDao.getAllHouses();
+      await pumpEventQueue();
       expect(houses, isEmpty);
     });
 
@@ -73,6 +74,7 @@ void main() {
       final stream = database.housesDao.watchAllHouses();
 
       // Expect emissions
+      await pumpEventQueue();
       expectLater(
         stream,
         emitsInOrder([

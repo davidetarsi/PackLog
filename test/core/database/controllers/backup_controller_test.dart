@@ -11,6 +11,8 @@ import 'package:pack_log/core/database/services/backup_service.dart';
 import 'package:pack_log/core/database/exceptions/backup_exceptions.dart';
 import 'package:pack_log/shared/constants/app_constants.dart';
 import '../../../helpers/test_database_setup.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 /// Mock classes for testing BackupController in isolation.
 class MockDatabaseBackupService extends Mock implements DatabaseBackupService {}
@@ -31,25 +33,13 @@ void main() {
   late MockBackupService mockBackupService;
   late AppDatabase database;
 
-  setUp(() {
-    // Initialize Flutter bindings for platform channel communication
+setUp(() {
+    // Initialize Flutter bindings
     TestWidgetsFlutterBinding.ensureInitialized();
     
-    // Mock path_provider platform channel to return a test-writable directory.
-    // Uses the non-deprecated API introduced after v3.9.0-19.0.pre.
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      (MethodCall methodCall) async {
-        if (methodCall.method == 'getDownloadsDirectory') {
-          return Directory.systemTemp.path;
-        }
-        if (methodCall.method == 'getApplicationDocumentsDirectory') {
-          return Directory.systemTemp.path;
-        }
-        return null;
-      },
-    );
+    // INIEZIONE ENTERPRISE: Sostituiamo l'intero motore di path_provider 
+    // a livello di piattaforma. Funzionerà al 100% su Mac, Linux e Windows.
+    PathProviderPlatform.instance = FakePathProviderPlatform();
     
     // Initialize mocks
     mockDatabaseBackupService = MockDatabaseBackupService();
@@ -61,10 +51,7 @@ void main() {
     // Create ProviderContainer with overridden providers for complete isolation
     container = ProviderContainer(
       overrides: [
-        // Override database provider with our in-memory test database
         appDatabaseProvider.overrideWithValue(database),
-        
-        // Override backup services with mocks
         databaseBackupServiceProvider.overrideWithValue(mockDatabaseBackupService),
         backupServiceProvider.overrideWithValue(mockBackupService),
       ],
@@ -743,4 +730,19 @@ void main() {
       verify(() => mockDatabaseBackupService.importData(safetyBackupPath)).called(1);
     });
   });
+}
+
+/// Fake platform interface per testare il file system in modo agnostico (Clean Architecture).
+/// Questo bypassa FFI su Linux/Windows e MethodChannels su Mac/iOS.
+class FakePathProviderPlatform extends Fake
+    with MockPlatformInterfaceMixin
+    implements PathProviderPlatform {
+  @override
+  Future<String?> getDownloadsPath() async => Directory.systemTemp.path;
+
+  @override
+  Future<String?> getApplicationDocumentsPath() async => Directory.systemTemp.path;
+
+  @override
+  Future<String?> getTemporaryPath() async => Directory.systemTemp.path;
 }
