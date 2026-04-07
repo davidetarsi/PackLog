@@ -42,8 +42,9 @@ void main() {
       notifier.addManualItem(ItemCategory.varie);
 
       // === ACT & ASSERT ===
-      expect(
-        () => notifier.saveToDatabase(),
+      // Usa await expectLater e passa direttamente il Future, non una funzione anonima
+      await expectLater(
+        notifier.saveToDatabase(),
         throwsA(isA<StateError>().having(
           (e) => e.message,
           'message',
@@ -61,12 +62,13 @@ void main() {
       notifier.setTargetHouse('test-house-1');
 
       // === ACT & ASSERT ===
-      expect(
-        () => notifier.saveToDatabase(),
+      // Usa await expectLater e passa direttamente il Future, non una funzione anonima
+      await expectLater(
+        notifier.saveToDatabase(),
         throwsA(isA<StateError>().having(
           (e) => e.message,
           'message',
-          contains('Nessun item da salvare'),
+          contains('targetHouseId non impostato'),
         )),
       );
 
