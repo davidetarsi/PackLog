@@ -22,12 +22,13 @@ class CategoryInferService {
       return (category: exactMatch, confidence: InferConfidence.exact);
     }
 
-    // 1.5. Aggressive Exact match (rimuove tutti gli spazi interni)
-    // Risolve casi come "t shirt" -> "tshirt" o "power bank" -> "powerbank"
-    // (a patto che "tshirt" e "powerbank" esistano nel dizionario kExactMatchKeywords)
+    // 1.5. Prefix match sulla stringa senza spazi (es. "t shirt" → "tshirt")
+    // Usa startsWith anziché contains per evitare falsi positivi come
+    // "pantaloni eleganti" → "pantaloneleganti" che contiene "anti"
+    // (root per antistaminico) nel mezzo di "eleganti".
     final spaceStripped = normalized.replaceAll(' ', '');
     for (final entry in kRootKeywords) {
-      if (spaceStripped.contains(entry.root)) {
+      if (spaceStripped.startsWith(entry.root)) {
         return (category: entry.category, confidence: InferConfidence.partial);
       }
     }
