@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../model/item_model.dart';
 import '../providers/item_provider.dart';
 import '../../../shared/widgets/standard_bottom_sheet_layout.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -12,6 +13,8 @@ Future<void> showAddEditItemSheet(
   BuildContext context, {
   String? houseId,
   String? itemId,
+  String? initialName,
+  ItemCategory? initialCategory,
   void Function(String itemId, String houseId)? onItemSaved,
 }) {
   return showModalBottomSheet(
@@ -21,6 +24,8 @@ Future<void> showAddEditItemSheet(
     builder: (context) => AddEditItemSheet(
       houseId: houseId,
       itemId: itemId,
+      initialName: initialName,
+      initialCategory: initialCategory,
       onItemSaved: onItemSaved,
     ),
   );
@@ -30,12 +35,16 @@ Future<void> showAddEditItemSheet(
 class AddEditItemSheet extends ConsumerStatefulWidget {
   final String? houseId;
   final String? itemId;
+  final String? initialName;
+  final ItemCategory? initialCategory;
   final void Function(String itemId, String houseId)? onItemSaved;
 
   const AddEditItemSheet({
     super.key,
     this.houseId,
     this.itemId,
+    this.initialName,
+    this.initialCategory,
     this.onItemSaved,
   });
 
@@ -99,10 +108,12 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
         key: _formKey,
         houseId: widget.houseId,
         itemId: widget.itemId,
+        initialName: widget.initialName,
+        initialCategory: widget.initialCategory,
         onSaved: (itemId, houseId) {
           widget.onItemSaved?.call(itemId, houseId);
           Navigator.pop(context);
-        },        
+        },
         showButtons: false,
         onLoadingChanged: _handleLoadingChanged,
       ),

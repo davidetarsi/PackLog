@@ -8,6 +8,10 @@ import 'houses_table.dart';
 /// 
 /// **Struttura Flat**: Non supportiamo spazi nested per evitare
 /// complessità di Recursive CTE in SQLite.
+///
+/// Indice su [Spaces.houseId] — accelera le query `WHERE house_id = ?`
+/// (getSpacesByHouse, watchSpacesByHouse, countSpacesByHouse).
+@TableIndex(name: 'idx_spaces_house_id', columns: {#houseId})
 class Spaces extends Table {
   /// ID univoco dello spazio (UUID)
   TextColumn get id => text()();
@@ -26,6 +30,15 @@ class Spaces extends Table {
   
   /// Data di ultimo aggiornamento
   DateTimeColumn get updatedAt => dateTime()();
+
+  // ── Soft Delete / Sync ──────────────────────────────────────────────────────
+
+  /// Flag di eliminazione logica.
+  BoolColumn get isDeleted =>
+      boolean().withDefault(const Constant(false))();
+
+  /// Timestamp dell'ultima sincronizzazione con il cloud.
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

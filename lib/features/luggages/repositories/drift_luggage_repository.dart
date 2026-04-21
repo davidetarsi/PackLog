@@ -5,8 +5,6 @@ import 'luggage_repository.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/luggages_dao.dart';
 import '../../../core/database/services/database_service.dart';
-import '../../../core/database/converters/luggage_size_converter.dart';
-
 /// Implementazione del repository Luggage usando Drift (SQLite).
 /// 
 /// Fornisce operazioni robuste con:
@@ -204,7 +202,8 @@ class DriftLuggageRepository implements LuggageRepository {
       id: luggage.id,
       houseId: luggage.houseId,
       name: luggage.name,
-      sizeType: const LuggageSizeConverter().fromSql(luggage.sizeType),
+      // Drift deserializza automaticamente tramite LuggageSizeConverter.
+      sizeType: luggage.sizeType,
       volumeLiters: luggage.volumeLiters,
       createdAt: luggage.createdAt,
       updatedAt: luggage.updatedAt,
@@ -216,7 +215,8 @@ class DriftLuggageRepository implements LuggageRepository {
       id: Value(model.id),
       houseId: Value(model.houseId),
       name: Value(model.name),
-      sizeType: Value(const LuggageSizeConverter().toSql(model.sizeType)),
+      // Drift serializza automaticamente tramite LuggageSizeConverter.
+      sizeType: Value(model.sizeType),
       volumeLiters: Value(model.volumeLiters),
       createdAt: Value(model.createdAt),
       updatedAt: Value(model.updatedAt),

@@ -9,6 +9,12 @@ import 'luggages_table.dart';
 /// 
 /// **Cascade Delete**: Eliminando un Trip o un Luggage, le entry
 /// corrispondenti vengono eliminate automaticamente.
+///
+/// Indice su [TripLuggageEntries.luggageId] — la PK è `{tripId, luggageId}`,
+/// quindi `tripId` è già coperto dall'indice PK. L'indice su `luggageId`
+/// è necessario per ottimizzare il cascade delete da Luggages e le query
+/// di JOIN filtrate per `luggage_id`.
+@TableIndex(name: 'idx_trip_luggage_entries_luggage_id', columns: {#luggageId})
 @DataClassName('TripLuggageEntry')
 class TripLuggageEntries extends Table {
   /// ID del viaggio

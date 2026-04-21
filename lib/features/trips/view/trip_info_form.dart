@@ -10,7 +10,7 @@ import '../../../shared/helpers/design_system.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 
 /// Widget riutilizzabile per il form delle info del viaggio.
-/// 
+///
 /// Contiene:
 /// - Campo nome viaggio (in pill tab grande)
 /// - Card con date partenza/ritorno
@@ -18,23 +18,22 @@ import '../../../shared/widgets/location_autocomplete_field.dart';
 class TripInfoForm extends ConsumerStatefulWidget {
   /// Nome iniziale del viaggio
   final String? initialName;
-  
+
   /// Descrizione iniziale (opzionale)
   final String? initialDescription;
-  
+
   /// Data/ora partenza iniziale
   final DateTime? initialDepartureDateTime;
-  
+
   /// Data/ora ritorno iniziale
   final DateTime? initialReturnDateTime;
-  
+
   /// ID casa destinazione iniziale
   final String? initialDestinationHouseId;
-  
+
   /// Località destinazione iniziale (modello completo)
   final LocationSuggestionModel? initialDestinationLocation;
 
-  
   /// Callback quando i dati cambiano
   final void Function({
     String? name,
@@ -43,7 +42,8 @@ class TripInfoForm extends ConsumerStatefulWidget {
     DateTime? returnDateTime,
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
-  }) onChanged;
+  })
+  onChanged;
 
   const TripInfoForm({
     super.key,
@@ -75,12 +75,13 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName ?? '');
-    _descriptionController = TextEditingController(text: widget.initialDescription ?? '');
+    _descriptionController = TextEditingController(
+      text: widget.initialDescription ?? '',
+    );
     _departureDateTime = widget.initialDepartureDateTime;
     _returnDateTime = widget.initialReturnDateTime;
     _destinationHouseId = widget.initialDestinationHouseId;
     _destinationLocation = widget.initialDestinationLocation;
-    
   }
 
   @override
@@ -93,14 +94,14 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   void _notifyChanged() {
     widget.onChanged(
       name: _nameController.text.trim(),
-      description: _descriptionController.text.trim().isEmpty 
-          ? null 
+      description: _descriptionController.text.trim().isEmpty
+          ? null
           : _descriptionController.text.trim(),
       departureDateTime: _departureDateTime,
       returnDateTime: _returnDateTime,
       destinationHouseId: _destinationHouseId,
-      destinationLocation: _destinationHouseId == null 
-          ? _destinationLocation 
+      destinationLocation: _destinationHouseId == null
+          ? _destinationLocation
           : null,
     );
   }
@@ -126,10 +127,15 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
 
     setState(() {
       _departureDateTime = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute,
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
       );
       final autoReturn = _departureDateTime!.add(const Duration(hours: 1));
-      if (_returnDateTime == null || _returnDateTime!.isBefore(_departureDateTime!)) {
+      if (_returnDateTime == null ||
+          _returnDateTime!.isBefore(_departureDateTime!)) {
         _returnDateTime = autoReturn;
       }
     });
@@ -141,7 +147,9 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     final date = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: _departureDateTime ?? DateTime.now().subtract(const Duration(days: 365)),
+      firstDate:
+          _departureDateTime ??
+          DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
       helpText: 'trips.select_return_date'.tr(),
     );
@@ -158,7 +166,11 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
 
     setState(() {
       _returnDateTime = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute,
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
       );
     });
     _notifyChanged();
@@ -196,7 +208,9 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                 return ListTile(
                   leading: const Icon(Icons.home_outlined, color: _accentColor),
                   title: Text(house.name),
-                  subtitle: house.description != null ? Text(house.description!) : null,
+                  subtitle: house.description != null
+                      ? Text(house.description!)
+                      : null,
                   trailing: _destinationHouseId == house.id
                       ? const Icon(Icons.check, color: _accentColor)
                       : null,
@@ -237,11 +251,11 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
         // Nome viaggio - Pill tab grande senza bordi
         Container(
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHigh,
+            color: Colors.transparent, //colorScheme.surfaceContainerHigh,
             borderRadius: context.responsiveBorderRadius(24),
           ),
           padding: EdgeInsets.symmetric(
-            horizontal: context.spacingMd,
+            //horizontal: context.spacingSm,
             vertical: context.spacingSm,
           ),
           child: TextFormField(
@@ -270,19 +284,19 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
             },
           ),
         ),
-        
+
         SizedBox(height: context.spacingMd),
-        
+
         // Card Date - Layout verticale
         Card(
           margin: EdgeInsets.zero,
           elevation: 0,
           color: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
-            side: BorderSide(
-              color: colorScheme.outline.withValues(alpha: 0.2),
+            borderRadius: context.responsiveBorderRadius(
+              AppConstants.cardBorderRadius,
             ),
+            side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
           ),
           child: Column(
             children: [
@@ -304,11 +318,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                 padding: const EdgeInsets.only(left: 27),
                 child: Row(
                   children: [
-                    Container(
-                      width: 2,
-                      height: 16,
-                      color: _accentColor,
-                    ),
+                    Container(width: 2, height: 16, color: _accentColor),
                   ],
                 ),
               ),
@@ -328,19 +338,19 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
             ],
           ),
         ),
-        
+
         SizedBox(height: context.spacingMd),
-        
+
         // Card Destinazione
         Card(
           margin: EdgeInsets.zero,
           elevation: 0,
           color: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
-            side: BorderSide(
-              color: colorScheme.outline.withValues(alpha: 0.2),
+            borderRadius: context.responsiveBorderRadius(
+              AppConstants.cardBorderRadius,
             ),
+            side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
           ),
           child: Column(
             children: [
@@ -383,12 +393,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.search,
-                        color: _accentColor,
-                        size: 22,
-                      ),
-                      SizedBox(width: context.spacingMd),
+                      const Icon(Icons.search, color: _accentColor, size: 22),
+                      //SizedBox(width: context.spacingSm),
                       Expanded(
                         child: LocationAutocompleteField(
                           initialValue: _destinationLocation?.displayName,
@@ -407,7 +413,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                             setState(() {
                               if (text.isEmpty) {
                                 _destinationLocation = null;
-                              } else if (_destinationLocation?.displayName != text) {
+                              } else if (_destinationLocation?.displayName !=
+                                  text) {
                                 // L'utente sta digitando, crea un modello temporaneo
                                 _destinationLocation = LocationSuggestionModel(
                                   placeId: '',
@@ -448,11 +455,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: _accentColor,
-              size: 22,
-            ),
+            Icon(icon, color: _accentColor, size: 22),
             SizedBox(width: context.spacingMd),
             Expanded(
               child: Column(
@@ -470,8 +473,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                     _formatDateTimeLine(dateTime),
                     style: TextStyle(
                       fontSize: context.fontSizeMd,
-                      color: dateTime != null 
-                          ? colorScheme.onSurface 
+                      color: dateTime != null
+                          ? colorScheme.onSurface
                           : colorScheme.onSurface.withValues(alpha: 0.4),
                     ),
                   ),
@@ -511,11 +514,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: _accentColor,
-              size: 22,
-            ),
+            Icon(icon, color: _accentColor, size: 22),
             SizedBox(width: context.spacingMd),
             if (customContent != null)
               customContent
@@ -536,8 +535,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                       value,
                       style: TextStyle(
                         fontSize: context.fontSizeMd,
-                        color: hasValue 
-                            ? colorScheme.onSurface 
+                        color: hasValue
+                            ? colorScheme.onSurface
                             : colorScheme.onSurface.withValues(alpha: 0.4),
                       ),
                     ),

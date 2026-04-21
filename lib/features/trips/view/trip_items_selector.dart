@@ -57,6 +57,20 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
   void initState() {
     super.initState();
     _items = List.from(widget.selectedItems);
+    // Pre-seleziona la casa primaria così la lista è già popolata all'apertura.
+    // Usiamo addPostFrameCallback perché i provider sono accessibili solo
+    // dopo il primo build.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoSelectPrimaryHouse());
+  }
+
+  void _autoSelectPrimaryHouse() {
+    if (!mounted || _selectedHouseId != null) return;
+    final houses = ref.read(houseNotifierProvider).valueOrNull;
+    if (houses == null) return;
+    final primary = houses.where((h) => h.isPrimary).firstOrNull;
+    if (primary != null) {
+      setState(() => _selectedHouseId = primary.id);
+    }
   }
 
   @override
@@ -70,6 +84,18 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
   int _getSelectedQuantity(String itemId) {
     final selected = _items.where((i) => i.id == itemId).firstOrNull;
     return selected?.quantity ?? 0;
+  }
+
+  /// Raggruppa gli item per categoria rispettando l'ordine canonico
+  /// (vestiti → toiletries → elettronica → varie).
+  /// Le categorie senza item non compaiono.
+  Map<ItemCategory, List<ItemModel>> _groupByCategory(List<ItemModel> items) {
+    final map = <ItemCategory, List<ItemModel>>{};
+    for (final cat in ItemCategory.values) {
+      final grouped = items.where((i) => i.category == cat).toList();
+      if (grouped.isNotEmpty) map[cat] = grouped;
+    }
+    return map;
   }
 
   void _updateItemQuantity(ItemModel item, String houseId, int newQuantity) {
@@ -86,19 +112,6 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
       }
     });
     widget.onSelectionChanged(_items);
-  }
-
-  IconData _getCategoryIcon(ItemCategory category) {
-    switch (category) {
-      case ItemCategory.vestiti:
-        return Icons.checkroom;
-      case ItemCategory.toiletries:
-        return Icons.shower;
-      case ItemCategory.elettronica:
-        return Icons.devices;
-      case ItemCategory.varie:
-        return Icons.category;
-    }
   }
 
   @override
@@ -226,14 +239,20 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
           return _buildEmptyItemsState(context);
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 120), // Spazio per floating bar
+        // Raggruppa per categoria (ordine canonico: vestiti → toiletries → elettronica → varie)
+        final grouped = _groupByCategory(filteredItems);
+
+        // Costruisce la lista piatta con header intercalati
+        final rows = <Widget>[];
+        for (final entry in grouped.entries) {
+          rows.addAll(entry.value.map((item) => _buildItemCard(context, colorScheme, item)));
+          rows.add(SizedBox(height: context.spacingSm));
+        }
+
+        return ListView(
+          padding: const EdgeInsets.only(bottom: 120),
           physics: const AlwaysScrollableScrollPhysics(),
-          itemCount: filteredItems.length,
-          itemBuilder: (context, index) {
-            final item = filteredItems[index];
-            return _buildItemCard(context, colorScheme, item);
-          },
+          children: rows,
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -243,7 +262,6 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
 
   Widget _buildItemsListShrinkWrap(BuildContext context, ColorScheme colorScheme) {
     if (_selectedHouseId == null) {
-      // In shrinkWrap mode, NO SingleChildScrollView - il parent gestisce lo scroll
       return _buildEmptyHouseStateShrinkWrap(context);
     }
 
@@ -256,17 +274,21 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             : items.where((i) => i.category == _selectedCategory).toList();
 
         if (filteredItems.isEmpty) {
-          // In shrinkWrap mode, NO SingleChildScrollView - il parent gestisce lo scroll
           return _buildEmptyItemsStateShrinkWrap(context);
         }
 
-        // Usa Column invece di ListView per shrinkWrap
+        // Raggruppa per categoria (ordine canonico: vestiti → toiletries → elettronica → varie)
+        final grouped = _groupByCategory(filteredItems);
+
         return Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ...filteredItems.map((item) => 
-              _buildItemCard(context, colorScheme, item)
-            ),
+            for (final entry in grouped.entries) ...[
+              //_buildCategoryHeader(context, entry.key),
+              ...entry.value.map((item) => _buildItemCard(context, colorScheme, item)),
+              SizedBox(height: context.spacingSm),
+            ],
           ],
         );
       },
@@ -430,7 +452,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
           borderRadius: context.responsiveBorderRadius(12),
         ),
         child: Icon(
-          _getCategoryIcon(item.category),
+          item.category.icon,
           color: _accentColor,
         ),
       ),
