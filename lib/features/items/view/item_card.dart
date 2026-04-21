@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/item_model.dart';
 import '../providers/item_selection_provider.dart';
 import '../../../shared/widgets/widgets.dart';
-import 'add_edit_item_screen.dart';
 
 class ItemCard extends ConsumerWidget {
   final ItemModel item;
