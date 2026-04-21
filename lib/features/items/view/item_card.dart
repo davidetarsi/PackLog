@@ -151,8 +151,4 @@ class ItemCard extends ConsumerWidget {
     );
   }
 
-  void _onEdit(BuildContext context) {
-    showAddEditItemSheet(context, houseId: houseId, itemId: item.id);
-  }
-
 }
