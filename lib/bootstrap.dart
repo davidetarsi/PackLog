@@ -13,8 +13,13 @@
 ///       └─► bootstrap(Environment) ──► _validateConfig()
 ///                                   ──► EasyLocalization.ensureInitialized()
 ///                                   ──► _initializePersistence()
+///                                   │     ├─ _runMigration()      (SharedPrefs → Drift)
+///                                   │     └─ _createAutoBackup()  (se necessario)
 ///                                   └─► runApp(MyApp)
 /// ```
+///
+/// **DataIntegrityService** non è incluso nel flusso automatico: disponibile
+/// tramite [dataIntegrityServiceProvider] per ispezioni manuali (Debug).
 library;
 
 import 'package:easy_localization/easy_localization.dart';
@@ -25,7 +30,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/database/database.dart';
 import 'core/database/migration_service.dart';
 import 'core/database/services/backup_service.dart';
-import 'core/database/services/data_integrity_service.dart';
 import 'core/routing/app_router.dart';
 import 'shared/config/app_config.dart';
 import 'shared/providers/theme_provider.dart';
@@ -66,7 +70,7 @@ enum Environment {
 /// 1. Inizializzazione del binding Flutter.
 /// 2. Validazione della configurazione (con severità dipendente da [env]).
 /// 3. Inizializzazione della localizzazione (async).
-/// 4. Pipeline di persistenza: migrazione → integrità → backup.
+/// 4. Pipeline di persistenza: migrazione → backup automatico.
 /// 5. Avvio dell'app con [runApp].
 ///
 /// Il blocco `try/catch` globale garantisce che qualsiasi errore non gestito
@@ -148,8 +152,14 @@ void _validateConfig(Environment env) {
 ///
 /// Esegue in ordine sequenziale:
 /// 1. **Migrazione**: trasferisce i dati legacy da SharedPreferences a Drift.
-/// 2. **Integrità**: verifica e ripara automaticamente eventuali inconsistenze.
-/// 3. **Backup**: crea un backup automatico se l'ultimo è troppo vecchio.
+/// 2. **Backup**: crea un backup automatico se l'ultimo è troppo vecchio.
+///
+/// Il [DataIntegrityService] **non viene eseguito automaticamente** all'avvio:
+/// SQLite garantisce già l'integrità referenziale tramite FK con `ON DELETE
+/// CASCADE/SET NULL` e `PRAGMA foreign_keys = ON`. L'esecuzione automatica
+/// causava overhead O(N) ad ogni avvio senza benefici concreti per un DB
+/// locale. Il servizio resta disponibile per uso manuale (area Debug) o per
+/// sanificare dati migrati dai vecchi JSON tramite [dataIntegrityServiceProvider].
 ///
 /// La connessione [AppDatabase] aperta qui è temporanea e viene chiusa al
 /// termine: ogni provider Riverpod creerà la propria connessione lazy al
@@ -162,7 +172,6 @@ Future<void> _initializePersistence() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     await _runMigration(database, prefs);
-    await _checkDataIntegrity(database);
 
     // CRITICO: chiudi il DB PRIMA del backup automatico.
     // BackupService copia il file raw: in WAL mode il file .db principale
@@ -200,42 +209,6 @@ Future<void> _runMigration(
     }
   } catch (e) {
     debugPrint('[Bootstrap] Errore durante la migrazione: $e');
-  }
-}
-
-/// Verifica l'integrità dei dati e tenta la riparazione automatica.
-///
-/// Segue una strategia a due fasi per bilanciare velocità e completezza:
-/// 1. Quick check (O(1)): verifica metadati del database.
-/// 2. Full check (O(N)): verifica referential integrity e consistenza dati.
-Future<void> _checkDataIntegrity(AppDatabase database) async {
-  try {
-    final DataIntegrityService integrityService =
-        DataIntegrityService(database);
-
-    final bool quickOk = await integrityService.quickCheck();
-    if (!quickOk) {
-      debugPrint(
-        '[Bootstrap] Quick check fallito, eseguo verifica completa...',
-      );
-    }
-
-    final result = await integrityService.runFullCheck();
-
-    if (!result.isHealthy) {
-      debugPrint(
-        '[Bootstrap] Trovati ${result.issueCount} problemi di integrità',
-      );
-      if (result.fixableIssueCount > 0) {
-        debugPrint('[Bootstrap] Tento riparazione automatica...');
-        final int fixed = await integrityService.autoFix(result);
-        debugPrint('[Bootstrap] Riparati $fixed problemi');
-      }
-    } else {
-      debugPrint('[Bootstrap] ✅ Database integro');
-    }
-  } catch (e) {
-    debugPrint('[Bootstrap] Errore nella verifica integrità: $e');
   }
 }
 

@@ -17,6 +17,8 @@ import '../../../shared/widgets/error_retry_dialog.dart';
 class ItemFormContent extends ConsumerStatefulWidget {
   final String? houseId;
   final String? itemId;
+  final String? initialName;
+  final ItemCategory? initialCategory;
   final void Function(String itemId, String houseId) onSaved;
   final bool showButtons;
   final ValueChanged<bool>? onLoadingChanged;
@@ -25,6 +27,8 @@ class ItemFormContent extends ConsumerStatefulWidget {
     super.key,
     this.houseId,
     this.itemId,
+    this.initialName,
+    this.initialCategory,
     required this.onSaved,
     this.showButtons = true,
     this.onLoadingChanged,
@@ -82,6 +86,12 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
   void initState() {
     super.initState();
     _selectedHouseId = widget.houseId;
+    if (widget.initialName != null) {
+      _nameController.text = widget.initialName!;
+    }
+    if (widget.initialCategory != null) {
+      _selectedCategory = widget.initialCategory!;
+    }
     if (widget.itemId != null && widget.houseId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadItem();

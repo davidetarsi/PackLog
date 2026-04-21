@@ -263,6 +263,7 @@ class _RawPillTabState extends State<_RawPillTab>
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (widget.icon != null) ...[
                   widget.icon!,
@@ -276,6 +277,7 @@ class _RawPillTabState extends State<_RawPillTab>
                         ? FontWeight.w600
                         : FontWeight.normal,
                     color: textColor,
+                    height: 1.0,
                   ),
                 ),
               ],
