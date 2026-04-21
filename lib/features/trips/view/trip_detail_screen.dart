@@ -9,7 +9,7 @@ import '../../items/model/item_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
-import '../../../shared/widgets/trip_summary_card.dart';
+import '../../../shared/widgets/trip_info_badges.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
@@ -29,7 +29,7 @@ enum TripItemFilterTab {
   final String labelKey;
   final ItemCategory? categoryFilter;
   const TripItemFilterTab(this.labelKey, this.categoryFilter);
-  
+
   String get label => labelKey.tr();
 }
 
@@ -76,14 +76,18 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               icon: const Icon(Icons.arrow_back),
               onPressed: () => context.pop(),
             ),
-            title: Text('common.trip_detail'.tr()),
+            title: Text(trip.name),
           ),
           body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Card riassuntiva del viaggio
+              // Badge informativi: date, destinazione, bagagli
               Padding(
-                padding: EdgeInsets.all(context.spacingSm),
-                child: TripSummaryCard(trip: trip, isClickable: false),
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacingMd,
+                  vertical: context.spacingMd,
+                ),
+                child: TripInfoBadges(trip: trip, direction: Axis.vertical),
               ),
 
               // Pill tabs per filtrare per categoria
@@ -93,9 +97,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 getLabel: (tab) => tab.label,
                 onSelected: (tab) => setState(() => _selectedTab = tab),
                 height: 40,
-                scrollPadding: EdgeInsets.symmetric(horizontal: context.spacingSm),
+                scrollPadding: EdgeInsets.symmetric(
+                  horizontal: context.spacingSm,
+                ),
               ),
-              SizedBox(height: context.spacingSm),
+              SizedBox(height: context.spacingMd),
 
               // Lista items
               Expanded(
@@ -117,21 +123,21 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           ),
           // Action bar unificata in basso
           bottomContent: UniversalActionBar(
-                horizontalPadding: 0,
-                primaryLabel: 'trips.manage'.tr(),
-                primaryIcon: Icons.settings,
-                onPrimaryPressed: () => _showManageSheet(context),
-                leftAction: CircularActionButton(
-                  icon: Icons.delete_outline,
-                  onPressed: () => _showDeleteDialog(context, trip),
-                  showBorder: true,
-                ),
-                rightAction: CircularActionButton(
-                  icon: Icons.copy,
-                  onPressed: () => _handleDuplicate(context, trip),
-                  showBorder: true,
-                ),
-              ),          
+            horizontalPadding: 0,
+            primaryLabel: 'trips.modify'.tr(),
+            primaryIcon: Icons.edit,
+            onPrimaryPressed: () => _showManageSheet(context),
+            leftAction: CircularActionButton(
+              icon: Icons.delete_outline,
+              onPressed: () => _showDeleteDialog(context, trip),
+              showBorder: true,
+            ),
+            rightAction: CircularActionButton(
+              icon: Icons.copy,
+              onPressed: () => _handleDuplicate(context, trip),
+              showBorder: true,
+            ),
+          ),
         );
       },
       loading: () =>
@@ -160,10 +166,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         ? 'trips.no_items_in_list'.tr()
         : 'trips.no_items_in_category_filter'.tr(args: [_selectedTab.label]);
 
-    return EmptyState(
-      icon: Icons.inventory_2_outlined,
-      title: message,
-    );
+    return EmptyState(icon: Icons.inventory_2_outlined, title: message);
   }
 
   Widget _buildErrorScreen(BuildContext context, Object error) {
@@ -184,8 +187,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   /// Gestisce la duplicazione del viaggio (Deep Copy)
   Future<void> _handleDuplicate(BuildContext context, TripModel trip) async {
     try {
-      final newTripId = await ref.read(tripNotifierProvider.notifier).duplicateTrip(widget.tripId);
-      
+      final newTripId = await ref
+          .read(tripNotifierProvider.notifier)
+          .duplicateTrip(widget.tripId);
+
       if (context.mounted) {
         AppSnackBar.showSuccess(
           context,
@@ -239,16 +244,18 @@ class _TripItemCard extends ConsumerWidget {
 
     return UniversalItemTile(
       onTap: () {
-        ref.read(tripNotifierProvider.notifier).toggleItemCheck(tripId, item.id);
+        ref
+            .read(tripNotifierProvider.notifier)
+            .toggleItemCheck(tripId, item.id);
       },
       leading: Checkbox(
         value: item.isChecked,
         onChanged: (_) {
-          ref.read(tripNotifierProvider.notifier).toggleItemCheck(tripId, item.id);
+          ref
+              .read(tripNotifierProvider.notifier)
+              .toggleItemCheck(tripId, item.id);
         },
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
       title: Text(
         item.name,
@@ -260,12 +267,12 @@ class _TripItemCard extends ConsumerWidget {
               : colorScheme.onSurface,
         ),
       ),
-      subtitle: Text(
+      /* subtitle: Text(
         item.category.name,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
           color: colorScheme.onSurfaceVariant,
         ),
-      ),
+      ), */
       trailing: Container(
         padding: EdgeInsets.symmetric(
           horizontal: context.spacingSm,

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/database/services/data_integrity_service.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for DataIntegrityService.
@@ -142,7 +143,7 @@ void main() {
         id: 'valid-item',
         houseId: 'valid-house',
         name: 'Valid Item',
-        category: 'vestiti',
+        category: ItemCategory.vestiti,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -222,7 +223,7 @@ void main() {
         id: 'valid-item',
         houseId: 'valid-house',
         name: 'Valid Item',
-        category: 'vestiti',
+        category: ItemCategory.vestiti,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -380,7 +381,7 @@ void main() {
         id: 'item-1',
         houseId: 'house-1',
         name: 'Valid Item',
-        category: 'vestiti',
+        category: ItemCategory.vestiti,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );

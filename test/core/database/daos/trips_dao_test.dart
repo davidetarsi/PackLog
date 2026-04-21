@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart' hide isNull, isNotNull;
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for TripsDao.
@@ -42,7 +44,7 @@ void main() {
         id: luggageId,
         houseId: houseId,
         name: 'Test Suitcase',
-        sizeType: 'hold_baggage',
+        sizeType: LuggageSize.holdBaggage,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -54,7 +56,7 @@ void main() {
         id: luggage2Id,
         houseId: houseId,
         name: 'Test Backpack',
-        sizeType: 'small_backpack',
+        sizeType: LuggageSize.smallBackpack,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -76,7 +78,7 @@ void main() {
           id: 'trip-item-1',
           tripId: tripId,
           name: 'Sunscreen',
-          category: 'toiletries',
+          category: ItemCategory.toiletries,
           quantity: Value(2),
           originHouseId: Value(houseId),
         ),
@@ -84,7 +86,7 @@ void main() {
           id: 'trip-item-2',
           tripId: tripId,
           name: 'Beach Towel',
-          category: 'vestiti',
+          category: ItemCategory.vestiti,
           quantity: Value(1),
           originHouseId: Value(houseId),
         ),
@@ -92,7 +94,7 @@ void main() {
           id: 'trip-item-3',
           tripId: tripId,
           name: 'Sunglasses',
-          category: 'accessori',
+          category: ItemCategory.varie,
           quantity: Value(1),
           originHouseId: Value(houseId),
         ),
@@ -135,7 +137,7 @@ void main() {
       
       // Verify specific item details
       final sunscreenItem = retrievedItems.firstWhere((item) => item.name == 'Sunscreen');
-      expect(sunscreenItem.category, equals('toiletries'));
+      expect(sunscreenItem.category, equals(ItemCategory.toiletries));
       expect(sunscreenItem.quantity, equals(2));
       expect(sunscreenItem.originHouseId, equals(houseId));
       expect(sunscreenItem.isChecked, isFalse); // Default value
@@ -144,7 +146,8 @@ void main() {
       expect(towelItem.quantity, equals(1));
       
       final sunglassesItem = retrievedItems.firstWhere((item) => item.name == 'Sunglasses');
-      expect(sunglassesItem.category, equals('accessori'));
+      // 'accessori' non esiste nell'enum — il companion era già corretto a ItemCategory.varie
+      expect(sunglassesItem.category, equals(ItemCategory.varie));
       
       // Verify luggage associations via junction table
       final retrievedLuggages = await database.luggagesDao.getLuggagesByTrip(tripId);
@@ -156,11 +159,11 @@ void main() {
       
       // Verify luggage details
       final suitcase = retrievedLuggages.firstWhere((l) => l.name == 'Test Suitcase');
-      expect(suitcase.sizeType, equals('hold_baggage'));
+      expect(suitcase.sizeType, equals(LuggageSize.holdBaggage));
       expect(suitcase.houseId, equals(houseId));
       
       final backpack = retrievedLuggages.firstWhere((l) => l.name == 'Test Backpack');
-      expect(backpack.sizeType, equals('small_backpack'));
+      expect(backpack.sizeType, equals(LuggageSize.smallBackpack));
     });
 
     test('should maintain transaction integrity on rollback', () async {
@@ -188,7 +191,7 @@ void main() {
         id: 'trip-item-rollback',
         tripId: tripId,
         name: 'Test Item',
-        category: 'varie',
+        category: ItemCategory.varie,
       );
 
       // === ACT & ASSERT ===
@@ -225,7 +228,7 @@ void main() {
         id: 'orphan-item',
         tripId: nonExistentTripId, // This tripId does not exist
         name: 'Orphan Item',
-        category: 'varie',
+        category: ItemCategory.varie,
       );
 
       // === ACT & ASSERT ===
@@ -260,7 +263,7 @@ void main() {
           id: luggageId,
           houseId: houseId,
           name: 'PK Test Luggage',
-          sizeType: 'cabin_baggage',
+          sizeType: LuggageSize.cabinBaggage,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -367,7 +370,7 @@ void main() {
           id: 'item-to-delete-1',
           tripId: tripId,
           name: 'Item 1',
-          category: 'varie',
+          category: ItemCategory.varie,
         ),
       );
       
@@ -376,7 +379,7 @@ void main() {
           id: 'item-to-delete-2',
           tripId: tripId,
           name: 'Item 2',
-          category: 'varie',
+          category: ItemCategory.varie,
         ),
       );
       
@@ -462,13 +465,13 @@ void main() {
           id: 'initial-item-1',
           tripId: tripId,
           name: 'Old Item 1',
-          category: 'varie',
+          category: ItemCategory.varie,
         ),
         TripItemEntriesCompanion.insert(
           id: 'initial-item-2',
           tripId: tripId,
           name: 'Old Item 2',
-          category: 'varie',
+          category: ItemCategory.varie,
         ),
       ];
       
@@ -485,19 +488,19 @@ void main() {
           id: 'new-item-1',
           tripId: tripId,
           name: 'New Item 1',
-          category: 'elettronica',
+          category: ItemCategory.elettronica,
         ),
         TripItemEntriesCompanion.insert(
           id: 'new-item-2',
           tripId: tripId,
           name: 'New Item 2',
-          category: 'vestiti',
+          category: ItemCategory.vestiti,
         ),
         TripItemEntriesCompanion.insert(
           id: 'new-item-3',
           tripId: tripId,
           name: 'New Item 3',
-          category: 'toiletries',
+          category: ItemCategory.toiletries,
         ),
       ];
       
@@ -519,7 +522,7 @@ void main() {
       
       // Verify categories
       final electronicItem = itemsAfterReplace.firstWhere((item) => item.name == 'New Item 1');
-      expect(electronicItem.category, equals('elettronica'));
+      expect(electronicItem.category, equals(ItemCategory.elettronica));
     });
 
     test('should update trip item checkbox status', () async {
@@ -541,7 +544,7 @@ void main() {
           id: itemId,
           tripId: tripId,
           name: 'Item to Check',
-          category: 'varie',
+          category: ItemCategory.varie,
         ),
       );
       
@@ -583,7 +586,7 @@ void main() {
             id: lugId,
             houseId: houseId,
             name: 'Luggage $lugId',
-            sizeType: 'cabin_baggage',
+            sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           ),
@@ -645,7 +648,7 @@ void main() {
           id: luggage1Id,
           houseId: houseId,
           name: 'Luggage 1',
-          sizeType: 'small_backpack',
+          sizeType: LuggageSize.smallBackpack,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -656,7 +659,7 @@ void main() {
           id: luggage2Id,
           houseId: houseId,
           name: 'Luggage 2',
-          sizeType: 'hold_baggage',
+          sizeType: LuggageSize.holdBaggage,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -733,7 +736,7 @@ void main() {
           id: 'item-1-1',
           tripId: trip1Id,
           name: 'Trip 1 Item 1',
-          category: 'varie',
+          category: ItemCategory.varie,
         ),
       );
       
@@ -742,7 +745,7 @@ void main() {
           id: 'item-1-2',
           tripId: trip1Id,
           name: 'Trip 1 Item 2',
-          category: 'varie',
+          category: ItemCategory.varie,
         ),
       );
       
@@ -751,7 +754,7 @@ void main() {
           id: 'item-2-1',
           tripId: trip2Id,
           name: 'Trip 2 Item 1',
-          category: 'varie',
+          category: ItemCategory.varie,
         ),
       );
       
@@ -800,7 +803,7 @@ void main() {
           id: lug1Id,
           houseId: houseId,
           name: 'Batch Luggage 1',
-          sizeType: 'small_backpack',
+          sizeType: LuggageSize.smallBackpack,
           createdAt: now,
           updatedAt: now,
         ),
@@ -811,7 +814,7 @@ void main() {
           id: lug2Id,
           houseId: houseId,
           name: 'Batch Luggage 2',
-          sizeType: 'cabin_baggage',
+          sizeType: LuggageSize.cabinBaggage,
           createdAt: now,
           updatedAt: now,
         ),
@@ -822,7 +825,7 @@ void main() {
           id: lug3Id,
           houseId: houseId,
           name: 'Batch Luggage 3',
-          sizeType: 'hold_baggage',
+          sizeType: LuggageSize.holdBaggage,
           createdAt: now,
           updatedAt: now,
         ),
@@ -869,7 +872,7 @@ void main() {
       expect(trip1LuggageNames, containsAll(['Batch Luggage 1', 'Batch Luggage 2']));
       
       expect(groupedLuggages[trip2Id]!.first.name, equals('Batch Luggage 3'));
-      expect(groupedLuggages[trip2Id]!.first.sizeType, equals('hold_baggage'));
+      expect(groupedLuggages[trip2Id]!.first.sizeType, equals(LuggageSize.holdBaggage));
     });
   });
 
@@ -904,7 +907,7 @@ void main() {
           id: 'item-1',
           tripId: originalTripId,
           name: 'Sunscreen',
-          category: 'toiletries',
+          category: ItemCategory.toiletries,
           quantity: const Value(2),
           originHouseId: Value(houseId),
           isChecked: const Value(true),
@@ -913,7 +916,7 @@ void main() {
           id: 'item-2',
           tripId: originalTripId,
           name: 'T-shirt',
-          category: 'vestiti',
+          category: ItemCategory.vestiti,
           quantity: const Value(5),
           originHouseId: Value(houseId),
           isChecked: const Value(false),
@@ -944,13 +947,13 @@ void main() {
       
       // 4. Verify item data preserved
       final sunscreenCopy = duplicatedItems.firstWhere((i) => i.name == 'Sunscreen');
-      expect(sunscreenCopy.category, 'toiletries');
+      expect(sunscreenCopy.category, ItemCategory.toiletries);
       expect(sunscreenCopy.quantity, 2);
       expect(sunscreenCopy.isChecked, false); // ✅ Reset to unchecked
       expect(sunscreenCopy.tripId, newTripId);
 
       final tshirtCopy = duplicatedItems.firstWhere((i) => i.name == 'T-shirt');
-      expect(tshirtCopy.category, 'vestiti');
+      expect(tshirtCopy.category, ItemCategory.vestiti);
       expect(tshirtCopy.quantity, 5);
       expect(tshirtCopy.isChecked, false); // ✅ Reset to unchecked
 

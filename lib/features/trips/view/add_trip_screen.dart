@@ -171,131 +171,134 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
             top: context.spacingSm,
             bottom: context.spacingMd,
           ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Sezione Info Viaggio
-                  Text(
-                    'trips.trip_info'.tr(),
-                    style: TextStyle(
-                      fontSize: context.fontSizeMd,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Sezione Info Viaggio
+                    Text(
+                      'trips.trip_info'.tr(),
+                      style: TextStyle(
+                        fontSize: context.fontSizeMd,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: context.spacingSm),
-                  TripInfoForm(
-                    initialName: _name,
-                    initialDescription: _description,
-                    initialDepartureDateTime: _departureDateTime,
-                    initialReturnDateTime: _returnDateTime,
-                    initialDestinationHouseId: _destinationHouseId,
-                    initialDestinationLocation: _destinationLocation,
-                    onChanged:
-                        ({
-                          name,
-                          description,
-                          departureDateTime,
-                          returnDateTime,
-                          destinationHouseId,
-                          destinationLocation,
-                        }) {
-                          setState(() {
-                            if (name != null) _name = name;
-                            _description = description;
-                            _departureDateTime = departureDateTime;
-                            _returnDateTime = returnDateTime;
-                            _destinationHouseId = destinationHouseId;
-                            _destinationLocation = destinationLocation;
-                          });
-                        },
-                  ),
-
-                  SizedBox(height: context.spacingLg),
-
-                  // Sezione Oggetti
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'trips.items_to_bring'.tr(),
-                        style: TextStyle(
-                          fontSize: context.fontSizeMd,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: context.spacingSm,
-                          vertical: context.spacingXs,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer,
-                          borderRadius: context.responsiveBorderRadius(12),
-                        ),
-                        child: Text(
-                          'common.items_selected'.tr(args: [_selectedItems.length.toString()]),
+                    SizedBox(height: context.spacingSm),
+                    TripInfoForm(
+                      initialName: _name,
+                      initialDescription: _description,
+                      initialDepartureDateTime: _departureDateTime,
+                      initialReturnDateTime: _returnDateTime,
+                      initialDestinationHouseId: _destinationHouseId,
+                      initialDestinationLocation: _destinationLocation,
+                      onChanged:
+                          ({
+                            name,
+                            description,
+                            departureDateTime,
+                            returnDateTime,
+                            destinationHouseId,
+                            destinationLocation,
+                          }) {
+                            setState(() {
+                              if (name != null) _name = name;
+                              _description = description;
+                              _departureDateTime = departureDateTime;
+                              _returnDateTime = returnDateTime;
+                              _destinationHouseId = destinationHouseId;
+                              _destinationLocation = destinationLocation;
+                            });
+                          },
+                    ),
+                
+                    SizedBox(height: context.spacingLg),
+                
+                    // Sezione Oggetti
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'trips.items_to_bring'.tr(),
                           style: TextStyle(
-                            fontSize: context.fontSizeXs,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onPrimaryContainer,
+                            fontSize: context.fontSizeMd,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: context.spacingSm),
-
-                  // Lista oggetti (shrinkWrap per scroll globale)
-                  TripItemsSelector(
-                    selectedItems: _selectedItems,
-                    shrinkWrap: true,
-                    onSelectionChanged: (items) {
-                      setState(() {
-                        _selectedItems = items;
-                      });
-                    },
-                  ),
-
-                  SizedBox(height: context.spacingLg),
-
-                  // Sezione Bagagli
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'luggages.title'.tr(),
-                        style: TextStyle(
-                          fontSize: context.fontSizeMd,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: context.spacingSm,
-                          vertical: context.spacingXs,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.secondaryContainer,
-                          borderRadius: context.responsiveBorderRadius(12),
-                        ),
-                        child: Text(
-                          'common.luggages_selected'.tr(args: [_selectedLuggages.length.toString()]),
-                          style: TextStyle(
-                            fontSize: context.fontSizeXs,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onSecondaryContainer,
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.spacingSm,
+                            vertical: context.spacingXs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                            borderRadius: context.responsiveBorderRadius(12),
+                          ),
+                          child: Text(
+                            'common.items_selected'.tr(args: [_selectedItems.length.toString()]),
+                            style: TextStyle(
+                              fontSize: context.fontSizeXs,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onPrimaryContainer,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: context.spacingSm),
-
-                  _buildLuggageSelector(),
-                ],
+                      ],
+                    ),
+                    SizedBox(height: context.spacingSm),
+                
+                    // Lista oggetti (shrinkWrap per scroll globale)
+                    TripItemsSelector(
+                      selectedItems: _selectedItems,
+                      shrinkWrap: true,
+                      onSelectionChanged: (items) {
+                        setState(() {
+                          _selectedItems = items;
+                        });
+                      },
+                    ),
+                
+                    SizedBox(height: context.spacingLg),
+                
+                    // Sezione Bagagli
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'luggages.title'.tr(),
+                          style: TextStyle(
+                            fontSize: context.fontSizeMd,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.spacingSm,
+                            vertical: context.spacingXs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.secondaryContainer,
+                            borderRadius: context.responsiveBorderRadius(12),
+                          ),
+                          child: Text(
+                            'common.luggages_selected'.tr(args: [_selectedLuggages.length.toString()]),
+                            style: TextStyle(
+                              fontSize: context.fontSizeXs,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: context.spacingSm),
+                
+                    _buildLuggageSelector(),
+                  ],
+                ),
               ),
             ),
           ),

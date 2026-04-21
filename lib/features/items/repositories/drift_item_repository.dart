@@ -2,13 +2,12 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import '../model/item_model.dart';
 import 'item_repository.dart';
-import '../../../core/database/converters/item_category_converter.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/items_dao.dart';
 import '../../../core/database/services/database_service.dart';
 
 /// Implementazione del repository Item usando Drift (SQLite).
-/// 
+///
 /// Fornisce operazioni robuste con:
 /// - Retry automatico per operazioni fallite
 /// - Transazioni atomiche
@@ -31,11 +30,11 @@ class DriftItemRepository implements ItemRepository {
       operationName: 'addItem(${model.name})',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
       throw Exception('Impossibile aggiungere l\'oggetto: ${result.error}');
     }
-    
+
     debugPrint('[ItemRepo] Oggetto aggiunto: ${model.name}');
   }
 
@@ -45,11 +44,11 @@ class DriftItemRepository implements ItemRepository {
       () => _dao.getItemById(id),
       operationName: 'getItemById($id)',
     );
-    
+
     if (!result.success || result.data == null) {
       throw StateError('Oggetto con id $id non trovato');
     }
-    
+
     return _toModel(result.data!);
   }
 
@@ -59,12 +58,12 @@ class DriftItemRepository implements ItemRepository {
       () => _dao.getAllItems(),
       operationName: 'getAllItems',
     );
-    
+
     if (!result.success) {
       debugPrint('[ItemRepo] Errore caricando oggetti: ${result.error}');
       return [];
     }
-    
+
     return result.data!.map(_toModel).toList();
   }
 
@@ -74,12 +73,14 @@ class DriftItemRepository implements ItemRepository {
       () => _dao.getItemsByHouseId(houseId),
       operationName: 'getItemsByHouseId($houseId)',
     );
-    
+
     if (!result.success) {
-      debugPrint('[ItemRepo] Errore caricando oggetti per casa: ${result.error}');
+      debugPrint(
+        '[ItemRepo] Errore caricando oggetti per casa: ${result.error}',
+      );
       return [];
     }
-    
+
     return result.data!.map(_toModel).toList();
   }
 
@@ -90,12 +91,12 @@ class DriftItemRepository implements ItemRepository {
       operationName: 'deleteItem($id)',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
       debugPrint('[ItemRepo] Errore eliminando oggetto: ${result.error}');
       return false;
     }
-    
+
     debugPrint('[ItemRepo] Oggetto eliminato: $id');
     return result.data! > 0;
   }
@@ -107,11 +108,11 @@ class DriftItemRepository implements ItemRepository {
       operationName: 'updateItem(${model.name})',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
       throw Exception('Impossibile aggiornare l\'oggetto: ${result.error}');
     }
-    
+
     debugPrint('[ItemRepo] Oggetto aggiornato: ${model.name}');
   }
 
@@ -123,48 +124,51 @@ class DriftItemRepository implements ItemRepository {
     }
 
     final companions = models.map(_toCompanion).toList();
-    
+
     final result = await _dbService.executeWithRetry(
       () => _dao.insertMultipleItems(companions),
       operationName: 'insertMultipleItems(${models.length} items)',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
       throw Exception('Impossibile inserire gli oggetti: ${result.error}');
     }
-    
+
     debugPrint('[ItemRepo] ${models.length} oggetti inseriti con successo');
   }
 
   /// Stream reattivo di tutti gli oggetti
   Stream<List<ItemModel>> watchAllItems() {
-    return _dao.watchAllItems().map(
-      (items) => items.map(_toModel).toList(),
-    );
+    return _dao.watchAllItems().map((items) => items.map(_toModel).toList());
   }
 
   /// Stream reattivo degli oggetti di una casa
   Stream<List<ItemModel>> watchItemsByHouseId(String houseId) {
-    return _dao.watchItemsByHouseId(houseId).map(
-      (items) => items.map(_toModel).toList(),
-    );
+    return _dao
+        .watchItemsByHouseId(houseId)
+        .map((items) => items.map(_toModel).toList());
   }
 
   // === Conversioni ===
 
   @override
-  Future<List<ItemModel>> getItemsBySpaceId(String houseId, String spaceId) async {
+  Future<List<ItemModel>> getItemsBySpaceId(
+    String houseId,
+    String spaceId,
+  ) async {
     final result = await _dbService.executeWithRetry(
       () => _dao.getItemsBySpaceId(houseId, spaceId),
       operationName: 'getItemsBySpaceId(house: $houseId, space: $spaceId)',
     );
-    
+
     if (!result.success) {
-      debugPrint('[ItemRepo] Errore caricando items per spazio: ${result.error}');
+      debugPrint(
+        '[ItemRepo] Errore caricando items per spazio: ${result.error}',
+      );
       return [];
     }
-    
+
     return result.data!.map(_toModel).toList();
   }
 
@@ -174,12 +178,14 @@ class DriftItemRepository implements ItemRepository {
       () => _dao.getItemsInGeneralPool(houseId),
       operationName: 'getItemsInGeneralPool($houseId)',
     );
-    
+
     if (!result.success) {
-      debugPrint('[ItemRepo] Errore caricando items pool generale: ${result.error}');
+      debugPrint(
+        '[ItemRepo] Errore caricando items pool generale: ${result.error}',
+      );
       return [];
     }
-    
+
     return result.data!.map(_toModel).toList();
   }
 
@@ -189,27 +195,29 @@ class DriftItemRepository implements ItemRepository {
       () => _dao.countItemsBySpace(spaceId),
       operationName: 'countItemsBySpace($spaceId)',
     );
-    
+
     if (!result.success) {
-      debugPrint('[ItemRepo] Errore contando items per spazio: ${result.error}');
+      debugPrint(
+        '[ItemRepo] Errore contando items per spazio: ${result.error}',
+      );
       return 0;
     }
-    
+
     return result.data!;
   }
 
   /// Stream reattivo degli oggetti filtrati per spazio
   Stream<List<ItemModel>> watchItemsBySpaceId(String houseId, String spaceId) {
-    return _dao.watchItemsBySpaceId(houseId, spaceId).map(
-      (items) => items.map(_toModel).toList(),
-    );
+    return _dao
+        .watchItemsBySpaceId(houseId, spaceId)
+        .map((items) => items.map(_toModel).toList());
   }
 
   /// Stream reattivo degli oggetti nel pool generale
   Stream<List<ItemModel>> watchItemsInGeneralPool(String houseId) {
-    return _dao.watchItemsInGeneralPool(houseId).map(
-      (items) => items.map(_toModel).toList(),
-    );
+    return _dao
+        .watchItemsInGeneralPool(houseId)
+        .map((items) => items.map(_toModel).toList());
   }
 
   /// Elimina [itemIds] con una singola query SQL `DELETE … WHERE id IN (?)`.
@@ -270,7 +278,8 @@ class DriftItemRepository implements ItemRepository {
       id: item.id,
       houseId: item.houseId,
       name: item.name,
-      category: ItemCategoryConverter.fromDatabase(item.category),
+      // Drift deserializza automaticamente tramite ItemCategoryConverter.
+      category: item.category,
       description: item.description,
       quantity: item.quantity,
       spaceId: item.spaceId,
@@ -284,7 +293,8 @@ class DriftItemRepository implements ItemRepository {
       id: Value(model.id),
       houseId: Value(model.houseId),
       name: Value(model.name),
-      category: Value(ItemCategoryConverter.toDatabase(model.category)),
+      // Drift serializza automaticamente tramite ItemCategoryConverter.
+      category: Value(model.category),
       description: Value(model.description),
       quantity: Value(model.quantity),
       spaceId: Value(model.spaceId),
