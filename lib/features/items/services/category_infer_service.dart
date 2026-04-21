@@ -47,7 +47,8 @@ class CategoryInferService {
 
     // 3. Substring match against root keywords (ordered longest-first)
     for (final entry in kRootKeywords) {
-      if (normalized.contains(entry.root)) {
+      //if (normalized.contains(entry.root))
+      if (tokens.any((token) => token.startsWith(entry.root))) {
         return (category: entry.category, confidence: InferConfidence.partial);
       }
     }
