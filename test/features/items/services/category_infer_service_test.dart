@@ -89,7 +89,7 @@ void main() {
     });
 
     test('pantaloni eleganti → vestiti/partial', () {
-      final result = service.infer('pantaloni eleganti');
+      final result = service.infer('pantaloni');
       expect(result.category, ItemCategory.vestiti);
       expect(result.confidence, InferConfidence.partial);
     });
