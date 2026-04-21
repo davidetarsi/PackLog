@@ -65,7 +65,7 @@ class CategorySectionHeader extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            _getCategoryIcon(category),
+            category.icon,
             size: effectiveIconSize,
             color: effectiveColor,
           ),
@@ -86,19 +86,6 @@ class CategorySectionHeader extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  IconData _getCategoryIcon(ItemCategory category) {
-    switch (category) {
-      case ItemCategory.vestiti:
-        return Icons.checkroom;
-      case ItemCategory.toiletries:
-        return Icons.soap;
-      case ItemCategory.elettronica:
-        return Icons.devices;
-      case ItemCategory.varie:
-        return Icons.category;
-    }
   }
 
   String _getCategoryName(ItemCategory category) {

@@ -1,4 +1,30 @@
 {
-    "cursor.worktreeMaxCount": 1,
-    "git.showCursorWorktrees": true
+    "security.workspace.trust.enabled": false,
+    "[dart]": {
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit"
+        },
+        "editor.rulers": [
+            80
+        ],
+        "editor.selectionHighlight": false,
+        "editor.suggest.snippetsPreventQuickSuggestions": false,
+        "editor.suggestSelection": "first",
+        "editor.tabCompletion": "onlySnippets",
+        "editor.wordBasedSuggestions": "off",
+        "files.autoSave": "afterDelay",
+    },
+    "git.showCursorWorktrees": true,
+    "dart.warnWhenEditingFilesOutsideWorkspace": false,
+    "dart.renameFilesWithClasses": "prompt",
+    "window.zoomLevel": 1,
+    "editor.bracketPairColorization.enabled": true,
+    "editor.inlineSuggest.enabled": true,
+    "editor.formatOnSave": true,
+    "editor.stickyScroll.enabled": true,
+    "explorer.fileNesting.patterns": {
+        "*.dart": "${capture}.g.dart, ${capture}.freezed.dart"
+    },
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.expand": false
 }

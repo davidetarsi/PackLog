@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pack_log/features/bulk_creation/model/travel_template.dart';
 import '../data/templates_data.dart';
 import '../model/user_gender.dart';
 import '../providers/bulk_creation_provider.dart';
@@ -158,7 +159,7 @@ class _GenderPicker extends StatelessWidget {
 
 /// Card per rappresentare un template di viaggio.
 class _TemplateCard extends StatelessWidget {
-  final dynamic template;
+  final TravelTemplate template;
   final bool isSelected;
   final VoidCallback onTap;
   final ColorScheme colorScheme;

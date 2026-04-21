@@ -1,14 +1,16 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart' hide isNull, isNotNull;
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for HousesDao.
-/// 
+///
 /// Tests the DAO operations for houses including:
 /// - CRUD operations on houses
-/// - SQLite CASCADE DELETE referential integrity (items, spaces, luggages)
-/// - Foreign key constraints
+/// - Soft-delete con cascade manuale su items, spaces e luggages
+/// - Comportamento del filtro isDeleted nei metodi di lettura
 void main() {
   late AppDatabase database;
 
@@ -20,81 +22,67 @@ void main() {
     await closeTestDatabase(database);
   });
 
-  group('HousesDao - SQLite Foreign Key Constraints', () {
-    test('should prevent deleting a house with items (FK constraint enforced)', () async {
+  group('HousesDao - Soft Delete Cascade', () {
+    test('should soft-delete house and cascade soft-delete all items atomically', () async {
       // === ARRANGE ===
-      // Step 1: Insert a house
       final houseId = 'test-house-fk-items';
-      final houseCompanion = HousesCompanion.insert(
-        id: houseId,
-        name: 'House with Items',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: houseId,
+          name: 'House with Items',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
       );
-      
-      await database.housesDao.insertHouse(houseCompanion);
-      
-      // Step 2: Insert items linked to the house
+
       final item1Id = 'item-fk-1';
       final item2Id = 'item-fk-2';
-      
+
       await database.itemsDao.insertItem(
         ItemsCompanion.insert(
           id: item1Id,
           houseId: houseId,
           name: 'Item 1',
-          category: 'elettronica',
+          category: ItemCategory.elettronica,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
       );
-      
       await database.itemsDao.insertItem(
         ItemsCompanion.insert(
           id: item2Id,
           houseId: houseId,
           name: 'Item 2',
-          category: 'vestiti',
+          category: ItemCategory.vestiti,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
       );
-      
-      // Verify initial state: house and items exist
-      final houseBeforeDelete = await database.housesDao.getHouseById(houseId);
-      expect(houseBeforeDelete, isA<House>());
-      
-      final itemsBeforeDelete = await database.itemsDao.getItemsByHouseId(houseId);
-      expect(itemsBeforeDelete, hasLength(2));
 
-      // === ACT & ASSERT ===
-      // Attempt to delete the house - SQLite FK constraint should PREVENT deletion
-      // because items exist and the Items.houseId FK does NOT have CASCADE DELETE
-      expect(
-        () async => await database.housesDao.deleteHouse(houseId),
-        throwsA(isA<Exception>()),
-      );
-      
-      // Verify house still exists (delete was prevented)
-      final houseAfterFailedDelete = await database.housesDao.getHouseById(houseId);
-      expect(houseAfterFailedDelete, isA<House>());
-      expect(houseAfterFailedDelete!.id, equals(houseId));
-      
-      // Verify items still exist (unchanged)
-      final itemsAfterFailedDelete = await database.itemsDao.getItemsByHouseId(houseId);
-      expect(itemsAfterFailedDelete, hasLength(2));
-      
-      final item1AfterFailedDelete = await database.itemsDao.getItemById(item1Id);
-      expect(item1AfterFailedDelete, isA<Item>());
-      
-      final item2AfterFailedDelete = await database.itemsDao.getItemById(item2Id);
-      expect(item2AfterFailedDelete, isA<Item>());
+      // Verify initial state
+      expect(await database.housesDao.getHouseById(houseId), isA<House>());
+      expect(await database.itemsDao.getItemsByHouseId(houseId), hasLength(2));
+
+      // === ACT ===
+      // Soft-delete: deve riuscire anche con items collegati
+      final result = await database.housesDao.deleteHouse(houseId);
+
+      // === ASSERT ===
+      expect(result, equals(1));
+
+      // House è invisibile alle query di lettura (isDeleted = true)
+      expect(await database.housesDao.getHouseById(houseId), equals(null));
+
+      // Items sono invisibili per cascade soft-delete
+      expect(await database.itemsDao.getItemsByHouseId(houseId), isEmpty);
+      expect(await database.itemsDao.getItemById(item1Id), equals(null));
+      expect(await database.itemsDao.getItemById(item2Id), equals(null));
     });
 
-    test('should allow deleting a house with no items', () async {
+    test('should soft-delete a house with no dependents', () async {
       // === ARRANGE ===
       final houseId = 'test-house-no-items';
-      
+
       await database.housesDao.insertHouse(
         HousesCompanion.insert(
           id: houseId,
@@ -103,27 +91,20 @@ void main() {
           updatedAt: DateTime.now(),
         ),
       );
-      
-      // Verify house exists
-      final houseBeforeDelete = await database.housesDao.getHouseById(houseId);
-      expect(houseBeforeDelete, isA<House>());
+      expect(await database.housesDao.getHouseById(houseId), isA<House>());
 
       // === ACT ===
-      // Delete the house - should succeed because no items exist
       final deleteResult = await database.housesDao.deleteHouse(houseId);
 
       // === ASSERT ===
       expect(deleteResult, equals(1));
-      
-      // Verify house is deleted
-      final houseAfterDelete = await database.housesDao.getHouseById(houseId);
-      expect(houseAfterDelete, equals(null));
+      expect(await database.housesDao.getHouseById(houseId), equals(null));
     });
 
-    test('should allow deleting a house after manually deleting all its items', () async {
+    test('should soft-delete a house after manually soft-deleting its item', () async {
       // === ARRANGE ===
       final houseId = 'test-house-manual-cleanup';
-      
+
       await database.housesDao.insertHouse(
         HousesCompanion.insert(
           id: houseId,
@@ -132,40 +113,28 @@ void main() {
           updatedAt: DateTime.now(),
         ),
       );
-      
+
       final itemId = 'item-manual-cleanup';
       await database.itemsDao.insertItem(
         ItemsCompanion.insert(
           id: itemId,
           houseId: houseId,
           name: 'Item to Delete',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
       );
-      
-      // Verify item exists
-      final itemBeforeDelete = await database.itemsDao.getItemById(itemId);
-      expect(itemBeforeDelete, isA<Item>());
+      expect(await database.itemsDao.getItemById(itemId), isA<Item>());
 
       // === ACT ===
-      // Manually delete all items first
       await database.itemsDao.deleteItem(itemId);
-      
-      // Now delete the house - should succeed
       final deleteResult = await database.housesDao.deleteHouse(houseId);
 
       // === ASSERT ===
       expect(deleteResult, equals(1));
-      
-      // Verify house is deleted
-      final houseAfterDelete = await database.housesDao.getHouseById(houseId);
-      expect(houseAfterDelete, equals(null));
-      
-      // Verify item was already deleted in previous step
-      final itemAfterDelete = await database.itemsDao.getItemById(itemId);
-      expect(itemAfterDelete, equals(null));
+      expect(await database.housesDao.getHouseById(houseId), equals(null));
+      expect(await database.itemsDao.getItemById(itemId), equals(null));
     });
 
     test('should cascade delete spaces when a house is deleted', () async {
@@ -210,7 +179,7 @@ void main() {
       expect(spacesBeforeDelete, hasLength(2));
 
       // === ACT ===
-      // Delete house WITHOUT items (spaces CASCADE delete, items prevent deletion)
+      // Soft-delete house: cascade soft-delete agli spazi
       await database.housesDao.deleteHouse(houseId);
 
       // === ASSERT ===
@@ -247,7 +216,7 @@ void main() {
           id: luggage1Id,
           houseId: houseId,
           name: 'Suitcase',
-          sizeType: 'hold_baggage',
+          sizeType: LuggageSize.holdBaggage,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -258,7 +227,7 @@ void main() {
           id: luggage2Id,
           houseId: houseId,
           name: 'Backpack',
-          sizeType: 'small_backpack',
+          sizeType: LuggageSize.smallBackpack,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -269,7 +238,7 @@ void main() {
       expect(luggagesBeforeDelete, hasLength(2));
 
       // === ACT ===
-      // Delete house WITHOUT items (luggages CASCADE delete, items prevent deletion)
+      // Soft-delete house: cascade soft-delete ai bagagli
       await database.housesDao.deleteHouse(houseId);
 
       // === ASSERT ===
@@ -278,13 +247,12 @@ void main() {
       expect(luggagesAfterDelete, isEmpty);
     });
 
-    test('should prevent deletion when house has items, but cascade delete spaces and luggages after items are removed', () async {
+    test('should soft-delete house and cascade to items, spaces, and luggages atomically', () async {
       // === ARRANGE ===
-      // Test that demonstrates the referential integrity order:
-      // 1. Items prevent house deletion (no CASCADE)
-      // 2. Spaces and Luggages CASCADE delete when house is deleted
+      // Scenario completo: casa con items (in spazio e in pool), spazi e bagagli.
+      // Verifica che il soft-delete cascada a tutti i dipendenti in un'unica operazione.
       final houseId = 'test-house-complex-fk';
-      
+
       await database.housesDao.insertHouse(
         HousesCompanion.insert(
           id: houseId,
@@ -293,8 +261,7 @@ void main() {
           updatedAt: DateTime.now(),
         ),
       );
-      
-      // Create space
+
       final spaceId = 'space-complex';
       await database.spacesDao.insertSpace(
         SpacesCompanion.insert(
@@ -305,101 +272,60 @@ void main() {
           updatedAt: DateTime.now(),
         ),
       );
-      
-      // Create items (some in space, some not)
+
       final itemInSpaceId = 'item-in-space';
       final itemNoSpaceId = 'item-no-space';
-      
+
       await database.itemsDao.insertItem(
         ItemsCompanion.insert(
           id: itemInSpaceId,
           houseId: houseId,
           spaceId: Value(spaceId),
           name: 'Item in Space',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
       );
-      
       await database.itemsDao.insertItem(
         ItemsCompanion.insert(
           id: itemNoSpaceId,
           houseId: houseId,
           name: 'Item without Space',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
       );
-      
-      // Create luggage
+
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: 'luggage-complex',
           houseId: houseId,
           name: 'Travel Bag',
-          sizeType: 'cabin_baggage',
+          sizeType: LuggageSize.cabinBaggage,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
       );
-      
-      // Verify all entities exist
-      final itemsBeforeDelete = await database.itemsDao.getItemsByHouseId(houseId);
-      expect(itemsBeforeDelete, hasLength(2));
-      
-      final spacesBeforeDelete = await database.spacesDao.getSpacesByHouse(houseId);
-      expect(spacesBeforeDelete, hasLength(1));
-      
-      final luggagesBeforeDelete = await database.luggagesDao.getLuggagesByHouse(houseId);
-      expect(luggagesBeforeDelete, hasLength(1));
 
-      // === ACT & ASSERT (Part 1) ===
-      // Attempt to delete house - should FAIL because items exist
-      expect(
-        () async => await database.housesDao.deleteHouse(houseId),
-        throwsA(isA<Exception>()),
-      );
-      
-      // Verify all entities still exist after failed deletion
-      final houseAfterFailedDelete = await database.housesDao.getHouseById(houseId);
-      expect(houseAfterFailedDelete, isA<House>());
-      
-      final itemsAfterFailedDelete = await database.itemsDao.getItemsByHouseId(houseId);
-      expect(itemsAfterFailedDelete, hasLength(2));
-      
-      final spacesAfterFailedDelete = await database.spacesDao.getSpacesByHouse(houseId);
-      expect(spacesAfterFailedDelete, hasLength(1));
-      
-      final luggagesAfterFailedDelete = await database.luggagesDao.getLuggagesByHouse(houseId);
-      expect(luggagesAfterFailedDelete, hasLength(1));
+      // Verify initial state
+      expect(await database.itemsDao.getItemsByHouseId(houseId), hasLength(2));
+      expect(await database.spacesDao.getSpacesByHouse(houseId), hasLength(1));
+      expect(await database.luggagesDao.getLuggagesByHouse(houseId), hasLength(1));
 
-      // === ACT (Part 2) ===
-      // Manually delete all items first
-      await database.itemsDao.deleteItem(itemInSpaceId);
-      await database.itemsDao.deleteItem(itemNoSpaceId);
-      
-      // Now delete the house - should succeed and CASCADE delete spaces/luggages
+      // === ACT ===
+      // Soft-delete: deve riuscire in un'unica chiamata, anche con dipendenti
       final deleteResult = await database.housesDao.deleteHouse(houseId);
 
-      // === ASSERT (Part 2) ===
+      // === ASSERT ===
       expect(deleteResult, equals(1));
-      
-      // Verify house is deleted
-      final houseAfterDelete = await database.housesDao.getHouseById(houseId);
-      expect(houseAfterDelete, equals(null));
-      
-      // Verify items were manually deleted earlier
-      final itemsAfterDelete = await database.itemsDao.getItemsByHouseId(houseId);
-      expect(itemsAfterDelete, isEmpty);
-      
-      // Verify spaces and luggages are CASCADE deleted automatically by SQLite
-      final spacesAfterDelete = await database.spacesDao.getSpacesByHouse(houseId);
-      expect(spacesAfterDelete, isEmpty);
-      
-      final luggagesAfterDelete = await database.luggagesDao.getLuggagesByHouse(houseId);
-      expect(luggagesAfterDelete, isEmpty);
+
+      // Casa, items, spazi e bagagli invisibili nelle query di lettura
+      expect(await database.housesDao.getHouseById(houseId), equals(null));
+      expect(await database.itemsDao.getItemsByHouseId(houseId), isEmpty);
+      expect(await database.spacesDao.getSpacesByHouse(houseId), isEmpty);
+      expect(await database.luggagesDao.getLuggagesByHouse(houseId), isEmpty);
     });
   });
 
