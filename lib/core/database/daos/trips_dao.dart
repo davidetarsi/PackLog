@@ -198,7 +198,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   /// La selezione per [isDeleted] viene gestita a monte dal filtro su [getAllTrips]:
   /// i trip items vengono abbinati in memoria solo ai trip non eliminati.
   ///
-  /// Returns: Map con tripId come chiave e List<TripItemEntry> come valore.
+  /// Returns: `Map` con tripId come chiave e `List<TripItemEntry>` come valore.
   Future<Map<String, List<TripItemEntry>>> getAllTripItemsGrouped() async {
     final allTripItems = await select(tripItemEntries).get();
 
@@ -215,7 +215,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   /// Filtra i bagagli con [isDeleted = false] a livello SQL per escludere
   /// bagagli soft-deleted dalle associazioni di viaggio.
   ///
-  /// Returns: Map con tripId come chiave e List<Luggage> come valore.
+  /// Returns: `Map` con tripId come chiave e `List<Luggage>` come valore.
   Future<Map<String, List<Luggage>>> getAllTripLuggagesGrouped() async {
     final query = select(luggages).join([
       innerJoin(
