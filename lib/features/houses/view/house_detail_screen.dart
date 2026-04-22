@@ -513,7 +513,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
       // Aggiungiamo il padding bottom per spingere l'intera barra sopra la tastiera
       padding: EdgeInsets.only(bottom: bottomInset),
       child: TriSlotBar(
-        horizontalPadding: 0, // Gestito internamente o dal parent
+        horizontalPadding: 0,
         sideSlotWidth: _isRapidFireExpanded ? 0.0 : elementHeight, // Collassa slot laterali se espanso
         left: AnimatedOpacity(
           duration: const Duration(milliseconds: 150),
