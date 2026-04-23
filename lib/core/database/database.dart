@@ -20,6 +20,7 @@ import 'daos/luggages_dao.dart';
 // I part file non ereditano gli import transitivi, quindi questi devono
 // essere dichiarati esplicitamente nel file principale del database.
 import 'converters/item_category_converter.dart';
+import 'converters/ai_metadata_converter.dart';
 import 'converters/location_type_converter.dart';
 import 'converters/luggage_size_converter.dart';
 import '../../features/items/model/item_model.dart';
@@ -59,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -269,6 +270,21 @@ class AppDatabase extends _$AppDatabase {
 
           await m.addColumn(trips, trips.isDeleted);
           await m.addColumn(trips, trips.lastSyncedAt);
+        }
+
+        if (from < 7) {
+          // Migrazione v6 → v7: AI Metadata
+          //
+          // Aggiunge la colonna `ai_metadata` (TEXT NULLABLE) alla tabella items.
+          // Gli oggetti creati manualmente avranno ai_metadata = NULL.
+          // Gli oggetti importati tramite il bulk AI import conterranno
+          // un JSON serializzato con tutti i campi estratti da GPT-4o Vision.
+          //
+          // Usiamo customStatement anziché m.addColumn() perché la colonna
+          // usa un TypeConverter: il tipo Dart (Map<String,dynamic>?) non è
+          // un GeneratedColumn<Object> diretto e causerebbe un errore di tipo
+          // statico nel Migrator. L'ALTER TABLE è equivalente e non perde dati.
+          await customStatement('ALTER TABLE items ADD COLUMN ai_metadata TEXT');
         }
       },
       beforeOpen: (details) async {

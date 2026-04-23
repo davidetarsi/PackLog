@@ -31,6 +31,10 @@ mixin _$ItemModel {
   /// ID dello spazio a cui appartiene l'oggetto (opzionale).
   /// Se null, l'oggetto appartiene al pool generale della casa.
   String? get spaceId => throw _privateConstructorUsedError;
+
+  /// Metadata JSON estratti dall'AI (GPT-4o Vision).
+  /// Null per gli oggetti creati manualmente, senza analisi AI.
+  Map<String, dynamic>? get aiMetadata => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime get updatedAt => throw _privateConstructorUsedError;
 
@@ -57,6 +61,7 @@ abstract class $ItemModelCopyWith<$Res> {
     String? description,
     int? quantity,
     String? spaceId,
+    Map<String, dynamic>? aiMetadata,
     DateTime createdAt,
     DateTime updatedAt,
   });
@@ -84,6 +89,7 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
     Object? description = freezed,
     Object? quantity = freezed,
     Object? spaceId = freezed,
+    Object? aiMetadata = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -117,6 +123,10 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
                 ? _value.spaceId
                 : spaceId // ignore: cast_nullable_to_non_nullable
                       as String?,
+            aiMetadata: freezed == aiMetadata
+                ? _value.aiMetadata
+                : aiMetadata // ignore: cast_nullable_to_non_nullable
+                      as Map<String, dynamic>?,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -148,6 +158,7 @@ abstract class _$$ItemModelImplCopyWith<$Res>
     String? description,
     int? quantity,
     String? spaceId,
+    Map<String, dynamic>? aiMetadata,
     DateTime createdAt,
     DateTime updatedAt,
   });
@@ -174,6 +185,7 @@ class __$$ItemModelImplCopyWithImpl<$Res>
     Object? description = freezed,
     Object? quantity = freezed,
     Object? spaceId = freezed,
+    Object? aiMetadata = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -207,6 +219,10 @@ class __$$ItemModelImplCopyWithImpl<$Res>
             ? _value.spaceId
             : spaceId // ignore: cast_nullable_to_non_nullable
                   as String?,
+        aiMetadata: freezed == aiMetadata
+            ? _value.aiMetadata
+            : aiMetadata // ignore: cast_nullable_to_non_nullable
+                  as Map<String, dynamic>?,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -231,6 +247,7 @@ class _$ItemModelImpl extends _ItemModel {
     this.description,
     this.quantity,
     this.spaceId,
+    this.aiMetadata,
     required this.createdAt,
     required this.updatedAt,
   }) : super._();
@@ -255,6 +272,11 @@ class _$ItemModelImpl extends _ItemModel {
   /// Se null, l'oggetto appartiene al pool generale della casa.
   @override
   final String? spaceId;
+
+  /// Metadata JSON estratti dall'AI (GPT-4o Vision).
+  /// Null per gli oggetti creati manualmente, senza analisi AI.
+  @override
+  final Map<String, dynamic>? aiMetadata;
   @override
   final DateTime createdAt;
   @override
@@ -262,7 +284,7 @@ class _$ItemModelImpl extends _ItemModel {
 
   @override
   String toString() {
-    return 'ItemModel(id: $id, houseId: $houseId, name: $name, category: $category, description: $description, quantity: $quantity, spaceId: $spaceId, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'ItemModel(id: $id, houseId: $houseId, name: $name, category: $category, description: $description, quantity: $quantity, spaceId: $spaceId, aiMetadata: $aiMetadata, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -280,6 +302,8 @@ class _$ItemModelImpl extends _ItemModel {
             (identical(other.quantity, quantity) ||
                 other.quantity == quantity) &&
             (identical(other.spaceId, spaceId) || other.spaceId == spaceId) &&
+            const DeepCollectionEquality()
+                .equals(other.aiMetadata, aiMetadata) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -297,6 +321,7 @@ class _$ItemModelImpl extends _ItemModel {
     description,
     quantity,
     spaceId,
+    const DeepCollectionEquality().hash(aiMetadata),
     createdAt,
     updatedAt,
   );
@@ -324,6 +349,7 @@ abstract class _ItemModel extends ItemModel {
     final String? description,
     final int? quantity,
     final String? spaceId,
+    final Map<String, dynamic>? aiMetadata,
     required final DateTime createdAt,
     required final DateTime updatedAt,
   }) = _$ItemModelImpl;
@@ -349,6 +375,11 @@ abstract class _ItemModel extends ItemModel {
   /// Se null, l'oggetto appartiene al pool generale della casa.
   @override
   String? get spaceId;
+
+  /// Metadata JSON estratti dall'AI (GPT-4o Vision).
+  /// Null per gli oggetti creati manualmente, senza analisi AI.
+  @override
+  Map<String, dynamic>? get aiMetadata;
   @override
   DateTime get createdAt;
   @override

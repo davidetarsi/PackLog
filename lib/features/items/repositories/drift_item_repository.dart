@@ -283,6 +283,8 @@ class DriftItemRepository implements ItemRepository {
       description: item.description,
       quantity: item.quantity,
       spaceId: item.spaceId,
+      // AiMetadataConverter deserializza automaticamente il JSON blob.
+      aiMetadata: item.aiMetadata,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     );
@@ -298,6 +300,8 @@ class DriftItemRepository implements ItemRepository {
       description: Value(model.description),
       quantity: Value(model.quantity),
       spaceId: Value(model.spaceId),
+      // AiMetadataConverter serializza automaticamente la Map in JSON.
+      aiMetadata: Value(model.aiMetadata),
       createdAt: Value(model.createdAt),
       updatedAt: Value(model.updatedAt),
     );

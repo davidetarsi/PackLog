@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'houses_table.dart';
 import 'spaces_table.dart';
 import '../converters/item_category_converter.dart';
+import '../converters/ai_metadata_converter.dart';
 
 /// Indice su [Items.houseId] — accelera le query `WHERE house_id = ?`
 /// (getItemsByHouseId, getItemsInGeneralPool, moveItemsToHouse).
@@ -39,6 +40,11 @@ class Items extends Table {
   /// torna al pool generale senza essere cancellato.
   TextColumn get spaceId =>
       text().nullable().references(Spaces, #id, onDelete: KeyAction.setNull)();
+
+  /// Metadata JSON estratti dall'AI (GPT-4o Vision).
+  /// Null per gli oggetti creati manualmente, senza analisi AI.
+  TextColumn get aiMetadata =>
+      text().map(const AiMetadataConverter()).nullable()();
 
   /// Data di creazione
   DateTimeColumn get createdAt => dateTime()();

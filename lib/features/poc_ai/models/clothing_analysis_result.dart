@@ -52,13 +52,39 @@ class ClothingAnalysisResult {
     );
   }
 
+  // ── copyWith ──────────────────────────────────────────────────────────────
+
+  ClothingAnalysisResult copyWith({
+    String? name,
+    String? category,
+    String? baseColor,
+    String? colorTone,
+    List<String>? weather,
+    String? coverage,
+    String? pattern,
+    int? formality,
+    List<String>? activityTags,
+  }) {
+    return ClothingAnalysisResult(
+      name: name ?? this.name,
+      category: category ?? this.category,
+      baseColor: baseColor ?? this.baseColor,
+      colorTone: colorTone ?? this.colorTone,
+      weather: weather ?? this.weather,
+      coverage: coverage ?? this.coverage,
+      pattern: pattern ?? this.pattern,
+      formality: formality ?? this.formality,
+      activityTags: activityTags ?? this.activityTags,
+    );
+  }
+
   // ── Derived score ─────────────────────────────────────────────────────────
 
   /// Deterministic versatility score (1–5) calculated from the item's own
   /// properties. Replaces the AI-hallucinated `versatility` field.
   int get calculatedVersatility {
     // Sport/sleep gear is niche by definition.
-    if (activityTags.contains('Sports') || activityTags.contains('Sleeping')) {
+    if (activityTags.contains('Sports') || activityTags.contains('Sleeping') || activityTags.contains('Hiking')) {
       return 1;
     }
 
@@ -73,9 +99,7 @@ class ClothingAnalysisResult {
     }
 
     // Neutral/earthy tones and classic colours mix with almost anything.
-    if (colorTone == 'Neutral' ||
-        colorTone == 'Earth' ||
-        baseColor == 'Nero' ||
+    if (baseColor == 'Nero' ||
         baseColor == 'Bianco') {
       score += 1;
     }

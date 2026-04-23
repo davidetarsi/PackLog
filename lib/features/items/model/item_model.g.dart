@@ -15,6 +15,7 @@ _$ItemModelImpl _$$ItemModelImplFromJson(Map<String, dynamic> json) =>
       description: json['description'] as String?,
       quantity: (json['quantity'] as num?)?.toInt(),
       spaceId: json['spaceId'] as String?,
+      aiMetadata: json['aiMetadata'] as Map<String, dynamic>?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -28,6 +29,7 @@ Map<String, dynamic> _$$ItemModelImplToJson(_$ItemModelImpl instance) =>
       'description': instance.description,
       'quantity': instance.quantity,
       'spaceId': instance.spaceId,
+      'aiMetadata': instance.aiMetadata,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
     };

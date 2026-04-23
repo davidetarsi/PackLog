@@ -53,11 +53,15 @@ class ItemModel with _$ItemModel {
     required ItemCategory category,
     String? description,
     int? quantity,
-    
+
     /// ID dello spazio a cui appartiene l'oggetto (opzionale).
     /// Se null, l'oggetto appartiene al pool generale della casa.
     String? spaceId,
-    
+
+    /// Metadata JSON estratti dall'AI (GPT-4o Vision).
+    /// Null per gli oggetti creati manualmente, senza analisi AI.
+    Map<String, dynamic>? aiMetadata,
+
     required DateTime createdAt,
     required DateTime updatedAt,
   }) = _ItemModel;
