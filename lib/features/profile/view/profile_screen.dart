@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -565,6 +566,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
 
           const Divider(),
+
+          // ── Developer Tools ──────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+            child: Text(
+              'Developer Tools',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.auto_awesome_outlined),
+            title: const Text('AI Clothing Sandbox'),
+            subtitle: const Text('PoC: background removal + GPT-4o vision'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.pushNamed('ai-sandbox'),
+          ),
+
+          const SizedBox(height: 16),
         ],
       ),
     );

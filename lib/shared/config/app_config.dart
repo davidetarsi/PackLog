@@ -13,6 +13,20 @@ class AppConfig {
     defaultValue: 'MISSING_GEOAPIFY_KEY',
   );
 
+  /// API Key per Remove.bg (rimozione background immagini)
+  /// Documentazione: https://www.remove.bg/api
+  static const String removeBg = String.fromEnvironment(
+    'REMOVE_BG_KEY',
+    defaultValue: 'MISSING_REMOVE_BG_KEY',
+  );
+
+  /// API Key per OpenAI (GPT-4o Vision)
+  /// Documentazione: https://platform.openai.com/docs
+  static const String openAi = String.fromEnvironment(
+    'OPENAI_KEY',
+    defaultValue: 'MISSING_OPENAI_KEY',
+  );
+
   /// URL del questionario Google per segnalare errori o inviare suggerimenti.
   /// Modificare questo valore per puntare al proprio form.
   static const String feedbackUrl = 

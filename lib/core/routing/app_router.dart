@@ -12,6 +12,7 @@ import '../../features/trips/view/edit_trip_items_screen.dart';
 import '../../features/bulk_creation/view/house_selection_screen.dart';
 import '../../features/bulk_creation/view/template_selection_screen.dart';
 import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
+import '../../features/poc_ai/view/ai_clothing_sandbox_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -130,6 +131,14 @@ final appRouter = GoRouter(
         return EditTripItemsScreen(tripId: id);
       },
     ),
+    // Route sandbox PoC AI (developer-only, non esposta nella tab bar)
+    GoRoute(
+      path: '/ai-sandbox',
+      name: 'ai-sandbox',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const AiClothingSandboxScreen(),
+    ),
+
     // Route per la creazione massiva di item da template
     GoRoute(
       path: '/bulk-creation/select-house',
