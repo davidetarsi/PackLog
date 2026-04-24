@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../items/repositories/item_repository.dart';
 import '../model/trip_model.dart';
 import '../repositories/trip_repository.dart';
+import '../services/open_meteo_service.dart';
 
 part 'trip_provider.g.dart';
 
@@ -156,7 +157,8 @@ class TripNotifier extends _$TripNotifier {
     repository ??= ref.read(tripRepositoryProvider);
     state = const AsyncLoading();
     try {
-      await repository!.addTrip(model);
+      final enriched = await _enrichWithWeather(model);
+      await repository!.addTrip(enriched);
       final List<TripModel> trips = await repository!.getAllTrips();
       state = AsyncData(trips);
     } catch (error, stackTrace) {
@@ -168,11 +170,55 @@ class TripNotifier extends _$TripNotifier {
     repository ??= ref.read(tripRepositoryProvider);
     state = const AsyncLoading();
     try {
-      await repository!.updateTrip(model);
+      final enriched = await _enrichWithWeather(model);
+      await repository!.updateTrip(enriched);
       final List<TripModel> trips = await repository!.getAllTrips();
       state = AsyncData(trips);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+    }
+  }
+
+  /// Attempts to fetch weather data and enrich [trip] with [avgTemperature]
+  /// and [weatherTags].
+  ///
+  /// Requires a destination with known coordinates and a departure date.
+  /// On any error (network, timeout, parse) returns [trip] unchanged so the
+  /// caller is never blocked.
+  Future<TripModel> _enrichWithWeather(TripModel trip) async {
+    final lat = trip.destinationLocation?.lat;
+    final lon = trip.destinationLocation?.lon;
+    final startDate = trip.departureDateTime;
+
+    if (lat == null || lon == null || startDate == null) {
+      return trip;
+    }
+
+    final endDate = trip.returnDateTime ?? startDate;
+
+    try {
+      final service = ref.read(openMeteoServiceProvider);
+      final weather = await service
+          .fetchWeather(
+            lat: lat,
+            lon: lon,
+            startDate: startDate,
+            endDate: endDate,
+          )
+          .timeout(const Duration(seconds: 5));
+
+      debugPrint(
+        '[TripNotifier] Weather enriched: ${weather.avgTemp}°C, ${weather.weatherTags}',
+      );
+
+      return trip.copyWith(
+        avgTemperature: weather.avgTemp,
+        weatherTags: weather.weatherTags,
+      );
+    } catch (e) {
+      // Graceful degradation: weather failure must never block the user.
+      debugPrint('[TripNotifier] Weather fetch skipped: $e');
+      return trip;
     }
   }
 

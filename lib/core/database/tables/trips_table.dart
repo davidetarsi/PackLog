@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'houses_table.dart';
 import '../converters/location_type_converter.dart';
+import '../converters/string_list_converter.dart';
 
 /// Tabella per i viaggi.
 class Trips extends Table {
@@ -54,6 +55,26 @@ class Trips extends Table {
 
   /// Longitudine
   RealColumn get locationLon => real().nullable()();
+
+  // ── AI & Weather metadata ────────────────────────────────────────────────
+
+  /// Vibe/tono principale del viaggio (es. "beach", "business", "adventure").
+  /// Nullable: assente finché non viene valorizzato dall'AI.
+  TextColumn get primaryVibe => text().nullable()();
+
+  /// Lista di eventi extra associati al viaggio (es. ["wedding", "conference"]).
+  /// Serializzata come JSON array; default lista vuota.
+  TextColumn get extraEvents =>
+      text().map(const StringListConverter()).withDefault(const Constant('[]'))();
+
+  /// Temperatura media prevista in gradi Celsius.
+  /// Nullable: assente finché non viene recuperata dal servizio meteo.
+  IntColumn get avgTemperature => integer().nullable()();
+
+  /// Tag meteo associati al viaggio (es. ["rainy", "cold"]).
+  /// Serializzata come JSON array; default lista vuota.
+  TextColumn get weatherTags =>
+      text().map(const StringListConverter()).withDefault(const Constant('[]'))();
 
   /// Viaggio salvato/preferito
   BoolColumn get isSaved => boolean().withDefault(const Constant(false))();

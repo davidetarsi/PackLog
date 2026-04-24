@@ -220,7 +220,7 @@ class __$$ItemModelImplCopyWithImpl<$Res>
             : spaceId // ignore: cast_nullable_to_non_nullable
                   as String?,
         aiMetadata: freezed == aiMetadata
-            ? _value.aiMetadata
+            ? _value._aiMetadata
             : aiMetadata // ignore: cast_nullable_to_non_nullable
                   as Map<String, dynamic>?,
         createdAt: null == createdAt
@@ -247,10 +247,11 @@ class _$ItemModelImpl extends _ItemModel {
     this.description,
     this.quantity,
     this.spaceId,
-    this.aiMetadata,
+    final Map<String, dynamic>? aiMetadata,
     required this.createdAt,
     required this.updatedAt,
-  }) : super._();
+  }) : _aiMetadata = aiMetadata,
+       super._();
 
   factory _$ItemModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$ItemModelImplFromJson(json);
@@ -275,8 +276,19 @@ class _$ItemModelImpl extends _ItemModel {
 
   /// Metadata JSON estratti dall'AI (GPT-4o Vision).
   /// Null per gli oggetti creati manualmente, senza analisi AI.
+  final Map<String, dynamic>? _aiMetadata;
+
+  /// Metadata JSON estratti dall'AI (GPT-4o Vision).
+  /// Null per gli oggetti creati manualmente, senza analisi AI.
   @override
-  final Map<String, dynamic>? aiMetadata;
+  Map<String, dynamic>? get aiMetadata {
+    final value = _aiMetadata;
+    if (value == null) return null;
+    if (_aiMetadata is EqualUnmodifiableMapView) return _aiMetadata;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(value);
+  }
+
   @override
   final DateTime createdAt;
   @override
@@ -302,8 +314,10 @@ class _$ItemModelImpl extends _ItemModel {
             (identical(other.quantity, quantity) ||
                 other.quantity == quantity) &&
             (identical(other.spaceId, spaceId) || other.spaceId == spaceId) &&
-            const DeepCollectionEquality()
-                .equals(other.aiMetadata, aiMetadata) &&
+            const DeepCollectionEquality().equals(
+              other._aiMetadata,
+              _aiMetadata,
+            ) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -321,7 +335,7 @@ class _$ItemModelImpl extends _ItemModel {
     description,
     quantity,
     spaceId,
-    const DeepCollectionEquality().hash(aiMetadata),
+    const DeepCollectionEquality().hash(_aiMetadata),
     createdAt,
     updatedAt,
   );

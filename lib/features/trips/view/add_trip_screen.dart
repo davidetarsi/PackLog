@@ -40,6 +40,28 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
   List<TripItem> _selectedItems = [];
   List<LuggageModel> _selectedLuggages = [];
 
+  // AI metadata
+  String? _primaryVibe;
+  List<String> _extraEvents = [];
+
+  // Opzioni disponibili per il vibe principale
+  static const _vibeOptions = [
+    (value: 'leisure', label: 'Leisure', icon: Icons.beach_access_outlined),
+    (value: 'business', label: 'Business', icon: Icons.work_outline),
+    (value: 'adventure', label: 'Adventure', icon: Icons.terrain_outlined),
+    (value: 'family', label: 'Family', icon: Icons.family_restroom_outlined),
+  ];
+
+  // Opzioni disponibili per gli eventi extra
+  static const _extraEventOptions = [
+    (value: 'gala', label: 'Gala', icon: Icons.nightlife_outlined),
+    (value: 'hiking', label: 'Hiking', icon: Icons.hiking_outlined),
+    (value: 'beach', label: 'Beach', icon: Icons.water_outlined),
+    (value: 'gym', label: 'Gym', icon: Icons.fitness_center_outlined),
+    (value: 'wedding', label: 'Wedding', icon: Icons.celebration_outlined),
+    (value: 'skiing', label: 'Skiing', icon: Icons.downhill_skiing_outlined),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +86,8 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
         _destinationLocation = trip.destinationLocation;
         _selectedItems = List.from(trip.items);
         _selectedLuggages = List.from(trip.luggages);
+        _primaryVibe = trip.primaryVibe;
+        _extraEvents = List.from(trip.extraEvents);
       });
     });
   }
@@ -108,6 +132,8 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                   destinationLocation: _destinationHouseId == null
                       ? _destinationLocation
                       : null,
+                  primaryVibe: _primaryVibe,
+                  extraEvents: _extraEvents,
                   updatedAt: now,
                 );
           })()
@@ -123,6 +149,8 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
             destinationLocation: _destinationHouseId == null
                 ? _destinationLocation
                 : null,
+            primaryVibe: _primaryVibe,
+            extraEvents: _extraEvents,
             createdAt: now,
             updatedAt: now,
           );
@@ -213,6 +241,20 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                           },
                     ),
                 
+                    SizedBox(height: context.spacingLg),
+
+                    // ── Sezione: Scopo del Viaggio ─────────────────────────
+                    _buildSectionTitle(context, 'Scopo del Viaggio'),
+                    SizedBox(height: context.spacingSm),
+                    _buildVibeSelector(context),
+
+                    SizedBox(height: context.spacingLg),
+
+                    // ── Sezione: Attività Extra ────────────────────────────
+                    _buildSectionTitle(context, 'Attività Extra'),
+                    SizedBox(height: context.spacingSm),
+                    _buildExtraEventsSelector(context),
+
                     SizedBox(height: context.spacingLg),
                 
                     // Sezione Oggetti
@@ -310,6 +352,96 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
         onPrimaryPressed: _isLoading ? null : _saveTrip,
         isLoading: _isLoading,
       ),
+    );
+  }
+
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: context.fontSizeMd,
+        fontWeight: FontWeight.bold,
+        color: colorScheme.onSurface,
+      ),
+    );
+  }
+
+  Widget _buildVibeSelector(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Wrap(
+      spacing: context.spacingSm,
+      runSpacing: context.spacingSm,
+      children: _vibeOptions.map((option) {
+        final isSelected = _primaryVibe == option.value;
+
+        return ChoiceChip(
+          avatar: Icon(
+            option.icon,
+            size: context.iconSizeSm,
+            color: isSelected
+                ? colorScheme.onPrimaryContainer
+                : colorScheme.onSurfaceVariant,
+          ),
+          label: Text(option.label),
+          selected: isSelected,
+          onSelected: (_) {
+            setState(() {
+              // Deselect if already selected (toggle off)
+              _primaryVibe = isSelected ? null : option.value;
+            });
+          },
+          selectedColor: colorScheme.primaryContainer,
+          backgroundColor: Colors.transparent,
+          side: BorderSide(
+            color: isSelected
+                ? colorScheme.primary
+                : colorScheme.outlineVariant,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildExtraEventsSelector(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Wrap(
+      spacing: context.spacingSm,
+      runSpacing: context.spacingSm,
+      children: _extraEventOptions.map((option) {
+        final isSelected = _extraEvents.contains(option.value);
+
+        return FilterChip(
+          avatar: Icon(
+            option.icon,
+            size: context.iconSizeSm,
+            color: isSelected
+                ? colorScheme.onSecondaryContainer
+                : colorScheme.onSurfaceVariant,
+          ),
+          label: Text(option.label),
+          selected: isSelected,
+          onSelected: (selected) {
+            setState(() {
+              if (selected) {
+                _extraEvents = [..._extraEvents, option.value];
+              } else {
+                _extraEvents =
+                    _extraEvents.where((e) => e != option.value).toList();
+              }
+            });
+          },
+          selectedColor: colorScheme.secondaryContainer,
+          backgroundColor: Colors.transparent,
+          side: BorderSide(
+            color: isSelected
+                ? colorScheme.secondary
+                : colorScheme.outlineVariant,
+          ),
+        );
+      }).toList(),
     );
   }
 

@@ -271,6 +271,21 @@ class DriftItemRepository implements ItemRepository {
     );
   }
 
+  @override
+  Future<List<ItemModel>> getAllItemsByCategories(
+    List<ItemCategory> categories,
+  ) async {
+    final result = await _dbService.executeWithRetry(
+      () => _dao.getAllItemsByCategories(categories),
+      operationName: 'getAllItemsByCategories(${categories.map((c) => c.name).join(', ')})',
+    );
+    if (!result.success) {
+      debugPrint('[ItemRepo] Errore getAllItemsByCategories: ${result.error}');
+      return [];
+    }
+    return result.data!.map(_toModel).toList();
+  }
+
   // === Conversioni ===
 
   ItemModel _toModel(Item item) {

@@ -60,6 +60,18 @@ _$TripModelImpl _$$TripModelImplFromJson(Map<String, dynamic> json) =>
               ?.map((e) => LuggageModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
+      primaryVibe: json['primaryVibe'] as String?,
+      extraEvents:
+          (json['extraEvents'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      avgTemperature: (json['avgTemperature'] as num?)?.toInt(),
+      weatherTags:
+          (json['weatherTags'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       isSaved: json['isSaved'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
@@ -76,6 +88,10 @@ Map<String, dynamic> _$$TripModelImplToJson(_$TripModelImpl instance) =>
       'destinationHouseId': instance.destinationHouseId,
       'destinationLocation': instance.destinationLocation,
       'luggages': instance.luggages,
+      'primaryVibe': instance.primaryVibe,
+      'extraEvents': instance.extraEvents,
+      'avgTemperature': instance.avgTemperature,
+      'weatherTags': instance.weatherTags,
       'isSaved': instance.isSaved,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),

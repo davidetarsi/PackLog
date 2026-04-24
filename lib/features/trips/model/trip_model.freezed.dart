@@ -323,7 +323,19 @@ mixin _$TripModel {
       throw _privateConstructorUsedError;
 
   /// Bagagli associati al viaggio (relazione M:N via junction table)
-  List<LuggageModel> get luggages => throw _privateConstructorUsedError;
+  List<LuggageModel> get luggages =>
+      throw _privateConstructorUsedError; // ── AI & Weather metadata ──────────────────────────────────────────────
+  /// Vibe/tono principale del viaggio (es. "beach", "business", "adventure").
+  String? get primaryVibe => throw _privateConstructorUsedError;
+
+  /// Lista di eventi extra associati al viaggio (es. ["wedding", "conference"]).
+  List<String> get extraEvents => throw _privateConstructorUsedError;
+
+  /// Temperatura media prevista in gradi Celsius.
+  int? get avgTemperature => throw _privateConstructorUsedError;
+
+  /// Tag meteo associati al viaggio (es. ["rainy", "cold"]).
+  List<String> get weatherTags => throw _privateConstructorUsedError;
 
   /// Viaggio salvato/preferito
   bool get isSaved => throw _privateConstructorUsedError;
@@ -355,6 +367,10 @@ abstract class $TripModelCopyWith<$Res> {
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
     List<LuggageModel> luggages,
+    String? primaryVibe,
+    List<String> extraEvents,
+    int? avgTemperature,
+    List<String> weatherTags,
     bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
@@ -387,6 +403,10 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
     Object? destinationHouseId = freezed,
     Object? destinationLocation = freezed,
     Object? luggages = null,
+    Object? primaryVibe = freezed,
+    Object? extraEvents = null,
+    Object? avgTemperature = freezed,
+    Object? weatherTags = null,
     Object? isSaved = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -429,6 +449,22 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
                 ? _value.luggages
                 : luggages // ignore: cast_nullable_to_non_nullable
                       as List<LuggageModel>,
+            primaryVibe: freezed == primaryVibe
+                ? _value.primaryVibe
+                : primaryVibe // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            extraEvents: null == extraEvents
+                ? _value.extraEvents
+                : extraEvents // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
+            avgTemperature: freezed == avgTemperature
+                ? _value.avgTemperature
+                : avgTemperature // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            weatherTags: null == weatherTags
+                ? _value.weatherTags
+                : weatherTags // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
             isSaved: null == isSaved
                 ? _value.isSaved
                 : isSaved // ignore: cast_nullable_to_non_nullable
@@ -482,6 +518,10 @@ abstract class _$$TripModelImplCopyWith<$Res>
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
     List<LuggageModel> luggages,
+    String? primaryVibe,
+    List<String> extraEvents,
+    int? avgTemperature,
+    List<String> weatherTags,
     bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
@@ -514,6 +554,10 @@ class __$$TripModelImplCopyWithImpl<$Res>
     Object? destinationHouseId = freezed,
     Object? destinationLocation = freezed,
     Object? luggages = null,
+    Object? primaryVibe = freezed,
+    Object? extraEvents = null,
+    Object? avgTemperature = freezed,
+    Object? weatherTags = null,
     Object? isSaved = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -556,6 +600,22 @@ class __$$TripModelImplCopyWithImpl<$Res>
             ? _value._luggages
             : luggages // ignore: cast_nullable_to_non_nullable
                   as List<LuggageModel>,
+        primaryVibe: freezed == primaryVibe
+            ? _value.primaryVibe
+            : primaryVibe // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        extraEvents: null == extraEvents
+            ? _value._extraEvents
+            : extraEvents // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
+        avgTemperature: freezed == avgTemperature
+            ? _value.avgTemperature
+            : avgTemperature // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        weatherTags: null == weatherTags
+            ? _value._weatherTags
+            : weatherTags // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
         isSaved: null == isSaved
             ? _value.isSaved
             : isSaved // ignore: cast_nullable_to_non_nullable
@@ -586,11 +646,17 @@ class _$TripModelImpl extends _TripModel {
     this.destinationHouseId,
     this.destinationLocation,
     final List<LuggageModel> luggages = const [],
+    this.primaryVibe,
+    final List<String> extraEvents = const [],
+    this.avgTemperature,
+    final List<String> weatherTags = const [],
     this.isSaved = false,
     required this.createdAt,
     required this.updatedAt,
   }) : _items = items,
        _luggages = luggages,
+       _extraEvents = extraEvents,
+       _weatherTags = weatherTags,
        super._();
 
   factory _$TripModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -640,6 +706,39 @@ class _$TripModelImpl extends _TripModel {
     return EqualUnmodifiableListView(_luggages);
   }
 
+  // ── AI & Weather metadata ──────────────────────────────────────────────
+  /// Vibe/tono principale del viaggio (es. "beach", "business", "adventure").
+  @override
+  final String? primaryVibe;
+
+  /// Lista di eventi extra associati al viaggio (es. ["wedding", "conference"]).
+  final List<String> _extraEvents;
+
+  /// Lista di eventi extra associati al viaggio (es. ["wedding", "conference"]).
+  @override
+  @JsonKey()
+  List<String> get extraEvents {
+    if (_extraEvents is EqualUnmodifiableListView) return _extraEvents;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_extraEvents);
+  }
+
+  /// Temperatura media prevista in gradi Celsius.
+  @override
+  final int? avgTemperature;
+
+  /// Tag meteo associati al viaggio (es. ["rainy", "cold"]).
+  final List<String> _weatherTags;
+
+  /// Tag meteo associati al viaggio (es. ["rainy", "cold"]).
+  @override
+  @JsonKey()
+  List<String> get weatherTags {
+    if (_weatherTags is EqualUnmodifiableListView) return _weatherTags;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_weatherTags);
+  }
+
   /// Viaggio salvato/preferito
   @override
   @JsonKey()
@@ -651,7 +750,7 @@ class _$TripModelImpl extends _TripModel {
 
   @override
   String toString() {
-    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocation: $destinationLocation, luggages: $luggages, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocation: $destinationLocation, luggages: $luggages, primaryVibe: $primaryVibe, extraEvents: $extraEvents, avgTemperature: $avgTemperature, weatherTags: $weatherTags, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -673,6 +772,18 @@ class _$TripModelImpl extends _TripModel {
             (identical(other.destinationLocation, destinationLocation) ||
                 other.destinationLocation == destinationLocation) &&
             const DeepCollectionEquality().equals(other._luggages, _luggages) &&
+            (identical(other.primaryVibe, primaryVibe) ||
+                other.primaryVibe == primaryVibe) &&
+            const DeepCollectionEquality().equals(
+              other._extraEvents,
+              _extraEvents,
+            ) &&
+            (identical(other.avgTemperature, avgTemperature) ||
+                other.avgTemperature == avgTemperature) &&
+            const DeepCollectionEquality().equals(
+              other._weatherTags,
+              _weatherTags,
+            ) &&
             (identical(other.isSaved, isSaved) || other.isSaved == isSaved) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
@@ -693,6 +804,10 @@ class _$TripModelImpl extends _TripModel {
     destinationHouseId,
     destinationLocation,
     const DeepCollectionEquality().hash(_luggages),
+    primaryVibe,
+    const DeepCollectionEquality().hash(_extraEvents),
+    avgTemperature,
+    const DeepCollectionEquality().hash(_weatherTags),
     isSaved,
     createdAt,
     updatedAt,
@@ -723,6 +838,10 @@ abstract class _TripModel extends TripModel {
     final String? destinationHouseId,
     final LocationSuggestionModel? destinationLocation,
     final List<LuggageModel> luggages,
+    final String? primaryVibe,
+    final List<String> extraEvents,
+    final int? avgTemperature,
+    final List<String> weatherTags,
     final bool isSaved,
     required final DateTime createdAt,
     required final DateTime updatedAt,
@@ -760,7 +879,22 @@ abstract class _TripModel extends TripModel {
 
   /// Bagagli associati al viaggio (relazione M:N via junction table)
   @override
-  List<LuggageModel> get luggages;
+  List<LuggageModel> get luggages; // ── AI & Weather metadata ──────────────────────────────────────────────
+  /// Vibe/tono principale del viaggio (es. "beach", "business", "adventure").
+  @override
+  String? get primaryVibe;
+
+  /// Lista di eventi extra associati al viaggio (es. ["wedding", "conference"]).
+  @override
+  List<String> get extraEvents;
+
+  /// Temperatura media prevista in gradi Celsius.
+  @override
+  int? get avgTemperature;
+
+  /// Tag meteo associati al viaggio (es. ["rainy", "cold"]).
+  @override
+  List<String> get weatherTags;
 
   /// Viaggio salvato/preferito
   @override

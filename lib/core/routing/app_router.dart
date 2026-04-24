@@ -9,6 +9,9 @@ import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/add_trip_screen.dart';
 import '../../features/trips/view/edit_trip_info_screen.dart';
 import '../../features/trips/view/edit_trip_items_screen.dart';
+import '../../features/trips/view/smart_packing_loading_screen.dart';
+import '../../features/trips/view/smart_packing_results_screen.dart';
+import '../../features/trips/services/smart_packing_agent.dart';
 import '../../features/bulk_creation/view/house_selection_screen.dart';
 import '../../features/bulk_creation/view/template_selection_screen.dart';
 import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
@@ -129,6 +132,35 @@ final appRouter = GoRouter(
           return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
         }
         return EditTripItemsScreen(tripId: id);
+      },
+    ),
+    GoRoute(
+      path: '/trips/:id/smart-packing',
+      name: 'smart-packing-loading',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        if (id == null || id.isEmpty) {
+          return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+        }
+        return SmartPackingLoadingScreen(tripId: id);
+      },
+    ),
+    GoRoute(
+      path: '/trips/:id/smart-packing/results',
+      name: 'smart-packing-results',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        if (id == null || id.isEmpty) {
+          return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+        }
+        final recommendations =
+            state.extra as List<SmartPackingRecommendation>? ?? [];
+        return SmartPackingResultsScreen(
+          tripId: id,
+          recommendations: recommendations,
+        );
       },
     ),
     // Route sandbox PoC AI (developer-only, non esposta nella tab bar)

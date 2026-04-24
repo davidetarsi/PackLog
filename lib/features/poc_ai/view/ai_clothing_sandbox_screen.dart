@@ -72,7 +72,9 @@ class _AiClothingSandboxScreenState
 
     setState(() {
       _results = [];
-      for (final c in _nameControllers) c.dispose();
+      for (final c in _nameControllers) {
+        c.dispose();
+      }
       _nameControllers.clear();
       _errorMessage = null;
       _rawJsonDump = null;
@@ -156,7 +158,9 @@ class _AiClothingSandboxScreenState
       final saved = items.length;
       setState(() {
         _results.clear();
-        for (final c in _nameControllers) c.dispose();
+        for (final c in _nameControllers) {
+          c.dispose();
+        }
         _nameControllers.clear();
         _rawJsonDump = null;
         _errorMessage = null;
@@ -403,7 +407,7 @@ class _AiClothingSandboxScreenState
             Expanded(
               child: housesAsync.when(
                 loading: () => const LinearProgressIndicator(),
-                error: (_, __) => const Text('Errore caricamento case'),
+                error: (_, _) => const Text('Errore caricamento case'),
                 data: (houses) => DropdownButtonFormField<String>(
                   initialValue: _selectedHouseId,
                   isDense: true,

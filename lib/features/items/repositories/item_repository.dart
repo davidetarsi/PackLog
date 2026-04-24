@@ -40,6 +40,13 @@ abstract class ItemRepository {
   /// Idempotente: se [itemIds] è vuota non esegue operazioni.
   Future<void> deleteItems(List<String> itemIds);
 
+  /// Returns all non-deleted items whose category is in [categories].
+  ///
+  /// Used by [PackingInventoryService] to fetch the two inventory buckets
+  /// (wardrobe = [ItemCategory.vestiti], essentials = everything else)
+  /// in a single targeted query.
+  Future<List<ItemModel>> getAllItemsByCategories(List<ItemCategory> categories);
+
   /// Sposta [itemIds] da [fromHouseId] a [toHouseId] in una singola query SQL.
   ///
   /// La query filtra per `house_id = fromHouseId`: solo gli item che si trovano

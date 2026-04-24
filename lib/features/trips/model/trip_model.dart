@@ -67,6 +67,20 @@ class TripModel with _$TripModel {
     /// Bagagli associati al viaggio (relazione M:N via junction table)
     @Default([]) List<LuggageModel> luggages,
 
+    // ── AI & Weather metadata ──────────────────────────────────────────────
+
+    /// Vibe/tono principale del viaggio (es. "beach", "business", "adventure").
+    String? primaryVibe,
+
+    /// Lista di eventi extra associati al viaggio (es. ["wedding", "conference"]).
+    @Default([]) List<String> extraEvents,
+
+    /// Temperatura media prevista in gradi Celsius.
+    int? avgTemperature,
+
+    /// Tag meteo associati al viaggio (es. ["rainy", "cold"]).
+    @Default([]) List<String> weatherTags,
+
     /// Viaggio salvato/preferito
     @Default(false) bool isSaved,
     required DateTime createdAt,

@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../database.dart';
 import '../tables/items_table.dart';
+import '../../../features/items/model/item_model.dart' show ItemCategory;
 
 part 'items_dao.g.dart';
 
@@ -172,6 +173,23 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  // ── Packing Pre-screening ────────────────────────────────────────────────
+
+  /// Retrieves all non-deleted items whose [category] is in [categories].
+  ///
+  /// Used by [PackingInventoryService] to split the full inventory into the
+  /// two packing buckets (wardrobe / essentials) via a single targeted
+  /// SQL query instead of loading everything and filtering in Dart.
+  Future<List<Item>> getAllItemsByCategories(List<ItemCategory> categories) {
+    if (categories.isEmpty) return Future.value([]);
+    final expr = categories
+        .map<Expression<bool>>((cat) => items.category.equalsValue(cat))
+        .reduce((a, b) => a | b);
+    return (select(items)
+          ..where((i) => expr & i.isDeleted.equals(false)))
+        .get();
   }
 
   /// Sposta un set di oggetti da [fromHouseId] a [toHouseId] in una singola

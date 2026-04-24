@@ -19,13 +19,14 @@ import 'daos/luggages_dao.dart';
 // Tipi e converter referenziati dal codice Drift generato (database.g.dart).
 // I part file non ereditano gli import transitivi, quindi questi devono
 // essere dichiarati esplicitamente nel file principale del database.
-import 'converters/item_category_converter.dart';
-import 'converters/ai_metadata_converter.dart';
 import 'converters/location_type_converter.dart';
+import 'converters/item_category_converter.dart';
 import 'converters/luggage_size_converter.dart';
+import 'converters/ai_metadata_converter.dart';
+import 'converters/string_list_converter.dart';
+import '../../shared/model/location_type.dart';
 import '../../features/items/model/item_model.dart';
 import '../../features/luggages/model/luggage_model.dart';
-import '../../shared/model/location_type.dart';
 
 part 'database.g.dart';
 
@@ -60,7 +61,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -285,6 +286,33 @@ class AppDatabase extends _$AppDatabase {
           // un GeneratedColumn<Object> diretto e causerebbe un errore di tipo
           // statico nel Migrator. L'ALTER TABLE è equivalente e non perde dati.
           await customStatement('ALTER TABLE items ADD COLUMN ai_metadata TEXT');
+        }
+
+        if (from < 8) {
+          // Migrazione v7 → v8: AI & Weather metadata per i viaggi
+          //
+          // Aggiunge 4 nuove colonne alla tabella trips per supportare le
+          // feature di contesto AI e dati meteo per il packing intelligente:
+          //   - primary_vibe   TEXT NULLABLE  → vibe principale (AI)
+          //   - extra_events   TEXT NOT NULL  → lista eventi JSON (AI)
+          //   - avg_temperature INTEGER NULL  → temperatura media (meteo)
+          //   - weather_tags   TEXT NOT NULL  → tag meteo JSON (meteo)
+          //
+          // Le colonne con DEFAULT sono aggiunte via customStatement perché
+          // usano TypeConverter (StringListConverter) che non è un tipo primitivo
+          // direttamente gestibile da m.addColumn() con valore di default.
+          await customStatement(
+            'ALTER TABLE trips ADD COLUMN primary_vibe TEXT',
+          );
+          await customStatement(
+            "ALTER TABLE trips ADD COLUMN extra_events TEXT NOT NULL DEFAULT '[]'",
+          );
+          await customStatement(
+            'ALTER TABLE trips ADD COLUMN avg_temperature INTEGER',
+          );
+          await customStatement(
+            "ALTER TABLE trips ADD COLUMN weather_tags TEXT NOT NULL DEFAULT '[]'",
+          );
         }
       },
       beforeOpen: (details) async {

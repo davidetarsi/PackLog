@@ -579,6 +579,129 @@ void main() {
       expect(emptyTrip.returnDateTime, equals(null));
       expect(emptyTrip.destinationHouseId, equals(null));
       expect(emptyTrip.destinationLocation, equals(null));
+      // AI & Weather fields default values
+      expect(emptyTrip.primaryVibe, isNull);
+      expect(emptyTrip.extraEvents, isEmpty);
+      expect(emptyTrip.avgTemperature, isNull);
+      expect(emptyTrip.weatherTags, isEmpty);
+    });
+  });
+
+  group('TripModel - AI & Weather Metadata', () {
+    test('should store and retrieve primaryVibe', () {
+      final trip = TripModel(
+        id: 'trip-vibe',
+        name: 'Beach Trip',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        primaryVibe: 'beach',
+      );
+
+      expect(trip.primaryVibe, equals('beach'));
+    });
+
+    test('should default primaryVibe to null when not provided', () {
+      final trip = TripModel(
+        id: 'trip-no-vibe',
+        name: 'Trip',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      expect(trip.primaryVibe, isNull);
+    });
+
+    test('should store and retrieve extraEvents list', () {
+      final trip = TripModel(
+        id: 'trip-events',
+        name: 'Wedding Trip',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        extraEvents: ['wedding', 'conference'],
+      );
+
+      expect(trip.extraEvents, equals(['wedding', 'conference']));
+    });
+
+    test('should default extraEvents to empty list when not provided', () {
+      final trip = TripModel(
+        id: 'trip-no-events',
+        name: 'Trip',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      expect(trip.extraEvents, isEmpty);
+    });
+
+    test('should store and retrieve avgTemperature', () {
+      final trip = TripModel(
+        id: 'trip-temp',
+        name: 'Cold Trip',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        avgTemperature: -5,
+      );
+
+      expect(trip.avgTemperature, equals(-5));
+    });
+
+    test('should default avgTemperature to null when not provided', () {
+      final trip = TripModel(
+        id: 'trip-no-temp',
+        name: 'Trip',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      expect(trip.avgTemperature, isNull);
+    });
+
+    test('should store and retrieve weatherTags list', () {
+      final trip = TripModel(
+        id: 'trip-weather',
+        name: 'Rainy Trip',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        weatherTags: ['rainy', 'cold', 'windy'],
+      );
+
+      expect(trip.weatherTags, equals(['rainy', 'cold', 'windy']));
+    });
+
+    test('should default weatherTags to empty list when not provided', () {
+      final trip = TripModel(
+        id: 'trip-no-weather',
+        name: 'Trip',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      expect(trip.weatherTags, isEmpty);
+    });
+
+    test('should correctly copyWith AI & Weather fields', () {
+      final original = TripModel(
+        id: 'trip-copy',
+        name: 'Trip',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final updated = original.copyWith(
+        primaryVibe: 'adventure',
+        extraEvents: ['hiking'],
+        avgTemperature: 22,
+        weatherTags: ['sunny'],
+      );
+
+      expect(updated.primaryVibe, equals('adventure'));
+      expect(updated.extraEvents, equals(['hiking']));
+      expect(updated.avgTemperature, equals(22));
+      expect(updated.weatherTags, equals(['sunny']));
+      // Original unchanged
+      expect(original.primaryVibe, isNull);
+      expect(original.extraEvents, isEmpty);
     });
   });
 
