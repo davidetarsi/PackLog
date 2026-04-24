@@ -2,12 +2,16 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
+import 'package:pack_log/shared/widgets/tri_slot_bar.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
 import '../../items/view/add_edit_item_screen.dart';
+import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/providers/item_selection_provider.dart';
+import '../../items/widgets/rapid_fire_input.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
 import '../../spaces/view/spaces_management_screen.dart';
 import '../../luggages/view/luggages_management_screen.dart';
@@ -22,6 +26,7 @@ import '../../../shared/helpers/snack_bar_helper.dart';
 /// Durata delle transizioni animate tra le due modalità della UI
 /// (normale ↔ selezione multipla).
 const _kModeSwitchDuration = Duration(milliseconds: 220);
+const _kBottomBarElementsHeight = 50.0;
 
 class HouseDetailScreen extends ConsumerStatefulWidget {
   final String houseId;
@@ -33,6 +38,9 @@ class HouseDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
+  String? _currentSpaceId;
+  bool _isRapidFireExpanded = false;
+
   // -------------------------------------------------------------------------
   // Manage sheet
   // -------------------------------------------------------------------------
@@ -88,35 +96,6 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               onTap: () async {
                 Navigator.pop(sheetContext);
                 await showLuggagesManagementSheet(context, houseId: houseId);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAddItemsSheet(BuildContext context, String houseId) {
-    showModalBottomSheet(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.add),
-              title: Text('houses.add_single_item'.tr()),
-              onTap: () async {
-                Navigator.pop(sheetContext);
-                await showAddEditItemSheet(context, houseId: houseId);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.grid_view),
-              title: Text('bulk_creation.add_from_template'.tr()),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                context.push('/bulk-creation/templates/$houseId');
               },
             ),
           ],
@@ -506,6 +485,19 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   // Action bar builders
   // -------------------------------------------------------------------------
 
+  void _openFullFormFromRapidFire(
+    String houseId,
+    String name,
+    ItemCategory category,
+  ) {
+    showAddEditItemSheet(
+      context,
+      houseId: houseId,
+      initialName: name.isNotEmpty ? name : null,
+      initialCategory: category,
+    );
+  }
+
   /// Bottom action bar standard (modalità normale).
   Widget _buildNormalActionBar(
     BuildContext context,
@@ -514,47 +506,49 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     bool isPrimary,
     String houseName,
   ) {
-    return UniversalActionBar(
-      key: const ValueKey('normal-bar'),
-      horizontalPadding: 0,
-      primaryLabel: 'houses.manage'.tr(),
-      primaryIcon: Icons.settings,
-      onPrimaryPressed: () =>
-          _showManageSheet(context, houseId, isPrimary, houseName),
-      leftAction: CircularActionButton(
-        icon: Icons.delete_outline,
-        onPressed: () => _showDeleteDialog(context, houseName),
-        color: colorScheme.error,
-        showBorder: true,
-      ),
-      rightAction: CircularActionButton(
-        icon: Icons.add,
-        onPressed: () => _showAddItemsSheet(context, houseId),
-        showBorder: true,
-      ),
-    );
-  }
+    final elementHeight = context.responsive(_kBottomBarElementsHeight);
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-  /// Bottom action bar contestuale (modalità selezione multipla).
-  ///
-  /// - Sinistra: elimina gli item selezionati (disabilitato se nessuno scelto)
-  /// - Centro: sposta gli item selezionati (disabilitato se nessuno scelto)
-  Widget _buildSelectionActionBar(
-    BuildContext context,
-    ColorScheme colorScheme,
-    bool hasSelection,
-  ) {
-    return UniversalActionBar(
-      key: const ValueKey('selection-bar'),
-      horizontalPadding: 0,
-      primaryLabel: 'common.move'.tr(),
-      primaryIcon: Icons.local_shipping_outlined,
-      onPrimaryPressed: hasSelection ? _handleBulkMove : null,
-      leftAction: CircularActionButton(
-        icon: Icons.delete_outline,
-        onPressed: hasSelection ? _handleBulkDelete : null,
-        color: hasSelection ? colorScheme.error : colorScheme.outline,
-        showBorder: true,
+    return Padding(
+      // Aggiungiamo il padding bottom per spingere l'intera barra sopra la tastiera
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: TriSlotBar(
+        horizontalPadding: 0,
+        sideSlotWidth: _isRapidFireExpanded ? 0.0 : elementHeight, // Collassa slot laterali se espanso
+        left: AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: _isRapidFireExpanded ? 0.0 : 1.0,
+          child: _isRapidFireExpanded
+              ? null
+              : CircularActionButton(
+                  icon: Icons.delete_outline,
+                  onPressed: () => _showDeleteDialog(context, houseName),
+                  color: colorScheme.error,
+                  showBorder: true,
+                ),
+        ),
+        center: RapidFireInput(
+          houseId: houseId,
+          currentSpaceId: _currentSpaceId,
+          height: elementHeight,
+          onOpenFullForm: (name, category) =>
+              _openFullFormFromRapidFire(houseId, name, category),
+          onExpandedChanged: (expanded) {
+            setState(() => _isRapidFireExpanded = expanded);
+          },
+        ),
+        right: AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: _isRapidFireExpanded ? 0.0 : 1.0,
+          child: _isRapidFireExpanded
+              ? null
+              : CircularActionButton(
+                  icon: Icons.edit,
+                  onPressed: () =>
+                      _showManageSheet(context, houseId, isPrimary, houseName),
+                  showBorder: true,
+                ),
+        ),
       ),
     );
   }
@@ -632,7 +626,13 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                     ),
             ),
           ),
-          body: ItemsScreen(houseId: widget.houseId, houseName: house.name),
+          body: ItemsScreen(
+            houseId: widget.houseId,
+            houseName: house.name,
+            onSpaceFilterChanged: (spaceId) {
+              _currentSpaceId = spaceId;
+            },
+          ),
           // Bottom bar: transizione animata tra barra normale e barra selezione.
           bottomContent: AnimatedSwitcher(
             duration: _kModeSwitchDuration,
@@ -652,10 +652,24 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                     key: const ValueKey(
                       'selection_bar',
                     ), // Aiuta l'AnimatedSwitcher
-                    child: _buildSelectionActionBar(
-                      context,
-                      colorScheme,
-                      hasSelection,
+                    /// Bottom action bar contestuale (modalità selezione multipla).
+                    ///
+                    /// - Sinistra: elimina gli item selezionati (disabilitato se nessuno scelto)
+                    /// - Centro: sposta gli item selezionati (disabilitato se nessuno scelto)
+                    child: UniversalActionBar(
+                      key: const ValueKey('selection-bar'),
+                      horizontalPadding: 0,
+                      primaryLabel: 'common.move'.tr(),
+                      primaryIcon: Icons.local_shipping_outlined,
+                      onPrimaryPressed: hasSelection ? _handleBulkMove : null,
+                      leftAction: CircularActionButton(
+                        icon: Icons.delete_outline,
+                        onPressed: hasSelection ? _handleBulkDelete : null,
+                        color: hasSelection
+                            ? colorScheme.error
+                            : colorScheme.outline,
+                        showBorder: true,
+                      ),
                     ),
                   )
                 : KeyedSubtree(

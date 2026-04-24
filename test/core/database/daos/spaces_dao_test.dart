@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart' hide isNull, isNotNull;
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for SpacesDao.
@@ -57,7 +58,7 @@ void main() {
           houseId: houseId,
           spaceId: Value(spaceId), // Item IS in the space
           name: 'Plate',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -69,7 +70,7 @@ void main() {
           houseId: houseId,
           spaceId: Value(spaceId), // Item IS in the space
           name: 'Cup',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -81,7 +82,7 @@ void main() {
           houseId: houseId,
           // No spaceId - item is in general pool
           name: 'Random Item',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -178,7 +179,7 @@ void main() {
             houseId: houseId,
             spaceId: Value(spaceId),
             name: 'Bedroom Item $i',
-            category: 'varie',
+            category: ItemCategory.varie,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           ),
@@ -247,7 +248,7 @@ void main() {
           houseId: houseId,
           spaceId: Value(kitchenSpaceId),
           name: 'Kitchen Item',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -259,7 +260,7 @@ void main() {
           houseId: houseId,
           spaceId: Value(bedroomSpaceId),
           name: 'Bedroom Item',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),

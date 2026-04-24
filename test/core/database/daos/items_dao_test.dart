@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for ItemsDao.
@@ -35,7 +36,7 @@ void main() {
           id: 'item-1',
           houseId: houseId,
           name: 'T-shirt',
-          category: 'vestiti',
+          category: ItemCategory.vestiti,
           quantity: Value(3),
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -44,7 +45,7 @@ void main() {
           id: 'item-2',
           houseId: houseId,
           name: 'Laptop',
-          category: 'elettronica',
+          category: ItemCategory.elettronica,
           quantity: Value(1),
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -53,7 +54,7 @@ void main() {
           id: 'item-3',
           houseId: houseId,
           name: 'Shampoo',
-          category: 'toiletries',
+          category: ItemCategory.toiletries,
           quantity: Value(2),
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -69,16 +70,16 @@ void main() {
 
       final tshirt = allItems.firstWhere((i) => i.id == 'item-1');
       expect(tshirt.name, 'T-shirt');
-      expect(tshirt.category, 'vestiti');
+      expect(tshirt.category, ItemCategory.vestiti);
       expect(tshirt.quantity, 3);
 
       final laptop = allItems.firstWhere((i) => i.id == 'item-2');
       expect(laptop.name, 'Laptop');
-      expect(laptop.category, 'elettronica');
+      expect(laptop.category, ItemCategory.elettronica);
 
       final shampoo = allItems.firstWhere((i) => i.id == 'item-3');
       expect(shampoo.name, 'Shampoo');
-      expect(shampoo.category, 'toiletries');
+      expect(shampoo.category, ItemCategory.toiletries);
       expect(shampoo.quantity, 2);
     });
 
@@ -110,7 +111,7 @@ void main() {
           id: 'item-$index',
           houseId: houseId,
           name: 'Item $index',
-          category: 'varie',
+          category: ItemCategory.varie,
           quantity: Value(index % 5 + 1),
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -140,7 +141,7 @@ void main() {
           id: 'item-1',
           houseId: nonExistentHouseId,
           name: 'Orphan Item',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -174,7 +175,7 @@ void main() {
           id: id,
           houseId: houseAId,
           name: 'Item $id',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ));
@@ -225,7 +226,7 @@ void main() {
         id: 'relocated-item',
         houseId: houseBId,
         name: 'Relocated Item',
-        category: 'varie',
+        category: ItemCategory.varie,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       ));
@@ -262,7 +263,7 @@ void main() {
         id: 'idempotent-item',
         houseId: houseAId,
         name: 'Idempotent Item',
-        category: 'varie',
+        category: ItemCategory.varie,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       ));
@@ -305,7 +306,7 @@ void main() {
           id: 'item-1',
           houseId: houseId,
           name: 'Valid Item 1',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -313,7 +314,7 @@ void main() {
           id: 'item-1', // Duplicate ID - violates PRIMARY KEY
           houseId: houseId,
           name: 'Invalid Duplicate',
-          category: 'varie',
+          category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),

@@ -1,11 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pack_log/features/items/view/item_category.dart';
 import '../model/item_model.dart';
 import '../providers/item_selection_provider.dart';
 import '../../../shared/widgets/widgets.dart';
-import 'add_edit_item_screen.dart';
 
 class ItemCard extends ConsumerWidget {
   final ItemModel item;
@@ -90,8 +88,9 @@ class ItemCard extends ConsumerWidget {
       }
     }
 
-    // In modalità selezione il leading diventa un Checkbox; altrimenti la categoria.
-    final Widget leading = isSelectionActive
+    // In modalità selezione il leading diventa un Checkbox; altrimenti assente
+    // così il titolo si posiziona automaticamente a sinistra.
+    final Widget? leading = isSelectionActive
         ? Checkbox(
             value: isSelected,
             onChanged: (_) => ref
@@ -100,7 +99,7 @@ class ItemCard extends ConsumerWidget {
             activeColor: colorScheme.primary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           )
-        : CategoryIcon(category: item.category);
+        : null;
 
     // Il colore di sfondo segnala visivamente la selezione.
     final Color? bgColor = isSelected
@@ -132,9 +131,10 @@ class ItemCard extends ConsumerWidget {
           ? () => ref
                 .read(itemSelectionNotifierProvider.notifier)
                 .toggleItem(item.id)
-          : isFullyOnTrip
+          : null,
+          /* isFullyOnTrip
               ? null
-              : () => _onEdit(context),
+              : () => _onEdit(context), */
       // Long press attiva la selezione multipla dal primo item premuto.
       // Disabilitato se in selezione o se l'item è in viaggio.
       onLongPress: isSelectionActive || hasAnyOnTrip
@@ -148,10 +148,6 @@ class ItemCard extends ConsumerWidget {
                   .toggleItem(item.id);
             },
     );
-  }
-
-  void _onEdit(BuildContext context) {
-    showAddEditItemSheet(context, houseId: houseId, itemId: item.id);
   }
 
 }

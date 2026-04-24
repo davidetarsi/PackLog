@@ -13,35 +13,46 @@ The app addresses a common logistical pain point: maintaining an accurate invent
 
 ---
 
-## 📱 Screenshots
-
-<p align="center">
-  <img src="screen_app/houses.png" width="22%" alt="Multi-House Home"/>
-  &nbsp;&nbsp;
-  <img src="screen_app/houses_trip.png" width="22%" alt="Transit View"/>
-  &nbsp;&nbsp;
-  <img src="screen_app/house_detail.png" width="22%" alt="Inventory Detail"/>
-  &nbsp;&nbsp;
-  <img src="screen_app/create.png" width="22%" alt="Create Item"/>
-  <br><br>
-  <img src="screen_app/new_trip.png" width="22%" alt="New Trip"/>
-  &nbsp;&nbsp;
-  <img src="screen_app/trips.png" width="22%" alt="Trips Overview"/>
-  &nbsp;&nbsp;
-  <img src="screen_app/trip_detail.png" width="22%" alt="Trip Details"/>
-  &nbsp;&nbsp;
-  <img src="screen_app/settings.png" width="22%" alt="Settings"/>
-</p>
-
----
-
 ## ✨ Core Features
 
 * 🏠 **Multi-Property Management (Houses):** Full CRUD with integrated geocoding via Geoapify, custom iconography, and real-time inventory analytics.
+  
+  * <details>
+    <summary><strong>🎬 Demo: Add new house</strong></summary>
+    <br>
+    <img src="https://raw.githubusercontent.com/davidetarsi/PackLog/work_from_windows/assets/gifs/add_house.gif" width="250" />
+    </details>
+* 📑 **Smart Inventory Templates:** Accelerated property setup via predefined travel profiles. Users can batch-import essential items into a house using curated templates (e.g., "Business Essentials", "Summer Kit"), reducing manual data entry.
+
+  * <details>
+    <summary><strong>🎬 Demo: Add from template </strong></summary>
+    <br>
+    <img src="https://raw.githubusercontent.com/davidetarsi/PackLog/work_from_windows/assets/gifs/add_template.gif" width="250" />
+    </details>
+    
 * 🎒 **Inventory Engine (Items):** Categorized cataloging (Clothes, Toiletries, Electronics, Misc) with dynamic state tracking ("Available" vs. "In Transit").
+
+  * <details>
+    <summary><strong>🎬 Demo: Items states </strong></summary>
+    <br>
+    <img src="https://raw.githubusercontent.com/davidetarsi/PackLog/work_from_windows/assets/gifs/state_items.gif" width="250" />
+    </details>
 * ✈️ **Trip Planning (Trips):** Timeline-based logistics with automatic status calculation (Upcoming, Active, Completed) and dynamic packing checklists.
+
+  * <details>
+    <summary><strong>🎬 Demo: Add new trip</strong></summary>
+    <br>
+    <img src="https://raw.githubusercontent.com/davidetarsi/PackLog/work_from_windows/assets/gifs/add_trip.gif" width="250" />
+    </details>
 * 💾 **Disaster Recovery & Backup:** Physical SQLite DB export/import system featuring automated pre-import safety backups, post-import schema validation, and atomic rollbacks in case of data corruption.
+  
 * 🎨 **Enterprise UX/UI & i18n:** Adaptive Light/Dark/System themes, proprietary Design System, and full internationalization (it-IT, en-US) with zero hardcoded strings.
+  
+  * <details>
+    <summary><strong>🎬 Demo: Change theme and language</strong></summary>
+    <br>
+    <img src="https://raw.githubusercontent.com/davidetarsi/PackLog/work_from_windows/assets/gifs/change_theme.gif" width="250" />
+    </details>
 
 ---
 

@@ -1,0 +1,61 @@
+name: 🛠️ Build DEV
+
+on:
+  push:
+    branches: [ "develop" ]
+
+jobs:
+  build-dev-apk:
+    name: Build & Upload DEV APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      - name: ⚙️ Generate Code (Freezed, Drift, Riverpod)
+        # Il flag -d (delete-conflicting-outputs) è vitale in CI per 
+        # evitare blocchi se ci sono rimasugli di cache
+        run: dart run build_runner build -d
+
+      - name: 📖 Extract Version from pubspec.yaml
+        id: get_version
+        run: |
+          # Estrae la riga "version: 1.0.0+1", prende la seconda colonna e la salva in una variabile d'ambiente
+          VERSION=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2)
+          echo "App version is $VERSION"
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: 🏗️ Build DEV APK
+        run: flutter build apk --flavor dev --target lib/main_dev.dart --dart-define=GEOAPIFY_KEY=DEV_KEY_PLACEHOLDER --target-platform android-arm64
+
+      # ── NUOVO STEP: Ridenominazione del file ──
+      - name: 🏷️ Rename APK File
+        run: |
+          # Spostiamo e rinominiamo il file generato da Flutter
+          # Il nome diventerà, ad esempio: PackLog-dev-v1.0.0+1.apk
+          mv build/app/outputs/flutter-apk/app-dev-release.apk build/app/outputs/flutter-apk/PackLog-dev-v${{ env.APP_VERSION }}.apk
+
+      - name: ☁️ Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          # Il "name" qui definisce come si chiamerà lo ZIP che GitHub ti fa scaricare
+          name: PackLog-dev-v${{ env.APP_VERSION }}
+          # Il "path" punta al nuovo file appena rinominato
+          path: build/app/outputs/flutter-apk/PackLog-dev-v${{ env.APP_VERSION }}.apk
+          retention-days: 7

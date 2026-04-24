@@ -386,6 +386,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       child: TextFormField(
         controller: _controller,
         focusNode: _focusNode,
+        textCapitalization: TextCapitalization.sentences,
         decoration: InputDecoration(
           floatingLabelBehavior: FloatingLabelBehavior.always,
           labelText: widget.labelText ?? 'common.destination'.tr(),

@@ -17,11 +17,13 @@ import 'in_transit_section.dart';
 class ItemsScreen extends ConsumerStatefulWidget {
   final String houseId;
   final String houseName;
+  final ValueChanged<String?>? onSpaceFilterChanged;
 
   const ItemsScreen({
     super.key,
     required this.houseId,
     required this.houseName,
+    this.onSpaceFilterChanged,
   });
 
   @override
@@ -142,6 +144,9 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                                   setState(() {
                                     _selectedSpaceId = spaceId;
                                   });
+                                  widget.onSpaceFilterChanged?.call(
+                                    spaceId == 'default' ? null : spaceId,
+                                  );
                                 },
                                 scrollPadding: EdgeInsets.zero,
                               ),
