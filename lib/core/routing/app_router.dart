@@ -9,9 +9,9 @@ import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/add_trip_screen.dart';
 import '../../features/trips/view/edit_trip_info_screen.dart';
 import '../../features/trips/view/edit_trip_items_screen.dart';
+import '../../features/trips/model/trip_model.dart';
 import '../../features/trips/view/smart_packing_loading_screen.dart';
 import '../../features/trips/view/smart_packing_results_screen.dart';
-import '../../features/trips/services/smart_packing_agent.dart';
 import '../../features/bulk_creation/view/house_selection_screen.dart';
 import '../../features/bulk_creation/view/template_selection_screen.dart';
 import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
@@ -134,6 +134,40 @@ final appRouter = GoRouter(
         return EditTripItemsScreen(tripId: id);
       },
     ),
+    // Loading screen — new trip (data from form, not yet in DB)
+    GoRoute(
+      path: '/trips/new/smart-packing',
+      name: 'smart-packing-loading-new',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final pendingTrip = state.extra as TripModel?;
+        if (pendingTrip == null) {
+          return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+        }
+        return SmartPackingLoadingScreen(
+          tripId: 'new',
+          pendingTrip: pendingTrip,
+        );
+      },
+    ),
+    // Results screen — new trip
+    GoRoute(
+      path: '/trips/new/smart-packing/results',
+      name: 'smart-packing-results-new',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final payload = state.extra as SmartPackingResultsPayload?;
+        if (payload == null) {
+          return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+        }
+        return SmartPackingResultsScreen(
+          tripId: 'new',
+          recommendations: payload.recommendations,
+          pendingTrip: payload.pendingTrip,
+        );
+      },
+    ),
+    // Loading screen — existing trip (reads from DB)
     GoRoute(
       path: '/trips/:id/smart-packing',
       name: 'smart-packing-loading',
@@ -146,6 +180,7 @@ final appRouter = GoRouter(
         return SmartPackingLoadingScreen(tripId: id);
       },
     ),
+    // Results screen — existing trip
     GoRoute(
       path: '/trips/:id/smart-packing/results',
       name: 'smart-packing-results',
@@ -155,11 +190,11 @@ final appRouter = GoRouter(
         if (id == null || id.isEmpty) {
           return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
         }
-        final recommendations =
-            state.extra as List<SmartPackingRecommendation>? ?? [];
+        final payload = state.extra as SmartPackingResultsPayload?;
         return SmartPackingResultsScreen(
           tripId: id,
-          recommendations: recommendations,
+          recommendations: payload?.recommendations ?? [],
+          pendingTrip: payload?.pendingTrip,
         );
       },
     ),

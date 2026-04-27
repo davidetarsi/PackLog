@@ -11,9 +11,11 @@ import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
+import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/helpers/bottom_sheet_handle.dart';
 import 'trip_info_form.dart';
 import 'trip_items_selector.dart';
 
@@ -92,53 +94,36 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
     });
   }
 
-  Future<void> _saveTrip() async {
-    if (!_formKey.currentState!.validate()) return;
+  // ── Validazione ───────────────────────────────────────────────────────────
 
+  bool _validate() {
+    if (!_formKey.currentState!.validate()) return false;
     if (_name.trim().isEmpty) {
       AppSnackBar.showWarning(context, 'common.required_field_error'.tr());
-      return;
+      return false;
     }
-
-    // Validazione date
     if (_departureDateTime != null && _returnDateTime != null) {
       if (_returnDateTime!.isBefore(_departureDateTime!)) {
         AppSnackBar.showWarning(
           context,
           'common.return_before_departure_error'.tr(),
         );
-        return;
+        return false;
       }
     }
+    return true;
+  }
 
-    setState(() => _isLoading = true);
-
+  /// Costruisce il [TripModel] dai campi correnti del form.
+  /// [tripId] è l'id da usare (fisso in editing, nuovo in creazione).
+  TripModel _buildTripModel(String tripId) {
     final now = DateTime.now();
-    final trip = widget.tripId != null
-        ? (() {
-            final tripsAsync = ref.read(tripNotifierProvider);
-            final trips = tripsAsync.value;
-            if (trips == null) throw StateError('Lista non trovata');
-            return trips
-                .firstWhere((t) => t.id == widget.tripId)
-                .copyWith(
-                  name: _name.trim(),
-                  description: _description,
-                  items: _selectedItems,
-                  luggages: _selectedLuggages,
-                  departureDateTime: _departureDateTime,
-                  returnDateTime: _returnDateTime,
-                  destinationHouseId: _destinationHouseId,
-                  destinationLocation: _destinationHouseId == null
-                      ? _destinationLocation
-                      : null,
-                  primaryVibe: _primaryVibe,
-                  extraEvents: _extraEvents,
-                  updatedAt: now,
-                );
-          })()
-        : TripModel(
-            id: const Uuid().v4(),
+    final isEditing = widget.tripId != null;
+
+    if (isEditing) {
+      final trips = ref.read(tripNotifierProvider).value;
+      if (trips == null) throw StateError('Lista non trovata');
+      return trips.firstWhere((t) => t.id == tripId).copyWith(
             name: _name.trim(),
             description: _description,
             items: _selectedItems,
@@ -146,16 +131,42 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
             departureDateTime: _departureDateTime,
             returnDateTime: _returnDateTime,
             destinationHouseId: _destinationHouseId,
-            destinationLocation: _destinationHouseId == null
-                ? _destinationLocation
-                : null,
+            destinationLocation:
+                _destinationHouseId == null ? _destinationLocation : null,
             primaryVibe: _primaryVibe,
             extraEvents: _extraEvents,
-            createdAt: now,
             updatedAt: now,
           );
+    }
 
+    return TripModel(
+      id: tripId,
+      name: _name.trim(),
+      description: _description,
+      items: _selectedItems,
+      luggages: _selectedLuggages,
+      departureDateTime: _departureDateTime,
+      returnDateTime: _returnDateTime,
+      destinationHouseId: _destinationHouseId,
+      destinationLocation:
+          _destinationHouseId == null ? _destinationLocation : null,
+      primaryVibe: _primaryVibe,
+      extraEvents: _extraEvents,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  // ── Salva e torna alla lista ───────────────────────────────────────────────
+
+  Future<void> _saveTrip() async {
+    if (!_validate()) return;
+    setState(() => _isLoading = true);
+
+    final tripId = widget.tripId ?? const Uuid().v4();
+    final trip = _buildTripModel(tripId);
     final isEditing = widget.tripId != null;
+
     final success = await ErrorRetryDialog.executeWithRetry(
       context: context,
       operation: () async {
@@ -173,10 +184,30 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
 
     if (mounted) {
       setState(() => _isLoading = false);
-      if (success) {
-        context.go('/trips');
-      }
+      if (success) context.go('/trips');
     }
+  }
+
+  // ── Smart Packing AI: naviga direttamente con i dati del form ────────────
+
+  /// Il bottone AI è attivo solo quando le informazioni minime sono presenti:
+  /// data di partenza, destinazione, scopo del viaggio e almeno un'attività.
+  bool get _canGenerateWithAI {
+    final hasDate = _departureDateTime != null;
+    final hasDestination =
+        _destinationLocation != null || _destinationHouseId != null;
+    final hasVibe = _primaryVibe != null;
+    final hasEvents = _extraEvents.isNotEmpty;
+    return hasDate && hasDestination && hasVibe && hasEvents;
+  }
+
+  /// Naviga alla loading screen passando direttamente i dati del form,
+  /// senza salvare prima il viaggio nel DB.
+  void _generateWithAI() {
+    if (!_canGenerateWithAI) return;
+    final tripId = widget.tripId ?? const Uuid().v4();
+    final pendingTrip = _buildTripModel(tripId);
+    context.push('/trips/new/smart-packing', extra: pendingTrip);
   }
 
   @override
@@ -351,6 +382,22 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
         primaryIcon: Icons.save,
         onPrimaryPressed: _isLoading ? null : _saveTrip,
         isLoading: _isLoading,
+        rightAction: Tooltip(
+          message: _canGenerateWithAI
+              ? 'Smart Packing AI'
+              : 'Completa data, destinazione, scopo e attività',
+          child: CircularActionButton(
+            icon: Icons.auto_awesome,
+            color: _canGenerateWithAI
+                ? Theme.of(context).colorScheme.secondary
+                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+            backgroundColor: _canGenerateWithAI
+                ? Theme.of(context).colorScheme.secondaryContainer
+                : Theme.of(context).colorScheme.surfaceContainerHighest,
+            onPressed: (_isLoading || !_canGenerateWithAI) ? null : _generateWithAI,
+            showBorder: false,
+          ),
+        ),
       ),
     );
   }

@@ -12,6 +12,24 @@ import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import '../services/smart_packing_agent.dart';
 
+// ── Navigation payload ────────────────────────────────────────────────────────
+
+/// Data carrier passed from [SmartPackingLoadingScreen] to
+/// [SmartPackingResultsScreen] via GoRouter `extra`.
+///
+/// [pendingTrip] is non-null when coming from the trip creation form
+/// (trip not yet saved in DB). The results screen will call [addTrip]
+/// instead of [updateTrip] in that case.
+class SmartPackingResultsPayload {
+  final List<SmartPackingRecommendation> recommendations;
+  final TripModel? pendingTrip;
+
+  const SmartPackingResultsPayload({
+    required this.recommendations,
+    this.pendingTrip,
+  });
+}
+
 // ── State for a single recommendation row ─────────────────────────────────────
 
 /// Holds an AI recommendation paired with the resolved item and its selection.
@@ -31,17 +49,24 @@ class _RecommendationEntry {
 
 /// Displays the AI-generated packing list and lets the user approve or
 /// remove individual items before saving them to the trip.
+///
+/// Two modes:
+/// - **Creation** (`pendingTrip != null`): trip not in DB yet; saving calls
+///   [addTrip] and navigates to the new trip's detail screen.
+/// - **Edit** (`pendingTrip == null`): trip already in DB; saving calls
+///   [updateTrip] and returns to the existing trip's detail screen.
 class SmartPackingResultsScreen extends ConsumerStatefulWidget {
   final String tripId;
-
-  /// Raw recommendations received from [SmartPackingLoadingScreen] via
-  /// GoRouter `extra`.
   final List<SmartPackingRecommendation> recommendations;
+
+  /// Non-null when the trip has not yet been saved to the DB.
+  final TripModel? pendingTrip;
 
   const SmartPackingResultsScreen({
     super.key,
     required this.tripId,
     required this.recommendations,
+    this.pendingTrip,
   });
 
   @override
@@ -98,6 +123,20 @@ class _SmartPackingResultsScreenState
 
   // ── Save logic ────────────────────────────────────────────────────────────
 
+  List<TripItem> _buildTripItems(List<_RecommendationEntry> selected) {
+    return selected.map((e) {
+      final item = e.item;
+      return TripItem(
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        quantity: item.quantity ?? 1,
+        originHouseId: item.houseId,
+        isChecked: false,
+      );
+    }).toList();
+  }
+
   Future<void> _saveToTrip() async {
     final selected = _entries.where((e) => e.isSelected).toList();
     if (selected.isEmpty) {
@@ -111,51 +150,53 @@ class _SmartPackingResultsScreenState
     setState(() => _isSaving = true);
 
     try {
-      final tripsAsync = ref.read(tripNotifierProvider);
-      final trip = tripsAsync.value?.firstWhere(
-        (t) => t.id == widget.tripId,
-        orElse: () => throw StateError('Viaggio non trovato'),
-      );
-      if (trip == null) throw StateError('Viaggio non trovato');
+      final newItems = _buildTripItems(selected);
 
-      // Convert selected ItemModels into TripItems (snapshot pattern).
-      final newItems = selected.map((e) {
-        final item = e.item;
-        return TripItem(
-          id: item.id,
-          name: item.name,
-          category: item.category,
-          quantity: item.quantity ?? 1,
-          originHouseId: item.houseId,
-          isChecked: false,
+      if (widget.pendingTrip != null) {
+        // ── Creation mode: trip not yet in DB ─────────────────────────────
+        final trip = widget.pendingTrip!.copyWith(
+          items: newItems,
+          updatedAt: DateTime.now(),
         );
-      }).toList();
+        await ref.read(tripNotifierProvider.notifier).addTrip(trip);
 
-      // Merge with existing items, deduplicating by id.
-      final existingIds = trip.items.map((i) => i.id).toSet();
-      final merged = [
-        ...trip.items,
-        ...newItems.where((i) => !existingIds.contains(i.id)),
-      ];
-
-      await ref.read(tripNotifierProvider.notifier).updateTrip(
-            trip.copyWith(items: merged, updatedAt: DateTime.now()),
+        if (mounted) {
+          AppSnackBar.showSuccess(
+            context,
+            'Viaggio creato con ${selected.length} oggett${selected.length == 1 ? 'o' : 'i'}.',
           );
-
-      if (mounted) {
-        AppSnackBar.showSuccess(
-          context,
-          '${selected.length} oggett${selected.length == 1 ? 'o aggiunto' : 'i aggiunti'} al viaggio.',
+          context.go('/trips/${trip.id}');
+        }
+      } else {
+        // ── Edit mode: merge items into existing trip ──────────────────────
+        final tripsAsync = ref.read(tripNotifierProvider);
+        final trip = tripsAsync.value?.firstWhere(
+          (t) => t.id == widget.tripId,
+          orElse: () => throw StateError('Viaggio non trovato'),
         );
-        // Return to trip detail, clearing the loading + results stack.
-        context.go('/trips/${widget.tripId}');
+        if (trip == null) throw StateError('Viaggio non trovato');
+
+        final existingIds = trip.items.map((i) => i.id).toSet();
+        final merged = [
+          ...trip.items,
+          ...newItems.where((i) => !existingIds.contains(i.id)),
+        ];
+
+        await ref.read(tripNotifierProvider.notifier).updateTrip(
+              trip.copyWith(items: merged, updatedAt: DateTime.now()),
+            );
+
+        if (mounted) {
+          AppSnackBar.showSuccess(
+            context,
+            '${selected.length} oggett${selected.length == 1 ? 'o aggiunto' : 'i aggiunti'} al viaggio.',
+          );
+          context.go('/trips/${widget.tripId}');
+        }
       }
     } catch (e) {
       if (mounted) {
-        AppSnackBar.showError(
-          context,
-          'Errore durante il salvataggio: $e',
-        );
+        AppSnackBar.showError(context, 'Errore durante il salvataggio: $e');
         setState(() => _isSaving = false);
       }
     }
@@ -195,8 +236,12 @@ class _SmartPackingResultsScreenState
       bottomContent: UniversalActionBar(
         primaryLabel: _isSaving
             ? 'Salvataggio...'
-            : 'Aggiungi $selectedCount Element${selectedCount == 1 ? 'o' : 'i'} al Viaggio',
-        primaryIcon: Icons.add_shopping_cart,
+            : widget.pendingTrip != null
+                ? 'Crea Viaggio con $selectedCount Element${selectedCount == 1 ? 'o' : 'i'}'
+                : 'Aggiungi $selectedCount Element${selectedCount == 1 ? 'o' : 'i'} al Viaggio',
+        primaryIcon: widget.pendingTrip != null
+            ? Icons.luggage
+            : Icons.add_shopping_cart,
         onPrimaryPressed: (_isLoading || _isSaving || selectedCount == 0)
             ? null
             : _saveToTrip,
@@ -281,8 +326,14 @@ class _SmartPackingResultsScreenState
             const SizedBox(height: AppSpacing.lg),
             TextButton.icon(
               icon: const Icon(Icons.arrow_back),
-              label: const Text('Torna al viaggio'),
-              onPressed: () => context.go('/trips/${widget.tripId}'),
+              label: Text(
+                widget.pendingTrip != null
+                    ? 'Torna alla creazione'
+                    : 'Torna al viaggio',
+              ),
+              onPressed: () => widget.pendingTrip != null
+                  ? context.pop()
+                  : context.go('/trips/${widget.tripId}'),
             ),
           ],
         ),

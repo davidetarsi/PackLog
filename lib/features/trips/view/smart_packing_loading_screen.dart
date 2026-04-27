@@ -11,22 +11,35 @@ import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import '../services/open_meteo_service.dart';
 import '../services/smart_packing_agent.dart';
+import 'smart_packing_results_screen.dart';
 
 /// Engaging loading screen shown while the AI packing pipeline runs.
 ///
-/// Pipeline steps (all on this screen):
-///   1. Read trip data from [TripNotifier].
+/// Two modes:
+/// - **Creation** (`pendingTrip != null`): trip data comes directly from the
+///   form without a DB round-trip. The trip is NOT saved until the user
+///   confirms in the results screen.
+/// - **Edit** (`pendingTrip == null`): trip is read from [TripNotifier] by
+///   [tripId] as usual.
+///
+/// Pipeline steps:
+///   1. Resolve trip model (from param or DB).
 ///   2. Compute base quotas via [PackingBlueprintEngine].
 ///   3. Pre-screen inventory via [PackingInventoryService].
 ///   4. Generate recommendations via [SmartPackingAgent].
-///   5. Navigate to [SmartPackingResultsScreen] on success, or show an error
-///      state with a retry button on failure.
-///
-/// The user sees a pulsing icon and cycling text while waiting.
+///   5. Navigate to [SmartPackingResultsScreen] on success.
 class SmartPackingLoadingScreen extends ConsumerStatefulWidget {
   final String tripId;
 
-  const SmartPackingLoadingScreen({super.key, required this.tripId});
+  /// Trip data passed directly from the creation form.
+  /// When non-null the pipeline skips the DB lookup.
+  final TripModel? pendingTrip;
+
+  const SmartPackingLoadingScreen({
+    super.key,
+    required this.tripId,
+    this.pendingTrip,
+  });
 
   @override
   ConsumerState<SmartPackingLoadingScreen> createState() =>
@@ -110,13 +123,19 @@ class _SmartPackingLoadingScreenState
     }
 
     try {
-      // Step 1 — Resolve trip
-      final trips = ref.read(tripNotifierProvider).value;
-      final trip = trips?.firstWhere(
-        (t) => t.id == widget.tripId,
-        orElse: () => throw StateError('Viaggio non trovato'),
-      );
-      if (trip == null) throw StateError('Viaggio non trovato');
+      // Step 1 — Resolve trip (form data or DB)
+      final TripModel trip;
+      if (widget.pendingTrip != null) {
+        trip = widget.pendingTrip!;
+      } else {
+        final trips = ref.read(tripNotifierProvider).value;
+        final found = trips?.firstWhere(
+          (t) => t.id == widget.tripId,
+          orElse: () => throw StateError('Viaggio non trovato'),
+        );
+        if (found == null) throw StateError('Viaggio non trovato');
+        trip = found;
+      }
 
       // Step 2 — Compute duration and base quotas
       final duration = _computeDuration(trip);
@@ -150,7 +169,10 @@ class _SmartPackingLoadingScreenState
 
       context.pushReplacement(
         '/trips/${widget.tripId}/smart-packing/results',
-        extra: recommendations,
+        extra: SmartPackingResultsPayload(
+          recommendations: recommendations,
+          pendingTrip: widget.pendingTrip,
+        ),
       );
     } catch (e) {
       if (mounted) {
