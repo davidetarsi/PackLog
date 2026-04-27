@@ -48,12 +48,10 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   Future<int> deleteTrip(String id) async {
     return transaction(() async {
       // Cleanup fisico dei dati snapshot/junction (non hanno isDeleted)
-      await (delete(tripItemEntries)
-            ..where((ti) => ti.tripId.equals(id)))
-          .go();
-      await (delete(tripLuggageEntries)
-            ..where((tle) => tle.tripId.equals(id)))
-          .go();
+      await (delete(tripItemEntries)..where((ti) => ti.tripId.equals(id))).go();
+      await (delete(
+        tripLuggageEntries,
+      )..where((tle) => tle.tripId.equals(id))).go();
 
       return (update(trips)..where((t) => t.id.equals(id))).write(
         TripsCompanion(
@@ -75,16 +73,16 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
 
   /// Ottiene tutti gli oggetti di un viaggio
   Future<List<TripItemEntry>> getTripItemsByTripId(String tripId) {
-    return (select(tripItemEntries)
-          ..where((ti) => ti.tripId.equals(tripId)))
-        .get();
+    return (select(
+      tripItemEntries,
+    )..where((ti) => ti.tripId.equals(tripId))).get();
   }
 
   /// Ottiene gli oggetti di un viaggio come stream
   Stream<List<TripItemEntry>> watchTripItemsByTripId(String tripId) {
-    return (select(tripItemEntries)
-          ..where((ti) => ti.tripId.equals(tripId)))
-        .watch();
+    return (select(
+      tripItemEntries,
+    )..where((ti) => ti.tripId.equals(tripId))).watch();
   }
 
   /// Inserisce un oggetto nel viaggio
@@ -104,9 +102,9 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
 
   /// Elimina fisicamente tutti gli oggetti di un viaggio
   Future<int> deleteTripItemsByTripId(String tripId) {
-    return (delete(tripItemEntries)
-          ..where((ti) => ti.tripId.equals(tripId)))
-        .go();
+    return (delete(
+      tripItemEntries,
+    )..where((ti) => ti.tripId.equals(tripId))).go();
   }
 
   /// Inserisce multiple oggetti viaggio (per migrazione)

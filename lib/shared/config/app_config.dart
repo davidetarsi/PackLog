@@ -34,7 +34,7 @@ class AppConfig {
 
   /// URL della repository GitHub del progetto.
   static const String githubUrl =
-      'https://github.com/davidetarsi/stuff_tracker';
+      'https://github.com/davidetarsi/PackLog';
 
   static void validate() {
     if (geoapify.isEmpty) {

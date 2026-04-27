@@ -20,7 +20,7 @@ void main() {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  ItemModel _makeItem(String id, {ItemCategory category = ItemCategory.vestiti}) {
+  ItemModel makeItem(String id, {ItemCategory category = ItemCategory.vestiti}) {
     return ItemModel(
       id: id,
       houseId: 'h1',
@@ -31,7 +31,7 @@ void main() {
     );
   }
 
-  http.Response _mockGptResponse(List<Map<String, dynamic>> items) {
+  http.Response mockGptResponse(List<Map<String, dynamic>> items) {
     return http.Response(
       jsonEncode({
         'choices': [
@@ -46,17 +46,16 @@ void main() {
     );
   }
 
-  Future<List<SmartPackingRecommendation>> _callAgent({
+  Future<List<SmartPackingRecommendation>> callAgent({
     List<ItemModel>? wardrobe,
-    List<ItemModel>? essentials,
   }) {
     return agent.generatePackingList(
       destination: 'Parigi',
       tripDurationDays: 5,
       weatherTags: ['Rain', 'Cold'],
       quotas: {'tops': 3, 'bottoms': 2},
-      wardrobeBucket: wardrobe ?? [_makeItem('w1'), _makeItem('w2')],
-      essentialsBucket: essentials ?? [_makeItem('e1', category: ItemCategory.toiletries)],
+      wardrobeBucket: wardrobe ?? [makeItem('w1'), makeItem('w2')],
+      pastTripsJson: '[]',
     );
   }
 
@@ -65,18 +64,19 @@ void main() {
       test('returns parsed recommendations on 200 OK', () async {
         when(() => mockClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body')))
             .thenAnswer(
-          (_) async => _mockGptResponse([
-            {'itemId': 'w1', 'motivation': 'Ottima per la pioggia.'},
-            {'itemId': 'e1', 'motivation': 'Indispensabile per 5 giorni.'},
+          (_) async => mockGptResponse([
+            {'itemId': 'w1', 'quantityToTake': 2, 'motivation': 'Ottima per la pioggia.'},
+            {'itemId': 'w2', 'quantityToTake': 1, 'motivation': 'Indispensabile per 5 giorni.'},
           ]),
         );
 
-        final result = await _callAgent();
+        final result = await callAgent();
 
         expect(result.length, equals(2));
         expect(result[0].itemId, equals('w1'));
+        expect(result[0].quantityToTake, equals(2));
         expect(result[0].motivation, equals('Ottima per la pioggia.'));
-        expect(result[1].itemId, equals('e1'));
+        expect(result[1].itemId, equals('w2'));
       });
 
       test('strips optional markdown code fences from response', () async {
@@ -99,7 +99,7 @@ void main() {
           ),
         );
 
-        final result = await _callAgent();
+        final result = await callAgent();
         expect(result.length, equals(1));
         expect(result[0].itemId, equals('w2'));
       });
@@ -107,22 +107,22 @@ void main() {
       test('filters out recommendations with empty itemId', () async {
         when(() => mockClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body')))
             .thenAnswer(
-          (_) async => _mockGptResponse([
+          (_) async => mockGptResponse([
             {'itemId': '', 'motivation': 'No id.'},
             {'itemId': 'w1', 'motivation': 'Valid.'},
           ]),
         );
 
-        final result = await _callAgent();
+        final result = await callAgent();
         expect(result.length, equals(1));
         expect(result[0].itemId, equals('w1'));
       });
 
       test('returns empty list when GPT returns empty array', () async {
         when(() => mockClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body')))
-            .thenAnswer((_) async => _mockGptResponse([]));
+            .thenAnswer((_) async => mockGptResponse([]));
 
-        final result = await _callAgent();
+        final result = await callAgent();
         expect(result, isEmpty);
       });
     });
@@ -132,14 +132,14 @@ void main() {
         when(() => mockClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body')))
             .thenAnswer((_) async => http.Response('Unauthorized', 401));
 
-        expect(() => _callAgent(), throwsException);
+        expect(() => callAgent(), throwsException);
       });
 
       test('throws on 500 server error', () async {
         when(() => mockClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body')))
             .thenAnswer((_) async => http.Response('Internal Server Error', 500));
 
-        expect(() => _callAgent(), throwsException);
+        expect(() => callAgent(), throwsException);
       });
     });
 
@@ -153,7 +153,7 @@ void main() {
           ),
         );
 
-        expect(() => _callAgent(), throwsA(isA<FormatException>()));
+        expect(() => callAgent(), throwsA(isA<FormatException>()));
       });
 
       test('throws FormatException when content is not a JSON array', () async {
@@ -169,16 +169,16 @@ void main() {
           ),
         );
 
-        expect(() => _callAgent(), throwsA(isA<FormatException>()));
+        expect(() => callAgent(), throwsA(isA<FormatException>()));
       });
     });
 
     group('Request construction', () {
       test('sends request to correct OpenAI endpoint', () async {
         when(() => mockClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body')))
-            .thenAnswer((_) async => _mockGptResponse([]));
+            .thenAnswer((_) async => mockGptResponse([]));
 
-        await _callAgent();
+        await callAgent();
 
         final captured = verify(
           () => mockClient.post(
@@ -195,9 +195,9 @@ void main() {
 
       test('sends correct model and temperature in body', () async {
         when(() => mockClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body')))
-            .thenAnswer((_) async => _mockGptResponse([]));
+            .thenAnswer((_) async => mockGptResponse([]));
 
-        await _callAgent();
+        await callAgent();
 
         final captured = verify(
           () => mockClient.post(
@@ -214,7 +214,7 @@ void main() {
 
       test('includes destination in system prompt', () async {
         when(() => mockClient.post(any(), headers: any(named: 'headers'), body: any(named: 'body')))
-            .thenAnswer((_) async => _mockGptResponse([]));
+            .thenAnswer((_) async => mockGptResponse([]));
 
         await agent.generatePackingList(
           destination: 'Tokyo',
@@ -222,7 +222,7 @@ void main() {
           weatherTags: ['Sunny'],
           quotas: {'tops': 4},
           wardrobeBucket: [],
-          essentialsBucket: [],
+          pastTripsJson: '[]',
         );
 
         final captured = verify(
@@ -246,25 +246,30 @@ void main() {
     test('fromJson parses correctly', () {
       final rec = SmartPackingRecommendation.fromJson({
         'itemId': 'item-abc',
+        'quantityToTake': 3,
         'motivation': 'Perfetto per il clima.',
       });
       expect(rec.itemId, equals('item-abc'));
+      expect(rec.quantityToTake, equals(3));
       expect(rec.motivation, equals('Perfetto per il clima.'));
     });
 
     test('fromJson handles missing fields with safe defaults', () {
       final rec = SmartPackingRecommendation.fromJson({});
       expect(rec.itemId, equals(''));
+      expect(rec.quantityToTake, equals(1));
       expect(rec.motivation, equals(''));
     });
 
     test('toJson round-trips correctly', () {
       const original = SmartPackingRecommendation(
         itemId: 'x',
+        quantityToTake: 2,
         motivation: 'reason',
       );
       final rec = SmartPackingRecommendation.fromJson(original.toJson());
       expect(rec.itemId, equals(original.itemId));
+      expect(rec.quantityToTake, equals(original.quantityToTake));
       expect(rec.motivation, equals(original.motivation));
     });
   });

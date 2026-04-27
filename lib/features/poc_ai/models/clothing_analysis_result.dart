@@ -100,7 +100,8 @@ class ClothingAnalysisResult {
 
     // Neutral/earthy tones and classic colours mix with almost anything.
     if (baseColor == 'Nero' ||
-        baseColor == 'Bianco') {
+        baseColor == 'Bianco' ||
+        colorTone == 'Neutral') {
       score += 1;
     }
 

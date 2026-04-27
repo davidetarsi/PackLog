@@ -36,13 +36,9 @@ class SmartPackingResultsPayload {
 class _RecommendationEntry {
   final SmartPackingRecommendation recommendation;
   final ItemModel item;
-  bool isSelected;
+  bool isSelected = false;
 
-  _RecommendationEntry({
-    required this.recommendation,
-    required this.item,
-    this.isSelected = true,
-  });
+  _RecommendationEntry({required this.recommendation, required this.item});
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -89,7 +85,8 @@ class _SmartPackingResultsScreenState
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
-  /// Resolves full [ItemModel] details for each recommendation id.
+  /// Resolves full [ItemModel] details for all recommendations in a single
+  /// bulk query (`WHERE id IN (...)`), avoiding the N+1 pattern.
   ///
   /// Items that no longer exist in the DB (deleted after the AI call) are
   /// silently skipped rather than crashing the screen.
@@ -101,15 +98,20 @@ class _SmartPackingResultsScreenState
 
     try {
       final repo = ref.read(itemRepositoryProvider);
-      final entries = <_RecommendationEntry>[];
 
+      final ids = widget.recommendations
+          .map((r) => r.itemId)
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      final items = await repo.getItemsByIds(ids);
+      final itemMap = {for (final item in items) item.id: item};
+
+      final entries = <_RecommendationEntry>[];
       for (final rec in widget.recommendations) {
-        if (rec.itemId.isEmpty) continue;
-        try {
-          final item = await repo.getItemById(rec.itemId);
+        final item = itemMap[rec.itemId];
+        if (item != null) {
           entries.add(_RecommendationEntry(recommendation: rec, item: item));
-        } catch (_) {
-          // Item deleted or not found; skip gracefully.
         }
       }
 
@@ -124,17 +126,34 @@ class _SmartPackingResultsScreenState
   // ── Save logic ────────────────────────────────────────────────────────────
 
   List<TripItem> _buildTripItems(List<_RecommendationEntry> selected) {
-    return selected.map((e) {
+    // Deduplicate by item ID: the AI may recommend the same physical item
+    // in multiple categories. We keep only the first occurrence to avoid
+    // a UNIQUE constraint failure on trip_item_entries.(id, trip_id).
+    final seen = <String>{};
+    final result = <TripItem>[];
+    for (final e in selected) {
       final item = e.item;
-      return TripItem(
-        id: item.id,
-        name: item.name,
-        category: item.category,
-        quantity: item.quantity ?? 1,
-        originHouseId: item.houseId,
-        isChecked: false,
-      );
-    }).toList();
+      if (seen.add(item.id)) {
+        // Cappa quantityToTake all'effettiva disponibilità del catalogo:
+        // il modello AI a volte ignora il vincolo 'availableQty' nel prompt
+        // e assegna una quantità superiore a quanti pezzi si possiedono.
+        final safeQty = e.recommendation.quantityToTake.clamp(
+          1,
+          item.quantity ?? 1,
+        );
+        result.add(
+          TripItem(
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            quantity: safeQty,
+            originHouseId: item.houseId,
+            isChecked: false,
+          ),
+        );
+      }
+    }
+    return result;
   }
 
   Future<void> _saveToTrip() async {
@@ -165,7 +184,8 @@ class _SmartPackingResultsScreenState
             context,
             'Viaggio creato con ${selected.length} oggett${selected.length == 1 ? 'o' : 'i'}.',
           );
-          context.go('/trips/${trip.id}');
+          context.go('/trips');
+          context.push('/trips/${trip.id}');
         }
       } else {
         // ── Edit mode: merge items into existing trip ──────────────────────
@@ -182,7 +202,9 @@ class _SmartPackingResultsScreenState
           ...newItems.where((i) => !existingIds.contains(i.id)),
         ];
 
-        await ref.read(tripNotifierProvider.notifier).updateTrip(
+        await ref
+            .read(tripNotifierProvider.notifier)
+            .updateTrip(
               trip.copyWith(items: merged, updatedAt: DateTime.now()),
             );
 
@@ -191,7 +213,8 @@ class _SmartPackingResultsScreenState
             context,
             '${selected.length} oggett${selected.length == 1 ? 'o aggiunto' : 'i aggiunti'} al viaggio.',
           );
-          context.go('/trips/${widget.tripId}');
+          context.go('/trips');
+          context.push('/trips/${widget.tripId}');
         }
       }
     } catch (e) {
@@ -237,8 +260,8 @@ class _SmartPackingResultsScreenState
         primaryLabel: _isSaving
             ? 'Salvataggio...'
             : widget.pendingTrip != null
-                ? 'Crea Viaggio con $selectedCount Element${selectedCount == 1 ? 'o' : 'i'}'
-                : 'Aggiungi $selectedCount Element${selectedCount == 1 ? 'o' : 'i'} al Viaggio',
+            ? 'Crea Viaggio con $selectedCount Element${selectedCount == 1 ? 'o' : 'i'}'
+            : 'Aggiungi $selectedCount Element${selectedCount == 1 ? 'o' : 'i'} al Viaggio',
         primaryIcon: widget.pendingTrip != null
             ? Icons.luggage
             : Icons.add_shopping_cart,
@@ -269,7 +292,7 @@ class _SmartPackingResultsScreenState
         vertical: AppSpacing.md,
       ),
       itemCount: _entries.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
       itemBuilder: (context, index) {
         final entry = _entries[index];
         return _RecommendationCard(
@@ -348,10 +371,7 @@ class _RecommendationCard extends StatelessWidget {
   final _RecommendationEntry entry;
   final ValueChanged<bool> onToggle;
 
-  const _RecommendationCard({
-    required this.entry,
-    required this.onToggle,
-  });
+  const _RecommendationCard({required this.entry, required this.onToggle});
 
   @override
   Widget build(BuildContext context) {
@@ -360,8 +380,8 @@ class _RecommendationCard extends StatelessWidget {
     final isSelected = entry.isSelected;
 
     return Card(
-      elevation: isSelected ? 2 : 0,
-      color: isSelected ? colorScheme.surface : colorScheme.surfaceContainerHighest,
+      elevation: 0,
+      color: colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
@@ -411,19 +431,19 @@ class _RecommendationCard extends StatelessWidget {
                     Text(
                       item.name,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? colorScheme.onSurface
-                                : colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
+                        fontWeight: FontWeight.w600,
+                        color: isSelected
+                            ? colorScheme.onSurface
+                            : colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       entry.recommendation.motivation,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontStyle: FontStyle.italic,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                        fontStyle: FontStyle.italic,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),

@@ -19,10 +19,10 @@ void main() {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  http.Response _mockResponse(Map<String, dynamic> body) =>
+  http.Response mockResponse(Map<String, dynamic> body) =>
       http.Response(jsonEncode(body), 200);
 
-  Map<String, dynamic> _buildDailyPayload({
+  Map<String, dynamic> buildDailyPayload({
     required List<double> maxTemps,
     required List<double> minTemps,
     required List<int> weatherCodes,
@@ -46,8 +46,8 @@ void main() {
         final endDate = startDate.add(const Duration(days: 3));
 
         when(() => mockClient.get(any())).thenAnswer(
-          (_) async => _mockResponse(
-            _buildDailyPayload(
+          (_) async => mockResponse(
+            buildDailyPayload(
               maxTemps: [20.0, 22.0, 18.0],
               minTemps: [10.0, 12.0, 8.0],
               weatherCodes: [0, 0, 1], // clear sky → Sunny
@@ -77,8 +77,8 @@ void main() {
         final endDate = startDate.add(const Duration(days: 1));
 
         when(() => mockClient.get(any())).thenAnswer(
-          (_) async => _mockResponse(
-            _buildDailyPayload(
+          (_) async => mockResponse(
+            buildDailyPayload(
               maxTemps: [15.0, 14.0],
               minTemps: [8.0, 7.0],
               weatherCodes: [61, 63], // rain
@@ -101,8 +101,8 @@ void main() {
         final endDate = startDate;
 
         when(() => mockClient.get(any())).thenAnswer(
-          (_) async => _mockResponse(
-            _buildDailyPayload(
+          (_) async => mockResponse(
+            buildDailyPayload(
               maxTemps: [-2.0],
               minTemps: [-8.0],
               weatherCodes: [73],
@@ -127,8 +127,8 @@ void main() {
         final endDate = startDate.add(const Duration(days: 7));
 
         when(() => mockClient.get(any())).thenAnswer(
-          (_) async => _mockResponse(
-            _buildDailyPayload(
+          (_) async => mockResponse(
+            buildDailyPayload(
               maxTemps: [28.0, 30.0, 27.0],
               minTemps: [20.0, 22.0, 19.0],
               weatherCodes: [0, 1, 0],
@@ -156,8 +156,8 @@ void main() {
         final startDate = DateTime.now().add(const Duration(days: 1));
 
         when(() => mockClient.get(any())).thenAnswer(
-          (_) async => _mockResponse(
-            _buildDailyPayload(
+          (_) async => mockResponse(
+            buildDailyPayload(
               maxTemps: [30.0],
               minTemps: [20.0],
               weatherCodes: [0],
@@ -180,8 +180,8 @@ void main() {
         final endDate = startDate.add(const Duration(days: 4));
 
         when(() => mockClient.get(any())).thenAnswer(
-          (_) async => _mockResponse(
-            _buildDailyPayload(
+          (_) async => mockResponse(
+            buildDailyPayload(
               maxTemps: [10.0, 12.0, 11.0, 13.0, 9.0],
               minTemps: [2.0, 3.0, 2.0, 4.0, 1.0],
               // 3× code 61 (rain), 2× code 0 (sunny) → rain wins

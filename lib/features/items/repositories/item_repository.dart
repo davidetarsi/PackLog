@@ -40,6 +40,13 @@ abstract class ItemRepository {
   /// Idempotente: se [itemIds] è vuota non esegue operazioni.
   Future<void> deleteItems(List<String> itemIds);
 
+  /// Returns all non-deleted items whose [id] is in [ids].
+  ///
+  /// Single `WHERE id IN (...)` query — avoids the N+1 pattern of calling
+  /// [getItemById] in a loop. Items that no longer exist (soft-deleted or
+  /// missing) are silently omitted from the result.
+  Future<List<ItemModel>> getItemsByIds(List<String> ids);
+
   /// Returns all non-deleted items whose category is in [categories].
   ///
   /// Used by [PackingInventoryService] to fetch the two inventory buckets

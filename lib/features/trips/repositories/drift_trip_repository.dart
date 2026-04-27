@@ -40,7 +40,13 @@ class DriftTripRepository implements TripRepository {
 
         // Inserisci gli oggetti del viaggio
         if (trip.items.isNotEmpty) {
-          final tripItems = trip.items
+          // Deduplica per item.id: lo stesso oggetto del catalogo non può
+          // apparire due volte nello stesso viaggio (PK composta su
+          // trip_item_entries.(id, trip_id)).
+          final seen = <String>{};
+          final uniqueItems =
+              trip.items.where((i) => seen.add(i.id)).toList();
+          final tripItems = uniqueItems
               .map((item) => _toTripItemCompanion(trip.id, item))
               .toList();
           await _dao.insertMultipleTripItems(tripItems);
@@ -186,7 +192,11 @@ class DriftTripRepository implements TripRepository {
         await _dao.updateTrip(_toTripCompanion(trip));
 
         // Sostituisci tutti gli oggetti del viaggio
-        final tripItems = trip.items
+        // Deduplica per item.id prima del replace (PK composta su
+        // trip_item_entries.(id, trip_id)).
+        final seen = <String>{};
+        final uniqueItems = trip.items.where((i) => seen.add(i.id)).toList();
+        final tripItems = uniqueItems
             .map((item) => _toTripItemCompanion(trip.id, item))
             .toList();
         await _dao.replaceTripItems(trip.id, tripItems);

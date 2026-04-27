@@ -72,9 +72,7 @@ class _AiClothingSandboxScreenState
 
     setState(() {
       _results = [];
-      for (final c in _nameControllers) {
-        c.dispose();
-      }
+      for (final c in _nameControllers) c.dispose();
       _nameControllers.clear();
       _errorMessage = null;
       _rawJsonDump = null;
@@ -89,8 +87,11 @@ class _AiClothingSandboxScreenState
         setState(() => _processingIndex = i + 1);
 
         final file = File(pickedFiles[i].path);
-        final (processedBytes: _, :result, :rawJson) = await _service
-            .processWithIntermediateResult(file);
+        final (
+          processedBytes: _,
+          :result,
+          :rawJson,
+        ) = await _service.processWithIntermediateResult(file);
 
         if (!mounted) return;
         setState(() {
@@ -158,9 +159,7 @@ class _AiClothingSandboxScreenState
       final saved = items.length;
       setState(() {
         _results.clear();
-        for (final c in _nameControllers) {
-          c.dispose();
-        }
+        for (final c in _nameControllers) c.dispose();
         _nameControllers.clear();
         _rawJsonDump = null;
         _errorMessage = null;
@@ -169,8 +168,7 @@ class _AiClothingSandboxScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '$saved ${saved == 1 ? 'oggetto salvato' : 'oggetti salvati'} con successo!',
-          ),
+              '$saved ${saved == 1 ? 'oggetto salvato' : 'oggetti salvati'} con successo!'),
           backgroundColor: Theme.of(context).colorScheme.primary,
           behavior: SnackBarBehavior.floating,
         ),
@@ -186,7 +184,7 @@ class _AiClothingSandboxScreenState
   /// Maps the AI category string to the closest [ItemCategory] domain value.
   ItemCategory _mapCategory(String aiCategory) {
     final lower = aiCategory.toLowerCase();
-    if (lower.contains('accessory')) {
+    if (lower.contains('accessory')){
       return ItemCategory.varie;
     }
     // Upper Body, Lower Body, Outerwear, Shoes → vestiti
@@ -209,16 +207,18 @@ class _AiClothingSandboxScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AI Bulk Import ✨'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text('AI Bulk Import ✨'),
+        centerTitle: true,
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _isLoading ? null : _pickAndProcessImages,
         icon: const Icon(Icons.add_photo_alternate),
         label: const Text('Scegli immagini'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      bottomNavigationBar: _results.isNotEmpty
-          ? _buildBottomBar(context)
-          : null,
+      bottomNavigationBar:
+          _results.isNotEmpty ? _buildBottomBar(context) : null,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -251,21 +251,24 @@ class _AiClothingSandboxScreenState
           Text(
             'Scegli fino a 5 foto di outfit',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
             'GPT-4o analizzerà ogni immagine e identificherà i capi d\'abbigliamento',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
             textAlign: TextAlign.center,
           ),
           if (AppConfig.openAi.startsWith('MISSING')) ...[
             const SizedBox(height: 24),
-            _ApiKeyWarning(missingRemoveBg: false, missingOpenAi: true),
+            _ApiKeyWarning(
+              missingRemoveBg: false,
+              missingOpenAi: true,
+            ),
           ],
         ],
       ),
@@ -295,16 +298,16 @@ class _AiClothingSandboxScreenState
                 ? 'Analisi immagine $_processingIndex di $_totalImages…'
                 : 'Caricamento…',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
           if (_results.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
               '${_results.length} capi trovati finora',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-              ),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
             ),
           ],
         ],
@@ -322,7 +325,6 @@ class _AiClothingSandboxScreenState
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
@@ -341,7 +343,7 @@ class _AiClothingSandboxScreenState
                   const Spacer(),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(
                 'Modifica nomi o elimina prima di salvare',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -355,7 +357,8 @@ class _AiClothingSandboxScreenState
         // ── Editable item cards ───────────────────────────────────────────────
         ...List.generate(_results.length, (i) {
           return Padding(
-            padding: EdgeInsets.only(bottom: i < _results.length - 1 ? 12 : 0),
+            padding:
+                EdgeInsets.only(bottom: i < _results.length - 1 ? 12 : 0),
             child: _EditableResultCard(
               item: _results[i],
               index: i + 1,
@@ -407,7 +410,8 @@ class _AiClothingSandboxScreenState
             Expanded(
               child: housesAsync.when(
                 loading: () => const LinearProgressIndicator(),
-                error: (_, _) => const Text('Errore caricamento case'),
+                error: (_, __) =>
+                    const Text('Errore caricamento case'),
                 data: (houses) => DropdownButtonFormField<String>(
                   initialValue: _selectedHouseId,
                   isDense: true,
@@ -417,17 +421,13 @@ class _AiClothingSandboxScreenState
                       borderRadius: BorderRadius.circular(8),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
+                        horizontal: 12, vertical: 10),
                   ),
                   items: houses
-                      .map(
-                        (h) => DropdownMenuItem<String>(
-                          value: h.id,
-                          child: Text(h.name),
-                        ),
-                      )
+                      .map((h) => DropdownMenuItem<String>(
+                            value: h.id,
+                            child: Text(h.name),
+                          ))
                       .toList(),
                   onChanged: _isLoading
                       ? null
@@ -445,9 +445,7 @@ class _AiClothingSandboxScreenState
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
+                    horizontal: 20, vertical: 14),
               ),
               child: Text('Salva ${_results.length}'),
             ),
@@ -481,7 +479,9 @@ class _EditableResultCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -503,9 +503,9 @@ class _EditableResultCard extends StatelessWidget {
                   child: Text(
                     '$index',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -514,24 +514,26 @@ class _EditableResultCard extends StatelessWidget {
                     controller: controller,
                     onChanged: onNameChanged,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                          fontWeight: FontWeight.w600,
+                        ),
                     decoration: InputDecoration(
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
+                          horizontal: 8, vertical: 6),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(6),
                         borderSide: BorderSide(
-                          color: Theme.of(context).colorScheme.outlineVariant,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outlineVariant,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(6),
                         borderSide: BorderSide(
-                          color: Theme.of(context).colorScheme.outlineVariant,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outlineVariant,
                         ),
                       ),
                     ),
@@ -632,20 +634,18 @@ class _ScoreRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          Icon(icon,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(width: 8),
           SizedBox(
             width: 76,
             child: Text(
               '$label:',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
           Expanded(
@@ -653,9 +653,8 @@ class _ScoreRow extends StatelessWidget {
               value: value / max,
               borderRadius: BorderRadius.circular(4),
               minHeight: 6,
-              backgroundColor: Theme.of(
-                context,
-              ).colorScheme.surfaceContainerHighest,
+              backgroundColor:
+                  Theme.of(context).colorScheme.surfaceContainerHighest,
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
@@ -663,8 +662,8 @@ class _ScoreRow extends StatelessWidget {
           Text(
             '$value/$max',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
         ],
       ),
@@ -677,7 +676,11 @@ class _TagsRow extends StatelessWidget {
   final String label;
   final List<String> tags;
 
-  const _TagsRow({required this.icon, required this.label, required this.tags});
+  const _TagsRow({
+    required this.icon,
+    required this.label,
+    required this.tags,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -695,9 +698,9 @@ class _TagsRow extends StatelessWidget {
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ],
         ),
@@ -713,13 +716,15 @@ class _TagsRow extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   side: BorderSide(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.4),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.4),
                   ),
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.08),
+                  backgroundColor: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.08),
                 ),
               )
               .toList(),
@@ -746,18 +751,16 @@ class _ResultRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          Icon(icon,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Text(
             '$label: ',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
           ),
           Expanded(
             child: Text(
@@ -790,8 +793,8 @@ class _RawJsonDebugPanel extends StatelessWidget {
         title: Text(
           'Debug: Raw JSON',
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
         children: [
           Container(

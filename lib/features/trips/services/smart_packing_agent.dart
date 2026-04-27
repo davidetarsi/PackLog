@@ -19,28 +19,32 @@ part 'smart_packing_agent.g.dart';
 /// [motivation] is a concise Italian sentence explaining the choice.
 class SmartPackingRecommendation {
   final String itemId;
+  final int quantityToTake;
   final String motivation;
 
   const SmartPackingRecommendation({
     required this.itemId,
+    required this.quantityToTake,
     required this.motivation,
   });
 
   factory SmartPackingRecommendation.fromJson(Map<String, dynamic> json) {
     return SmartPackingRecommendation(
       itemId: json['itemId'] as String? ?? '',
+      quantityToTake: (json['quantityToTake'] as num?)?.toInt() ?? 1,
       motivation: json['motivation'] as String? ?? '',
     );
   }
 
   Map<String, dynamic> toJson() => {
         'itemId': itemId,
+        'quantityToTake': quantityToTake,
         'motivation': motivation,
       };
 
   @override
   String toString() =>
-      'SmartPackingRecommendation(itemId: $itemId, motivation: $motivation)';
+      'SmartPackingRecommendation(itemId: $itemId, quantityToTake: $quantityToTake, motivation: $motivation)';
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -74,7 +78,7 @@ class SmartPackingAgent {
     required List<String> weatherTags,
     required Map<String, int> quotas,
     required List<ItemModel> wardrobeBucket,
-    required List<ItemModel> essentialsBucket,
+    required String pastTripsJson,
   }) async {
     final prompt = _buildSystemPrompt(
       destination: destination,
@@ -82,7 +86,7 @@ class SmartPackingAgent {
       weatherTags: weatherTags,
       quotas: quotas,
       wardrobeBucket: wardrobeBucket,
-      essentialsBucket: essentialsBucket,
+      pastTripsJson: pastTripsJson,
     );
 
     debugPrint('[SmartPackingAgent] Calling GPT-4o-mini for $destination');
@@ -124,7 +128,7 @@ class SmartPackingAgent {
     required List<String> weatherTags,
     required Map<String, int> quotas,
     required List<ItemModel> wardrobeBucket,
-    required List<ItemModel> essentialsBucket,
+    required String pastTripsJson,
   }) {
     final quotaLines = quotas.entries
         .map((e) => '  ${e.key}: ${e.value}')
@@ -132,28 +136,31 @@ class SmartPackingAgent {
 
     final wardrobeJson =
         jsonEncode(wardrobeBucket.map(_itemToJson).toList());
-    final essentialsJson =
-        jsonEncode(essentialsBucket.map(_itemToJson).toList());
 
     return '''
-You are an expert travel stylist and practical packer. Your task is to select the perfect items for a trip.
+You are an expert travel stylist and practical packer. Your task is to select the perfect wardrobe items for a trip.
 DESTINATION: $destination ($tripDurationDays days).
 WEATHER: ${weatherTags.join(', ')}.
+
+PAST TRIPS / USER PREFERENCES:
+$pastTripsJson
+(If this list is not empty, CRITICALLY prioritize selecting these exact items to match the user's personal style, provided they fit the current weather and quotas).
 
 CONSTRAINTS:
 1. WARDROBE QUOTAS: You MUST strictly respect these quantities:
 $quotaLines
-2. ESSENTIALS: Pick all strictly necessary tech, toiletries, and documents for the days.
-3. VERSATILITY: Favor items with high 'calculatedVersatility'. Ensure colors match well.
+The SUM of 'quantityToTake' for the items you select in each category MUST exactly match the required quota. You cannot take more than the 'availableQty' of any single item.
+2. VERSATILITY & STYLE: Favor items with high 'calculatedVersatility'. Ensure colors match well to create mix-and-match outfits.
+3. CRITICAL CHECK: Before generating the JSON, verify that the total count of items per category exactly matches the WARDROBE QUOTAS.
 
-AVAILABLE WARDROBE: $wardrobeJson
-
-AVAILABLE ESSENTIALS: $essentialsJson
+AVAILABLE WARDROBE: 
+$wardrobeJson
 
 Respond ONLY with a raw JSON array of objects. No markdown, no code fences.
 Each object must have EXACTLY these keys:
-- "itemId": string (The exact id from the provided lists above)
-- "motivation": string (A short, 1-sentence explanation in Italian of WHY you chose this, e.g., "Ottima per la pioggia e abbinabile con i jeans.")
+- "itemId": string (The exact id from the provided AVAILABLE WARDROBE list)
+- "quantityToTake": integer (How many units of this specific item to pack)
+- "motivation": string (A short, 1-sentence explanation in Italian of WHY you chose this, e.g., "L'hai già usata con successo in un viaggio simile ed è ottima per il caldo.")
 ''';
   }
 
@@ -197,16 +204,19 @@ Each object must have EXACTLY these keys:
 
   // ── Item serialisation ────────────────────────────────────────────────────
 
-  /// Converts an [ItemModel] to a minimal JSON map for the GPT prompt.
+  /// Converts an [ItemModel] to a token-minimal JSON map for the GPT prompt.
   ///
-  /// Includes AI metadata fields (weather, activityTags, calculatedVersatility)
-  /// when available so the model can make informed outfit decisions.
+  /// Only includes fields the AI needs for outfit decisions: identity,
+  /// category, colour pairing data, weather compatibility, formality level,
+  /// and the deterministic versatility score. Names, patterns, and other
+  /// display-only fields are excluded to reduce prompt dilution.
   Map<String, dynamic> _itemToJson(ItemModel item) {
     final meta = item.aiMetadata;
     final result = <String, dynamic>{
       'id': item.id,
       'name': item.name,
       'category': item.category.name,
+      'availableQty': item.quantity ?? 1,
     };
 
     if (meta != null) {
@@ -216,7 +226,7 @@ Each object must have EXACTLY these keys:
       }
       if (meta['baseColor'] != null) result['baseColor'] = meta['baseColor'];
       if (meta['colorTone'] != null) result['colorTone'] = meta['colorTone'];
-      // Include calculated (non-hallucinated) versatility score.
+      if (meta['formality'] != null) result['formality'] = meta['formality'];
       try {
         final analysisResult = ClothingAnalysisResult.fromJson(meta);
         result['calculatedVersatility'] = analysisResult.calculatedVersatility;

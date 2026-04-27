@@ -43,6 +43,7 @@ class AiClothingAnalyzerService {
   // static const _removeBgEndpoint = 'https://api.remove.bg/v1.0/removebg'; // ← REMOVE.BG DISABILITATO
   static const _openAiEndpoint = 'https://api.openai.com/v1/chat/completions';
 
+
 /* static const _systemPrompt = '''
 You are a precise fashion item parser. Analyze the image and identify ALL distinct clothing items currently WORN by the PRIMARY person in the foreground.
 CRITICAL RULES:
@@ -57,7 +58,7 @@ Each object in the array must have exactly these keys:
 - "styleTags": array of strings (e.g. ["Casual", "Streetwear", "Y2K"])
 '''; */
 
-  static const _systemPrompt = '''
+/* static const _systemPrompt = '''
 You are a precise fashion item parser. Analyze the image and identify ALL distinct clothing items currently WORN by the PRIMARY person in the foreground.
 CRITICAL RULES:
 - IGNORE any clothing items in the background (e.g., clothes on beds, chairs, hangers).
@@ -75,6 +76,24 @@ Each object in the array must have EXACTLY these keys:
 - "formality": integer (0 to 10, where 0 is gym/sleepwear and 10 is formal gala)
 - "versatility": integer (1 to 5, how easily it matches with other clothes)
 - "activityTags": array of strings (e.g. ["Hiking", "Beach", "Office", "Gym", "Sleeping", "Everyday"])
+'''; */
+
+static const _systemPrompt = '''
+You are a precise fashion item parser. Analyze the image and identify ALL distinct clothing items currently WORN by the PRIMARY person in the foreground.
+CRITICAL RULES:
+- IGNORE any clothing items in the background.
+- Focus ONLY on the main subject's outfit.
+Respond ONLY with a raw JSON array of objects — no markdown.
+Each object must have EXACTLY these keys:
+- "name": string (Short descriptive name in Italian, e.g. "Giacca in pelle", "Jeans")
+- "category": string (MUST BE ONE OF: "Upper Body", "Lower Body", "Shoes", "Outerwear", "Accessory")
+- "baseColor": string (The primary color in Italian)
+- "colorTone": string (MUST BE ONE OF: "Dark", "Light", "Earth", "Neon", "Pastel", "Neutral")
+- "weather": array of strings (Subset of: ["Rain", "Snow", "Sunny", "Windy", "Cold", "Mild", "Hot"])
+- "coverage": string (MUST BE ONE OF: "Short-sleeve", "Long-sleeve", "Sleeveless", "Shorts", "Full-length", "Cropped", "N/A")
+- "color pattern": string (MUST BE ONE OF: "Solid", "Striped", "Plaid", "Graphic", "Floral", "Patterned")
+- "formality": integer (0 to 10. 0 = sleepwear/gym, 5 = smart casual, 10 = tuxedo/gala)
+- "activityTags": array of strings (e.g. ["Sports", "Beach", "Office", "Gym", "Sleeping", "Everyday", "Evening"]). CRITICAL: Do NOT use "Everyday" for specialized technical gear (e.g., soccer cleats) or highly formal wear.
 ''';
 
   // final String _removeBgApiKey; // ← REMOVE.BG DISABILITATO
@@ -105,7 +124,7 @@ Each object in the array must have EXACTLY these keys:
   }
 
   /// Stesso di [processClothingItem] ma restituisce anche i bytes dell'immagine
-  /// e il raw JSON string dalla risposta OpenAI (utile per la sandbox UI).
+  /// usata per l'analisi (utile per la sandbox UI).
   ///
   /// Throws a [ClothingAnalysisException] subclass on any failure.
   Future<({Uint8List processedBytes, List<ClothingItem> result, String rawJson})>
@@ -156,7 +175,6 @@ Each object in the array must have EXACTLY these keys:
   // ── Step 2: Vision analysis ───────────────────────────────────────────────
 
   /// Sends the image bytes to GPT-4o Vision and parses the result.
-  /// Returns both the parsed items and the raw cleaned JSON string for debugging.
   ///
   /// Throws [VisionAnalysisException] on non-2xx response.
   /// Throws [ResponseParsingException] on schema mismatch or malformed JSON.
@@ -210,8 +228,8 @@ Each object in the array must have EXACTLY these keys:
 
   // ── Response parsing ──────────────────────────────────────────────────────
 
-  /// Extracts the assistant message content from the OpenAI response envelope,
-  /// parses it into a list of [ClothingItem], and returns the cleaned JSON string.
+  /// Extracts the assistant message content from the OpenAI response envelope
+  /// and parses it into a list of [ClothingItem].
   ///
   /// Throws [ResponseParsingException] on any schema or JSON error.
   ({List<ClothingItem> items, String rawJson}) _parseOpenAiResponse(

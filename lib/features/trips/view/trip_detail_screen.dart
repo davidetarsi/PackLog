@@ -17,7 +17,6 @@ import '../../../shared/widgets/universal_item_tile.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import 'trip_management_sheet.dart';
-import 'smart_packing_preview_sheet.dart';
 
 /// Enum per le tab di filtro delle categorie
 enum TripItemFilterTab {
@@ -78,12 +77,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               onPressed: () => context.pop(),
             ),
             title: Text(trip.name),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: _SmartPackingButton(trip: trip),
-              ),
-            ],
           ),
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,62 +227,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         context.pop();
       }
     }
-  }
-}
-
-// ── Smart Packing entry point button ─────────────────────────────────────────
-
-/// Bottone AI nell'AppBar che apre il preview sheet prima della generazione.
-///
-/// Mostra un badge colorato quando il viaggio ha già `primaryVibe` impostato,
-/// segnalando all'utente che il contesto è pronto per l'AI.
-class _SmartPackingButton extends StatelessWidget {
-  final TripModel trip;
-
-  const _SmartPackingButton({required this.trip});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final hasContext =
-        trip.primaryVibe != null && trip.primaryVibe!.isNotEmpty;
-
-    return Tooltip(
-      message: 'Smart Packing AI',
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          IconButton(
-            icon: Icon(
-              Icons.auto_awesome,
-              color: hasContext
-                  ? colorScheme.secondary
-                  : colorScheme.onSurfaceVariant,
-            ),
-            onPressed: () =>
-                showSmartPackingPreviewSheet(context, trip: trip),
-          ),
-          // Badge verde quando il contesto AI è già impostato
-          if (hasContext)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: colorScheme.secondary,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: colorScheme.surface,
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
   }
 }
 

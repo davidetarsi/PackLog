@@ -24,10 +24,12 @@ import 'smart_packing_results_screen.dart';
 ///
 /// Pipeline steps:
 ///   1. Resolve trip model (from param or DB).
-///   2. Compute base quotas via [PackingBlueprintEngine].
-///   3. Pre-screen inventory via [PackingInventoryService].
-///   4. Generate recommendations via [SmartPackingAgent].
-///   5. Navigate to [SmartPackingResultsScreen] on success.
+///   2. Fetch weather via [OpenMeteoService] if missing.
+///   3. Compute base quotas via [PackingBlueprintEngine].
+///   4. Pre-screen inventory via [PackingInventoryService].
+///   5. Generate wardrobe recommendations via [SmartPackingAgent].
+///   6. Append essentials deterministically (no AI).
+///   7. Navigate to [SmartPackingResultsScreen] on success.
 class SmartPackingLoadingScreen extends ConsumerStatefulWidget {
   final String tripId;
 
@@ -89,20 +91,30 @@ class _SmartPackingLoadingScreenState
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    _messageTimer = Timer.periodic(
-      const Duration(seconds: 2),
-      (_) {
-        if (mounted) {
-          setState(() {
-            _messageIndex = (_messageIndex + 1) % _messages.length;
-          });
-        }
-      },
-    );
+    _messageTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (mounted) {
+        setState(() {
+          _messageIndex = (_messageIndex + 1) % _messages.length;
+        });
+      }
+    });
 
     // Defer to ensure the widget tree is fully built before triggering
     // async work that reads providers.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _runPipeline());
+    // The Future is explicitly caught here so that any uncaught error in
+    // _runPipeline does NOT silently become an unhandled Future error (which
+    // can terminate the process on some Android configurations).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _runPipeline().catchError((Object e, StackTrace st) {
+        debugPrint('[SmartPacking] Unhandled pipeline error: $e\n$st');
+        if (mounted) {
+          setState(() {
+            _hasError = true;
+            _errorMessage = e.toString();
+          });
+        }
+      });
+    });
   }
 
   @override
@@ -123,64 +135,152 @@ class _SmartPackingLoadingScreenState
     }
 
     try {
-      // Step 1 — Resolve trip (form data or DB)
-      final TripModel trip;
-      if (widget.pendingTrip != null) {
-        trip = widget.pendingTrip!;
-      } else {
-        final trips = ref.read(tripNotifierProvider).value;
-        final found = trips?.firstWhere(
-          (t) => t.id == widget.tripId,
-          orElse: () => throw StateError('Viaggio non trovato'),
-        );
-        if (found == null) throw StateError('Viaggio non trovato');
-        trip = found;
-      }
-
-      // Step 2 — Compute duration and base quotas
-      final duration = _computeDuration(trip);
-      final quotas = PackingBlueprintEngine(
-        tripDurationDays: duration,
-        primaryVibe: trip.primaryVibe,
-      ).calculateBaseQuotas();
-
-      // Step 3 — Pre-screen inventory
-      final inventoryService = ref.read(packingInventoryServiceProvider);
-      final buckets = await inventoryService.getFilteredInventoryForTrip(
-        trip.weatherTags,
-      );
-
-      // Step 4 — AI generation (15 s timeout, graceful on error)
-      final agent = ref.read(smartPackingAgentProvider);
-      final destination = _resolveDestination(trip);
-
-      final recommendations = await agent
-          .generatePackingList(
-            destination: destination,
-            tripDurationDays: duration,
-            weatherTags: trip.weatherTags,
-            quotas: quotas,
-            wardrobeBucket: buckets.wardrobe,
-            essentialsBucket: buckets.essentials,
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (!mounted) return;
-
-      context.pushReplacement(
-        '/trips/${widget.tripId}/smart-packing/results',
-        extra: SmartPackingResultsPayload(
-          recommendations: recommendations,
-          pendingTrip: widget.pendingTrip,
-        ),
-      );
-    } catch (e) {
+      // Top-level timeout di sicurezza: se per qualunque motivo (rete lenta,
+      // problemi runtime emulatore, hang inatteso) la pipeline non finisce in
+      // 90 secondi, mostriamo l'error screen invece di lasciare l'utente
+      // bloccato sullo spinner all'infinito.
+      await _runPipelineInternal().timeout(const Duration(seconds: 90));
+    } catch (e, st) {
+      debugPrint('[SmartPacking] Pipeline error: $e\n$st');
       if (mounted) {
         setState(() {
           _hasError = true;
           _errorMessage = e.toString();
         });
       }
+    }
+  }
+
+  Future<void> _runPipelineInternal() async {
+    debugPrint('[SmartPacking] ▶ Pipeline started');
+
+    // Step 1 — Resolve trip (form data or DB)
+    TripModel trip;
+    if (widget.pendingTrip != null) {
+      trip = widget.pendingTrip!;
+      debugPrint('[SmartPacking] Step 1 ✓ pendingTrip resolved');
+    } else {
+      final trips = ref.read(tripNotifierProvider).value;
+      final found = trips?.firstWhere(
+        (t) => t.id == widget.tripId,
+        orElse: () => throw StateError('Viaggio non trovato'),
+      );
+      if (found == null) throw StateError('Viaggio non trovato');
+      trip = found;
+      debugPrint('[SmartPacking] Step 1 ✓ trip loaded from DB');
+    }
+
+    // Step 2 — Fetch weather if missing
+    debugPrint('[SmartPacking] Step 2 — fetching weather...');
+    if (trip.weatherTags.isEmpty) {
+      trip = await _enrichWithWeather(trip);
+    }
+    debugPrint('[SmartPacking] Step 2 ✓ weatherTags=${trip.weatherTags}');
+
+    // Step 3 — Compute duration and base quotas
+    final duration = _computeDuration(trip);
+    final quotas = PackingBlueprintEngine(
+      tripDurationDays: duration,
+      primaryVibe: trip.primaryVibe,
+    ).calculateBaseQuotas();
+    debugPrint('[SmartPacking] Step 3 ✓ duration=$duration quotas=$quotas');
+
+    // Step 4 — Pre-screen inventory
+    debugPrint('[SmartPacking] Step 4 — loading inventory...');
+    final inventoryService = ref.read(packingInventoryServiceProvider);
+    final buckets = await inventoryService.getFilteredInventoryForTrip(
+      trip.weatherTags,
+    );
+    debugPrint(
+      '[SmartPacking] Step 4 ✓ wardrobe=${buckets.wardrobe.length} '
+      'essentials=${buckets.essentials.length}',
+    );
+
+    // Step 5 — AI generation (wardrobe only)
+    final agent = ref.read(smartPackingAgentProvider);
+    final destination = _resolveDestination(trip);
+    debugPrint(
+      '[SmartPacking] Step 5 — calling GPT-4o-mini for "$destination"...',
+    );
+
+    final wardrobeRecs = await agent
+        .generatePackingList(
+          destination: destination,
+          tripDurationDays: duration,
+          weatherTags: trip.weatherTags,
+          quotas: quotas,
+          wardrobeBucket: buckets.wardrobe,
+          pastTripsJson: '[]',
+        )
+        .timeout(const Duration(seconds: 45));
+    debugPrint('[SmartPacking] Step 5 ✓ ${wardrobeRecs.length} wardrobe recs');
+
+    // Step 6 — Append essentials deterministically (no AI needed)
+    final essentialRecs = buckets.essentials.map(
+      (item) => SmartPackingRecommendation(
+        itemId: item.id,
+        quantityToTake: item.quantity ?? 1,
+        motivation: 'Articolo essenziale per il viaggio.',
+      ),
+    );
+
+    // Deduplica per itemId: il modello GPT può raccomandare lo stesso item
+    // più volte, e un item non può comparire due volte nello stesso viaggio
+    // (PK composta su trip_item_entries.(id, trip_id)).
+    final seen = <String>{};
+    final recommendations = [
+      ...wardrobeRecs,
+      ...essentialRecs,
+    ].where((r) => r.itemId.isNotEmpty && seen.add(r.itemId)).toList();
+    debugPrint(
+      '[SmartPacking] Step 6 ✓ total=${recommendations.length} items '
+      '(after dedup)',
+    );
+
+    if (!mounted) return;
+
+    debugPrint('[SmartPacking] ▶ Navigating to results screen...');
+    context.pushReplacement(
+      '/trips/${widget.tripId}/smart-packing/results',
+      extra: SmartPackingResultsPayload(
+        recommendations: recommendations,
+        pendingTrip: widget.pendingTrip,
+      ),
+    );
+    debugPrint('[SmartPacking] ✅ Pipeline complete');
+  }
+
+  /// Fetches weather from OpenMeteo and enriches [trip] with weatherTags
+  /// and avgTemperature. Returns [trip] unchanged on any failure.
+  Future<TripModel> _enrichWithWeather(TripModel trip) async {
+    final lat = trip.destinationLocation?.lat;
+    final lon = trip.destinationLocation?.lon;
+    final startDate = trip.departureDateTime;
+    if (lat == null || lon == null || startDate == null) return trip;
+
+    try {
+      final service = ref.read(openMeteoServiceProvider);
+      final endDate = trip.returnDateTime ?? startDate;
+      final weather = await service
+          .fetchWeather(
+            lat: lat,
+            lon: lon,
+            startDate: startDate,
+            endDate: endDate,
+          )
+          .timeout(const Duration(seconds: 5));
+
+      debugPrint(
+        '[SmartPacking] Weather: ${weather.avgTemp}°C, ${weather.weatherTags}',
+      );
+
+      return trip.copyWith(
+        avgTemperature: weather.avgTemp,
+        weatherTags: weather.weatherTags,
+      );
+    } catch (e) {
+      debugPrint('[SmartPacking] Weather fetch skipped: $e');
+      return trip;
     }
   }
 
@@ -204,8 +304,6 @@ class _SmartPackingLoadingScreenState
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Smart Packing AI'),
@@ -232,10 +330,8 @@ class _SmartPackingLoadingScreenState
             // Pulsing AI brain icon
             AnimatedBuilder(
               animation: _pulseAnimation,
-              builder: (_, child) => Transform.scale(
-                scale: _pulseAnimation.value,
-                child: child,
-              ),
+              builder: (_, child) =>
+                  Transform.scale(scale: _pulseAnimation.value, child: child),
               child: Container(
                 width: 96,
                 height: 96,
@@ -268,16 +364,14 @@ class _SmartPackingLoadingScreenState
             // Cycling message with fade transition
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 400),
-              transitionBuilder: (child, anim) => FadeTransition(
-                opacity: anim,
-                child: child,
-              ),
+              transitionBuilder: (child, anim) =>
+                  FadeTransition(opacity: anim, child: child),
               child: Text(
                 _messages[_messageIndex],
                 key: ValueKey(_messageIndex),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                  color: colorScheme.onSurfaceVariant,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -315,9 +409,9 @@ class _SmartPackingLoadingScreenState
 
             Text(
               'Ops, qualcosa è andato storto',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
 
@@ -326,10 +420,31 @@ class _SmartPackingLoadingScreenState
             Text(
               'Non è stato possibile generare la lista.\nControllare la connessione e riprovare.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                color: colorScheme.onSurfaceVariant,
+              ),
               textAlign: TextAlign.center,
             ),
+
+            if (_errorMessage != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontFamily: 'monospace',
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 5,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
 
             const SizedBox(height: AppSpacing.xl),
 
@@ -351,4 +466,3 @@ class _SmartPackingLoadingScreenState
     );
   }
 }
-

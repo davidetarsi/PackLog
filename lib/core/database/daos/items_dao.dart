@@ -175,6 +175,19 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     );
   }
 
+  // ── Bulk fetch by IDs ─────────────────────────────────────────────────────
+
+  /// Retrieves all non-deleted items whose [id] is in [ids].
+  ///
+  /// Uses a single `WHERE id IN (...)` query. Returns an empty list when
+  /// [ids] is empty (no query executed).
+  Future<List<Item>> getItemsByIds(List<String> ids) {
+    if (ids.isEmpty) return Future.value([]);
+    return (select(items)
+          ..where((i) => i.id.isIn(ids) & i.isDeleted.equals(false)))
+        .get();
+  }
+
   // ── Packing Pre-screening ────────────────────────────────────────────────
 
   /// Retrieves all non-deleted items whose [category] is in [categories].

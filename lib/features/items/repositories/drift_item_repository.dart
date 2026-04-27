@@ -272,6 +272,20 @@ class DriftItemRepository implements ItemRepository {
   }
 
   @override
+  Future<List<ItemModel>> getItemsByIds(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    final result = await _dbService.executeWithRetry(
+      () => _dao.getItemsByIds(ids),
+      operationName: 'getItemsByIds(${ids.length} ids)',
+    );
+    if (!result.success) {
+      debugPrint('[ItemRepo] Errore getItemsByIds: ${result.error}');
+      return [];
+    }
+    return result.data!.map(_toModel).toList();
+  }
+
+  @override
   Future<List<ItemModel>> getAllItemsByCategories(
     List<ItemCategory> categories,
   ) async {
