@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart' hide isNull, isNotNull;
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import '../../../helpers/test_database_setup.dart';
@@ -418,6 +419,97 @@ void main() {
       
       final houseNames = allHouses.map((h) => h.name).toList();
       expect(houseNames, containsAll(['House 1', 'House 2', 'House 3']));
+    });
+  });
+
+  group('HousesDao - Sync Operations', () {
+    Future<void> insertHouse(String id, {SyncStatus status = SyncStatus.pendingCreate}) async {
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: id,
+          name: 'House $id',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      if (status != SyncStatus.pendingCreate) {
+        await (database.update(database.houses)
+              ..where((h) => h.id.equals(id)))
+            .write(HousesCompanion(syncStatus: Value(status)));
+      }
+    }
+
+    test('getPendingSyncHouses returns only non-synced houses below retry limit', () async {
+      await insertHouse('pending-1');
+      await insertHouse('pending-2', status: SyncStatus.pendingUpdate);
+      await insertHouse('synced-1', status: SyncStatus.synced);
+
+      final pending = await database.housesDao.getPendingSyncHouses();
+
+      expect(pending, hasLength(2));
+      final ids = pending.map((h) => h.id).toSet();
+      expect(ids, containsAll(['pending-1', 'pending-2']));
+      expect(ids, isNot(contains('synced-1')));
+    });
+
+    test('getPendingSyncHouses excludes houses exceeding maxRetries', () async {
+      await insertHouse('retry-exhausted');
+      await (database.update(database.houses)
+            ..where((h) => h.id.equals('retry-exhausted')))
+          .write(const HousesCompanion(syncRetryCount: Value(5)));
+
+      final pending = await database.housesDao.getPendingSyncHouses(maxRetries: 5);
+      expect(pending, isEmpty);
+    });
+
+    test('getPendingSyncHouses excludes soft-deleted houses', () async {
+      await insertHouse('deleted-pending');
+      await database.housesDao.deleteHouse('deleted-pending');
+
+      final pending = await database.housesDao.getPendingSyncHouses();
+      expect(pending, isEmpty);
+    });
+
+    test('markHouseAsSynced resets retry state and sets lastSyncedAt', () async {
+      await insertHouse('to-sync');
+      await database.housesDao.incrementSyncRetry('to-sync', 'timeout');
+
+      final serverTime = DateTime(2026, 4, 28, 12, 0);
+      await database.housesDao.markHouseAsSynced('to-sync', serverTime);
+
+      final house = await database.housesDao.getHouseById('to-sync');
+      expect(house, isA<House>());
+      expect(house!.syncStatus, equals(SyncStatus.synced));
+      expect(house.syncRetryCount, equals(0));
+      expect(house.lastSyncError, equals(null));
+      expect(house.lastSyncedAt, equals(serverTime));
+    });
+
+    test('incrementSyncRetry increments count and records error', () async {
+      await insertHouse('retry-me');
+
+      await database.housesDao.incrementSyncRetry('retry-me', 'network timeout');
+      var house = await database.housesDao.getHouseById('retry-me');
+      expect(house!.syncRetryCount, equals(1));
+      expect(house.lastSyncError, equals('network timeout'));
+
+      await database.housesDao.incrementSyncRetry('retry-me', 'server 500');
+      house = await database.housesDao.getHouseById('retry-me');
+      expect(house!.syncRetryCount, equals(2));
+      expect(house.lastSyncError, equals('server 500'));
+    });
+
+    test('incrementSyncRetry is a no-op for non-existent house', () async {
+      await database.housesDao.incrementSyncRetry('ghost-id', 'error');
+    });
+
+    test('new houses default to pendingCreate sync status', () async {
+      await insertHouse('fresh');
+      final house = await database.housesDao.getHouseById('fresh');
+      expect(house!.syncStatus, equals(SyncStatus.pendingCreate));
+      expect(house.syncRetryCount, equals(0));
+      expect(house.lastSyncError, equals(null));
+      expect(house.userId, equals(null));
     });
   });
 }

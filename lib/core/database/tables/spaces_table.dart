@@ -1,18 +1,19 @@
 import 'package:drift/drift.dart';
 import 'houses_table.dart';
+import 'mixins/syncable_table.dart';
 
 /// Tabella per gli spazi/armadi all'interno delle case.
-/// 
+///
 /// Gli spazi permettono di organizzare gli oggetti in modo più granulare
 /// all'interno di una casa (es. "Armadio Camera", "Ripostiglio").
-/// 
+///
 /// **Struttura Flat**: Non supportiamo spazi nested per evitare
 /// complessità di Recursive CTE in SQLite.
 ///
 /// Indice su [Spaces.houseId] — accelera le query `WHERE house_id = ?`
 /// (getSpacesByHouse, watchSpacesByHouse, countSpacesByHouse).
 @TableIndex(name: 'idx_spaces_house_id', columns: {#houseId})
-class Spaces extends Table {
+class Spaces extends Table with SyncableTable {
   /// ID univoco dello spazio (UUID)
   TextColumn get id => text()();
   

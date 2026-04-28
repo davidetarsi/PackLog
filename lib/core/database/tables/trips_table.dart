@@ -1,9 +1,10 @@
 import 'package:drift/drift.dart';
 import 'houses_table.dart';
 import '../converters/location_type_converter.dart';
+import 'mixins/syncable_table.dart';
 
 /// Tabella per i viaggi.
-class Trips extends Table {
+class Trips extends Table with SyncableTable {
   /// ID univoco del viaggio (UUID)
   TextColumn get id => text()();
 

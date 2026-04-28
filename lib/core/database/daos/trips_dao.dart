@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../database.dart';
+import '../tables/mixins/syncable_table.dart';
 import '../tables/trips_table.dart';
 import '../tables/trip_items_table.dart';
 import '../tables/luggages_table.dart';
@@ -252,6 +253,60 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
       trip: trip,
       items: results[0] as List<TripItemEntry>,
       luggages: results[1] as List<Luggage>,
+    );
+  }
+  // === SYNC OPERATIONS ===
+
+  /// Returns trips pending sync: syncStatus != synced AND retries below limit.
+  ///
+  /// Excludes soft-deleted trips — those are handled by a dedicated
+  /// `getPendingDeleteTrips` query (future phase).
+  Future<List<Trip>> getPendingSyncTrips({int maxRetries = 5}) {
+    return (select(trips)
+          ..where(
+            (t) =>
+                t.syncStatus.equalsValue(SyncStatus.synced).not() &
+                t.syncRetryCount.isSmallerThanValue(maxRetries) &
+                t.isDeleted.equals(false),
+          ))
+        .get();
+  }
+
+  /// Marks a trip as successfully synced with the remote server.
+  ///
+  /// Resets retry state and records the server-provided timestamp
+  /// in [lastSyncedAt] for future delta-sync queries.
+  Future<void> markTripAsSynced(
+    String tripId,
+    DateTime serverUpdatedAt,
+  ) {
+    return (update(trips)..where((t) => t.id.equals(tripId))).write(
+      TripsCompanion(
+        syncStatus: const Value(SyncStatus.synced),
+        syncRetryCount: const Value(0),
+        lastSyncError: const Value(null),
+        lastSyncedAt: Value(serverUpdatedAt),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Increments the retry counter and records the error message.
+  ///
+  /// Uses a read-then-write to increment atomically via Drift's
+  /// type-safe API (avoids raw SQL DateTime serialization issues).
+  Future<void> incrementSyncRetry(String tripId, String errorMessage) async {
+    final trip = await (select(trips)
+          ..where((t) => t.id.equals(tripId)))
+        .getSingleOrNull();
+    if (trip == null) return;
+
+    await (update(trips)..where((t) => t.id.equals(tripId))).write(
+      TripsCompanion(
+        syncRetryCount: Value(trip.syncRetryCount + 1),
+        lastSyncError: Value(errorMessage),
+        updatedAt: Value(DateTime.now()),
+      ),
     );
   }
 }

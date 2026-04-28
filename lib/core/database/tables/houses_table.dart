@@ -1,8 +1,9 @@
 import 'package:drift/drift.dart';
 import '../converters/location_type_converter.dart';
+import 'mixins/syncable_table.dart';
 
 /// Tabella per le case (luoghi dove sono conservati gli oggetti).
-class Houses extends Table {
+class Houses extends Table with SyncableTable {
   /// ID univoco della casa (UUID)
   TextColumn get id => text()();
 

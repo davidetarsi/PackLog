@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../database.dart';
+import '../tables/mixins/syncable_table.dart';
 import '../tables/houses_table.dart';
 import '../tables/items_table.dart';
 import '../tables/spaces_table.dart';
@@ -80,5 +81,51 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
     await batch((batch) {
       batch.insertAll(houses, housesList);
     });
+  }
+
+  // === SYNC OPERATIONS ===
+
+  /// Returns houses pending sync: syncStatus != synced AND retries below limit.
+  Future<List<House>> getPendingSyncHouses({int maxRetries = 5}) {
+    return (select(houses)
+          ..where(
+            (h) =>
+                h.syncStatus.equalsValue(SyncStatus.synced).not() &
+                h.syncRetryCount.isSmallerThanValue(maxRetries) &
+                h.isDeleted.equals(false),
+          ))
+        .get();
+  }
+
+  /// Marks a house as successfully synced with the remote server.
+  Future<void> markHouseAsSynced(
+    String houseId,
+    DateTime serverUpdatedAt,
+  ) {
+    return (update(houses)..where((h) => h.id.equals(houseId))).write(
+      HousesCompanion(
+        syncStatus: const Value(SyncStatus.synced),
+        syncRetryCount: const Value(0),
+        lastSyncError: const Value(null),
+        lastSyncedAt: Value(serverUpdatedAt),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Increments the retry counter and records the error message.
+  Future<void> incrementSyncRetry(String houseId, String errorMessage) async {
+    final house = await (select(houses)
+          ..where((h) => h.id.equals(houseId)))
+        .getSingleOrNull();
+    if (house == null) return;
+
+    await (update(houses)..where((h) => h.id.equals(houseId))).write(
+      HousesCompanion(
+        syncRetryCount: Value(house.syncRetryCount + 1),
+        lastSyncError: Value(errorMessage),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 }
