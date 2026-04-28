@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'houses_table.dart';
 import 'spaces_table.dart';
 import '../converters/item_category_converter.dart';
+import 'mixins/syncable_table.dart';
 
 /// Indice su [Items.houseId] — accelera le query `WHERE house_id = ?`
 /// (getItemsByHouseId, getItemsInGeneralPool, moveItemsToHouse).
@@ -13,7 +14,7 @@ import '../converters/item_category_converter.dart';
 ///
 /// Ogni oggetto appartiene a una casa (foreign key).
 /// Opzionalmente, può appartenere a uno spazio specifico della casa.
-class Items extends Table {
+class Items extends Table with SyncableTable {
   /// ID univoco dell'oggetto (UUID)
   TextColumn get id => text()();
 

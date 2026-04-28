@@ -22,6 +22,7 @@ import 'daos/luggages_dao.dart';
 import 'converters/item_category_converter.dart';
 import 'converters/location_type_converter.dart';
 import 'converters/luggage_size_converter.dart';
+import 'tables/mixins/syncable_table.dart';
 import '../../features/items/model/item_model.dart';
 import '../../features/luggages/model/luggage_model.dart';
 import '../../shared/model/location_type.dart';
@@ -59,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -270,13 +271,47 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(trips, trips.isDeleted);
           await m.addColumn(trips, trips.lastSyncedAt);
         }
+
+        if (from < 7) {
+          // Migrazione v6 → v7: Sync infrastructure (Fase 1 Offline-First)
+          //
+          // Aggiunge 5 colonne dal mixin SyncableTable alle 5 entità principali:
+          //   - user_id          TEXT NULL       → Supabase user ID (null = pre-login)
+          //   - sync_status      INTEGER NOT NULL DEFAULT 1 → SyncStatus.pendingCreate
+          //   - sync_retry_count INTEGER NOT NULL DEFAULT 0
+          //   - last_sync_error  TEXT NULL
+          //   - sentry_trace_id  TEXT NULL
+          //
+          // customStatement per tutte perché sync_status usa intEnum (TypeConverter)
+          // incompatibile con m.addColumn(). Le altre per coerenza.
+          // Default sync_status=1 (pendingCreate): i record esistenti non sono
+          // mai stati sincronizzati e dovranno essere caricati al primo login.
+          const tables = ['houses', 'items', 'spaces', 'luggages', 'trips'];
+          for (final table in tables) {
+            await customStatement(
+              'ALTER TABLE $table ADD COLUMN user_id TEXT',
+            );
+            await customStatement(
+              'ALTER TABLE $table ADD COLUMN sync_status INTEGER NOT NULL DEFAULT 1',
+            );
+            await customStatement(
+              'ALTER TABLE $table ADD COLUMN sync_retry_count INTEGER NOT NULL DEFAULT 0',
+            );
+            await customStatement(
+              'ALTER TABLE $table ADD COLUMN last_sync_error TEXT',
+            );
+            await customStatement(
+              'ALTER TABLE $table ADD COLUMN sentry_trace_id TEXT',
+            );
+          }
+        }
       },
       beforeOpen: (details) async {
-        // Foreign keys: obbligatorio in SQLite (disabilitate di default).
-        await customStatement('PRAGMA foreign_keys = ON');
         // busy_timeout: SQLite attende fino a 3 s prima di restituire
         // SQLITE_BUSY, prevenendo crash per lock in scrittura concorrente.
         await customStatement('PRAGMA busy_timeout = 3000');
+        // Foreign keys: obbligatorio in SQLite (disabilitate di default).
+        await customStatement('PRAGMA foreign_keys = ON');
       },
     );
   }

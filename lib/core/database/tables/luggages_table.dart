@@ -1,9 +1,10 @@
 import 'package:drift/drift.dart';
 import 'houses_table.dart';
 import '../converters/luggage_size_converter.dart';
+import 'mixins/syncable_table.dart';
 
 /// Tabella per i bagagli riutilizzabili.
-/// 
+///
 /// I bagagli sono entità globali che appartengono a una casa specifica
 /// e possono essere linkati a viaggi multipli tramite la junction table
 /// `trip_luggage_entries`.
@@ -11,7 +12,7 @@ import '../converters/luggage_size_converter.dart';
 /// Indice su [Luggages.houseId] — accelera le query `WHERE house_id = ?`
 /// (getLuggagesByHouse, watchLuggagesByHouse, countLuggagesByHouse).
 @TableIndex(name: 'idx_luggages_house_id', columns: {#houseId})
-class Luggages extends Table {
+class Luggages extends Table with SyncableTable {
   /// ID univoco del bagaglio (UUID)
   TextColumn get id => text()();
   

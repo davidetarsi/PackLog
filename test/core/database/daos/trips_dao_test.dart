@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart' hide isNull, isNotNull;
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import '../../../helpers/test_database_setup.dart';
@@ -992,6 +993,100 @@ void main() {
       
       final duplicatedItems = await database.tripsDao.getTripItemsByTripId(newTripId);
       expect(duplicatedItems.length, 0);
+    });
+  });
+
+  group('TripsDao - Sync Operations', () {
+    Future<void> insertTrip(String id, {SyncStatus status = SyncStatus.pendingCreate}) async {
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: id,
+          name: 'Trip $id',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      if (status != SyncStatus.pendingCreate) {
+        await (database.update(database.trips)
+              ..where((t) => t.id.equals(id)))
+            .write(TripsCompanion(syncStatus: Value(status)));
+      }
+    }
+
+    test('getPendingSyncTrips returns only non-synced trips below retry limit', () async {
+      await insertTrip('pending-1');
+      await insertTrip('pending-2', status: SyncStatus.pendingUpdate);
+      await insertTrip('synced-1', status: SyncStatus.synced);
+
+      final pending = await database.tripsDao.getPendingSyncTrips();
+
+      expect(pending, hasLength(2));
+      final ids = pending.map((t) => t.id).toSet();
+      expect(ids, containsAll(['pending-1', 'pending-2']));
+      expect(ids, isNot(contains('synced-1')));
+    });
+
+    test('getPendingSyncTrips excludes trips exceeding maxRetries', () async {
+      await insertTrip('retry-exhausted');
+      await (database.update(database.trips)
+            ..where((t) => t.id.equals('retry-exhausted')))
+          .write(const TripsCompanion(syncRetryCount: Value(5)));
+
+      final pending = await database.tripsDao.getPendingSyncTrips(maxRetries: 5);
+
+      expect(pending, isEmpty);
+    });
+
+    test('getPendingSyncTrips excludes soft-deleted trips', () async {
+      await insertTrip('deleted-pending');
+      await database.tripsDao.deleteTrip('deleted-pending');
+
+      final pending = await database.tripsDao.getPendingSyncTrips();
+      expect(pending, isEmpty);
+    });
+
+    test('markTripAsSynced resets retry state and sets lastSyncedAt', () async {
+      await insertTrip('to-sync');
+      // Simulate a prior failed attempt
+      await database.tripsDao.incrementSyncRetry('to-sync', 'timeout');
+
+      final serverTime = DateTime(2026, 4, 28, 12, 0);
+      await database.tripsDao.markTripAsSynced('to-sync', serverTime);
+
+      final trip = await database.tripsDao.getTripById('to-sync');
+      expect(trip, isA<Trip>());
+      expect(trip!.syncStatus, equals(SyncStatus.synced));
+      expect(trip.syncRetryCount, equals(0));
+      expect(trip.lastSyncError, equals(null));
+      expect(trip.lastSyncedAt, equals(serverTime));
+    });
+
+    test('incrementSyncRetry increments count and records error', () async {
+      await insertTrip('retry-me');
+
+      await database.tripsDao.incrementSyncRetry('retry-me', 'network timeout');
+      var trip = await database.tripsDao.getTripById('retry-me');
+      expect(trip!.syncRetryCount, equals(1));
+      expect(trip.lastSyncError, equals('network timeout'));
+
+      await database.tripsDao.incrementSyncRetry('retry-me', 'server 500');
+      trip = await database.tripsDao.getTripById('retry-me');
+      expect(trip!.syncRetryCount, equals(2));
+      expect(trip.lastSyncError, equals('server 500'));
+    });
+
+    test('incrementSyncRetry is a no-op for non-existent trip', () async {
+      // Should not throw
+      await database.tripsDao.incrementSyncRetry('ghost-id', 'error');
+    });
+
+    test('new trips default to pendingCreate sync status', () async {
+      await insertTrip('fresh');
+      final trip = await database.tripsDao.getTripById('fresh');
+      expect(trip!.syncStatus, equals(SyncStatus.pendingCreate));
+      expect(trip.syncRetryCount, equals(0));
+      expect(trip.lastSyncError, equals(null));
+      expect(trip.userId, equals(null));
     });
   });
 }

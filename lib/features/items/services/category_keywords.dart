@@ -332,6 +332,7 @@ const kRootKeywords = <({String root, ItemCategory category})>[
   (root: 'tabl', category: ItemCategory.elettronica),  // tablet
   (root: 'batt', category: ItemCategory.elettronica),  // batteria, batterie
   (root: 'cavo', category: ItemCategory.elettronica),  // cavo, cavetto
+  (root: 'comp', category: ItemCategory.elettronica),  // computer, laptop, tablet, ipad, kindle, ebook, e-reader
   
   // Toiletries
   (root: 'anti', category: ItemCategory.toiletries),   // antizanzare, antistaminico
