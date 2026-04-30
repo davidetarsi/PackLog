@@ -1,73 +1,84 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pack_log/features/items/model/category_dictionary.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../model/item_model.dart';
-import 'category_keywords.dart';
+import '../model/italian_dictionary.dart';
+import 'package:pack_log/shared/providers/language_locale.dart';
 
 part 'category_infer_service.g.dart';
 
 enum InferConfidence { exact, partial, fallback }
 
 class CategoryInferService {
-  const CategoryInferService();
+  final CategoryDictionary _dictionary;
+
+  const CategoryInferService(this._dictionary);
 
   ({ItemCategory category, InferConfidence confidence}) infer(String rawName) {
     final normalized = _normalize(rawName);
     if (normalized.isEmpty) {
-      return (category: ItemCategory.varie, confidence: InferConfidence.fallback);
+      return (
+        category: ItemCategory.varie,
+        confidence: InferConfidence.fallback,
+      );
     }
 
-    // 1. Exact match on the full normalized name
-    final exactMatch = kExactMatchKeywords[normalized];
-    if (exactMatch != null) {
-      return (category: exactMatch, confidence: InferConfidence.exact);
+    final lemmatizedFull = _dictionary.lemmatize(normalized);
+
+    if (_dictionary.exactMatches.containsKey(lemmatizedFull)) {
+      return (
+        category: _dictionary.exactMatches[lemmatizedFull]!,
+        confidence: InferConfidence.exact,
+      );
     }
 
-    // 1.5. Prefix match sulla stringa senza spazi (es. "t shirt" → "tshirt")
-    // Usa startsWith anziché contains per evitare falsi positivi come
-    // "pantaloni eleganti" → "pantaloneleganti" che contiene "anti"
-    // (root per antistaminico) nel mezzo di "eleganti".
-    final spaceStripped = normalized.replaceAll(' ', '');
-    for (final entry in kRootKeywords) {
-      if (spaceStripped.startsWith(entry.root)) {
-        return (category: entry.category, confidence: InferConfidence.partial);
-      }
-    }
-
-    // 2. Compound match: split into tokens, filter stop words + short tokens
     final tokens = normalized
         .split(RegExp(r'\s+'))
-        .where((t) => t.length >= 3 && !kStopWords.contains(t))
+        .where((t) => t.length >= 3 && !_dictionary.stopWords.contains(t))
         .toList();
 
     for (final token in tokens) {
-      final tokenMatch = kExactMatchKeywords[token];
-      if (tokenMatch != null) {
-        return (category: tokenMatch, confidence: InferConfidence.partial);
+      final lemmatizedToken = _dictionary.lemmatize(token);
+
+      final exactMatch = _dictionary.exactMatches[lemmatizedToken];
+      if (exactMatch != null) {
+        return (category: exactMatch, confidence: InferConfidence.partial);
+      }
+
+      for (final exactKey in _dictionary.exactMatches.keys) {
+        if (exactKey.startsWith(lemmatizedToken)) {
+          return (
+            category: _dictionary.exactMatches[exactKey]!,
+            confidence: InferConfidence.partial,
+          );
+        }
       }
     }
 
-    // 3. Substring match against root keywords (ordered longest-first)
-    for (final entry in kRootKeywords) {
-      //if (normalized.contains(entry.root))
+    for (final entry in _dictionary.rootKeywords) {
       if (tokens.any((token) => token.startsWith(entry.root))) {
         return (category: entry.category, confidence: InferConfidence.partial);
       }
     }
 
-    // 4. Fallback
     return (category: ItemCategory.varie, confidence: InferConfidence.fallback);
   }
 
   String _normalize(String input) {
     var result = input.trim().toLowerCase();
     result = _removeAccents(result);
-    result = result.replaceAll(RegExp(r'\s+'), ' ');
-    return result;
+    return result.replaceAll(RegExp(r'\s+'), ' ');
   }
 
   static String _removeAccents(String input) {
     const accents = {
-      'à': 'a', 'è': 'e', 'é': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u',
+      'à': 'a',
+      'è': 'e',
+      'é': 'e',
+      'ì': 'i',
+      'ò': 'o',
+      'ù': 'u',
     };
     var result = input;
     for (final entry in accents.entries) {
@@ -79,5 +90,20 @@ class CategoryInferService {
 
 @Riverpod(keepAlive: true)
 CategoryInferService categoryInferService(Ref ref) {
-  return const CategoryInferService();
+  final currentLocaleCode = ref.watch(languageLocaleProvider);
+
+  CategoryDictionary dictionary = ItalianDictionary(); // Default
+  switch (currentLocaleCode) {
+    case 'it':
+      dictionary = ItalianDictionary();
+      break;
+    case 'en':
+      // dictionary = EnglishDictionary(); // Da implementare
+      break;
+    default:
+      dictionary = ItalianDictionary();
+      break;
+  }
+
+  return CategoryInferService(dictionary);
 }

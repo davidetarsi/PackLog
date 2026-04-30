@@ -158,42 +158,48 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
   Future<List<LocationSuggestionModel>> _fetchLocationSuggestions(
     String query,
   ) async {
+    // ARCHITECTURE CHOICE: Alziamo il limite per compensare lo scarto del filtro lato client.
     final uri = Uri.https('api.geoapify.com', '/v1/geocode/autocomplete', {
       'text': query,
       'apiKey': AppConfig.geoapify,
-      'lang': 'it',
-      'limit':
-          '10', // Richiedi più risultati per avere varietà dopo deduplicazione
+      'lang': context.locale.languageCode.substring(0,2), // Usa solo la parte "lingua" del locale (es. "en" da "en_US")
+      'limit': '15', 
+      'bias': 'countrycode:none', 
     });
 
-    final response = await http.get(uri);
+    try {
+      final response = await http.get(uri);
 
-    if (response.statusCode != 200) {
-      throw Exception('Errore nella richiesta: ${response.statusCode}');
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-
-    // Usa il modello Freezed per il parsing automatico del JSON
-    final geoapifyResponse = GeoapifyResponseModel.fromJson(json);
-
-    // Converti i risultati Geoapify in LocationSuggestionModel
-    final suggestions = geoapifyResponse.features
-        .map((feature) => LocationSuggestionModel.fromGeoapifyFeature(feature))
-        .where((s) => s.displayName.isNotEmpty)
-        .toList();
-
-    // Rimuovi duplicati basandosi sulla chiave di deduplicazione (nome + tipo + paese)
-    final seen = <String>{};
-    final uniqueSuggestions = <LocationSuggestionModel>[];
-    for (final suggestion in suggestions) {
-      if (seen.add(suggestion.deduplicationKey)) {
-        uniqueSuggestions.add(suggestion);
+      if (response.statusCode != 200) {
+        throw Exception('Errore HTTP Geoapify: ${response.statusCode}');
       }
-    }
 
-    // Limita a massimo 5 risultati
-    return uniqueSuggestions.take(5).toList();
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final geoapifyResponse = GeoapifyResponseModel.fromJson(json);
+
+      final suggestions = geoapifyResponse.features
+          .map((feature) => LocationSuggestionModel.fromGeoapifyFeature(feature))
+          .where((s) => s.displayName.isNotEmpty)
+          // ARCHITECTURE CHOICE: Filtro applicativo per garantire solo macro-aree.
+          // Scartiamo tutto ciò che finisce nel bucket 'other' (strade, ristoranti, etc.)
+          .where((s) => s.locationType != LocationType.other) 
+          .toList();
+
+      final seen = <String>{};
+      final uniqueSuggestions = <LocationSuggestionModel>[];
+      
+      for (final suggestion in suggestions) {
+        if (seen.add(suggestion.deduplicationKey)) {
+          uniqueSuggestions.add(suggestion);
+        }
+      }
+
+      return uniqueSuggestions.take(5).toList();
+    } catch (e) {
+      // In produzione, loggare l'errore su Crashlytics/Sentry, non stamparlo solo in console
+      debugPrint('[LocationAutocompleteField] Errore API: $e');
+      rethrow; 
+    }
   }
 
   void _showOverlay() {

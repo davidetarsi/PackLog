@@ -1,6 +1,11 @@
-import '../model/item_model.dart';
+import 'package:pack_log/features/items/model/category_dictionary.dart';
 
-const kExactMatchKeywords = <String, ItemCategory>{
+import 'item_model.dart';
+
+class ItalianDictionary implements CategoryDictionary {
+
+@override
+  Map<String, ItemCategory> get exactMatches => {
   // ── Vestiti ──────────────────────────────────────────────────────────────
   'maglietta': ItemCategory.vestiti,
   't-shirt': ItemCategory.vestiti,
@@ -233,81 +238,9 @@ const kExactMatchKeywords = <String, ItemCategory>{
   'portable charger': ItemCategory.elettronica,
 };
 
-/* const kRootKeywords = <({String root, ItemCategory category})>[
-  // Sorted by root length descending to avoid ambiguous partial matches.
-  
-  // 14
-  (root: 'protezione sol', category: ItemCategory.toiletries),
-  
-  // 12
-  (root: 'caricabatter', category: ItemCategory.elettronica),
-  (root: 'antistaminic', category: ItemCategory.toiletries),
-  
-  // 11
-  (root: 'impermeabil', category: ItemCategory.vestiti),
-  
-  // 10
-  (root: 'antizanzar', category: ItemCategory.toiletries),
-  (root: 'tagliaungh', category: ItemCategory.toiletries),
-  (root: 'biancheria', category: ItemCategory.vestiti),
-  (root: 'smartwatch', category: ItemCategory.elettronica),
-  
-  // 9
-  (root: 'bluetooth', category: ItemCategory.elettronica),
-  (root: 'adattator', category: ItemCategory.elettronica),
-  (root: 'auricolar', category: ItemCategory.elettronica),
-  (root: 'accappato', category: ItemCategory.vestiti),
-  (root: 'caricator', category: ItemCategory.elettronica),
-  (root: 'struccant', category: ItemCategory.toiletries),
-  (root: 'dentifric', category: ItemCategory.toiletries),
-  (root: 'fondotint', category: ItemCategory.toiletries),
-  (root: 'medicinal', category: ItemCategory.toiletries),
-  
-  // 8
-  (root: 'salviett', category: ItemCategory.toiletries),
-  (root: 'assorben', category: ItemCategory.toiletries),
-  (root: 'treppied', category: ItemCategory.elettronica),
-  (root: 'collirio', category: ItemCategory.toiletries),
-  
-  // 7
-  (root: 'cappott', category: ItemCategory.vestiti),
-  (root: 'cravatt', category: ItemCategory.vestiti),
-  (root: 'spazzol', category: ItemCategory.toiletries), // Cattura: spazzola, spazzolino, spazzolini
-  (root: 'occhial', category: ItemCategory.toiletries), // Cattura: occhiali da sole, occhiali vista
-  
-  // 6
-  (root: 'pantal', category: ItemCategory.vestiti), // pantaloni, pantaloncini
-  (root: 'pantof', category: ItemCategory.vestiti), // pantofole
-  (root: 'camici', category: ItemCategory.vestiti), // camicia, camicetta, camice
-  (root: 'sciarp', category: ItemCategory.vestiti), // sciarpa, sciarpe
-  (root: 'leggin', category: ItemCategory.vestiti),
-  (root: 'sandal', category: ItemCategory.vestiti),
-  (root: 'stival', category: ItemCategory.vestiti),
-  (root: 'deodor', category: ItemCategory.toiletries), // deodorante
-  (root: 'trucch', category: ItemCategory.toiletries), // trucco, trucchi
-  (root: 'cerott', category: ItemCategory.toiletries), // cerotto, cerotti
-  (root: 'profum', category: ItemCategory.toiletries),
-  (root: 'tablet', category: ItemCategory.elettronica),
-  (root: 'batter', category: ItemCategory.elettronica),
-  (root: 'cavett', category: ItemCategory.elettronica),
-  (root: 'costum', category: ItemCategory.vestiti), // costume, costumi
-  
-  // 5
-  (root: 'magli', category: ItemCategory.vestiti), // maglia, maglietta, maglione! (3 piccioni con 1 fava)
-  (root: 'giacc', category: ItemCategory.vestiti),
-  (root: 'giubb', category: ItemCategory.vestiti), // giubbotto, giubbino
-  (root: 'scarp', category: ItemCategory.vestiti), // scarpa, scarpe, scarponi
-  (root: 'shamp', category: ItemCategory.toiletries),
-  (root: 'cuffi', category: ItemCategory.elettronica), // cuffia, cuffie, cuffiette
-  (root: 'caric', category: ItemCategory.elettronica), // carica, caricatore
-  
-  // 4
-  (root: 'felp', category: ItemCategory.vestiti), // felpa, felpe, felpina (Molto più sicuro di 'fel')
-  (root: 'calz', category: ItemCategory.vestiti), // calza, calze, calzini, calzettoni
-  (root: 'cavo', category: ItemCategory.elettronica),
-]; */
 
-const kRootKeywords = <({String root, ItemCategory category})>[
+@override
+  List<({String root, ItemCategory category})> get rootKeywords => [
   // ── BLOCCO 5 LETTERE ──────────────────────────────────────────────
   // Usa 5 lettere quando 4 creerebbero ambiguità.
   
@@ -352,6 +285,7 @@ const kRootKeywords = <({String root, ItemCategory category})>[
   
   // Vestiti
   (root: 'bian', category: ItemCategory.vestiti),      // biancheria
+  (root: 'magl', category: ItemCategory.vestiti),      // calza, calzini, calzettoni
   (root: 'acca', category: ItemCategory.vestiti),      // accappatoio
   (root: 'capp', category: ItemCategory.vestiti),      // cappotto, cappello
   (root: 'crav', category: ItemCategory.vestiti),      // cravatta
@@ -374,7 +308,16 @@ const kRootKeywords = <({String root, ItemCategory category})>[
   (root: 'mac', category: ItemCategory.elettronica),   // macbook, mac
 ];
 
-const kStopWords = <String>{
+final Map<String, String> _irregularPlurals = {
+    'jeans': 'jeans',
+    'shorts': 'shorts',
+    'sneakers': 'sneakers',
+    'collant': 'collant',
+    'slip': 'slip',
+  };
+
+@override
+  Set<String> get stopWords =>{
   'il', 'lo', 'la', 'le', 'li', 'gli', 'un', 'uno', 'una',
   'di', 'da', 'in', 'su', 'per', 'con', 'tra', 'fra',
   'del', 'dal', 'nel', 'sul', 'al', 'col',
@@ -383,3 +326,23 @@ const kStopWords = <String>{
   'vecchio', 'vecchia',
   'grande', 'piccolo', 'piccola',
 };
+
+@override
+  String lemmatize(String word) {
+    if (word.length <= 3) return word;
+    
+    if (_irregularPlurals.containsKey(word)) {
+      return _irregularPlurals[word]!;
+    }
+
+    if (word.endsWith('i')) {
+      return word.substring(0, word.length - 1); 
+    }
+    if (word.endsWith('e')) {
+      return '${word.substring(0, word.length - 1)}a';
+    }
+    
+    return word;
+  }
+
+}
