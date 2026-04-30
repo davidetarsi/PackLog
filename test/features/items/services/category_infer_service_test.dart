@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/services/category_infer_service.dart';
-import 'package:pack_log/features/items/services/category_keywords.dart';
+import 'package:pack_log/features/items/model/category_keywords.dart';
 
 void main() {
   const service = CategoryInferService();

@@ -32,6 +32,7 @@ import 'core/database/migration_service.dart';
 import 'core/database/services/backup_service.dart';
 import 'core/routing/app_router.dart';
 import 'shared/config/app_config.dart';
+import 'shared/providers/language_locale.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/theme/app_theme.dart';
 
@@ -244,6 +245,14 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<ThemeMode> themeModeAsync =
         ref.watch(themeModeNotifierProvider);
+
+    final localeCode = context.locale.languageCode;
+    final currentProviderLocale = ref.read(languageLocaleProvider);
+    if (currentProviderLocale != localeCode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(languageLocaleProvider.notifier).updateLocale(localeCode);
+      });
+    }
 
     return MaterialApp.router(
       title: 'Pack Log',
