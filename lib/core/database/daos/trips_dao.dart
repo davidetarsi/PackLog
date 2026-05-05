@@ -262,12 +262,15 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   /// Excludes soft-deleted trips — those are handled by a dedicated
   /// `getPendingDeleteTrips` query (future phase).
   Future<List<Trip>> getPendingSyncTrips({int maxRetries = 5}) {
+    final now = DateTime.now();
     return (select(trips)
           ..where(
             (t) =>
                 t.syncStatus.equalsValue(SyncStatus.synced).not() &
                 t.syncRetryCount.isSmallerThanValue(maxRetries) &
-                t.isDeleted.equals(false),
+                t.isDeleted.equals(false) &
+                (t.nextSyncAttemptAt.isNull() |
+                    t.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
           ))
         .get();
   }
@@ -286,6 +289,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
         syncRetryCount: const Value(0),
         lastSyncError: const Value(null),
         lastSyncedAt: Value(serverUpdatedAt),
+        nextSyncAttemptAt: const Value(null),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -301,10 +305,16 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
         .getSingleOrNull();
     if (trip == null) return;
 
+    final newRetryCount = trip.syncRetryCount + 1;
+    final backoffSeconds = 2 << (newRetryCount - 1);
+    final nextAttempt =
+        DateTime.now().add(Duration(seconds: backoffSeconds));
+
     await (update(trips)..where((t) => t.id.equals(tripId))).write(
       TripsCompanion(
-        syncRetryCount: Value(trip.syncRetryCount + 1),
+        syncRetryCount: Value(newRetryCount),
         lastSyncError: Value(errorMessage),
+        nextSyncAttemptAt: Value(nextAttempt),
         updatedAt: Value(DateTime.now()),
       ),
     );

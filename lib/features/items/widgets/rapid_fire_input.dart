@@ -67,7 +67,9 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
       return;
     }
     if (_forcedCategory == null) {
-      final result = ref.read(categoryInferServiceProvider).infer(trimmed);
+      final service = ref.read(categoryInferServiceProvider).valueOrNull;
+      if (service == null) return;
+      final result = service.infer(trimmed);
       setState(() => _inferResult = result);
     }
   }
@@ -77,9 +79,10 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
       if (_forcedCategory == category) {
         _forcedCategory = null;
         if (_textController.text.trim().isNotEmpty) {
-          _inferResult = ref
-              .read(categoryInferServiceProvider)
-              .infer(_textController.text.trim());
+          final service = ref.read(categoryInferServiceProvider).valueOrNull;
+        if (service != null) {
+          _inferResult = service.infer(_textController.text.trim());
+        }
         }
       } else {
         _forcedCategory = category;

@@ -60,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -302,6 +302,16 @@ class AppDatabase extends _$AppDatabase {
             );
             await customStatement(
               'ALTER TABLE $table ADD COLUMN sentry_trace_id TEXT',
+            );
+          }
+        }
+
+        if (from < 8) {
+          // Migrazione v7 → v8: Exponential backoff per sync
+          const tables = ['houses', 'items', 'spaces', 'luggages', 'trips'];
+          for (final table in tables) {
+            await customStatement(
+              'ALTER TABLE $table ADD COLUMN next_sync_attempt_at INTEGER',
             );
           }
         }

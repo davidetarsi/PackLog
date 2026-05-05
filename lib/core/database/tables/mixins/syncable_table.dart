@@ -28,4 +28,8 @@ mixin SyncableTable on Table {
 
   /// Sentry trace ID for correlating sync errors with crash reports.
   TextColumn get sentryTraceId => text().nullable()();
+
+  /// Earliest time the next sync attempt is allowed (exponential backoff).
+  /// Null means the record can be synced immediately.
+  DateTimeColumn get nextSyncAttemptAt => dateTime().nullable()();
 }

@@ -87,12 +87,15 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
 
   /// Returns houses pending sync: syncStatus != synced AND retries below limit.
   Future<List<House>> getPendingSyncHouses({int maxRetries = 5}) {
+    final now = DateTime.now();
     return (select(houses)
           ..where(
             (h) =>
                 h.syncStatus.equalsValue(SyncStatus.synced).not() &
                 h.syncRetryCount.isSmallerThanValue(maxRetries) &
-                h.isDeleted.equals(false),
+                h.isDeleted.equals(false) &
+                (h.nextSyncAttemptAt.isNull() |
+                    h.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
           ))
         .get();
   }
@@ -108,6 +111,7 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
         syncRetryCount: const Value(0),
         lastSyncError: const Value(null),
         lastSyncedAt: Value(serverUpdatedAt),
+        nextSyncAttemptAt: const Value(null),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -120,10 +124,16 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
         .getSingleOrNull();
     if (house == null) return;
 
+    final newRetryCount = house.syncRetryCount + 1;
+    final backoffSeconds = 2 << (newRetryCount - 1); // 2, 4, 8, 16, ...
+    final nextAttempt =
+        DateTime.now().add(Duration(seconds: backoffSeconds));
+
     await (update(houses)..where((h) => h.id.equals(houseId))).write(
       HousesCompanion(
-        syncRetryCount: Value(house.syncRetryCount + 1),
+        syncRetryCount: Value(newRetryCount),
         lastSyncError: Value(errorMessage),
+        nextSyncAttemptAt: Value(nextAttempt),
         updatedAt: Value(DateTime.now()),
       ),
     );
