@@ -22,10 +22,13 @@
 /// tramite [dataIntegrityServiceProvider] per ispezioni manuali (Debug).
 library;
 
+import 'package:amplitude_flutter/amplitude.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/database/database.dart';
 import 'core/database/migration_service.dart';
@@ -95,21 +98,35 @@ Future<void> bootstrap(Environment env) async {
     // traduzioni visibile all'utente.
     await EasyLocalization.ensureInitialized();
 
+    await Supabase.initialize(
+      url: AppConfig.supabaseUrl,
+      anonKey: AppConfig.supabaseAnonKey,
+    );
+
+    await Amplitude.getInstance().init(AppConfig.amplitudeApiKey);
+
     // Pipeline di persistenza: non-bloccante, gli errori vengono loggati
     // ma non impediscono l'avvio (meglio l'app parzialmente funzionante
     // che uno schermo bianco).
     await _initializePersistence();
 
-    runApp(
-      EasyLocalization(
-        supportedLocales: const [
-          Locale('it', 'IT'),
-          Locale('en', 'US'),
-        ],
-        path: 'assets/translations',
-        fallbackLocale: const Locale('it', 'IT'),
-        child: ProviderScope(
-          child: MyApp(environment: env),
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = AppConfig.sentryDsn;
+        options.environment = env.name;
+        options.tracesSampleRate = env == Environment.prod ? 0.2 : 1.0;
+      },
+      appRunner: () => runApp(
+        EasyLocalization(
+          supportedLocales: const [
+            Locale('it', 'IT'),
+            Locale('en', 'US'),
+          ],
+          path: 'assets/translations',
+          fallbackLocale: const Locale('it', 'IT'),
+          child: ProviderScope(
+            child: MyApp(environment: env),
+          ),
         ),
       ),
     );

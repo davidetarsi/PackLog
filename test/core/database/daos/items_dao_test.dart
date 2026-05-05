@@ -1,6 +1,7 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import '../../../helpers/test_database_setup.dart';
 
@@ -330,6 +331,121 @@ void main() {
       // Verify transaction rolled back: NO items should be inserted
       final allItems = await database.itemsDao.getAllItems();
       expect(allItems, isEmpty, reason: 'Transaction should rollback on error');
+    });
+  });
+
+  group('ItemsDao - Sync Operations', () {
+    late String houseId;
+
+    setUp(() async {
+      houseId = 'sync-house';
+      await database.housesDao.insertHouse(HousesCompanion.insert(
+        id: houseId,
+        name: 'Sync House',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+    });
+
+    Future<void> insertItem(String id, {SyncStatus status = SyncStatus.pendingCreate}) async {
+      await database.itemsDao.insertItem(ItemsCompanion.insert(
+        id: id,
+        houseId: houseId,
+        name: 'Item $id',
+        category: ItemCategory.varie,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+      if (status != SyncStatus.pendingCreate) {
+        await (database.update(database.items)
+              ..where((i) => i.id.equals(id)))
+            .write(ItemsCompanion(syncStatus: Value(status)));
+      }
+    }
+
+    test('getPendingSyncItems returns only non-synced items below retry limit', () async {
+      await insertItem('pending-1');
+      await insertItem('pending-2', status: SyncStatus.pendingUpdate);
+      await insertItem('synced-1', status: SyncStatus.synced);
+
+      final pending = await database.itemsDao.getPendingSyncItems();
+
+      expect(pending, hasLength(2));
+      final ids = pending.map((i) => i.id).toSet();
+      expect(ids, containsAll(['pending-1', 'pending-2']));
+      expect(ids, isNot(contains('synced-1')));
+    });
+
+    test('getPendingSyncItems excludes items exceeding maxRetries', () async {
+      await insertItem('retry-exhausted');
+      await (database.update(database.items)
+            ..where((i) => i.id.equals('retry-exhausted')))
+          .write(const ItemsCompanion(syncRetryCount: Value(5)));
+
+      final pending = await database.itemsDao.getPendingSyncItems(maxRetries: 5);
+      expect(pending, isEmpty);
+    });
+
+    test('getPendingSyncItems excludes soft-deleted items', () async {
+      await insertItem('deleted-pending');
+      await database.itemsDao.deleteItem('deleted-pending');
+
+      final pending = await database.itemsDao.getPendingSyncItems();
+      expect(pending, isEmpty);
+    });
+
+    test('getPendingSyncItems respects nextSyncAttemptAt cooldown', () async {
+      await insertItem('cooldown-item');
+      final future = DateTime.now().add(const Duration(hours: 1));
+      await (database.update(database.items)
+            ..where((i) => i.id.equals('cooldown-item')))
+          .write(ItemsCompanion(nextSyncAttemptAt: Value(future)));
+
+      final pending = await database.itemsDao.getPendingSyncItems();
+      expect(pending, isEmpty);
+    });
+
+    test('markItemAsSynced resets retry state and sets lastSyncedAt', () async {
+      await insertItem('to-sync');
+      await database.itemsDao.incrementSyncRetry('to-sync', 'timeout');
+
+      final serverTime = DateTime(2026, 4, 28, 12, 0);
+      await database.itemsDao.markItemAsSynced('to-sync', serverTime);
+
+      final item = await database.itemsDao.getItemById('to-sync');
+      expect(item, isA<Item>());
+      expect(item!.syncStatus, equals(SyncStatus.synced));
+      expect(item.syncRetryCount, equals(0));
+      expect(item.lastSyncError, isNull);
+      expect(item.lastSyncedAt, equals(serverTime));
+      expect(item.nextSyncAttemptAt, isNull);
+    });
+
+    test('incrementSyncRetry increments count and sets backoff', () async {
+      await insertItem('retry-me');
+
+      await database.itemsDao.incrementSyncRetry('retry-me', 'network timeout');
+      var item = await database.itemsDao.getItemById('retry-me');
+      expect(item!.syncRetryCount, equals(1));
+      expect(item.lastSyncError, equals('network timeout'));
+      expect(item.nextSyncAttemptAt, isNotNull);
+
+      await database.itemsDao.incrementSyncRetry('retry-me', 'server 500');
+      item = await database.itemsDao.getItemById('retry-me');
+      expect(item!.syncRetryCount, equals(2));
+      expect(item.lastSyncError, equals('server 500'));
+    });
+
+    test('incrementSyncRetry is a no-op for non-existent item', () async {
+      await database.itemsDao.incrementSyncRetry('ghost-id', 'error');
+    });
+
+    test('new items default to pendingCreate sync status', () async {
+      await insertItem('fresh');
+      final item = await database.itemsDao.getItemById('fresh');
+      expect(item!.syncStatus, equals(SyncStatus.pendingCreate));
+      expect(item.syncRetryCount, equals(0));
+      expect(item.lastSyncError, isNull);
     });
   });
 }

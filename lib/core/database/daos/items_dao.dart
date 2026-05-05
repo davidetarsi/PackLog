@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../database.dart';
 import '../tables/items_table.dart';
+import '../tables/mixins/syncable_table.dart';
 
 part 'items_dao.g.dart';
 
@@ -173,6 +174,61 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       ),
     );
   }
+
+  // === SYNC OPERATIONS ===
+
+  Future<List<Item>> getPendingSyncItems({int maxRetries = 5}) {
+    final now = DateTime.now();
+    return (select(items)
+          ..where(
+            (i) =>
+                i.syncStatus.equalsValue(SyncStatus.synced).not() &
+                i.syncRetryCount.isSmallerThanValue(maxRetries) &
+                i.isDeleted.equals(false) &
+                (i.nextSyncAttemptAt.isNull() |
+                    i.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
+          ))
+        .get();
+  }
+
+  Future<void> markItemAsSynced(
+    String itemId,
+    DateTime serverUpdatedAt,
+  ) {
+    return (update(items)..where((i) => i.id.equals(itemId))).write(
+      ItemsCompanion(
+        syncStatus: const Value(SyncStatus.synced),
+        syncRetryCount: const Value(0),
+        lastSyncError: const Value(null),
+        lastSyncedAt: Value(serverUpdatedAt),
+        nextSyncAttemptAt: const Value(null),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> incrementSyncRetry(String itemId, String errorMessage) async {
+    final item = await (select(items)
+          ..where((i) => i.id.equals(itemId)))
+        .getSingleOrNull();
+    if (item == null) return;
+
+    final newRetryCount = item.syncRetryCount + 1;
+    final backoffSeconds = 2 << (newRetryCount - 1);
+    final nextAttempt =
+        DateTime.now().add(Duration(seconds: backoffSeconds));
+
+    await (update(items)..where((i) => i.id.equals(itemId))).write(
+      ItemsCompanion(
+        syncRetryCount: Value(newRetryCount),
+        lastSyncError: Value(errorMessage),
+        nextSyncAttemptAt: Value(nextAttempt),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  // === BULK OPERATIONS ===
 
   /// Sposta un set di oggetti da [fromHouseId] a [toHouseId] in una singola
   /// query SQL:

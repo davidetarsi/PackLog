@@ -1,10 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/model/italian_dictionary.dart';
 import 'package:pack_log/features/items/services/category_infer_service.dart';
-import 'package:pack_log/features/items/model/category_keywords.dart';
 
 void main() {
-  const service = CategoryInferService();
+  final dictionary = ItalianDictionary();
+  final service = CategoryInferService(dictionary);
 
   group('Normalization', () {
     test('handles uppercase', () {
@@ -140,14 +141,15 @@ void main() {
   });
 
   group('Keyword data integrity', () {
-    test('kRootKeywords are sorted by root length descending', () {
-      for (var i = 0; i < kRootKeywords.length - 1; i++) {
+    test('rootKeywords are sorted by root length descending', () {
+      final rootKeywords = dictionary.rootKeywords;
+      for (var i = 0; i < rootKeywords.length - 1; i++) {
         expect(
-          kRootKeywords[i].root.length,
-          greaterThanOrEqualTo(kRootKeywords[i + 1].root.length),
+          rootKeywords[i].root.length,
+          greaterThanOrEqualTo(rootKeywords[i + 1].root.length),
           reason:
-              'Root "${kRootKeywords[i].root}" (len ${kRootKeywords[i].root.length}) '
-              'should be >= "${kRootKeywords[i + 1].root}" (len ${kRootKeywords[i + 1].root.length})',
+              'Root "${rootKeywords[i].root}" (len ${rootKeywords[i].root.length}) '
+              'should be >= "${rootKeywords[i + 1].root}" (len ${rootKeywords[i + 1].root.length})',
         );
       }
     });

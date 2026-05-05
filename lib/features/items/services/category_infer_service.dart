@@ -1,7 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pack_log/features/items/model/category_dictionary.dart';
+import 'package:pack_log/features/items/repositories/dictionary_repository.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../model/item_model.dart';
 import '../model/italian_dictionary.dart';
 import 'package:pack_log/shared/providers/language_locale.dart';
@@ -10,100 +13,117 @@ part 'category_infer_service.g.dart';
 
 enum InferConfidence { exact, partial, fallback }
 
+typedef InferResult = ({ItemCategory category, InferConfidence confidence});
+
 class CategoryInferService {
   final CategoryDictionary _dictionary;
 
+  static final RegExp _whitespaceRegExp = RegExp(r'\s+');
+
+  static const Map<String, String> _accentsMap = {
+    'à': 'a',
+    'è': 'e',
+    'é': 'e',
+    'ì': 'i',
+    'ò': 'o',
+    'ù': 'u',
+  };
+
   const CategoryInferService(this._dictionary);
 
-  ({ItemCategory category, InferConfidence confidence}) infer(String rawName) {
-    final normalized = _normalize(rawName);
-    if (normalized.isEmpty) {
-      return (
-        category: ItemCategory.varie,
-        confidence: InferConfidence.fallback,
-      );
+  InferResult infer(String rawName) {
+    if (rawName.trim().isEmpty) {
+      return _fallback();
     }
 
-    final lemmatizedFull = _dictionary.lemmatize(normalized);
+    final normalized = _normalize(rawName);
 
-    if (_dictionary.exactMatches.containsKey(lemmatizedFull)) {
-      return (
-        category: _dictionary.exactMatches[lemmatizedFull]!,
-        confidence: InferConfidence.exact,
-      );
+    final lemmatizedFull = _dictionary.lemmatize(normalized);
+    final fullExactMatch = _dictionary.exactMatches[lemmatizedFull];
+
+    if (fullExactMatch != null) {
+      return (category: fullExactMatch, confidence: InferConfidence.exact);
     }
 
     final tokens = normalized
-        .split(RegExp(r'\s+'))
+        .split(_whitespaceRegExp)
         .where((t) => t.length >= 3 && !_dictionary.stopWords.contains(t))
-        .toList();
+        .toList(growable: false);
+
+    if (tokens.isEmpty) {
+      return _fallback();
+    }
 
     for (final token in tokens) {
       final lemmatizedToken = _dictionary.lemmatize(token);
 
-      final exactMatch = _dictionary.exactMatches[lemmatizedToken];
-      if (exactMatch != null) {
-        return (category: exactMatch, confidence: InferConfidence.partial);
+      final tokenExactMatch = _dictionary.exactMatches[lemmatizedToken];
+      if (tokenExactMatch != null) {
+        return (category: tokenExactMatch, confidence: InferConfidence.partial);
       }
 
-      for (final exactKey in _dictionary.exactMatches.keys) {
-        if (exactKey.startsWith(lemmatizedToken)) {
+      for (final rootEntry in _dictionary.rootKeywords) {
+        if (lemmatizedToken.startsWith(rootEntry.root)) {
           return (
-            category: _dictionary.exactMatches[exactKey]!,
-            confidence: InferConfidence.partial,
+            category: rootEntry.category,
+            confidence: InferConfidence.partial
+          );
+        }
+      }
+
+      for (final exactEntry in _dictionary.exactMatches.entries) {
+        if (exactEntry.key.startsWith(lemmatizedToken)) {
+          return (
+            category: exactEntry.value,
+            confidence: InferConfidence.partial
           );
         }
       }
     }
 
-    for (final entry in _dictionary.rootKeywords) {
-      if (tokens.any((token) => token.startsWith(entry.root))) {
-        return (category: entry.category, confidence: InferConfidence.partial);
+    return _fallback();
+  }
+
+  InferResult _fallback() =>
+      (category: ItemCategory.varie, confidence: InferConfidence.fallback);
+
+  String _normalize(String input) {
+    String result = input.trim().toLowerCase();
+
+    for (final entry in _accentsMap.entries) {
+      if (result.contains(entry.key)) {
+        result = result.replaceAll(entry.key, entry.value);
       }
     }
 
-    return (category: ItemCategory.varie, confidence: InferConfidence.fallback);
+    return result.replaceAll(_whitespaceRegExp, ' ');
   }
+}
 
-  String _normalize(String input) {
-    var result = input.trim().toLowerCase();
-    result = _removeAccents(result);
-    return result.replaceAll(RegExp(r'\s+'), ' ');
-  }
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROVIDERS
+// ═══════════════════════════════════════════════════════════════════════════════
 
-  static String _removeAccents(String input) {
-    const accents = {
-      'à': 'a',
-      'è': 'e',
-      'é': 'e',
-      'ì': 'i',
-      'ò': 'o',
-      'ù': 'u',
-    };
-    var result = input;
-    for (final entry in accents.entries) {
-      result = result.replaceAll(entry.key, entry.value);
-    }
-    return result;
+@Riverpod(keepAlive: true)
+DictionaryRepository dictionaryRepository(Ref ref) {
+  return DictionaryRepository(Supabase.instance.client);
+}
+
+@Riverpod(keepAlive: true)
+Future<CategoryDictionary> dynamicDictionary(Ref ref) async {
+  final locale = ref.watch(languageLocaleProvider);
+  final repo = ref.read(dictionaryRepositoryProvider);
+
+  try {
+    return await repo.loadDictionary(locale);
+  } catch (e) {
+    debugPrint('[dynamicDictionaryProvider] Fallback to bundled dictionary: $e');
+    return ItalianDictionary();
   }
 }
 
 @Riverpod(keepAlive: true)
-CategoryInferService categoryInferService(Ref ref) {
-  final currentLocaleCode = ref.watch(languageLocaleProvider);
-
-  CategoryDictionary dictionary = ItalianDictionary(); // Default
-  switch (currentLocaleCode) {
-    case 'it':
-      dictionary = ItalianDictionary();
-      break;
-    case 'en':
-      // dictionary = EnglishDictionary(); // Da implementare
-      break;
-    default:
-      dictionary = ItalianDictionary();
-      break;
-  }
-
+Future<CategoryInferService> categoryInferService(Ref ref) async {
+  final dictionary = await ref.watch(dynamicDictionaryProvider.future);
   return CategoryInferService(dictionary);
 }

@@ -13,6 +13,26 @@ class AppConfig {
     defaultValue: 'MISSING_GEOAPIFY_KEY',
   );
 
+  static const String supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'MISSING_SUPABASE_URL',
+  );
+
+  static const String supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: 'MISSING_SUPABASE_ANON_KEY',
+  );
+
+  static const String sentryDsn = String.fromEnvironment(
+    'SENTRY_DSN',
+    defaultValue: 'MISSING_SENTRY_DSN',
+  );
+
+  static const String amplitudeApiKey = String.fromEnvironment(
+    'AMPLITUDE_API_KEY',
+    defaultValue: 'MISSING_AMPLITUDE_API_KEY',
+  );
+
   /// URL del questionario Google per segnalare errori o inviare suggerimenti.
   /// Modificare questo valore per puntare al proprio form.
   static const String feedbackUrl = 
@@ -23,8 +43,27 @@ class AppConfig {
       'https://github.com/davidetarsi/stuff_tracker';
 
   static void validate() {
-    if (geoapify.isEmpty) {
-      throw StateError('Errore di Build: GEO_API_KEY non definita.');
+    final missing = <String>[];
+    if (geoapify.isEmpty || geoapify == 'MISSING_GEOAPIFY_KEY') {
+      missing.add('GEOAPIFY_KEY');
+    }
+    if (supabaseUrl.isEmpty || supabaseUrl == 'MISSING_SUPABASE_URL') {
+      missing.add('SUPABASE_URL');
+    }
+    if (supabaseAnonKey.isEmpty ||
+        supabaseAnonKey == 'MISSING_SUPABASE_ANON_KEY') {
+      missing.add('SUPABASE_ANON_KEY');
+    }
+    if (sentryDsn.isEmpty || sentryDsn == 'MISSING_SENTRY_DSN') {
+      missing.add('SENTRY_DSN');
+    }
+    if (amplitudeApiKey.isEmpty || amplitudeApiKey == 'MISSING_AMPLITUDE_API_KEY') {
+      missing.add('AMPLITUDE_API_KEY');
+    }
+    if (missing.isNotEmpty) {
+      throw StateError(
+        'Errore di Build: variabili mancanti: ${missing.join(', ')}',
+      );
     }
   }
 }
