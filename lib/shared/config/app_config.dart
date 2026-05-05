@@ -34,13 +34,12 @@ class AppConfig {
   );
 
   /// URL del questionario Google per segnalare errori o inviare suggerimenti.
-  /// Modificare questo valore per puntare al proprio form.
   static const String feedbackUrl = 
       'https://docs.google.com/forms/d/e/1FAIpQLScKqaRKMwmwfi6Fq51-1z6SlZezeuB2q7kDyEr-BBDZwGocKQ/viewform';
 
   /// URL della repository GitHub del progetto.
   static const String githubUrl =
-      'https://github.com/davidetarsi/stuff_tracker';
+      'https://github.com/davidetarsi/PackLog';
 
   static void validate() {
     final missing = <String>[];

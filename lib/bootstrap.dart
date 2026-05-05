@@ -93,28 +93,22 @@ Future<void> bootstrap(Environment env) async {
   try {
     _validateConfig(env);
 
-    // easy_localization carica i file di traduzione in modo asincrono;
-    // deve essere inizializzato prima di runApp per evitare un frame senza
-    // traduzioni visibile all'utente.
     await EasyLocalization.ensureInitialized();
 
-    await Supabase.initialize(
-      url: AppConfig.supabaseUrl,
-      anonKey: AppConfig.supabaseAnonKey,
-    );
-
-    await Amplitude.getInstance().init(AppConfig.amplitudeApiKey);
-
-    // Pipeline di persistenza: non-bloccante, gli errori vengono loggati
-    // ma non impediscono l'avvio (meglio l'app parzialmente funzionante
-    // che uno schermo bianco).
-    await _initializePersistence();
+    await Future.wait([
+      Supabase.initialize(
+        url: AppConfig.supabaseUrl,
+        anonKey: AppConfig.supabaseAnonKey,
+      ),
+      Amplitude.getInstance().init(AppConfig.amplitudeApiKey),
+      _initializePersistence(),
+    ]);
 
     await SentryFlutter.init(
       (options) {
         options.dsn = AppConfig.sentryDsn;
         options.environment = env.name;
-        options.tracesSampleRate = env == Environment.prod ? 0.2 : 1.0;
+        options.tracesSampleRate = 1.0;
       },
       appRunner: () => runApp(
         EasyLocalization(
