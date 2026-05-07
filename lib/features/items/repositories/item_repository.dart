@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../model/item_model.dart';
+import '../../../core/auth/auth_provider.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/database/services/persistence_services.dart';
 import 'drift_item_repository.dart';
@@ -11,7 +12,11 @@ part 'item_repository.g.dart';
 ItemRepository itemRepository(Ref ref) {
   final database = ref.watch(appDatabaseProvider);
   final dbService = ref.watch(databaseServiceProvider);
-  return DriftItemRepository(database.itemsDao, dbService);
+  return DriftItemRepository(
+    database.itemsDao,
+    dbService,
+    () => ref.read(currentUserIdProvider),
+  );
 }
 
 abstract class ItemRepository {

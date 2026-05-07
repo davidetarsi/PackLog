@@ -1,5 +1,12 @@
 {
   "app_name": "Stuff Tracker",
+  "login": {
+    "subtitle": "Organizza i tuoi oggetti, ovunque tu sia",
+    "sign_in_google": "Accedi con Google",
+    "sign_in_failed": "Accesso fallito. Riprova.",
+    "sign_out": "Esci",
+    "sign_out_failed": "Errore durante la disconnessione"
+  },
   "navigation": {
     "home": "Home",
     "houses": "Case",

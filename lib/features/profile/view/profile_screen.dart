@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/auth/auth_exceptions.dart';
+import '../../../core/auth/auth_provider.dart';
 import '../../../core/database/controllers/backup_controller.dart';
 import '../../../shared/config/app_config.dart';
 import '../../../shared/constants/app_constants.dart';
@@ -401,6 +403,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   // -------------------------------------------------------------------------
+  // Auth — Sign Out
+  // -------------------------------------------------------------------------
+
+  Future<void> _handleSignOut(BuildContext context) async {
+    try {
+      await ref.read(authRepositoryProvider).signOut();
+    } on SignOutFailedException catch (e) {
+      debugPrint('[ProfileScreen] Sign-out failed: $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'login.sign_out_failed'.tr());
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Build
   // -------------------------------------------------------------------------
 
@@ -565,6 +582,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
 
           const Divider(),
+
+          // ── Account ──────────────────────────────────────────────────
+          const SizedBox(height: 8),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: FilledButton.tonalIcon(
+              onPressed: () => _handleSignOut(context),
+              icon: const Icon(Icons.logout),
+              label: Text('login.sign_out'.tr()),
+              style: FilledButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
         ],
       ),
     );

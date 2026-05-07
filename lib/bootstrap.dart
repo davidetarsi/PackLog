@@ -6,17 +6,27 @@
 /// **Single Responsibility**: ogni file ha esattamente una ragione di essere
 /// modificato.
 ///
-/// Flusso di avvio:
+/// Flusso di avvio (anti-ANR):
 /// ```
 /// main_dev.dart / main_prod.dart
 ///       │
 ///       └─► bootstrap(Environment) ──► _validateConfig()
 ///                                   ──► EasyLocalization.ensureInitialized()
-///                                   ──► _initializePersistence()
-///                                   │     ├─ _runMigration()      (SharedPrefs → Drift)
-///                                   │     └─ _createAutoBackup()  (se necessario)
-///                                   └─► runApp(MyApp)
+///                                   ──► runApp(MyApp) ← immediato
+///                                          │
+///                                          └─► MyApp watches appBootstrapProvider
+///                                                ├─ loading → splash screen
+///                                                └─ data    → MaterialApp.router
+///                                                     (Sentry, Supabase, Amplitude,
+///                                                      persistence init deferite)
 /// ```
+///
+/// TUTTA l'inizializzazione pesante (Sentry, Supabase, Amplitude, migrazione
+/// DB, backup) è deferita DOPO runApp tramite [appBootstrapProvider] per
+/// evitare ANR: Android triggera ANR se il main thread resta bloccato >5s
+/// prima del primo frame. Sentry viene inizializzato senza appRunner;
+/// gli errori sono comunque catturati via FlutterError.onError e
+/// PlatformDispatcher.onError.
 ///
 /// **DataIntegrityService** non è incluso nel flusso automatico: disponibile
 /// tramite [dataIntegrityServiceProvider] per ispezioni manuali (Debug).
@@ -34,10 +44,49 @@ import 'core/database/database.dart';
 import 'core/database/migration_service.dart';
 import 'core/database/services/backup_service.dart';
 import 'core/routing/app_router.dart';
+import 'core/sync/sync_provider.dart';
 import 'shared/config/app_config.dart';
 import 'shared/providers/language_locale.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/theme/app_theme.dart';
+
+// ═════════════════════════════════════════════════════════════════════════════
+// DEFERRED BOOTSTRAP PROVIDER
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// Impostato da [bootstrap] prima di [runApp], letto da [appBootstrapProvider].
+late Environment _currentEnvironment;
+
+/// Inizializzazione pesante deferita dopo il primo frame.
+///
+/// Sentry, Supabase, Amplitude e persistenza vengono inizializzati qui
+/// anziché in [bootstrap] per evitare ANR su Android: [runApp] viene
+/// chiamato subito, e [MyApp] mostra uno splash screen finché questo
+/// provider non completa.
+///
+/// Sentry è inizializzato senza [appRunner] — gli errori sono comunque
+/// catturati via [FlutterError.onError] e [PlatformDispatcher.onError].
+final appBootstrapProvider = FutureProvider<void>((ref) async {
+  final bool sentryEnabled = AppConfig.sentryDsn.isNotEmpty &&
+      AppConfig.sentryDsn != 'MISSING_SENTRY_DSN';
+
+  await Future.wait([
+    if (sentryEnabled)
+      SentryFlutter.init((options) {
+        options.dsn = AppConfig.sentryDsn;
+        options.environment = _currentEnvironment.name;
+        options.tracesSampleRate = 1.0;
+      }),
+    Supabase.initialize(
+      url: AppConfig.supabaseUrl,
+      anonKey: AppConfig.supabaseAnonKey,
+    ),
+    Amplitude.getInstance().init(AppConfig.amplitudeApiKey),
+    _initializePersistence(),
+  ]);
+
+  ref.read(syncOrchestratorProvider);
+});
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ENUM Environment
@@ -70,65 +119,38 @@ enum Environment {
 
 /// Punto di bootstrap condiviso per tutti gli entry-point dell'app.
 ///
-/// Riceve l'[env] dall'entry-point del flavor e orchestra in sequenza:
-/// 1. Inizializzazione del binding Flutter.
-/// 2. Validazione della configurazione (con severità dipendente da [env]).
-/// 3. Inizializzazione della localizzazione (async).
-/// 4. Pipeline di persistenza: migrazione → backup automatico.
-/// 5. Avvio dell'app con [runApp].
+/// Esegue solo operazioni veloci prima di [runApp] per evitare ANR:
+/// 1. Binding Sentry-compatibile.
+/// 2. Validazione configurazione.
+/// 3. EasyLocalization (veloce, serve per l'UI).
+/// 4. [runApp] immediato — nessun await pesante.
 ///
-/// Il blocco `try/catch` globale garantisce che qualsiasi errore non gestito
-/// durante l'avvio venga loggato con stack trace leggibile, anziché causare
-/// un crash silenzioso con schermata nera.
-///
-/// Esempio di utilizzo dall'entry-point:
-/// ```dart
-/// Future<void> main() async => bootstrap(Environment.dev);
-/// ```
+/// Tutta l'inizializzazione pesante (Sentry, Supabase, Amplitude, persistenza)
+/// è gestita da [appBootstrapProvider] e visualizzata con uno splash screen.
 Future<void> bootstrap(Environment env) async {
-  // Deve essere la prima chiamata assoluta: abilita l'interazione con il
-  // framework Flutter (channels, plugin, servizi nativi) prima di runApp.
-  WidgetsFlutterBinding.ensureInitialized();
+  SentryWidgetsFlutterBinding.ensureInitialized();
+  _currentEnvironment = env;
 
   try {
     _validateConfig(env);
 
     await EasyLocalization.ensureInitialized();
 
-    await Future.wait([
-      Supabase.initialize(
-        url: AppConfig.supabaseUrl,
-        anonKey: AppConfig.supabaseAnonKey,
-      ),
-      Amplitude.getInstance().init(AppConfig.amplitudeApiKey),
-      _initializePersistence(),
-    ]);
-
-    await SentryFlutter.init(
-      (options) {
-        options.dsn = AppConfig.sentryDsn;
-        options.environment = env.name;
-        options.tracesSampleRate = 1.0;
-      },
-      appRunner: () => runApp(
-        EasyLocalization(
-          supportedLocales: const [
-            Locale('it', 'IT'),
-            Locale('en', 'US'),
-          ],
-          path: 'assets/translations',
-          fallbackLocale: const Locale('it', 'IT'),
-          child: ProviderScope(
-            child: MyApp(environment: env),
-          ),
+    runApp(
+      EasyLocalization(
+        supportedLocales: const [
+          Locale('it', 'IT'),
+          Locale('en', 'US'),
+        ],
+        path: 'assets/translations',
+        fallbackLocale: const Locale('it', 'IT'),
+        child: ProviderScope(
+          child: MyApp(environment: env),
         ),
       ),
     );
   } catch (e, stackTrace) {
-    // Catch-all critico: logga il problema con stack trace completo e
-    // propaga l'eccezione affinché il framework Flutter mostri la schermata
-    // di errore predefinita (rosso su nero in debug, grigio in release).
-    debugPrint('[Bootstrap] ❌ ERRORE CRITICO durante l\'avvio: $e');
+    debugPrint('[Bootstrap] ERRORE CRITICO durante l\'avvio: $e');
     debugPrint('[Bootstrap] Stack trace:\n$stackTrace');
     rethrow;
   }
@@ -243,40 +265,76 @@ Future<void> _createAutoBackup() async {
 
 /// Widget radice dell'applicazione.
 ///
-/// Riceve l'[environment] per differenziare il comportamento visivo:
-/// il banner "DEBUG" è mostrato solo in [Environment.dev] per non
-/// confondere gli utenti finali in produzione.
+/// Osserva [appBootstrapProvider]: mostra uno splash screen durante
+/// l'inizializzazione pesante (Supabase, Amplitude, persistenza), poi
+/// passa al [MaterialApp.router] con il router completo.
 class MyApp extends ConsumerWidget {
-  /// L'ambiente di esecuzione corrente.
   final Environment environment;
 
   const MyApp({required this.environment, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<ThemeMode> themeModeAsync =
-        ref.watch(themeModeNotifierProvider);
+    final bootstrapState = ref.watch(appBootstrapProvider);
 
-    final localeCode = context.locale.languageCode;
-    final currentProviderLocale = ref.read(languageLocaleProvider);
-    if (currentProviderLocale != localeCode) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(languageLocaleProvider.notifier).updateLocale(localeCode);
-      });
-    }
+    return bootstrapState.when(
+      loading: () => MaterialApp(
+        debugShowCheckedModeBanner: environment == Environment.dev,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.dark,
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
+        home: const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      ),
+      error: (error, _) => MaterialApp(
+        debugShowCheckedModeBanner: environment == Environment.dev,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.dark,
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'Errore di avvio: $error',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+      ),
+      data: (_) {
+        final themeModeAsync = ref.watch(themeModeNotifierProvider);
 
-    return MaterialApp.router(
-      title: 'Pack Log',
-      // Il banner "DEBUG" è visibile solo in dev per non disorientare
-      // gli utenti in produzione con indicatori tecnici.
-      debugShowCheckedModeBanner: environment == Environment.dev,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
-      routerConfig: appRouter,
-      localizationsDelegates: context.localizationDelegates,
-      supportedLocales: context.supportedLocales,
-      locale: context.locale,
+        final localeCode = context.locale.languageCode;
+        final currentProviderLocale = ref.read(languageLocaleProvider);
+        if (currentProviderLocale != localeCode) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(languageLocaleProvider.notifier).updateLocale(localeCode);
+          });
+        }
+
+        return MaterialApp.router(
+          title: 'Pack Log',
+          debugShowCheckedModeBanner: environment == Environment.dev,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
+          routerConfig: ref.watch(appRouterProvider),
+          localizationsDelegates: context.localizationDelegates,
+          supportedLocales: context.supportedLocales,
+          locale: context.locale,
+        );
+      },
     );
   }
 }

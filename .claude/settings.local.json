@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Get-ChildItem 'c:\\\\Users\\\\d.tarsi\\\\OneDrive - Reply\\\\Desktop\\\\Progetti\\\\personale\\\\stuff_tracker\\\\.vscode' -Force\")",
+      "Bash(flutter analyze *)",
+      "Bash(Remove-Item -Path \"C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.realm\" -Force -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Path \"C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.stamp\" -Force -ErrorAction SilentlyContinue)",
+      "Bash(flutter precache *)",
+      "Bash(powershell -Command \"Remove-Item -Path 'C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.realm' -Force -ErrorAction SilentlyContinue; Remove-Item -Path 'C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.stamp' -Force -ErrorAction SilentlyContinue\")",
+      "Bash(powershell -Command \"flutter precache 2>&1 | Select-Object -Last 5\")",
+      "Bash(powershell -Command \"Remove-Item -Path 'C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.stamp' -Force -ErrorAction SilentlyContinue; Remove-Item -Path 'C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.realm' -Force -ErrorAction SilentlyContinue; flutter precache 2>&1 | Out-Null; flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | Select-Object -Last 5\")"
+    ]
+  }
+}

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
+import '../../shared/config/app_config.dart';
 import 'auth_exceptions.dart';
 import 'auth_repository.dart';
 import 'auth_state.dart';
@@ -15,7 +16,8 @@ class SupabaseAuthRepository implements AuthRepository {
     sb.SupabaseClient? client,
     GoogleSignIn? googleSignIn,
   })  : _client = client ?? sb.Supabase.instance.client,
-        _googleSignIn = googleSignIn ?? GoogleSignIn();
+        _googleSignIn = googleSignIn ??
+            GoogleSignIn(serverClientId: AppConfig.googleWebClientId);
 
   @override
   AuthState get currentAuthState {

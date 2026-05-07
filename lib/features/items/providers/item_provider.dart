@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../model/item_model.dart';
 import '../repositories/item_repository.dart';
 import 'item_selection_provider.dart';
@@ -35,6 +36,11 @@ class ItemNotifier extends _$ItemNotifier {
       await repository!.addItem(model);
       final items = await repository!.getItemsByHouseId(model.houseId);
       state = AsyncData(items);
+      ref.read(coreAnalyticsServiceProvider).trackItemAdded(
+        itemId: model.id,
+        category: model.category.name,
+        totalItems: items.length,
+      );
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../model/luggage_model.dart';
+import '../../../core/auth/auth_provider.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/database/services/persistence_services.dart';
 import 'drift_luggage_repository.dart';
@@ -11,7 +12,11 @@ part 'luggage_repository.g.dart';
 LuggageRepository luggageRepository(Ref ref) {
   final database = ref.watch(appDatabaseProvider);
   final dbService = ref.watch(databaseServiceProvider);
-  return DriftLuggageRepository(database.luggagesDao, dbService);
+  return DriftLuggageRepository(
+    database.luggagesDao,
+    dbService,
+    () => ref.read(currentUserIdProvider),
+  );
 }
 
 /// Interfaccia astratta per il repository dei bagagli.

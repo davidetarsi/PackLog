@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../model/house_model.dart';
 import '../repositories/house_repository.dart';
 
@@ -22,6 +23,10 @@ class HouseNotifier extends _$HouseNotifier {
       await repository!.addHouse(model);
       final houses = await repository!.getAllHouses();
       state = AsyncData(houses);
+      ref.read(coreAnalyticsServiceProvider).trackHouseCreated(
+        houseId: model.id,
+        totalHouses: houses.length,
+      );
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }

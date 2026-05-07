@@ -33,6 +33,11 @@ class AppConfig {
     defaultValue: 'MISSING_AMPLITUDE_API_KEY',
   );
 
+  static const String googleWebClientId = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+    defaultValue: 'MISSING_GOOGLE_WEB_CLIENT_ID',
+  );
+
   /// URL del questionario Google per segnalare errori o inviare suggerimenti.
   static const String feedbackUrl = 
       'https://docs.google.com/forms/d/e/1FAIpQLScKqaRKMwmwfi6Fq51-1z6SlZezeuB2q7kDyEr-BBDZwGocKQ/viewform';
@@ -58,6 +63,9 @@ class AppConfig {
     }
     if (amplitudeApiKey.isEmpty || amplitudeApiKey == 'MISSING_AMPLITUDE_API_KEY') {
       missing.add('AMPLITUDE_API_KEY');
+    }
+    if (googleWebClientId.isEmpty || googleWebClientId == 'MISSING_GOOGLE_WEB_CLIENT_ID') {
+      missing.add('GOOGLE_WEB_CLIENT_ID');
     }
     if (missing.isNotEmpty) {
       throw StateError(

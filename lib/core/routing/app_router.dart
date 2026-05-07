@@ -1,6 +1,12 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+import '../auth/auth_provider.dart';
+import '../auth/auth_state.dart';
+import '../../features/auth/view/login_screen.dart';
 import '../../features/houses/view/houses_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
 import '../../features/profile/view/profile_screen.dart';
@@ -14,177 +20,202 @@ import '../../features/bulk_creation/view/template_selection_screen.dart';
 import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 
+part 'app_router.g.dart';
+
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _profileNavigatorKey = GlobalKey<NavigatorState>();
 final _housesNavigatorKey = GlobalKey<NavigatorState>();
 final _tripsNavigatorKey = GlobalKey<NavigatorState>();
 
-final appRouter = GoRouter(
-  navigatorKey: _rootNavigatorKey,
-  initialLocation: '/',
-  routes: [
-    // Shell con tab bar persistente (Profilo / Case / Viaggi)
-    StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) =>
-          MainShell(navigationShell: navigationShell),
-      branches: [
-        // Branch 0: Profilo
-        StatefulShellBranch(
-          navigatorKey: _profileNavigatorKey,
-          routes: [
-            GoRoute(
-              path: '/profile',
-              name: 'profile',
-              builder: (context, state) => const ProfileScreen(),
-            ),
-          ],
-        ),
-        // Branch 1: Case
-        StatefulShellBranch(
-          navigatorKey: _housesNavigatorKey,
-          routes: [
-            GoRoute(
-              path: '/',
-              name: 'houses',
-              builder: (context, state) => const HousesScreen(),
-            ),
-          ],
-        ),
-        // Branch 2: Viaggi
-        StatefulShellBranch(
-          navigatorKey: _tripsNavigatorKey,
-          routes: [
-            GoRoute(
-              path: '/trips',
-              name: 'trips',
-              builder: (context, state) => const TripsPage(),
-            ),
-          ],
-        ),
-      ],
-    ),
-    // Route fuori dalla shell (senza tab bar)
-    GoRoute(
-      path: '/houses/:id',
-      name: 'house-detail',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final id = state.pathParameters['id'];
-        if (id == null || id.isEmpty) {
-          return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
-        }
-        return HouseDetailScreen(houseId: id);
-      },
-    ),
-    GoRoute(
-      path: '/trips/:id',
-      name: 'trip-detail',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final id = state.pathParameters['id'];
-        if (id == null || id.isEmpty) {
-          return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
-        }
-        return TripDetailScreen(tripId: id);
-      },
-    ),
-    GoRoute(
-      path: '/new-trip',
-      name: 'trip-new',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const AddTripScreen(),
-    ),
-    GoRoute(
-      path: '/trips/:id/edit',
-      name: 'trip-edit',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final id = state.pathParameters['id'];
-        if (id == null || id.isEmpty) {
-          return _ErrorScreen(message: 'errors.invalid_list_id'.tr());
-        }
-        return AddTripScreen(tripId: id);
-      },
-    ),
-    GoRoute(
-      path: '/trips/:id/edit-info',
-      name: 'trip-edit-info',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final id = state.pathParameters['id'];
-        if (id == null || id.isEmpty) {
-          return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
-        }
-        return EditTripInfoScreen(tripId: id);
-      },
-    ),
-    GoRoute(
-      path: '/trips/:id/edit-items',
-      name: 'trip-edit-items',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final id = state.pathParameters['id'];
-        if (id == null || id.isEmpty) {
-          return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
-        }
-        return EditTripItemsScreen(tripId: id);
-      },
-    ),
-    // Route per la creazione massiva di item da template
-    GoRoute(
-      path: '/bulk-creation/select-house',
-      name: 'bulk-house-selection',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const HouseSelectionScreen(),
-    ),
-    GoRoute(
-      path: '/bulk-creation/templates/:houseId',
-      name: 'bulk-template-selection',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final houseId = state.pathParameters['houseId'];
-        if (houseId == null || houseId.isEmpty) {
-          return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
-        }
-        return TemplateSelectionScreen(houseId: houseId);
-      },
-    ),
-    GoRoute(
-      path: '/bulk-creation/items/:houseId',
-      name: 'bulk-item-list',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final houseId = state.pathParameters['houseId'];
-        if (houseId == null || houseId.isEmpty) {
-          return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
-        }
-        return BulkItemListScreen(houseId: houseId);
-      },
-    ),
-  ],
-  errorBuilder: (context, state) => Scaffold(
-    appBar: AppBar(title: Text('common.error'.tr())),
-    body: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
-          const SizedBox(height: 16),
-          Text(
-            'common.navigation_error'.tr(args: [state.error.toString()]),
-            style: const TextStyle(fontSize: 18),
-            textAlign: TextAlign.center,
+class _AuthChangeNotifier extends ChangeNotifier {
+  _AuthChangeNotifier(Ref ref) {
+    ref.listen<AuthState>(authNotifierProvider, (_, _) {
+      notifyListeners();
+    });
+  }
+}
+
+@Riverpod(keepAlive: true)
+GoRouter appRouter(Ref ref) {
+  final authChangeNotifier = _AuthChangeNotifier(ref);
+
+  return GoRouter(
+    navigatorKey: _rootNavigatorKey,
+    initialLocation: '/',
+    refreshListenable: authChangeNotifier,
+    redirect: (context, state) {
+      final authState = ref.read(authNotifierProvider);
+      final isAuthenticated = authState is Authenticated;
+      final isOnLogin = state.matchedLocation == '/login';
+
+      if (!isAuthenticated && !isOnLogin) return '/login';
+      if (isAuthenticated && isOnLogin) return '/';
+
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: '/login',
+        name: 'login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            MainShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            navigatorKey: _profileNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/profile',
+                name: 'profile',
+                builder: (context, state) => const ProfileScreen(),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () => context.go('/'),
-            child: Text('common.back_to_home'.tr()),
+          StatefulShellBranch(
+            navigatorKey: _housesNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/',
+                name: 'houses',
+                builder: (context, state) => const HousesScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: _tripsNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/trips',
+                name: 'trips',
+                builder: (context, state) => const TripsPage(),
+              ),
+            ],
           ),
         ],
       ),
+      GoRoute(
+        path: '/houses/:id',
+        name: 'house-detail',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
+          }
+          return HouseDetailScreen(houseId: id);
+        },
+      ),
+      GoRoute(
+        path: '/trips/:id',
+        name: 'trip-detail',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+          }
+          return TripDetailScreen(tripId: id);
+        },
+      ),
+      GoRoute(
+        path: '/new-trip',
+        name: 'trip-new',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AddTripScreen(),
+      ),
+      GoRoute(
+        path: '/trips/:id/edit',
+        name: 'trip-edit',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'errors.invalid_list_id'.tr());
+          }
+          return AddTripScreen(tripId: id);
+        },
+      ),
+      GoRoute(
+        path: '/trips/:id/edit-info',
+        name: 'trip-edit-info',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+          }
+          return EditTripInfoScreen(tripId: id);
+        },
+      ),
+      GoRoute(
+        path: '/trips/:id/edit-items',
+        name: 'trip-edit-items',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+          }
+          return EditTripItemsScreen(tripId: id);
+        },
+      ),
+      GoRoute(
+        path: '/bulk-creation/select-house',
+        name: 'bulk-house-selection',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const HouseSelectionScreen(),
+      ),
+      GoRoute(
+        path: '/bulk-creation/templates/:houseId',
+        name: 'bulk-template-selection',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final houseId = state.pathParameters['houseId'];
+          if (houseId == null || houseId.isEmpty) {
+            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
+          }
+          return TemplateSelectionScreen(houseId: houseId);
+        },
+      ),
+      GoRoute(
+        path: '/bulk-creation/items/:houseId',
+        name: 'bulk-item-list',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final houseId = state.pathParameters['houseId'];
+          if (houseId == null || houseId.isEmpty) {
+            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
+          }
+          return BulkItemListScreen(houseId: houseId);
+        },
+      ),
+    ],
+    errorBuilder: (context, state) => Scaffold(
+      appBar: AppBar(title: Text('common.error'.tr())),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              'common.navigation_error'.tr(args: [state.error.toString()]),
+              style: const TextStyle(fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => context.go('/'),
+              child: Text('common.back_to_home'.tr()),
+            ),
+          ],
+        ),
+      ),
     ),
-  ),
-);
+  );
+}
 
 class _ErrorScreen extends StatelessWidget {
   final String message;

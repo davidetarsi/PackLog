@@ -21,8 +21,9 @@ class DriftTripRepository implements TripRepository {
   final TripsDao _dao;
   final LuggagesDao _luggagesDao;
   final DatabaseService _dbService;
+  final String? Function() _getCurrentUserId;
 
-  DriftTripRepository(this._dao, this._luggagesDao, this._dbService);
+  DriftTripRepository(this._dao, this._luggagesDao, this._dbService, this._getCurrentUserId);
 
   @override
   Future<bool> init() async {
@@ -323,6 +324,7 @@ class DriftTripRepository implements TripRepository {
       isSaved: Value(trip.isSaved),
       createdAt: Value(trip.createdAt),
       updatedAt: Value(trip.updatedAt),
+      userId: Value(_getCurrentUserId()),
     );
   }
 
