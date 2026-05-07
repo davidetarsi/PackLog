@@ -14,8 +14,9 @@ import '../../../core/database/services/database_service.dart';
 class DriftLuggageRepository implements LuggageRepository {
   final LuggagesDao _dao;
   final DatabaseService _dbService;
+  final String? Function() _getCurrentUserId;
 
-  DriftLuggageRepository(this._dao, this._dbService);
+  DriftLuggageRepository(this._dao, this._dbService, this._getCurrentUserId);
 
   @override
   Future<bool> init() async {
@@ -220,6 +221,7 @@ class DriftLuggageRepository implements LuggageRepository {
       volumeLiters: Value(model.volumeLiters),
       createdAt: Value(model.createdAt),
       updatedAt: Value(model.updatedAt),
+      userId: Value(_getCurrentUserId()),
     );
   }
 }

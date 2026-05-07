@@ -17,8 +17,9 @@ import '../../../shared/model/location_type.dart';
 class DriftHouseRepository implements HouseRepository {
   final HousesDao _dao;
   final DatabaseService _dbService;
+  final String? Function() _getCurrentUserId;
 
-  DriftHouseRepository(this._dao, this._dbService);
+  DriftHouseRepository(this._dao, this._dbService, this._getCurrentUserId);
 
   @override
   Future<bool> init() async {
@@ -161,6 +162,7 @@ class DriftHouseRepository implements HouseRepository {
       isPrimary: Value(model.isPrimary),
       createdAt: Value(model.createdAt),
       updatedAt: Value(model.updatedAt),
+      userId: Value(_getCurrentUserId()),
     );
   }
 }

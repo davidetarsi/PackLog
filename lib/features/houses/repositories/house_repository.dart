@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../model/house_model.dart';
+import '../../../core/auth/auth_provider.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/database/services/persistence_services.dart';
 import 'drift_house_repository.dart';
@@ -11,7 +12,11 @@ part 'house_repository.g.dart';
 HouseRepository houseRepository(Ref ref) {
   final database = ref.watch(appDatabaseProvider);
   final dbService = ref.watch(databaseServiceProvider);
-  return DriftHouseRepository(database.housesDao, dbService);
+  return DriftHouseRepository(
+    database.housesDao,
+    dbService,
+    () => ref.read(currentUserIdProvider),
+  );
 }
 
 abstract class HouseRepository {

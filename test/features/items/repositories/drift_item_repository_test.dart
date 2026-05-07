@@ -19,7 +19,7 @@ void main() {
   setUp(() {
     database = createTestDatabase();
     databaseService = DatabaseService(database);
-    repository = DriftItemRepository(database.itemsDao, databaseService);
+    repository = DriftItemRepository(database.itemsDao, databaseService, () => 'test-user-id');
   });
 
   tearDown(() async {

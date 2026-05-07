@@ -29,6 +29,7 @@ void main() {
       database.tripsDao,
       database.luggagesDao,
       databaseService,
+      () => 'test-user-id',
     );
   });
 

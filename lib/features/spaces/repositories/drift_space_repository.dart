@@ -15,8 +15,9 @@ import '../../../core/database/services/database_service.dart';
 class DriftSpaceRepository implements SpaceRepository {
   final SpacesDao _dao;
   final DatabaseService _dbService;
+  final String? Function() _getCurrentUserId;
 
-  DriftSpaceRepository(this._dao, this._dbService);
+  DriftSpaceRepository(this._dao, this._dbService, this._getCurrentUserId);
 
   @override
   Future<bool> init() async {
@@ -157,6 +158,7 @@ class DriftSpaceRepository implements SpaceRepository {
       iconName: Value(model.iconName),
       createdAt: Value(model.createdAt),
       updatedAt: Value(model.updatedAt),
+      userId: Value(_getCurrentUserId()),
     );
   }
 }

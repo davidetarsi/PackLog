@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../items/repositories/item_repository.dart';
 import '../model/trip_model.dart';
 import '../repositories/trip_repository.dart';
@@ -159,6 +160,10 @@ class TripNotifier extends _$TripNotifier {
       await repository!.addTrip(model);
       final List<TripModel> trips = await repository!.getAllTrips();
       state = AsyncData(trips);
+      ref.read(coreAnalyticsServiceProvider).trackTripCreated(
+        tripId: model.id,
+        totalTrips: trips.length,
+      );
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }

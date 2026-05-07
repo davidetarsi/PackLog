@@ -1,5 +1,12 @@
 {
   "app_name": "Stuff Tracker",
+  "login": {
+    "subtitle": "Organize your stuff, wherever you are",
+    "sign_in_google": "Sign in with Google",
+    "sign_in_failed": "Sign in failed. Please try again.",
+    "sign_out": "Sign out",
+    "sign_out_failed": "Error during sign out"
+  },
   "navigation": {
     "home": "Home",
     "houses": "Houses",
