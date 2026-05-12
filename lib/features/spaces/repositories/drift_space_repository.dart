@@ -4,6 +4,7 @@ import '../model/space_model.dart';
 import 'space_repository.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/spaces_dao.dart';
+import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../core/database/services/database_service.dart';
 
 /// Implementazione del repository Space usando Drift (SQLite).
@@ -33,7 +34,7 @@ class DriftSpaceRepository implements SpaceRepository {
     );
     
     if (!result.success) {
-      throw Exception('Impossibile aggiungere lo spazio: ${result.error}');
+      throw EntitySaveException('addSpace(${model.name})', cause: result.error);
     }
     
     debugPrint('[SpaceRepo] Spazio aggiunto: ${model.name}');
@@ -47,7 +48,7 @@ class DriftSpaceRepository implements SpaceRepository {
     );
     
     if (!result.success || result.data == null) {
-      throw StateError('Spazio con id $id non trovato');
+      throw EntityNotFoundException('getSpaceById($id)');
     }
     
     return _toModel(result.data!);
@@ -109,7 +110,7 @@ class DriftSpaceRepository implements SpaceRepository {
     );
     
     if (!result.success) {
-      throw Exception('Impossibile aggiornare lo spazio: ${result.error}');
+      throw EntitySaveException('updateSpace(${model.name})', cause: result.error);
     }
     
     debugPrint('[SpaceRepo] Spazio aggiornato: ${model.name}');

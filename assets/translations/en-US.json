@@ -22,6 +22,7 @@
     "set_as_primary": "Set as primary",
     "no_houses": "No houses",
     "no_houses_subtitle": "Add your first house",
+    "no_houses_tap_hint": "Tap to add a house",
     "name_required": "Name*",
     "name_label": "Name *",
     "location_required": "Location*",
@@ -100,7 +101,7 @@
     "bulk_move_title": "Move to...",
     "bulk_move_success": "{} items moved to {}",
     "bulk_move_no_houses": "No other houses available",
-    "rapid_fire_hint": "Add..."
+    "rapid_fire_hint": "Add item..."
   },
   "categories": {
     "vestiti": "Clothes",
@@ -266,6 +267,9 @@
     "select_house": "Select house",
     "select_location": "Select a location",
     "arrival_house": "Arrival house",
+    "destination_house": "House",
+    "destination_other": "Other location",
+    "tap_to_set_dates": "Tap to set dates",
     "departure": "Departure",
     "return": "Return",
     "none_insert_location": "None (insert location)",
@@ -346,7 +350,10 @@
     "delete_title": "Delete {}",
     "delete_message": "Are you sure you want to delete \"{}\"?",
     "delete_confirm": "Delete",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "context_menu_copy": "Copy {}",
+    "context_menu_delete": "Delete {}",
+    "copy_success": "\"{}\" copied successfully"
   },
   "settings": {
     "title": "Profile",

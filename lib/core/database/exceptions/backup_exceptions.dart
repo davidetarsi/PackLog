@@ -5,8 +5,10 @@ library;
 /// Fornisce exception specifiche per ogni tipo di fallimento,
 /// permettendo una gestione degli errori più granulare e user-friendly.
 
+import '../../errors/app_exception.dart';
+
 /// Base exception per tutte le operazioni di backup.
-abstract class BackupException implements Exception {
+abstract class BackupException extends AppException {
   final String message;
   final Object? originalError;
   final StackTrace? stackTrace;

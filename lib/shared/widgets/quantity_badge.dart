@@ -36,7 +36,6 @@ class QuantityBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    // Determina il testo da mostrare
     final showPartial =
         totalQuantity != null && quantity > 0 && quantity < totalQuantity!;
     final text = showPartial ? 'x$quantity/$totalQuantity' : 'x$quantity';
@@ -72,7 +71,7 @@ class QuantityBadge extends StatelessWidget {
   }
 }
 
-/// Badge quantità per item in viaggio (stile arancione)
+/// Badge quantità per item in viaggio (stile amber — colorScheme.tertiary).
 class OnTripQuantityBadge extends StatelessWidget {
   final int quantity;
   final int? totalQuantity;
@@ -85,19 +84,20 @@ class OnTripQuantityBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final showPartial = totalQuantity != null && quantity < totalQuantity!;
     final text = showPartial ? 'x$quantity/$totalQuantity' : 'x$quantity';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.itemOnTripLight,
+        color: colorScheme.tertiaryContainer,
         borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       ),
       child: Text(
         showPartial ? '$text ${'common.in_transit'.tr().toLowerCase()}' : 'common.in_transit'.tr(),
-        style: const TextStyle(
-          color: AppColors.itemOnTripDark,
+        style: TextStyle(
+          color: colorScheme.onTertiaryContainer,
           fontSize: 10,
         ),
       ),
@@ -105,43 +105,44 @@ class OnTripQuantityBadge extends StatelessWidget {
   }
 }
 
-/// Badge "In viaggio" pieno
+/// Badge "In viaggio" pieno — usa tertiary del ColorScheme.
 class OnTripBadge extends StatelessWidget {
   const OnTripBadge({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
-        color: AppColors.itemOnTrip,
+        color: colorScheme.tertiary,
         borderRadius: BorderRadius.circular(AppConstants.badgeBorderRadius),
       ),
       child: Text(
         'common.in_transit'.tr(),
-        style: const TextStyle(color: AppColors.onColored, fontSize: 11),
+        style: TextStyle(color: colorScheme.onTertiary, fontSize: 11),
       ),
     );
   }
 }
 
-/// Badge "Temporaneo" per item in arrivo
+/// Badge "Temporaneo" per item in arrivo — usa itemTemporary da AppColorsExtension.
 class TemporaryBadge extends StatelessWidget {
   const TemporaryBadge({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final appColors = Theme.of(context).extension<AppColorsExtension>()!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.itemTemporary,
+        color: appColors.itemTemporaryBackground,
         borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       ),
       child: Text(
         'common.temporary'.tr(),
-        style: const TextStyle(color: AppColors.onColored, fontSize: 10),
+        style: TextStyle(color: appColors.itemTemporaryText, fontSize: 10),
       ),
     );
   }
 }
-

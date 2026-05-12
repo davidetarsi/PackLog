@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/app_spacing.dart';
 
 /// Tile selezionabile per la scelta del tema nella dialog di tema.
 ///
@@ -28,12 +29,12 @@ class ThemeTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.spacingMd),
         decoration: BoxDecoration(
           border: Border.all(
             color: isSelected
                 ? colorScheme.primary
-                : colorScheme.outline.withValues(alpha: 0.3),
+                : colorScheme.outlineVariant,
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
@@ -48,9 +49,9 @@ class ThemeTile extends StatelessWidget {
               size: 32,
               color: isSelected
                   ? colorScheme.primary
-                  : colorScheme.onSurface.withValues(alpha: 0.6),
+                  : colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: context.spacingMd),
             Expanded(
               child: Text(
                 title,

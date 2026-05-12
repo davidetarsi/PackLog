@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/core/database/exceptions/database_exceptions.dart';
 import 'package:pack_log/core/database/services/database_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/drift_item_repository.dart';
@@ -340,7 +341,7 @@ void main() {
       // Attempting to fetch deleted item should throw StateError
       expect(
         () async => await repository.getItemById(itemToDelete.id),
-        throwsA(isA<StateError>()),
+        throwsA(isA<EntityNotFoundException>()),
       );
     });
 
@@ -437,7 +438,7 @@ void main() {
       // Verify item was NOT inserted
       expect(
         () async => await repository.getItemById(itemWithInvalidHouse.id),
-        throwsA(isA<StateError>()),
+        throwsA(isA<EntityNotFoundException>()),
       );
     });
   });

@@ -98,6 +98,23 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                 await showLuggagesManagementSheet(context, houseId: houseId);
               },
             ),
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(
+                Icons.delete_outline,
+                color: Theme.of(sheetContext).colorScheme.error,
+              ),
+              title: Text(
+                'common.delete'.tr(),
+                style: TextStyle(
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _showDeleteDialog(context, houseName);
+              },
+            ),
           ],
         ),
       ),
@@ -293,22 +310,12 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Handle
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12, bottom: 8),
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colorScheme.onSurface.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
+                // Handle standard — stessa dimensione di StandardBottomSheetLayout
+                const BottomSheetHandle(),
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacingMd,
+                    vertical: context.spacingSm,
                   ),
                   child: Text(
                     'items.bulk_move_title'.tr(),
@@ -319,7 +326,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                 const Divider(height: 1),
                 if (otherHouses.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(context.spacingLg),
                     child: Center(
                       child: Text(
                         'items.bulk_move_no_houses'.tr(),
@@ -510,20 +517,19 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
-      // Aggiungiamo il padding bottom per spingere l'intera barra sopra la tastiera
       padding: EdgeInsets.only(bottom: bottomInset),
       child: TriSlotBar(
         horizontalPadding: 0,
-        sideSlotWidth: _isRapidFireExpanded ? 0.0 : elementHeight, // Collassa slot laterali se espanso
+        sideSlotWidth: _isRapidFireExpanded ? 0.0 : elementHeight,
         left: AnimatedOpacity(
           duration: const Duration(milliseconds: 150),
           opacity: _isRapidFireExpanded ? 0.0 : 1.0,
           child: _isRapidFireExpanded
               ? null
               : CircularActionButton(
-                  icon: Icons.delete_outline,
-                  onPressed: () => _showDeleteDialog(context, houseName),
-                  color: colorScheme.error,
+                  icon: Icons.edit,
+                  onPressed: () =>
+                      _showManageSheet(context, houseId, isPrimary, houseName),
                   showBorder: true,
                 ),
         ),
@@ -543,9 +549,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
           child: _isRapidFireExpanded
               ? null
               : CircularActionButton(
-                  icon: Icons.edit,
+                  icon: Icons.auto_awesome,
                   onPressed: () =>
-                      _showManageSheet(context, houseId, isPrimary, houseName),
+                      context.push('/houses/$houseId/ai-import'),
                   showBorder: true,
                 ),
         ),

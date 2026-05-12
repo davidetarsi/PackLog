@@ -1037,12 +1037,14 @@ void main() {
       expect(pending, isEmpty);
     });
 
-    test('getPendingSyncTrips excludes soft-deleted trips', () async {
+    test('getPendingSyncTrips includes soft-deleted trips (to propagate deletion to server)', () async {
       await insertTrip('deleted-pending');
       await database.tripsDao.deleteTrip('deleted-pending');
 
       final pending = await database.tripsDao.getPendingSyncTrips();
-      expect(pending, isEmpty);
+      expect(pending, hasLength(1));
+      expect(pending.first.id, equals('deleted-pending'));
+      expect(pending.first.isDeleted, isTrue);
     });
 
     test('markTripAsSynced resets retry state and sets lastSyncedAt', () async {

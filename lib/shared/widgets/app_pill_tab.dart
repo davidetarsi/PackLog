@@ -220,14 +220,14 @@ class _RawPillTabState extends State<_RawPillTab>
     final backgroundColor = widget.isSelected
         ? (widget.selectedColor ?? colorScheme.primary)
         : (widget.unselectedColor ?? Colors.transparent);
-    
+
     final borderColor = widget.isSelected
         ? (widget.selectedColor ?? colorScheme.primary)
-        : colorScheme.outline.withValues(alpha: 0.3);
-    
+        : colorScheme.outlineVariant;
+
     final textColor = widget.isSelected
         ? (widget.selectedTextColor ?? colorScheme.onPrimary)
-        : (widget.unselectedTextColor ?? colorScheme.onSurface.withValues(alpha: 0.8));
+        : (widget.unselectedTextColor ?? colorScheme.onSurfaceVariant);
 
     return ScaleTransition(
       scale: _scaleAnimation,
@@ -249,7 +249,6 @@ class _RawPillTabState extends State<_RawPillTab>
               color: backgroundColor,
               borderRadius: context.responsiveBorderRadius(20),
               border: Border.all(color: borderColor, width: 1),
-              // Subtle shadow quando selezionato
               boxShadow: widget.isSelected
                   ? [
                       BoxShadow(

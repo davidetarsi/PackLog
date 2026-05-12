@@ -25,11 +25,15 @@ class TripSummaryCard extends ConsumerWidget {
   /// Callback opzionale quando la card viene premuta
   final VoidCallback? onTap;
 
+  /// Callback opzionale quando la card viene tenuta premuta
+  final VoidCallback? onLongPress;
+
   const TripSummaryCard({
     super.key,
     required this.trip,
     this.isClickable = true,
     this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -85,7 +89,7 @@ class TripSummaryCard extends ConsumerWidget {
                 ]),
                 style: TextStyle(
                   fontSize: context.fontSizeSm,
-                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
               SizedBox(height: context.spacingXs),
@@ -96,7 +100,7 @@ class TripSummaryCard extends ConsumerWidget {
                   backgroundColor: colorScheme.surfaceContainerHighest,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     trip.completionPercentage == 1.0
-                        ? AppColors.success
+                        ? context.appColors.success
                         : colorScheme.primary,
                   ),
                   minHeight: 8,
@@ -117,16 +121,17 @@ class TripSummaryCard extends ConsumerWidget {
           AppConstants.cardBorderRadius + 4,
         ),
         side: BorderSide(
-          color: colorScheme.outline.withValues(alpha: 0.2),
+          color: colorScheme.outlineVariant,
           width: 1,
         ),
       ),
-      child: isClickable && onTap != null
+      child: isClickable && (onTap != null || onLongPress != null)
           ? InkWell(
               borderRadius: context.responsiveBorderRadius(
                 AppConstants.cardBorderRadius + 4,
               ),
               onTap: onTap,
+              onLongPress: onLongPress,
               child: cardContent,
             )
           : cardContent,

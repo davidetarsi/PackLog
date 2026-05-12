@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import '../database.dart';
 import '../tables/spaces_table.dart';
 import '../tables/items_table.dart';
@@ -67,6 +68,7 @@ class SpacesDao extends DatabaseAccessor<AppDatabase> with _$SpacesDaoMixin {
           .write(
         ItemsCompanion(
           spaceId: const Value(null),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
           updatedAt: Value(DateTime.now()),
         ),
       );

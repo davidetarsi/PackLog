@@ -156,7 +156,7 @@ class SpacesManagementSheet extends ConsumerWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: context.responsiveBorderRadius(12),
                         side: BorderSide(
-                          color: colorScheme.outline.withValues(alpha: 0.2),
+                          color: colorScheme.outlineVariant,
                         ),
                       ),
                       child: ListTile(

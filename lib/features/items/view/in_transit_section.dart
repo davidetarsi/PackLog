@@ -43,7 +43,7 @@ class InTransitSection extends StatelessWidget {
             ),
             subtitle: Text(
               'common.items_count'.tr(args: [items.length.toString()]),
-              style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7)),
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
             children: items.map((item) {
               final matchingHouses = houses.where((h) => h.id == item.originHouseId);

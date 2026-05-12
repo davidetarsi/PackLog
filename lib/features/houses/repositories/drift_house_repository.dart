@@ -4,6 +4,7 @@ import '../model/house_model.dart';
 import 'house_repository.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/houses_dao.dart';
+import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../core/database/services/database_service.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/model/location_type.dart';
@@ -36,7 +37,7 @@ class DriftHouseRepository implements HouseRepository {
     );
 
     if (!result.success) {
-      throw Exception('Impossibile aggiungere la casa: ${result.error}');
+      throw EntitySaveException('addHouse(${model.name})', cause: result.error);
     }
 
     debugPrint('[HouseRepo] Casa aggiunta: ${model.name}');
@@ -50,7 +51,7 @@ class DriftHouseRepository implements HouseRepository {
     );
 
     if (!result.success || result.data == null) {
-      throw StateError('Casa con id $id non trovata');
+      throw EntityNotFoundException('getHouseById($id)');
     }
 
     return _toModel(result.data!);
@@ -97,7 +98,7 @@ class DriftHouseRepository implements HouseRepository {
     );
 
     if (!result.success) {
-      throw Exception('Impossibile aggiornare la casa: ${result.error}');
+      throw EntitySaveException('updateHouse(${model.name})', cause: result.error);
     }
 
     debugPrint('[HouseRepo] Casa aggiornata: ${model.name}');

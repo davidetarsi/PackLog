@@ -4,6 +4,7 @@ import '../model/luggage_model.dart';
 import 'luggage_repository.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/luggages_dao.dart';
+import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../core/database/services/database_service.dart';
 /// Implementazione del repository Luggage usando Drift (SQLite).
 /// 
@@ -32,7 +33,7 @@ class DriftLuggageRepository implements LuggageRepository {
     );
     
     if (!result.success) {
-      throw Exception('Impossibile aggiungere il bagaglio: ${result.error}');
+      throw EntitySaveException('addLuggage(${model.name})', cause: result.error);
     }
     
     debugPrint('[LuggageRepo] Bagaglio aggiunto: ${model.name}');
@@ -46,7 +47,7 @@ class DriftLuggageRepository implements LuggageRepository {
     );
     
     if (!result.success || result.data == null) {
-      throw StateError('Bagaglio con id $id non trovato');
+      throw EntityNotFoundException('getLuggageById($id)');
     }
     
     return _toModel(result.data!);
@@ -108,7 +109,7 @@ class DriftLuggageRepository implements LuggageRepository {
     );
     
     if (!result.success) {
-      throw Exception('Impossibile aggiornare il bagaglio: ${result.error}');
+      throw EntitySaveException('updateLuggage(${model.name})', cause: result.error);
     }
     
     debugPrint('[LuggageRepo] Bagaglio aggiornato: ${model.name}');
@@ -153,7 +154,7 @@ class DriftLuggageRepository implements LuggageRepository {
     );
     
     if (!result.success) {
-      throw Exception('Impossibile associare il bagaglio al viaggio: ${result.error}');
+      throw EntitySaveException('linkLuggageToTrip(trip: $tripId, luggage: $luggageId)', cause: result.error);
     }
     
     debugPrint('[LuggageRepo] Bagaglio $luggageId associato a viaggio $tripId');
@@ -168,7 +169,7 @@ class DriftLuggageRepository implements LuggageRepository {
     );
     
     if (!result.success) {
-      throw Exception('Impossibile rimuovere il bagaglio dal viaggio: ${result.error}');
+      throw EntitySaveException('unlinkLuggageFromTrip(trip: $tripId, luggage: $luggageId)', cause: result.error);
     }
     
     debugPrint('[LuggageRepo] Bagaglio $luggageId rimosso da viaggio $tripId');
@@ -183,7 +184,7 @@ class DriftLuggageRepository implements LuggageRepository {
     );
     
     if (!result.success) {
-      throw Exception('Impossibile aggiornare i bagagli del viaggio: ${result.error}');
+      throw EntitySaveException('replaceTripLuggages(trip: $tripId)', cause: result.error);
     }
     
     debugPrint('[LuggageRepo] Bagagli viaggio $tripId aggiornati: ${luggageIds.length} bagagli');

@@ -386,12 +386,14 @@ void main() {
       expect(pending, isEmpty);
     });
 
-    test('getPendingSyncItems excludes soft-deleted items', () async {
+    test('getPendingSyncItems includes soft-deleted items (to propagate deletion to server)', () async {
       await insertItem('deleted-pending');
       await database.itemsDao.deleteItem('deleted-pending');
 
       final pending = await database.itemsDao.getPendingSyncItems();
-      expect(pending, isEmpty);
+      expect(pending, hasLength(1));
+      expect(pending.first.id, equals('deleted-pending'));
+      expect(pending.first.isDeleted, isTrue);
     });
 
     test('getPendingSyncItems respects nextSyncAttemptAt cooldown', () async {

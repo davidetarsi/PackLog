@@ -4,6 +4,7 @@ import '../model/item_model.dart';
 import 'item_repository.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/items_dao.dart';
+import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../core/database/services/database_service.dart';
 
 /// Implementazione del repository Item usando Drift (SQLite).
@@ -33,7 +34,7 @@ class DriftItemRepository implements ItemRepository {
     );
 
     if (!result.success) {
-      throw Exception('Impossibile aggiungere l\'oggetto: ${result.error}');
+      throw EntitySaveException('addItem(${model.name})', cause: result.error);
     }
 
     debugPrint('[ItemRepo] Oggetto aggiunto: ${model.name}');
@@ -47,7 +48,7 @@ class DriftItemRepository implements ItemRepository {
     );
 
     if (!result.success || result.data == null) {
-      throw StateError('Oggetto con id $id non trovato');
+      throw EntityNotFoundException('getItemById($id)');
     }
 
     return _toModel(result.data!);
@@ -111,7 +112,7 @@ class DriftItemRepository implements ItemRepository {
     );
 
     if (!result.success) {
-      throw Exception('Impossibile aggiornare l\'oggetto: ${result.error}');
+      throw EntitySaveException('updateItem(${model.name})', cause: result.error);
     }
 
     debugPrint('[ItemRepo] Oggetto aggiornato: ${model.name}');
@@ -133,7 +134,7 @@ class DriftItemRepository implements ItemRepository {
     );
 
     if (!result.success) {
-      throw Exception('Impossibile inserire gli oggetti: ${result.error}');
+      throw EntitySaveException('insertMultipleItems(${models.length} items)', cause: result.error);
     }
 
     debugPrint('[ItemRepo] ${models.length} oggetti inseriti con successo');
@@ -233,9 +234,7 @@ class DriftItemRepository implements ItemRepository {
     );
 
     if (!result.success) {
-      throw Exception(
-        'Impossibile eliminare ${itemIds.length} oggetti: ${result.error}',
-      );
+      throw EntitySaveException('deleteItems(${itemIds.length} items)', cause: result.error);
     }
 
     debugPrint('[ItemRepo] ${itemIds.length} oggetti eliminati in bulk');
@@ -261,10 +260,7 @@ class DriftItemRepository implements ItemRepository {
     );
 
     if (!result.success) {
-      throw Exception(
-        'Impossibile spostare ${itemIds.length} oggetti '
-        'da $fromHouseId a $toHouseId: ${result.error}',
-      );
+      throw EntitySaveException('moveItemsToHouse(${itemIds.length} items)', cause: result.error);
     }
 
     debugPrint(

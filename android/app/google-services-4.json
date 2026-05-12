@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "64549736453",
+    "project_id": "packlog",
+    "storage_bucket": "packlog.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:64549736453:android:6ee714b51de2a1feaa8c6c",
+        "android_client_info": {
+          "package_name": "com.example.packlog"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "64549736453-qffig8h3ft631ck6bfbtckiece5bvrnb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8-XI92z8j-sh6GA0714ZIeJFv2nzIzFg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "64549736453-qffig8h3ft631ck6bfbtckiece5bvrnb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

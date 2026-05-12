@@ -26,8 +26,14 @@ class LocationAutocompleteField extends StatefulWidget {
   /// Label del campo
   final String? labelText;
 
+  /// Stile personalizzato per la label
+  final TextStyle? labelStyle;
+
   /// Hint del campo
   final String? hintText;
+
+  /// Stile personalizzato per l'hint text
+  final TextStyle? hintStyle;
 
   /// Numero minimo di caratteri per iniziare la ricerca
   final int minCharsForSearch;
@@ -38,16 +44,22 @@ class LocationAutocompleteField extends StatefulWidget {
   /// Se mostrare il bordo del campo di input
   final bool showBorder;
 
+  /// Se usare un layout compatto (meno padding interno)
+  final bool isDense;
+
   const LocationAutocompleteField({
     super.key,
     this.initialValue,
     this.onLocationSelected,
     this.onTextChanged,
     this.labelText,
+    this.labelStyle,
     this.hintText,
+    this.hintStyle,
     this.minCharsForSearch = 3,
     this.debounceMs = 300,
     this.showBorder = true,
+    this.isDense = false,
   });
 
   @override
@@ -158,17 +170,19 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
   Future<List<LocationSuggestionModel>> _fetchLocationSuggestions(
     String query,
   ) async {
-    // ARCHITECTURE CHOICE: Alziamo il limite per compensare lo scarto del filtro lato client.
-    final uri = Uri.https('api.geoapify.com', '/v1/geocode/autocomplete', {
-      'text': query,
-      'apiKey': AppConfig.geoapify,
-      'lang': context.locale.languageCode.substring(0,2), // Usa solo la parte "lingua" del locale (es. "en" da "en_US")
-      'limit': '15', 
-      'bias': 'countrycode:none', 
-    });
+    final uri = Uri.parse('${AppConfig.supabaseUrl}/functions/v1/geocode-proxy').replace(
+      queryParameters: {
+        'text': query,
+        'lang': context.locale.languageCode.substring(0, 2),
+        'limit': '15',
+        'bias': 'countrycode:none',
+      },
+    );
 
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri, headers: {
+        'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+      });
 
       if (response.statusCode != 200) {
         throw Exception('Errore HTTP Geoapify: ${response.statusCode}');
@@ -248,7 +262,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-          border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+          border: Border.all(color: colorScheme.outlineVariant),
         ),
         child: const Center(
           child: SizedBox(
@@ -269,7 +283,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: ListView.builder(
         shrinkWrap: true,
@@ -308,7 +322,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
           border: index < _suggestions.length - 1
               ? Border(
                   bottom: BorderSide(
-                    color: colorScheme.outline.withValues(alpha: 0.1),
+                    color: colorScheme.outlineVariant,
                   ),
                 )
               : null,
@@ -333,7 +347,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
                       subtitle,
                       style: TextStyle(
                         fontSize: 12,
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                 ],
@@ -387,6 +401,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return CompositedTransformTarget(
       link: _layerLink,
       child: TextFormField(
@@ -396,7 +411,10 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
         decoration: InputDecoration(
           floatingLabelBehavior: FloatingLabelBehavior.always,
           labelText: widget.labelText ?? 'common.destination'.tr(),
+          labelStyle: widget.labelStyle,
+          isDense: widget.isDense,
           hintText: widget.hintText ?? 'common.search_location_hint'.tr(),
+          hintStyle: widget.hintStyle,
           border: widget.showBorder
               ? OutlineInputBorder(
                   borderRadius: BorderRadius.circular(
@@ -429,7 +447,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
           prefixIcon: null,
           suffixIcon: _controller.text.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.orange),
+                  icon: Icon(Icons.clear, color: colorScheme.primary),
                   onPressed: () {
                     _controller.clear();
                     widget.onTextChanged?.call('');

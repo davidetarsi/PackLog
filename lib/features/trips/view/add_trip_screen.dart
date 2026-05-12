@@ -165,27 +165,13 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
         key: _formKey,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.only(
-            left: context.spacingSm,
-            right: context.spacingSm,
-            top: context.spacingSm,
-            bottom: context.spacingMd,
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacingMd,
+            vertical: context.spacingSm,
           ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Sezione Info Viaggio
-                    Text(
-                      'trips.trip_info'.tr(),
-                      style: TextStyle(
-                        fontSize: context.fontSizeMd,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    SizedBox(height: context.spacingSm),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
                     TripInfoForm(
                       initialName: _name,
                       initialDescription: _description,
@@ -247,8 +233,8 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: context.spacingSm),
-                
+                    SizedBox(height: context.spacingMd),
+
                     // Lista oggetti (shrinkWrap per scroll globale)
                     TripItemsSelector(
                       selectedItems: _selectedItems,
@@ -280,7 +266,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                             vertical: context.spacingXs,
                           ),
                           decoration: BoxDecoration(
-                            color: colorScheme.secondaryContainer,
+                            color: colorScheme.primaryContainer,
                             borderRadius: context.responsiveBorderRadius(12),
                           ),
                           child: Text(
@@ -288,20 +274,19 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                             style: TextStyle(
                               fontSize: context.fontSizeXs,
                               fontWeight: FontWeight.w600,
-                              color: colorScheme.onSecondaryContainer,
+                              color: colorScheme.onPrimaryContainer,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: context.spacingSm),
-                
+                    SizedBox(height: context.spacingMd),
+
                     _buildLuggageSelector(),
-                  ],
-                ),
-              ),
-            ),
+            ],
           ),
+        ),
+      ),
       bottomContent: UniversalActionBar(
         primaryLabel: widget.tripId != null
             ? 'common.save_changes'.tr()
@@ -340,7 +325,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                   Icon(
                     Icons.luggage,
                     size: context.iconSizeSm,
-                    color: isSelected ? colorScheme.onSecondaryContainer : colorScheme.onSurface,
+                    color: isSelected ? colorScheme.onPrimaryContainer : colorScheme.onSurface,
                   ),
                   SizedBox(width: context.spacingXs),
                   Text(luggage.name),
@@ -350,8 +335,8 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                     style: TextStyle(
                       fontSize: context.fontSizeXs,
                       color: isSelected
-                          ? colorScheme.onSecondaryContainer.withValues(alpha: 0.7)
-                          : colorScheme.onSurface.withValues(alpha: 0.6),
+                          ? colorScheme.onPrimaryContainer.withValues(alpha: 0.7)
+                          : colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -367,7 +352,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                 });
               },
               backgroundColor: Colors.transparent,
-              selectedColor: colorScheme.secondaryContainer,
+              selectedColor: colorScheme.primaryContainer,
             );
           }).toList(),
         );

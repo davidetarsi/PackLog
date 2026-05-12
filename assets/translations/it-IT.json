@@ -22,6 +22,7 @@
     "set_as_primary": "Imposta come principale",
     "no_houses": "Nessuna casa",
     "no_houses_subtitle": "Aggiungi la tua prima casa",
+    "no_houses_tap_hint": "Tocca per aggiungere una casa",
     "name_required": "Nome*",
     "name_label": "Nome *",
     "location_required": "Località*",
@@ -100,7 +101,7 @@
     "bulk_move_title": "Sposta in...",
     "bulk_move_success": "{} oggetti spostati in {}",
     "bulk_move_no_houses": "Nessun'altra casa disponibile",
-    "rapid_fire_hint": "Aggiungi..."
+    "rapid_fire_hint": "Aggiungi oggetto..."
   },
   "categories": {
     "vestiti": "Vestiti",
@@ -266,6 +267,9 @@
     "select_house": "Seleziona casa",
     "select_location": "Seleziona una località",
     "arrival_house": "Casa di arrivo",
+    "destination_house": "Casa",
+    "destination_other": "Altra località",
+    "tap_to_set_dates": "Tocca per impostare le date",
     "departure": "Partenza",
     "return": "Ritorno",
     "none_insert_location": "Nessuna (inserisci località)",
@@ -346,7 +350,10 @@
     "delete_title": "Elimina {}",
     "delete_message": "Sei sicuro di voler eliminare \"{}\"?",
     "delete_confirm": "Elimina",
-    "cancel": "Annulla"
+    "cancel": "Annulla",
+    "context_menu_copy": "Copia {}",
+    "context_menu_delete": "Elimina {}",
+    "copy_success": "\"{}\" copiato con successo"
   },
   "settings": {
     "title": "Profilo",

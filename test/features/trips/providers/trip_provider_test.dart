@@ -1,13 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/sync/sync_orchestrator.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 
 /// Mock implementation of TripRepository for testing.
 class MockTripRepository extends Mock implements TripRepository {}
+
+class MockItemRepository extends Mock implements ItemRepository {}
+
+class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
+
+class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 /// Unit tests for TripNotifier (Riverpod AsyncNotifier).
 /// 
@@ -34,10 +44,26 @@ void main() {
       updatedAt: DateTime.now(),
     ));
 
+    final mockAnalytics = MockCoreAnalyticsService();
+    when(() => mockAnalytics.trackTripCreated(
+      tripId: any(named: 'tripId'),
+      totalTrips: any(named: 'totalTrips'),
+    )).thenAnswer((_) async {});
+
+    final mockSync = MockSyncOrchestrator();
+    when(() => mockSync.requestSync()).thenReturn(null);
+
+    final mockItemRepo = MockItemRepository();
+    when(() => mockItemRepo.moveItemsToHouse(any(), any(), any()))
+        .thenAnswer((_) async {});
+
     // Create ProviderContainer with mocked repository
     container = ProviderContainer(
       overrides: [
         tripRepositoryProvider.overrideWithValue(mockRepository),
+        coreAnalyticsServiceProvider.overrideWithValue(mockAnalytics),
+        syncOrchestratorProvider.overrideWithValue(mockSync),
+        itemRepositoryProvider.overrideWithValue(mockItemRepo),
       ],
     );
   });

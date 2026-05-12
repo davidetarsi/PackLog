@@ -133,7 +133,7 @@ class _Badge extends StatelessWidget {
           Icon(
             icon,
             size: context.responsive(16),
-            color: colorScheme.onSurface.withValues(alpha: 0.8),
+            color: colorScheme.onSurfaceVariant,
           ),
           const SizedBox(width: 6),
           Flexible(
@@ -141,7 +141,7 @@ class _Badge extends StatelessWidget {
               text,
               style: TextStyle(
                 fontSize: context.fontSizeSm,
-                color: colorScheme.onSurface.withValues(alpha: 0.8),
+                color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
               maxLines: 1,
