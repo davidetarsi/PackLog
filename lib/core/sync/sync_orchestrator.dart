@@ -44,15 +44,27 @@ class SyncOrchestrator with WidgetsBindingObserver {
     }
   }
 
+  /// Triggers sync after a local DB mutation (create/update/delete).
+  /// Fire-and-forget: callers should not await this.
+  void requestSync() {
+    debugPrint('[SyncOrchestrator] requestSync called');
+    _attemptSyncIfOnline('local_mutation');
+  }
+
   Future<void> _attemptSyncIfOnline(String trigger) async {
     final results = await _connectivity.checkConnectivity();
-    if (_hasNetwork(results)) {
+    final hasNet = _hasNetwork(results);
+    debugPrint('[SyncOrchestrator] $trigger: hasNetwork=$hasNet isSyncing=$_isSyncing');
+    if (hasNet) {
       await _attemptSync(trigger);
     }
   }
 
   Future<void> _attemptSync(String trigger) async {
-    if (_isSyncing) return;
+    if (_isSyncing) {
+      debugPrint('[SyncOrchestrator] $trigger: skipped (already syncing)');
+      return;
+    }
     _isSyncing = true;
     _monitoring.logBreadcrumb(
       'Avvio sincronizzazione automatica. Trigger: $trigger',

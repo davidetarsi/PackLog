@@ -8,6 +8,7 @@ import '../../../shared/model/location_type.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/trips_dao.dart';
 import '../../../core/database/daos/luggages_dao.dart';
+import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../core/database/services/database_service.dart';
 import '../../luggages/model/luggage_model.dart';
 
@@ -58,7 +59,7 @@ class DriftTripRepository implements TripRepository {
     );
 
     if (!result.success) {
-      throw Exception('Impossibile aggiungere il viaggio: ${result.error}');
+      throw EntitySaveException('addTrip(${trip.name})', cause: result.error);
     }
 
     debugPrint(
@@ -81,7 +82,7 @@ class DriftTripRepository implements TripRepository {
     }, operationName: 'getTripById($id)');
 
     if (!result.success || result.data == null) {
-      throw StateError('Viaggio con id $id non trovato');
+      throw EntityNotFoundException('getTripById($id)');
     }
 
     return result.data!;
@@ -171,7 +172,7 @@ class DriftTripRepository implements TripRepository {
     );
 
     if (!result.success) {
-      throw Exception('Impossibile duplicare il viaggio: ${result.error}');
+      throw EntitySaveException('duplicateTrip($originalTripId)', cause: result.error);
     }
 
     debugPrint('[TripRepo] Viaggio duplicato: $originalTripId -> $newTripId');
@@ -201,7 +202,7 @@ class DriftTripRepository implements TripRepository {
     );
 
     if (!result.success) {
-      throw Exception('Impossibile aggiornare il viaggio: ${result.error}');
+      throw EntitySaveException('updateTrip(${trip.name})', cause: result.error);
     }
 
     debugPrint(

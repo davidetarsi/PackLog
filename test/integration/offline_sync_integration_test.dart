@@ -10,6 +10,7 @@ import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/core/sync/supabase_repository.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_service.dart';
+import 'package:pack_log/core/sync/tombstone_config_service.dart';
 
 import '../helpers/test_database_setup.dart';
 
@@ -21,11 +22,14 @@ class MockConnectivity extends Mock implements Connectivity {}
 
 class MockMonitoringService extends Mock implements AppMonitoringService {}
 
+class MockTombstoneConfigService extends Mock implements TombstoneConfigService {}
+
 void main() {
   late AppDatabase database;
   late MockSupabaseRepository mockRemote;
   late MockConnectivity mockConnectivity;
   late MockMonitoringService mockMonitoring;
+  late MockTombstoneConfigService mockTombstoneConfig;
   late StreamController<List<ConnectivityResult>> connectivityController;
   late SyncService syncService;
   late SyncOrchestrator orchestrator;
@@ -37,6 +41,7 @@ void main() {
     mockRemote = MockSupabaseRepository();
     mockConnectivity = MockConnectivity();
     mockMonitoring = MockMonitoringService();
+    mockTombstoneConfig = MockTombstoneConfigService();
     connectivityController =
         StreamController<List<ConnectivityResult>>.broadcast();
 
@@ -50,12 +55,16 @@ void main() {
       ),
     ).thenReturn(null);
 
+    when(() => mockTombstoneConfig.getRetentionDays())
+        .thenAnswer((_) async => 15);
+
     syncService = SyncService(
       housesDao: database.housesDao,
       itemsDao: database.itemsDao,
       tripsDao: database.tripsDao,
       remote: mockRemote,
       monitoring: mockMonitoring,
+      tombstoneConfig: mockTombstoneConfig,
     );
 
     orchestrator = SyncOrchestrator(

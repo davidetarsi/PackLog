@@ -8,7 +8,10 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/trip_summary_card.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/entity_context_menu.dart';
+import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/helpers/design_system.dart';
+
 
 /// Enum per le tab di filtro
 enum TripFilterTab {
@@ -99,6 +102,42 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     return sorted;
   }
 
+  Future<void> _handleTripLongPress(TripModel trip) async {
+    final action = await showEntityContextMenu(
+      context: context,
+      entityType: 'common.trip_type'.tr(),
+    );
+    if (action == null || !mounted) return;
+
+    switch (action) {
+      case EntityContextMenuAction.copy:
+        await ErrorRetryDialog.executeWithRetry(
+          context: context,
+          operation: () async {
+            await ref.read(tripNotifierProvider.notifier).duplicateTrip(trip.id);
+          },
+          errorTitle: 'common.error'.tr(),
+          errorMessage: 'errors.duplicate_trip_failed'.tr(args: [trip.name]),
+        );
+      case EntityContextMenuAction.delete:
+        final confirmed = await DialogHelpers.showDeleteConfirmation(
+          context: context,
+          itemType: 'common.trip_type'.tr(),
+          itemName: trip.name,
+        );
+        if (confirmed && mounted) {
+          await ErrorRetryDialog.executeWithRetry(
+            context: context,
+            operation: () async {
+              await ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id);
+            },
+            errorTitle: 'common.error'.tr(),
+            errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
+          );
+        }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripNotifierProvider);
@@ -181,10 +220,10 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
           return SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.only(
-              left: context.spacingSm,
-              right: context.spacingSm,
+              left: context.spacingMd,
+              right: context.spacingMd,
               top: context.spacingSm,
-              bottom: AppConstants.floatingNavBarPadding,
+              bottom: context.navBarReservedHeight,
             ),
             // Quando la lista è vuota, SizedBox con altezza DELIMITATA permette
             // a Expanded di funzionare per centrare verticalmente l'empty state.
@@ -216,6 +255,8 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                             trip: nextTrip,
                             onTap: () =>
                                 context.push('/trips/${nextTrip.id}'),
+                            onLongPress: () =>
+                                _handleTripLongPress(nextTrip),
                           ),
                           SizedBox(height: context.spacingSm),
                         ],
@@ -280,15 +321,51 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 }
 
 /// Card standard per i viaggi (singola colonna nel masonry)
-class _TripCard extends StatelessWidget {
+class _TripCard extends ConsumerWidget {
   final TripModel trip;
 
   const _TripCard({required this.trip});
 
   static const int _maxPreviewItems = 5;
 
+  Future<void> _onLongPress(BuildContext context, WidgetRef ref) async {
+    final action = await showEntityContextMenu(
+      context: context,
+      entityType: 'common.trip_type'.tr(),
+    );
+    if (action == null || !context.mounted) return;
+
+    switch (action) {
+      case EntityContextMenuAction.copy:
+        await ErrorRetryDialog.executeWithRetry(
+          context: context,
+          operation: () async {
+            await ref.read(tripNotifierProvider.notifier).duplicateTrip(trip.id);
+          },
+          errorTitle: 'common.error'.tr(),
+          errorMessage: 'errors.duplicate_trip_failed'.tr(args: [trip.name]),
+        );
+      case EntityContextMenuAction.delete:
+        final confirmed = await DialogHelpers.showDeleteConfirmation(
+          context: context,
+          itemType: 'common.trip_type'.tr(),
+          itemName: trip.name,
+        );
+        if (confirmed && context.mounted) {
+          await ErrorRetryDialog.executeWithRetry(
+            context: context,
+            operation: () async {
+              await ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id);
+            },
+            errorTitle: 'common.error'.tr(),
+            errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
+          );
+        }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
 
     final itemsToShow = trip.items.length > _maxPreviewItems
@@ -303,7 +380,7 @@ class _TripCard extends StatelessWidget {
         borderRadius: context.responsiveBorderRadius(
           AppConstants.cardBorderRadius,
         ),
-        side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
+        side: BorderSide(color: colorScheme.outlineVariant),
       ),
       child: InkWell(
         borderRadius: context.responsiveBorderRadius(
@@ -312,8 +389,9 @@ class _TripCard extends StatelessWidget {
         onTap: () {
           context.push('/trips/${trip.id}');
         },
+        onLongPress: () => _onLongPress(context, ref),
         child: Padding(
-          padding: EdgeInsets.all(context.spacingSm + 4),
+          padding: context.cardPaddingHero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -350,7 +428,7 @@ class _TripCard extends StatelessWidget {
                   trip.description!,
                   style: TextStyle(
                     fontSize: context.fontSizeXs,
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: colorScheme.onSurfaceVariant,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -364,7 +442,7 @@ class _TripCard extends StatelessWidget {
                   backgroundColor: colorScheme.surfaceContainerHighest,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     trip.completionPercentage == 1.0
-                        ? AppColors.success
+                        ? context.appColors.success
                         : colorScheme.primary,
                   ),
                 ),
@@ -373,7 +451,7 @@ class _TripCard extends StatelessWidget {
                   '${trip.completedCount}/${trip.totalCount}',
                   style: TextStyle(
                     fontSize: context.fontSizeXs + 1,
-                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                    color: context.textTertiary,
                   ),
                 ),
                 SizedBox(height: context.spacingSm),
@@ -393,8 +471,8 @@ class _TripCard extends StatelessWidget {
                             : Icons.check_box_outline_blank,
                         size: context.iconSizeSm,
                         color: item.isChecked
-                            ? AppColors.success
-                            : colorScheme.onSurface.withValues(alpha: 0.5),
+                            ? context.appColors.success
+                            : context.textTertiary,
                       ),
                       SizedBox(width: context.spacingXs + 2),
                       Expanded(
@@ -418,7 +496,7 @@ class _TripCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: context.fontSizeXs + 1,
                           fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface.withValues(alpha: 0.5),
+                          color: context.textTertiary,
                         ),
                       ),
                     ],
@@ -434,7 +512,7 @@ class _TripCard extends StatelessWidget {
                     ),
                     style: TextStyle(
                       fontSize: context.fontSizeXs + 1,
-                      color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      color: context.textTertiary,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -487,10 +565,10 @@ class _TripsMasonry extends StatelessWidget {
       final cardHeight = _estimateCardHeight(trip);
       if (leftColumnHeight <= rightColumnHeight) {
         leftColumnTrips.add(trip);
-        leftColumnHeight += cardHeight + 8;
+        leftColumnHeight += cardHeight + AppSpacing.md;
       } else {
         rightColumnTrips.add(trip);
-        rightColumnHeight += cardHeight + 8;
+        rightColumnHeight += cardHeight + AppSpacing.md;
       }
     }
 
@@ -502,20 +580,20 @@ class _TripsMasonry extends StatelessWidget {
             children: leftColumnTrips
                 .map(
                   (trip) => Padding(
-                    padding: EdgeInsets.only(bottom: context.spacingSm),
+                    padding: EdgeInsets.only(bottom: context.spacingMd),
                     child: _TripCard(trip: trip),
                   ),
                 )
                 .toList(),
           ),
         ),
-        SizedBox(width: context.spacingSm),
+        SizedBox(width: context.spacingMd),
         Expanded(
           child: Column(
             children: rightColumnTrips
                 .map(
                   (trip) => Padding(
-                    padding: EdgeInsets.only(bottom: context.spacingSm),
+                    padding: EdgeInsets.only(bottom: context.spacingMd),
                     child: _TripCard(trip: trip),
                   ),
                 )

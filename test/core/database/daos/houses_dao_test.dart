@@ -462,12 +462,14 @@ void main() {
       expect(pending, isEmpty);
     });
 
-    test('getPendingSyncHouses excludes soft-deleted houses', () async {
+    test('getPendingSyncHouses includes soft-deleted houses (to propagate deletion to server)', () async {
       await insertHouse('deleted-pending');
       await database.housesDao.deleteHouse('deleted-pending');
 
       final pending = await database.housesDao.getPendingSyncHouses();
-      expect(pending, isEmpty);
+      expect(pending, hasLength(1));
+      expect(pending.first.id, equals('deleted-pending'));
+      expect(pending.first.isDeleted, isTrue);
     });
 
     test('markHouseAsSynced resets retry state and sets lastSyncedAt', () async {

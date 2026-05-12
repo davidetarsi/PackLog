@@ -15,6 +15,7 @@ import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/add_trip_screen.dart';
 import '../../features/trips/view/edit_trip_info_screen.dart';
 import '../../features/trips/view/edit_trip_items_screen.dart';
+import '../../features/ai_input/view/ai_clothing_sandbox_screen.dart';
 import '../../features/bulk_creation/view/house_selection_screen.dart';
 import '../../features/bulk_creation/view/template_selection_screen.dart';
 import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
@@ -105,6 +106,18 @@ GoRouter appRouter(Ref ref) {
             return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
           }
           return HouseDetailScreen(houseId: id);
+        },
+      ),
+      GoRoute(
+        path: '/houses/:id/ai-import',
+        name: 'ai-import',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
+          }
+          return AiClothingSandboxScreen(houseId: id);
         },
       ),
       GoRoute(

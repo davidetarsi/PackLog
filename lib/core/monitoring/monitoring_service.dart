@@ -31,6 +31,30 @@ class AppMonitoringService {
     );
   }
 
+  /// Invia un'eccezione a Sentry con contesto opzionale.
+  ///
+  /// [level] permette di classificare la gravità: usare [SentryLevel.fatal]
+  /// per errori che indicano stato inconsistente del database (es. rollback
+  /// fallito), [SentryLevel.error] per i casi standard.
+  ///
+  /// [tags] aggiunge coppie chiave-valore visibili nel pannello Sentry
+  /// per facilitare il filtraggio (es. `{'operation': 'deleteHouse'}`).
+  void captureException(
+    Object exception, {
+    StackTrace? stackTrace,
+    SentryLevel level = SentryLevel.error,
+    Map<String, String>? tags,
+  }) {
+    Sentry.captureException(
+      exception,
+      stackTrace: stackTrace,
+      withScope: (scope) {
+        scope.level = level;
+        tags?.forEach(scope.setTag);
+      },
+    );
+  }
+
   String generateTraceId() => const Uuid().v4().replaceAll('-', '');
 }
 

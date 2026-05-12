@@ -48,11 +48,15 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
     return transaction(() async {
       final now = DateTime.now();
 
-      // Cascade soft-delete: items della casa
+      // Cascade soft-delete: items della casa (con syncStatus per propagare al cloud)
       await (update(items)
             ..where((i) => i.houseId.equals(id) & i.isDeleted.equals(false)))
           .write(
-        ItemsCompanion(isDeleted: const Value(true), updatedAt: Value(now)),
+        ItemsCompanion(
+          isDeleted: const Value(true),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+          updatedAt: Value(now),
+        ),
       );
 
       // Cascade soft-delete: spazi della casa
@@ -71,7 +75,11 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
 
       // Soft-delete della casa stessa
       return (update(houses)..where((h) => h.id.equals(id))).write(
-        HousesCompanion(isDeleted: const Value(true), updatedAt: Value(now)),
+        HousesCompanion(
+          isDeleted: const Value(true),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+          updatedAt: Value(now),
+        ),
       );
     });
   }
@@ -85,6 +93,26 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
 
   // === SYNC OPERATIONS ===
 
+  /// Physical DELETE after successful sync of a soft-deleted record.
+  Future<void> purgeHouse(String id) {
+    return (delete(houses)..where((h) => h.id.equals(id))).go();
+  }
+
+  /// Recovery: re-queues soft-deleted records stuck as "synced".
+  Future<int> markDeletedAsPendingSync() {
+    return (update(houses)
+          ..where(
+            (h) =>
+                h.isDeleted.equals(true) &
+                h.syncStatus.equalsValue(SyncStatus.synced),
+          ))
+        .write(
+      const HousesCompanion(
+        syncStatus: Value(SyncStatus.pendingUpdate),
+      ),
+    );
+  }
+
   /// Returns houses pending sync: syncStatus != synced AND retries below limit.
   Future<List<House>> getPendingSyncHouses({int maxRetries = 5}) {
     final now = DateTime.now();
@@ -93,7 +121,6 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
             (h) =>
                 h.syncStatus.equalsValue(SyncStatus.synced).not() &
                 h.syncRetryCount.isSmallerThanValue(maxRetries) &
-                h.isDeleted.equals(false) &
                 (h.nextSyncAttemptAt.isNull() |
                     h.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
           ))

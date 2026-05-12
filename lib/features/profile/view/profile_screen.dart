@@ -8,9 +8,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/database/controllers/backup_controller.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
+
+import '../../../core/database/exceptions/backup_exceptions.dart';
+import '../../../core/monitoring/monitoring_service.dart';
 import '../../../shared/config/app_config.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../providers/last_export_path_provider.dart';
 import '../services/feedback_url_service.dart';
@@ -283,6 +288,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           );
         }
       }
+    } on BackupRollbackException catch (e, st) {
+      // Il rollback del backup di sicurezza è fallito: il DB potrebbe essere
+      // in uno stato inconsistente. È lo scenario più critico dell'intera app.
+      debugPrint('[ProfileScreen] 🚨 BackupRollbackException: $e');
+      ref.read(monitoringServiceProvider).captureException(
+        e,
+        stackTrace: st,
+        level: SentryLevel.fatal,
+        tags: {'operation': 'import_database_rollback'},
+      );
+      if (context.mounted) {
+        try {
+          Navigator.of(context, rootNavigator: true).pop();
+        } catch (_) {}
+        await _showRollbackErrorDialog(context);
+      }
     } catch (e) {
       debugPrint('[ProfileScreen] ❌ Errore critico durante import: $e');
       if (context.mounted) {
@@ -292,6 +313,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         AppSnackBar.showError(context, 'backup.critical_error'.tr());
       }
     }
+  }
+
+  Future<void> _showRollbackErrorDialog(BuildContext context) async {
+    final colorScheme = Theme.of(context).colorScheme;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(Icons.warning_amber_rounded, color: colorScheme.error, size: 40),
+        title: Text('backup.rollback_error_title'.tr()),
+        content: Text('backup.rollback_error_message'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('common.ok'.tr()),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<bool> _showImportWarningDialog(
@@ -320,7 +360,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 6),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(context.spacingSm),
               decoration: BoxDecoration(
                 color: colorScheme.surfaceContainerHighest,
                 borderRadius:
@@ -476,7 +516,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
           // ── Backup & Ripristino ──────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+            padding: EdgeInsets.fromLTRB(context.spacingMd, context.spacingLg, context.spacingMd, context.spacingSm),
             child: Text(
               'backup.title'.tr(),
               style: TextStyle(
@@ -542,7 +582,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
           // ── About ────────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+            padding: EdgeInsets.fromLTRB(context.spacingMd, context.spacingLg, context.spacingMd, context.spacingSm),
             child: Text(
               'settings.about_section_title'.tr(),
               style: TextStyle(
@@ -587,7 +627,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(height: 8),
 
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
             child: FilledButton.tonalIcon(
               onPressed: () => _handleSignOut(context),
               icon: const Icon(Icons.logout),

@@ -38,11 +38,17 @@ class CategoryInferService {
 
     final normalized = _normalize(rawName);
 
-    final lemmatizedFull = _dictionary.lemmatize(normalized);
-    final fullExactMatch = _dictionary.exactMatches[lemmatizedFull];
+    final directMatch = _dictionary.exactMatches[normalized];
+    if (directMatch != null) {
+      return (category: directMatch, confidence: InferConfidence.exact);
+    }
 
-    if (fullExactMatch != null) {
-      return (category: fullExactMatch, confidence: InferConfidence.exact);
+    final lemmatizedFull = _dictionary.lemmatize(normalized);
+    if (lemmatizedFull != normalized) {
+      final fullExactMatch = _dictionary.exactMatches[lemmatizedFull];
+      if (fullExactMatch != null) {
+        return (category: fullExactMatch, confidence: InferConfidence.exact);
+      }
     }
 
     final tokens = normalized
@@ -55,11 +61,17 @@ class CategoryInferService {
     }
 
     for (final token in tokens) {
-      final lemmatizedToken = _dictionary.lemmatize(token);
+      final tokenDirectMatch = _dictionary.exactMatches[token];
+      if (tokenDirectMatch != null) {
+        return (category: tokenDirectMatch, confidence: InferConfidence.partial);
+      }
 
-      final tokenExactMatch = _dictionary.exactMatches[lemmatizedToken];
-      if (tokenExactMatch != null) {
-        return (category: tokenExactMatch, confidence: InferConfidence.partial);
+      final lemmatizedToken = _dictionary.lemmatize(token);
+      if (lemmatizedToken != token) {
+        final tokenExactMatch = _dictionary.exactMatches[lemmatizedToken];
+        if (tokenExactMatch != null) {
+          return (category: tokenExactMatch, confidence: InferConfidence.partial);
+        }
       }
 
       for (final rootEntry in _dictionary.rootKeywords) {

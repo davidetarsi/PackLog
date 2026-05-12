@@ -58,6 +58,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     return (update(items)..where((i) => i.id.equals(id))).write(
       ItemsCompanion(
         isDeleted: const Value(true),
+        syncStatus: const Value(SyncStatus.pendingUpdate),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -75,6 +76,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         .write(
       ItemsCompanion(
         isDeleted: const Value(true),
+        syncStatus: const Value(SyncStatus.pendingUpdate),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -170,12 +172,31 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     await (update(items)..where((t) => t.id.isIn(itemIds))).write(
       ItemsCompanion(
         isDeleted: const Value(true),
+        syncStatus: const Value(SyncStatus.pendingUpdate),
         updatedAt: Value(DateTime.now()),
       ),
     );
   }
 
   // === SYNC OPERATIONS ===
+
+  Future<void> purgeItem(String id) {
+    return (delete(items)..where((i) => i.id.equals(id))).go();
+  }
+
+  Future<int> markDeletedAsPendingSync() {
+    return (update(items)
+          ..where(
+            (i) =>
+                i.isDeleted.equals(true) &
+                i.syncStatus.equalsValue(SyncStatus.synced),
+          ))
+        .write(
+      const ItemsCompanion(
+        syncStatus: Value(SyncStatus.pendingUpdate),
+      ),
+    );
+  }
 
   Future<List<Item>> getPendingSyncItems({int maxRetries = 5}) {
     final now = DateTime.now();
@@ -184,7 +205,6 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
             (i) =>
                 i.syncStatus.equalsValue(SyncStatus.synced).not() &
                 i.syncRetryCount.isSmallerThanValue(maxRetries) &
-                i.isDeleted.equals(false) &
                 (i.nextSyncAttemptAt.isNull() |
                     i.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
           ))

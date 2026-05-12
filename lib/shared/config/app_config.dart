@@ -6,13 +6,6 @@ library;
 class AppConfig {
   AppConfig._();
 
-  /// API Key per Geoapify (geocoding e autocomplete località)
-  /// Documentazione: https://www.geoapify.com/
-  static const String geoapify = String.fromEnvironment(
-    'GEOAPIFY_KEY',
-    defaultValue: 'MISSING_GEOAPIFY_KEY',
-  );
-
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
     defaultValue: 'MISSING_SUPABASE_URL',
@@ -48,9 +41,6 @@ class AppConfig {
 
   static void validate() {
     final missing = <String>[];
-    if (geoapify.isEmpty || geoapify == 'MISSING_GEOAPIFY_KEY') {
-      missing.add('GEOAPIFY_KEY');
-    }
     if (supabaseUrl.isEmpty || supabaseUrl == 'MISSING_SUPABASE_URL') {
       missing.add('SUPABASE_URL');
     }

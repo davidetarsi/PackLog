@@ -122,7 +122,7 @@ class ItemCard extends ConsumerWidget {
               'x$totalQuantity',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
       // In selection mode: tap tutta la card per selezionare/deselezionare.

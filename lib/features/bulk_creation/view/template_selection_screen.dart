@@ -124,8 +124,10 @@ class _GenderPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.all(context.spacingMd),
+      return Container(
+        // Margine solo su lato, top e bottom = 0:
+        // la distanza picker→griglia è gestita dal padding top del GridView (16px).
+        margin: EdgeInsets.symmetric(horizontal: context.spacingMd),
       alignment: Alignment.center,
       child: AppPillTab<UserGender>(
         items: UserGender.values,

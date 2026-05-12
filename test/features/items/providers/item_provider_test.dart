@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/sync/sync_orchestrator.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/providers/item_selection_provider.dart';
@@ -9,6 +12,10 @@ import 'package:pack_log/features/items/repositories/item_repository.dart';
 /// Mock implementation of ItemRepository for testing.
 /// Uses mocktail to stub repository methods without real database calls.
 class MockItemRepository extends Mock implements ItemRepository {}
+
+class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
+
+class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 /// Unit tests for ItemNotifier (Riverpod AsyncNotifier).
 /// 
@@ -35,11 +42,23 @@ void main() {
       updatedAt: DateTime.now(),
     ));
 
+    final mockAnalytics = MockCoreAnalyticsService();
+    when(() => mockAnalytics.trackItemAdded(
+      itemId: any(named: 'itemId'),
+      category: any(named: 'category'),
+      totalItems: any(named: 'totalItems'),
+    )).thenAnswer((_) async {});
+
+    final mockSync = MockSyncOrchestrator();
+    when(() => mockSync.requestSync()).thenReturn(null);
+
     // Create ProviderContainer with mocked repository
     container = ProviderContainer(
       overrides: [
         // Override the repository provider to inject our mock
         itemRepositoryProvider.overrideWithValue(mockRepository),
+        coreAnalyticsServiceProvider.overrideWithValue(mockAnalytics),
+        syncOrchestratorProvider.overrideWithValue(mockSync),
       ],
     );
   });
@@ -777,7 +796,7 @@ void main() {
       expect(sel.selectedIds, isEmpty);
     });
 
-    test('propagates repository exception', () async {
+    test('propagates repository exception to AsyncError state', () async {
       const houseId = 'house-bulk-delete-error';
       when(() => mockRepository.getItemsByHouseId(houseId))
           .thenAnswer((_) async => []);
@@ -786,12 +805,13 @@ void main() {
 
       await container.read(itemNotifierProvider(houseId).future);
 
-      expect(
-        () => container
-            .read(itemNotifierProvider(houseId).notifier)
-            .bulkDelete(['bad']),
-        throwsException,
-      );
+      await container
+          .read(itemNotifierProvider(houseId).notifier)
+          .bulkDelete(['bad']);
+
+      final state = container.read(itemNotifierProvider(houseId));
+      expect(state, isA<AsyncError<List<ItemModel>>>());
+      expect(state.hasError, isTrue);
     });
   });
 
@@ -872,7 +892,7 @@ void main() {
       expect(sel.selectedIds, isEmpty);
     });
 
-    test('propagates repository exception', () async {
+    test('propagates repository exception to AsyncError state', () async {
       const houseId = 'house-bulk-move-error';
       when(() => mockRepository.getItemsByHouseId(houseId))
           .thenAnswer((_) async => []);
@@ -881,12 +901,13 @@ void main() {
 
       await container.read(itemNotifierProvider(houseId).future);
 
-      expect(
-        () => container
-            .read(itemNotifierProvider(houseId).notifier)
-            .bulkMove(['z'], 'somewhere'),
-        throwsException,
-      );
+      await container
+          .read(itemNotifierProvider(houseId).notifier)
+          .bulkMove(['z'], 'somewhere');
+
+      final state = container.read(itemNotifierProvider(houseId));
+      expect(state, isA<AsyncError<List<ItemModel>>>());
+      expect(state.hasError, isTrue);
     });
   });
 }

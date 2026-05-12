@@ -147,7 +147,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                 return ListTile(
                   title: Text(quantity.toString()),
                   trailing: _selectedQuantity == quantity
-                      ? const Icon(Icons.check, color: AppColors.success)
+                      ? Icon(Icons.check, color: context.appColors.success)
                       : null,
                   onTap: () => Navigator.pop(context, quantity),
                 );
@@ -372,21 +372,21 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
       return Container(
         padding: context.responsiveScreenPadding,
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.warning),
+          border: Border.all(color: context.appColors.warning),
           borderRadius: context.responsiveBorderRadius(8),
         ),
         child: Row(
           children: [
             Icon(
               Icons.warning_amber,
-              color: AppColors.warning,
+              color: context.appColors.warning,
               size: context.iconSizeMd,
             ),
             SizedBox(width: context.spacingSm),
             Expanded(
               child: Text(
                 'items.no_houses_available'.tr(),
-                style: TextStyle(color: AppColors.warning),
+                style: TextStyle(color: context.appColors.warning),
               ),
             ),
           ],
@@ -421,7 +421,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                         .name
                   : 'items.select_house_prompt'.tr(),
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: _selectedHouseId == null ? AppColors.disabled : null,
+                color: _selectedHouseId == null ? context.textDisabled : null,
               ),
             ),
             Icon(Icons.arrow_drop_down, size: context.iconSizeMd),
@@ -460,7 +460,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                   trailing: _selectedHouseId == house.id
                       ? Icon(
                           Icons.check,
-                          color: AppColors.success,
+                          color: context.appColors.success,
                           size: itemContext.iconSizeMd,
                         )
                       : null,
@@ -552,7 +552,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                   trailing: _selectedSpaceId == null
                       ? Icon(
                           Icons.check,
-                          color: AppColors.success,
+                          color: context.appColors.success,
                           size: sheetContext.iconSizeMd,
                         )
                       : null,
@@ -571,7 +571,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                     trailing: _selectedSpaceId == space.id
                         ? Icon(
                             Icons.check,
-                            color: AppColors.success,
+                            color: context.appColors.success,
                             size: sheetContext.iconSizeMd,
                           )
                         : null,

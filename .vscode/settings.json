@@ -1,30 +1,52 @@
 {
-    "security.workspace.trust.enabled": false,
-    "[dart]": {
-        "editor.codeActionsOnSave": {
-            "source.fixAll": "explicit"
-        },
-        "editor.rulers": [
-            80
-        ],
-        "editor.selectionHighlight": false,
-        "editor.suggest.snippetsPreventQuickSuggestions": false,
-        "editor.suggestSelection": "first",
-        "editor.tabCompletion": "onlySnippets",
-        "editor.wordBasedSuggestions": "off",
-        "files.autoSave": "afterDelay",
+  "[dart]": {
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit"
     },
-    "git.showCursorWorktrees": true,
-    "dart.warnWhenEditingFilesOutsideWorkspace": false,
-    "dart.renameFilesWithClasses": "prompt",
-    "window.zoomLevel": 1,
-    "editor.bracketPairColorization.enabled": true,
-    "editor.inlineSuggest.enabled": true,
-    "editor.formatOnSave": true,
-    "editor.stickyScroll.enabled": true,
-    "explorer.fileNesting.patterns": {
-        "*.dart": "${capture}.g.dart, ${capture}.freezed.dart"
-    },
-    "explorer.fileNesting.enabled": true,
-    "explorer.fileNesting.expand": false
+    "editor.rulers": [
+      80
+    ],
+    "editor.selectionHighlight": false,
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off",
+    "files.autoSave": "afterDelay"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "dart.renameFilesWithClasses": "prompt",
+  "dart.warnWhenEditingFilesOutsideWorkspace": false,
+  "deno.enablePaths": [
+    "supabase/functions"
+  ],
+  "deno.lint": true,
+  "deno.unstable": [
+    "bare-node-builtins",
+    "byonm",
+    "sloppy-imports",
+    "unsafe-proto",
+    "webgpu",
+    "broadcast-channel",
+    "worker-options",
+    "cron",
+    "kv",
+    "ffi",
+    "fs",
+    "http",
+    "net"
+  ],
+  "editor.bracketPairColorization.enabled": true,
+  "editor.formatOnSave": true,
+  "editor.inlineSuggest.enabled": true,
+  "editor.stickyScroll.enabled": true,
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "*.dart": "${capture}.g.dart, ${capture}.freezed.dart"
+  },
+  "git.showCursorWorktrees": true,
+  "security.workspace.trust.enabled": false,
+  "window.zoomLevel": 1
 }

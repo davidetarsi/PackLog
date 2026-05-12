@@ -9,6 +9,7 @@ Future<void> showAddEditHouseSheet(BuildContext context, {String? houseId}) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    useRootNavigator: true,
     backgroundColor: Colors.transparent,
     builder: (context) => AddEditHouseSheet(houseId: houseId),
   );

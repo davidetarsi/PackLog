@@ -244,7 +244,7 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
                       ]),
                       style: TextStyle(
                         fontSize: context.fontSizeSm,
-                        color: colorScheme.onSurface.withValues(alpha: 0.8),
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),

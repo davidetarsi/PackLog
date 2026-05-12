@@ -5,6 +5,7 @@ import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/core/sync/supabase_repository.dart';
 import 'package:pack_log/core/sync/sync_service.dart';
+import 'package:pack_log/core/sync/tombstone_config_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import '../../helpers/test_database_setup.dart';
 
@@ -12,16 +13,20 @@ class MockSupabaseRepository extends Mock implements SupabaseRepository {}
 
 class MockMonitoringService extends Mock implements AppMonitoringService {}
 
+class MockTombstoneConfigService extends Mock implements TombstoneConfigService {}
+
 void main() {
   late AppDatabase database;
   late MockSupabaseRepository mockRemote;
   late MockMonitoringService mockMonitoring;
+  late MockTombstoneConfigService mockTombstoneConfig;
   late SyncService syncService;
 
   setUp(() {
     database = createTestDatabase();
     mockRemote = MockSupabaseRepository();
     mockMonitoring = MockMonitoringService();
+    mockTombstoneConfig = MockTombstoneConfigService();
 
     when(
       () => mockMonitoring.logBreadcrumb(
@@ -31,12 +36,16 @@ void main() {
       ),
     ).thenReturn(null);
 
+    when(() => mockTombstoneConfig.getRetentionDays())
+        .thenAnswer((_) async => 15);
+
     syncService = SyncService(
       housesDao: database.housesDao,
       itemsDao: database.itemsDao,
       tripsDao: database.tripsDao,
       remote: mockRemote,
       monitoring: mockMonitoring,
+      tombstoneConfig: mockTombstoneConfig,
     );
   });
 

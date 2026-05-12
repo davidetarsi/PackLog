@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'app_colors.dart';
 
 /// Extension del tema per gli stili dei componenti Empty State e Error State.
 /// 
@@ -74,71 +73,9 @@ class ErrorEmptyThemeExtension extends ThemeExtension<ErrorEmptyThemeExtension> 
     required this.stateSpacingSm,
   });
 
-  /// Tema predefinito per il dark mode
-  static ErrorEmptyThemeExtension get darkDefaults => const ErrorEmptyThemeExtension(
-    // Empty State
-    emptyStateTitle: TextStyle(
-      fontSize: 20,
-      fontWeight: FontWeight.normal,
-      color: AppColors.disabled,
-    ),
-    emptyStateSubtitle: TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.normal,
-      color: AppColors.disabled,
-    ),
-    emptyStateIconSize: 80,
-    emptyStateIconColor: AppColors.disabled,
-    emptyStateTitleColor: AppColors.disabled,
-    emptyStateSubtitleColor: AppColors.disabled,
-    
-    // Error State
-    errorStateMessage: TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.normal,
-    ),
-    errorStateIconSize: 80,
-    errorStateIconColor: AppColors.destructive,
-    errorStateRetryLabel: 'common.retry',
-    
-    // Spacing
-    stateSpacingMd: 16,
-    stateSpacingLg: 24,
-    stateSpacingSm: 8,
-  );
-
-  /// Tema predefinito per il light mode
-  static ErrorEmptyThemeExtension get lightDefaults => ErrorEmptyThemeExtension(
-    // Empty State
-    emptyStateTitle: TextStyle(
-      fontSize: 20,
-      fontWeight: FontWeight.normal,
-      color: Colors.grey.shade600,
-    ),
-    emptyStateSubtitle: TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.normal,
-      color: Colors.grey.shade600,
-    ),
-    emptyStateIconSize: 80,
-    emptyStateIconColor: Colors.grey.shade400,
-    emptyStateTitleColor: Colors.grey.shade600,
-    emptyStateSubtitleColor: Colors.grey.shade600,
-    
-    // Error State
-    errorStateMessage: const TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.normal,
-    ),
-    errorStateIconSize: 80,
-    errorStateIconColor: Colors.red.shade700,
-    errorStateRetryLabel: 'common.retry',
-    
-    // Spacing
-    stateSpacingMd: 16,
-    stateSpacingLg: 24,
-    stateSpacingSm: 8,
-  );
+  // darkDefaults e lightDefaults sono stati rimossi (DS Fase 2).
+  // ErrorEmptyThemeExtension è ora costruita in AppTheme._buildTheme()
+  // usando i token del ColorScheme attivo (onSurfaceVariant, error, ecc.).
 
   @override
   ThemeExtension<ErrorEmptyThemeExtension> copyWith({

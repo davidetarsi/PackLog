@@ -31,8 +31,20 @@ class AppSpacing {
   /// Padding standard per le schermate
   static const EdgeInsets screenPadding = EdgeInsets.all(md);
 
-  /// Padding per le card
+  /// Padding per le card (vedi cardPaddingHero / cardPaddingDense per i token semantici)
   static const EdgeInsets cardPadding = EdgeInsets.all(sm);
+
+  /// Padding semantico per card eroiche/isolate (una per schermata o in liste poco fitte).
+  /// Casi d'uso: HouseCard, TripSummaryCard, TripCard masonry, TemplateCard, card date TripInfoForm.
+  static const EdgeInsets cardPaddingHero = EdgeInsets.all(md); // 16
+
+  /// Padding semantico per item ad alta frequenza in lista (BulkItemRow, UniversalItemTile, ListTile).
+  static const EdgeInsets cardPaddingDense = EdgeInsets.all(sm); // 8
+
+  // Regola di scelta:
+  // • Hero  (16): card "grande" o card in lista poco fitta.
+  // • Dense  (8): item in lista ad alta frequenza.
+  // Il valore 12 (spacingSm + 4) è eliminato. Ogni caso va mappato su Hero o Dense.
 
   /// Padding per gli elementi di una lista
   static const EdgeInsets listItemPadding = EdgeInsets.symmetric(
@@ -119,6 +131,19 @@ extension ResponsiveSpacing on BuildContext {
 
   EdgeInsets get responsiveCardPadding => EdgeInsets.all(spacingSm);
 
+  /// Padding semantico responsive per card eroiche/isolate.
+  /// Corrisponde ad AppSpacing.cardPaddingHero scalato al device.
+  EdgeInsets get cardPaddingHero => EdgeInsets.all(spacingMd);
+
+  /// Padding semantico responsive per item ad alta frequenza in lista.
+  /// Corrisponde ad AppSpacing.cardPaddingDense scalato al device.
+  EdgeInsets get cardPaddingDense => EdgeInsets.all(spacingSm);
+
+  @Deprecated(
+    'Usa EdgeInsets.symmetric(horizontal: context.spacingMd, vertical: context.spacingSm) '
+    'oppure i token context.cardPaddingHero / context.cardPaddingDense. '
+    'Rimosso nella Fase 1 del design system refactor (DS_FIXES 1.10).',
+  )
   EdgeInsets responsiveSymmetricPadding({
     double horizontal = 0,
     double vertical = 0,

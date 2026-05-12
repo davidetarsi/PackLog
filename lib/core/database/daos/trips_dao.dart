@@ -59,6 +59,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
       return (update(trips)..where((t) => t.id.equals(id))).write(
         TripsCompanion(
           isDeleted: const Value(true),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
           updatedAt: Value(DateTime.now()),
         ),
       );
@@ -257,10 +258,26 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   }
   // === SYNC OPERATIONS ===
 
+  Future<void> purgeTrip(String id) {
+    return (delete(trips)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<int> markDeletedAsPendingSync() {
+    return (update(trips)
+          ..where(
+            (t) =>
+                t.isDeleted.equals(true) &
+                t.syncStatus.equalsValue(SyncStatus.synced),
+          ))
+        .write(
+      const TripsCompanion(
+        syncStatus: Value(SyncStatus.pendingUpdate),
+      ),
+    );
+  }
+
   /// Returns trips pending sync: syncStatus != synced AND retries below limit.
-  ///
-  /// Excludes soft-deleted trips — those are handled by a dedicated
-  /// `getPendingDeleteTrips` query (future phase).
+  /// Includes soft-deleted trips so deletions propagate to Supabase.
   Future<List<Trip>> getPendingSyncTrips({int maxRetries = 5}) {
     final now = DateTime.now();
     return (select(trips)
@@ -268,7 +285,6 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
             (t) =>
                 t.syncStatus.equalsValue(SyncStatus.synced).not() &
                 t.syncRetryCount.isSmallerThanValue(maxRetries) &
-                t.isDeleted.equals(false) &
                 (t.nextSyncAttemptAt.isNull() |
                     t.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
           ))

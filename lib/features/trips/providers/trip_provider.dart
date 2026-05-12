@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/monitoring/monitoring_service.dart';
+import '../../../core/sync/sync_provider.dart';
 import '../../items/repositories/item_repository.dart';
 import '../model/trip_model.dart';
 import '../repositories/trip_repository.dart';
@@ -90,10 +92,20 @@ class TripNotifier extends _$TripNotifier {
             '[TripNotifier] ${entry.value.length} item(s) spostati '
             '${entry.key} → ${trip.destinationHouseId} (viaggio: ${trip.id})',
           );
-        } catch (e) {
+        } catch (e, st) {
           debugPrint(
             '[TripNotifier] Errore nel trasferimento batch '
             '${entry.key} → ${trip.destinationHouseId}: $e',
+          );
+          ref.read(monitoringServiceProvider).captureException(
+            e,
+            stackTrace: st,
+            tags: {
+              'operation': 'auto_transfer_items',
+              'trip_id': trip.id,
+              'from_house': entry.key,
+              'to_house': trip.destinationHouseId!,
+            },
           );
         }
       }
@@ -164,6 +176,7 @@ class TripNotifier extends _$TripNotifier {
         tripId: model.id,
         totalTrips: trips.length,
       );
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -176,6 +189,7 @@ class TripNotifier extends _$TripNotifier {
       await repository!.updateTrip(model);
       final List<TripModel> trips = await repository!.getAllTrips();
       state = AsyncData(trips);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -188,6 +202,7 @@ class TripNotifier extends _$TripNotifier {
       await repository!.deleteTrip(id);
       final List<TripModel> trips = await repository!.getAllTrips();
       state = AsyncData(trips);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -219,6 +234,7 @@ class TripNotifier extends _$TripNotifier {
       await repository!.updateTrip(updatedTrip);
       final List<TripModel> newTrips = await repository!.getAllTrips();
       state = AsyncData(newTrips);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -234,6 +250,7 @@ class TripNotifier extends _$TripNotifier {
       final String newTripId = await repository!.duplicateTrip(tripId);
       final List<TripModel> trips = await repository!.getAllTrips();
       state = AsyncData(trips);
+      ref.read(syncOrchestratorProvider).requestSync();
       return newTripId;
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -271,6 +288,7 @@ class TripNotifier extends _$TripNotifier {
       await repository!.updateTrip(updatedTrip);
       final List<TripModel> newTrips = await repository!.getAllTrips();
       state = AsyncData(newTrips);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }

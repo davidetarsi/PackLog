@@ -20,6 +20,9 @@
       ],
       "api_key": [
         {
+          "current_key": "AIzaSyClbfZtnqN5zVXzofQ1tyH49Sfc87BFYKk"
+        },
+        {
           "current_key": "AIzaSyD8-XI92z8j-sh6GA0714ZIeJFv2nzIzFg"
         }
       ],
@@ -47,7 +50,7 @@
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.packlog.dev",
-            "certificate_hash": "d4d75f62a2badbb42fa8eb2e2f374c74bd2d4c1b"
+            "certificate_hash": "1fbcba38cca9b0e389ee7efb6d78c859c6179c98"
           }
         },
         {
@@ -56,6 +59,9 @@
         }
       ],
       "api_key": [
+        {
+          "current_key": "AIzaSyClbfZtnqN5zVXzofQ1tyH49Sfc87BFYKk"
+        },
         {
           "current_key": "AIzaSyD8-XI92z8j-sh6GA0714ZIeJFv2nzIzFg"
         }

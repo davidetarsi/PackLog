@@ -1,4 +1,6 @@
-abstract class AuthDomainException implements Exception {
+import '../errors/app_exception.dart';
+
+abstract class AuthDomainException extends AppException {
   final String message;
   final Object? originalError;
   final StackTrace? stackTrace;

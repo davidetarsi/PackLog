@@ -68,6 +68,9 @@ dependencies:
   # HTTP
   http: ^1.2.0
 
+  # Image picking
+  image_picker: ^1.1.2
+
   # Localization
   easy_localization: ^3.0.7
   file_picker: ^10.3.10

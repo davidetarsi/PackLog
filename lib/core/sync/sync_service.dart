@@ -8,8 +8,10 @@ import '../database/daos/houses_dao.dart';
 import '../database/daos/items_dao.dart';
 import '../database/daos/trips_dao.dart';
 import '../database/database.dart';
+import '../database/tables/mixins/syncable_table.dart';
 import '../monitoring/monitoring_service.dart';
 import 'supabase_repository.dart';
+import 'tombstone_config_service.dart';
 
 class SyncService {
   final HousesDao _housesDao;
@@ -17,6 +19,7 @@ class SyncService {
   final TripsDao _tripsDao;
   final SupabaseRepository _remote;
   final AppMonitoringService _monitoring;
+  final TombstoneConfigService _tombstoneConfig;
 
   SyncService({
     required HousesDao housesDao,
@@ -24,14 +27,33 @@ class SyncService {
     required TripsDao tripsDao,
     required SupabaseRepository remote,
     required AppMonitoringService monitoring,
+    required TombstoneConfigService tombstoneConfig,
   })  : _housesDao = housesDao,
         _itemsDao = itemsDao,
         _tripsDao = tripsDao,
         _remote = remote,
-        _monitoring = monitoring;
+        _monitoring = monitoring,
+        _tombstoneConfig = tombstoneConfig;
 
-  /// FK-safe order: houses → items → trips
+  /// One-time recovery: re-marks soft-deleted records that were incorrectly
+  /// left as "synced" (due to a prior timezone bug that caused pulls instead
+  /// of pushes). After this runs, processQueue will pick them up.
+  bool _recoveryDone = false;
+  Future<void> _recoverStaleSoftDeletes() async {
+    if (_recoveryDone) return;
+    _recoveryDone = true;
+    final count = await _housesDao.markDeletedAsPendingSync() +
+        await _itemsDao.markDeletedAsPendingSync() +
+        await _tripsDao.markDeletedAsPendingSync();
+    if (count > 0) {
+      debugPrint('[SyncService] Recovery: $count stale soft-deleted records re-queued');
+    }
+  }
+
+  /// FK-safe order: houses → items → trips (create/update).
+  /// Purge order is reversed: items/trips first, houses last (FK safety).
   Future<void> processQueue() async {
+    await _recoverStaleSoftDeletes();
     final houses = await _housesDao.getPendingSyncHouses();
     final items = await _itemsDao.getPendingSyncItems();
     final trips = await _tripsDao.getPendingSyncTrips();
@@ -46,10 +68,13 @@ class SyncService {
       },
     );
 
+    final pendingPurges = <Future<void> Function()>[];
+
     for (final house in houses) {
       await _syncRecord(
         id: house.id,
         localUpdatedAt: house.updatedAt,
+        localIsDeleted: house.isDeleted,
         sentryTraceId: house.sentryTraceId,
         toJson: () => _houseToJson(house),
         fetchRemote: (trace) => _remote.fetchHouseById(house.id, sentryTrace: trace),
@@ -57,6 +82,10 @@ class SyncService {
         pullLocal: (remote) => _pullHouse(house.id, remote),
         markSynced: (ts) => _housesDao.markHouseAsSynced(house.id, ts),
         incrementRetry: (e) => _housesDao.incrementSyncRetry(house.id, e),
+        onPurge: () => pendingPurges.add(() => _housesDao.purgeHouse(house.id)),
+        syncStatus: house.syncStatus,
+        lastSyncedAt: house.lastSyncedAt,
+        createdAt: house.createdAt,
         entity: 'house',
       );
     }
@@ -65,6 +94,7 @@ class SyncService {
       await _syncRecord(
         id: item.id,
         localUpdatedAt: item.updatedAt,
+        localIsDeleted: item.isDeleted,
         sentryTraceId: item.sentryTraceId,
         toJson: () => _itemToJson(item),
         fetchRemote: (trace) => _remote.fetchItemById(item.id, sentryTrace: trace),
@@ -72,6 +102,10 @@ class SyncService {
         pullLocal: (remote) => _pullItem(item.id, remote),
         markSynced: (ts) => _itemsDao.markItemAsSynced(item.id, ts),
         incrementRetry: (e) => _itemsDao.incrementSyncRetry(item.id, e),
+        onPurge: () => pendingPurges.add(() => _itemsDao.purgeItem(item.id)),
+        syncStatus: item.syncStatus,
+        lastSyncedAt: item.lastSyncedAt,
+        createdAt: item.createdAt,
         entity: 'item',
       );
     }
@@ -80,6 +114,7 @@ class SyncService {
       await _syncRecord(
         id: trip.id,
         localUpdatedAt: trip.updatedAt,
+        localIsDeleted: trip.isDeleted,
         sentryTraceId: trip.sentryTraceId,
         toJson: () => _tripToJson(trip),
         fetchRemote: (trace) => _remote.fetchTripById(trip.id, sentryTrace: trace),
@@ -87,14 +122,30 @@ class SyncService {
         pullLocal: (remote) => _pullTrip(trip.id, remote),
         markSynced: (ts) => _tripsDao.markTripAsSynced(trip.id, ts),
         incrementRetry: (e) => _tripsDao.incrementSyncRetry(trip.id, e),
+        onPurge: () => pendingPurges.add(() => _tripsDao.purgeTrip(trip.id)),
+        syncStatus: trip.syncStatus,
+        lastSyncedAt: trip.lastSyncedAt,
+        createdAt: trip.createdAt,
         entity: 'trip',
       );
+    }
+
+    // Purge in collected order: items/trips were added after houses,
+    // so reversing gives children-first, parents-last (FK-safe).
+    for (final purge in pendingPurges.reversed) {
+      try {
+        await purge();
+      } catch (e, st) {
+        debugPrint('[SyncService] Purge failed: $e');
+        Sentry.captureException(e, stackTrace: st);
+      }
     }
   }
 
   Future<void> _syncRecord({
     required String id,
     required DateTime localUpdatedAt,
+    required bool localIsDeleted,
     required String? sentryTraceId,
     required Map<String, dynamic> Function() toJson,
     required Future<Map<String, dynamic>?> Function(String? trace) fetchRemote,
@@ -102,6 +153,10 @@ class SyncService {
     required Future<void> Function(Map<String, dynamic> remote) pullLocal,
     required Future<void> Function(DateTime serverUpdatedAt) markSynced,
     required Future<void> Function(String errorMessage) incrementRetry,
+    required void Function() onPurge,
+    required SyncStatus syncStatus,
+    required DateTime? lastSyncedAt,
+    required DateTime createdAt,
     required String entity,
   }) async {
     try {
@@ -119,20 +174,56 @@ class SyncService {
         final remote = await fetchRemote(traceHeader);
 
         if (remote == null) {
-          final data = toJson();
-          await upsert(data, traceHeader);
-        } else {
-          final remoteUpdatedAt = DateTime.parse(remote['updated_at'] as String);
-          if (localUpdatedAt.isAfter(remoteUpdatedAt)) {
+          if (syncStatus == SyncStatus.pendingCreate && !localIsDeleted) {
+            debugPrint('[SyncService] $entity $id: remote not found, never-synced new record -- pushing');
             final data = toJson();
             await upsert(data, traceHeader);
           } else {
+            final retentionDays = await _tombstoneConfig.getRetentionDays();
+            final cutoff = DateTime.now().toUtc().subtract(Duration(days: retentionDays));
+            final referenceTime = (lastSyncedAt ?? createdAt).toUtc();
+
+            if (referenceTime.isBefore(cutoff)) {
+              debugPrint('[SyncService] $entity $id: remote not found, older than $retentionDays days -- purging locally');
+              onPurge();
+              await markSynced(DateTime.now());
+              transaction.status = const SpanStatus.ok();
+              return;
+            }
+
+            debugPrint('[SyncService] $entity $id: remote not found, pushing');
+            final data = toJson();
+            debugPrint('[SyncService] $entity $id: is_deleted=${data['is_deleted']}');
+            await upsert(data, traceHeader);
+          }
+        } else {
+          final remoteUpdatedAt = DateTime.parse(remote['updated_at'] as String);
+          final remoteIsDeleted = remote['is_deleted'] as bool? ?? false;
+          final localUtc = localUpdatedAt.toUtc();
+          final remoteUtc = remoteUpdatedAt.toUtc();
+          debugPrint('[SyncService] $entity $id: localUtc=$localUtc remoteUtc=$remoteUtc localDel=$localIsDeleted remoteDel=$remoteIsDeleted');
+
+          final localWins = localUtc.isAfter(remoteUtc) ||
+              (localIsDeleted && !remoteIsDeleted);
+
+          if (localWins) {
+            final data = toJson();
+            debugPrint('[SyncService] $entity $id: pushing (is_deleted=${data['is_deleted']})');
+            await upsert(data, traceHeader);
+          } else {
+            debugPrint('[SyncService] $entity $id: pulling (is_deleted=$remoteIsDeleted)');
             await pullLocal(remote);
           }
         }
 
         final now = DateTime.now();
         await markSynced(now);
+        if (localIsDeleted) {
+          onPurge();
+          debugPrint('[SyncService] $entity $id: synced, purge deferred');
+        } else {
+          debugPrint('[SyncService] $entity $id: marked as synced');
+        }
         transaction.status = const SpanStatus.ok();
       } catch (e) {
         transaction.status = const SpanStatus.internalError();
@@ -166,8 +257,8 @@ class SyncService {
       'location_lon': house.locationLon,
       'icon_name': house.iconName,
       'is_primary': house.isPrimary,
-      'created_at': house.createdAt.toIso8601String(),
-      'updated_at': house.updatedAt.toIso8601String(),
+      'created_at': house.createdAt.toUtc().toIso8601String(),
+      'updated_at': house.updatedAt.toUtc().toIso8601String(),
       'is_deleted': house.isDeleted,
     };
   }
@@ -182,8 +273,8 @@ class SyncService {
       'description': item.description,
       'quantity': item.quantity,
       'space_id': item.spaceId,
-      'created_at': item.createdAt.toIso8601String(),
-      'updated_at': item.updatedAt.toIso8601String(),
+      'created_at': item.createdAt.toUtc().toIso8601String(),
+      'updated_at': item.updatedAt.toUtc().toIso8601String(),
       'is_deleted': item.isDeleted,
     };
   }
@@ -194,8 +285,8 @@ class SyncService {
       'user_id': trip.userId,
       'name': trip.name,
       'description': trip.description,
-      'departure_date_time': trip.departureDateTime?.toIso8601String(),
-      'return_date_time': trip.returnDateTime?.toIso8601String(),
+      'departure_date_time': trip.departureDateTime?.toUtc().toIso8601String(),
+      'return_date_time': trip.returnDateTime?.toUtc().toIso8601String(),
       'destination_house_id': trip.destinationHouseId,
       'location_place_id': trip.locationPlaceId,
       'location_display_name': trip.locationDisplayName,
@@ -207,8 +298,8 @@ class SyncService {
       'location_lat': trip.locationLat,
       'location_lon': trip.locationLon,
       'is_saved': trip.isSaved,
-      'created_at': trip.createdAt.toIso8601String(),
-      'updated_at': trip.updatedAt.toIso8601String(),
+      'created_at': trip.createdAt.toUtc().toIso8601String(),
+      'updated_at': trip.updatedAt.toUtc().toIso8601String(),
       'is_deleted': trip.isDeleted,
     };
   }

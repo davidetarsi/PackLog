@@ -44,7 +44,7 @@ class DialogHelpers {
             onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(
               'dialogs.delete_confirm'.tr(),
-              style: const TextStyle(color: AppColors.destructive),
+              style: TextStyle(color: Theme.of(dialogContext).colorScheme.error),
             ),
           ),
         ],
@@ -91,7 +91,7 @@ class DialogHelpers {
             child: Text(
               confirmLabel ?? 'common.confirm'.tr(),
               style: isDestructive
-                  ? const TextStyle(color: AppColors.destructive)
+                  ? TextStyle(color: Theme.of(dialogContext).colorScheme.error)
                   : null,
             ),
           ),
@@ -130,7 +130,7 @@ class DialogHelpers {
             if (icon != null) ...[
               Icon(
                 icon,
-                color: iconColor ?? AppColors.warning,
+                color: iconColor ?? Theme.of(dialogContext).extension<AppColorsExtension>()!.warning,
                 size: 48,
               ),
               const SizedBox(height: 16),

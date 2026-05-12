@@ -162,7 +162,7 @@ class StandardBottomSheetLayout extends StatelessWidget {
                 leftAction: showDeleteButton
                     ? CircularActionButton(
                         icon: Icons.delete_outline,
-                        color: AppColors.destructive,
+                        color: Theme.of(context).colorScheme.error,
                         onPressed: isLoading ? null : onDelete,
                         showBorder: true,
                       )

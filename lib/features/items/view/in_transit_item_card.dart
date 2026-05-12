@@ -56,7 +56,7 @@ class InTransitItemCard extends StatelessWidget {
         'x${item.quantity}',
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
           fontWeight: FontWeight.bold,
-          color: colorScheme.onSurface.withValues(alpha: 0.7),
+          color: colorScheme.onSurfaceVariant,
         ),
       ),
     );

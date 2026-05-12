@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseRepository {
@@ -20,11 +21,12 @@ class SupabaseRepository {
   Future<void> upsertHouse(
     Map<String, dynamic> data, {
     String? sentryTrace,
-  }) {
-    return _withTrace(
+  }) async {
+    final result = await _withTrace(
       sentryTrace,
-      () => _client.from('houses').upsert(data),
+      () => _client.from('houses').upsert(data).select(),
     );
+    debugPrint('[SupabaseRepo] upsertHouse result: $result');
   }
 
   // === ITEMS ===
@@ -42,11 +44,12 @@ class SupabaseRepository {
   Future<void> upsertItem(
     Map<String, dynamic> data, {
     String? sentryTrace,
-  }) {
-    return _withTrace(
+  }) async {
+    final result = await _withTrace(
       sentryTrace,
-      () => _client.from('items').upsert(data),
+      () => _client.from('items').upsert(data).select(),
     );
+    debugPrint('[SupabaseRepo] upsertItem result: $result');
   }
 
   // === TRIPS ===
@@ -64,11 +67,12 @@ class SupabaseRepository {
   Future<void> upsertTrip(
     Map<String, dynamic> data, {
     String? sentryTrace,
-  }) {
-    return _withTrace(
+  }) async {
+    final result = await _withTrace(
       sentryTrace,
-      () => _client.from('trips').upsert(data),
+      () => _client.from('trips').upsert(data).select(),
     );
+    debugPrint('[SupabaseRepo] upsertTrip result: $result');
   }
 
   // === HELPERS ===

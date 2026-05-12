@@ -165,7 +165,7 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
             'spaces.select_icon'.tr(),
             style: TextStyle(
               fontSize: context.fontSizeSm,
-              color: colorScheme.onSurface.withValues(alpha: 0.7),
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
           SizedBox(height: context.spacingSm),
@@ -228,7 +228,7 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
               border: Border.all(
                 color: isSelected
                     ? colorScheme.primary
-                    : colorScheme.outline.withValues(alpha: 0.3),
+                    : colorScheme.outlineVariant,
                 width: isSelected ? 2 : 1,
               ),
             ),

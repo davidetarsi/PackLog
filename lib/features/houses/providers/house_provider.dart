@@ -1,5 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/sync/sync_provider.dart';
 import '../model/house_model.dart';
 import '../repositories/house_repository.dart';
 
@@ -27,6 +29,7 @@ class HouseNotifier extends _$HouseNotifier {
         houseId: model.id,
         totalHouses: houses.length,
       );
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -39,6 +42,7 @@ class HouseNotifier extends _$HouseNotifier {
       await repository!.updateHouse(model);
       final houses = await repository!.getAllHouses();
       state = AsyncData(houses);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -51,6 +55,7 @@ class HouseNotifier extends _$HouseNotifier {
       await repository!.deleteHouse(id);
       final houses = await repository!.getAllHouses();
       state = AsyncData(houses);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -64,6 +69,30 @@ class HouseNotifier extends _$HouseNotifier {
       state = AsyncData(houses);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+    }
+  }
+
+  Future<String> duplicateHouse(String houseId) async {
+    repository ??= ref.read(houseRepositoryProvider);
+    state = const AsyncLoading();
+    try {
+      final original = await repository!.getHouseById(houseId);
+      final now = DateTime.now();
+      final newId = const Uuid().v4();
+      final copy = original.copyWith(
+        id: newId,
+        isPrimary: false,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository!.addHouse(copy);
+      final houses = await repository!.getAllHouses();
+      state = AsyncData(houses);
+      ref.read(syncOrchestratorProvider).requestSync();
+      return newId;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -89,6 +118,7 @@ class HouseNotifier extends _$HouseNotifier {
       // Ricarica le case aggiornate
       final updatedHouses = await repository!.getAllHouses();
       state = AsyncData(updatedHouses);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }

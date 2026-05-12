@@ -379,9 +379,9 @@ class _CreatePillTab extends StatelessWidget {
           AppConstants.pillBorderRadius,
         ),
         child: Padding(
-          padding: context.responsiveSymmetricPadding(
-            horizontal: 20,
-            vertical: 12,
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacingMd + context.spacingXs, // 20 scalato
+            vertical: context.spacingSm + context.spacingXs,   // 12 scalato
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

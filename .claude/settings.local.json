@@ -8,7 +8,11 @@
       "Bash(flutter precache *)",
       "Bash(powershell -Command \"Remove-Item -Path 'C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.realm' -Force -ErrorAction SilentlyContinue; Remove-Item -Path 'C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.stamp' -Force -ErrorAction SilentlyContinue\")",
       "Bash(powershell -Command \"flutter precache 2>&1 | Select-Object -Last 5\")",
-      "Bash(powershell -Command \"Remove-Item -Path 'C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.stamp' -Force -ErrorAction SilentlyContinue; Remove-Item -Path 'C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.realm' -Force -ErrorAction SilentlyContinue; flutter precache 2>&1 | Out-Null; flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | Select-Object -Last 5\")"
+      "Bash(powershell -Command \"Remove-Item -Path 'C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.stamp' -Force -ErrorAction SilentlyContinue; Remove-Item -Path 'C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.realm' -Force -ErrorAction SilentlyContinue; flutter precache 2>&1 | Out-Null; flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | Select-Object -Last 5\")",
+      "Bash(sqlite3 \"/Users/davide/Downloads/pack-log-export-db-08052026-182531.db\" \".schema\")",
+      "Bash(sqlite3 \"/Users/davide/Downloads/pack-log-export-db-08052026-182531.db\" \"SELECT * FROM trips WHERE destination_house_id IS NOT NULL;\")",
+      "Bash(sqlite3 \"/Users/davide/Downloads/pack-log-export-db-08052026-182531.db\" \"PRAGMA foreign_key_check\\(houses\\);\")",
+      "Bash(sqlite3 \"/Users/davide/Downloads/pack-log-export-db-08052026-182531.db\" \"SELECT count\\(*\\) FROM items; SELECT count\\(*\\) FROM spaces; SELECT count\\(*\\) FROM luggages; SELECT count\\(*\\) FROM trips;\")"
     ]
   }
 }

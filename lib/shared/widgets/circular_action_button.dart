@@ -57,12 +57,11 @@ class CircularActionButton extends StatelessWidget {
     final isEnabled = onPressed != null;
     final iconColor = isEnabled
         ? (color ?? colorScheme.onSurfaceVariant)
-        : colorScheme.onSurface.withValues(alpha: 0.3);
-    
-    // CRITICAL: Bordo sempre BIANCO per i bottoni circolari
+        : colorScheme.onSurface.withValues(alpha: 0.38);
+
     final borderColor = isEnabled
-        ? colorScheme.onSurface.withValues(alpha: 0.15)
-        : colorScheme.onSurface.withValues(alpha: 0.1);
+        ? colorScheme.outlineVariant
+        : colorScheme.outlineVariant.withValues(alpha: 0.5);
 
     return Material(
       color: backgroundColor ?? colorScheme.surface,

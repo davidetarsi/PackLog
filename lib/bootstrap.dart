@@ -43,6 +43,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/database/database.dart';
 import 'core/database/migration_service.dart';
 import 'core/database/services/backup_service.dart';
+import 'core/monitoring/app_error_observer.dart';
 import 'core/routing/app_router.dart';
 import 'core/sync/sync_provider.dart';
 import 'shared/config/app_config.dart';
@@ -145,6 +146,7 @@ Future<void> bootstrap(Environment env) async {
         path: 'assets/translations',
         fallbackLocale: const Locale('it', 'IT'),
         child: ProviderScope(
+          observers: [AppErrorObserver()],
           child: MyApp(environment: env),
         ),
       ),

@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart' hide isNull, isNotNull;
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/core/database/exceptions/database_exceptions.dart';
 import 'package:pack_log/core/database/services/database_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
@@ -633,7 +634,7 @@ void main() {
       // Attempting to fetch deleted trip should throw
       expect(
         () async => await repository.getTripById(tripToDelete.id),
-        throwsA(isA<StateError>()),
+        throwsA(isA<EntityNotFoundException>()),
       );
 
       // Verify trip items were cascade deleted (check at DAO level)

@@ -7,7 +7,6 @@ import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
 import '../../items/model/item_model.dart';
 import '../../../shared/theme/theme.dart';
-import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/trip_info_badges.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
@@ -263,7 +262,7 @@ class _TripItemCard extends ConsumerWidget {
           fontWeight: FontWeight.w500,
           decoration: item.isChecked ? TextDecoration.lineThrough : null,
           color: item.isChecked
-              ? colorScheme.onSurface.withValues(alpha: 0.5)
+              ? context.textTertiary
               : colorScheme.onSurface,
         ),
       ),
@@ -286,7 +285,7 @@ class _TripItemCard extends ConsumerWidget {
           'x${item.quantity}',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             fontWeight: FontWeight.bold,
-            color: colorScheme.onSurface.withValues(alpha: 0.7),
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
       ),

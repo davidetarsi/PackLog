@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/app_spacing.dart';
 
 /// Tile selezionabile per la scelta della lingua nella dialog di lingua.
 ///
@@ -28,12 +29,12 @@ class LanguageTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.spacingMd),
         decoration: BoxDecoration(
           border: Border.all(
             color: isSelected
                 ? colorScheme.primary
-                : colorScheme.outline.withValues(alpha: 0.3),
+                : colorScheme.outlineVariant,
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
@@ -44,7 +45,7 @@ class LanguageTile extends StatelessWidget {
         child: Row(
           children: [
             Text(flag, style: const TextStyle(fontSize: 32)),
-            const SizedBox(width: 16),
+            SizedBox(width: context.spacingMd),
             Expanded(
               child: Text(
                 title,
