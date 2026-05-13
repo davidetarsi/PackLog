@@ -7,6 +7,7 @@ import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
 import '../../items/model/item_model.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/constants/app_constants.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/trip_info_badges.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
@@ -254,7 +255,7 @@ class _TripItemCard extends ConsumerWidget {
               .read(tripNotifierProvider.notifier)
               .toggleItemCheck(tripId, item.id);
         },
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        // shape non necessario: Material 3 LinearProgressIndicator è già arrotondato di default
       ),
       title: Text(
         item.name,
@@ -279,12 +280,12 @@ class _TripItemCard extends ConsumerWidget {
         ),
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest,
-          borderRadius: context.responsiveBorderRadius(8),
+          borderRadius: BorderRadius.circular(AppConstants.badgeBorderRadius),
         ),
         child: Text(
           'x${item.quantity}',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600, // bodySmall ≈ 12px → w600
             color: colorScheme.onSurfaceVariant,
           ),
         ),

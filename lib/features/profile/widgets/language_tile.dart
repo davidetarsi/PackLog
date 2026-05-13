@@ -50,9 +50,8 @@ class LanguageTile extends StatelessWidget {
               child: Text(
                 title,
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: context.fontSizeSm,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected ? colorScheme.primary : null,
                 ),
               ),

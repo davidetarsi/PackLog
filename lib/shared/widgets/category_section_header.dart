@@ -75,7 +75,7 @@ class CategorySectionHeader extends StatelessWidget {
               _getCategoryName(category),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: effectiveColor,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w500, // titleSmall ≈ 14px → w500
                   ),
             ),
           ),

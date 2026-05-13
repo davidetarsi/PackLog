@@ -8,6 +8,7 @@ library;
 
 export 'app_pill_tab.dart';
 export 'category_section_header.dart';
+export 'ds_section_header.dart';
 export 'circular_action_button.dart';
 export 'location_autocomplete_field.dart';
 export 'main_shell.dart';

@@ -186,7 +186,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
             controller: _nameController,
             style: TextStyle(
               fontSize: context.fontSizeXl,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
             ),
             decoration: InputDecoration(
               hintText: 'trips.name_hint'.tr(),
@@ -416,7 +416,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                   Text(
                     'common.arrival_house'.tr(),
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: context.fontSizeXxs,
+                      fontWeight: FontWeight.w600,
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),

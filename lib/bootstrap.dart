@@ -32,6 +32,8 @@
 /// tramite [dataIntegrityServiceProvider] per ispezioni manuali (Debug).
 library;
 
+import 'dart:async';
+
 import 'package:amplitude_flutter/amplitude.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -71,23 +73,37 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
   final bool sentryEnabled = AppConfig.sentryDsn.isNotEmpty &&
       AppConfig.sentryDsn != 'MISSING_SENTRY_DSN';
 
+  final bool amplitudeEnabled = AppConfig.amplitudeApiKey.isNotEmpty &&
+      AppConfig.amplitudeApiKey != 'MISSING_AMPLITUDE_API_KEY';
+
   await Future.wait([
-    if (sentryEnabled)
-      SentryFlutter.init((options) {
-        options.dsn = AppConfig.sentryDsn;
-        options.environment = _currentEnvironment.name;
-        options.tracesSampleRate = 1.0;
-      }),
-    Supabase.initialize(
+    if (sentryEnabled) _guardedInit('Sentry', () => SentryFlutter.init((options) {
+      options.dsn = AppConfig.sentryDsn;
+      options.environment = _currentEnvironment.name;
+      options.tracesSampleRate = 1.0;
+    })),
+    _guardedInit('Supabase', () => Supabase.initialize(
       url: AppConfig.supabaseUrl,
       anonKey: AppConfig.supabaseAnonKey,
-    ),
-    Amplitude.getInstance().init(AppConfig.amplitudeApiKey),
+    )),
+    if (amplitudeEnabled)
+      _guardedInit('Amplitude', () => Amplitude.getInstance().init(AppConfig.amplitudeApiKey)),
     _initializePersistence(),
   ]);
 
   ref.read(syncOrchestratorProvider);
 });
+
+Future<void> _guardedInit(String name, Future<dynamic> Function() init) async {
+  try {
+    await init().timeout(const Duration(seconds: 10));
+    debugPrint('[Bootstrap] ✅ $name inizializzato');
+  } on TimeoutException {
+    debugPrint('[Bootstrap] ⚠️  $name init timeout — proseguo senza');
+  } catch (e) {
+    debugPrint('[Bootstrap] ⚠️  $name init fallito: $e');
+  }
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ENUM Environment
@@ -129,7 +145,15 @@ enum Environment {
 /// Tutta l'inizializzazione pesante (Sentry, Supabase, Amplitude, persistenza)
 /// è gestita da [appBootstrapProvider] e visualizzata con uno splash screen.
 Future<void> bootstrap(Environment env) async {
-  SentryWidgetsFlutterBinding.ensureInitialized();
+  // Usa il binding standard Flutter — idempotente e privo di dipendenze da Sentry.
+  // SentryFlutter.init() viene chiamato dopo runApp in [appBootstrapProvider]
+  // dove si occupa autonomamente dell'integrazione con FlutterError.onError e
+  // PlatformDispatcher.onError (standard Flutter 3.3+).
+  // Non usare SentryWidgetsFlutterBinding.ensureInitialized() qui: il custom
+  // binding Sentry può causare "Binding has not yet been initialized" quando
+  // altri package (es. connectivity_plus, sync orchestrator) accedono a
+  // WidgetsBinding.instance prima che Sentry abbia completato la propria init.
+  WidgetsFlutterBinding.ensureInitialized();
   _currentEnvironment = env;
 
   try {

@@ -238,7 +238,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                                             'common.at_house'.tr(),
                                             style: TextStyle(
                                               fontSize: context.fontSizeLg,
-                                              fontWeight: FontWeight.bold,
+                                              fontWeight: FontWeight.w700, // 20px → w700
                                             ),
                                           ),
                                         ),

@@ -121,7 +121,7 @@ class ItemCard extends ConsumerWidget {
           : Text(
               'x$totalQuantity',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w500,
                 color: colorScheme.onSurfaceVariant,
               ),
             ),

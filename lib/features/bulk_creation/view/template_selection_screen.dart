@@ -221,8 +221,8 @@ class _TemplateCard extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                                    ? FontWeight.w600 // 16px selected +1 = w600
+                                    : FontWeight.w400,
                                 color: isSelected
                                     ? colorScheme.primary
                                     : colorScheme.onSurface,
@@ -364,7 +364,7 @@ class _TemplateCard extends StatelessWidget {
               color: count > 0
                   ? colorScheme.onSurface
                   : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600, // labelMedium ≈ 12px → w600
             ),
           ),
         ],

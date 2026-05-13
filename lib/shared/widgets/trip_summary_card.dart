@@ -54,8 +54,8 @@ class TripSummaryCard extends ConsumerWidget {
                 child: Text(
                   trip.name,
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: context.fontSizeXl + 2,
+                    fontWeight: FontWeight.w600, // ~24px → w600
+                    fontSize: context.fontSizeTitle,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

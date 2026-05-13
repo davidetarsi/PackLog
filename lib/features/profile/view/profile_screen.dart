@@ -17,6 +17,7 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/providers/theme_provider.dart';
+import '../../../shared/widgets/ds_section_header.dart';
 import '../providers/last_export_path_provider.dart';
 import '../services/feedback_url_service.dart';
 import '../widgets/language_tile.dart';
@@ -369,9 +370,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: SelectableText(
                 backupDirPath,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: context.fontSizeXxs,
                   fontFamily: 'monospace',
-                  color: colorScheme.primary.withValues(alpha: 0.85),
+                  color: colorScheme.primary,
                 ),
               ),
             ),
@@ -482,7 +483,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text('settings.title'.tr()),
-        centerTitle: true,
         // Nessun leading: questa è una schermata radice del tab bar,
         // non si può fare pop verso un livello superiore.
         automaticallyImplyLeading: false,
@@ -515,16 +515,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const Divider(),
 
           // ── Backup & Ripristino ──────────────────────────────────────────
-          Padding(
+          DsSectionHeader(
+            label: 'backup.title'.tr(),
             padding: EdgeInsets.fromLTRB(context.spacingMd, context.spacingLg, context.spacingMd, context.spacingSm),
-            child: Text(
-              'backup.title'.tr(),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
           ),
 
           Consumer(
@@ -542,24 +535,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Text(
                       'backup.path_label'.tr(),
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.6),
+                        fontSize: context.fontSizeXxs,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 2),
                     SelectableText(
                       displayPath,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: context.fontSizeXxs,
                         fontFamily: 'monospace',
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withValues(alpha: 0.7),
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ],
@@ -581,16 +568,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const Divider(),
 
           // ── About ────────────────────────────────────────────────────────
-          Padding(
+          DsSectionHeader(
+            label: 'settings.about_section_title'.tr(),
             padding: EdgeInsets.fromLTRB(context.spacingMd, context.spacingLg, context.spacingMd, context.spacingSm),
-            child: Text(
-              'settings.about_section_title'.tr(),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
           ),
 
           ListTile(
