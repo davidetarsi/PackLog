@@ -463,7 +463,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         item.name,
         style: TextStyle(
           fontSize: context.fontSizeMd,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w700, // 18px → w700
         ),
       ),
       subtitle: Text(
@@ -512,7 +512,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
                     '$selectedQuantity',
                     style: TextStyle(
                       fontSize: context.fontSizeLg,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700, // 20px → w700
                       color: isSelected 
                           ? colorScheme.primary 
                           : context.textTertiary,

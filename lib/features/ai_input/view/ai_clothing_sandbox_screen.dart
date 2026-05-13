@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../shared/config/app_config.dart';
+import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../items/model/item_model.dart';
@@ -201,7 +202,7 @@ class _AiClothingSandboxScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AI Bulk Import ✨'), centerTitle: true),
+      appBar: AppBar(title: const Text('AI Bulk Import ✨')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _isLoading ? null : _pickAndProcessImages,
         icon: const Icon(Icons.add_photo_alternate),
@@ -274,7 +275,6 @@ class _AiClothingSandboxScreenState
             width: 240,
             child: LinearProgressIndicator(
               value: progress,
-              borderRadius: BorderRadius.circular(4),
               minHeight: 6,
             ),
           ),
@@ -493,7 +493,7 @@ class _EditableResultCard extends StatelessWidget {
                     '$index',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600, // labelSmall ≈ 12px → w600
                     ),
                   ),
                 ),
@@ -512,13 +512,13 @@ class _EditableResultCard extends StatelessWidget {
                         vertical: 6,
                       ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
                         borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.outlineVariant,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
                         borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.outlineVariant,
                         ),
@@ -640,7 +640,6 @@ class _ScoreRow extends StatelessWidget {
           Expanded(
             child: LinearProgressIndicator(
               value: value / max,
-              borderRadius: BorderRadius.circular(4),
               minHeight: 6,
               backgroundColor: Theme.of(
                 context,
@@ -775,7 +774,7 @@ class _RawJsonDebugPanel extends StatelessWidget {
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         tilePadding: EdgeInsets.zero,
-        leading: const Text('🛠️', style: TextStyle(fontSize: 16)),
+        leading: const Text('🛠️', style: TextStyle(fontSize: AppSpacing.fontSm)),
         title: Text(
           'Debug: Raw JSON',
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -787,15 +786,15 @@ class _RawJsonDebugPanel extends StatelessWidget {
             width: double.infinity,
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
             ),
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(context.spacingSm),
             child: SelectableText(
               rawJson,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'monospace',
-                fontSize: 11,
-                color: Color(0xFFCDD6F4),
+                fontSize: context.fontSizeXxs,
+                color: const Color(0xFFCDD6F4),
                 height: 1.5,
               ),
             ),
@@ -832,7 +831,8 @@ class _ErrorBanner extends StatelessWidget {
             child: Text(
               message,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: context.fontSizeXxs,
+                fontWeight: FontWeight.w600,
                 color: Theme.of(context).colorScheme.onErrorContainer,
               ),
             ),

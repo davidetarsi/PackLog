@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 /// | Secondario | textSecondary    | Subtitle, info, metadata                   |
 /// | Terziario  | textTertiary     | Caption, footnote, "x N altri", lineThrough|
 /// | Disabilitato | textDisabled   | Hint, placeholder, disabled label           |
+
 extension TextColors on BuildContext {
   /// Testo primario — titoli, body principale.
   Color get textPrimary => Theme.of(this).colorScheme.onSurface;

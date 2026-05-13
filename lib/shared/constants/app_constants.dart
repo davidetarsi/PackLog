@@ -23,8 +23,8 @@ class AppConstants {
   static const double screenHorizontalGutter = 16.0;
 
   /// Altezza della floating tab bar (senza safe area).
-  /// Fase 3.4 bumperà a 60 quando il label passerà a 12px.
-  static const double tabBarHeight = 56.0;
+  /// Bumpata a 60 in Fase 3 per accomodare label 12px + icona 22px senza overflow.
+  static const double tabBarHeight = 60.0;
 
   // ── Border Radius ────────────────────────────────────────────────────────────
 

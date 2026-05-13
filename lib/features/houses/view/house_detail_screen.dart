@@ -67,7 +67,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
             ),
             ListTile(
               leading: Icon(
-                Icons.bookmark,
+                Icons.push_pin, // push_pin per "casa principale" — bookmark riservato ai viaggi salvati
                 color: isPrimary
                     ? null
                     : Theme.of(sheetContext).colorScheme.primary,
@@ -320,7 +320,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                   child: Text(
                     'items.bulk_move_title'.tr(),
                     style: Theme.of(sheetContext).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
                 const Divider(height: 1),
@@ -353,7 +353,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                                 'houses.primary'.tr(),
                                 style: TextStyle(
                                   color: colorScheme.primary,
-                                  fontSize: 12,
+                                  fontSize: context.fontSizeXxs,
                                   fontWeight: FontWeight.w600,
                                 ),
                               )
@@ -461,7 +461,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               ? 'items.select_items'.tr()
               : 'items.selected_count'.tr(args: [selectedCount.toString()]),
           key: ValueKey(selectedCount),
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
       actions: [

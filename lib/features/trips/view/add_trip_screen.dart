@@ -209,7 +209,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                           'trips.items_to_bring'.tr(),
                           style: TextStyle(
                             fontSize: context.fontSizeMd,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700, // 18px → w700
                             color: colorScheme.onSurface,
                           ),
                         ),
@@ -226,7 +226,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                             'common.items_selected'.tr(args: [_selectedItems.length.toString()]),
                             style: TextStyle(
                               fontSize: context.fontSizeXs,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500, // 14px → w500
                               color: colorScheme.onPrimaryContainer,
                             ),
                           ),
@@ -256,7 +256,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                           'luggages.title'.tr(),
                           style: TextStyle(
                             fontSize: context.fontSizeMd,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700, // 18px → w700
                             color: colorScheme.onSurface,
                           ),
                         ),
@@ -273,7 +273,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                             'common.luggages_selected'.tr(args: [_selectedLuggages.length.toString()]),
                             style: TextStyle(
                               fontSize: context.fontSizeXs,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500, // 14px → w500
                               color: colorScheme.onPrimaryContainer,
                             ),
                           ),

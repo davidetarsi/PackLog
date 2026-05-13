@@ -335,10 +335,8 @@ class _NavItem extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  // fontSize leggermente ridotta per garantire che testo +
-                  // icona stiano sempre dentro tabBarHeight su ogni densità.
-                  fontSize: context.responsive(10),
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: context.fontSizeXxs,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   color: isSelected
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant,

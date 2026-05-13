@@ -37,7 +37,7 @@ class InTransitSection extends StatelessWidget {
             title: Text(
               'common.temporaries'.tr(),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w500, // titleMedium ≈ 16px → w500
                 color: colorScheme.onSurface,
               ),
             ),

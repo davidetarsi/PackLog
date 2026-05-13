@@ -66,7 +66,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Text(
                   'Pack Log',
                   style: textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     color: colorScheme.onSurface,
                   ),
                 ),
@@ -100,7 +100,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _isLoading
                           ? 'common.loading'.tr()
                           : 'login.sign_in_google'.tr(),
-                      style: const TextStyle(fontSize: 16),
+                      style: TextStyle(fontSize: context.fontSizeSm, fontWeight: FontWeight.w500),
                     ),
                   ),
                 ),

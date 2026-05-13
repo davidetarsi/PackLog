@@ -56,9 +56,8 @@ class ThemeTile extends StatelessWidget {
               child: Text(
                 title,
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: context.fontSizeSm,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, // 16px selected +1 = w600
                   color: isSelected ? colorScheme.primary : null,
                 ),
               ),

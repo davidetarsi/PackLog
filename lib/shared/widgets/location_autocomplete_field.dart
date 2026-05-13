@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../constants/app_constants.dart';
 import '../model/model.dart';
+import '../theme/app_spacing.dart';
 
 /// Widget riutilizzabile per l'autocomplete delle località.
 /// Usa l'API Geoapify per cercare città, regioni e stati.
@@ -346,7 +347,8 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: context.fontSizeXxs,
+                        fontWeight: FontWeight.w600,
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),

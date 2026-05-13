@@ -6,6 +6,7 @@ import '../model/house_model.dart';
 import '../providers/house_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../shared/model/location_suggestion_model.dart';
@@ -185,7 +186,7 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
             child: Text(
               'common.icon'.tr(),
               style: TextStyle(
-                fontSize: 16,
+                fontSize: context.fontSizeSm,
                 fontWeight: FontWeight.w500,
                 color: Theme.of(context).colorScheme.onSurface,
               ),

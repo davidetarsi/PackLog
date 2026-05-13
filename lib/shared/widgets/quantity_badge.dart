@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../constants/app_constants.dart';
 
 /// Badge per mostrare la quantità di un item.
@@ -52,7 +53,7 @@ class QuantityBadge extends StatelessWidget {
         text,
         style: TextStyle(
           fontSize: fontSize,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w600, // 12px badge → w600
           color: isSelected
               ? colorScheme.onPrimaryContainer
               : colorScheme.onSurfaceVariant,
@@ -98,7 +99,8 @@ class OnTripQuantityBadge extends StatelessWidget {
         showPartial ? '$text ${'common.in_transit'.tr().toLowerCase()}' : 'common.in_transit'.tr(),
         style: TextStyle(
           color: colorScheme.onTertiaryContainer,
-          fontSize: 10,
+          fontSize: context.fontSizeXxs,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -120,7 +122,7 @@ class OnTripBadge extends StatelessWidget {
       ),
       child: Text(
         'common.in_transit'.tr(),
-        style: TextStyle(color: colorScheme.onTertiary, fontSize: 11),
+        style: TextStyle(color: colorScheme.onTertiary, fontSize: context.fontSizeXxs, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -141,7 +143,7 @@ class TemporaryBadge extends StatelessWidget {
       ),
       child: Text(
         'common.temporary'.tr(),
-        style: TextStyle(color: appColors.itemTemporaryText, fontSize: 10),
+        style: TextStyle(color: appColors.itemTemporaryText, fontSize: context.fontSizeXxs, fontWeight: FontWeight.w600),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../shared/theme/app_spacing.dart';
 
 import '../auth/auth_provider.dart';
 import '../auth/auth_state.dart';
@@ -215,7 +216,7 @@ GoRouter appRouter(Ref ref) {
             const SizedBox(height: 16),
             Text(
               'common.navigation_error'.tr(args: [state.error.toString()]),
-              style: const TextStyle(fontSize: 18),
+              style: TextStyle(fontSize: context.fontSizeMd, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -247,7 +248,7 @@ class _ErrorScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               message,
-              style: const TextStyle(fontSize: 18),
+              style: TextStyle(fontSize: context.fontSizeMd, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),

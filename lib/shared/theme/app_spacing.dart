@@ -18,12 +18,16 @@ class AppSpacing {
   static const double iconHero = 64;
 
   // === Font size base ===
-  static const double fontXs = 14;
-  static const double fontSm = 16;
-  static const double fontMd = 18;
-  static const double fontLg = 20;
-  static const double fontXl = 22;
-  static const double fontTitle = 24;
+  // Floor: fontXxs = 12px. Mai scendere sotto.
+  // Regola size → weight (DS Fase 3):
+  //   ≥ 24px → w600 | 18–22px → w700 | 14–16px → w500 | 12–13px → w600 | body → w400
+  static const double fontXxs    = 12; // Floor assoluto: badge, micro-label, timestamp
+  static const double fontXs     = 14;
+  static const double fontSm     = 16;
+  static const double fontMd     = 18;
+  static const double fontLg     = 20;
+  static const double fontXl     = 22;
+  static const double fontTitle  = 24;
   static const double fontHeading = 28;
 
   // === Padding predefiniti ===
@@ -117,6 +121,7 @@ extension ResponsiveSpacing on BuildContext {
 
   // === Font responsive ===
 
+  double get fontSizeXxs => AppSpacing.fontXxs * fontScaleFactor;
   double get fontSizeXs => AppSpacing.fontXs * fontScaleFactor;
   double get fontSizeSm => AppSpacing.fontSm * fontScaleFactor;
   double get fontSizeMd => AppSpacing.fontMd * fontScaleFactor;

@@ -404,7 +404,7 @@ class _TripCard extends ConsumerWidget {
                     child: Text(
                       trip.name,
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700, // 18px → w700
                         fontSize: context.fontSizeMd,
                       ),
                       maxLines: 2,
@@ -494,8 +494,8 @@ class _TripCard extends ConsumerWidget {
                       Text(
                         'x${item.quantity}',
                         style: TextStyle(
-                          fontSize: context.fontSizeXs + 1,
-                          fontWeight: FontWeight.bold,
+                          fontSize: context.fontSizeSm,
+                          fontWeight: FontWeight.w500, // 16px → w500
                           color: context.textTertiary,
                         ),
                       ),

@@ -222,7 +222,7 @@ class _HouseCard extends ConsumerWidget {
                             Text(
                               house.name,
                               style: TextStyle(
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w700, // 20px → w700
                                 fontSize: context.fontSizeLg,
                               ),
                               maxLines: 1,
@@ -306,11 +306,12 @@ class _HouseCard extends ConsumerWidget {
           
           // Badge principale in alto a destra (stile bookmark/salvato)
           if (house.isPrimary)
+            // push_pin = "casa principale/fissata" — non bookmark (riservato ai viaggi salvati)
             Positioned(
               top: 0,
               right: 12,
               child: Icon(
-                Icons.bookmark,
+                Icons.push_pin,
                 size: 20,
                 color: colorScheme.primary,
               ),
@@ -346,7 +347,7 @@ class _Badge extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: context.fontSizeXxs,
           fontWeight: FontWeight.w600,
           color: color,
         ),

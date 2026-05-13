@@ -1,6 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:pack_log/shared/theme/app_colors.dart';
 import '../helpers/bottom_sheet_handle.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
@@ -108,7 +107,7 @@ class StandardBottomSheetLayout extends StatelessWidget {
                     child: Text(
                       title,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700, // titleLarge ≈ 22px → w700
                           ),
                     ),
                   ),

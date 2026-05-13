@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'app_spacing.dart';
 import 'error_empty_theme_extension.dart';
 import '../constants/app_constants.dart';
 
@@ -197,10 +198,11 @@ class AppTheme {
         scrolledUnderElevation: 1,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
+        // ≥ 24px → w600 (regola DS size→weight Fase 3)
         titleTextStyle: TextStyle(
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           color: colorScheme.onSurface,
-          fontSize: 24
+          fontSize: AppSpacing.fontTitle,
         ),
       ),
 
@@ -226,13 +228,13 @@ class AppTheme {
         // (no dipendenza da AppColors statici).
         ErrorEmptyThemeExtension(
           emptyStateTitle: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.normal,
+            fontSize: AppSpacing.fontLg,   // 20px → w700 se titolo hero, w400 per stato vuoto
+            fontWeight: FontWeight.w400,
             color: colorScheme.onSurfaceVariant,
           ),
           emptyStateSubtitle: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.normal,
+            fontSize: AppSpacing.fontSm,   // 16px → body → w400
+            fontWeight: FontWeight.w400,
             color: colorScheme.onSurfaceVariant,
           ),
           emptyStateIconSize: 80,
@@ -240,8 +242,8 @@ class AppTheme {
           emptyStateTitleColor: colorScheme.onSurfaceVariant,
           emptyStateSubtitleColor: colorScheme.onSurfaceVariant,
           errorStateMessage: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.normal,
+            fontSize: AppSpacing.fontSm,
+            fontWeight: FontWeight.w400,
           ),
           errorStateIconSize: 80,
           errorStateIconColor: colorScheme.error,
