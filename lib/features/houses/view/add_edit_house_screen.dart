@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/standard_bottom_sheet_layout.dart';
 import 'house_form_content.dart';
 
@@ -71,7 +72,7 @@ class AddEditHouseScreen extends StatelessWidget {
         title: Text(houseId != null ? 'houses.edit'.tr() : 'houses.add_new'.tr()),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.spacingMd),
         children: [
           HouseFormContent(
             houseId: houseId,

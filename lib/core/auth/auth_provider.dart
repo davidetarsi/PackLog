@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -36,6 +37,7 @@ class AuthNotifier extends _$AuthNotifier {
   /// Aggiorna l'identità utente in Sentry e Amplitude a ogni cambio di stato auth.
   /// Passa SOLO lo userId — niente email o PII (GDPR).
   void _resolveIdentity(AuthState authState) {
+    debugPrint('[Auth] _resolveIdentity: $authState');
     switch (authState) {
       case Authenticated(:final userId):
         ref.read(monitoringServiceProvider).identifyUser(userId);
@@ -44,6 +46,7 @@ class AuthNotifier extends _$AuthNotifier {
         ref.read(monitoringServiceProvider).clearUser();
         ref.read(analyticsServiceProvider).clearUser();
     }
+    debugPrint('[Auth] _resolveIdentity completato');
   }
 }
 

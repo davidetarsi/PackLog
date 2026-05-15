@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
@@ -50,14 +51,17 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   Future<void> signInWithGoogle() async {
     try {
+      debugPrint('[Auth] 1/4 avvio Google sign-in...');
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         throw const SignInFailedException('Google sign-in cancelled by user');
       }
+      debugPrint('[Auth] 2/4 Google user ottenuto, richiedo tokens...');
 
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
       final accessToken = googleAuth.accessToken;
+      debugPrint('[Auth] 3/4 Tokens ottenuti, invio a Supabase...');
 
       if (idToken == null) {
         throw const SignInFailedException(
@@ -69,7 +73,13 @@ class SupabaseAuthRepository implements AuthRepository {
         provider: sb.OAuthProvider.google,
         idToken: idToken,
         accessToken: accessToken,
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw const SignInFailedException(
+          'Connessione a Supabase scaduta. Controlla la connessione o riprova.',
+        ),
       );
+      debugPrint('[Auth] 4/4 ✅ Supabase auth completata');
     } on SignInFailedException {
       rethrow;
     } on sb.AuthException catch (e, st) {

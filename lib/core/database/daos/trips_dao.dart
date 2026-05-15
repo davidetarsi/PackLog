@@ -30,6 +30,12 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
         .getSingleOrNull();
   }
 
+  /// Ottiene un viaggio per ID indipendentemente dal flag isDeleted.
+  /// Usato dal sync per rilevare record locali prima di insert/update da remoto.
+  Future<Trip?> findTripById(String id) {
+    return (select(trips)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
   /// Inserisce un nuovo viaggio
   Future<int> insertTrip(TripsCompanion trip) {
     return into(trips).insert(trip);

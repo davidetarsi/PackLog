@@ -1,7 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -16,6 +18,7 @@ import '../../../shared/config/app_config.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/providers/package_info_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/widgets/ds_section_header.dart';
 import '../providers/last_export_path_provider.dart';
@@ -592,7 +595,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: Text('settings.about'.tr()),
-            subtitle: Text('${'common.version'.tr()} 1.0.0'),
+            subtitle: ref.watch(packageInfoProvider).when(
+                  data: (info) =>
+                      Text('${'common.version'.tr()} ${info.version}'),
+                  loading: () => Text('${'common.version'.tr()} …'),
+                  error: (_, __) => Text('${'common.version'.tr()} —'),
+                ),
           ),
 
           ListTile(
@@ -602,6 +610,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
 
           const Divider(),
+
+          // ── Dev Tools (kDebugMode only) ──────────────────────────────
+          if (kDebugMode) ...[
+            DsSectionHeader(
+              label: '🛠️  Dev Tools',
+              padding: EdgeInsets.fromLTRB(context.spacingMd, context.spacingLg, context.spacingMd, context.spacingSm),
+            ),
+            ListTile(
+              leading: const Icon(Icons.palette_outlined),
+              title: const Text('DS Theme Showcase'),
+              subtitle: const Text('Visual QA: Light vs Dark, palette, typography'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/dev/ds-showcase'),
+            ),
+            const Divider(),
+          ],
 
           // ── Account ──────────────────────────────────────────────────
           const SizedBox(height: 8),

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/trips/model/trip_model.dart';
 import '../../features/houses/providers/house_provider.dart';
 import '../theme/app_spacing.dart';
+import 'ds_badge.dart';
+
 
 /// Badge informativi per un viaggio (date, destinazione, bagagli).
 ///
@@ -60,30 +62,26 @@ class TripInfoBadges extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
     final formattedDates = _formatTripDates();
     final destinationName = _getDestinationName(ref);
 
     final List<Widget> badges = [
       if (formattedDates.isNotEmpty)
-        _Badge(
+        DsInfoBadge(
           icon: Icons.calendar_today_outlined,
-          text: formattedDates,
-          colorScheme: colorScheme,
+          label: formattedDates,
         ),
-      _Badge(
+      DsInfoBadge(
         icon: Icons.place,
-        text: destinationName,
-        colorScheme: colorScheme,
+        label: destinationName,
       ),
       if (trip.luggageCount > 0)
-        _Badge(
+        DsInfoBadge(
           icon: Icons.luggage,
-          text: 'common.luggages_count'.tr(args: [
+          label: 'common.luggages_count'.tr(args: [
             trip.luggageCount.toString(),
             trip.totalLuggageVolume.toString(),
           ]),
-          colorScheme: colorScheme,
         ),
     ];
 
@@ -108,48 +106,3 @@ class TripInfoBadges extends ConsumerWidget {
   }
 }
 
-class _Badge extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final ColorScheme colorScheme;
-
-  const _Badge({
-    required this.icon,
-    required this.text,
-    required this.colorScheme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        //color: colorScheme.surfaceContainerLow,
-        borderRadius: context.responsiveBorderRadius(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: context.responsive(16),
-            color: colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: context.fontSizeSm,
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

@@ -380,7 +380,12 @@ class _AiClothingSandboxScreenState
     final housesAsync = ref.watch(houseNotifierProvider);
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        padding: EdgeInsets.fromLTRB(
+          context.spacingMd,
+          context.spacingSm + context.spacingXs,
+          context.spacingMd,
+          context.spacingSm,
+        ),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           border: Border(
@@ -473,7 +478,7 @@ class _EditableResultCard extends StatelessWidget {
         side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.spacingMd),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -701,13 +706,9 @@ class _TagsRow extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   side: BorderSide(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.4),
+                    color: Theme.of(context).colorScheme.outline,
                   ),
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.08),
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                 ),
               )
               .toList(),

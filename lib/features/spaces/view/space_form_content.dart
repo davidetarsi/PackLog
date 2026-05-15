@@ -7,6 +7,7 @@ import '../providers/space_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/ds_icon_picker.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 
 /// Form Content riutilizzabile per space (condiviso tra bottom sheet e full screen)
@@ -201,47 +202,11 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
   }
 
   Widget _buildIconSelector() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Wrap(
-      spacing: context.spacingSm,
-      runSpacing: context.spacingSm,
-      children: SpaceIcons.all.entries.map((entry) {
-        final iconName = entry.key;
-        final iconData = entry.value;
-        final isSelected = _selectedIconName == iconName;
-
-        return InkWell(
-          borderRadius: context.responsiveBorderRadius(8),
-          onTap: () {
-            setState(() {
-              _selectedIconName = isSelected ? null : iconName;
-            });
-          },
-          child: Container(
-            padding: EdgeInsets.all(context.spacingSm),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? colorScheme.primaryContainer
-                  : colorScheme.surface,
-              borderRadius: context.responsiveBorderRadius(8),
-              border: Border.all(
-                color: isSelected
-                    ? colorScheme.primary
-                    : colorScheme.outlineVariant,
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Icon(
-              iconData,
-              size: context.iconSizeMd,
-              color: isSelected
-                  ? colorScheme.onPrimaryContainer
-                  : colorScheme.onSurface,
-            ),
-          ),
-        );
-      }).toList(),
+    return DsIconPicker(
+      icons: SpaceIcons.all,
+      selectedId: _selectedIconName,
+      onSelected: (name) => setState(() => _selectedIconName = name),
+      onDeselected: (_) => setState(() => _selectedIconName = null),
     );
   }
 }

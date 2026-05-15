@@ -17,6 +17,8 @@ import '../../spaces/view/spaces_management_screen.dart';
 import '../../luggages/view/luggages_management_screen.dart';
 import 'add_edit_house_screen.dart';
 import '../../../shared/constants/house_icons.dart';
+import '../../../shared/widgets/ds_contextual_app_bar.dart';
+import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
@@ -287,119 +289,44 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     final selectedIds = selectionState.selectedIds.toList();
     if (selectedIds.isEmpty) return;
 
-    // Lista delle case disponibili come destinazione (esclude quella corrente).
     final allHouses = ref.read(houseNotifierProvider).value ?? [];
-    final otherHouses = allHouses.where((h) => h.id != widget.houseId).toList();
+    final otherHouses =
+        allHouses.where((h) => h.id != widget.houseId).toList();
 
     if (!context.mounted) return;
 
-    final colorScheme = Theme.of(context).colorScheme;
-
-    await showModalBottomSheet<void>(
+    final destination = await DsPickerSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle standard — stessa dimensione di StandardBottomSheetLayout
-                const BottomSheetHandle(),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.spacingMd,
-                    vertical: context.spacingSm,
-                  ),
-                  child: Text(
-                    'items.bulk_move_title'.tr(),
-                    style: Theme.of(sheetContext).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const Divider(height: 1),
-                if (otherHouses.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.all(context.spacingLg),
-                    child: Center(
-                      child: Text(
-                        'items.bulk_move_no_houses'.tr(),
-                        style: Theme.of(sheetContext).textTheme.bodyMedium
-                            ?.copyWith(color: colorScheme.onSurfaceVariant),
-                      ),
-                    ),
-                  )
-                else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: otherHouses.length,
-                    itemBuilder: (_, index) {
-                      final house = otherHouses[index];
-                      return ListTile(
-                        leading: Icon(
-                          HouseIcons.getIcon(house.iconName),
-                          color: colorScheme.primary,
-                        ),
-                        title: Text(house.name),
-                        subtitle: house.isPrimary
-                            ? Text(
-                                'houses.primary'.tr(),
-                                style: TextStyle(
-                                  color: colorScheme.primary,
-                                  fontSize: context.fontSizeXxs,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              )
-                            : null,
-                        onTap: () async {
-                          // Chiudi il bottom sheet prima dell'operazione asincrona
-                          // per evitare che il context del sheet diventi stale.
-                          Navigator.pop(sheetContext);
+      title: 'items.bulk_move_title'.tr(),
+      items: otherHouses,
+      getLabel: (h) => h.name,
+      getSubtitle: (h) => h.isPrimary ? 'houses.primary'.tr() : null,
+      getIcon: (h) => HouseIcons.getIcon(h.iconName),
+    );
 
-                          final destinationName = house.name;
-                          final count = selectedIds.length;
+    if (destination == null || !mounted) return;
 
-                          try {
-                            await ref
-                                .read(
-                                  itemNotifierProvider(widget.houseId).notifier,
-                                )
-                                .bulkMove(selectedIds, house.id);
+    final destinationName = destination.name;
+    final count = selectedIds.length;
 
-                            if (mounted) {
-                              AppSnackBar.showSuccess(
-                                context,
-                                'items.bulk_move_success'.tr(
-                                  args: [count.toString(), destinationName],
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              AppSnackBar.showError(
-                                context,
-                                'errors.save_error'.tr(),
-                              );
-                            }
-                          }
-                        },
-                      );
-                    },
-                  ),
-                const SizedBox(height: 8),
-              ],
-            ),
+    try {
+      await ref
+          .read(itemNotifierProvider(widget.houseId).notifier)
+          .bulkMove(selectedIds, destination.id);
+
+      if (mounted) {
+        AppSnackBar.showSuccess(
+          context,
+          'items.bulk_move_success'.tr(
+            args: [count.toString(), destinationName],
           ),
         );
-      },
-    );
+      }
+    } catch (_) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'errors.save_error'.tr());
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -607,29 +534,20 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         final colorScheme = Theme.of(context).colorScheme;
 
         return StickyCtaScaffold(
-          // AppBar: transizione animata tra modalità normale e selezione.
-          // PreferredSize è obbligatorio perché Scaffold si aspetta un
-          // PreferredSizeWidget; AnimatedSwitcher da solo non lo è.
-          appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(kToolbarHeight),
-            child: AnimatedSwitcher(
-              duration: _kModeSwitchDuration,
-              // Dissolvenza semplice: evita jank da slide su AppBar
-              transitionBuilder: (child, animation) =>
-                  FadeTransition(opacity: animation, child: child),
-              child: isSelectionMode
-                  ? _buildSelectionAppBar(
-                      context,
-                      colorScheme,
-                      selectedCount,
-                      allItemIds,
-                    )
-                  : _buildNormalAppBar(
-                      context,
-                      colorScheme,
-                      house.name,
-                      HouseIcons.getIcon(house.iconName),
-                    ),
+          appBar: DsContextualAppBar(
+            isInSelectionMode: isSelectionMode,
+            switchDuration: _kModeSwitchDuration,
+            normalAppBar: _buildNormalAppBar(
+              context,
+              colorScheme,
+              house.name,
+              HouseIcons.getIcon(house.iconName),
+            ),
+            selectionAppBar: _buildSelectionAppBar(
+              context,
+              colorScheme,
+              selectedCount,
+              allItemIds,
             ),
           ),
           body: ItemsScreen(

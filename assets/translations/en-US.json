@@ -341,6 +341,7 @@
     "retry_message": "Do you want to retry?",
     "invalid_house_id": "Invalid house ID",
     "invalid_trip_id": "Invalid trip ID",
+    "feature_disabled": "This feature is not available in this version.",
     "invalid_list_id": "Invalid list ID",
     "no_trips": "No trips",
     "no_items": "No items to save",

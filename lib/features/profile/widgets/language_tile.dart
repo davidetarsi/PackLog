@@ -38,13 +38,11 @@ class LanguageTile extends StatelessWidget {
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          color: isSelected
-              ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-              : null,
+          color: isSelected ? colorScheme.primaryContainer : null,
         ),
         child: Row(
           children: [
-            Text(flag, style: const TextStyle(fontSize: 32)),
+            Text(flag, style: TextStyle(fontSize: context.fontSizeDisplay)),
             SizedBox(width: context.spacingMd),
             Expanded(
               child: Text(

@@ -14,6 +14,7 @@ class ItemNotifier extends _$ItemNotifier {
   @override
   Future<List<ItemModel>> build(String houseId) async {
     repository = ref.watch(itemRepositoryProvider);
+    ref.watch(syncTriggerProvider);
     final items = await repository!.getItemsByHouseId(houseId);
     return items;
   }

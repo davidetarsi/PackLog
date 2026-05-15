@@ -19,6 +19,7 @@ class TripNotifier extends _$TripNotifier {
   @override
   Future<List<TripModel>> build() async {
     repository = ref.watch(tripRepositoryProvider);
+    ref.watch(syncTriggerProvider);
     final List<TripModel> trips = await repository!.getAllTrips();
 
     // Trasferisce gli item alla casa di destinazione per i viaggi appena

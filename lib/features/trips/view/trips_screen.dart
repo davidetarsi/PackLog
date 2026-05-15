@@ -4,9 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
-import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
-import '../../../shared/widgets/trip_summary_card.dart';
+import '../../../shared/widgets/trip_cards.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
 import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -251,7 +250,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                       children: [
                         ...headerWidgets,
                         if (showNextTripCard) ...[
-                          TripSummaryCard(
+                          TripCardHero(
                             trip: nextTrip,
                             onTap: () =>
                                 context.push('/trips/${nextTrip.id}'),
@@ -264,6 +263,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                           _buildFilterEmptyState(context, colorScheme)
                         else if (tripsForMasonry.isNotEmpty)
                           _TripsMasonry(trips: tripsForMasonry),
+
                       ],
                     ),
                   ),
@@ -320,255 +320,45 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   }
 }
 
-/// Card standard per i viaggi (singola colonna nel masonry)
-class _TripCard extends ConsumerWidget {
-  final TripModel trip;
 
-  const _TripCard({required this.trip});
-
-  static const int _maxPreviewItems = 5;
-
-  Future<void> _onLongPress(BuildContext context, WidgetRef ref) async {
-    final action = await showEntityContextMenu(
-      context: context,
-      entityType: 'common.trip_type'.tr(),
-    );
-    if (action == null || !context.mounted) return;
-
-    switch (action) {
-      case EntityContextMenuAction.copy:
-        await ErrorRetryDialog.executeWithRetry(
-          context: context,
-          operation: () async {
-            await ref.read(tripNotifierProvider.notifier).duplicateTrip(trip.id);
-          },
-          errorTitle: 'common.error'.tr(),
-          errorMessage: 'errors.duplicate_trip_failed'.tr(args: [trip.name]),
-        );
-      case EntityContextMenuAction.delete:
-        final confirmed = await DialogHelpers.showDeleteConfirmation(
-          context: context,
-          itemType: 'common.trip_type'.tr(),
-          itemName: trip.name,
-        );
-        if (confirmed && context.mounted) {
-          await ErrorRetryDialog.executeWithRetry(
-            context: context,
-            operation: () async {
-              await ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id);
-            },
-            errorTitle: 'common.error'.tr(),
-            errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
-          );
-        }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    final itemsToShow = trip.items.length > _maxPreviewItems
-        ? _maxPreviewItems
-        : trip.items.length;
-
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      color: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: context.responsiveBorderRadius(
-          AppConstants.cardBorderRadius,
-        ),
-        side: BorderSide(color: colorScheme.outlineVariant),
-      ),
-      child: InkWell(
-        borderRadius: context.responsiveBorderRadius(
-          AppConstants.cardBorderRadius,
-        ),
-        onTap: () {
-          context.push('/trips/${trip.id}');
-        },
-        onLongPress: () => _onLongPress(context, ref),
-        child: Padding(
-          padding: context.cardPaddingHero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header con titolo e icona salvato
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      trip.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700, // 18px → w700
-                        fontSize: context.fontSizeMd,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (trip.isSaved)
-                    Padding(
-                      padding: EdgeInsets.only(left: context.spacingXs),
-                      child: Icon(
-                        Icons.bookmark,
-                        size: context.iconSizeSm + 2,
-                        color: colorScheme.primary,
-                      ),
-                    ),
-                ],
-              ),
-              if (trip.description != null) ...[
-                SizedBox(height: context.spacingXs),
-                Text(
-                  trip.description!,
-                  style: TextStyle(
-                    fontSize: context.fontSizeXs,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              SizedBox(height: context.spacingSm),
-              // Progress bar
-              if (trip.items.isNotEmpty) ...[
-                LinearProgressIndicator(
-                  value: trip.completionPercentage,
-                  backgroundColor: colorScheme.surfaceContainerHighest,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    trip.completionPercentage == 1.0
-                        ? context.appColors.success
-                        : colorScheme.primary,
-                  ),
-                ),
-                SizedBox(height: context.spacingXs),
-                Text(
-                  '${trip.completedCount}/${trip.totalCount}',
-                  style: TextStyle(
-                    fontSize: context.fontSizeXs + 1,
-                    color: context.textTertiary,
-                  ),
-                ),
-                SizedBox(height: context.spacingSm),
-              ],
-              // Lista items (preview)
-              ...List.generate(itemsToShow, (index) {
-                final item = trip.items[index];
-                return Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: context.spacingXs / 2,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        item.isChecked
-                            ? Icons.check_box
-                            : Icons.check_box_outline_blank,
-                        size: context.iconSizeSm,
-                        color: item.isChecked
-                            ? context.appColors.success
-                            : context.textTertiary,
-                      ),
-                      SizedBox(width: context.spacingXs + 2),
-                      Expanded(
-                        child: Text(
-                          item.name,
-                          style: TextStyle(
-                            fontSize: context.fontSizeXs,
-                            decoration: item.isChecked
-                                ? TextDecoration.lineThrough
-                                : null,
-                            color: item.isChecked
-                                ? colorScheme.onSurface.withValues(alpha: 0.5)
-                                : null,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        'x${item.quantity}',
-                        style: TextStyle(
-                          fontSize: context.fontSizeSm,
-                          fontWeight: FontWeight.w500, // 16px → w500
-                          color: context.textTertiary,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-              if (trip.items.length > _maxPreviewItems)
-                Padding(
-                  padding: EdgeInsets.only(top: context.spacingXs),
-                  child: Text(
-                    'trips.more_items'.tr(
-                      args: [(trip.items.length - _maxPreviewItems).toString()],
-                    ),
-                    style: TextStyle(
-                      fontSize: context.fontSizeXs + 1,
-                      color: context.textTertiary,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+/// Masonry a 2 colonne per le trip card compatte.
+///
+/// Distribuisce le card tra colonne sinistra/destra usando una stima
+/// dell'altezza per bilanciare le colonne. Ogni card usa [TripCardCompact]
+/// (estratto in shared).
 class _TripsMasonry extends StatelessWidget {
   final List<TripModel> trips;
 
   const _TripsMasonry({required this.trips});
 
-  /// Stima l'altezza di una card in base al suo contenuto
   static double _estimateCardHeight(TripModel trip) {
     const maxPreviewItems = 5;
-    double height = 60; // Base: titolo + padding
-
-    if (trip.description != null) {
-      height += 20; // Descrizione
-    }
-
+    double h = 64; // titolo + padding + spacing
+    if (trip.description != null) h += 22;
     if (trip.items.isNotEmpty) {
-      height += 40; // Progress bar + counter + spacing
-      final itemsToShow = trip.items.length > maxPreviewItems
-          ? maxPreviewItems
-          : trip.items.length;
-      height += itemsToShow * 24; // Ogni item ~24px
-
-      if (trip.items.length > maxPreviewItems) {
-        height += 20; // "+N altri"
-      }
+      h += 36; // progress + counter
+      final preview = trip.items.length.clamp(0, maxPreviewItems);
+      h += preview * 26;
+      if (trip.items.length > maxPreviewItems) h += 22;
     }
-
-    return height;
+    return h;
   }
 
   @override
   Widget build(BuildContext context) {
-    final leftColumnTrips = <TripModel>[];
-    final rightColumnTrips = <TripModel>[];
-    double leftColumnHeight = 0;
-    double rightColumnHeight = 0;
+    final left = <TripModel>[];
+    final right = <TripModel>[];
+    double lh = 0;
+    double rh = 0;
 
     for (final trip in trips) {
-      final cardHeight = _estimateCardHeight(trip);
-      if (leftColumnHeight <= rightColumnHeight) {
-        leftColumnTrips.add(trip);
-        leftColumnHeight += cardHeight + AppSpacing.md;
+      final h = _estimateCardHeight(trip) + AppSpacing.md;
+      if (lh <= rh) {
+        left.add(trip);
+        lh += h;
       } else {
-        rightColumnTrips.add(trip);
-        rightColumnHeight += cardHeight + AppSpacing.md;
+        right.add(trip);
+        rh += h;
       }
     }
 
@@ -577,26 +367,22 @@ class _TripsMasonry extends StatelessWidget {
       children: [
         Expanded(
           child: Column(
-            children: leftColumnTrips
-                .map(
-                  (trip) => Padding(
-                    padding: EdgeInsets.only(bottom: context.spacingMd),
-                    child: _TripCard(trip: trip),
-                  ),
-                )
+            children: left
+                .map((t) => Padding(
+                      padding: EdgeInsets.only(bottom: context.spacingMd),
+                      child: TripCardCompact(trip: t),
+                    ))
                 .toList(),
           ),
         ),
         SizedBox(width: context.spacingMd),
         Expanded(
           child: Column(
-            children: rightColumnTrips
-                .map(
-                  (trip) => Padding(
-                    padding: EdgeInsets.only(bottom: context.spacingMd),
-                    child: _TripCard(trip: trip),
-                  ),
-                )
+            children: right
+                .map((t) => Padding(
+                      padding: EdgeInsets.only(bottom: context.spacingMd),
+                      child: TripCardCompact(trip: t),
+                    ))
                 .toList(),
           ),
         ),
