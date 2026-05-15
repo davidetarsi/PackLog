@@ -341,6 +341,7 @@
     "retry_message": "Vuoi riprovare?",
     "invalid_house_id": "ID casa non valido",
     "invalid_trip_id": "ID viaggio non valido",
+    "feature_disabled": "Questa funzionalità non è disponibile in questa versione.",
     "invalid_list_id": "ID lista non valido",
     "no_trips": "Nessun viaggio",
     "no_items": "Nessun oggetto da salvare",

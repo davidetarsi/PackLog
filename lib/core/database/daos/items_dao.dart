@@ -43,6 +43,12 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         .getSingleOrNull();
   }
 
+  /// Ottiene un oggetto per ID indipendentemente dal flag isDeleted.
+  /// Usato dal sync per rilevare record locali prima di insert/update da remoto.
+  Future<Item?> findItemById(String id) {
+    return (select(items)..where((i) => i.id.equals(id))).getSingleOrNull();
+  }
+
   /// Inserisce un nuovo oggetto
   Future<int> insertItem(ItemsCompanion item) {
     return into(items).insert(item);

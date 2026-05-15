@@ -14,6 +14,7 @@ class HouseNotifier extends _$HouseNotifier {
   @override
   Future<List<HouseModel>> build() async {
     repository = ref.watch(houseRepositoryProvider);
+    ref.watch(syncTriggerProvider);
     final houses = await repository!.getAllHouses();
     return houses;
   }

@@ -50,6 +50,197 @@ class SyncService {
     }
   }
 
+  /// Scarica tutti i record dell'utente da Supabase e li applica localmente.
+  ///
+  /// Eseguito ad ogni avvio (via [SyncOrchestrator.requestFullPull]).
+  /// Conflict resolution: remote wins solo se [remote.updatedAt > local.updatedAt].
+  /// Record locali più nuovi (pendingSync) vengono lasciati intatti; [processQueue]
+  /// li propagherà al cloud al prossimo giro.
+  ///
+  /// Ordine FK-safe: case → items → viaggi.
+  Future<void> fullPull(String userId) async {
+    debugPrint('[SyncService] fullPull: avvio per userId=$userId');
+
+    try {
+      final results = await Future.wait([
+        _remote.fetchAllHousesByUserId(userId),
+        _remote.fetchAllItemsByUserId(userId),
+        _remote.fetchAllTripsByUserId(userId),
+      ]);
+
+      final remoteHouses = results[0];
+      final remoteItems = results[1];
+      final remoteTrips = results[2];
+      final now = DateTime.now();
+      int inserted = 0, updated = 0, skipped = 0;
+
+      for (final r in remoteHouses) {
+        final id = r['id'] as String;
+        final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+        final local = await _housesDao.findHouseById(id);
+        if (local == null) {
+          await _housesDao.insertHouse(_buildHouseCompanion(r, syncedAt: now));
+          inserted++;
+        } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+          await _housesDao.updateHouse(_buildHouseCompanion(r, syncedAt: now));
+          updated++;
+        } else {
+          skipped++;
+        }
+      }
+
+      for (final r in remoteItems) {
+        final id = r['id'] as String;
+        final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+        try {
+          final local = await _itemsDao.findItemById(id);
+          if (local == null) {
+            await _itemsDao.insertItem(_buildItemCompanion(r, syncedAt: now));
+            inserted++;
+          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            await _itemsDao.updateItem(_buildItemCompanion(r, syncedAt: now));
+            updated++;
+          } else {
+            skipped++;
+          }
+        } catch (e) {
+          // FK violation: la casa di questo item non è ancora locale (es. is_deleted=true
+          // su Supabase). L'item verrà recuperato al prossimo fullPull una volta che
+          // la casa viene ripristinata, oppure ignorato se la casa è definitivamente cancellata.
+          debugPrint('[SyncService] fullPull: skip item $id — ${e.runtimeType}');
+        }
+      }
+
+      for (final r in remoteTrips) {
+        final id = r['id'] as String;
+        final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+        final local = await _tripsDao.findTripById(id);
+        if (local == null) {
+          await _tripsDao.insertTrip(_buildTripCompanion(r, syncedAt: now));
+          inserted++;
+        } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+          await _tripsDao.updateTrip(_buildTripCompanion(r, syncedAt: now));
+          updated++;
+        } else {
+          skipped++;
+        }
+      }
+
+      _monitoring.logBreadcrumb(
+        'fullPull: $inserted inseriti, $updated aggiornati, $skipped invariati',
+        category: 'sync',
+        data: {
+          'inserted': inserted,
+          'updated': updated,
+          'skipped': skipped,
+          'remote_houses': remoteHouses.length,
+          'remote_items': remoteItems.length,
+          'remote_trips': remoteTrips.length,
+        },
+      );
+      debugPrint(
+        '[SyncService] fullPull completato: $inserted inseriti, $updated aggiornati, $skipped invariati',
+      );
+    } catch (e, st) {
+      debugPrint('[SyncService] fullPull fallita: $e');
+      Sentry.captureException(e, stackTrace: st);
+      rethrow;
+    }
+  }
+
+  // === COMPANION BUILDERS (remote JSON → Drift companion) ===
+
+  HousesCompanion _buildHouseCompanion(
+    Map<String, dynamic> r, {
+    required DateTime syncedAt,
+  }) {
+    return HousesCompanion(
+      id: Value(r['id'] as String),
+      userId: Value(r['user_id'] as String?),
+      name: Value(r['name'] as String),
+      description: Value(r['description'] as String?),
+      locationPlaceId: Value(r['location_place_id'] as String?),
+      locationDisplayName: Value(r['location_display_name'] as String?),
+      locationName: Value(r['location_name'] as String?),
+      locationCity: Value(r['location_city'] as String?),
+      locationState: Value(r['location_state'] as String?),
+      locationCountry: Value(r['location_country'] as String?),
+      locationType: Value(_parseLocationType(r['location_type'])),
+      locationLat: Value(r['location_lat'] as double?),
+      locationLon: Value(r['location_lon'] as double?),
+      iconName: Value(r['icon_name'] as String? ?? 'home'),
+      isPrimary: Value(r['is_primary'] as bool? ?? false),
+      createdAt: Value(DateTime.parse(r['created_at'] as String)),
+      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
+      isDeleted: const Value(false),
+      lastSyncedAt: Value(syncedAt),
+      syncStatus: const Value(SyncStatus.synced),
+      syncRetryCount: const Value(0),
+      lastSyncError: const Value(null),
+      nextSyncAttemptAt: const Value(null),
+      sentryTraceId: const Value(null),
+    );
+  }
+
+  ItemsCompanion _buildItemCompanion(
+    Map<String, dynamic> r, {
+    required DateTime syncedAt,
+  }) {
+    return ItemsCompanion(
+      id: Value(r['id'] as String),
+      userId: Value(r['user_id'] as String?),
+      houseId: Value(r['house_id'] as String),
+      name: Value(r['name'] as String),
+      category: Value(_parseItemCategory(r['category'] as String)),
+      description: Value(r['description'] as String?),
+      quantity: Value(r['quantity'] as int?),
+      spaceId: Value(r['space_id'] as String?),
+      createdAt: Value(DateTime.parse(r['created_at'] as String)),
+      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
+      isDeleted: const Value(false),
+      lastSyncedAt: Value(syncedAt),
+      syncStatus: const Value(SyncStatus.synced),
+      syncRetryCount: const Value(0),
+      lastSyncError: const Value(null),
+      nextSyncAttemptAt: const Value(null),
+      sentryTraceId: const Value(null),
+    );
+  }
+
+  TripsCompanion _buildTripCompanion(
+    Map<String, dynamic> r, {
+    required DateTime syncedAt,
+  }) {
+    return TripsCompanion(
+      id: Value(r['id'] as String),
+      userId: Value(r['user_id'] as String?),
+      name: Value(r['name'] as String),
+      description: Value(r['description'] as String?),
+      departureDateTime: Value(_parseNullableDateTime(r['departure_date_time'])),
+      returnDateTime: Value(_parseNullableDateTime(r['return_date_time'])),
+      destinationHouseId: Value(r['destination_house_id'] as String?),
+      locationPlaceId: Value(r['location_place_id'] as String?),
+      locationDisplayName: Value(r['location_display_name'] as String?),
+      locationName: Value(r['location_name'] as String?),
+      locationCity: Value(r['location_city'] as String?),
+      locationState: Value(r['location_state'] as String?),
+      locationCountry: Value(r['location_country'] as String?),
+      locationType: Value(_parseLocationType(r['location_type'])),
+      locationLat: Value(r['location_lat'] as double?),
+      locationLon: Value(r['location_lon'] as double?),
+      isSaved: Value(r['is_saved'] as bool? ?? false),
+      createdAt: Value(DateTime.parse(r['created_at'] as String)),
+      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
+      isDeleted: const Value(false),
+      lastSyncedAt: Value(syncedAt),
+      syncStatus: const Value(SyncStatus.synced),
+      syncRetryCount: const Value(0),
+      lastSyncError: const Value(null),
+      nextSyncAttemptAt: const Value(null),
+      sentryTraceId: const Value(null),
+    );
+  }
+
   /// FK-safe order: houses → items → trips (create/update).
   /// Purge order is reversed: items/trips first, houses last (FK safety).
   Future<void> processQueue() async {

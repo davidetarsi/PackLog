@@ -28,6 +28,12 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
         .getSingleOrNull();
   }
 
+  /// Ottiene una casa per ID indipendentemente dal flag isDeleted.
+  /// Usato dal sync per rilevare record locali prima di insert/update da remoto.
+  Future<House?> findHouseById(String id) {
+    return (select(houses)..where((h) => h.id.equals(id))).getSingleOrNull();
+  }
+
   /// Inserisce una nuova casa
   Future<int> insertHouse(HousesCompanion house) {
     return into(houses).insert(house);

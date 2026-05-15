@@ -22,6 +22,7 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -90,6 +91,13 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
+    applicationVariants.all {
+    outputs.forEach { output ->
+        (output as com.android.build.gradle.internal.api.BaseVariantOutputImpl)
+            .outputFileName = "PackLog-${flavorName}-${buildType.name}.apk"
+    }
+}
 }
 
 flutter {

@@ -259,7 +259,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
 
     if (_isLoading) {
       return Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.spacingMd),
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),

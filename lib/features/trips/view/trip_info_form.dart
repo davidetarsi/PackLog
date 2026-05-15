@@ -7,6 +7,8 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 
 class TripInfoForm extends ConsumerStatefulWidget {
@@ -108,51 +110,20 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   }
 
   Future<void> _showDestinationHousePicker(List<HouseModel> houses) async {
-    final selected = await showModalBottomSheet<String>(
+    final selected = await DsPickerSheet.show<HouseModel>(
       context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'trips.select_destination_house'.tr(),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ),
-          const Divider(),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: houses.length,
-              itemBuilder: (context, index) {
-                final cs = Theme.of(context).colorScheme;
-                final house = houses[index];
-                return ListTile(
-                  leading: Icon(Icons.home_outlined, color: cs.primary),
-                  title: Text(house.name),
-                  subtitle: house.description != null
-                      ? Text(house.description!)
-                      : null,
-                  trailing: _destinationHouseId == house.id
-                      ? Icon(Icons.check, color: cs.primary)
-                      : null,
-                  onTap: () => Navigator.pop(context, house.id),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
+      title: 'trips.select_destination_house'.tr(),
+      items: houses,
+      getLabel: (h) => h.name,
+      getSubtitle: (h) => h.description,
+      getIcon: (_) => Icons.home_outlined,
+      selected: houses.where((h) => h.id == _destinationHouseId).firstOrNull,
     );
 
-    if (selected != null) {
+    if (selected != null && mounted) {
       setState(() {
-        _destinationHouseId = selected.isEmpty ? null : selected;
-        if (_destinationHouseId != null) {
-          _destinationLocation = null;
-        }
+        _destinationHouseId = selected.id;
+        _destinationLocation = null;
       });
       _notifyChanged();
     }
@@ -310,52 +281,29 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
 
         SizedBox(height: context.spacingMd),
 
-        // ── Toggle destinazione (autonomo) ─────────────────────────────
-        SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<bool>(
-            segments: [
-              ButtonSegment(
-                value: false,
-                label: Text('common.destination_other'.tr()),
-                icon: const Icon(Icons.place_outlined, size: 18),
-              ),
-              ButtonSegment(
-                value: true,
-                label: Text('common.destination_house'.tr()),
-                icon: const Icon(Icons.home_outlined, size: 18),
-              ),
-            ],
-            selected: {_useHouseDestination},
-            onSelectionChanged: (selection) {
-              setState(() {
-                _useHouseDestination = selection.first;
-                if (_useHouseDestination) {
-                  _destinationLocation = null;
-                } else {
-                  _destinationHouseId = null;
-                }
-              });
-              _notifyChanged();
-            },
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return colorScheme.primary.withValues(alpha: 0.12); // state layer selected
-                }
-                return Colors.transparent;
-              }),
-              foregroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return colorScheme.primary;
-                }
-                return colorScheme.onSurfaceVariant;
-              }),
-              side: WidgetStateProperty.all(
-                BorderSide(color: colorScheme.outlineVariant),
-              ),
-            ),
-          ),
+        // ── Toggle destinazione — AppPillTab al posto di SegmentedButton ──
+        // AppPillTab è il componente standard dell'app per filtri/toggle.
+        // SegmentedButton era l'unico uso nel codebase (DS §4.8).
+        AppPillTab<bool>(
+          items: const [false, true],
+          selectedItem: _useHouseDestination,
+          getLabel: (v) => v
+              ? 'common.destination_house'.tr()
+              : 'common.destination_other'.tr(),
+          getIcon: (v) => v
+              ? const Icon(Icons.home_outlined, size: 18)
+              : const Icon(Icons.place_outlined, size: 18),
+          onSelected: (v) {
+            setState(() {
+              _useHouseDestination = v;
+              if (_useHouseDestination) {
+                _destinationLocation = null;
+              } else {
+                _destinationHouseId = null;
+              }
+            });
+            _notifyChanged();
+          },
         ),
 
         SizedBox(height: context.spacingSm),

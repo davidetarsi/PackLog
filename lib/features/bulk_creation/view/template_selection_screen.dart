@@ -193,9 +193,7 @@ class _TemplateCard extends StatelessWidget {
               width: isSelected ? 2 : 1,
             ),
             borderRadius: context.responsiveBorderRadius(16),
-            color: isSelected
-                ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-                : Colors.transparent,
+            color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
           ),
           child: Stack(
             children: [

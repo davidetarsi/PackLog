@@ -335,7 +335,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                     style: TextStyle(
                       fontSize: context.fontSizeXs,
                       color: isSelected
-                          ? colorScheme.onPrimaryContainer.withValues(alpha: 0.7)
+                          ? colorScheme.onPrimaryContainer
                           : colorScheme.onSurfaceVariant,
                     ),
                   ),

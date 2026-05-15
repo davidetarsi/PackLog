@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +21,7 @@ import '../../features/ai_input/view/ai_clothing_sandbox_screen.dart';
 import '../../features/bulk_creation/view/house_selection_screen.dart';
 import '../../features/bulk_creation/view/template_selection_screen.dart';
 import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
+import '../../shared/dev/ds_theme_showcase_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 
 part 'app_router.g.dart';
@@ -50,8 +52,14 @@ GoRouter appRouter(Ref ref) {
       final isAuthenticated = authState is Authenticated;
       final isOnLogin = state.matchedLocation == '/login';
 
-      if (!isAuthenticated && !isOnLogin) return '/login';
-      if (isAuthenticated && isOnLogin) return '/';
+      if (!isAuthenticated && !isOnLogin) {
+        debugPrint('[Router] redirect → /login (not authenticated)');
+        return '/login';
+      }
+      if (isAuthenticated && isOnLogin) {
+        debugPrint('[Router] redirect → / (authenticated, leaving login)');
+        return '/';
+      }
 
       return null;
     },
@@ -205,6 +213,15 @@ GoRouter appRouter(Ref ref) {
           return BulkItemListScreen(houseId: houseId);
         },
       ),
+      GoRoute(
+        path: '/dev/ds-showcase',
+        name: 'ds-showcase',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          if (!kDebugMode) return _ErrorScreen(message: 'errors.feature_disabled'.tr());
+          return const DsThemeShowcaseScreen();
+        },
+      ),
     ],
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(title: Text('common.error'.tr())),
@@ -212,7 +229,7 @@ GoRouter appRouter(Ref ref) {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            Icon(Icons.error_outline, size: 64, color: Theme.of(context).colorScheme.error),
             const SizedBox(height: 16),
             Text(
               'common.navigation_error'.tr(args: [state.error.toString()]),
@@ -244,7 +261,7 @@ class _ErrorScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            Icon(Icons.error_outline, size: 64, color: Theme.of(context).colorScheme.error),
             const SizedBox(height: 16),
             Text(
               message,

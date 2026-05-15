@@ -131,7 +131,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(context.spacingMd),
             child: Text(
               'common.select_quantity'.tr(),
               style: Theme.of(context).textTheme.titleLarge,

@@ -7,6 +7,7 @@ import '../providers/house_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/ds_icon_picker.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../shared/model/location_suggestion_model.dart';
@@ -193,46 +194,10 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
             ),
           ),
           const SizedBox(height: 12),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 5,
-              childAspectRatio: 1,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemCount: HouseIcons.all.length,
-            itemBuilder: (context, index) {
-              final iconName = HouseIcons.all.keys.elementAt(index);
-              final iconData = HouseIcons.all[iconName]!;
-              final isSelected = iconName == _selectedIconName;
-
-              return InkWell(
-                onTap: () {
-                  setState(() => _selectedIconName = iconName);
-                },
-                borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey.shade300,
-                      width: isSelected ? 2 : 1,
-                    ),
-                    borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-                  ),
-                  child: Icon(
-                    iconData,
-                    size: 28,
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey.shade700,
-                  ),
-                ),
-              );
-            },
+          DsIconPicker(
+            icons: HouseIcons.all,
+            selectedId: _selectedIconName,
+            onSelected: (name) => setState(() => _selectedIconName = name),
           ),
           if (widget.showButtons) ...[
             const SizedBox(height: 32),

@@ -9,6 +9,7 @@ import '../model/trip_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/quantity_stepper.dart';
 import '../../../shared/widgets/universal_item_tile.dart';
 
 /// Widget riutilizzabile per selezionare gli oggetti da portare in viaggio.
@@ -480,61 +481,20 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               activeColor: colorScheme.primary,
               onChanged: (_) {
                 _updateItemQuantity(
-                  item, 
-                  _selectedHouseId!, 
+                  item,
+                  _selectedHouseId!,
                   isSelected ? 0 : 1,
                 );
               },
             )
-          // Bottoni +/- per quantità multiple
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.remove_circle_outline,
-                    color: selectedQuantity > 0 
-                        ? colorScheme.primary 
-                        : colorScheme.onSurface.withValues(alpha: 0.38),
-                  ),
-                  onPressed: selectedQuantity > 0
-                      ? () => _updateItemQuantity(
-                          item, 
-                          _selectedHouseId!, 
-                          selectedQuantity - 1,
-                        )
-                      : null,
-                ),
-                Container(
-                  width: 40,
-                  alignment: Alignment.center,
-                  child: Text(
-                    '$selectedQuantity',
-                    style: TextStyle(
-                      fontSize: context.fontSizeLg,
-                      fontWeight: FontWeight.w700, // 20px → w700
-                      color: isSelected 
-                          ? colorScheme.primary 
-                          : context.textTertiary,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.add_circle_outline,
-                    color: selectedQuantity < maxQuantity 
-                        ? colorScheme.primary 
-                        : colorScheme.onSurface.withValues(alpha: 0.38),
-                  ),
-                  onPressed: selectedQuantity < maxQuantity
-                      ? () => _updateItemQuantity(
-                          item, 
-                          _selectedHouseId!, 
-                          selectedQuantity + 1,
-                        )
-                      : null,
-                ),
-              ],
+          // QuantityStepper per quantità multiple (accentColor = primary)
+          : QuantityStepper(
+              value: selectedQuantity,
+              minValue: 0,
+              maxValue: maxQuantity,
+              accentColor: isSelected ? colorScheme.primary : null,
+              onChanged: (qty) =>
+                  _updateItemQuantity(item, _selectedHouseId!, qty),
             ),
     );
   }

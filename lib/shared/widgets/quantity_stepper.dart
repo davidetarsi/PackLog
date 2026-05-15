@@ -37,6 +37,9 @@ class QuantityStepper extends StatelessWidget {
   /// Larghezza minima del contenitore del valore (per allineamento)
   final double? minValueWidth;
 
+  /// Colore accent per icone e testo. Default: `colorScheme.primary`.
+  final Color? accentColor;
+
   const QuantityStepper({
     super.key,
     required this.value,
@@ -46,10 +49,13 @@ class QuantityStepper extends StatelessWidget {
     this.iconSize,
     this.valueTextStyle,
     this.minValueWidth,
+    this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final effectiveAccent = accentColor ?? cs.primary;
     final effectiveIconSize = iconSize ?? context.responsive(24);
     final effectiveMinWidth = minValueWidth ?? context.responsive(32);
 
@@ -60,7 +66,12 @@ class QuantityStepper extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          icon: const Icon(Icons.remove_circle_outline),
+          icon: Icon(
+            Icons.remove_circle_outline,
+            color: canDecrement
+                ? effectiveAccent
+                : cs.onSurface.withValues(alpha: 0.38),
+          ),
           onPressed: canDecrement ? () => onChanged(value - 1) : null,
           iconSize: effectiveIconSize,
           padding: EdgeInsets.zero,
@@ -76,12 +87,18 @@ class QuantityStepper extends StatelessWidget {
             style: valueTextStyle ??
                 Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w500, // titleMedium ≈ 16px → w500
+                      color: effectiveAccent,
                     ),
           ),
         ),
         SizedBox(width: context.spacingXs),
         IconButton(
-          icon: const Icon(Icons.add_circle_outline),
+          icon: Icon(
+            Icons.add_circle_outline,
+            color: canIncrement
+                ? effectiveAccent
+                : cs.onSurface.withValues(alpha: 0.38),
+          ),
           onPressed: canIncrement ? () => onChanged(value + 1) : null,
           iconSize: effectiveIconSize,
           padding: EdgeInsets.zero,

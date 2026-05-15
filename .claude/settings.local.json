@@ -12,7 +12,11 @@
       "Bash(sqlite3 \"/Users/davide/Downloads/pack-log-export-db-08052026-182531.db\" \".schema\")",
       "Bash(sqlite3 \"/Users/davide/Downloads/pack-log-export-db-08052026-182531.db\" \"SELECT * FROM trips WHERE destination_house_id IS NOT NULL;\")",
       "Bash(sqlite3 \"/Users/davide/Downloads/pack-log-export-db-08052026-182531.db\" \"PRAGMA foreign_key_check\\(houses\\);\")",
-      "Bash(sqlite3 \"/Users/davide/Downloads/pack-log-export-db-08052026-182531.db\" \"SELECT count\\(*\\) FROM items; SELECT count\\(*\\) FROM spaces; SELECT count\\(*\\) FROM luggages; SELECT count\\(*\\) FROM trips;\")"
+      "Bash(sqlite3 \"/Users/davide/Downloads/pack-log-export-db-08052026-182531.db\" \"SELECT count\\(*\\) FROM items; SELECT count\\(*\\) FROM spaces; SELECT count\\(*\\) FROM luggages; SELECT count\\(*\\) FROM trips;\")",
+      "Bash(git -C /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2 branch --show-current)",
+      "Bash(git -C /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2 branch -a)",
+      "Bash(git -C /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2 log --oneline feature/wip-refactor-ui..claude/funny-kowalevski-fb5717)",
+      "Bash(git -C /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2 log --oneline feature/wip-refactor-ui..claude/nervous-montalcini-61d0a5)"
     ]
   }
 }

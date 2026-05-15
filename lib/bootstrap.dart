@@ -49,6 +49,7 @@ import 'core/monitoring/app_error_observer.dart';
 import 'core/routing/app_router.dart';
 import 'core/sync/sync_provider.dart';
 import 'shared/config/app_config.dart';
+import 'shared/theme/app_spacing.dart';
 import 'shared/providers/language_locale.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/theme/app_theme.dart';
@@ -70,29 +71,46 @@ late Environment _currentEnvironment;
 /// Sentry è inizializzato senza [appRunner] — gli errori sono comunque
 /// catturati via [FlutterError.onError] e [PlatformDispatcher.onError].
 final appBootstrapProvider = FutureProvider<void>((ref) async {
-  final bool sentryEnabled = AppConfig.sentryDsn.isNotEmpty &&
-      AppConfig.sentryDsn != 'MISSING_SENTRY_DSN';
-
-  final bool amplitudeEnabled = AppConfig.amplitudeApiKey.isNotEmpty &&
-      AppConfig.amplitudeApiKey != 'MISSING_AMPLITUDE_API_KEY';
-
+  // Solo servizi critici per il funzionamento dell'app (local-first).
+  // Supabase serve al sync orchestrator, persistence al DB.
   await Future.wait([
-    if (sentryEnabled) _guardedInit('Sentry', () => SentryFlutter.init((options) {
-      options.dsn = AppConfig.sentryDsn;
-      options.environment = _currentEnvironment.name;
-      options.tracesSampleRate = 1.0;
-    })),
     _guardedInit('Supabase', () => Supabase.initialize(
       url: AppConfig.supabaseUrl,
       anonKey: AppConfig.supabaseAnonKey,
     )),
-    if (amplitudeEnabled)
-      _guardedInit('Amplitude', () => Amplitude.getInstance().init(AppConfig.amplitudeApiKey)),
     _initializePersistence(),
   ]);
 
+  debugPrint('[Bootstrap] Future.wait completato, avvio sync orchestrator...');
   ref.read(syncOrchestratorProvider);
+  debugPrint('[Bootstrap] Sync orchestrator inizializzato');
+
+  // Servizi non critici schedulati sull'event queue — la parte sincrona di
+  // SentryFlutter.init() (native bindings, integrations) blocca il main
+  // thread. Schedulandoli con Future.delayed il provider completa prima,
+  // l'UI renderizza, e solo dopo parte l'init pesante.
+  Future.delayed(Duration.zero, _initNonCriticalServices);
+  debugPrint('[Bootstrap] ✅ appBootstrapProvider completato');
 });
+
+void _initNonCriticalServices() {
+  final bool sentryEnabled = AppConfig.sentryDsn.isNotEmpty &&
+      AppConfig.sentryDsn != 'MISSING_SENTRY_DSN';
+  final bool amplitudeEnabled = AppConfig.amplitudeApiKey.isNotEmpty &&
+      AppConfig.amplitudeApiKey != 'MISSING_AMPLITUDE_API_KEY';
+
+  if (sentryEnabled) {
+    _guardedInit('Sentry', () => SentryFlutter.init((options) {
+      options.dsn = AppConfig.sentryDsn;
+      options.environment = _currentEnvironment.name;
+      options.tracesSampleRate = 1.0;
+    }));
+  }
+  if (amplitudeEnabled) {
+    _guardedInit('Amplitude',
+        () => Amplitude.getInstance().init(AppConfig.amplitudeApiKey));
+  }
+}
 
 Future<void> _guardedInit(String name, Future<dynamic> Function() init) async {
   try {
@@ -329,7 +347,7 @@ class MyApp extends ConsumerWidget {
         home: Scaffold(
           body: Center(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Text(
                 'Errore di avvio: $error',
                 textAlign: TextAlign.center,

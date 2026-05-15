@@ -11,6 +11,7 @@ import '../../../shared/theme/theme.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/widgets/ds_badge.dart';
 import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import 'add_edit_house_screen.dart';
@@ -199,9 +200,7 @@ class _HouseCard extends ConsumerWidget {
                       Container(
                         padding: context.cardPaddingDense,
                         decoration: BoxDecoration(
-                          color: house.isPrimary
-                              ? colorScheme.primary.withValues(alpha: 0.1)
-                              : colorScheme.primaryContainer,
+                          color: colorScheme.primaryContainer,
                           borderRadius: context.responsiveBorderRadius(
                             AppConstants.cardBorderRadius,
                           ),
@@ -283,16 +282,16 @@ class _HouseCard extends ConsumerWidget {
                         ),
                         const Spacer(),
                         if (stats.hasItemsInTrip)
-                          _Badge(
+                          DsStatusBadge(
+                            type: DsStatusBadgeType.onTrip,
                             label: 'houses.badge_in_trip'.tr(),
-                            color: colorScheme.primary,
                           ),
                         if (stats.hasItemsInTrip && stats.hasTemporaryItems)
                           const SizedBox(width: 8),
                         if (stats.hasTemporaryItems)
-                          _Badge(
+                          DsStatusBadge(
+                            type: DsStatusBadgeType.temporary,
                             label: 'houses.badge_guest'.tr(),
-                            color: context.appColors.itemTemporary,
                           ),
                       ],
                     ),
@@ -322,36 +321,3 @@ class _HouseCard extends ConsumerWidget {
   }
 }
 
-/// Widget per i badge "In viaggio" e "Ospite"
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _Badge({
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: context.fontSizeXxs,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-}

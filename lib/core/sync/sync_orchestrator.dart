@@ -13,6 +13,10 @@ class SyncOrchestrator with WidgetsBindingObserver {
   bool _isSyncing = false;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
+  /// Chiamato da [sync_provider] dopo ogni fullPull riuscito.
+  /// Usato per notificare i notifier dei dati di rifetchare.
+  void Function()? onFullPullComplete;
+
   SyncOrchestrator(
     this._syncService,
     this._monitoring, {
@@ -49,6 +53,40 @@ class SyncOrchestrator with WidgetsBindingObserver {
   void requestSync() {
     debugPrint('[SyncOrchestrator] requestSync called');
     _attemptSyncIfOnline('local_mutation');
+  }
+
+  /// Scarica tutti i record dell'utente da Supabase al DB locale.
+  /// Chiamato ad ogni avvio quando l'utente risulta autenticato.
+  /// Fire-and-forget: non blocca il chiamante.
+  void requestFullPull(String userId) {
+    _attemptFullPullIfOnline(userId);
+  }
+
+  Future<void> _attemptFullPullIfOnline(String userId) async {
+    final results = await _connectivity.checkConnectivity();
+    if (!_hasNetwork(results)) {
+      debugPrint('[SyncOrchestrator] fullPull: skipped (no network)');
+      return;
+    }
+    if (_isSyncing) {
+      debugPrint('[SyncOrchestrator] fullPull: skipped (already syncing)');
+      return;
+    }
+    _isSyncing = true;
+    _monitoring.logBreadcrumb(
+      'Avvio fullPull. userId: $userId',
+      category: 'sync',
+      data: {'userId': userId},
+    );
+    try {
+      await _syncService.fullPull(userId);
+      onFullPullComplete?.call();
+    } catch (e, st) {
+      debugPrint('[SyncOrchestrator] fullPull failed: $e');
+      debugPrint('[SyncOrchestrator] Stack trace:\n$st');
+    } finally {
+      _isSyncing = false;
+    }
   }
 
   Future<void> _attemptSyncIfOnline(String trigger) async {

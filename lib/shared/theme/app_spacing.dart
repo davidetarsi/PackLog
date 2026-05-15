@@ -27,8 +27,9 @@ class AppSpacing {
   static const double fontMd     = 18;
   static const double fontLg     = 20;
   static const double fontXl     = 22;
-  static const double fontTitle  = 24;
+  static const double fontTitle   = 24;
   static const double fontHeading = 28;
+  static const double fontDisplay = 32; // Display / emoji hero size
 
   // === Padding predefiniti ===
 
@@ -129,6 +130,7 @@ extension ResponsiveSpacing on BuildContext {
   double get fontSizeXl => AppSpacing.fontXl * fontScaleFactor;
   double get fontSizeTitle => AppSpacing.fontTitle * fontScaleFactor;
   double get fontSizeHeading => AppSpacing.fontHeading * fontScaleFactor;
+  double get fontSizeDisplay => AppSpacing.fontDisplay * fontScaleFactor;
 
   // === Padding responsive ===
 

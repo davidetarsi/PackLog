@@ -8,6 +8,19 @@ class SupabaseRepository {
 
   // === HOUSES ===
 
+  Future<List<Map<String, dynamic>>> fetchAllHousesByUserId(String userId) {
+    return _withTrace(
+      null,
+      () async => List<Map<String, dynamic>>.from(
+        await _client
+            .from('houses')
+            .select()
+            .eq('user_id', userId)
+            .eq('is_deleted', false),
+      ),
+    );
+  }
+
   Future<Map<String, dynamic>?> fetchHouseById(
     String id, {
     String? sentryTrace,
@@ -31,6 +44,19 @@ class SupabaseRepository {
 
   // === ITEMS ===
 
+  Future<List<Map<String, dynamic>>> fetchAllItemsByUserId(String userId) {
+    return _withTrace(
+      null,
+      () async => List<Map<String, dynamic>>.from(
+        await _client
+            .from('items')
+            .select()
+            .eq('user_id', userId)
+            .eq('is_deleted', false),
+      ),
+    );
+  }
+
   Future<Map<String, dynamic>?> fetchItemById(
     String id, {
     String? sentryTrace,
@@ -53,6 +79,19 @@ class SupabaseRepository {
   }
 
   // === TRIPS ===
+
+  Future<List<Map<String, dynamic>>> fetchAllTripsByUserId(String userId) {
+    return _withTrace(
+      null,
+      () async => List<Map<String, dynamic>>.from(
+        await _client
+            .from('trips')
+            .select()
+            .eq('user_id', userId)
+            .eq('is_deleted', false),
+      ),
+    );
+  }
 
   Future<Map<String, dynamic>?> fetchTripById(
     String id, {
