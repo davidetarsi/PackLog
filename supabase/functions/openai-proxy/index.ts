@@ -5,13 +5,16 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 // Initialized outside handler for reuse in warm invocations
-const supabaseAdmin = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+if (!supabaseUrl || !serviceKey) {
+  throw new Error("Missing required env vars: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+}
+const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
 function errorResponse(status: number, message: string): Response {
   return new Response(JSON.stringify({ error: message }), {
@@ -35,7 +38,7 @@ Deno.serve(async (req) => {
   const {
     data: { user },
     error: authError,
-  } = await supabaseAdmin.auth.getUser(authHeader.replace("Bearer ", ""));
+  } = await supabaseAdmin.auth.getUser(authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader);
   if (authError || !user) return errorResponse(401, "Invalid token");
 
   // 2. Atomic cap check + increment (TOCTOU-safe via SQL function)
@@ -49,7 +52,8 @@ Deno.serve(async (req) => {
   // 3. Forward to OpenAI with compensating transaction on error
   const apiKey = Deno.env.get("OPENAI_KEY");
   if (!apiKey) {
-    await supabaseAdmin.rpc("decrement_gpt_count", { p_user_id: user.id });
+    const { error: decrementError } = await supabaseAdmin.rpc("decrement_gpt_count", { p_user_id: user.id });
+    if (decrementError) console.error("COUNTER_ROLLBACK_FAILED", { userId: user.id, error: decrementError.message });
     return errorResponse(500, "OPENAI_KEY not configured");
   }
 
@@ -68,7 +72,8 @@ Deno.serve(async (req) => {
     );
 
     if (!response.ok) {
-      await supabaseAdmin.rpc("decrement_gpt_count", { p_user_id: user.id });
+      const { error: decrementError } = await supabaseAdmin.rpc("decrement_gpt_count", { p_user_id: user.id });
+      if (decrementError) console.error("COUNTER_ROLLBACK_FAILED", { userId: user.id, error: decrementError.message });
       const errorText = await response.text();
       return errorResponse(response.status, `OpenAI error: ${errorText}`);
     }
@@ -78,8 +83,10 @@ Deno.serve(async (req) => {
       status: response.status,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
-  } catch (_error) {
-    await supabaseAdmin.rpc("decrement_gpt_count", { p_user_id: user.id });
+  } catch (error) {
+    console.error("OpenAI fetch failed", error);
+    const { error: decrementError } = await supabaseAdmin.rpc("decrement_gpt_count", { p_user_id: user.id });
+    if (decrementError) console.error("COUNTER_ROLLBACK_FAILED", { userId: user.id, error: decrementError.message });
     return errorResponse(500, "Network error communicating with AI provider");
   }
 });
