@@ -6,6 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../shared/theme/app_spacing.dart';
 
+import '../../bootstrap.dart';
+import '../../features/onboarding/providers/onboarding_status_provider.dart';
+import '../../features/onboarding/view/onboarding_screen.dart';
 import '../auth/auth_provider.dart';
 import '../auth/auth_state.dart';
 import '../../features/auth/view/login_screen.dart';
@@ -36,6 +39,9 @@ class _AuthChangeNotifier extends ChangeNotifier {
     ref.listen<AuthState>(authNotifierProvider, (_, _) {
       notifyListeners();
     });
+    ref.listen<AsyncValue<bool>>(onboardingStatusProvider, (_, _) {
+      notifyListeners();
+    });
   }
 }
 
@@ -48,6 +54,20 @@ GoRouter appRouter(Ref ref) {
     initialLocation: '/',
     refreshListenable: authChangeNotifier,
     redirect: (context, state) {
+      // 1. Wait for bootstrap
+      final bootstrapState = ref.read(appBootstrapProvider);
+      if (bootstrapState is! AsyncData) return null;
+
+      // 2. Onboarding check
+      final onboardingState = ref.read(onboardingStatusProvider);
+      final bool onboardingCompleted = onboardingState.valueOrNull ?? false;
+      final bool isOnOnboarding = state.matchedLocation == '/onboarding';
+
+      if (!onboardingCompleted && !isOnOnboarding) return '/onboarding';
+      if (onboardingCompleted && isOnOnboarding) return '/login';
+      if (isOnOnboarding) return null; // in-progress onboarding bypasses auth check
+
+      // 3. Auth check (unchanged)
       final authState = ref.read(authNotifierProvider);
       final isAuthenticated = authState is Authenticated;
       final isOnLogin = state.matchedLocation == '/login';
@@ -64,6 +84,11 @@ GoRouter appRouter(Ref ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/onboarding',
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
       GoRoute(
         path: '/login',
         name: 'login',
@@ -218,7 +243,8 @@ GoRouter appRouter(Ref ref) {
         name: 'ds-showcase',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
-          if (!kDebugMode) return _ErrorScreen(message: 'errors.feature_disabled'.tr());
+          if (!kDebugMode)
+            return _ErrorScreen(message: 'errors.feature_disabled'.tr());
           return const DsThemeShowcaseScreen();
         },
       ),
@@ -229,11 +255,18 @@ GoRouter appRouter(Ref ref) {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Theme.of(context).colorScheme.error),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Theme.of(context).colorScheme.error,
+            ),
             const SizedBox(height: 16),
             Text(
               'common.navigation_error'.tr(args: [state.error.toString()]),
-              style: TextStyle(fontSize: context.fontSizeMd, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: context.fontSizeMd,
+                fontWeight: FontWeight.w700,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -261,11 +294,18 @@ class _ErrorScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Theme.of(context).colorScheme.error),
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Theme.of(context).colorScheme.error,
+            ),
             const SizedBox(height: 16),
             Text(
               message,
-              style: TextStyle(fontSize: context.fontSizeMd, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: context.fontSizeMd,
+                fontWeight: FontWeight.w700,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
