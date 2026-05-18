@@ -163,7 +163,20 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 - `supabaseAdmin` è inizializzato **fuori da `Deno.serve()`** per essere riutilizzato nelle warm invocations (cold start optimization).
 - Il rollback su errore OpenAI è best-effort: se anche il decremento fallisce (es. Supabase temporaneamente irraggiungibile), il contatore rimane sfasato di 1. Limite accettabile dei sistemi distribuiti senza coordinator centralizzato.
-- Il timeout delle Edge Function dipende dal piano Supabase: **2 secondi sul free plan** (insufficiente per GPT-4o Vision), **25 secondi sul Pro**. La funzione usa `await response.text()` (risposta completa, no streaming) — assicurarsi di essere su un piano con timeout adeguato.
+
+### Timeout free plan — approccio test-first
+
+Il limite "2 secondi" del free plan Supabase è **CPU time**, non wall clock. Le Edge Function contano solo cicli di calcolo attivo, non il tempo di attesa I/O. Una chiamata GPT-4o Vision da 10 secondi consuma quasi zero CPU (è puro `await` su rete) — il codice `await response.text()` attuale **potrebbe funzionare correttamente sul free plan**.
+
+**Strategia**: testare il comportamento reale prima di aggiungere complessità. Se le chiamate Vision passano → nessuna modifica. Se la funzione viene killata → adottare streaming (vedi sezione sotto).
+
+### Piano di migrazione a streaming (se necessario)
+
+Se i test rivelano timeout, l'upgrade è:
+
+1. **Edge Function**: setta `stream: true` nel body OpenAI, ritorna un `ReadableStream` che pixa i chunk SSE ricevuti da OpenAI verso il client. La funzione rimane attiva perché scrive dati continuamente → nessun stallo, CPU quasi zero.
+2. **Flutter**: `http.Client` con response streaming (non `functions.invoke()` — il SDK non supporta streaming), JWT iniettato manualmente dall'header `Authorization`. Accumula i chunk SSE e ricostruisce il JSON completo prima del parsing.
+3. **Elaborazione multi-foto**: **sequenziale** (una per volta, in loop) — UX con progresso visibile ("Foto 1/3..."), un solo slot Edge Function alla volta, contatore incrementato step-by-step. Non parallelo: evita 5 invocazioni simultanee e mantiene il flusso prevedibile.
 
 ### `openai-proxy/index.ts` completo
 
@@ -323,5 +336,5 @@ MODIFICA:
   ```
 - **Reset mensile**: lazy, avviene sulla prima chiamata GPT del nuovo mese. Nessun cron.
 - **Rollback che fallisce**: se `decrement_gpt_count` fallisce (Supabase irraggiungibile), il contatore rimane sfasato di +1. Limite noto dei sistemi distribuiti senza saga coordinator — accettabile per questa scala.
-- **Timeout Edge Function**: su free plan (2s) la funzione verrà killata prima che GPT-4o Vision risponda. Richede piano Pro (25s). No streaming — la risposta JSON completa è necessaria prima del parsing.
+- **Timeout Edge Function**: il limite free plan è CPU time (non wall clock) — le chiamate Vision I/O-bound potrebbero funzionare correttamente. Testare prima di aggiungere streaming. Se la funzione viene killata, seguire il piano di migrazione a streaming descritto sopra.
 - **JWT scaduto**: `auth.getUser` ritorna errore → 401. Il SDK Flutter (`supabase_flutter`) gestisce il refresh automaticamente quando si usa `functions.invoke()`.
