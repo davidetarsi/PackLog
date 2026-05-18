@@ -103,6 +103,10 @@ class _AiClothingSandboxScreenState
           }
         });
       }
+    } on GptLimitExceededException catch (e) {
+      if (!mounted) return;
+      setState(() => _errorMessage = e.message);
+      _showErrorSnackBar(e.message);
     } on ClothingAnalysisException catch (e) {
       if (!mounted) return;
       setState(() => _errorMessage = e.message);
@@ -215,7 +219,12 @@ class _AiClothingSandboxScreenState
       body: SafeArea(
         child: SingleChildScrollView(
           // bottom: 100 lascia spazio al FAB (56px) + safe area + respiro
-          padding: EdgeInsets.fromLTRB(context.spacingMd, context.spacingMd, context.spacingMd, 100),
+          padding: EdgeInsets.fromLTRB(
+            context.spacingMd,
+            context.spacingMd,
+            context.spacingMd,
+            100,
+          ),
           child: _buildBody(context),
         ),
       ),
@@ -273,10 +282,7 @@ class _AiClothingSandboxScreenState
         children: [
           SizedBox(
             width: 240,
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 6,
-            ),
+            child: LinearProgressIndicator(value: progress, minHeight: 6),
           ),
           const SizedBox(height: 20),
           Text(
@@ -517,13 +523,17 @@ class _EditableResultCard extends StatelessWidget {
                         vertical: 6,
                       ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.inputBorderRadius,
+                        ),
                         borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.outlineVariant,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.inputBorderRadius,
+                        ),
                         borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.outlineVariant,
                         ),
@@ -708,7 +718,9 @@ class _TagsRow extends StatelessWidget {
                   side: BorderSide(
                     color: Theme.of(context).colorScheme.outline,
                   ),
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
                 ),
               )
               .toList(),
@@ -775,7 +787,10 @@ class _RawJsonDebugPanel extends StatelessWidget {
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         tilePadding: EdgeInsets.zero,
-        leading: const Text('🛠️', style: TextStyle(fontSize: AppSpacing.fontSm)),
+        leading: const Text(
+          '🛠️',
+          style: TextStyle(fontSize: AppSpacing.fontSm),
+        ),
         title: Text(
           'Debug: Raw JSON',
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -787,7 +802,9 @@ class _RawJsonDebugPanel extends StatelessWidget {
             width: double.infinity,
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+              borderRadius: BorderRadius.circular(
+                AppConstants.cardBorderRadius,
+              ),
             ),
             padding: EdgeInsets.all(context.spacingSm),
             child: SelectableText(
@@ -843,4 +860,3 @@ class _ErrorBanner extends StatelessWidget {
     );
   }
 }
-
