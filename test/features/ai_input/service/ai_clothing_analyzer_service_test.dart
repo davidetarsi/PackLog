@@ -22,7 +22,7 @@ AiClothingAnalyzerService _makeService(http.Client mockClient) =>
 
 void main() {
   group('AiClothingAnalyzerService', () {
-    test('throws GptLimitExceededException on HTTP 429', () {
+    test('throws GptLimitExceededException on HTTP 429', () async {
       final service = _makeService(
         MockClient(
           (_) async => http.Response(
@@ -32,34 +32,34 @@ void main() {
         ),
       );
 
-      expect(
-        () => service.processClothingItem(_fakeImageFile()),
+      await expectLater(
+        service.processClothingItem(_fakeImageFile()),
         throwsA(isA<GptLimitExceededException>()),
       );
     });
 
-    test('throws VisionAnalysisException on HTTP 500', () {
+    test('throws VisionAnalysisException on HTTP 500', () async {
       final service = _makeService(
         MockClient(
           (_) async => http.Response('{"error":"internal"}', 500),
         ),
       );
 
-      expect(
-        () => service.processClothingItem(_fakeImageFile()),
+      await expectLater(
+        service.processClothingItem(_fakeImageFile()),
         throwsA(isA<VisionAnalysisException>()),
       );
     });
 
-    test('throws VisionAnalysisException when jwtProvider returns null', () {
+    test('throws VisionAnalysisException when jwtProvider returns null', () async {
       final service = AiClothingAnalyzerService(
         proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
         anonKey: 'fake-anon-key',
         jwtProvider: () => null,
       );
 
-      expect(
-        () => service.processClothingItem(_fakeImageFile()),
+      await expectLater(
+        service.processClothingItem(_fakeImageFile()),
         throwsA(isA<VisionAnalysisException>()),
       );
     });
