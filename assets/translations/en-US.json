@@ -513,5 +513,21 @@
       "kit_primo_soccorso": "First aid kit",
       "bastoncini_trekking": "Trekking poles"
     }
+  },
+  "onboarding": {
+    "next": "Next",
+    "start": "Get started",
+    "houses": {
+      "title": "Your homes",
+      "description": "Organize your belongings across multiple homes. Create spaces within each house to find everything instantly."
+    },
+    "items": {
+      "title": "Add your items",
+      "description": "Quickly add items with rapid fire input, or import directly from a photo using AI."
+    },
+    "trips": {
+      "title": "Your trips",
+      "description": "Create a trip and select the items to bring. During the trip, they're automatically marked as \"travelling\"."
+    }
   }
 }

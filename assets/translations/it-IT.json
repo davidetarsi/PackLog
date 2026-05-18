@@ -513,5 +513,21 @@
       "kit_primo_soccorso": "Kit primo soccorso",
       "bastoncini_trekking": "Bastoncini da trekking"
     }
+  },
+  "onboarding": {
+    "next": "Avanti",
+    "start": "Inizia",
+    "houses": {
+      "title": "Le tue case",
+      "description": "Organizza i tuoi oggetti in più abitazioni. Crea spazi all'interno di ogni casa per trovare tutto al volo."
+    },
+    "items": {
+      "title": "Aggiungi i tuoi oggetti",
+      "description": "Inserisci oggetti velocemente con il rapid fire, oppure importa direttamente da una foto con l'intelligenza artificiale."
+    },
+    "trips": {
+      "title": "I tuoi viaggi",
+      "description": "Crea un viaggio e seleziona gli oggetti da portare. Durante il viaggio li ritrovi automaticamente segnati come \"in viaggio\"."
+    }
   }
 }
