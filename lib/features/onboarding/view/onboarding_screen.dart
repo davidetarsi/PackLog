@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/analytics/analytics_service.dart';
 import '../../../features/onboarding/providers/onboarding_status_provider.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/providers/language_locale.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
@@ -22,8 +23,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _currentPage = 0;
   Locale? _selectedLocale;
   bool _localeApplied = false;
+  bool _isCompleting = false;
 
   static const _pageNames = ['language', 'houses', 'items', 'trips'];
+
+  bool get _isLastPage => _currentPage == _pageNames.length - 1;
 
   bool get _isNextEnabled {
     if (_currentPage == 0) return _selectedLocale != null;
@@ -34,7 +38,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   void initState() {
     super.initState();
     _initDefaultLocale();
-    ref.read(analyticsServiceProvider).logEvent('onboarding_started');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(analyticsServiceProvider).logEvent('onboarding_started');
+      }
+    });
   }
 
   void _initDefaultLocale() {
@@ -57,14 +65,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _onLocaleTapped(Locale locale) async {
-    await context.setLocale(locale);
-    _localeApplied = true;
-    ref.read(languageLocaleProvider.notifier).updateLocale(locale.languageCode);
-    setState(() => _selectedLocale = locale);
-    ref.read(analyticsServiceProvider).logEvent(
-      'onboarding_language_selected',
-      properties: {'language': locale.languageCode},
-    );
+    try {
+      await context.setLocale(locale);
+      _localeApplied = true;
+      ref.read(languageLocaleProvider.notifier).updateLocale(locale.languageCode);
+      setState(() => _selectedLocale = locale);
+      ref.read(analyticsServiceProvider).logEvent(
+        'onboarding_language_selected',
+        properties: {'language': locale.languageCode},
+      );
+    } catch (e) {
+      debugPrint('[OnboardingScreen] Error setting locale: $e');
+      if (mounted) {
+        AppSnackBar.showError(context, 'Impossibile cambiare la lingua. Riprova.');
+      }
+    }
   }
 
   Future<void> _ensureLocaleApplied() async {
@@ -76,8 +91,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _handleNext() async {
     if (_currentPage == 0) {
       await _ensureLocaleApplied();
+      if (!mounted) return;
     }
-    if (_currentPage == 3) {
+    if (_isLastPage) {
       await _handleComplete();
       return;
     }
@@ -88,12 +104,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _handleComplete() async {
-    ref.read(analyticsServiceProvider).logEvent(
-      'onboarding_completed',
-      properties: {'language': _selectedLocale?.languageCode ?? 'unknown'},
-    );
-    await ref.read(onboardingStatusProvider.notifier).markCompleted();
-    // Router redirects automatically via _AuthChangeNotifier
+    if (_isCompleting) return;
+    setState(() => _isCompleting = true);
+    try {
+      ref.read(analyticsServiceProvider).logEvent(
+        'onboarding_completed',
+        properties: {'language': _selectedLocale?.languageCode ?? 'unknown'},
+      );
+      await ref.read(onboardingStatusProvider.notifier).markCompleted();
+      // Router redirects automatically via _AuthChangeNotifier
+    } finally {
+      if (mounted) setState(() => _isCompleting = false);
+    }
   }
 
   @override
@@ -150,10 +172,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
             SizedBox(height: context.spacingMd),
             UniversalActionBar(
-              primaryLabel: _currentPage < 3
+              primaryLabel: !_isLastPage
                   ? 'onboarding.next'.tr()
                   : 'onboarding.start'.tr(),
               onPrimaryPressed: _isNextEnabled ? _handleNext : null,
+              isLoading: _isLastPage && _isCompleting,
             ),
             SizedBox(height: context.spacingMd),
           ],
