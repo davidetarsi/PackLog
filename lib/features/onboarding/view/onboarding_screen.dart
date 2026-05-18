@@ -65,6 +65,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _onLocaleTapped(Locale locale) async {
+    if (_localeApplied && _selectedLocale == locale) return;
     try {
       await context.setLocale(locale);
       _localeApplied = true;
@@ -112,6 +113,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         properties: {'language': _selectedLocale?.languageCode ?? 'unknown'},
       );
       await ref.read(onboardingStatusProvider.notifier).markCompleted();
+      if (mounted && ref.read(onboardingStatusProvider) is AsyncError) {
+        AppSnackBar.showError(context, 'Errore. Riprova.');
+      }
       // Router redirects automatically via _AuthChangeNotifier
     } finally {
       if (mounted) setState(() => _isCompleting = false);
