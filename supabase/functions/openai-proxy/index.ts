@@ -75,7 +75,9 @@ Deno.serve(async (req) => {
       const { error: decrementError } = await supabaseAdmin.rpc("decrement_gpt_count", { p_user_id: user.id });
       if (decrementError) console.error("COUNTER_ROLLBACK_FAILED", { userId: user.id, error: decrementError.message });
       const errorText = await response.text();
-      return errorResponse(response.status, `OpenAI error: ${errorText}`);
+      // Map OpenAI 429 (API rate limit) to 503 to avoid confusion with the user's monthly cap (our 429)
+      const mappedStatus = response.status === 429 ? 503 : response.status;
+      return errorResponse(mappedStatus, `OpenAI error: ${errorText}`);
     }
 
     const data = await response.text();
