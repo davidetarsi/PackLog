@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../model/clothing_analysis_result.dart';
 
@@ -32,6 +33,11 @@ final class ResponseParsingException extends ClothingAnalysisException {
   const ResponseParsingException(super.message);
 }
 
+/// Thrown when the user has reached their monthly GPT usage cap (HTTP 429).
+final class GptLimitExceededException extends ClothingAnalysisException {
+  const GptLimitExceededException(super.message);
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 /// Orchestrates the AI clothing analysis pipeline:
@@ -42,7 +48,7 @@ final class ResponseParsingException extends ClothingAnalysisException {
 class AiClothingAnalyzerService {
   // static const _removeBgEndpoint = 'https://api.remove.bg/v1.0/removebg'; // ← REMOVE.BG DISABILITATO
 
-/* static const _systemPrompt = '''
+  /* static const _systemPrompt = '''
 You are a precise fashion item parser. Analyze the image and identify ALL distinct clothing items currently WORN by the PRIMARY person in the foreground.
 CRITICAL RULES:
 - IGNORE any clothing items in the background (e.g., clothes on beds, chairs, hangers, or worn by other people passing by).
@@ -78,16 +84,21 @@ Each object must have EXACTLY these keys:
   final String _proxyUrl;
   final String _anonKey;
   final http.Client _client;
+  final String? Function() _jwtProvider;
 
   AiClothingAnalyzerService({
     // required String removeBgApiKey, // ← REMOVE.BG DISABILITATO
     required String proxyUrl,
     required String anonKey,
     http.Client? client,
-  })  : // _removeBgApiKey = removeBgApiKey, // ← REMOVE.BG DISABILITATO
-        _proxyUrl = proxyUrl,
-        _anonKey = anonKey,
-        _client = client ?? http.Client();
+    String? Function()? jwtProvider,
+  }) : // _removeBgApiKey = removeBgApiKey, // ← REMOVE.BG DISABILITATO
+       _proxyUrl = proxyUrl,
+       _anonKey = anonKey,
+       _client = client ?? http.Client(),
+       _jwtProvider = jwtProvider ?? (
+           () => Supabase.instance.client.auth.currentSession?.accessToken
+       );
 
   // ── Public orchestrators ──────────────────────────────────────────────────
 
@@ -108,8 +119,10 @@ Each object must have EXACTLY these keys:
   /// e il raw JSON string dalla risposta OpenAI (utile per la sandbox UI).
   ///
   /// Throws a [ClothingAnalysisException] subclass on any failure.
-  Future<({Uint8List processedBytes, List<ClothingItem> result, String rawJson})>
-      processWithIntermediateResult(File imageFile) async {
+  Future<
+    ({Uint8List processedBytes, List<ClothingItem> result, String rawJson})
+  >
+  processWithIntermediateResult(File imageFile) async {
     // REMOVE.BG DISABILITATO: si usano i bytes originali al posto del PNG trasparente
     // final Uint8List processedBytes = await _removeBackground(imageFile);
     // final analyzed = await _analyzeImage(processedBytes);
@@ -161,7 +174,8 @@ Each object must have EXACTLY these keys:
   /// Throws [VisionAnalysisException] on non-2xx response.
   /// Throws [ResponseParsingException] on schema mismatch or malformed JSON.
   Future<({List<ClothingItem> items, String rawJson})> _analyzeImage(
-      Uint8List imageBytes) async {
+    Uint8List imageBytes,
+  ) async {
     final base64Image = base64Encode(imageBytes);
 
     final body = jsonEncode({
@@ -185,18 +199,28 @@ Each object must have EXACTLY these keys:
       ],
     });
 
+    final jwt = _jwtProvider();
+    if (jwt == null || jwt.isEmpty) {
+      throw const VisionAnalysisException('User not authenticated');
+    }
+
     final http.Response response;
     try {
       response = await _client.post(
         Uri.parse(_proxyUrl),
         headers: {
-          'Authorization': 'Bearer $_anonKey',
+          'Authorization': 'Bearer $jwt',
+          'apikey': _anonKey,
           'Content-Type': 'application/json',
         },
         body: body,
       );
     } on Exception catch (e) {
       throw VisionAnalysisException('Network error during vision analysis: $e');
+    }
+
+    if (response.statusCode == 429) {
+      throw const GptLimitExceededException('Hai raggiunto il limite mensile di analisi AI.');
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -215,7 +239,8 @@ Each object must have EXACTLY these keys:
   ///
   /// Throws [ResponseParsingException] on any schema or JSON error.
   ({List<ClothingItem> items, String rawJson}) _parseOpenAiResponse(
-      String responseBody) {
+    String responseBody,
+  ) {
     try {
       final envelope = jsonDecode(responseBody) as Map<String, dynamic>;
       final choices = envelope['choices'] as List<dynamic>;
