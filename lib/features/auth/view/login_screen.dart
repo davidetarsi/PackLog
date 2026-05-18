@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
@@ -17,17 +18,43 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(analyticsServiceProvider).logEvent('login_screen_viewed');
+      }
+    });
+  }
+
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
+    ref.read(analyticsServiceProvider).logEvent(
+      'login_attempted',
+      properties: {'method': 'google'},
+    );
 
     try {
       await ref.read(authRepositoryProvider).signInWithGoogle();
+      ref.read(analyticsServiceProvider).logEvent(
+        'login_completed',
+        properties: {'method': 'google'},
+      );
     } on SignInFailedException catch (e) {
+      ref.read(analyticsServiceProvider).logEvent(
+        'login_failed',
+        properties: {'method': 'google', 'error': e.toString()},
+      );
       if (mounted) {
         AppSnackBar.showError(context, 'login.sign_in_failed'.tr());
         debugPrint('[LoginScreen] Sign-in failed: $e');
       }
     } catch (e) {
+      ref.read(analyticsServiceProvider).logEvent(
+        'login_failed',
+        properties: {'method': 'google', 'error': e.toString()},
+      );
       if (mounted) {
         AppSnackBar.showError(context, 'login.sign_in_failed'.tr());
         debugPrint('[LoginScreen] Unexpected error: $e');
@@ -59,10 +86,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     'assets/icon/app_icon_foreground_clean.png',
                     width: 120,
                     height: 120,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.app_shortcut,
-                      size: 80,
-                    ),
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.app_shortcut, size: 80),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -104,7 +129,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _isLoading
                           ? 'common.loading'.tr()
                           : 'login.sign_in_google'.tr(),
-                      style: TextStyle(fontSize: context.fontSizeSm, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: context.fontSizeSm,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
