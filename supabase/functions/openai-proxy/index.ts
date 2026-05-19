@@ -46,7 +46,10 @@ Deno.serve(async (req) => {
     "increment_gpt_count",
     { p_user_id: user.id, p_now: new Date().toISOString() },
   );
-  if (rpcError) return errorResponse(500, "Usage check failed");
+  if (rpcError) {
+    console.error("increment_gpt_count failed", rpcError.message);
+    return errorResponse(500, "Usage check failed");
+  }
   if (!allowed) return errorResponse(429, "Monthly GPT limit reached");
 
   // 3. Forward to OpenAI with compensating transaction on error

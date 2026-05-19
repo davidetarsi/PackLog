@@ -51,6 +51,19 @@ void main() {
       );
     });
 
+    test('throws VisionAnalysisException on HTTP 503 (OpenAI upstream rate limit)', () async {
+      final service = _makeService(
+        MockClient(
+          (_) async => http.Response('{"error":"Service unavailable"}', 503),
+        ),
+      );
+
+      await expectLater(
+        service.processClothingItem(_fakeImageFile()),
+        throwsA(isA<VisionAnalysisException>()),
+      );
+    });
+
     test('throws VisionAnalysisException when jwtProvider returns null', () async {
       final service = AiClothingAnalyzerService(
         proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
