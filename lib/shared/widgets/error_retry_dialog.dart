@@ -5,12 +5,13 @@ import 'package:flutter/material.dart';
 enum ErrorDialogResult {
   /// L'utente ha scelto di riprovare
   retry,
+
   /// L'utente ha annullato
   cancel,
 }
 
 /// Helper per mostrare dialog di errore con opzione di retry.
-/// 
+///
 /// Uso:
 /// ```dart
 /// final result = await ErrorRetryDialog.show(
@@ -24,7 +25,7 @@ enum ErrorDialogResult {
 /// ```
 class ErrorRetryDialog {
   /// Mostra un dialog di errore con opzione di retry.
-  /// 
+  ///
   /// Ritorna [ErrorDialogResult.retry] se l'utente vuole riprovare,
   /// [ErrorDialogResult.cancel] se annulla.
   static Future<ErrorDialogResult> show({
@@ -48,17 +49,17 @@ class ErrorRetryDialog {
         iconColor: iconColor ?? Theme.of(context).colorScheme.error,
       ),
     );
-    
+
     return result ?? ErrorDialogResult.cancel;
   }
 
   /// Esegue un'operazione con gestione automatica degli errori e retry.
-  /// 
+  ///
   /// Se l'operazione fallisce, mostra un dialog che chiede se riprovare.
   /// Continua a riprovare finché l'utente non annulla o l'operazione ha successo.
-  /// 
+  ///
   /// Ritorna `true` se l'operazione è riuscita, `false` se l'utente ha annullato.
-  /// 
+  ///
   /// Uso:
   /// ```dart
   /// final success = await ErrorRetryDialog.executeWithRetry(
@@ -84,15 +85,15 @@ class ErrorRetryDialog {
         return true;
       } catch (e) {
         debugPrint('[ErrorRetryDialog] Operazione fallita: $e');
-        
+
         if (!context.mounted) return false;
-        
+
         final result = await show(
           context: context,
           title: errorTitle,
           message: '$errorMessage\n\n${'common.retry_question'.tr()}',
         );
-        
+
         if (result == ErrorDialogResult.cancel) {
           return false;
         }
@@ -122,17 +123,10 @@ class _ErrorDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return AlertDialog(
-      icon: Icon(
-        icon,
-        size: 48,
-        color: iconColor,
-      ),
-      title: Text(
-        title ?? 'common.error'.tr(),
-        textAlign: TextAlign.center,
-      ),
+      icon: Icon(icon, size: 48, color: iconColor),
+      title: Text(title ?? 'common.error'.tr(), textAlign: TextAlign.center),
       content: Text(
         message,
         textAlign: TextAlign.center,

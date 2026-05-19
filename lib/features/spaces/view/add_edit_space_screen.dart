@@ -13,10 +13,7 @@ Future<void> showAddEditSpaceSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => AddEditSpaceSheet(
-      houseId: houseId,
-      spaceId: spaceId,
-    ),
+    builder: (context) => AddEditSpaceSheet(houseId: houseId, spaceId: spaceId),
   );
 }
 
@@ -25,11 +22,7 @@ class AddEditSpaceSheet extends StatefulWidget {
   final String houseId;
   final String? spaceId;
 
-  const AddEditSpaceSheet({
-    super.key,
-    required this.houseId,
-    this.spaceId,
-  });
+  const AddEditSpaceSheet({super.key, required this.houseId, this.spaceId});
 
   @override
   State<AddEditSpaceSheet> createState() => _AddEditSpaceSheetState();
@@ -56,7 +49,9 @@ class _AddEditSpaceSheetState extends State<AddEditSpaceSheet> {
       onCancel: () => Navigator.pop(context),
       onSave: _handleSave,
       isLoading: _isLoading,
-      saveLabel: widget.spaceId != null ? 'common.save'.tr() : 'common.create'.tr(),
+      saveLabel: widget.spaceId != null
+          ? 'common.save'.tr()
+          : 'common.create'.tr(),
       child: SpaceFormContent(
         key: _formKey,
         houseId: widget.houseId,
@@ -68,4 +63,3 @@ class _AddEditSpaceSheetState extends State<AddEditSpaceSheet> {
     );
   }
 }
-

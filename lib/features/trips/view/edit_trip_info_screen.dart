@@ -61,7 +61,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
 
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (_name.trim().isEmpty) {
       AppSnackBar.showWarning(context, 'common.required_field_error'.tr());
       return;
@@ -96,7 +96,8 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
 
     final success = await ErrorRetryDialog.executeWithRetry(
       context: context,
-      operation: () => ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip),
+      operation: () =>
+          ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip),
       errorTitle: 'errors.save_error'.tr(),
       errorMessage: 'errors.save_trip_failed'.tr(),
     );
@@ -119,9 +120,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     }
 
     return StickyCtaScaffold(
-      appBar: AppBar(
-        title: Text('trips.edit_info'.tr()),
-      ),
+      appBar: AppBar(title: Text('trips.edit_info'.tr())),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -134,23 +133,24 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
             initialReturnDateTime: _returnDateTime,
             initialDestinationHouseId: _destinationHouseId,
             initialDestinationLocation: _destinationLocation,
-            onChanged: ({
-              name,
-              description,
-              departureDateTime,
-              returnDateTime,
-              destinationHouseId,
-              destinationLocation,
-            }) {
-              setState(() {
-                if (name != null) _name = name;
-                _description = description;
-                _departureDateTime = departureDateTime;
-                _returnDateTime = returnDateTime;
-                _destinationHouseId = destinationHouseId;
-                _destinationLocation = destinationLocation;
-              });
-            },
+            onChanged:
+                ({
+                  name,
+                  description,
+                  departureDateTime,
+                  returnDateTime,
+                  destinationHouseId,
+                  destinationLocation,
+                }) {
+                  setState(() {
+                    if (name != null) _name = name;
+                    _description = description;
+                    _departureDateTime = departureDateTime;
+                    _returnDateTime = returnDateTime;
+                    _destinationHouseId = destinationHouseId;
+                    _destinationLocation = destinationLocation;
+                  });
+                },
           ),
         ),
       ),

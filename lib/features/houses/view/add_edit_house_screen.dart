@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/standard_bottom_sheet_layout.dart';
 import 'house_form_content.dart';
 
@@ -9,6 +10,7 @@ Future<void> showAddEditHouseSheet(BuildContext context, {String? houseId}) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    useRootNavigator: true,
     backgroundColor: Colors.transparent,
     builder: (context) => AddEditHouseSheet(houseId: houseId),
   );
@@ -45,7 +47,9 @@ class _AddEditHouseSheetState extends State<AddEditHouseSheet> {
       onCancel: () => Navigator.pop(context),
       onSave: _handleSave,
       isLoading: _isLoading,
-      saveLabel: widget.houseId != null ? 'common.save'.tr() : 'common.create'.tr(),
+      saveLabel: widget.houseId != null
+          ? 'common.save'.tr()
+          : 'common.create'.tr(),
       child: HouseFormContent(
         key: _formKey,
         houseId: widget.houseId,
@@ -67,15 +71,14 @@ class AddEditHouseScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(houseId != null ? 'houses.edit'.tr() : 'houses.add_new'.tr()),
+        title: Text(
+          houseId != null ? 'houses.edit'.tr() : 'houses.add_new'.tr(),
+        ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.spacingMd),
         children: [
-          HouseFormContent(
-            houseId: houseId,
-            onSaved: () => context.go('/'),
-          ),
+          HouseFormContent(houseId: houseId, onSaved: () => context.go('/')),
         ],
       ),
     );

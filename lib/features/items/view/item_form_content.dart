@@ -17,6 +17,8 @@ import '../../../shared/widgets/error_retry_dialog.dart';
 class ItemFormContent extends ConsumerStatefulWidget {
   final String? houseId;
   final String? itemId;
+  final String? initialName;
+  final ItemCategory? initialCategory;
   final void Function(String itemId, String houseId) onSaved;
   final bool showButtons;
   final ValueChanged<bool>? onLoadingChanged;
@@ -25,6 +27,8 @@ class ItemFormContent extends ConsumerStatefulWidget {
     super.key,
     this.houseId,
     this.itemId,
+    this.initialName,
+    this.initialCategory,
     required this.onSaved,
     this.showButtons = true,
     this.onLoadingChanged,
@@ -82,6 +86,12 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
   void initState() {
     super.initState();
     _selectedHouseId = widget.houseId;
+    if (widget.initialName != null) {
+      _nameController.text = widget.initialName!;
+    }
+    if (widget.initialCategory != null) {
+      _selectedCategory = widget.initialCategory!;
+    }
     if (widget.itemId != null && widget.houseId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadItem();
@@ -121,7 +131,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(context.spacingMd),
             child: Text(
               'common.select_quantity'.tr(),
               style: Theme.of(context).textTheme.titleLarge,
@@ -137,7 +147,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                 return ListTile(
                   title: Text(quantity.toString()),
                   trailing: _selectedQuantity == quantity
-                      ? const Icon(Icons.check, color: AppColors.success)
+                      ? Icon(Icons.check, color: context.appColors.success)
                       : null,
                   onTap: () => Navigator.pop(context, quantity),
                 );
@@ -206,9 +216,13 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
         context: context,
         operation: () async {
           if (isEditing) {
-            await ref.read(itemNotifierProvider(houseId).notifier).updateItem(item);
+            await ref
+                .read(itemNotifierProvider(houseId).notifier)
+                .updateItem(item);
           } else {
-            await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
+            await ref
+                .read(itemNotifierProvider(houseId).notifier)
+                .addItem(item);
           }
         },
         errorTitle: 'errors.save_error'.tr(),
@@ -315,10 +329,8 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
             ],
           ),
           SizedBox(height: context.spacingMd),
-          if (_selectedHouseId != null)
-            _buildSpaceSelector(),
-          if (_selectedHouseId != null)
-            SizedBox(height: context.spacingMd),
+          if (_selectedHouseId != null) _buildSpaceSelector(),
+          if (_selectedHouseId != null) SizedBox(height: context.spacingMd),
           TextFormField(
             controller: _descriptionController,
             decoration: InputDecoration(
@@ -349,7 +361,11 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                       width: context.responsive(20),
                       child: const CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(widget.itemId != null ? 'common.save'.tr() : 'common.create'.tr()),
+                  : Text(
+                      widget.itemId != null
+                          ? 'common.save'.tr()
+                          : 'common.create'.tr(),
+                    ),
             ),
           ],
         ],
@@ -362,21 +378,21 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
       return Container(
         padding: context.responsiveScreenPadding,
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.warning),
+          border: Border.all(color: context.appColors.warning),
           borderRadius: context.responsiveBorderRadius(8),
         ),
         child: Row(
           children: [
             Icon(
               Icons.warning_amber,
-              color: AppColors.warning,
+              color: context.appColors.warning,
               size: context.iconSizeMd,
             ),
             SizedBox(width: context.spacingSm),
             Expanded(
               child: Text(
                 'items.no_houses_available'.tr(),
-                style: TextStyle(color: AppColors.warning),
+                style: TextStyle(color: context.appColors.warning),
               ),
             ),
           ],
@@ -411,7 +427,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                         .name
                   : 'items.select_house_prompt'.tr(),
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: _selectedHouseId == null ? AppColors.disabled : null,
+                color: _selectedHouseId == null ? context.textDisabled : null,
               ),
             ),
             Icon(Icons.arrow_drop_down, size: context.iconSizeMd),
@@ -450,7 +466,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                   trailing: _selectedHouseId == house.id
                       ? Icon(
                           Icons.check,
-                          color: AppColors.success,
+                          color: context.appColors.success,
                           size: itemContext.iconSizeMd,
                         )
                       : null,
@@ -517,7 +533,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
 
   Future<void> _showSpacePicker(List spaces) async {
     const defaultSpaceSentinel = '_default_space_sentinel_';
-    
+
     final selected = await showModalBottomSheet<String?>(
       context: context,
       builder: (sheetContext) => Column(
@@ -537,16 +553,20 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
               children: [
                 // Default space option
                 ListTile(
-                  leading: Icon(Icons.inventory_2, size: sheetContext.iconSizeMd),
+                  leading: Icon(
+                    Icons.inventory_2,
+                    size: sheetContext.iconSizeMd,
+                  ),
                   title: Text('spaces.default'.tr()),
                   trailing: _selectedSpaceId == null
                       ? Icon(
                           Icons.check,
-                          color: AppColors.success,
+                          color: context.appColors.success,
                           size: sheetContext.iconSizeMd,
                         )
                       : null,
-                  onTap: () => Navigator.pop(sheetContext, defaultSpaceSentinel),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, defaultSpaceSentinel),
                 ),
                 // Spaces
                 ...spaces.map((space) {
@@ -561,7 +581,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                     trailing: _selectedSpaceId == space.id
                         ? Icon(
                             Icons.check,
-                            color: AppColors.success,
+                            color: context.appColors.success,
                             size: sheetContext.iconSizeMd,
                           )
                         : null,

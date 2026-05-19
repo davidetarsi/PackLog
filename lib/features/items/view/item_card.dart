@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pack_log/features/items/view/item_category.dart';
 import '../model/item_model.dart';
 import '../providers/item_selection_provider.dart';
 import '../../../shared/widgets/widgets.dart';
@@ -83,15 +82,16 @@ class ItemCard extends ConsumerWidget {
       } else if (item.description != null) {
         subtitle = Text(
           item.description!,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
         );
       }
     }
 
-    // In modalità selezione il leading diventa un Checkbox; altrimenti la categoria.
-    final Widget leading = isSelectionActive
+    // In modalità selezione il leading diventa un Checkbox; altrimenti assente
+    // così il titolo si posiziona automaticamente a sinistra.
+    final Widget? leading = isSelectionActive
         ? Checkbox(
             value: isSelected,
             onChanged: (_) => ref
@@ -100,7 +100,7 @@ class ItemCard extends ConsumerWidget {
             activeColor: colorScheme.primary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           )
-        : CategoryIcon(category: item.category);
+        : null;
 
     // Il colore di sfondo segnala visivamente la selezione.
     final Color? bgColor = isSelected
@@ -112,9 +112,9 @@ class ItemCard extends ConsumerWidget {
       leading: leading,
       title: Text(
         item.name,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w500,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: subtitle,
       trailing: isSelectionActive
@@ -122,36 +122,31 @@ class ItemCard extends ConsumerWidget {
           : Text(
               'x$totalQuantity',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
       // In selection mode: tap tutta la card per selezionare/deselezionare.
-      // In normal mode: tap apre l'edit sheet (disabilitato se tutto in viaggio).
+      // In normal mode: tap apre l'edit sheet.
       onTap: isSelectionActive
           ? () => ref
                 .read(itemSelectionNotifierProvider.notifier)
                 .toggleItem(item.id)
-          : isFullyOnTrip
-              ? null
-              : () => _onEdit(context),
+          : () => showAddEditItemSheet(
+              context,
+              houseId: item.houseId,
+              itemId: item.id,
+            ),
       // Long press attiva la selezione multipla dal primo item premuto.
       // Disabilitato se in selezione o se l'item è in viaggio.
       onLongPress: isSelectionActive || hasAnyOnTrip
           ? null
           : () {
-              ref
-                  .read(itemSelectionNotifierProvider.notifier)
-                  .toggleMode();
+              ref.read(itemSelectionNotifierProvider.notifier).toggleMode();
               ref
                   .read(itemSelectionNotifierProvider.notifier)
                   .toggleItem(item.id);
             },
     );
   }
-
-  void _onEdit(BuildContext context) {
-    showAddEditItemSheet(context, houseId: houseId, itemId: item.id);
-  }
-
 }

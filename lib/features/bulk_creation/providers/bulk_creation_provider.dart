@@ -13,7 +13,7 @@ import '../model/user_gender.dart';
 part 'bulk_creation_provider.g.dart';
 
 /// Notifier per la gestione dello stato della creazione massiva di item.
-/// 
+///
 /// Responsabilità:
 /// - Gestire la selezione di template di viaggio
 /// - Filtrare gli item per genere
@@ -49,16 +49,17 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
   }
 
   /// Rinomina un item esistente.
-  /// 
+  ///
   /// Se l'item è derivato da un template, lo sposta in manualItems
   /// con un nuovo UUID (non più l'ID deterministico del template).
   /// Se è già manuale, lo aggiorna in place.
-  /// 
+  ///
   /// CRITICAL: Preserva l'insertionIndex per mantenere la posizione nella UI.
   void renameItem(String itemId, String newName) {
     // Cerca l'item nei template-derived
-    final templateItemIndex = state.templateDerivedItems
-        .indexWhere((item) => item.id == itemId);
+    final templateItemIndex = state.templateDerivedItems.indexWhere(
+      (item) => item.id == itemId,
+    );
 
     if (templateItemIndex != -1) {
       // Item da template: spostalo in manualItems con nuovo UUID e nome
@@ -70,8 +71,9 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
         // insertionIndex viene preservato automaticamente da copyWith
       );
 
-      final updatedTemplateDerived = List<DraftItem>.from(state.templateDerivedItems)
-        ..removeAt(templateItemIndex);
+      final updatedTemplateDerived = List<DraftItem>.from(
+        state.templateDerivedItems,
+      )..removeAt(templateItemIndex);
 
       final updatedManualItems = List<DraftItem>.from(state.manualItems)
         ..add(updatedItem);
@@ -84,8 +86,9 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
     }
 
     // Cerca l'item nei manual items
-    final manualItemIndex = state.manualItems
-        .indexWhere((item) => item.id == itemId);
+    final manualItemIndex = state.manualItems.indexWhere(
+      (item) => item.id == itemId,
+    );
 
     if (manualItemIndex != -1) {
       // Item manuale: aggiornalo direttamente (mantieni UUID e insertionIndex originali)
@@ -100,15 +103,16 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
   }
 
   /// Modifica la quantità di un item esistente (delta può essere +1 o -1).
-  /// 
+  ///
   /// Garantisce che la quantità non scenda mai sotto 1.
   /// Se l'item è derivato da template, lo sposta in manualItems con nuovo UUID.
-  /// 
+  ///
   /// CRITICAL: Preserva l'insertionIndex per mantenere la posizione nella UI.
   void updateQuantity(String itemId, int delta) {
     // Cerca l'item nei template-derived
-    final templateItemIndex = state.templateDerivedItems
-        .indexWhere((item) => item.id == itemId);
+    final templateItemIndex = state.templateDerivedItems.indexWhere(
+      (item) => item.id == itemId,
+    );
 
     if (templateItemIndex != -1) {
       // Item da template: spostalo in manualItems con nuovo UUID e quantità aggiornata
@@ -121,8 +125,9 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
         // insertionIndex viene preservato automaticamente da copyWith
       );
 
-      final updatedTemplateDerived = List<DraftItem>.from(state.templateDerivedItems)
-        ..removeAt(templateItemIndex);
+      final updatedTemplateDerived = List<DraftItem>.from(
+        state.templateDerivedItems,
+      )..removeAt(templateItemIndex);
 
       final updatedManualItems = List<DraftItem>.from(state.manualItems)
         ..add(updatedItem);
@@ -135,8 +140,9 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
     }
 
     // Cerca l'item nei manual items
-    final manualItemIndex = state.manualItems
-        .indexWhere((item) => item.id == itemId);
+    final manualItemIndex = state.manualItems.indexWhere(
+      (item) => item.id == itemId,
+    );
 
     if (manualItemIndex != -1) {
       // Item manuale: aggiornalo direttamente (mantieni UUID e insertionIndex originali)
@@ -170,22 +176,24 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
   }
 
   /// Aggiunge un item manuale con categoria specificata.
-  /// 
+  ///
   /// L'item viene creato con un nome placeholder "Nuovo oggetto"
   /// e un UUID univoco. Viene aggiunto a manualItems.
-  /// 
+  ///
   /// CRITICAL: Assegna un insertionIndex alla fine della lista corrente
   /// per posizionare il nuovo item dopo tutti gli esistenti.
-  /// 
+  ///
   /// Restituisce l'ID del nuovo item per permettere auto-scroll e auto-focus.
   String addManualItem(ItemCategory category) {
     final newItemId = _uuid.v4();
-    
+
     // Calcola il prossimo insertionIndex: max corrente + 1
     final maxIndex = state.allItems.isEmpty
         ? -1
-        : state.allItems.map((item) => item.insertionIndex).reduce((a, b) => a > b ? a : b);
-    
+        : state.allItems
+              .map((item) => item.insertionIndex)
+              .reduce((a, b) => a > b ? a : b);
+
     final newItem = DraftItem(
       id: newItemId,
       name: 'bulk_creation.new_item'.tr(),
@@ -198,7 +206,7 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
       ..add(newItem);
 
     state = state.copyWith(manualItems: updatedManualItems);
-    
+
     return newItemId;
   }
 
@@ -213,7 +221,7 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
   }
 
   /// Rigenera gli item derivati dai template selezionati.
-  /// 
+  ///
   /// LOGICA CRITICA:
   /// 1. Itera sui template selezionati e filtra per genere
   /// 2. Verifica se l'item esiste già in manualItems (stesso nome normalizzato + categoria)
@@ -222,7 +230,7 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
   /// 3. Merge item duplicati all'interno del merge map (somma quantità)
   /// 4. Assegna ID DETERMINISTICI agli item aggregati (per stabilità Flutter widget keys)
   /// 5. Ordina per categoria e nome
-  /// 
+  ///
   /// PRESERVAZIONE MODIFICHE MANUALI:
   /// - Gli item in `manualItems` NON vengono mai rimossi o rinominati
   /// - Se un template include un item già presente in manualItems (stesso nome + categoria),
@@ -244,7 +252,9 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
 
     // Step 2: Merge item duplicati + Controlla collisioni con manualItems
     final Map<String, _MergeKey> mergeMap = {};
-    final List<DraftItem> updatedManualItems = List<DraftItem>.from(state.manualItems);
+    final List<DraftItem> updatedManualItems = List<DraftItem>.from(
+      state.manualItems,
+    );
 
     for (final templateItem in allTemplateItems) {
       // Usa la chiave i18n come identificatore stabile per il merge/deduplicazione.
@@ -256,7 +266,9 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
 
       // CRITICAL FIX #2: Verifica se questo item esiste già in manualItems
       final manualItemIndex = updatedManualItems.indexWhere(
-        (manual) => manual.normalizedName == normalizedName && manual.category == category,
+        (manual) =>
+            manual.normalizedName == normalizedName &&
+            manual.category == category,
       );
 
       if (manualItemIndex != -1) {
@@ -268,7 +280,7 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
           // insertionIndex viene preservato automaticamente da copyWith
         );
         updatedManualItems[manualItemIndex] = updatedManualItem;
-        
+
         // NON aggiungere questo item a mergeMap (evita duplicati)
         continue;
       }
@@ -279,7 +291,8 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
       if (mergeMap.containsKey(mergeKeyString)) {
         // Item duplicato tra i template: somma la quantità
         mergeMap[mergeKeyString] = mergeMap[mergeKeyString]!.copyWith(
-          quantity: mergeMap[mergeKeyString]!.quantity + templateItem.defaultQuantity,
+          quantity:
+              mergeMap[mergeKeyString]!.quantity + templateItem.defaultQuantity,
         );
       } else {
         // Primo incontro di questo item
@@ -297,23 +310,27 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
     // CRITICAL: Preserva gli insertionIndex esistenti per item già presenti,
     // assegna nuovi index solo per item nuovi
     final existingIndexMap = <String, int>{};
-    
+
     // Mappa gli index degli item template esistenti prima del rebuild
     for (final item in state.templateDerivedItems) {
       existingIndexMap[item.id] = item.insertionIndex;
     }
-    
+
     // Trova il prossimo insertionIndex disponibile
     int nextAvailableIndex = state.allItems.isEmpty
         ? 0
-        : state.allItems.map((i) => i.insertionIndex).reduce((a, b) => a > b ? a : b) + 1;
-    
+        : state.allItems
+                  .map((i) => i.insertionIndex)
+                  .reduce((a, b) => a > b ? a : b) +
+              1;
+
     final List<DraftItem> rebuiltItems = mergeMap.values.map((mergedItem) {
-      final itemId = 'tpl_${mergedItem.category.name}_${mergedItem.normalizedName}';
-      
+      final itemId =
+          'tpl_${mergedItem.category.name}_${mergedItem.normalizedName}';
+
       // Preserva l'index se l'item già esisteva, altrimenti assegna nuovo
       final insertionIndex = existingIndexMap[itemId] ?? nextAvailableIndex++;
-      
+
       return DraftItem(
         id: itemId,
         name: mergedItem.displayName!,
@@ -330,23 +347,24 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
     // Step 5: Aggiorna lo stato con ENTRAMBE le liste
     state = state.copyWith(
       templateDerivedItems: rebuiltItems,
-      manualItems: updatedManualItems, // Aggiornata con le quantità incrementate
+      manualItems:
+          updatedManualItems, // Aggiornata con le quantità incrementate
     );
   }
 
   /// Salva tutti gli item nel database in una singola transazione atomica.
-  /// 
+  ///
   /// Validazione:
   /// - Verifica che targetHouseId sia impostato
   /// - Verifica che ci siano item da salvare
-  /// 
+  ///
   /// Processo:
   /// 1. Genera UUID reali per ogni DraftItem (gli ID deterministici sono solo per UI)
   /// 2. Mappa DraftItem -> ItemModel con houseId e spaceId corretti
   /// 3. Chiama repository.insertMultipleItems() (batch insert atomico)
   /// 4. Invalida i provider degli item per aggiornare la UI
   /// 5. Resetta lo stato del wizard
-  /// 
+  ///
   /// Throws: Exception se targetHouseId è null o se l'inserimento fallisce
   Future<void> saveToDatabase() async {
     // Validazione
@@ -394,7 +412,7 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
 }
 
 /// Chiave per il merge di item duplicati.
-/// 
+///
 /// Due item sono considerati duplicati se hanno:
 /// - Stesso nome normalizzato (lowercase + trim)
 /// - Stessa categoria

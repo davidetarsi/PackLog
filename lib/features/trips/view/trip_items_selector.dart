@@ -9,20 +9,21 @@ import '../model/trip_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/quantity_stepper.dart';
 import '../../../shared/widgets/universal_item_tile.dart';
 
 /// Widget riutilizzabile per selezionare gli oggetti da portare in viaggio.
-/// 
+///
 /// Contiene:
 /// - Filtri per casa e categoria
 /// - Lista oggetti con icona, nome, quantità e bottoni +/-
 class TripItemsSelector extends ConsumerStatefulWidget {
   /// Oggetti già selezionati
   final List<TripItem> selectedItems;
-  
+
   /// Callback quando la selezione cambia
   final void Function(List<TripItem> items) onSelectionChanged;
-  
+
   /// Se true, il widget si adatta al contenuto (per uso in scroll parent)
   final bool shrinkWrap;
 
@@ -42,9 +43,8 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
   ItemCategory? _selectedCategory;
   late List<TripItem> _items;
 
-  // Colore arancione per le icone
-  static const Color _accentColor = Colors.orange;
-  
+  // _accentColor rimosso — usare colorScheme.primary nei build methods.
+
   // Lista di opzioni categoria (include "Tutto" = null)
   static final List<_CategoryFilterOption> _categoryOptions = [
     _CategoryFilterOption('common.all'.tr(), null),
@@ -57,6 +57,22 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
   void initState() {
     super.initState();
     _items = List.from(widget.selectedItems);
+    // Pre-seleziona la casa primaria così la lista è già popolata all'apertura.
+    // Usiamo addPostFrameCallback perché i provider sono accessibili solo
+    // dopo il primo build.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _autoSelectPrimaryHouse(),
+    );
+  }
+
+  void _autoSelectPrimaryHouse() {
+    if (!mounted || _selectedHouseId != null) return;
+    final houses = ref.read(houseNotifierProvider).valueOrNull;
+    if (houses == null) return;
+    final primary = houses.where((h) => h.isPrimary).firstOrNull;
+    if (primary != null) {
+      setState(() => _selectedHouseId = primary.id);
+    }
   }
 
   @override
@@ -72,33 +88,34 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     return selected?.quantity ?? 0;
   }
 
+  /// Raggruppa gli item per categoria rispettando l'ordine canonico
+  /// (vestiti → toiletries → elettronica → varie).
+  /// Le categorie senza item non compaiono.
+  Map<ItemCategory, List<ItemModel>> _groupByCategory(List<ItemModel> items) {
+    final map = <ItemCategory, List<ItemModel>>{};
+    for (final cat in ItemCategory.values) {
+      final grouped = items.where((i) => i.category == cat).toList();
+      if (grouped.isNotEmpty) map[cat] = grouped;
+    }
+    return map;
+  }
+
   void _updateItemQuantity(ItemModel item, String houseId, int newQuantity) {
     setState(() {
       _items.removeWhere((i) => i.id == item.id);
       if (newQuantity > 0) {
-        _items.add(TripItem(
-          id: item.id,
-          name: item.name,
-          category: item.category,
-          quantity: newQuantity,
-          originHouseId: houseId,
-        ));
+        _items.add(
+          TripItem(
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            quantity: newQuantity,
+            originHouseId: houseId,
+          ),
+        );
       }
     });
     widget.onSelectionChanged(_items);
-  }
-
-  IconData _getCategoryIcon(ItemCategory category) {
-    switch (category) {
-      case ItemCategory.vestiti:
-        return Icons.checkroom;
-      case ItemCategory.toiletries:
-        return Icons.shower;
-      case ItemCategory.elettronica:
-        return Icons.devices;
-      case ItemCategory.varie:
-        return Icons.category;
-    }
   }
 
   @override
@@ -124,14 +141,16 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
       children: [
         _buildFilters(context, colorScheme, housesAsync),
         SizedBox(height: context.spacingSm),
-        Expanded(
-          child: _buildItemsList(context, colorScheme),
-        ),
+        Expanded(child: _buildItemsList(context, colorScheme)),
       ],
     );
   }
 
-  Widget _buildFilters(BuildContext context, ColorScheme colorScheme, AsyncValue<List<HouseModel>> housesAsync) {
+  Widget _buildFilters(
+    BuildContext context,
+    ColorScheme colorScheme,
+    AsyncValue<List<HouseModel>> housesAsync,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -140,11 +159,11 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
           'common.select_house'.tr(),
           style: TextStyle(
             fontSize: context.fontSizeSm,
-            color: colorScheme.onSurface.withValues(alpha: 0.7),
+            color: colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w500,
           ),
         ),
-        SizedBox(height: context.spacingXs),
+        SizedBox(height: context.spacingSm),
         SizedBox(
           height: 40,
           child: housesAsync.when(
@@ -154,7 +173,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
                 (h) => h?.id == _selectedHouseId,
                 orElse: () => null,
               );
-              
+
               return AppPillTab<HouseModel>.nullable(
                 items: houses,
                 selectedItem: selectedHouse,
@@ -175,19 +194,19 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             ),
           ),
         ),
-        
+
         SizedBox(height: context.spacingMd),
-        
+
         // Filtro categoria
         Text(
           'common.category'.tr(),
           style: TextStyle(
             fontSize: context.fontSizeSm,
-            color: colorScheme.onSurface.withValues(alpha: 0.7),
+            color: colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w500,
           ),
         ),
-        SizedBox(height: context.spacingXs),
+        SizedBox(height: context.spacingSm),
         SizedBox(
           height: 40,
           child: AppPillTab<_CategoryFilterOption>(
@@ -208,7 +227,6 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     );
   }
 
-
   Widget _buildItemsList(BuildContext context, ColorScheme colorScheme) {
     if (_selectedHouseId == null) {
       return _buildEmptyHouseState(context);
@@ -226,14 +244,24 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
           return _buildEmptyItemsState(context);
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 120), // Spazio per floating bar
+        // Raggruppa per categoria (ordine canonico: vestiti → toiletries → elettronica → varie)
+        final grouped = _groupByCategory(filteredItems);
+
+        // Costruisce la lista piatta con header intercalati
+        final rows = <Widget>[];
+        for (final entry in grouped.entries) {
+          rows.addAll(
+            entry.value.map(
+              (item) => _buildItemCard(context, colorScheme, item),
+            ),
+          );
+          rows.add(SizedBox(height: context.spacingSm));
+        }
+
+        return ListView(
+          padding: const EdgeInsets.only(bottom: 120),
           physics: const AlwaysScrollableScrollPhysics(),
-          itemCount: filteredItems.length,
-          itemBuilder: (context, index) {
-            final item = filteredItems[index];
-            return _buildItemCard(context, colorScheme, item);
-          },
+          children: rows,
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -241,9 +269,11 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     );
   }
 
-  Widget _buildItemsListShrinkWrap(BuildContext context, ColorScheme colorScheme) {
+  Widget _buildItemsListShrinkWrap(
+    BuildContext context,
+    ColorScheme colorScheme,
+  ) {
     if (_selectedHouseId == null) {
-      // In shrinkWrap mode, NO SingleChildScrollView - il parent gestisce lo scroll
       return _buildEmptyHouseStateShrinkWrap(context);
     }
 
@@ -256,17 +286,23 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             : items.where((i) => i.category == _selectedCategory).toList();
 
         if (filteredItems.isEmpty) {
-          // In shrinkWrap mode, NO SingleChildScrollView - il parent gestisce lo scroll
           return _buildEmptyItemsStateShrinkWrap(context);
         }
 
-        // Usa Column invece di ListView per shrinkWrap
+        // Raggruppa per categoria (ordine canonico: vestiti → toiletries → elettronica → varie)
+        final grouped = _groupByCategory(filteredItems);
+
         return Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ...filteredItems.map((item) => 
-              _buildItemCard(context, colorScheme, item)
-            ),
+            for (final entry in grouped.entries) ...[
+              //_buildCategoryHeader(context, entry.key),
+              ...entry.value.map(
+                (item) => _buildItemCard(context, colorScheme, item),
+              ),
+              SizedBox(height: context.spacingSm),
+            ],
           ],
         );
       },
@@ -283,6 +319,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
 
   /// Stato vuoto casa - versione shrinkWrap (NO scroll interno)
   Widget _buildEmptyHouseStateShrinkWrap(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: EdgeInsets.symmetric(vertical: context.spacingLg),
       child: Center(
@@ -293,13 +330,13 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             Icon(
               Icons.home_outlined,
               size: context.iconSizeHero,
-              color: _accentColor.withValues(alpha: 0.5),
+              color: colorScheme.primary.withValues(alpha: 0.5),
             ),
             SizedBox(height: context.spacingMd),
             Text(
               'trips.select_house_to_view_items'.tr(),
               style: TextStyle(
-                color: AppColors.disabled,
+                color: colorScheme.onSurface.withValues(alpha: 0.38),
                 fontSize: context.fontSizeMd,
               ),
               textAlign: TextAlign.center,
@@ -312,6 +349,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
 
   /// Stato vuoto items - versione shrinkWrap (NO scroll interno)
   Widget _buildEmptyItemsStateShrinkWrap(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: EdgeInsets.symmetric(vertical: context.spacingLg),
       child: Center(
@@ -322,15 +360,17 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             Icon(
               Icons.inventory_2_outlined,
               size: context.iconSizeHero,
-              color: _accentColor.withValues(alpha: 0.5),
+              color: colorScheme.primary.withValues(alpha: 0.5),
             ),
             SizedBox(height: context.spacingMd),
             Text(
               _selectedCategory == null
                   ? 'common.no_items_in_house'.tr()
-                  : 'common.no_items_in_category'.tr(namedArgs: {'category': _selectedCategory!.displayName}),
+                  : 'common.no_items_in_category'.tr(
+                      namedArgs: {'category': _selectedCategory!.displayName},
+                    ),
               style: TextStyle(
-                color: AppColors.disabled,
+                color: colorScheme.onSurface.withValues(alpha: 0.38),
                 fontSize: context.fontSizeMd,
               ),
               textAlign: TextAlign.center,
@@ -342,6 +382,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
   }
 
   Widget _buildEmptyHouseState(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 120),
@@ -355,13 +396,13 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               Icon(
                 Icons.home_outlined,
                 size: context.iconSizeHero,
-                color: _accentColor.withValues(alpha: 0.5),
+                color: colorScheme.primary.withValues(alpha: 0.5),
               ),
               SizedBox(height: context.spacingMd),
               Text(
                 'trips.select_house_to_view_items'.tr(),
                 style: TextStyle(
-                  color: AppColors.disabled,
+                  color: colorScheme.onSurface.withValues(alpha: 0.38),
                   fontSize: context.fontSizeMd,
                 ),
                 textAlign: TextAlign.center,
@@ -374,6 +415,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
   }
 
   Widget _buildEmptyItemsState(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 120),
@@ -387,15 +429,17 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               Icon(
                 Icons.inventory_2_outlined,
                 size: context.iconSizeHero,
-                color: _accentColor.withValues(alpha: 0.5),
+                color: colorScheme.primary.withValues(alpha: 0.5),
               ),
               SizedBox(height: context.spacingMd),
               Text(
                 _selectedCategory == null
                     ? 'common.no_items_in_house'.tr()
-                    : 'common.no_items_in_category'.tr(namedArgs: {'category': _selectedCategory!.displayName}),
+                    : 'common.no_items_in_category'.tr(
+                        namedArgs: {'category': _selectedCategory!.displayName},
+                      ),
                 style: TextStyle(
-                  color: AppColors.disabled,
+                  color: colorScheme.onSurface.withValues(alpha: 0.38),
                   fontSize: context.fontSizeMd,
                 ),
                 textAlign: TextAlign.center,
@@ -407,19 +451,23 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     );
   }
 
-  Widget _buildItemCard(BuildContext context, ColorScheme colorScheme, ItemModel item) {
+  Widget _buildItemCard(
+    BuildContext context,
+    ColorScheme colorScheme,
+    ItemModel item,
+  ) {
     final selectedQuantity = _getSelectedQuantity(item.id);
     final maxQuantity = item.quantity ?? 1;
     final isSelected = selectedQuantity > 0;
 
     return UniversalItemTile(
       useListTile: false,
-      backgroundColor: isSelected 
-          ? _accentColor.withValues(alpha: 0.1)
+      backgroundColor: isSelected
+          ? colorScheme.primary.withValues(alpha: 0.08) // state layer hover
           : colorScheme.surface,
-      borderColor: isSelected 
-          ? _accentColor.withValues(alpha: 0.5)
-          : colorScheme.outline.withValues(alpha: 0.2),
+      borderColor: isSelected
+          ? colorScheme.primary.withValues(alpha: 0.5)
+          : colorScheme.outlineVariant,
       borderWidth: isSelected ? 2 : 1,
       contentPadding: EdgeInsets.all(context.spacingSm),
       leading: Container(
@@ -429,87 +477,43 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
           color: colorScheme.surfaceContainerHighest,
           borderRadius: context.responsiveBorderRadius(12),
         ),
-        child: Icon(
-          _getCategoryIcon(item.category),
-          color: _accentColor,
-        ),
+        child: Icon(item.category.icon, color: colorScheme.primary),
       ),
       title: Text(
         item.name,
         style: TextStyle(
           fontSize: context.fontSizeMd,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w700, // 18px → w700
         ),
       ),
       subtitle: Text(
         'common.available_quantity'.tr(args: [maxQuantity.toString()]),
         style: TextStyle(
           fontSize: context.fontSizeSm,
-          color: colorScheme.onSurface.withValues(alpha: 0.6),
+          color: colorScheme.onSurfaceVariant,
         ),
       ),
       trailing: maxQuantity == 1
           // Checkbox per quantità singola
           ? Checkbox(
               value: isSelected,
-              activeColor: _accentColor,
+              activeColor: colorScheme.primary,
               onChanged: (_) {
                 _updateItemQuantity(
-                  item, 
-                  _selectedHouseId!, 
+                  item,
+                  _selectedHouseId!,
                   isSelected ? 0 : 1,
                 );
               },
             )
-          // Bottoni +/- per quantità multiple
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.remove_circle_outline,
-                    color: selectedQuantity > 0 
-                        ? _accentColor 
-                        : colorScheme.onSurface.withValues(alpha: 0.3),
-                  ),
-                  onPressed: selectedQuantity > 0
-                      ? () => _updateItemQuantity(
-                          item, 
-                          _selectedHouseId!, 
-                          selectedQuantity - 1,
-                        )
-                      : null,
-                ),
-                Container(
-                  width: 40,
-                  alignment: Alignment.center,
-                  child: Text(
-                    '$selectedQuantity',
-                    style: TextStyle(
-                      fontSize: context.fontSizeLg,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected 
-                          ? _accentColor 
-                          : colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.add_circle_outline,
-                    color: selectedQuantity < maxQuantity 
-                        ? _accentColor 
-                        : colorScheme.onSurface.withValues(alpha: 0.3),
-                  ),
-                  onPressed: selectedQuantity < maxQuantity
-                      ? () => _updateItemQuantity(
-                          item, 
-                          _selectedHouseId!, 
-                          selectedQuantity + 1,
-                        )
-                      : null,
-                ),
-              ],
+          // QuantityStepper per quantità multiple (accentColor = primary)
+          : QuantityStepper(
+              value: selectedQuantity,
+              minValue: 0,
+              maxValue: maxQuantity,
+              accentColor: isSelected ? colorScheme.primary : null,
+              onChanged: (qty) =>
+                  _updateItemQuantity(item, _selectedHouseId!, qty),
             ),
     );
   }

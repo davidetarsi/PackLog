@@ -18,7 +18,8 @@ class EditTripItemsScreen extends ConsumerStatefulWidget {
   const EditTripItemsScreen({super.key, required this.tripId});
 
   @override
-  ConsumerState<EditTripItemsScreen> createState() => _EditTripItemsScreenState();
+  ConsumerState<EditTripItemsScreen> createState() =>
+      _EditTripItemsScreenState();
 }
 
 class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
@@ -80,7 +81,8 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
 
     final success = await ErrorRetryDialog.executeWithRetry(
       context: context,
-      operation: () => ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip),
+      operation: () =>
+          ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip),
       errorTitle: 'errors.save_error'.tr(),
       errorMessage: 'errors.save_trip_items_failed'.tr(),
     );
@@ -120,7 +122,9 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
                 borderRadius: context.responsiveBorderRadius(12),
               ),
               child: Text(
-                'common.items_count'.tr(args: [_selectedItems.length.toString()]),
+                'common.items_count'.tr(
+                  args: [_selectedItems.length.toString()],
+                ),
                 style: TextStyle(
                   fontSize: context.fontSizeXs,
                   fontWeight: FontWeight.w600,

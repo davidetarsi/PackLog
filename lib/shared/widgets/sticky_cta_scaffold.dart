@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 
 /// Scaffold standardizzato con CTA (Call-To-Action) sticky in basso.
-/// 
+///
 /// Fornisce un layout per wizard e form complessi dove:
 /// - Il body è scrollabile
 /// - Il CTA (bottoni/actions) rimane fisso in basso
@@ -24,7 +24,7 @@ class StickyCtaScaffold extends StatelessWidget {
   /// Se true, aggiunge un'ombra sopra il CTA per separarlo visivamente
   final bool showCtaShadow;
 
-  /// Padding interno del contenitore CTA. 
+  /// Padding interno del contenitore CTA.
   /// Se null, applica il padding standard: top 16, bottom 8, orizzontale 16.
   final EdgeInsetsGeometry? ctaPadding;
 
@@ -44,7 +44,8 @@ class StickyCtaScaffold extends StatelessWidget {
 
     return Scaffold(
       appBar: appBar,
-      body: body, // Il framework calcola in automatico lo spazio per non andare sotto il CTA
+      body:
+          body, // Il framework calcola in automatico lo spazio per non andare sotto il CTA
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: ctaBackgroundColor ?? colorScheme.surface,
@@ -60,12 +61,15 @@ class StickyCtaScaffold extends StatelessWidget {
         ),
         child: SafeArea(
           child: Padding(
-            padding: ctaPadding ?? EdgeInsets.only(
-              left: context.spacingMd,
-              right: context.spacingMd,
-              top: context.spacingMd,
-              bottom: context.spacingSm, // <-- Questo abbassa i bottoni e riduce lo spessore della banda
-            ),
+            padding:
+                ctaPadding ??
+                EdgeInsets.only(
+                  left: context.spacingMd,
+                  right: context.spacingMd,
+                  top: context.spacingMd,
+                  bottom: context
+                      .spacingSm, // <-- Questo abbassa i bottoni e riduce lo spessore della banda
+                ),
             child: bottomContent,
           ),
         ),

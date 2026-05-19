@@ -9,15 +9,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 class BackupConfig {
   /// Numero massimo di backup da mantenere
   final int maxBackups;
-  
+
   /// Intervallo minimo tra backup automatici (in ore)
   final int autoBackupIntervalHours;
 
-  const BackupConfig({
-    this.maxBackups = 5,
-    this.autoBackupIntervalHours = 24,
-  });
-  
+  const BackupConfig({this.maxBackups = 5, this.autoBackupIntervalHours = 24});
+
   static const defaultConfig = BackupConfig();
 }
 
@@ -32,18 +29,20 @@ class BackupInfo {
     required this.createdAt,
     required this.sizeBytes,
   });
-  
+
   String get fileName => p.basename(path);
-  
+
   String get formattedSize {
     if (sizeBytes < 1024) return '$sizeBytes B';
-    if (sizeBytes < 1024 * 1024) return '${(sizeBytes / 1024).toStringAsFixed(1)} KB';
+    if (sizeBytes < 1024 * 1024) {
+      return '${(sizeBytes / 1024).toStringAsFixed(1)} KB';
+    }
     return '${(sizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 }
 
 /// Servizio per la gestione dei backup del database.
-/// 
+///
 /// Fornisce:
 /// - Backup automatici periodici
 /// - Backup manuali
@@ -62,11 +61,11 @@ class BackupService {
   /// Fallback: usato quando la cartella Download pubblica non è scrivibile
   /// (es. Android 11+ senza permessi aggiuntivi).
   static const String _privateBackupFolderName = 'backups';
-  
+
   final BackupConfig _config;
-  
-  BackupService({BackupConfig config = BackupConfig.defaultConfig}) 
-      : _config = config;
+
+  BackupService({BackupConfig config = BackupConfig.defaultConfig})
+    : _config = config;
 
   /// Ritorna il percorso della directory dove vengono salvati i backup automatici.
   ///
@@ -95,7 +94,9 @@ class BackupService {
 
     // Fallback: directory privata dell'app
     final appDir = await getApplicationDocumentsDirectory();
-    final fallbackDir = Directory(p.join(appDir.path, _privateBackupFolderName));
+    final fallbackDir = Directory(
+      p.join(appDir.path, _privateBackupFolderName),
+    );
     if (!await fallbackDir.exists()) {
       await fallbackDir.create(recursive: true);
     }
@@ -126,8 +127,7 @@ class BackupService {
       // Si usa writeAsBytes() con byte reali (non File.create() che crea un
       // file vuoto da 0 byte: alcune ROM Android permettono la creazione di
       // file vuoti ma bloccano le scritture con dati effettivi).
-      final parentTestFile =
-          File(p.join(basePath, '.tmp_backup_write_test'));
+      final parentTestFile = File(p.join(basePath, '.tmp_backup_write_test'));
       try {
         await parentTestFile.writeAsBytes([0x53, 0x51, 0x4C]); // 'SQL'
         await parentTestFile.delete();
@@ -139,15 +139,12 @@ class BackupService {
       }
 
       // STEP 2: Accesso confermato → ora crea/usa la sottocartella.
-      final backupDir =
-          Directory(p.join(basePath, _publicBackupFolderName));
+      final backupDir = Directory(p.join(basePath, _publicBackupFolderName));
       if (!await backupDir.exists()) {
         try {
           await backupDir.create(recursive: true);
         } catch (e) {
-          debugPrint(
-            '[BackupService] ⚠️ Impossibile creare sottocartella: $e',
-          );
+          debugPrint('[BackupService] ⚠️ Impossibile creare sottocartella: $e');
           continue;
         }
       }
@@ -204,14 +201,17 @@ class BackupService {
   Future<String?> createBackup({String? reason}) async {
     try {
       final dbFile = await _getDatabaseFile();
-      
+
       if (!await dbFile.exists()) {
-        debugPrint('[BackupService] Database non trovato, nessun backup creato');
+        debugPrint(
+          '[BackupService] Database non trovato, nessun backup creato',
+        );
         return null;
       }
 
       final backupDir = await _getBackupDirectory();
-      final timestamp = DateTime.now().toIso8601String()
+      final timestamp = DateTime.now()
+          .toIso8601String()
           .replaceAll(':', '-')
           .replaceAll('.', '-');
       final backupPrefix = AppConstants.backupFilePrefix;
@@ -220,7 +220,7 @@ class BackupService {
 
       // Copia il database
       await dbFile.copy(backupPath);
-      
+
       // Verifica che il backup sia stato creato correttamente
       final backupFile = File(backupPath);
       if (!await backupFile.exists()) {
@@ -248,13 +248,13 @@ class BackupService {
   }
 
   /// Crea un backup automatico se necessario.
-  /// 
+  ///
   /// Controlla se è passato abbastanza tempo dall'ultimo backup.
   Future<bool> createAutoBackupIfNeeded() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final lastBackup = prefs.getInt(_lastBackupKey);
-      
+
       if (lastBackup == null) {
         // Nessun backup precedente, creane uno
         final result = await createBackup(reason: 'Primo backup automatico');
@@ -262,10 +262,14 @@ class BackupService {
       }
 
       final lastBackupTime = DateTime.fromMillisecondsSinceEpoch(lastBackup);
-      final hoursSinceLastBackup = DateTime.now().difference(lastBackupTime).inHours;
+      final hoursSinceLastBackup = DateTime.now()
+          .difference(lastBackupTime)
+          .inHours;
 
       if (hoursSinceLastBackup >= _config.autoBackupIntervalHours) {
-        final result = await createBackup(reason: 'Backup automatico periodico');
+        final result = await createBackup(
+          reason: 'Backup automatico periodico',
+        );
         return result != null;
       }
 
@@ -291,19 +295,21 @@ class BackupService {
           .toList();
 
       final backups = <BackupInfo>[];
-      
+
       for (final file in files) {
         final stat = await file.stat();
-        backups.add(BackupInfo(
-          path: file.path,
-          createdAt: stat.modified,
-          sizeBytes: stat.size,
-        ));
+        backups.add(
+          BackupInfo(
+            path: file.path,
+            createdAt: stat.modified,
+            sizeBytes: stat.size,
+          ),
+        );
       }
 
       // Ordina per data (più recente prima)
       backups.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      
+
       return backups;
     } catch (e) {
       debugPrint('[BackupService] Errore ottenendo lista backup: $e');
@@ -312,13 +318,13 @@ class BackupService {
   }
 
   /// Ripristina il database da un backup.
-  /// 
+  ///
   /// **ATTENZIONE**: Questa operazione sovrascrive il database corrente!
   /// L'app deve essere riavviata dopo il ripristino.
   Future<bool> restoreFromBackup(String backupPath) async {
     try {
       final backupFile = File(backupPath);
-      
+
       if (!await backupFile.exists()) {
         debugPrint('[BackupService] Backup non trovato: $backupPath');
         return false;
@@ -328,7 +334,7 @@ class BackupService {
       await createBackup(reason: 'Pre-ripristino');
 
       final dbFile = await _getDatabaseFile();
-      
+
       // Copia il backup sul database principale
       await backupFile.copy(dbFile.path);
 
@@ -344,14 +350,14 @@ class BackupService {
   Future<void> _cleanOldBackups() async {
     try {
       final backups = await getAvailableBackups();
-      
+
       if (backups.length <= _config.maxBackups) {
         return;
       }
 
       // Elimina i backup più vecchi
       final toDelete = backups.skip(_config.maxBackups);
-      
+
       for (final backup in toDelete) {
         try {
           await File(backup.path).delete();
@@ -369,7 +375,7 @@ class BackupService {
   Future<void> deleteAllBackups() async {
     try {
       final backupDir = await _getBackupDirectory();
-      
+
       if (await backupDir.exists()) {
         await backupDir.delete(recursive: true);
         debugPrint('[BackupService] Tutti i backup eliminati');
@@ -383,7 +389,7 @@ class BackupService {
   Future<bool> verifyBackup(String backupPath) async {
     try {
       final backupFile = File(backupPath);
-      
+
       if (!await backupFile.exists()) {
         return false;
       }
@@ -397,7 +403,7 @@ class BackupService {
       // Verifica che sia un database SQLite valido (magic bytes)
       final bytes = await backupFile.openRead(0, 16).first;
       final header = String.fromCharCodes(bytes.take(6));
-      
+
       return header == 'SQLite';
     } catch (e) {
       debugPrint('[BackupService] Errore verificando backup: $e');

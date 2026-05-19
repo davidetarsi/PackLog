@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/app_spacing.dart';
 
 /// Tile selezionabile per la scelta della lingua nella dialog di lingua.
 ///
@@ -28,35 +29,33 @@ class LanguageTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.spacingMd),
         decoration: BoxDecoration(
           border: Border.all(
             color: isSelected
                 ? colorScheme.primary
-                : colorScheme.outline.withValues(alpha: 0.3),
+                : colorScheme.outlineVariant,
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          color: isSelected
-              ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-              : null,
+          color: isSelected ? colorScheme.primaryContainer : null,
         ),
         child: Row(
           children: [
-            Text(flag, style: const TextStyle(fontSize: 32)),
-            const SizedBox(width: 16),
+            Text(flag, style: TextStyle(fontSize: context.fontSizeDisplay)),
+            SizedBox(width: context.spacingMd),
             Expanded(
               child: Text(
                 title,
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: context.fontSizeSm,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected ? colorScheme.primary : null,
                 ),
               ),
             ),
-            if (isSelected) Icon(Icons.check_circle, color: colorScheme.primary),
+            if (isSelected)
+              Icon(Icons.check_circle, color: colorScheme.primary),
           ],
         ),
       ),

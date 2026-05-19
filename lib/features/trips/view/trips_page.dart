@@ -6,9 +6,6 @@ class TripsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: SafeArea(child: TripsScreen()),
-    );
+    return const Scaffold(body: SafeArea(child: TripsScreen()));
   }
 }
-

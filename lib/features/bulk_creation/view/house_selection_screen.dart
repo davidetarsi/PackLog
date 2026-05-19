@@ -91,10 +91,7 @@ class _HouseCard extends StatelessWidget {
         child: Container(
           padding: EdgeInsets.all(context.spacingMd),
           decoration: BoxDecoration(
-            border: Border.all(
-              color: colorScheme.outlineVariant,
-              width: 1,
-            ),
+            border: Border.all(color: colorScheme.outlineVariant, width: 1),
             borderRadius: context.responsiveBorderRadius(12),
           ),
           child: Row(

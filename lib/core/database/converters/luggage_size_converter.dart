@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import '../../../features/luggages/model/luggage_model.dart';
 
 /// Converter per serializzare LuggageSize enum nel database SQLite.
-/// 
+///
 /// Converte:
 /// - LuggageSize.smallBackpack → 'small_backpack'
 /// - LuggageSize.cabinBaggage → 'cabin_baggage'

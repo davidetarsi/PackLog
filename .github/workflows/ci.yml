@@ -1,0 +1,42 @@
+name: 🛡️ Continuous Integration
+
+on:
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  lint-and-test:
+    name: Lint & Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true # Caching vitale per ridurre i tempi di build!
+
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      - name: ⚙️ Generate Code (Freezed, Drift, Riverpod)
+        # Il flag -d (delete-conflicting-outputs) è vitale in CI per 
+        # evitare blocchi se ci sono rimasugli di cache
+        run: dart run build_runner build -d
+
+      # ... poi prosegui con flutter analyze o flutter build ...
+
+      - name: 🔍 Analyze Code
+        run: flutter analyze
+
+      - name: 🧪 Run Unit Tests
+        run: flutter test

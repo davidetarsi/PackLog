@@ -3,17 +3,17 @@ import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 
 /// Universal layout engine per tutte le tile di oggetti nell'app.
-/// 
+///
 /// Questo widget fornisce un layout unificato e riutilizzabile per:
 /// - `ItemCard` (casa): icon categoria + nome + badge + quantity
 /// - `InTransitItemCard` (in transito): background speciale + shipping info
 /// - `BulkItemRow` (bulk creation): TextField inline + stepper + delete
 /// - Trip item selector: icon + nome + checkbox/stepper
-/// 
+///
 /// **Pattern**: Composition over Inheritance (Wrapper Pattern)
 /// Le card specifiche wrappano questo widget, passando la loro logica
 /// nei vari slot, preservando il loro stato e comportamento.
-/// 
+///
 /// Esempio:
 /// ```dart
 /// UniversalItemTile(
@@ -96,14 +96,15 @@ class UniversalItemTile extends StatelessWidget {
       color: backgroundColor,
       shape: borderColor != null
           ? RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-              side: BorderSide(
-                color: borderColor!,
-                width: borderWidth ?? 1.0,
+              borderRadius: BorderRadius.circular(
+                AppConstants.cardBorderRadius,
               ),
+              side: BorderSide(color: borderColor!, width: borderWidth ?? 1.0),
             )
           : RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+              borderRadius: BorderRadius.circular(
+                AppConstants.cardBorderRadius,
+              ),
             ),
       child: cardChild,
     );
@@ -138,17 +139,20 @@ class UniversalItemTile extends StatelessWidget {
       title: title,
       subtitle: subtitle,
       trailing: trailing,
-      contentPadding: contentPadding,
+      contentPadding:
+          contentPadding ??
+          EdgeInsets.symmetric(horizontal: context.spacingMd, vertical: 0),
     );
   }
 
   /// Layout personalizzato usando Row (BulkItemRow, TripItemSelector)
   Widget _buildCustomRowLayout(BuildContext context) {
     return Padding(
-      padding: contentPadding ??
+      padding:
+          contentPadding ??
           EdgeInsets.symmetric(
             horizontal: context.spacingMd,
-            vertical: context.spacingSm,
+            vertical: context.spacingXs,
           ),
       child: Row(
         children: [

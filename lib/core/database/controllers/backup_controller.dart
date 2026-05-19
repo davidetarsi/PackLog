@@ -5,12 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:pack_log/features/houses/providers/house_provider.dart';
-import 'package:pack_log/features/houses/providers/house_stats_provider.dart';
-import 'package:pack_log/features/items/providers/item_provider.dart';
-import 'package:pack_log/features/trips/providers/trip_provider.dart';
-import 'package:pack_log/features/spaces/providers/space_provider.dart';
-import 'package:pack_log/features/luggages/providers/luggage_provider.dart';
 import 'package:pack_log/shared/constants/app_constants.dart';
 import '../database_provider.dart';
 import '../exceptions/backup_exceptions.dart';
@@ -39,7 +33,7 @@ class ImportResult {
   final String? errorMessage;
 
   const ImportResult.success() : success = true, errorMessage = null;
-  
+
   const ImportResult.failure(this.errorMessage) : success = false;
 }
 
@@ -57,19 +51,19 @@ BackupService backupService(Ref ref) {
 }
 
 /// Controller per orchestrare le operazioni di backup e restore.
-/// 
+///
 /// Gestisce:
 /// - Export del database con chiusura WAL
 /// - Import con disaster recovery automatico
 /// - Safety backup prima di import
 /// - Rollback automatico se import fallisce
 /// - Invalidazione del database provider per ricreare connessione fresca
-/// 
+///
 /// **USAGE EXAMPLE:**
 /// ```dart
 /// // Export
 /// final result = await ref.read(backupControllerProvider.notifier).exportDatabase('/path/to/export.db');
-/// 
+///
 /// // Import
 /// final result = await ref.read(backupControllerProvider.notifier).importDatabase('/path/to/import.db');
 /// ```
@@ -81,15 +75,15 @@ class BackupController extends _$BackupController {
   }
 
   /// Esporta il database corrente in un file specifico.
-  /// 
+  ///
   /// **Flow:**
   /// 1. Chiude il database (flush WAL)
   /// 2. Copia il file .sqlite
   /// 3. Invalida il provider per ricreare connessione
-  /// 
+  ///
   /// **Returns:**
   /// - [ExportResult]: Informazioni sul file esportato
-  /// 
+  ///
   /// **Throws:**
   /// - [ExportFailedException]: Se l'export fallisce
   Future<ExportResult> exportDatabase(String destinationPath) async {
@@ -97,35 +91,22 @@ class BackupController extends _$BackupController {
       debugPrint('[BackupController] Inizio export database');
 
       final backupService = ref.read(databaseBackupServiceProvider);
-      
+
       // Export fisico del database
       final exportedFile = await backupService.exportData(destinationPath);
-      
-      // Invalida il database provider per permettere nuove connessioni
-      // (necessario perché abbiamo chiamato .close() durante l'export)
+
+      // Invalida il database provider: la cascata Riverpod propaga
+      // automaticamente l'invalidazione a tutti i repository provider
+      // (che lo watchano) e quindi a tutti i notifier feature (che
+      // watchano i repository). Nessuna invalidazione manuale necessaria.
       debugPrint('[BackupController] 🔄 Invalidazione database provider...');
       ref.invalidate(appDatabaseProvider);
-      
-      // Aspetta riconnessione e invalida family providers per sicurezza
-      await Future.delayed(const Duration(milliseconds: 300));
-      final housesAsync = ref.read(houseNotifierProvider);
-      if (housesAsync.hasValue && housesAsync.value != null) {
-        for (final house in housesAsync.value!) {
-          ref.invalidate(itemNotifierProvider(house.id));
-          ref.invalidate(houseStatsProvider(house.id));
-          ref.invalidate(spacesByHouseProvider(house.id));
-          ref.invalidate(spaceCountByHouseProvider(house.id));
-          ref.invalidate(luggagesByHouseProvider(house.id));
-          ref.invalidate(luggageCountByHouseProvider(house.id));
-        }
-      }
-      
       debugPrint('[BackupController] ✅ Database provider invalidato');
-      
+
       final stat = await exportedFile.stat();
-      
+
       debugPrint('[BackupController] ✅ Export completato: ${stat.size} bytes');
-      
+
       return ExportResult(
         exportedFile: exportedFile,
         path: exportedFile.path,
@@ -133,22 +114,9 @@ class BackupController extends _$BackupController {
       );
     } catch (e) {
       debugPrint('[BackupController] ❌ Export fallito: $e');
-      
-      // Invalida comunque il provider per ripristinare lo stato
+
+      // Invalida comunque il provider per ripristinare la connessione.
       ref.invalidate(appDatabaseProvider);
-      await Future.delayed(const Duration(milliseconds: 300));
-      final housesAsync = ref.read(houseNotifierProvider);
-      if (housesAsync.hasValue && housesAsync.value != null) {
-        for (final house in housesAsync.value!) {
-          ref.invalidate(itemNotifierProvider(house.id));
-          ref.invalidate(houseStatsProvider(house.id));
-          ref.invalidate(spacesByHouseProvider(house.id));
-          ref.invalidate(spaceCountByHouseProvider(house.id));
-          ref.invalidate(luggagesByHouseProvider(house.id));
-          ref.invalidate(luggageCountByHouseProvider(house.id));
-        }
-      }
-      
       rethrow;
     }
   }
@@ -370,9 +338,7 @@ class BackupController extends _$BackupController {
       final isValid = await _validateSqliteFile(sourcePath);
       if (!isValid) {
         debugPrint('[BackupController] ❌ File non valido');
-        throw ImportValidationException(
-          'backup.invalid_sqlite_file'.tr(),
-        );
+        throw ImportValidationException('backup.invalid_sqlite_file'.tr());
       }
       debugPrint('[BackupController] ✅ File SQLite valido');
 
@@ -381,11 +347,16 @@ class BackupController extends _$BackupController {
       debugPrint('[BackupController] ➤ STEP 3: Sostituzione database...');
       await _replaceDatabase(sourcePath);
 
-      // STEP 4: Invalida TUTTI i provider → nuova connessione al nuovo file
+      // STEP 4: Invalida il database provider.
+      // La cascata Riverpod propaga automaticamente l'invalidazione
+      // a tutti i repository provider e ai notifier feature senza
+      // che il controller debba conoscerli (Open-Closed Principle).
       debugPrint('');
-      debugPrint('[BackupController] ➤ STEP 4: Invalidazione provider...');
-      await _invalidateAllProviders();
-      debugPrint('[BackupController] ✅ Provider ricaricati');
+      debugPrint(
+        '[BackupController] ➤ STEP 4: Invalidazione database provider...',
+      );
+      ref.invalidate(appDatabaseProvider);
+      debugPrint('[BackupController] ✅ Database provider invalidato');
 
       debugPrint('');
       debugPrint('═══════════════════════════════════════════════════');
@@ -403,12 +374,10 @@ class BackupController extends _$BackupController {
         debugPrint('[BackupController] 🔄 ROLLBACK AUTOMATICO...');
         try {
           await _replaceDatabase(safetyBackupPath);
-          await _invalidateAllProviders();
+          ref.invalidate(appDatabaseProvider);
           debugPrint('[BackupController] ✅ ROLLBACK COMPLETATO');
         } catch (rollbackError) {
-          debugPrint(
-            '[BackupController] 🔥 ROLLBACK FALLITO: $rollbackError',
-          );
+          debugPrint('[BackupController] 🔥 ROLLBACK FALLITO: $rollbackError');
           return ImportResult.failure('backup.critical_error'.tr());
         }
       }
@@ -421,51 +390,6 @@ class BackupController extends _$BackupController {
     }
   }
 
-  /// Invalida tutti i provider dell'app e ATTENDE il loro ricaricamento.
-  ///
-  /// Usa `ref.invalidate` + `await ref.read(...future)` per garantire
-  /// che i dati siano realmente disponibili prima di restituire il controllo.
-  Future<void> _invalidateAllProviders() async {
-    debugPrint('[BackupController] 🔄 Invalidazione completa provider...');
-
-    // Step 1: Ricrea la connessione al database (nuovo file dopo import/rollback).
-    ref.invalidate(appDatabaseProvider);
-
-    // Step 2: Invalida tutti i data provider. L'ordine non conta perché
-    // sono tutti invalidati prima di essere riletti.
-    ref.invalidate(houseNotifierProvider);
-    ref.invalidate(tripNotifierProvider);
-    ref.invalidate(spaceNotifierProvider);
-    ref.invalidate(luggageNotifierProvider);
-
-    // Step 3: Attende che i provider principali abbiano effettivamente
-    // terminato la query al nuovo database. Se uno dei due fallisce,
-    // lo logga ma non blocca l'intero flusso.
-    debugPrint('  ↳ Attendo reload Houses + Trips...');
-    try {
-      await Future.wait([
-        ref.read(houseNotifierProvider.future),
-        ref.read(tripNotifierProvider.future),
-      ]);
-    } catch (e) {
-      debugPrint('[BackupController] ⚠️ Errore reload provider: $e');
-    }
-    debugPrint('  ↳ Houses e Trips ricaricati ✅');
-
-    // Step 4: Invalida family providers per ogni casa caricata.
-    final houses = ref.read(houseNotifierProvider).valueOrNull ?? [];
-    for (final house in houses) {
-      ref.invalidate(itemNotifierProvider(house.id));
-      ref.invalidate(houseStatsProvider(house.id));
-      ref.invalidate(spacesByHouseProvider(house.id));
-      ref.invalidate(spaceCountByHouseProvider(house.id));
-      ref.invalidate(luggagesByHouseProvider(house.id));
-      ref.invalidate(luggageCountByHouseProvider(house.id));
-    }
-
-    debugPrint('[BackupController] ✅ Invalidazione completata');
-  }
-
   /// Esporta il database nella cartella Download dell'utente.
   ///
   /// Tenta di salvare nella **cartella Download pubblica** del dispositivo
@@ -476,19 +400,21 @@ class BackupController extends _$BackupController {
   /// **Nome file:** `stuff-tracker-db-[ddmmyyyy].db`
   /// Esempio: `stuff-tracker-db-17022026.db`
   Future<ExportResult> exportToTemporaryFile() async {
-    debugPrint('[BackupController] Preparazione export con nome file specifico');
+    debugPrint(
+      '[BackupController] Preparazione export con nome file specifico',
+    );
 
     final downloadsDir = await _resolveDownloadsDirectory();
 
     if (downloadsDir == null) {
-      throw ExportFailedException(
-        'backup.downloads_unavailable'.tr(),
-      );
+      throw ExportFailedException('backup.downloads_unavailable'.tr());
     }
 
     // Crea la directory se per qualche motivo non esiste
     if (!await downloadsDir.exists()) {
-      debugPrint('[BackupController] 📁 Directory Downloads non esiste, la creo...');
+      debugPrint(
+        '[BackupController] 📁 Directory Downloads non esiste, la creo...',
+      );
       await downloadsDir.create(recursive: true);
     }
 
@@ -571,8 +497,11 @@ class BackupController extends _$BackupController {
   /// (`safety-backup-pack-log-export-db`).
   bool validateImportFileName(String filePath) {
     final fileName = p.basename(filePath);
-    final isValid = fileName.startsWith(AppConstants.backupFilePrefix) ||
-        fileName.startsWith('$_safetyBackupPrefix${AppConstants.backupFilePrefix}');
+    final isValid =
+        fileName.startsWith(AppConstants.backupFilePrefix) ||
+        fileName.startsWith(
+          '$_safetyBackupPrefix${AppConstants.backupFilePrefix}',
+        );
 
     debugPrint(
       '[BackupController] Validazione nome file: $fileName -> '

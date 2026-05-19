@@ -1,5 +1,12 @@
 {
   "app_name": "Stuff Tracker",
+  "login": {
+    "subtitle": "Organizza i tuoi oggetti, ovunque tu sia",
+    "sign_in_google": "Accedi con Google",
+    "sign_in_failed": "Accesso fallito. Riprova.",
+    "sign_out": "Esci",
+    "sign_out_failed": "Errore durante la disconnessione"
+  },
   "navigation": {
     "home": "Home",
     "houses": "Case",
@@ -15,6 +22,7 @@
     "set_as_primary": "Imposta come principale",
     "no_houses": "Nessuna casa",
     "no_houses_subtitle": "Aggiungi la tua prima casa",
+    "no_houses_tap_hint": "Tocca per aggiungere una casa",
     "name_required": "Nome*",
     "name_label": "Nome *",
     "location_required": "Località*",
@@ -37,8 +45,8 @@
     "cannot_delete_in_trips": "Alcuni oggetti sono in viaggio. Completa i viaggi prima.",
     "trips_contain_items_singular": "{} viaggio attivo/programmato contiene oggetti provenienti da questa casa",
     "trips_contain_items_plural": "{} viaggi attivi/programmati contengono oggetti provenienti da questa casa",
-    "manage": "Gestisci",
-    "manage_sheet_title": "Gestisci Casa",
+    "modify": "Modifica",
+    "manage_sheet_title": "Modifica Casa",
     "edit_info": "Modifica info",
     "add_sheet_title": "Aggiungi Oggetti",
     "add_single_item": "Oggetto singolo",
@@ -92,7 +100,8 @@
     "bulk_delete_success": "{} oggetti eliminati",
     "bulk_move_title": "Sposta in...",
     "bulk_move_success": "{} oggetti spostati in {}",
-    "bulk_move_no_houses": "Nessun'altra casa disponibile"
+    "bulk_move_no_houses": "Nessun'altra casa disponibile",
+    "rapid_fire_hint": "Aggiungi oggetto..."
   },
   "categories": {
     "vestiti": "Vestiti",
@@ -113,7 +122,7 @@
     "add_new": "Nuovo spazio",
     "edit": "Modifica spazio",
     "delete": "Elimina spazio",
-    "manage": "Gestisci spazi",
+    "manage": "Modifica spazi",
     "no_spaces": "Nessuno spazio",
     "no_spaces_subtitle": "Gli spazi ti aiutano a organizzare gli oggetti",
     "all_items": "Tutti",
@@ -179,8 +188,8 @@
     "edit_info": "Modifica informazioni",
     "edit_items": "Modifica oggetti",
     "save_items": "Salva oggetti",
-    "manage": "Gestisci",
-    "manage_sheet_title": "Gestisci viaggio",
+    "modify": "Modifica viaggio",
+    "manage_sheet_title": "Modifica viaggio",
     "duplicate_success": "\"{}\" duplicato con successo",
     "trip_info": "Informazioni viaggio",
     "items_to_bring": "Oggetti da portare",
@@ -258,6 +267,9 @@
     "select_house": "Seleziona casa",
     "select_location": "Seleziona una località",
     "arrival_house": "Casa di arrivo",
+    "destination_house": "Casa",
+    "destination_other": "Altra località",
+    "tap_to_set_dates": "Tocca per impostare le date",
     "departure": "Partenza",
     "return": "Ritorno",
     "none_insert_location": "Nessuna (inserisci località)",
@@ -329,6 +341,7 @@
     "retry_message": "Vuoi riprovare?",
     "invalid_house_id": "ID casa non valido",
     "invalid_trip_id": "ID viaggio non valido",
+    "feature_disabled": "Questa funzionalità non è disponibile in questa versione.",
     "invalid_list_id": "ID lista non valido",
     "no_trips": "Nessun viaggio",
     "no_items": "Nessun oggetto da salvare",
@@ -338,7 +351,13 @@
     "delete_title": "Elimina {}",
     "delete_message": "Sei sicuro di voler eliminare \"{}\"?",
     "delete_confirm": "Elimina",
-    "cancel": "Annulla"
+    "cancel": "Annulla",
+    "context_menu_copy": "Copia {}",
+    "context_menu_save": "Salva {}",
+    "context_menu_unsave": "Rimuovi dai salvati {}",
+    "context_menu_set_primary": "Imposta come principale",
+    "context_menu_delete": "Elimina {}",
+    "copy_success": "\"{}\" copiato con successo"
   },
   "settings": {
     "title": "Profilo",
@@ -496,6 +515,22 @@
       "borraccia": "Borraccia",
       "kit_primo_soccorso": "Kit primo soccorso",
       "bastoncini_trekking": "Bastoncini da trekking"
+    }
+  },
+  "onboarding": {
+    "next": "Avanti",
+    "start": "Inizia",
+    "houses": {
+      "title": "Le tue case",
+      "description": "Organizza i tuoi oggetti in più abitazioni. Crea spazi all'interno di ogni casa per trovare tutto al volo."
+    },
+    "items": {
+      "title": "Aggiungi i tuoi oggetti",
+      "description": "Aggiungi tutti i tuoi oggetti rapidamente da tastiera, oppure importa direttamente da una foto con l'intelligenza artificiale."
+    },
+    "trips": {
+      "title": "I tuoi viaggi",
+      "description": "Crea un viaggio e seleziona gli oggetti da portare. Durante il viaggio li ritrovi automaticamente segnati come \"in viaggio\"."
     }
   }
 }

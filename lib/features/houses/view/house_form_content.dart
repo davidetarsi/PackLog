@@ -6,6 +6,8 @@ import '../model/house_model.dart';
 import '../providers/house_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/ds_icon_picker.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../shared/model/location_suggestion_model.dart';
@@ -92,7 +94,7 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
       final now = DateTime.now();
       final housesAsync = ref.read(houseNotifierProvider);
       final existingHouses = housesAsync.value ?? [];
-      
+
       final willBePrimary = widget.houseId == null && existingHouses.isEmpty;
 
       final house = widget.houseId != null
@@ -100,7 +102,9 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
               if (existingHouses.isEmpty) {
                 throw StateError('Casa non trovata');
               }
-              final existing = existingHouses.firstWhere((h) => h.id == widget.houseId);
+              final existing = existingHouses.firstWhere(
+                (h) => h.id == widget.houseId,
+              );
               return existing.copyWith(
                 name: _nameController.text.trim(),
                 location: _selectedLocation,
@@ -156,7 +160,9 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
             decoration: InputDecoration(
               labelText: 'houses.name_label'.tr(),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                borderRadius: BorderRadius.circular(
+                  AppConstants.inputBorderRadius,
+                ),
               ),
             ),
             validator: (value) {
@@ -185,53 +191,17 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
             child: Text(
               'common.icon'.tr(),
               style: TextStyle(
-                fontSize: 16,
+                fontSize: context.fontSizeSm,
                 fontWeight: FontWeight.w500,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
           const SizedBox(height: 12),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 5,
-              childAspectRatio: 1,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemCount: HouseIcons.all.length,
-            itemBuilder: (context, index) {
-              final iconName = HouseIcons.all.keys.elementAt(index);
-              final iconData = HouseIcons.all[iconName]!;
-              final isSelected = iconName == _selectedIconName;
-
-              return InkWell(
-                onTap: () {
-                  setState(() => _selectedIconName = iconName);
-                },
-                borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey.shade300,
-                      width: isSelected ? 2 : 1,
-                    ),
-                    borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-                  ),
-                  child: Icon(
-                    iconData,
-                    size: 28,
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey.shade700,
-                  ),
-                ),
-              );
-            },
+          DsIconPicker(
+            icons: HouseIcons.all,
+            selectedId: _selectedIconName,
+            onSelected: (name) => setState(() => _selectedIconName = name),
           ),
           if (widget.showButtons) ...[
             const SizedBox(height: 32),
@@ -240,7 +210,9 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.inputBorderRadius,
+                  ),
                 ),
               ),
               child: _isLoading
@@ -249,7 +221,11 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(widget.houseId != null ? 'common.save'.tr() : 'common.create'.tr()),
+                  : Text(
+                      widget.houseId != null
+                          ? 'common.save'.tr()
+                          : 'common.create'.tr(),
+                    ),
             ),
           ],
         ],

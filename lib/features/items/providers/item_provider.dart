@@ -1,4 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/sync/sync_provider.dart';
 import '../model/item_model.dart';
 import '../repositories/item_repository.dart';
 import 'item_selection_provider.dart';
@@ -12,12 +14,16 @@ class ItemNotifier extends _$ItemNotifier {
   @override
   Future<List<ItemModel>> build(String houseId) async {
     repository = ref.watch(itemRepositoryProvider);
+    ref.watch(syncTriggerProvider);
     final items = await repository!.getItemsByHouseId(houseId);
     return items;
   }
 
   /// Filtra gli items per spazio specifico
-  Future<List<ItemModel>> getItemsBySpace(String houseId, String spaceId) async {
+  Future<List<ItemModel>> getItemsBySpace(
+    String houseId,
+    String spaceId,
+  ) async {
     repository ??= ref.read(itemRepositoryProvider);
     return repository!.getItemsBySpaceId(houseId, spaceId);
   }
@@ -35,6 +41,14 @@ class ItemNotifier extends _$ItemNotifier {
       await repository!.addItem(model);
       final items = await repository!.getItemsByHouseId(model.houseId);
       state = AsyncData(items);
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackItemAdded(
+            itemId: model.id,
+            category: model.category.name,
+            totalItems: items.length,
+          );
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -47,6 +61,7 @@ class ItemNotifier extends _$ItemNotifier {
       await repository!.updateItem(model);
       final items = await repository!.getItemsByHouseId(model.houseId);
       state = AsyncData(items);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -59,6 +74,7 @@ class ItemNotifier extends _$ItemNotifier {
       await repository!.deleteItem(id);
       final items = await repository!.getItemsByHouseId(houseId);
       state = AsyncData(items);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -81,20 +97,24 @@ class ItemNotifier extends _$ItemNotifier {
   /// 1. La lista viene ricaricata dal DB per aggiornare la UI.
   /// 2. La modalità selezione multipla viene azzerata.
   ///
-  /// Lancia un'eccezione se l'operazione fallisce (il chiamante gestisce l'UI).
+  /// In caso di errore imposta `state = AsyncError` (stesso contratto degli
+  /// altri metodi del notifier) — il chiamante può leggere `state.hasError`
+  /// oppure catturare l'eccezione se ha bisogno di feedback UI dedicato.
   Future<void> bulkDelete(List<String> itemIds) async {
     if (itemIds.isEmpty) return;
     repository ??= ref.read(itemRepositoryProvider);
 
-    await repository!.deleteItems(itemIds);
+    try {
+      await repository!.deleteItems(itemIds);
 
-    // Aggiorna la lista locale senza passare per AsyncLoading
-    // per evitare un flash di schermata di caricamento.
-    final updated = await repository!.getItemsByHouseId(houseId);
-    state = AsyncData(updated);
+      final updated = await repository!.getItemsByHouseId(houseId);
+      state = AsyncData(updated);
 
-    // Esce dalla modalità selezione: l'utente ha completato l'operazione.
-    ref.read(itemSelectionNotifierProvider.notifier).clear();
+      ref.read(itemSelectionNotifierProvider.notifier).clear();
+      ref.read(syncOrchestratorProvider).requestSync();
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
   }
 
   /// Sposta [itemIds] dalla casa corrente ([houseId]) a [destinationHouseId]
@@ -106,25 +126,25 @@ class ItemNotifier extends _$ItemNotifier {
   /// 3. Il provider della casa di destinazione viene invalidato affinché
   ///    mostri immediatamente i nuovi item se aperto.
   ///
-  /// Lancia un'eccezione se l'operazione fallisce (il chiamante gestisce l'UI).
-  Future<void> bulkMove(
-    List<String> itemIds,
-    String destinationHouseId,
-  ) async {
+  /// In caso di errore imposta `state = AsyncError` (stesso contratto degli
+  /// altri metodi del notifier) — il chiamante può leggere `state.hasError`
+  /// oppure catturare l'eccezione se ha bisogno di feedback UI dedicato.
+  Future<void> bulkMove(List<String> itemIds, String destinationHouseId) async {
     if (itemIds.isEmpty) return;
     repository ??= ref.read(itemRepositoryProvider);
 
-    // fromHouseId è sempre la casa corrente di questo notifier.
-    await repository!.moveItemsToHouse(itemIds, houseId, destinationHouseId);
+    try {
+      // fromHouseId è sempre la casa corrente di questo notifier.
+      await repository!.moveItemsToHouse(itemIds, houseId, destinationHouseId);
 
-    // Aggiorna la lista sorgente senza flash di caricamento.
-    final updated = await repository!.getItemsByHouseId(houseId);
-    state = AsyncData(updated);
+      final updated = await repository!.getItemsByHouseId(houseId);
+      state = AsyncData(updated);
 
-    // Invalida la destinazione: se l'utente naviga lì troverà la lista fresca.
-    ref.invalidate(itemNotifierProvider(destinationHouseId));
-
-    // Esce dalla modalità selezione.
-    ref.read(itemSelectionNotifierProvider.notifier).clear();
+      ref.invalidate(itemNotifierProvider(destinationHouseId));
+      ref.read(itemSelectionNotifierProvider.notifier).clear();
+      ref.read(syncOrchestratorProvider).requestSync();
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
   }
 }

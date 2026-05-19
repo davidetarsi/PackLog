@@ -19,7 +19,7 @@ class InTransitSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -37,20 +37,25 @@ class InTransitSection extends StatelessWidget {
             title: Text(
               'common.temporaries'.tr(),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w500, // titleMedium ≈ 16px → w500
                 color: colorScheme.onSurface,
               ),
             ),
             subtitle: Text(
               'common.items_count'.tr(args: [items.length.toString()]),
-              style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7)),
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
             children: items.map((item) {
-              final matchingHouses = houses.where((h) => h.id == item.originHouseId);
-              final originHouse = matchingHouses.isNotEmpty ? matchingHouses.first : null;
+              final matchingHouses = houses.where(
+                (h) => h.id == item.originHouseId,
+              );
+              final originHouse = matchingHouses.isNotEmpty
+                  ? matchingHouses.first
+                  : null;
               return InTransitItemCard(
                 item: item,
-                originHouseName: originHouse?.name ?? 'common.unknown_house'.tr(),
+                originHouseName:
+                    originHouse?.name ?? 'common.unknown_house'.tr(),
               );
             }).toList(),
           ),
