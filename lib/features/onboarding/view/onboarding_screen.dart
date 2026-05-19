@@ -48,10 +48,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   void _initDefaultLocale() {
     final deviceLang =
         WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-    const supported = {
-      'it': Locale('it', 'IT'),
-      'en': Locale('en', 'US'),
-    };
+    const supported = {'it': Locale('it', 'IT'), 'en': Locale('en', 'US')};
     final match = supported[deviceLang];
     if (match != null) {
       setState(() => _selectedLocale = match);
@@ -69,16 +66,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     try {
       await context.setLocale(locale);
       _localeApplied = true;
-      ref.read(languageLocaleProvider.notifier).updateLocale(locale.languageCode);
+      ref
+          .read(languageLocaleProvider.notifier)
+          .updateLocale(locale.languageCode);
       setState(() => _selectedLocale = locale);
-      ref.read(analyticsServiceProvider).logEvent(
-        'onboarding_language_selected',
-        properties: {'language': locale.languageCode},
-      );
+      ref
+          .read(analyticsServiceProvider)
+          .logEvent(
+            'onboarding_language_selected',
+            properties: {'language': locale.languageCode},
+          );
     } catch (e) {
       debugPrint('[OnboardingScreen] Error setting locale: $e');
       if (mounted) {
-        AppSnackBar.showError(context, 'Impossibile cambiare la lingua. Riprova.');
+        AppSnackBar.showError(
+          context,
+          'Impossibile cambiare la lingua. Riprova.',
+        );
       }
     }
   }
@@ -108,10 +112,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (_isCompleting) return;
     setState(() => _isCompleting = true);
     try {
-      ref.read(analyticsServiceProvider).logEvent(
-        'onboarding_completed',
-        properties: {'language': _selectedLocale?.languageCode ?? 'unknown'},
-      );
+      ref
+          .read(analyticsServiceProvider)
+          .logEvent(
+            'onboarding_completed',
+            properties: {
+              'language': _selectedLocale?.languageCode ?? 'unknown',
+            },
+          );
       await ref.read(onboardingStatusProvider.notifier).markCompleted();
       if (mounted && ref.read(onboardingStatusProvider) is AsyncError) {
         AppSnackBar.showError(context, 'Errore. Riprova.');
@@ -136,13 +144,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 onPageChanged: (index) {
                   setState(() => _currentPage = index);
-                  ref.read(analyticsServiceProvider).logEvent(
-                    'onboarding_page_viewed',
-                    properties: {
-                      'page_index': index,
-                      'page_name': _pageNames[index],
-                    },
-                  );
+                  ref
+                      .read(analyticsServiceProvider)
+                      .logEvent(
+                        'onboarding_page_viewed',
+                        properties: {
+                          'page_index': index,
+                          'page_name': _pageNames[index],
+                        },
+                      );
                 },
                 children: [
                   LanguageSlide(

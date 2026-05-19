@@ -50,7 +50,9 @@ class _ContentSlideState extends State<ContentSlide> {
         await controller.dispose();
       }
     } catch (e) {
-      debugPrint('[ContentSlide] Video init error for ${widget.videoAsset}: $e');
+      debugPrint(
+        '[ContentSlide] Video init error for ${widget.videoAsset}: $e',
+      );
       await controller.dispose();
     }
   }

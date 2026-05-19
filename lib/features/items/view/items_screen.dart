@@ -73,21 +73,20 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
               if (widget.selectedSpaceId == null) {
                 spaceFiltered = allItems;
               } else if (widget.selectedSpaceId == 'default') {
-                spaceFiltered =
-                    allItems.where((i) => i.spaceId == null).toList();
+                spaceFiltered = allItems
+                    .where((i) => i.spaceId == null)
+                    .toList();
               } else {
-                spaceFiltered =
-                    allItems
-                        .where((i) => i.spaceId == widget.selectedSpaceId)
-                        .toList();
+                spaceFiltered = allItems
+                    .where((i) => i.spaceId == widget.selectedSpaceId)
+                    .toList();
               }
 
               // ── Vista per singola categoria (lista piatta) ────────────────
               if (widget.categoryFilter != null) {
-                final categoryItems =
-                    spaceFiltered
-                        .where((i) => i.category == widget.categoryFilter)
-                        .toList();
+                final categoryItems = spaceFiltered
+                    .where((i) => i.category == widget.categoryFilter)
+                    .toList();
 
                 if (categoryItems.isEmpty) {
                   return RefreshIndicator(
@@ -173,11 +172,8 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
 
               return housesAsync.when(
                 data: (houses) {
-                  final categoryEntries =
-                      itemsByCategory.entries.toList()
-                        ..sort(
-                          (a, b) => a.key.index.compareTo(b.key.index),
-                        );
+                  final categoryEntries = itemsByCategory.entries.toList()
+                    ..sort((a, b) => a.key.index.compareTo(b.key.index));
 
                   return RefreshIndicator(
                     onRefresh: _onRefresh,
@@ -251,8 +247,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                     ),
                   );
                 },
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stack) => ErrorState(
                   error: error,
                   onRetry: () => ref.invalidate(houseNotifierProvider),

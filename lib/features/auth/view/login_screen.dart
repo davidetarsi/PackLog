@@ -32,31 +32,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
-    ref.read(analyticsServiceProvider).logEvent(
-      'login_attempted',
-      properties: {'method': 'google'},
-    );
+    ref
+        .read(analyticsServiceProvider)
+        .logEvent('login_attempted', properties: {'method': 'google'});
 
     try {
       await ref.read(authRepositoryProvider).signInWithGoogle();
-      ref.read(analyticsServiceProvider).logEvent(
-        'login_completed',
-        properties: {'method': 'google'},
-      );
+      ref
+          .read(analyticsServiceProvider)
+          .logEvent('login_completed', properties: {'method': 'google'});
     } on SignInFailedException catch (e) {
-      ref.read(analyticsServiceProvider).logEvent(
-        'login_failed',
-        properties: {'method': 'google', 'error': e.toString()},
-      );
+      ref
+          .read(analyticsServiceProvider)
+          .logEvent(
+            'login_failed',
+            properties: {'method': 'google', 'error': e.toString()},
+          );
       if (mounted) {
         AppSnackBar.showError(context, 'login.sign_in_failed'.tr());
         debugPrint('[LoginScreen] Sign-in failed: $e');
       }
     } catch (e) {
-      ref.read(analyticsServiceProvider).logEvent(
-        'login_failed',
-        properties: {'method': 'google', 'error': e.toString()},
-      );
+      ref
+          .read(analyticsServiceProvider)
+          .logEvent(
+            'login_failed',
+            properties: {'method': 'google', 'error': e.toString()},
+          );
       if (mounted) {
         AppSnackBar.showError(context, 'login.sign_in_failed'.tr());
         debugPrint('[LoginScreen] Unexpected error: $e');
