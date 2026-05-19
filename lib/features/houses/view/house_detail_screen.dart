@@ -637,7 +637,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                   return _buildSpacePills(context, spaces, allItems);
                 },
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
               ),
               // ── Riga 2: filtro categorie ──────────────────────────────────
               _buildCategoryPills(context),

@@ -339,7 +339,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   data: (info) =>
                       Text('${'common.version'.tr()} ${info.version}'),
                   loading: () => Text('${'common.version'.tr()} …'),
-                  error: (_, __) => Text('${'common.version'.tr()} —'),
+                  error: (_, _) => Text('${'common.version'.tr()} —'),
                 ),
           ),
 
