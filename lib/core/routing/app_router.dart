@@ -65,8 +65,9 @@ GoRouter appRouter(Ref ref) {
 
       if (!onboardingCompleted && !isOnOnboarding) return '/onboarding';
       if (onboardingCompleted && isOnOnboarding) return '/login';
-      if (isOnOnboarding)
+      if (isOnOnboarding) {
         return null; // in-progress onboarding bypasses auth check
+      }
 
       // 3. Auth check (unchanged)
       final authState = ref.read(authNotifierProvider);
@@ -244,8 +245,9 @@ GoRouter appRouter(Ref ref) {
         name: 'ds-showcase',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
-          if (!kDebugMode)
+          if (!kDebugMode) {
             return _ErrorScreen(message: 'errors.feature_disabled'.tr());
+          }
           return const DsThemeShowcaseScreen();
         },
       ),

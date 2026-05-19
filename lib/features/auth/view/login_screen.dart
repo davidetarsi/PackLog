@@ -155,7 +155,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     'assets/icon/app_icon_foreground_clean.png',
                     width: 120,
                     height: 120,
-                    errorBuilder: (_, __, ___) =>
+                    errorBuilder: (_, _, _) =>
                         const Icon(Icons.app_shortcut, size: 80),
                   ),
                 ),
