@@ -42,7 +42,14 @@ jobs:
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: 🏗️ Build DEV APK
-        run: flutter build apk --flavor dev --target lib/main_dev.dart --dart-define=GEOAPIFY_KEY=DEV_KEY_PLACEHOLDER --target-platform android-arm64
+        run: |
+          flutter build apk --flavor dev --target lib/main_dev.dart --target-platform android-arm64 \
+            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+            --dart-define=AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }} \
+            --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }} \
+            --dart-define=ENABLE_AI_SANDBOX=true
 
       # ── NUOVO STEP: Ridenominazione del file ──
       - name: 🏷️ Rename APK File
