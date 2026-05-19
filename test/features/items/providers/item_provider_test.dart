@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/sync/sync_orchestrator.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/providers/item_selection_provider.dart';
@@ -10,8 +13,12 @@ import 'package:pack_log/features/items/repositories/item_repository.dart';
 /// Uses mocktail to stub repository methods without real database calls.
 class MockItemRepository extends Mock implements ItemRepository {}
 
+class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
+
+class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
+
 /// Unit tests for ItemNotifier (Riverpod AsyncNotifier).
-/// 
+///
 /// Tests the state management layer to ensure:
 /// - Correct state transitions (Loading → Data / Error)
 /// - Error handling propagates to AsyncError state (critical for UI feedback)
@@ -26,20 +33,36 @@ void main() {
     mockRepository = MockItemRepository();
 
     // Register fallback values for any() matchers
-    registerFallbackValue(ItemModel(
-      id: 'fallback',
-      houseId: 'fallback',
-      name: 'Fallback',
-      category: ItemCategory.varie,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ));
+    registerFallbackValue(
+      ItemModel(
+        id: 'fallback',
+        houseId: 'fallback',
+        name: 'Fallback',
+        category: ItemCategory.varie,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    final mockAnalytics = MockCoreAnalyticsService();
+    when(
+      () => mockAnalytics.trackItemAdded(
+        itemId: any(named: 'itemId'),
+        category: any(named: 'category'),
+        totalItems: any(named: 'totalItems'),
+      ),
+    ).thenAnswer((_) async {});
+
+    final mockSync = MockSyncOrchestrator();
+    when(() => mockSync.requestSync()).thenReturn(null);
 
     // Create ProviderContainer with mocked repository
     container = ProviderContainer(
       overrides: [
         // Override the repository provider to inject our mock
         itemRepositoryProvider.overrideWithValue(mockRepository),
+        coreAnalyticsServiceProvider.overrideWithValue(mockAnalytics),
+        syncOrchestratorProvider.overrideWithValue(mockSync),
       ],
     );
   });
@@ -50,102 +73,113 @@ void main() {
   });
 
   group('ItemNotifier - Success Path (AsyncData)', () {
-    test('should transition from Loading to AsyncData when fetching items for a specific house', () async {
-      // === ARRANGE ===
-      // Mock repository to return a fake list of items
-      final houseId = 'test-house-success';
-      final fakeItems = [
-        ItemModel(
-          id: 'item-1',
+    test(
+      'should transition from Loading to AsyncData when fetching items for a specific house',
+      () async {
+        // === ARRANGE ===
+        // Mock repository to return a fake list of items
+        final houseId = 'test-house-success';
+        final fakeItems = [
+          ItemModel(
+            id: 'item-1',
+            houseId: houseId,
+            name: 'Laptop',
+            category: ItemCategory.elettronica,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+          ItemModel(
+            id: 'item-2',
+            houseId: houseId,
+            name: 'T-Shirt',
+            category: ItemCategory.vestiti,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
+
+        when(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).thenAnswer((_) async => fakeItems);
+
+        // === ACT ===
+        // Read the family provider for this specific houseId
+        // This triggers the build() method which calls getItemsByHouseId
+        final provider = itemNotifierProvider(houseId);
+        final asyncValue = await container.read(provider.future);
+
+        // === ASSERT ===
+        // Verify the state transitioned to AsyncData with correct items
+        expect(asyncValue, isA<List<ItemModel>>());
+        expect(asyncValue, hasLength(2));
+        expect(asyncValue[0].name, equals('Laptop'));
+        expect(asyncValue[1].name, equals('T-Shirt'));
+
+        // Verify repository method was called exactly once with correct houseId
+        verify(() => mockRepository.getItemsByHouseId(houseId)).called(1);
+      },
+    );
+
+    test(
+      'should successfully add an item and refresh state with updated list',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'test-house-add';
+        final existingItems = [
+          ItemModel(
+            id: 'existing-item',
+            houseId: houseId,
+            name: 'Existing Item',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
+
+        final newItem = ItemModel(
+          id: 'new-item',
           houseId: houseId,
-          name: 'Laptop',
+          name: 'New Item',
           category: ItemCategory.elettronica,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
-        ),
-        ItemModel(
-          id: 'item-2',
-          houseId: houseId,
-          name: 'T-Shirt',
-          category: ItemCategory.vestiti,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
+        );
 
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => fakeItems);
+        final updatedItems = [...existingItems, newItem];
 
-      // === ACT ===
-      // Read the family provider for this specific houseId
-      // This triggers the build() method which calls getItemsByHouseId
-      final provider = itemNotifierProvider(houseId);
-      final asyncValue = await container.read(provider.future);
+        // Mock initial state
+        when(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).thenAnswer((_) async => existingItems);
 
-      // === ASSERT ===
-      // Verify the state transitioned to AsyncData with correct items
-      expect(asyncValue, isA<List<ItemModel>>());
-      expect(asyncValue, hasLength(2));
-      expect(asyncValue[0].name, equals('Laptop'));
-      expect(asyncValue[1].name, equals('T-Shirt'));
+        // Initialize the notifier
+        final provider = itemNotifierProvider(houseId);
+        await container.read(provider.future);
 
-      // Verify repository method was called exactly once with correct houseId
-      verify(() => mockRepository.getItemsByHouseId(houseId)).called(1);
-    });
+        // Mock addItem and the subsequent refresh call
+        when(() => mockRepository.addItem(any())).thenAnswer((_) async {});
+        when(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).thenAnswer((_) async => updatedItems);
 
-    test('should successfully add an item and refresh state with updated list', () async {
-      // === ARRANGE ===
-      final houseId = 'test-house-add';
-      final existingItems = [
-        ItemModel(
-          id: 'existing-item',
-          houseId: houseId,
-          name: 'Existing Item',
-          category: ItemCategory.varie,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
+        // === ACT ===
+        final notifier = container.read(provider.notifier);
+        await notifier.addItem(newItem);
 
-      final newItem = ItemModel(
-        id: 'new-item',
-        houseId: houseId,
-        name: 'New Item',
-        category: ItemCategory.elettronica,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+        // === ASSERT ===
+        // Verify the state was updated with the new item
+        final finalState = container.read(provider);
+        expect(finalState, isA<AsyncData<List<ItemModel>>>());
+        expect(finalState.value, hasLength(2));
+        expect(finalState.value!.any((item) => item.id == 'new-item'), isTrue);
 
-      final updatedItems = [...existingItems, newItem];
-
-      // Mock initial state
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => existingItems);
-
-      // Initialize the notifier
-      final provider = itemNotifierProvider(houseId);
-      await container.read(provider.future);
-
-      // Mock addItem and the subsequent refresh call
-      when(() => mockRepository.addItem(any())).thenAnswer((_) async {});
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => updatedItems);
-
-      // === ACT ===
-      final notifier = container.read(provider.notifier);
-      await notifier.addItem(newItem);
-
-      // === ASSERT ===
-      // Verify the state was updated with the new item
-      final finalState = container.read(provider);
-      expect(finalState, isA<AsyncData<List<ItemModel>>>());
-      expect(finalState.value, hasLength(2));
-      expect(finalState.value!.any((item) => item.id == 'new-item'), isTrue);
-
-      // Verify repository methods were called in correct order
-      verify(() => mockRepository.addItem(newItem)).called(1);
-      verify(() => mockRepository.getItemsByHouseId(houseId)).called(2); // Initial + refresh
-    });
+        // Verify repository methods were called in correct order
+        verify(() => mockRepository.addItem(newItem)).called(1);
+        verify(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).called(2); // Initial + refresh
+      },
+    );
 
     test('should successfully update an item and refresh state', () async {
       // === ARRANGE ===
@@ -165,16 +199,18 @@ void main() {
       );
 
       // Mock initial state
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => [originalItem]);
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => [originalItem]);
 
       final provider = itemNotifierProvider(houseId);
       await container.read(provider.future);
 
       // Mock updateItem and refresh
       when(() => mockRepository.updateItem(any())).thenAnswer((_) async {});
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => [updatedItem]);
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => [updatedItem]);
 
       // === ACT ===
       final notifier = container.read(provider.notifier);
@@ -184,7 +220,10 @@ void main() {
       final finalState = container.read(provider);
       expect(finalState.value, hasLength(1));
       expect(finalState.value!.first.name, equals('Updated Name'));
-      expect(finalState.value!.first.category, equals(ItemCategory.elettronica));
+      expect(
+        finalState.value!.first.category,
+        equals(ItemCategory.elettronica),
+      );
 
       verify(() => mockRepository.updateItem(updatedItem)).called(1);
     });
@@ -211,16 +250,20 @@ void main() {
       );
 
       // Mock initial state with 2 items
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => [item1, item2]);
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => [item1, item2]);
 
       final provider = itemNotifierProvider(houseId);
       await container.read(provider.future);
 
       // Mock deleteItem and refresh (item2 removed)
-      when(() => mockRepository.deleteItem(any())).thenAnswer((_) async => true);
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => [item1]);
+      when(
+        () => mockRepository.deleteItem(any()),
+      ).thenAnswer((_) async => true);
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => [item1]);
 
       // === ACT ===
       final notifier = container.read(provider.notifier);
@@ -229,427 +272,471 @@ void main() {
       // === ASSERT ===
       final finalState = container.read(provider);
       expect(finalState.value, hasLength(1));
-      expect(finalState.value!.any((item) => item.id == 'item-to-delete'), isFalse);
+      expect(
+        finalState.value!.any((item) => item.id == 'item-to-delete'),
+        isFalse,
+      );
 
       verify(() => mockRepository.deleteItem(item2.id)).called(1);
     });
   });
 
   group('ItemNotifier - Failure Path (AsyncError)', () {
-    test('should transition to AsyncError when repository throws during initial fetch', () async {
-      // === ARRANGE ===
-      // Architectural Intent: Testing AsyncError is CRITICAL because:
-      // - UI needs to display error messages to users
-      // - Prevents app crashes from unhandled exceptions
-      // - Allows retry mechanisms in the UI layer
-      
-      final houseId = 'test-house-error';
-      final testException = Exception('Database connection failed');
+    test(
+      'should transition to AsyncError when repository throws during initial fetch',
+      () async {
+        // === ARRANGE ===
+        // Architectural Intent: Testing AsyncError is CRITICAL because:
+        // - UI needs to display error messages to users
+        // - Prevents app crashes from unhandled exceptions
+        // - Allows retry mechanisms in the UI layer
 
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenThrow(testException);
+        final houseId = 'test-house-error';
+        final testException = Exception('Database connection failed');
 
-      // === ACT ===
-      final provider = itemNotifierProvider(houseId);
-      
-      // Attempt to read the provider (will throw)
-      try {
-        await container.read(provider.future);
-        fail('Should have thrown an exception');
-      } catch (e) {
-        // Expected to throw
-      }
+        when(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).thenThrow(testException);
 
-      // === ASSERT ===
-      // Verify the state is AsyncError (not AsyncLoading or AsyncData)
-      final state = container.read(provider);
-      expect(state, isA<AsyncError<List<ItemModel>>>());
-      expect(state.error, equals(testException));
-      expect(state.hasError, isTrue);
+        // === ACT ===
+        final provider = itemNotifierProvider(houseId);
 
-      // Verify repository method was called (error handling doesn't prevent the call)
-      verify(() => mockRepository.getItemsByHouseId(houseId)).called(1);
-    });
+        // Attempt to read the provider (will throw)
+        try {
+          await container.read(provider.future);
+          fail('Should have thrown an exception');
+        } catch (e) {
+          // Expected to throw
+        }
 
-    test('should transition to AsyncError when addItem throws an exception', () async {
-      // === ARRANGE ===
-      final houseId = 'test-house-add-error';
-      final initialItems = [
-        ItemModel(
-          id: 'initial-item',
+        // === ASSERT ===
+        // Verify the state is AsyncError (not AsyncLoading or AsyncData)
+        final state = container.read(provider);
+        expect(state, isA<AsyncError<List<ItemModel>>>());
+        expect(state.error, equals(testException));
+        expect(state.hasError, isTrue);
+
+        // Verify repository method was called (error handling doesn't prevent the call)
+        verify(() => mockRepository.getItemsByHouseId(houseId)).called(1);
+      },
+    );
+
+    test(
+      'should transition to AsyncError when addItem throws an exception',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'test-house-add-error';
+        final initialItems = [
+          ItemModel(
+            id: 'initial-item',
+            houseId: houseId,
+            name: 'Initial Item',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
+
+        final newItem = ItemModel(
+          id: 'new-item',
           houseId: houseId,
-          name: 'Initial Item',
+          name: 'New Item',
+          category: ItemCategory.elettronica,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        // Mock initial successful state
+        when(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).thenAnswer((_) async => initialItems);
+
+        final provider = itemNotifierProvider(houseId);
+        await container.read(provider.future);
+
+        // Mock addItem to throw (e.g., network error, validation error)
+        final addException = Exception('Failed to add item: network error');
+        when(() => mockRepository.addItem(any())).thenThrow(addException);
+
+        // === ACT ===
+        final notifier = container.read(provider.notifier);
+        await notifier.addItem(newItem);
+
+        // === ASSERT ===
+        // CRITICAL: Verify state transitioned to AsyncError
+        // This allows the UI to show a SnackBar or error dialog
+        final finalState = container.read(provider);
+        expect(finalState, isA<AsyncError<List<ItemModel>>>());
+        expect(finalState.error, equals(addException));
+        expect(finalState.hasError, isTrue);
+
+        // Verify addItem was called exactly once (no automatic retry)
+        verify(() => mockRepository.addItem(newItem)).called(1);
+
+        // Verify getItemsByHouseId was NOT called after the error
+        // (refresh only happens on success)
+        verify(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).called(1); // Only initial
+      },
+    );
+
+    test(
+      'should transition to AsyncError when updateItem throws an exception',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'test-house-update-error';
+        final existingItem = ItemModel(
+          id: 'item-1',
+          houseId: houseId,
+          name: 'Original',
           category: ItemCategory.varie,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
-        ),
-      ];
+        );
 
-      final newItem = ItemModel(
-        id: 'new-item',
-        houseId: houseId,
-        name: 'New Item',
-        category: ItemCategory.elettronica,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+        when(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).thenAnswer((_) async => [existingItem]);
 
-      // Mock initial successful state
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => initialItems);
+        final provider = itemNotifierProvider(houseId);
+        await container.read(provider.future);
 
-      final provider = itemNotifierProvider(houseId);
-      await container.read(provider.future);
+        final updatedItem = existingItem.copyWith(name: 'Updated');
+        final updateException = Exception('Update failed: database locked');
+        when(() => mockRepository.updateItem(any())).thenThrow(updateException);
 
-      // Mock addItem to throw (e.g., network error, validation error)
-      final addException = Exception('Failed to add item: network error');
-      when(() => mockRepository.addItem(any())).thenThrow(addException);
+        // === ACT ===
+        final notifier = container.read(provider.notifier);
+        await notifier.updateItem(updatedItem);
 
-      // === ACT ===
-      final notifier = container.read(provider.notifier);
-      await notifier.addItem(newItem);
+        // === ASSERT ===
+        final finalState = container.read(provider);
+        expect(finalState, isA<AsyncError<List<ItemModel>>>());
+        expect(finalState.error, equals(updateException));
 
-      // === ASSERT ===
-      // CRITICAL: Verify state transitioned to AsyncError
-      // This allows the UI to show a SnackBar or error dialog
-      final finalState = container.read(provider);
-      expect(finalState, isA<AsyncError<List<ItemModel>>>());
-      expect(finalState.error, equals(addException));
-      expect(finalState.hasError, isTrue);
+        verify(() => mockRepository.updateItem(updatedItem)).called(1);
+      },
+    );
 
-      // Verify addItem was called exactly once (no automatic retry)
-      verify(() => mockRepository.addItem(newItem)).called(1);
+    test(
+      'should transition to AsyncError when deleteItem throws an exception',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'test-house-delete-error';
+        final existingItem = ItemModel(
+          id: 'item-to-delete',
+          houseId: houseId,
+          name: 'Item',
+          category: ItemCategory.varie,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
 
-      // Verify getItemsByHouseId was NOT called after the error
-      // (refresh only happens on success)
-      verify(() => mockRepository.getItemsByHouseId(houseId)).called(1); // Only initial
-    });
+        when(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).thenAnswer((_) async => [existingItem]);
 
-    test('should transition to AsyncError when updateItem throws an exception', () async {
-      // === ARRANGE ===
-      final houseId = 'test-house-update-error';
-      final existingItem = ItemModel(
-        id: 'item-1',
-        houseId: houseId,
-        name: 'Original',
-        category: ItemCategory.varie,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+        final provider = itemNotifierProvider(houseId);
+        await container.read(provider.future);
 
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => [existingItem]);
+        final deleteException = Exception('Delete failed: item is referenced');
+        when(() => mockRepository.deleteItem(any())).thenThrow(deleteException);
 
-      final provider = itemNotifierProvider(houseId);
-      await container.read(provider.future);
+        // === ACT ===
+        final notifier = container.read(provider.notifier);
+        await notifier.deleteItem(existingItem.id, houseId);
 
-      final updatedItem = existingItem.copyWith(name: 'Updated');
-      final updateException = Exception('Update failed: database locked');
-      when(() => mockRepository.updateItem(any())).thenThrow(updateException);
+        // === ASSERT ===
+        final finalState = container.read(provider);
+        expect(finalState, isA<AsyncError<List<ItemModel>>>());
+        expect(finalState.error, equals(deleteException));
 
-      // === ACT ===
-      final notifier = container.read(provider.notifier);
-      await notifier.updateItem(updatedItem);
-
-      // === ASSERT ===
-      final finalState = container.read(provider);
-      expect(finalState, isA<AsyncError<List<ItemModel>>>());
-      expect(finalState.error, equals(updateException));
-
-      verify(() => mockRepository.updateItem(updatedItem)).called(1);
-    });
-
-    test('should transition to AsyncError when deleteItem throws an exception', () async {
-      // === ARRANGE ===
-      final houseId = 'test-house-delete-error';
-      final existingItem = ItemModel(
-        id: 'item-to-delete',
-        houseId: houseId,
-        name: 'Item',
-        category: ItemCategory.varie,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => [existingItem]);
-
-      final provider = itemNotifierProvider(houseId);
-      await container.read(provider.future);
-
-      final deleteException = Exception('Delete failed: item is referenced');
-      when(() => mockRepository.deleteItem(any())).thenThrow(deleteException);
-
-      // === ACT ===
-      final notifier = container.read(provider.notifier);
-      await notifier.deleteItem(existingItem.id, houseId);
-
-      // === ASSERT ===
-      final finalState = container.read(provider);
-      expect(finalState, isA<AsyncError<List<ItemModel>>>());
-      expect(finalState.error, equals(deleteException));
-
-      verify(() => mockRepository.deleteItem(existingItem.id)).called(1);
-    });
+        verify(() => mockRepository.deleteItem(existingItem.id)).called(1);
+      },
+    );
   });
 
   group('ItemNotifier - Family Provider Isolation', () {
-    test('should fetch data only for the requested houseId and keep states separate', () async {
-      // === ARRANGE ===
-      // Architectural Intent: Verify family provider isolation prevents N+1 queries.
-      // Each houseId should maintain its own independent state.
-      
-      final houseAId = 'house-a';
-      final houseBId = 'house-b';
+    test(
+      'should fetch data only for the requested houseId and keep states separate',
+      () async {
+        // === ARRANGE ===
+        // Architectural Intent: Verify family provider isolation prevents N+1 queries.
+        // Each houseId should maintain its own independent state.
 
-      final houseAItems = [
-        ItemModel(
-          id: 'item-a1',
-          houseId: houseAId,
-          name: 'Item A1',
-          category: ItemCategory.varie,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-        ItemModel(
-          id: 'item-a2',
-          houseId: houseAId,
-          name: 'Item A2',
-          category: ItemCategory.elettronica,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
+        final houseAId = 'house-a';
+        final houseBId = 'house-b';
 
-      final houseBItems = [
-        ItemModel(
-          id: 'item-b1',
-          houseId: houseBId,
-          name: 'Item B1',
-          category: ItemCategory.vestiti,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
+        final houseAItems = [
+          ItemModel(
+            id: 'item-a1',
+            houseId: houseAId,
+            name: 'Item A1',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+          ItemModel(
+            id: 'item-a2',
+            houseId: houseAId,
+            name: 'Item A2',
+            category: ItemCategory.elettronica,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
 
-      // Mock repository to return different data for each house
-      when(() => mockRepository.getItemsByHouseId(houseAId))
-          .thenAnswer((_) async => houseAItems);
-      when(() => mockRepository.getItemsByHouseId(houseBId))
-          .thenAnswer((_) async => houseBItems);
+        final houseBItems = [
+          ItemModel(
+            id: 'item-b1',
+            houseId: houseBId,
+            name: 'Item B1',
+            category: ItemCategory.vestiti,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
 
-      // === ACT ===
-      // Read provider for house A
-      final providerA = itemNotifierProvider(houseAId);
-      final stateA = await container.read(providerA.future);
+        // Mock repository to return different data for each house
+        when(
+          () => mockRepository.getItemsByHouseId(houseAId),
+        ).thenAnswer((_) async => houseAItems);
+        when(
+          () => mockRepository.getItemsByHouseId(houseBId),
+        ).thenAnswer((_) async => houseBItems);
 
-      // Read provider for house B (should be independent)
-      final providerB = itemNotifierProvider(houseBId);
-      final stateB = await container.read(providerB.future);
+        // === ACT ===
+        // Read provider for house A
+        final providerA = itemNotifierProvider(houseAId);
+        final stateA = await container.read(providerA.future);
 
-      // === ASSERT ===
-      // Verify house A has its own data
-      expect(stateA, hasLength(2));
-      expect(stateA[0].houseId, equals(houseAId));
-      expect(stateA[0].name, equals('Item A1'));
+        // Read provider for house B (should be independent)
+        final providerB = itemNotifierProvider(houseBId);
+        final stateB = await container.read(providerB.future);
 
-      // Verify house B has its own independent data
-      expect(stateB, hasLength(1));
-      expect(stateB[0].houseId, equals(houseBId));
-      expect(stateB[0].name, equals('Item B1'));
+        // === ASSERT ===
+        // Verify house A has its own data
+        expect(stateA, hasLength(2));
+        expect(stateA[0].houseId, equals(houseAId));
+        expect(stateA[0].name, equals('Item A1'));
 
-      // CRITICAL: Verify each repository method was called EXACTLY ONCE per houseId
-      // This proves no cross-contamination or unnecessary N+1 queries
-      verify(() => mockRepository.getItemsByHouseId(houseAId)).called(1);
-      verify(() => mockRepository.getItemsByHouseId(houseBId)).called(1);
+        // Verify house B has its own independent data
+        expect(stateB, hasLength(1));
+        expect(stateB[0].houseId, equals(houseBId));
+        expect(stateB[0].name, equals('Item B1'));
 
-      // Verify reading house A didn't trigger a fetch for house B
-      verifyNever(() => mockRepository.getItemsByHouseId(houseBId));
-      // Wait, that's wrong - we DID read house B. Let me fix the logic:
-      // The point is that reading A shouldn't trigger B, and vice versa.
-      // We need to verify the calls happened independently.
-    });
+        // CRITICAL: Verify each repository method was called EXACTLY ONCE per houseId
+        // This proves no cross-contamination or unnecessary N+1 queries
+        verify(() => mockRepository.getItemsByHouseId(houseAId)).called(1);
+        verify(() => mockRepository.getItemsByHouseId(houseBId)).called(1);
 
-    test('should maintain separate AsyncError states for different houses', () async {
-      // === ARRANGE ===
-      final houseAId = 'house-a-error';
-      final houseBId = 'house-b-success';
+        // Verify reading house A didn't trigger a fetch for house B
+        verifyNever(() => mockRepository.getItemsByHouseId(houseBId));
+        // Wait, that's wrong - we DID read house B. Let me fix the logic:
+        // The point is that reading A shouldn't trigger B, and vice versa.
+        // We need to verify the calls happened independently.
+      },
+    );
 
-      final houseBItems = [
-        ItemModel(
-          id: 'item-b',
-          houseId: houseBId,
-          name: 'Item B',
-          category: ItemCategory.varie,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
+    test(
+      'should maintain separate AsyncError states for different houses',
+      () async {
+        // === ARRANGE ===
+        final houseAId = 'house-a-error';
+        final houseBId = 'house-b-success';
 
-      // House A will error, House B will succeed
-      when(() => mockRepository.getItemsByHouseId(houseAId))
-          .thenThrow(Exception('House A database error'));
-      when(() => mockRepository.getItemsByHouseId(houseBId))
-          .thenAnswer((_) async => houseBItems);
+        final houseBItems = [
+          ItemModel(
+            id: 'item-b',
+            houseId: houseBId,
+            name: 'Item B',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
 
-      // === ACT ===
-      final providerA = itemNotifierProvider(houseAId);
-      final providerB = itemNotifierProvider(houseBId);
+        // House A will error, House B will succeed
+        when(
+          () => mockRepository.getItemsByHouseId(houseAId),
+        ).thenThrow(Exception('House A database error'));
+        when(
+          () => mockRepository.getItemsByHouseId(houseBId),
+        ).thenAnswer((_) async => houseBItems);
 
-      // Try to read house A (will error)
-      try {
+        // === ACT ===
+        final providerA = itemNotifierProvider(houseAId);
+        final providerB = itemNotifierProvider(houseBId);
+
+        // Try to read house A (will error)
+        try {
+          await container.read(providerA.future);
+          fail('Should have thrown');
+        } catch (_) {
+          // Expected
+        }
+
+        // Read house B (should succeed)
+        final stateB = await container.read(providerB.future);
+
+        // === ASSERT ===
+        // Verify house A is in error state
+        final finalStateA = container.read(providerA);
+        expect(finalStateA, isA<AsyncError<List<ItemModel>>>());
+        expect(finalStateA.hasError, isTrue);
+
+        // Verify house B is in success state (unaffected by house A's error)
+        expect(stateB, hasLength(1));
+        expect(stateB[0].name, equals('Item B'));
+
+        // Verify independence: error in A doesn't affect B
+        verify(() => mockRepository.getItemsByHouseId(houseAId)).called(1);
+        verify(() => mockRepository.getItemsByHouseId(houseBId)).called(1);
+      },
+    );
+
+    test(
+      'should allow refreshing one house without affecting other houses',
+      () async {
+        // === ARRANGE ===
+        final houseAId = 'house-a-refresh';
+        final houseBId = 'house-b-no-refresh';
+
+        final houseAItemsInitial = [
+          ItemModel(
+            id: 'item-a-initial',
+            houseId: houseAId,
+            name: 'Item A Initial',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
+
+        final houseAItemsRefreshed = [
+          ItemModel(
+            id: 'item-a-refreshed',
+            houseId: houseAId,
+            name: 'Item A Refreshed',
+            category: ItemCategory.elettronica,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
+
+        final houseBItems = [
+          ItemModel(
+            id: 'item-b',
+            houseId: houseBId,
+            name: 'Item B Unchanged',
+            category: ItemCategory.vestiti,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
+
+        // Mock initial states
+        when(
+          () => mockRepository.getItemsByHouseId(houseAId),
+        ).thenAnswer((_) async => houseAItemsInitial);
+        when(
+          () => mockRepository.getItemsByHouseId(houseBId),
+        ).thenAnswer((_) async => houseBItems);
+
+        final providerA = itemNotifierProvider(houseAId);
+        final providerB = itemNotifierProvider(houseBId);
+
         await container.read(providerA.future);
-        fail('Should have thrown');
-      } catch (_) {
-        // Expected
-      }
+        await container.read(providerB.future);
 
-      // Read house B (should succeed)
-      final stateB = await container.read(providerB.future);
+        // Mock refresh for house A
+        when(
+          () => mockRepository.getItemsByHouseId(houseAId),
+        ).thenAnswer((_) async => houseAItemsRefreshed);
 
-      // === ASSERT ===
-      // Verify house A is in error state
-      final finalStateA = container.read(providerA);
-      expect(finalStateA, isA<AsyncError<List<ItemModel>>>());
-      expect(finalStateA.hasError, isTrue);
+        // === ACT ===
+        // Refresh only house A
+        final notifierA = container.read(providerA.notifier);
+        await notifierA.refresh(houseAId);
 
-      // Verify house B is in success state (unaffected by house A's error)
-      expect(stateB, hasLength(1));
-      expect(stateB[0].name, equals('Item B'));
+        // === ASSERT ===
+        // Verify house A was refreshed
+        final finalStateA = container.read(providerA);
+        expect(finalStateA.value, hasLength(1));
+        expect(finalStateA.value!.first.name, equals('Item A Refreshed'));
 
-      // Verify independence: error in A doesn't affect B
-      verify(() => mockRepository.getItemsByHouseId(houseAId)).called(1);
-      verify(() => mockRepository.getItemsByHouseId(houseBId)).called(1);
-    });
+        // Verify house B remains unchanged (no unnecessary refresh)
+        final finalStateB = container.read(providerB);
+        expect(finalStateB.value, hasLength(1));
+        expect(finalStateB.value!.first.name, equals('Item B Unchanged'));
 
-    test('should allow refreshing one house without affecting other houses', () async {
-      // === ARRANGE ===
-      final houseAId = 'house-a-refresh';
-      final houseBId = 'house-b-no-refresh';
-
-      final houseAItemsInitial = [
-        ItemModel(
-          id: 'item-a-initial',
-          houseId: houseAId,
-          name: 'Item A Initial',
-          category: ItemCategory.varie,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
-
-      final houseAItemsRefreshed = [
-        ItemModel(
-          id: 'item-a-refreshed',
-          houseId: houseAId,
-          name: 'Item A Refreshed',
-          category: ItemCategory.elettronica,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
-
-      final houseBItems = [
-        ItemModel(
-          id: 'item-b',
-          houseId: houseBId,
-          name: 'Item B Unchanged',
-          category: ItemCategory.vestiti,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
-
-      // Mock initial states
-      when(() => mockRepository.getItemsByHouseId(houseAId))
-          .thenAnswer((_) async => houseAItemsInitial);
-      when(() => mockRepository.getItemsByHouseId(houseBId))
-          .thenAnswer((_) async => houseBItems);
-
-      final providerA = itemNotifierProvider(houseAId);
-      final providerB = itemNotifierProvider(houseBId);
-
-      await container.read(providerA.future);
-      await container.read(providerB.future);
-
-      // Mock refresh for house A
-      when(() => mockRepository.getItemsByHouseId(houseAId))
-          .thenAnswer((_) async => houseAItemsRefreshed);
-
-      // === ACT ===
-      // Refresh only house A
-      final notifierA = container.read(providerA.notifier);
-      await notifierA.refresh(houseAId);
-
-      // === ASSERT ===
-      // Verify house A was refreshed
-      final finalStateA = container.read(providerA);
-      expect(finalStateA.value, hasLength(1));
-      expect(finalStateA.value!.first.name, equals('Item A Refreshed'));
-
-      // Verify house B remains unchanged (no unnecessary refresh)
-      final finalStateB = container.read(providerB);
-      expect(finalStateB.value, hasLength(1));
-      expect(finalStateB.value!.first.name, equals('Item B Unchanged'));
-
-      // Verify repository calls: house A called twice (initial + refresh), house B once
-      verify(() => mockRepository.getItemsByHouseId(houseAId)).called(2);
-      verify(() => mockRepository.getItemsByHouseId(houseBId)).called(1);
-    });
+        // Verify repository calls: house A called twice (initial + refresh), house B once
+        verify(() => mockRepository.getItemsByHouseId(houseAId)).called(2);
+        verify(() => mockRepository.getItemsByHouseId(houseBId)).called(1);
+      },
+    );
   });
 
   group('ItemNotifier - Space Filtering Methods', () {
-    test('should correctly fetch items by spaceId without affecting main state', () async {
-      // === ARRANGE ===
-      final houseId = 'house-with-spaces';
-      final spaceId = 'kitchen-space';
+    test(
+      'should correctly fetch items by spaceId without affecting main state',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'house-with-spaces';
+        final spaceId = 'kitchen-space';
 
-      final allHouseItems = [
-        ItemModel(
-          id: 'item-1',
-          houseId: houseId,
-          name: 'Item in Kitchen',
-          category: ItemCategory.varie,
-          spaceId: spaceId,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-        ItemModel(
-          id: 'item-2',
-          houseId: houseId,
-          name: 'Item in General Pool',
-          category: ItemCategory.varie,
-          spaceId: null,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
+        final allHouseItems = [
+          ItemModel(
+            id: 'item-1',
+            houseId: houseId,
+            name: 'Item in Kitchen',
+            category: ItemCategory.varie,
+            spaceId: spaceId,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+          ItemModel(
+            id: 'item-2',
+            houseId: houseId,
+            name: 'Item in General Pool',
+            category: ItemCategory.varie,
+            spaceId: null,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
 
-      final kitchenItems = [allHouseItems[0]];
+        final kitchenItems = [allHouseItems[0]];
 
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => allHouseItems);
-      when(() => mockRepository.getItemsBySpaceId(houseId, spaceId))
-          .thenAnswer((_) async => kitchenItems);
+        when(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).thenAnswer((_) async => allHouseItems);
+        when(
+          () => mockRepository.getItemsBySpaceId(houseId, spaceId),
+        ).thenAnswer((_) async => kitchenItems);
 
-      final provider = itemNotifierProvider(houseId);
-      await container.read(provider.future);
+        final provider = itemNotifierProvider(houseId);
+        await container.read(provider.future);
 
-      // === ACT ===
-      final notifier = container.read(provider.notifier);
-      final spaceItems = await notifier.getItemsBySpace(houseId, spaceId);
+        // === ACT ===
+        final notifier = container.read(provider.notifier);
+        final spaceItems = await notifier.getItemsBySpace(houseId, spaceId);
 
-      // === ASSERT ===
-      // Verify the method returned only kitchen items
-      expect(spaceItems, hasLength(1));
-      expect(spaceItems.first.spaceId, equals(spaceId));
+        // === ASSERT ===
+        // Verify the method returned only kitchen items
+        expect(spaceItems, hasLength(1));
+        expect(spaceItems.first.spaceId, equals(spaceId));
 
-      // Verify the main state wasn't modified (still contains all items)
-      final mainState = container.read(provider);
-      expect(mainState.value, hasLength(2));
+        // Verify the main state wasn't modified (still contains all items)
+        final mainState = container.read(provider);
+        expect(mainState.value, hasLength(2));
 
-      verify(() => mockRepository.getItemsBySpaceId(houseId, spaceId)).called(1);
-    });
+        verify(
+          () => mockRepository.getItemsBySpaceId(houseId, spaceId),
+        ).called(1);
+      },
+    );
 
     test('should correctly fetch items in general pool', () async {
       // === ARRANGE ===
@@ -678,10 +765,12 @@ void main() {
 
       final generalPoolItems = [allItems[1]];
 
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => allItems);
-      when(() => mockRepository.getItemsInGeneralPool(houseId))
-          .thenAnswer((_) async => generalPoolItems);
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => allItems);
+      when(
+        () => mockRepository.getItemsInGeneralPool(houseId),
+      ).thenAnswer((_) async => generalPoolItems);
 
       final provider = itemNotifierProvider(houseId);
       await container.read(provider.future);
@@ -724,13 +813,17 @@ void main() {
       ];
       final afterDelete = [initialItems[1]];
 
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => initialItems);
-      when(() => mockRepository.deleteItems(['item-a']))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => initialItems);
+      when(
+        () => mockRepository.deleteItems(['item-a']),
+      ).thenAnswer((_) async {});
       // Secondo invocazione: solo item-b rimane
       var callCount = 0;
-      when(() => mockRepository.getItemsByHouseId(houseId)).thenAnswer((_) async {
+      when(() => mockRepository.getItemsByHouseId(houseId)).thenAnswer((
+        _,
+      ) async {
         callCount++;
         return callCount == 1 ? initialItems : afterDelete;
       });
@@ -748,19 +841,23 @@ void main() {
 
     test('no-op when itemIds is empty', () async {
       const houseId = 'house-bulk-delete-empty';
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => []);
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => []);
 
       await container.read(itemNotifierProvider(houseId).future);
-      await container.read(itemNotifierProvider(houseId).notifier).bulkDelete([]);
+      await container
+          .read(itemNotifierProvider(houseId).notifier)
+          .bulkDelete([]);
 
       verifyNever(() => mockRepository.deleteItems(any()));
     });
 
     test('clears selection state after deletion', () async {
       const houseId = 'house-bulk-delete-clear-sel';
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => []);
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => []);
       when(() => mockRepository.deleteItems(any())).thenAnswer((_) async {});
 
       await container.read(itemNotifierProvider(houseId).future);
@@ -770,28 +867,33 @@ void main() {
       container.read(itemSelectionNotifierProvider.notifier).toggleItem('x');
       expect(container.read(itemSelectionNotifierProvider).isActive, isTrue);
 
-      await container.read(itemNotifierProvider(houseId).notifier).bulkDelete(['x']);
+      await container.read(itemNotifierProvider(houseId).notifier).bulkDelete([
+        'x',
+      ]);
 
       final sel = container.read(itemSelectionNotifierProvider);
       expect(sel.isActive, isFalse);
       expect(sel.selectedIds, isEmpty);
     });
 
-    test('propagates repository exception', () async {
+    test('propagates repository exception to AsyncError state', () async {
       const houseId = 'house-bulk-delete-error';
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => []);
-      when(() => mockRepository.deleteItems(['bad']))
-          .thenThrow(Exception('DB error'));
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRepository.deleteItems(['bad']),
+      ).thenThrow(Exception('DB error'));
 
       await container.read(itemNotifierProvider(houseId).future);
 
-      expect(
-        () => container
-            .read(itemNotifierProvider(houseId).notifier)
-            .bulkDelete(['bad']),
-        throwsException,
-      );
+      await container.read(itemNotifierProvider(houseId).notifier).bulkDelete([
+        'bad',
+      ]);
+
+      final state = container.read(itemNotifierProvider(houseId));
+      expect(state, isA<AsyncError<List<ItemModel>>>());
+      expect(state.hasError, isTrue);
     });
   });
 
@@ -799,47 +901,56 @@ void main() {
   // bulkMove
   // ---------------------------------------------------------------------------
   group('ItemNotifier - bulkMove', () {
-    test('moves items, refreshes source list, and invalidates destination', () async {
-      const houseId = 'house-origin';
-      const destId = 'house-dest';
+    test(
+      'moves items, refreshes source list, and invalidates destination',
+      () async {
+        const houseId = 'house-origin';
+        const destId = 'house-dest';
 
-      final item = ItemModel(
-        id: 'item-x',
-        houseId: houseId,
-        name: 'Box',
-        category: ItemCategory.varie,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+        final item = ItemModel(
+          id: 'item-x',
+          houseId: houseId,
+          name: 'Box',
+          category: ItemCategory.varie,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
 
-      var refreshCalls = 0;
-      when(() => mockRepository.getItemsByHouseId(houseId)).thenAnswer((_) async {
-        refreshCalls++;
-        return refreshCalls == 1 ? [item] : []; // vuoto dopo spostamento
-      });
-      when(() => mockRepository.moveItemsToHouse(['item-x'], houseId, destId))
-          .thenAnswer((_) async {});
-      // Destination provider is a different family instance; getItemsByHouseId
-      // for destId is called by the invalidated provider rebuild.
-      when(() => mockRepository.getItemsByHouseId(destId))
-          .thenAnswer((_) async => []);
+        var refreshCalls = 0;
+        when(() => mockRepository.getItemsByHouseId(houseId)).thenAnswer((
+          _,
+        ) async {
+          refreshCalls++;
+          return refreshCalls == 1 ? [item] : []; // vuoto dopo spostamento
+        });
+        when(
+          () => mockRepository.moveItemsToHouse(['item-x'], houseId, destId),
+        ).thenAnswer((_) async {});
+        // Destination provider is a different family instance; getItemsByHouseId
+        // for destId is called by the invalidated provider rebuild.
+        when(
+          () => mockRepository.getItemsByHouseId(destId),
+        ).thenAnswer((_) async => []);
 
-      await container.read(itemNotifierProvider(houseId).future);
-      await container
-          .read(itemNotifierProvider(houseId).notifier)
-          .bulkMove(['item-x'], destId);
+        await container.read(itemNotifierProvider(houseId).future);
+        await container.read(itemNotifierProvider(houseId).notifier).bulkMove([
+          'item-x',
+        ], destId);
 
-      // Source list is now empty
-      final state = container.read(itemNotifierProvider(houseId));
-      expect(state.value, isEmpty);
-      verify(() => mockRepository.moveItemsToHouse(['item-x'], houseId, destId))
-          .called(1);
-    });
+        // Source list is now empty
+        final state = container.read(itemNotifierProvider(houseId));
+        expect(state.value, isEmpty);
+        verify(
+          () => mockRepository.moveItemsToHouse(['item-x'], houseId, destId),
+        ).called(1);
+      },
+    );
 
     test('no-op when itemIds is empty', () async {
       const houseId = 'house-bulk-move-empty';
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => []);
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => []);
 
       await container.read(itemNotifierProvider(houseId).future);
       await container
@@ -852,41 +963,47 @@ void main() {
     test('clears selection state after move', () async {
       const houseId = 'house-bulk-move-clear-sel';
       const destId = 'dest-clear';
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => []);
-      when(() => mockRepository.getItemsByHouseId(destId))
-          .thenAnswer((_) async => []);
-      when(() => mockRepository.moveItemsToHouse(any(), any(), any()))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRepository.getItemsByHouseId(destId),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRepository.moveItemsToHouse(any(), any(), any()),
+      ).thenAnswer((_) async {});
 
       await container.read(itemNotifierProvider(houseId).future);
       container.read(itemSelectionNotifierProvider.notifier).toggleMode();
       container.read(itemSelectionNotifierProvider.notifier).selectAll(['y']);
 
-      await container
-          .read(itemNotifierProvider(houseId).notifier)
-          .bulkMove(['y'], destId);
+      await container.read(itemNotifierProvider(houseId).notifier).bulkMove([
+        'y',
+      ], destId);
 
       final sel = container.read(itemSelectionNotifierProvider);
       expect(sel.isActive, isFalse);
       expect(sel.selectedIds, isEmpty);
     });
 
-    test('propagates repository exception', () async {
+    test('propagates repository exception to AsyncError state', () async {
       const houseId = 'house-bulk-move-error';
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => []);
-      when(() => mockRepository.moveItemsToHouse(any(), any(), any()))
-          .thenThrow(Exception('move failed'));
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRepository.moveItemsToHouse(any(), any(), any()),
+      ).thenThrow(Exception('move failed'));
 
       await container.read(itemNotifierProvider(houseId).future);
 
-      expect(
-        () => container
-            .read(itemNotifierProvider(houseId).notifier)
-            .bulkMove(['z'], 'somewhere'),
-        throwsException,
-      );
+      await container.read(itemNotifierProvider(houseId).notifier).bulkMove([
+        'z',
+      ], 'somewhere');
+
+      final state = container.read(itemNotifierProvider(houseId));
+      expect(state, isA<AsyncError<List<ItemModel>>>());
+      expect(state.hasError, isTrue);
     });
   });
 }

@@ -1,5 +1,5 @@
 /// Design System components and helpers.
-/// 
+///
 /// Import questo file per avere accesso a tutti i componenti del design system:
 /// ```dart
 /// import 'package:stuff_tracker_2/shared/design_system/design_system.dart';

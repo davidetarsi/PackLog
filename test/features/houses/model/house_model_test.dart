@@ -4,7 +4,7 @@ import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/model/location_type.dart';
 
 /// Unit tests for HouseModel domain logic.
-/// 
+///
 /// Tests pure domain methods including:
 /// - Location display name formatting
 /// - City name extraction

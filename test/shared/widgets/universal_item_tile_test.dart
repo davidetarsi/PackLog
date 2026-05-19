@@ -8,11 +8,7 @@ void main() {
       // Arrange
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: UniversalItemTile(
-              title: Text('Test Item'),
-            ),
-          ),
+          home: Scaffold(body: UniversalItemTile(title: Text('Test Item'))),
         ),
       );
 
@@ -20,7 +16,9 @@ void main() {
       expect(find.text('Test Item'), findsOneWidget);
     });
 
-    testWidgets('renders leading, title, and trailing in ListTile mode', (tester) async {
+    testWidgets('renders leading, title, and trailing in ListTile mode', (
+      tester,
+    ) async {
       // Arrange
       await tester.pumpWidget(
         MaterialApp(
@@ -106,7 +104,7 @@ void main() {
     testWidgets('applies custom backgroundColor', (tester) async {
       // Arrange
       const customColor = Colors.red;
-      
+
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -127,7 +125,7 @@ void main() {
       // Arrange
       const borderColor = Colors.blue;
       const borderWidth = 2.0;
-      
+
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -148,7 +146,9 @@ void main() {
       expect(shape.side.width, equals(borderWidth));
     });
 
-    testWidgets('uses custom Row layout when useListTile is false', (tester) async {
+    testWidgets('uses custom Row layout when useListTile is false', (
+      tester,
+    ) async {
       // Arrange
       await tester.pumpWidget(
         MaterialApp(
@@ -190,7 +190,9 @@ void main() {
       expect(find.byType(Column), findsWidgets);
     });
 
-    testWidgets('shows in-transit overlay when showInTransitOverlay is true', (tester) async {
+    testWidgets('shows in-transit overlay when showInTransitOverlay is true', (
+      tester,
+    ) async {
       // Arrange
       await tester.pumpWidget(
         const MaterialApp(
@@ -208,7 +210,9 @@ void main() {
       expect(find.byIcon(Icons.local_shipping), findsOneWidget);
     });
 
-    testWidgets('does not show overlay when showInTransitOverlay is false', (tester) async {
+    testWidgets('does not show overlay when showInTransitOverlay is false', (
+      tester,
+    ) async {
       // Arrange
       await tester.pumpWidget(
         const MaterialApp(
@@ -228,7 +232,7 @@ void main() {
     testWidgets('applies custom contentPadding', (tester) async {
       // Arrange
       const customPadding = EdgeInsets.all(24);
-      
+
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -249,7 +253,7 @@ void main() {
     testWidgets('applies custom margin', (tester) async {
       // Arrange
       const customMargin = EdgeInsets.all(16);
-      
+
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -269,7 +273,7 @@ void main() {
     testWidgets('handles TextField as title in Row mode', (tester) async {
       // Arrange
       final controller = TextEditingController(text: 'Editable');
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -287,7 +291,7 @@ void main() {
       // Assert
       expect(find.byKey(const Key('text-field')), findsOneWidget);
       expect(find.byType(TextField), findsOneWidget);
-      
+
       // Cleanup
       controller.dispose();
     });

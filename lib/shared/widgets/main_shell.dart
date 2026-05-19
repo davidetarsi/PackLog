@@ -335,10 +335,8 @@ class _NavItem extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  // fontSize leggermente ridotta per garantire che testo +
-                  // icona stiano sempre dentro tabBarHeight su ogni densità.
-                  fontSize: context.responsive(10),
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: context.fontSizeXxs,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   color: isSelected
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant,
@@ -379,9 +377,9 @@ class _CreatePillTab extends StatelessWidget {
           AppConstants.pillBorderRadius,
         ),
         child: Padding(
-          padding: context.responsiveSymmetricPadding(
-            horizontal: 20,
-            vertical: 12,
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacingMd + context.spacingXs, // 20 scalato
+            vertical: context.spacingSm + context.spacingXs, // 12 scalato
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

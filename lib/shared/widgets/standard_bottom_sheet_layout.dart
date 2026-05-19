@@ -1,6 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:pack_log/shared/theme/app_colors.dart';
 import '../helpers/bottom_sheet_handle.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
@@ -8,13 +7,13 @@ import 'universal_action_bar.dart';
 import 'circular_action_button.dart';
 
 /// Layout standardizzato per tutti i bottom sheet dell'app.
-/// 
+///
 /// Fornisce:
 /// - Handle superiore per drag
 /// - Titolo con bottone chiudi
 /// - Contenuto scrollabile con gestione keyboard
 /// - Bottoni Annulla/Salva standardizzati
-/// 
+///
 /// Esempio:
 /// ```dart
 /// showModalBottomSheet(
@@ -108,8 +107,8 @@ class StandardBottomSheetLayout extends StatelessWidget {
                     child: Text(
                       title,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.w700, // titleLarge ≈ 22px → w700
+                      ),
                     ),
                   ),
                   IconButton(
@@ -144,7 +143,8 @@ class StandardBottomSheetLayout extends StatelessWidget {
                 left: context.spacingMd,
                 right: context.spacingMd,
                 top: context.spacingMd,
-                bottom: context.spacingMd + AppConstants.bottomSheetBottomPadding,
+                bottom:
+                    context.spacingMd + AppConstants.bottomSheetBottomPadding,
               ),
               child: UniversalActionBar(
                 horizontalPadding: 0,
@@ -162,7 +162,7 @@ class StandardBottomSheetLayout extends StatelessWidget {
                 leftAction: showDeleteButton
                     ? CircularActionButton(
                         icon: Icons.delete_outline,
-                        color: AppColors.destructive,
+                        color: Theme.of(context).colorScheme.error,
                         onPressed: isLoading ? null : onDelete,
                         showBorder: true,
                       )

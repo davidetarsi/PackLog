@@ -23,9 +23,9 @@ class ThemeModeNotifier extends _$ThemeModeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final themeModeString = prefs.getString(_themeModeKey);
-      
+
       if (themeModeString == null) return _defaultThemeMode;
-      
+
       return ThemeMode.values.firstWhere(
         (mode) => mode.name == themeModeString,
         orElse: () => _defaultThemeMode,

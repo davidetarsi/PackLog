@@ -3,7 +3,7 @@ import 'package:pack_log/core/database/converters/item_category_converter.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 
 /// Unit tests for ItemCategoryConverter.
-/// 
+///
 /// Tests the bidirectional conversion between ItemCategory enum and String:
 /// - toDatabase: ItemCategory → String (for SQLite storage)
 /// - fromDatabase: String → ItemCategory (for deserialization)
@@ -102,7 +102,11 @@ void main() {
 
       // === ASSERT ===
       // Architectural Intent: Safe fallback prevents app crashes from corrupted data
-      expect(result, equals(ItemCategory.varie), reason: 'Unknown values should default to varie');
+      expect(
+        result,
+        equals(ItemCategory.varie),
+        reason: 'Unknown values should default to varie',
+      );
     });
 
     test('should fallback to varie for empty string', () {
@@ -110,7 +114,11 @@ void main() {
       final result = ItemCategoryConverter.fromDatabase('');
 
       // === ASSERT ===
-      expect(result, equals(ItemCategory.varie), reason: 'Empty string should default to varie');
+      expect(
+        result,
+        equals(ItemCategory.varie),
+        reason: 'Empty string should default to varie',
+      );
     });
 
     test('should be case-sensitive (uppercase should fallback)', () {
@@ -119,7 +127,11 @@ void main() {
 
       // === ASSERT ===
       // Current implementation uses exact match (enum.name)
-      expect(result, equals(ItemCategory.varie), reason: 'Case mismatch should fallback to varie');
+      expect(
+        result,
+        equals(ItemCategory.varie),
+        reason: 'Case mismatch should fallback to varie',
+      );
     });
   });
 

@@ -1,53 +1,55 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'app_spacing.dart';
 import 'error_empty_theme_extension.dart';
 import '../constants/app_constants.dart';
 
-/// Tema principale dell'app.
-/// Definisce tutti gli stili globali per avere un design consistente.
+/// Tema principale dell'app — Material 3, colori esplicitamente calibrati.
+///
+/// Principi DS (Fase 2):
+/// - Nessun alpha generato a runtime per testo muted: usa onSurfaceVariant.
+/// - Nessun alpha su bordi: usa outline / outlineVariant nativi.
+/// - tertiary = stati transienti (es. "in viaggio"). Ambra in entrambi i temi.
+/// - State layer alpha: 0.08 (hover) / 0.12 (selected) / 0.16 (dragged).
 class AppTheme {
-  // === Colori principali del tema ===
-  /// Primary orange for dark theme (#F76415)
-  static const Color _primaryOrange = Color(0xFFF76415);
-  /// Primary orange for light theme (#FF8A50)
-  static const Color _primaryOrangeLight = Color(0xFFFF8A50);
-  static const Color _surfaceDark = Color(0xFF121212); // Nero
-  static const Color _surfaceContainerDark = Color(
-    0xFF1E1E1E,
-  ); // Grigio molto scuro
-  static const Color _surfaceContainerHighDark = Color(
-    0xFF2D2D2D,
-  ); // Grigio scuro
-
-  /// Tema chiaro - Palette curata con arancione su sfondo bianco/grigio chiaro
+  /// Tema chiaro — arancione brand su sfondo caldo beige.
   static ThemeData get light {
     const colorScheme = ColorScheme.light(
-      // Colori primari (arancione chiaro per light mode)
-      primary: _primaryOrangeLight,
-      onPrimary: Color.fromARGB(255, 240, 226, 212),
-      primaryContainer: Color(0xFFFFE0CC), // Arancione molto chiaro
-      onPrimaryContainer: Color(0xFF5C2000),
-      // Colori secondari
-      secondary: Color(0xFFFF8A50),
-      onSecondary: Color.fromARGB(255, 206, 205, 205),
-      secondaryContainer: Color(0xFFFFE0CC),
-      onSecondaryContainer: Color(0xFF5C2000),
-      // Colori terziari
-      tertiary: Color(0xFFFFAB73),
-      onTertiary: Color.fromARGB(213, 255, 255, 255),
-      // Superfici (bianco/grigio chiaro)
-      surface: Color(0xFFFAFAFA), // Grigio chiarissimo
-      onSurface: Color(0xFF1C1C1C),
+      // ── Primary ───────────────────────────────────────────────────────────
+      // #E85D04: arancione brand light. onPrimary bianco garantisce WCAG AA.
+      primary: Color(0xFFE85D04),
+      onPrimary: Colors.white,
+      primaryContainer: Color.fromARGB(255, 255, 245, 238),
+      onPrimaryContainer: Color(0xFF4A1F00),
+      // ── Secondary ─────────────────────────────────────────────────────────
+      // Grigio neutro per azioni secondarie, distinto dal brand orange.
+      secondary: Color(0xFF6B7280),
+      onSecondary: Colors.white,
+      secondaryContainer: Color(0xFFE5E7EB),
+      onSecondaryContainer: Color(0xFF1F2937),
+      // ── Tertiary: stati transienti ("in viaggio") ──────────────────────────
+      // Ambra brunita. Distinta da primary (arancione) e da itemTemporary (blu).
+      tertiary: Color(0xFFD97706),
+      onTertiary: Colors.white,
+      tertiaryContainer: Color(0xFFFEF3C7),
+      onTertiaryContainer: Color(0xFF451A03),
+      // ── Superfici (beige caldo) ────────────────────────────────────────────
+      surface: Color.fromARGB(255, 255, 252, 249),
+      onSurface: Color(0xFF1A1A1A),
+      // onSurfaceVariant calibrato per leggibilità secondaria WCAG AA in light.
+      onSurfaceVariant: Color(0xFF595959),
       surfaceContainerLowest: Colors.white,
-      surfaceContainerLow: Color(0xFFF5F5F5),
-      surfaceContainer: Color(0xFFEFEFEF),
-      surfaceContainerHigh: Color(0xFFE8E8E8),
-      surfaceContainerHighest: Color(0xFFE0E0E0),
-      // Altri colori
-      error: Color(0xFFB00020),
-      onError: Colors.white,
-      outline: Color(0xFFBDBDBD),
+      surfaceContainerLow: Color(0xFFF5F0EC),
+      surfaceContainer: Color.fromARGB(255, 255, 248, 235),
+      surfaceContainerHigh: Color.fromARGB(255, 218, 210, 196),
+      surfaceContainerHighest: Color.fromARGB(255, 220, 209, 195),
+      // ── Bordi ─────────────────────────────────────────────────────────────
+      // outline: bordo forte (selezionato, focus). outlineVariant: divider/card.
+      outline: Color(0xFFB8B8B8),
       outlineVariant: Color(0xFFE0E0E0),
+      // ── Error / Inverse ───────────────────────────────────────────────────
+      error: Color(0xFFBA1A1A),
+      onError: Colors.white,
       inverseSurface: Color(0xFF2D2D2D),
       onInverseSurface: Color(0xFFF5F5F5),
       inversePrimary: Color(0xFFFFAB73),
@@ -56,36 +58,42 @@ class AppTheme {
     return _buildTheme(colorScheme, AppColorsExtension.light);
   }
 
-  /// Tema scuro - Tema principale dell'app
+  /// Tema scuro — arancione luminoso su sfondo dark.
   static ThemeData get dark {
-    // ColorScheme personalizzato per tema scuro con arancione
     const colorScheme = ColorScheme.dark(
-      // Colori primari (arancione)
-      primary: _primaryOrange,
-      onPrimary: Colors.white,
-      primaryContainer: Color(0xFF3D2000),
-      onPrimaryContainer: _primaryOrangeLight,
-      // Colori secondari
-      secondary: Color(0xFFFFB74D),
-      onSecondary: Color(0xFF1E1E1E),
-      secondaryContainer: Color(0xFF4A3000),
-      onSecondaryContainer: Color(0xFFFFDDB0),
-      // Colori terziari
-      tertiary: Color(0xFFFFCC80),
-      onTertiary: Color(0xFF1E1E1E),
-      // Superfici (nero/grigio scuro)
-      surface: _surfaceDark,
-      onSurface: Color(0xFFE8E8E8),
+      // ── Primary ───────────────────────────────────────────────────────────
+      // #FF8A50: arancione brand dark (più luminoso per contrasto su dark BG).
+      primary: Color(0xFFFF8A50),
+      onPrimary: Colors.black,
+      primaryContainer: Color(0xFF6B2A00),
+      onPrimaryContainer: Color(0xFFFFD9C2),
+      // ── Secondary ─────────────────────────────────────────────────────────
+      secondary: Color(0xFFA1A1AA),
+      onSecondary: Colors.black,
+      secondaryContainer: Color(0xFF3F3F46),
+      onSecondaryContainer: Color(0xFFE4E4E7),
+      // ── Tertiary: stati transienti ("in viaggio") ──────────────────────────
+      // Ambra luminosa per contrasto su dark surface.
+      tertiary: Color(0xFFFBBF24),
+      onTertiary: Colors.black,
+      tertiaryContainer: Color(0xFF451A03),
+      onTertiaryContainer: Color(0xFFFEF3C7),
+      // ── Superfici (dark) ──────────────────────────────────────────────────
+      surface: Color(0xFF1A1A1A),
+      onSurface: Color(0xFFF5F5F5),
+      // onSurfaceVariant calibrato per dark: bianco abbassato, non alpha grezzo.
+      onSurfaceVariant: Color(0xFFB8B8B8),
       surfaceContainerLowest: Color(0xFF0D0D0D),
-      surfaceContainerLow: Color(0xFF1A1A1A),
-      surfaceContainer: _surfaceContainerDark,
-      surfaceContainerHigh: _surfaceContainerHighDark,
-      surfaceContainerHighest: Color(0xFF3A3A3A),
-      // Altri colori
-      error: Color(0xFFCF6679),
-      onError: Colors.black,
-      outline: Color(0xFF5C5C5C),
+      surfaceContainerLow: Color(0xFF151515),
+      surfaceContainer: Color(0xFF252525),
+      surfaceContainerHigh: Color(0xFF2E2E2E),
+      surfaceContainerHighest: Color(0xFF383838),
+      // ── Bordi ─────────────────────────────────────────────────────────────
+      outline: Color(0xFF595959),
       outlineVariant: Color(0xFF3A3A3A),
+      // ── Error / Inverse ───────────────────────────────────────────────────
+      error: Color(0xFFFFB4AB),
+      onError: Color(0xFF690005),
       inverseSurface: Color(0xFFE8E8E8),
       onInverseSurface: Color(0xFF1E1E1E),
       inversePrimary: Color(0xFFBF360C),
@@ -190,10 +198,11 @@ class AppTheme {
         scrolledUnderElevation: 1,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
+        // ≥ 24px → w600 (regola DS size→weight Fase 3)
         titleTextStyle: TextStyle(
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           color: colorScheme.onSurface,
-          fontSize: 24
+          fontSize: AppSpacing.fontTitle,
         ),
       ),
 
@@ -215,9 +224,35 @@ class AppTheme {
       // === Extensions ===
       extensions: [
         appColors,
-        colorScheme.brightness == Brightness.dark
-            ? ErrorEmptyThemeExtension.darkDefaults
-            : ErrorEmptyThemeExtension.lightDefaults,
+        // ErrorEmptyThemeExtension calcolata dal ColorScheme attivo
+        // (no dipendenza da AppColors statici).
+        ErrorEmptyThemeExtension(
+          emptyStateTitle: TextStyle(
+            fontSize: AppSpacing
+                .fontLg, // 20px → w700 se titolo hero, w400 per stato vuoto
+            fontWeight: FontWeight.w400,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          emptyStateSubtitle: TextStyle(
+            fontSize: AppSpacing.fontSm, // 16px → body → w400
+            fontWeight: FontWeight.w400,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          emptyStateIconSize: 80,
+          emptyStateIconColor: colorScheme.onSurface.withValues(alpha: 0.38),
+          emptyStateTitleColor: colorScheme.onSurfaceVariant,
+          emptyStateSubtitleColor: colorScheme.onSurfaceVariant,
+          errorStateMessage: const TextStyle(
+            fontSize: AppSpacing.fontSm,
+            fontWeight: FontWeight.w400,
+          ),
+          errorStateIconSize: 80,
+          errorStateIconColor: colorScheme.error,
+          errorStateRetryLabel: 'common.retry',
+          stateSpacingMd: 16,
+          stateSpacingLg: 24,
+          stateSpacingSm: 8,
+        ),
       ],
     );
   }

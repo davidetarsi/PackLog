@@ -1,3 +1,7 @@
+// Regola border radius (DS Phase 1):
+// - Token noti (cardBorderRadius, pillBorderRadius, …) → BorderRadius.circular(AppConstants.X) raw.
+//   Scalare con responsiveBorderRadius su token noti è impercettibile e aggiunge complessità.
+// - Valori contestuali/magici (es. cardBorderRadius + 4) → context.responsiveBorderRadius(X).
 class AppConstants {
   static const String housesKey = 'houses';
   static const String itemsKey = 'items';
@@ -6,11 +10,24 @@ class AppConstants {
   // Backup Constants
   /// Prefisso per i file di backup del database
   static const String backupFilePrefix = 'pack-log-export-db';
-  
+
   /// Estensione per i file di database
   static const String databaseFileExtension = '.db';
 
-  // UI Constants
+  // ── UI Layout Tokens ────────────────────────────────────────────────────────
+
+  /// Gutter orizzontale standard di pagina.
+  /// Fonte unica: usare per ogni padding left/right a livello di schermata.
+  /// Equivale ad AppSpacing.md (= 16.0). Valore duplicato deliberatamente
+  /// per evitare dipendenza circolare tra app_constants e app_spacing.
+  static const double screenHorizontalGutter = 16.0;
+
+  /// Altezza della floating tab bar (senza safe area).
+  /// Bumpata a 60 in Fase 3 per accomodare label 12px + icona 22px senza overflow.
+  static const double tabBarHeight = 60.0;
+
+  // ── Border Radius ────────────────────────────────────────────────────────────
+
   /// Border radius for cards (16.0)
   static const double cardBorderRadius = 16.0;
 
@@ -26,9 +43,14 @@ class AppConstants {
   /// Border radius for dialogs and modals (20.0)
   static const double modalBorderRadius = 20.0;
 
-  /// Padding inferiore per le liste con floating navigation bar
-  static const double floatingNavBarPadding = 80.0;
+  // ── Spacing ──────────────────────────────────────────────────────────────────
 
   /// Padding inferiore per le bottom sheet (evita sovrapposizione con elementi sotto)
   static const double bottomSheetBottomPadding = 24.0;
+
+  /// Altezza fissa riservata per i tab contenuto filtri (AppPillTab standard).
+  static const double pillTabDefault = 36.0;
+
+  /// Altezza fissa per tab filtri compatti (raro).
+  static const double pillTabCompact = 32.0;
 }

@@ -6,30 +6,132 @@
 /// **Single Responsibility**: ogni file ha esattamente una ragione di essere
 /// modificato.
 ///
-/// Flusso di avvio:
+/// Flusso di avvio (anti-ANR):
 /// ```
 /// main_dev.dart / main_prod.dart
 ///       │
 ///       └─► bootstrap(Environment) ──► _validateConfig()
 ///                                   ──► EasyLocalization.ensureInitialized()
-///                                   ──► _initializePersistence()
-///                                   └─► runApp(MyApp)
+///                                   ──► runApp(MyApp) ← immediato
+///                                          │
+///                                          └─► MyApp watches appBootstrapProvider
+///                                                ├─ loading → splash screen
+///                                                └─ data    → MaterialApp.router
+///                                                     (Sentry, Supabase, Amplitude,
+///                                                      persistence init deferite)
 /// ```
+///
+/// TUTTA l'inizializzazione pesante (Sentry, Supabase, Amplitude, migrazione
+/// DB, backup) è deferita DOPO runApp tramite [appBootstrapProvider] per
+/// evitare ANR: Android triggera ANR se il main thread resta bloccato >5s
+/// prima del primo frame. Sentry viene inizializzato senza appRunner;
+/// gli errori sono comunque catturati via FlutterError.onError e
+/// PlatformDispatcher.onError.
+///
+/// **DataIntegrityService** non è incluso nel flusso automatico: disponibile
+/// tramite [dataIntegrityServiceProvider] per ispezioni manuali (Debug).
 library;
 
+import 'dart:async';
+
+import 'package:amplitude_flutter/amplitude.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/database/database.dart';
 import 'core/database/migration_service.dart';
 import 'core/database/services/backup_service.dart';
-import 'core/database/services/data_integrity_service.dart';
+import 'core/monitoring/app_error_observer.dart';
 import 'core/routing/app_router.dart';
+import 'core/sync/sync_provider.dart';
 import 'shared/config/app_config.dart';
+import 'shared/theme/app_spacing.dart';
+import 'shared/providers/language_locale.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/theme/app_theme.dart';
+
+// ═════════════════════════════════════════════════════════════════════════════
+// DEFERRED BOOTSTRAP PROVIDER
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// Impostato da [bootstrap] prima di [runApp], letto da [appBootstrapProvider].
+late Environment _currentEnvironment;
+
+/// Inizializzazione pesante deferita dopo il primo frame.
+///
+/// Sentry, Supabase, Amplitude e persistenza vengono inizializzati qui
+/// anziché in [bootstrap] per evitare ANR su Android: [runApp] viene
+/// chiamato subito, e [MyApp] mostra uno splash screen finché questo
+/// provider non completa.
+///
+/// Sentry è inizializzato senza [appRunner] — gli errori sono comunque
+/// catturati via [FlutterError.onError] e [PlatformDispatcher.onError].
+final appBootstrapProvider = FutureProvider<void>((ref) async {
+  // Solo servizi critici per il funzionamento dell'app (local-first).
+  // Supabase serve al sync orchestrator, persistence al DB.
+  await Future.wait([
+    _guardedInit(
+      'Supabase',
+      () => Supabase.initialize(
+        url: AppConfig.supabaseUrl,
+        anonKey: AppConfig.supabaseAnonKey,
+      ),
+    ),
+    _initializePersistence(),
+  ]);
+
+  debugPrint('[Bootstrap] Future.wait completato, avvio sync orchestrator...');
+  ref.read(syncOrchestratorProvider);
+  debugPrint('[Bootstrap] Sync orchestrator inizializzato');
+
+  // Servizi non critici schedulati sull'event queue — la parte sincrona di
+  // SentryFlutter.init() (native bindings, integrations) blocca il main
+  // thread. Schedulandoli con Future.delayed il provider completa prima,
+  // l'UI renderizza, e solo dopo parte l'init pesante.
+  Future.delayed(Duration.zero, _initNonCriticalServices);
+  debugPrint('[Bootstrap] ✅ appBootstrapProvider completato');
+});
+
+void _initNonCriticalServices() {
+  final bool sentryEnabled =
+      AppConfig.sentryDsn.isNotEmpty &&
+      AppConfig.sentryDsn != 'MISSING_SENTRY_DSN';
+  final bool amplitudeEnabled =
+      AppConfig.amplitudeApiKey.isNotEmpty &&
+      AppConfig.amplitudeApiKey != 'MISSING_AMPLITUDE_API_KEY';
+
+  if (sentryEnabled) {
+    _guardedInit(
+      'Sentry',
+      () => SentryFlutter.init((options) {
+        options.dsn = AppConfig.sentryDsn;
+        options.environment = _currentEnvironment.name;
+        options.tracesSampleRate = 1.0;
+      }),
+    );
+  }
+  if (amplitudeEnabled) {
+    _guardedInit(
+      'Amplitude',
+      () => Amplitude.getInstance().init(AppConfig.amplitudeApiKey),
+    );
+  }
+}
+
+Future<void> _guardedInit(String name, Future<dynamic> Function() init) async {
+  try {
+    await init().timeout(const Duration(seconds: 10));
+    debugPrint('[Bootstrap] ✅ $name inizializzato');
+  } on TimeoutException {
+    debugPrint('[Bootstrap] ⚠️  $name init timeout — proseguo senza');
+  } catch (e) {
+    debugPrint('[Bootstrap] ⚠️  $name init fallito: $e');
+  }
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ENUM Environment
@@ -62,57 +164,44 @@ enum Environment {
 
 /// Punto di bootstrap condiviso per tutti gli entry-point dell'app.
 ///
-/// Riceve l'[env] dall'entry-point del flavor e orchestra in sequenza:
-/// 1. Inizializzazione del binding Flutter.
-/// 2. Validazione della configurazione (con severità dipendente da [env]).
-/// 3. Inizializzazione della localizzazione (async).
-/// 4. Pipeline di persistenza: migrazione → integrità → backup.
-/// 5. Avvio dell'app con [runApp].
+/// Esegue solo operazioni veloci prima di [runApp] per evitare ANR:
+/// 1. Binding Sentry-compatibile.
+/// 2. Validazione configurazione.
+/// 3. EasyLocalization (veloce, serve per l'UI).
+/// 4. [runApp] immediato — nessun await pesante.
 ///
-/// Il blocco `try/catch` globale garantisce che qualsiasi errore non gestito
-/// durante l'avvio venga loggato con stack trace leggibile, anziché causare
-/// un crash silenzioso con schermata nera.
-///
-/// Esempio di utilizzo dall'entry-point:
-/// ```dart
-/// Future<void> main() async => bootstrap(Environment.dev);
-/// ```
+/// Tutta l'inizializzazione pesante (Sentry, Supabase, Amplitude, persistenza)
+/// è gestita da [appBootstrapProvider] e visualizzata con uno splash screen.
 Future<void> bootstrap(Environment env) async {
-  // Deve essere la prima chiamata assoluta: abilita l'interazione con il
-  // framework Flutter (channels, plugin, servizi nativi) prima di runApp.
+  // Usa il binding standard Flutter — idempotente e privo di dipendenze da Sentry.
+  // SentryFlutter.init() viene chiamato dopo runApp in [appBootstrapProvider]
+  // dove si occupa autonomamente dell'integrazione con FlutterError.onError e
+  // PlatformDispatcher.onError (standard Flutter 3.3+).
+  // Non usare SentryWidgetsFlutterBinding.ensureInitialized() qui: il custom
+  // binding Sentry può causare "Binding has not yet been initialized" quando
+  // altri package (es. connectivity_plus, sync orchestrator) accedono a
+  // WidgetsBinding.instance prima che Sentry abbia completato la propria init.
   WidgetsFlutterBinding.ensureInitialized();
+  _currentEnvironment = env;
 
   try {
     _validateConfig(env);
 
-    // easy_localization carica i file di traduzione in modo asincrono;
-    // deve essere inizializzato prima di runApp per evitare un frame senza
-    // traduzioni visibile all'utente.
     await EasyLocalization.ensureInitialized();
-
-    // Pipeline di persistenza: non-bloccante, gli errori vengono loggati
-    // ma non impediscono l'avvio (meglio l'app parzialmente funzionante
-    // che uno schermo bianco).
-    await _initializePersistence();
 
     runApp(
       EasyLocalization(
-        supportedLocales: const [
-          Locale('it', 'IT'),
-          Locale('en', 'US'),
-        ],
+        supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
         path: 'assets/translations',
         fallbackLocale: const Locale('it', 'IT'),
         child: ProviderScope(
+          observers: [AppErrorObserver()],
           child: MyApp(environment: env),
         ),
       ),
     );
   } catch (e, stackTrace) {
-    // Catch-all critico: logga il problema con stack trace completo e
-    // propaga l'eccezione affinché il framework Flutter mostri la schermata
-    // di errore predefinita (rosso su nero in debug, grigio in release).
-    debugPrint('[Bootstrap] ❌ ERRORE CRITICO durante l\'avvio: $e');
+    debugPrint('[Bootstrap] ERRORE CRITICO durante l\'avvio: $e');
     debugPrint('[Bootstrap] Stack trace:\n$stackTrace');
     rethrow;
   }
@@ -140,7 +229,9 @@ void _validateConfig(Environment env) {
       rethrow;
     }
     // In dev logghiamo il problema senza interrompere lo sviluppo.
-    debugPrint('[Bootstrap] ⚠️  Configurazione incompleta (ignorata in dev): $e');
+    debugPrint(
+      '[Bootstrap] ⚠️  Configurazione incompleta (ignorata in dev): $e',
+    );
   }
 }
 
@@ -148,8 +239,14 @@ void _validateConfig(Environment env) {
 ///
 /// Esegue in ordine sequenziale:
 /// 1. **Migrazione**: trasferisce i dati legacy da SharedPreferences a Drift.
-/// 2. **Integrità**: verifica e ripara automaticamente eventuali inconsistenze.
-/// 3. **Backup**: crea un backup automatico se l'ultimo è troppo vecchio.
+/// 2. **Backup**: crea un backup automatico se l'ultimo è troppo vecchio.
+///
+/// Il [DataIntegrityService] **non viene eseguito automaticamente** all'avvio:
+/// SQLite garantisce già l'integrità referenziale tramite FK con `ON DELETE
+/// CASCADE/SET NULL` e `PRAGMA foreign_keys = ON`. L'esecuzione automatica
+/// causava overhead O(N) ad ogni avvio senza benefici concreti per un DB
+/// locale. Il servizio resta disponibile per uso manuale (area Debug) o per
+/// sanificare dati migrati dai vecchi JSON tramite [dataIntegrityServiceProvider].
 ///
 /// La connessione [AppDatabase] aperta qui è temporanea e viene chiusa al
 /// termine: ogni provider Riverpod creerà la propria connessione lazy al
@@ -162,7 +259,6 @@ Future<void> _initializePersistence() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     await _runMigration(database, prefs);
-    await _checkDataIntegrity(database);
 
     // CRITICO: chiudi il DB PRIMA del backup automatico.
     // BackupService copia il file raw: in WAL mode il file .db principale
@@ -203,42 +299,6 @@ Future<void> _runMigration(
   }
 }
 
-/// Verifica l'integrità dei dati e tenta la riparazione automatica.
-///
-/// Segue una strategia a due fasi per bilanciare velocità e completezza:
-/// 1. Quick check (O(1)): verifica metadati del database.
-/// 2. Full check (O(N)): verifica referential integrity e consistenza dati.
-Future<void> _checkDataIntegrity(AppDatabase database) async {
-  try {
-    final DataIntegrityService integrityService =
-        DataIntegrityService(database);
-
-    final bool quickOk = await integrityService.quickCheck();
-    if (!quickOk) {
-      debugPrint(
-        '[Bootstrap] Quick check fallito, eseguo verifica completa...',
-      );
-    }
-
-    final result = await integrityService.runFullCheck();
-
-    if (!result.isHealthy) {
-      debugPrint(
-        '[Bootstrap] Trovati ${result.issueCount} problemi di integrità',
-      );
-      if (result.fixableIssueCount > 0) {
-        debugPrint('[Bootstrap] Tento riparazione automatica...');
-        final int fixed = await integrityService.autoFix(result);
-        debugPrint('[Bootstrap] Riparati $fixed problemi');
-      }
-    } else {
-      debugPrint('[Bootstrap] ✅ Database integro');
-    }
-  } catch (e) {
-    debugPrint('[Bootstrap] Errore nella verifica integrità: $e');
-  }
-}
-
 /// Crea un backup automatico del database se l'ultimo è troppo vecchio.
 ///
 /// La logica di throttling (es. "non prima di X ore dall'ultimo backup")
@@ -258,32 +318,72 @@ Future<void> _createAutoBackup() async {
 
 /// Widget radice dell'applicazione.
 ///
-/// Riceve l'[environment] per differenziare il comportamento visivo:
-/// il banner "DEBUG" è mostrato solo in [Environment.dev] per non
-/// confondere gli utenti finali in produzione.
+/// Osserva [appBootstrapProvider]: mostra uno splash screen durante
+/// l'inizializzazione pesante (Supabase, Amplitude, persistenza), poi
+/// passa al [MaterialApp.router] con il router completo.
 class MyApp extends ConsumerWidget {
-  /// L'ambiente di esecuzione corrente.
   final Environment environment;
 
   const MyApp({required this.environment, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<ThemeMode> themeModeAsync =
-        ref.watch(themeModeNotifierProvider);
+    final bootstrapState = ref.watch(appBootstrapProvider);
 
-    return MaterialApp.router(
-      title: 'Pack Log',
-      // Il banner "DEBUG" è visibile solo in dev per non disorientare
-      // gli utenti in produzione con indicatori tecnici.
-      debugShowCheckedModeBanner: environment == Environment.dev,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
-      routerConfig: appRouter,
-      localizationsDelegates: context.localizationDelegates,
-      supportedLocales: context.supportedLocales,
-      locale: context.locale,
+    return bootstrapState.when(
+      loading: () => MaterialApp(
+        debugShowCheckedModeBanner: environment == Environment.dev,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.dark,
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
+        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
+      ),
+      error: (error, _) => MaterialApp(
+        debugShowCheckedModeBanner: environment == Environment.dev,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.dark,
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Text(
+                'Errore di avvio: $error',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+      ),
+      data: (_) {
+        final themeModeAsync = ref.watch(themeModeNotifierProvider);
+
+        final localeCode = context.locale.languageCode;
+        final currentProviderLocale = ref.read(languageLocaleProvider);
+        if (currentProviderLocale != localeCode) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(languageLocaleProvider.notifier).updateLocale(localeCode);
+          });
+        }
+
+        return MaterialApp.router(
+          title: 'Pack Log',
+          debugShowCheckedModeBanner: environment == Environment.dev,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
+          routerConfig: ref.watch(appRouterProvider),
+          localizationsDelegates: context.localizationDelegates,
+          supportedLocales: context.supportedLocales,
+          locale: context.locale,
+        );
+      },
     );
   }
 }

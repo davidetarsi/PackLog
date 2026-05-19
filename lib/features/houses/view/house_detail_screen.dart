@@ -2,26 +2,49 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
+import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
+import 'package:pack_log/shared/widgets/tri_slot_bar.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
 import '../../items/view/add_edit_item_screen.dart';
+import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/providers/item_selection_provider.dart';
+import '../../items/widgets/rapid_fire_input.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
+import '../../spaces/model/space_model.dart';
+import '../../spaces/providers/space_provider.dart';
 import '../../spaces/view/spaces_management_screen.dart';
 import '../../luggages/view/luggages_management_screen.dart';
 import 'add_edit_house_screen.dart';
 import '../../../shared/constants/house_icons.dart';
+import '../../../shared/widgets/ds_contextual_app_bar.dart';
+import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 
+enum _CategoryTab {
+  all('trips.filter_all', null),
+  vestiti('categories.vestiti', ItemCategory.vestiti),
+  toiletries('categories.toiletries', ItemCategory.toiletries),
+  elettronica('categories.elettronica', ItemCategory.elettronica),
+  varie('categories.varie', ItemCategory.varie);
+
+  final String labelKey;
+  final ItemCategory? categoryFilter;
+  const _CategoryTab(this.labelKey, this.categoryFilter);
+  String get label => labelKey.tr();
+}
+
 /// Durata delle transizioni animate tra le due modalità della UI
 /// (normale ↔ selezione multipla).
 const _kModeSwitchDuration = Duration(milliseconds: 220);
+const _kBottomBarElementsHeight = 50.0;
 
 class HouseDetailScreen extends ConsumerStatefulWidget {
   final String houseId;
@@ -33,6 +56,11 @@ class HouseDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
+  /// null = tutti gli item, 'default' = pool generale, spaceId = spazio specifico.
+  String? _spaceFilter;
+  _CategoryTab _categoryTab = _CategoryTab.all;
+  bool _isRapidFireExpanded = false;
+
   // -------------------------------------------------------------------------
   // Manage sheet
   // -------------------------------------------------------------------------
@@ -59,7 +87,8 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
             ),
             ListTile(
               leading: Icon(
-                Icons.bookmark,
+                Icons
+                    .push_pin, // push_pin per "casa principale" — bookmark riservato ai viaggi salvati
                 color: isPrimary
                     ? null
                     : Theme.of(sheetContext).colorScheme.primary,
@@ -90,33 +119,21 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                 await showLuggagesManagementSheet(context, houseId: houseId);
               },
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAddItemsSheet(BuildContext context, String houseId) {
-    showModalBottomSheet(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+            const Divider(height: 1),
             ListTile(
-              leading: const Icon(Icons.add),
-              title: Text('houses.add_single_item'.tr()),
-              onTap: () async {
-                Navigator.pop(sheetContext);
-                await showAddEditItemSheet(context, houseId: houseId);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.grid_view),
-              title: Text('bulk_creation.add_from_template'.tr()),
+              leading: Icon(
+                Icons.delete_outline,
+                color: Theme.of(sheetContext).colorScheme.error,
+              ),
+              title: Text(
+                'common.delete'.tr(),
+                style: TextStyle(
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
+              ),
               onTap: () {
                 Navigator.pop(sheetContext);
-                context.push('/bulk-creation/templates/$houseId');
+                _showDeleteDialog(context, houseName);
               },
             ),
           ],
@@ -291,129 +308,43 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     final selectedIds = selectionState.selectedIds.toList();
     if (selectedIds.isEmpty) return;
 
-    // Lista delle case disponibili come destinazione (esclude quella corrente).
     final allHouses = ref.read(houseNotifierProvider).value ?? [];
     final otherHouses = allHouses.where((h) => h.id != widget.houseId).toList();
 
     if (!context.mounted) return;
 
-    final colorScheme = Theme.of(context).colorScheme;
-
-    await showModalBottomSheet<void>(
+    final destination = await DsPickerSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12, bottom: 8),
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colorScheme.onSurface.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: Text(
-                    'items.bulk_move_title'.tr(),
-                    style: Theme.of(sheetContext).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const Divider(height: 1),
-                if (otherHouses.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Center(
-                      child: Text(
-                        'items.bulk_move_no_houses'.tr(),
-                        style: Theme.of(sheetContext).textTheme.bodyMedium
-                            ?.copyWith(color: colorScheme.onSurfaceVariant),
-                      ),
-                    ),
-                  )
-                else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: otherHouses.length,
-                    itemBuilder: (_, index) {
-                      final house = otherHouses[index];
-                      return ListTile(
-                        leading: Icon(
-                          HouseIcons.getIcon(house.iconName),
-                          color: colorScheme.primary,
-                        ),
-                        title: Text(house.name),
-                        subtitle: house.isPrimary
-                            ? Text(
-                                'houses.primary'.tr(),
-                                style: TextStyle(
-                                  color: colorScheme.primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              )
-                            : null,
-                        onTap: () async {
-                          // Chiudi il bottom sheet prima dell'operazione asincrona
-                          // per evitare che il context del sheet diventi stale.
-                          Navigator.pop(sheetContext);
+      title: 'items.bulk_move_title'.tr(),
+      items: otherHouses,
+      getLabel: (h) => h.name,
+      getSubtitle: (h) => h.isPrimary ? 'houses.primary'.tr() : null,
+      getIcon: (h) => HouseIcons.getIcon(h.iconName),
+    );
 
-                          final destinationName = house.name;
-                          final count = selectedIds.length;
+    if (destination == null || !mounted) return;
 
-                          try {
-                            await ref
-                                .read(
-                                  itemNotifierProvider(widget.houseId).notifier,
-                                )
-                                .bulkMove(selectedIds, house.id);
+    final destinationName = destination.name;
+    final count = selectedIds.length;
 
-                            if (mounted) {
-                              AppSnackBar.showSuccess(
-                                context,
-                                'items.bulk_move_success'.tr(
-                                  args: [count.toString(), destinationName],
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              AppSnackBar.showError(
-                                context,
-                                'errors.save_error'.tr(),
-                              );
-                            }
-                          }
-                        },
-                      );
-                    },
-                  ),
-                const SizedBox(height: 8),
-              ],
-            ),
+    try {
+      await ref
+          .read(itemNotifierProvider(widget.houseId).notifier)
+          .bulkMove(selectedIds, destination.id);
+
+      if (mounted) {
+        AppSnackBar.showSuccess(
+          context,
+          'items.bulk_move_success'.tr(
+            args: [count.toString(), destinationName],
           ),
         );
-      },
-    );
+      }
+    } catch (_) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'errors.save_error'.tr());
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -475,14 +406,16 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               ? 'items.select_items'.tr()
               : 'items.selected_count'.tr(args: [selectedCount.toString()]),
           key: ValueKey(selectedCount),
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
       actions: [
         // Bottone "seleziona tutti" / "deseleziona tutti"
         IconButton(
           icon: Icon(
-            allSelected ? Icons.deselect : Icons.select_all,
+            allSelected
+                ? Icons.indeterminate_check_box_outlined
+                : Icons.check_box_outlined,
             color: colorScheme.primary,
           ),
           tooltip: allSelected
@@ -506,6 +439,19 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   // Action bar builders
   // -------------------------------------------------------------------------
 
+  void _openFullFormFromRapidFire(
+    String houseId,
+    String name,
+    ItemCategory category,
+  ) {
+    showAddEditItemSheet(
+      context,
+      houseId: houseId,
+      initialName: name.isNotEmpty ? name : null,
+      initialCategory: category,
+    );
+  }
+
   /// Bottom action bar standard (modalità normale).
   Widget _buildNormalActionBar(
     BuildContext context,
@@ -514,47 +460,102 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     bool isPrimary,
     String houseName,
   ) {
-    return UniversalActionBar(
-      key: const ValueKey('normal-bar'),
-      horizontalPadding: 0,
-      primaryLabel: 'houses.manage'.tr(),
-      primaryIcon: Icons.settings,
-      onPrimaryPressed: () =>
-          _showManageSheet(context, houseId, isPrimary, houseName),
-      leftAction: CircularActionButton(
-        icon: Icons.delete_outline,
-        onPressed: () => _showDeleteDialog(context, houseName),
-        color: colorScheme.error,
-        showBorder: true,
-      ),
-      rightAction: CircularActionButton(
-        icon: Icons.add,
-        onPressed: () => _showAddItemsSheet(context, houseId),
-        showBorder: true,
+    final elementHeight = context.responsive(_kBottomBarElementsHeight);
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: TriSlotBar(
+        horizontalPadding: 0,
+        sideSlotWidth: _isRapidFireExpanded ? 0.0 : elementHeight,
+        left: AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: _isRapidFireExpanded ? 0.0 : 1.0,
+          child: _isRapidFireExpanded
+              ? null
+              : CircularActionButton(
+                  icon: Icons.edit,
+                  onPressed: () =>
+                      _showManageSheet(context, houseId, isPrimary, houseName),
+                  showBorder: true,
+                ),
+        ),
+        center: RapidFireInput(
+          houseId: houseId,
+          currentSpaceId: (_spaceFilter != null && _spaceFilter != 'default')
+              ? _spaceFilter
+              : null,
+          height: elementHeight,
+          onOpenFullForm: (name, category) =>
+              _openFullFormFromRapidFire(houseId, name, category),
+          onExpandedChanged: (expanded) {
+            setState(() => _isRapidFireExpanded = expanded);
+          },
+        ),
+        right: AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: _isRapidFireExpanded ? 0.0 : 1.0,
+          child: _isRapidFireExpanded
+              ? null
+              : CircularActionButton(
+                  icon: Icons.auto_awesome,
+                  onPressed: () => context.push('/houses/$houseId/ai-import'),
+                  showBorder: true,
+                ),
+        ),
       ),
     );
   }
 
-  /// Bottom action bar contestuale (modalità selezione multipla).
-  ///
-  /// - Sinistra: elimina gli item selezionati (disabilitato se nessuno scelto)
-  /// - Centro: sposta gli item selezionati (disabilitato se nessuno scelto)
-  Widget _buildSelectionActionBar(
+  // -------------------------------------------------------------------------
+  // Filter pills
+  // -------------------------------------------------------------------------
+
+  Widget _buildSpacePills(
     BuildContext context,
-    ColorScheme colorScheme,
-    bool hasSelection,
+    List<SpaceModel> spaces,
+    List<ItemModel> allItems,
   ) {
-    return UniversalActionBar(
-      key: const ValueKey('selection-bar'),
-      horizontalPadding: 0,
-      primaryLabel: 'common.move'.tr(),
-      primaryIcon: Icons.local_shipping_outlined,
-      onPrimaryPressed: hasSelection ? _handleBulkMove : null,
-      leftAction: CircularActionButton(
-        icon: Icons.delete_outline,
-        onPressed: hasSelection ? _handleBulkDelete : null,
-        color: hasSelection ? colorScheme.error : colorScheme.outline,
-        showBorder: true,
+    final tabItems = <String?>[null, 'default', ...spaces.map((s) => s.id)];
+    final generalPoolCount = allItems.where((i) => i.spaceId == null).length;
+    final spaceCounts = {
+      for (final s in spaces)
+        s.id: allItems.where((i) => i.spaceId == s.id).length,
+    };
+
+    return Padding(
+      padding: EdgeInsets.only(left: context.spacingMd, top: context.spacingSm),
+      child: AppPillTab<String?>.nullable(
+        items: tabItems,
+        selectedItem: _spaceFilter,
+        getLabel: (spaceId) {
+          if (spaceId == null) return 'spaces.all_items'.tr();
+          if (spaceId == 'default') {
+            return '${'spaces.default'.tr()} ($generalPoolCount)';
+          }
+          final space = spaces.firstWhere((s) => s.id == spaceId);
+          return '${space.name} (${spaceCounts[spaceId] ?? 0})';
+        },
+        onSelected: (String? spaceId) => setState(() => _spaceFilter = spaceId),
+        scrollPadding: EdgeInsets.zero,
+      ),
+    );
+  }
+
+  Widget _buildCategoryPills(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: context.spacingMd,
+        top: context.spacingSm,
+        bottom: context.spacingSm,
+      ),
+      child: AppPillTab<_CategoryTab>(
+        items: _CategoryTab.values,
+        selectedItem: _categoryTab,
+        getLabel: (tab) => tab.label,
+        onSelected: (tab) => setState(() => _categoryTab = tab),
+        height: 40,
+        scrollPadding: EdgeInsets.symmetric(horizontal: context.spacingSm),
       ),
     );
   }
@@ -566,6 +567,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final housesAsync = ref.watch(houseNotifierProvider);
+    final spacesAsync = ref.watch(spacesByHouseProvider(widget.houseId));
+    final allItems =
+        ref.watch(itemNotifierProvider(widget.houseId)).value ?? const [];
 
     // Stato della selezione multipla: osservato globalmente qui e propagato
     // verso il basso tramite il provider (ItemCard lo osserva autonomamente).
@@ -575,15 +579,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     final hasSelection = selectedCount > 0;
 
     // IDs di tutti gli item permanenti della casa: servono per "seleziona tutti".
-    // Accesso diretto al valore cache del provider (senza await) per mantenere
-    // la build sincrona.
-    final allItemIds =
-        ref
-            .watch(itemNotifierProvider(widget.houseId))
-            .value
-            ?.map((i) => i.id)
-            .toList() ??
-        const [];
+    final allItemIds = allItems.map((i) => i.id).toList();
 
     return housesAsync.when(
       data: (houses) {
@@ -607,32 +603,55 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         final colorScheme = Theme.of(context).colorScheme;
 
         return StickyCtaScaffold(
-          // AppBar: transizione animata tra modalità normale e selezione.
-          // PreferredSize è obbligatorio perché Scaffold si aspetta un
-          // PreferredSizeWidget; AnimatedSwitcher da solo non lo è.
-          appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(kToolbarHeight),
-            child: AnimatedSwitcher(
-              duration: _kModeSwitchDuration,
-              // Dissolvenza semplice: evita jank da slide su AppBar
-              transitionBuilder: (child, animation) =>
-                  FadeTransition(opacity: animation, child: child),
-              child: isSelectionMode
-                  ? _buildSelectionAppBar(
-                      context,
-                      colorScheme,
-                      selectedCount,
-                      allItemIds,
-                    )
-                  : _buildNormalAppBar(
-                      context,
-                      colorScheme,
-                      house.name,
-                      HouseIcons.getIcon(house.iconName),
-                    ),
+          appBar: DsContextualAppBar(
+            isInSelectionMode: isSelectionMode,
+            switchDuration: _kModeSwitchDuration,
+            normalAppBar: _buildNormalAppBar(
+              context,
+              colorScheme,
+              house.name,
+              HouseIcons.getIcon(house.iconName),
+            ),
+            selectionAppBar: _buildSelectionAppBar(
+              context,
+              colorScheme,
+              selectedCount,
+              allItemIds,
             ),
           ),
-          body: ItemsScreen(houseId: widget.houseId, houseName: house.name),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Riga 1: filtro spazi (solo se esistono spazi) ────────────
+              spacesAsync.when(
+                data: (spaces) {
+                  // Spazio selezionato eliminato: reset al "tutti"
+                  if (_spaceFilter != null &&
+                      _spaceFilter != 'default' &&
+                      !spaces.any((s) => s.id == _spaceFilter)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) setState(() => _spaceFilter = null);
+                    });
+                  }
+                  if (spaces.isEmpty) return const SizedBox.shrink();
+                  return _buildSpacePills(context, spaces, allItems);
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
+              // ── Riga 2: filtro categorie ──────────────────────────────────
+              _buildCategoryPills(context),
+              // ── Contenuto ─────────────────────────────────────────────────
+              Expanded(
+                child: ItemsScreen(
+                  houseId: widget.houseId,
+                  houseName: house.name,
+                  selectedSpaceId: _spaceFilter,
+                  categoryFilter: _categoryTab.categoryFilter,
+                ),
+              ),
+            ],
+          ),
           // Bottom bar: transizione animata tra barra normale e barra selezione.
           bottomContent: AnimatedSwitcher(
             duration: _kModeSwitchDuration,
@@ -652,10 +671,24 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                     key: const ValueKey(
                       'selection_bar',
                     ), // Aiuta l'AnimatedSwitcher
-                    child: _buildSelectionActionBar(
-                      context,
-                      colorScheme,
-                      hasSelection,
+                    /// Bottom action bar contestuale (modalità selezione multipla).
+                    ///
+                    /// - Sinistra: elimina gli item selezionati (disabilitato se nessuno scelto)
+                    /// - Centro: sposta gli item selezionati (disabilitato se nessuno scelto)
+                    child: UniversalActionBar(
+                      key: const ValueKey('selection-bar'),
+                      horizontalPadding: 0,
+                      primaryLabel: 'common.move'.tr(),
+                      primaryIcon: Icons.local_shipping_outlined,
+                      onPrimaryPressed: hasSelection ? _handleBulkMove : null,
+                      leftAction: CircularActionButton(
+                        icon: Icons.delete_outline,
+                        onPressed: hasSelection ? _handleBulkDelete : null,
+                        color: hasSelection
+                            ? colorScheme.error
+                            : colorScheme.outline,
+                        showBorder: true,
+                      ),
                     ),
                   )
                 : KeyedSubtree(

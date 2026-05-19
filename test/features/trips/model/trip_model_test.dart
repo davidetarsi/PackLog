@@ -6,7 +6,7 @@ import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/model/location_type.dart';
 
 /// Unit tests for TripModel domain logic.
-/// 
+///
 /// Tests pure domain methods including:
 /// - Item count calculations (total, completed, percentage)
 /// - Trip status computation based on dates
@@ -106,10 +106,34 @@ void main() {
         id: 'trip-3',
         name: 'Test Trip',
         items: [
-          TripItem(id: 'i1', name: 'I1', category: ItemCategory.varie, quantity: 1, isChecked: true),
-          TripItem(id: 'i2', name: 'I2', category: ItemCategory.varie, quantity: 1, isChecked: true),
-          TripItem(id: 'i3', name: 'I3', category: ItemCategory.varie, quantity: 1, isChecked: false),
-          TripItem(id: 'i4', name: 'I4', category: ItemCategory.varie, quantity: 1, isChecked: false),
+          TripItem(
+            id: 'i1',
+            name: 'I1',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: true,
+          ),
+          TripItem(
+            id: 'i2',
+            name: 'I2',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: true,
+          ),
+          TripItem(
+            id: 'i3',
+            name: 'I3',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: false,
+          ),
+          TripItem(
+            id: 'i4',
+            name: 'I4',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: false,
+          ),
         ],
         luggages: [],
         createdAt: DateTime.now(),
@@ -137,7 +161,11 @@ void main() {
       // === ACT & ASSERT ===
       expect(emptyTrip.totalCount, equals(0));
       expect(emptyTrip.completedCount, equals(0));
-      expect(emptyTrip.completionPercentage, equals(0.0), reason: 'Empty list = 0% by convention');
+      expect(
+        emptyTrip.completionPercentage,
+        equals(0.0),
+        reason: 'Empty list = 0% by convention',
+      );
     });
 
     test('should handle all items unchecked (0% complete)', () {
@@ -146,9 +174,27 @@ void main() {
         id: 'trip-none-checked',
         name: 'Trip',
         items: [
-          TripItem(id: 'i1', name: 'I1', category: ItemCategory.varie, quantity: 1, isChecked: false),
-          TripItem(id: 'i2', name: 'I2', category: ItemCategory.varie, quantity: 1, isChecked: false),
-          TripItem(id: 'i3', name: 'I3', category: ItemCategory.varie, quantity: 1, isChecked: false),
+          TripItem(
+            id: 'i1',
+            name: 'I1',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: false,
+          ),
+          TripItem(
+            id: 'i2',
+            name: 'I2',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: false,
+          ),
+          TripItem(
+            id: 'i3',
+            name: 'I3',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: false,
+          ),
         ],
         luggages: [],
         createdAt: DateTime.now(),
@@ -167,8 +213,20 @@ void main() {
         id: 'trip-all-checked',
         name: 'Trip',
         items: [
-          TripItem(id: 'i1', name: 'I1', category: ItemCategory.varie, quantity: 1, isChecked: true),
-          TripItem(id: 'i2', name: 'I2', category: ItemCategory.varie, quantity: 1, isChecked: true),
+          TripItem(
+            id: 'i1',
+            name: 'I1',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: true,
+          ),
+          TripItem(
+            id: 'i2',
+            name: 'I2',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: true,
+          ),
         ],
         luggages: [],
         createdAt: DateTime.now(),
@@ -183,31 +241,34 @@ void main() {
   });
 
   group('TripModel - Trip Status Computation', () {
-    test('should return upcoming status when departure date is in the future', () {
-      // === ARRANGE ===
-      final now = DateTime.now();
-      final futureDate = now.add(const Duration(days: 10));
+    test(
+      'should return upcoming status when departure date is in the future',
+      () {
+        // === ARRANGE ===
+        final now = DateTime.now();
+        final futureDate = now.add(const Duration(days: 10));
 
-      final trip = TripModel(
-        id: 'trip-upcoming',
-        name: 'Future Trip',
-        items: [],
-        luggages: [],
-        departureDateTime: futureDate,
-        returnDateTime: futureDate.add(const Duration(days: 7)),
-        createdAt: now,
-        updatedAt: now,
-      );
+        final trip = TripModel(
+          id: 'trip-upcoming',
+          name: 'Future Trip',
+          items: [],
+          luggages: [],
+          departureDateTime: futureDate,
+          returnDateTime: futureDate.add(const Duration(days: 7)),
+          createdAt: now,
+          updatedAt: now,
+        );
 
-      // === ACT ===
-      final status = trip.status;
+        // === ACT ===
+        final status = trip.status;
 
-      // === ASSERT ===
-      expect(status, equals(TripStatus.upcoming));
-      expect(trip.isUpcoming, isTrue);
-      expect(trip.isActive, isFalse);
-      expect(trip.isCompleted, isFalse);
-    });
+        // === ASSERT ===
+        expect(status, equals(TripStatus.upcoming));
+        expect(trip.isUpcoming, isTrue);
+        expect(trip.isActive, isFalse);
+        expect(trip.isCompleted, isFalse);
+      },
+    );
 
     test('should return active status when trip is currently ongoing', () {
       // === ARRANGE ===
@@ -284,30 +345,33 @@ void main() {
       expect(trip.isUpcoming, isTrue);
     });
 
-    test('should return active when return date is null but departure is past', () {
-      // === ARRANGE ===
-      final now = DateTime.now();
-      final pastDeparture = now.subtract(const Duration(days: 5));
+    test(
+      'should return active when return date is null but departure is past',
+      () {
+        // === ARRANGE ===
+        final now = DateTime.now();
+        final pastDeparture = now.subtract(const Duration(days: 5));
 
-      final trip = TripModel(
-        id: 'trip-no-return',
-        name: 'Trip without Return',
-        items: [],
-        luggages: [],
-        departureDateTime: pastDeparture,
-        returnDateTime: null, // No return date (open-ended trip)
-        createdAt: now,
-        updatedAt: now,
-      );
+        final trip = TripModel(
+          id: 'trip-no-return',
+          name: 'Trip without Return',
+          items: [],
+          luggages: [],
+          departureDateTime: pastDeparture,
+          returnDateTime: null, // No return date (open-ended trip)
+          createdAt: now,
+          updatedAt: now,
+        );
 
-      // === ACT ===
-      final status = trip.status;
+        // === ACT ===
+        final status = trip.status;
 
-      // === ASSERT ===
-      // Per design: se non c'è data di ritorno, il viaggio è attivo dopo la partenza
-      expect(status, equals(TripStatus.active));
-      expect(trip.isActive, isTrue);
-    });
+        // === ASSERT ===
+        // Per design: se non c'è data di ritorno, il viaggio è attivo dopo la partenza
+        expect(status, equals(TripStatus.active));
+        expect(trip.isActive, isTrue);
+      },
+    );
 
     test('should handle boundary case when departure is exactly now', () {
       // === ARRANGE ===
@@ -419,7 +483,12 @@ void main() {
 
       // === ASSERT ===
       // Business Logic: Standard sizes use approximateVolumeLiters from enum
-      expect(totalVolume, equals(140), reason: '80 (holdBaggage) + 40 (cabinBaggage) + 20 (smallBackpack) = 140 liters');
+      expect(
+        totalVolume,
+        equals(140),
+        reason:
+            '80 (holdBaggage) + 40 (cabinBaggage) + 20 (smallBackpack) = 140 liters',
+      );
     });
 
     test('should handle luggage with custom size and explicit volume', () {
@@ -498,7 +567,11 @@ void main() {
 
       // === ASSERT ===
       // 20 (smallBackpack) + 0 (custom with null = 0) = 20
-      expect(totalVolume, equals(20), reason: '20 + 0 (null treated as 0) = 20');
+      expect(
+        totalVolume,
+        equals(20),
+        reason: '20 + 0 (null treated as 0) = 20',
+      );
     });
 
     test('should handle empty luggages list', () {
@@ -589,7 +662,12 @@ void main() {
         id: 'trip-items-only',
         name: 'Items Only',
         items: [
-          TripItem(id: 'i1', name: 'I1', category: ItemCategory.varie, quantity: 1),
+          TripItem(
+            id: 'i1',
+            name: 'I1',
+            category: ItemCategory.varie,
+            quantity: 1,
+          ),
         ],
         luggages: [],
         createdAt: DateTime.now(),
@@ -628,36 +706,43 @@ void main() {
       // === ACT & ASSERT ===
       expect(trip.totalCount, equals(0));
       expect(trip.luggageCount, equals(1));
-      expect(trip.totalLuggageVolume, equals(80), reason: 'holdBaggage has approximate volume of 80L');
+      expect(
+        trip.totalLuggageVolume,
+        equals(80),
+        reason: 'holdBaggage has approximate volume of 80L',
+      );
     });
 
-    test('should correctly compute completion for trip with large number of items', () {
-      // === ARRANGE ===
-      // Create 100 items, 75 checked
-      final items = List.generate(
-        100,
-        (index) => TripItem(
-          id: 'item-$index',
-          name: 'Item $index',
-          category: ItemCategory.varie,
-          quantity: 1,
-          isChecked: index < 75,
-        ),
-      );
+    test(
+      'should correctly compute completion for trip with large number of items',
+      () {
+        // === ARRANGE ===
+        // Create 100 items, 75 checked
+        final items = List.generate(
+          100,
+          (index) => TripItem(
+            id: 'item-$index',
+            name: 'Item $index',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: index < 75,
+          ),
+        );
 
-      final trip = TripModel(
-        id: 'trip-large',
-        name: 'Large Trip',
-        items: items,
-        luggages: [],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+        final trip = TripModel(
+          id: 'trip-large',
+          name: 'Large Trip',
+          items: items,
+          luggages: [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
 
-      // === ACT & ASSERT ===
-      expect(trip.totalCount, equals(100));
-      expect(trip.completedCount, equals(75));
-      expect(trip.completionPercentage, equals(0.75), reason: '75/100 = 75%');
-    });
+        // === ACT & ASSERT ===
+        expect(trip.totalCount, equals(100));
+        expect(trip.completedCount, equals(75));
+        expect(trip.completionPercentage, equals(0.75), reason: '75/100 = 75%');
+      },
+    );
   });
 }

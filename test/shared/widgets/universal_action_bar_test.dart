@@ -22,7 +22,9 @@ void main() {
       expect(find.text('Continue'), findsOneWidget);
     });
 
-    testWidgets('primary button is full-width when no side actions', (tester) async {
+    testWidgets('primary button is full-width when no side actions', (
+      tester,
+    ) async {
       // Arrange
       await tester.pumpWidget(
         MaterialApp(
@@ -37,13 +39,15 @@ void main() {
 
       // Assert - should render full-width button without Row layout
       expect(find.text('Full Width'), findsOneWidget);
-      
+
       // In full-width mode, the button container should have width: double.infinity
       final container = tester.widget<Container>(
-        find.descendant(
-          of: find.byType(InkWell),
-          matching: find.byType(Container),
-        ).first,
+        find
+            .descendant(
+              of: find.byType(InkWell),
+              matching: find.byType(Container),
+            )
+            .first,
       );
       expect(container.constraints?.maxWidth, equals(double.infinity));
     });
@@ -51,7 +55,7 @@ void main() {
     testWidgets('renders left action when provided', (tester) async {
       // Arrange
       const leftKey = Key('left-action');
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -71,7 +75,7 @@ void main() {
     testWidgets('renders right action when provided', (tester) async {
       // Arrange
       const rightKey = Key('right-action');
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -115,7 +119,9 @@ void main() {
       expect(find.byIcon(Icons.add), findsOneWidget);
     });
 
-    testWidgets('calls onPrimaryPressed when primary button tapped', (tester) async {
+    testWidgets('calls onPrimaryPressed when primary button tapped', (
+      tester,
+    ) async {
       // Arrange
       var tapped = false;
       await tester.pumpWidget(
@@ -137,7 +143,9 @@ void main() {
       expect(tapped, true);
     });
 
-    testWidgets('shows loading indicator when isLoading is true', (tester) async {
+    testWidgets('shows loading indicator when isLoading is true', (
+      tester,
+    ) async {
       // Arrange
       await tester.pumpWidget(
         MaterialApp(
@@ -156,7 +164,9 @@ void main() {
       expect(find.text('Save'), findsNothing); // Label hidden during loading
     });
 
-    testWidgets('disables primary button when onPrimaryPressed is null', (tester) async {
+    testWidgets('disables primary button when onPrimaryPressed is null', (
+      tester,
+    ) async {
       // Arrange
       await tester.pumpWidget(
         const MaterialApp(
@@ -195,7 +205,7 @@ void main() {
     testWidgets('applies custom horizontalPadding', (tester) async {
       // Arrange
       const customPadding = 32.0;
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -210,15 +220,22 @@ void main() {
 
       // Assert
       final padding = tester.widget<Padding>(
-        find.descendant(
-          of: find.byType(UniversalActionBar),
-          matching: find.byType(Padding),
-        ).first,
+        find
+            .descendant(
+              of: find.byType(UniversalActionBar),
+              matching: find.byType(Padding),
+            )
+            .first,
       );
-      expect(padding.padding, equals(const EdgeInsets.symmetric(horizontal: customPadding)));
+      expect(
+        padding.padding,
+        equals(const EdgeInsets.symmetric(horizontal: customPadding)),
+      );
     });
 
-    testWidgets('primary button remains centered with only left action', (tester) async {
+    testWidgets('primary button remains centered with only left action', (
+      tester,
+    ) async {
       // Arrange
       await tester.pumpWidget(
         MaterialApp(
@@ -241,7 +258,9 @@ void main() {
       expect(find.byType(Expanded), findsOneWidget); // Solo primary button
     });
 
-    testWidgets('primary button remains centered with only right action', (tester) async {
+    testWidgets('primary button remains centered with only right action', (
+      tester,
+    ) async {
       // Arrange
       await tester.pumpWidget(
         MaterialApp(
@@ -264,7 +283,9 @@ void main() {
       expect(find.byType(Expanded), findsOneWidget); // Solo primary button
     });
 
-    testWidgets('disables primary button when isLoading is true', (tester) async {
+    testWidgets('disables primary button when isLoading is true', (
+      tester,
+    ) async {
       // Arrange
       var tapped = false;
       await tester.pumpWidget(
@@ -284,7 +305,7 @@ void main() {
         of: find.byType(InkWell),
         matching: find.byType(InkWell),
       );
-      
+
       if (inkWell.evaluate().isNotEmpty) {
         await tester.tap(inkWell.first);
         await tester.pumpAndSettle();

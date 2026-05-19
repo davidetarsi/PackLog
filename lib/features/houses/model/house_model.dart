@@ -9,7 +9,7 @@ part 'house_model.g.dart';
 @freezed
 class HouseModel with _$HouseModel {
   const HouseModel._();
-  
+
   factory HouseModel({
     required String id,
     required String name,

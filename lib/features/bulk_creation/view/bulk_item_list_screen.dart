@@ -74,8 +74,7 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
     final success = await ErrorRetryDialog.executeWithRetry(
       context: context,
       operation: () async {
-        savedCount =
-            ref.read(bulkCreationNotifierProvider).totalItemsCount;
+        savedCount = ref.read(bulkCreationNotifierProvider).totalItemsCount;
         await notifier.saveToDatabase();
       },
       errorTitle: 'common.error'.tr(),
@@ -241,15 +240,14 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
       bottomContent: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _CategoryButtonBar(
-            onCategorySelected: _handleAddManualItem,
-          ),
+          _CategoryButtonBar(onCategorySelected: _handleAddManualItem),
           SizedBox(height: context.spacingMd),
           UniversalActionBar(
             primaryLabel: 'common.save'.tr(),
             primaryIcon: Icons.save,
-            onPrimaryPressed:
-                state.allItems.isNotEmpty && !_isSaving ? _handleSave : null,
+            onPrimaryPressed: state.allItems.isNotEmpty && !_isSaving
+                ? _handleSave
+                : null,
             isLoading: _isSaving,
           ),
         ],
@@ -258,7 +256,8 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
   }
 
   Map<ItemCategory, List<DraftItem>> _groupItemsByCategory(
-      List<DraftItem> items) {
+    List<DraftItem> items,
+  ) {
     final Map<ItemCategory, List<DraftItem>> grouped = {};
 
     for (final item in items) {
@@ -304,14 +303,13 @@ class _CategorySection extends StatelessWidget {
         CategorySectionHeader(category: category),
         SizedBox(height: context.spacingSm),
 
-        ...items.map((item) => Padding(
-              key: itemKeys[item.id],
-              padding: EdgeInsets.only(bottom: context.spacingSm),
-              child: BulkItemRow(
-                item: item,
-                focusNode: focusNodes[item.id]!,
-              ),
-            )),
+        ...items.map(
+          (item) => Padding(
+            key: itemKeys[item.id],
+            padding: EdgeInsets.only(bottom: context.spacingSm),
+            child: BulkItemRow(item: item, focusNode: focusNodes[item.id]!),
+          ),
+        ),
 
         SizedBox(height: context.spacingMd),
       ],
@@ -343,11 +341,7 @@ class BulkItemRow extends ConsumerStatefulWidget {
   /// FocusNode fornito e gestito dal parent. NON viene disposto qui.
   final FocusNode focusNode;
 
-  const BulkItemRow({
-    super.key,
-    required this.item,
-    required this.focusNode,
-  });
+  const BulkItemRow({super.key, required this.item, required this.focusNode});
 
   @override
   ConsumerState<BulkItemRow> createState() => _BulkItemRowState();
@@ -400,10 +394,9 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
     if (!widget.focusNode.hasFocus) {
       final newName = _controller.text.trim();
       if (newName.isNotEmpty && newName != _lastCommittedName) {
-        ref.read(bulkCreationNotifierProvider.notifier).renameItem(
-              widget.item.id,
-              newName,
-            );
+        ref
+            .read(bulkCreationNotifierProvider.notifier)
+            .renameItem(widget.item.id, newName);
         _lastCommittedName = newName;
       } else if (newName.isEmpty) {
         _controller.text = _lastCommittedName;
@@ -414,10 +407,9 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
   void _onSubmitted(String value) {
     final newName = value.trim();
     if (newName.isNotEmpty && newName != _lastCommittedName) {
-      ref.read(bulkCreationNotifierProvider.notifier).renameItem(
-            widget.item.id,
-            newName,
-          );
+      ref
+          .read(bulkCreationNotifierProvider.notifier)
+          .renameItem(widget.item.id, newName);
       _lastCommittedName = newName;
     } else if (newName.isEmpty) {
       _controller.text = _lastCommittedName;
@@ -456,7 +448,9 @@ class _BulkItemRowState extends ConsumerState<BulkItemRow> {
             value: widget.item.quantity,
             onChanged: (delta) {
               notifier.updateQuantity(
-                  widget.item.id, delta - widget.item.quantity);
+                widget.item.id,
+                delta - widget.item.quantity,
+              );
             },
             minValue: 1,
           ),
@@ -499,8 +493,8 @@ class _CategoryButtonBar extends ConsumerWidget {
             Text(
               'bulk_creation.add_manual_item'.tr(),
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
             SizedBox(height: context.spacingSm),
             Row(

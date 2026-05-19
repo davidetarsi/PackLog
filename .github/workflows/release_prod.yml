@@ -1,0 +1,61 @@
+name: 🚀 Release PROD
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Build & Release PROD
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      - name: ⚙️ Generate Code (Freezed, Drift, Riverpod)
+        # Il flag -d (delete-conflicting-outputs) è vitale in CI per 
+        # evitare blocchi se ci sono rimasugli di cache
+        run: dart run build_runner build -d
+
+      # ... poi prosegui con flutter analyze o flutter build ...
+
+      - name: 🔐 Decode Android Keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: 🔑 Create key.properties
+        # Passiamo le password in modo sicuro al file properties che Gradle leggerà
+        run: |
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=upload-keystore.jks" >> android/key.properties
+
+      - name: 🏗️ Build PROD AppBundle (AAB) & APK
+        run: |
+          flutter build appbundle --flavor prod --target lib/main_prod.dart --release --dart-define=GEO_API_KEY=${{ secrets.GEOAPIFY_KEY_PROD }}
+          flutter build apk --flavor prod --target lib/main_prod.dart --release --dart-define=GEO_API_KEY=${{ secrets.GEOAPIFY_KEY_PROD }}
+
+      - name: 🏷️ Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            build/app/outputs/bundle/prodRelease/app-prod-release.aab
+            build/app/outputs/flutter-apk/app-prod-release.apk

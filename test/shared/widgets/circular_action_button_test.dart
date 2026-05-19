@@ -9,10 +9,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: CircularActionButton(
-              icon: Icons.delete,
-              onPressed: () {},
-            ),
+            body: CircularActionButton(icon: Icons.delete, onPressed: () {}),
           ),
         ),
       );
@@ -48,10 +45,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: CircularActionButton(
-              icon: Icons.edit,
-              onPressed: null,
-            ),
+            body: CircularActionButton(icon: Icons.edit, onPressed: null),
           ),
         ),
       );
@@ -64,7 +58,7 @@ void main() {
     testWidgets('applies custom color to icon', (tester) async {
       // Arrange
       const customColor = Colors.red;
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -85,7 +79,7 @@ void main() {
     testWidgets('applies custom backgroundColor', (tester) async {
       // Arrange
       const customBg = Colors.blue;
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -100,10 +94,12 @@ void main() {
 
       // Assert
       final material = tester.widget<Material>(
-        find.descendant(
-          of: find.byType(CircularActionButton),
-          matching: find.byType(Material),
-        ).first,
+        find
+            .descendant(
+              of: find.byType(CircularActionButton),
+              matching: find.byType(Material),
+            )
+            .first,
       );
       expect(material.color, equals(customBg));
     });
@@ -137,7 +133,7 @@ void main() {
     testWidgets('applies custom size', (tester) async {
       // Arrange
       const customSize = 72.0;
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -157,7 +153,12 @@ void main() {
           matching: find.byType(Container),
         ),
       );
-      expect(container.constraints, equals(const BoxConstraints.tightFor(width: customSize, height: customSize)));
+      expect(
+        container.constraints,
+        equals(
+          const BoxConstraints.tightFor(width: customSize, height: customSize),
+        ),
+      );
     });
 
     testWidgets('shows reduced elevation when disabled', (tester) async {
@@ -176,10 +177,12 @@ void main() {
 
       // Assert - Material should have 0 elevation when disabled
       final material = tester.widget<Material>(
-        find.descendant(
-          of: find.byType(CircularActionButton),
-          matching: find.byType(Material),
-        ).first,
+        find
+            .descendant(
+              of: find.byType(CircularActionButton),
+              matching: find.byType(Material),
+            )
+            .first,
       );
       expect(material.elevation, equals(0));
     });

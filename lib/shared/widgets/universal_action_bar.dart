@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:pack_log/shared/widgets/tri_slot_bar.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 
 /// Action bar universale con bottone primario centrato perfettamente.
-/// 
+///
 /// Fornisce un layout consistente per le azioni bottom delle schermate:
 /// - Bottone primario (center) sempre perfettamente centrato
 /// - Azioni laterali opzionali (left/right) che non influenzano la centratura
 /// - Elevazione e stile pill consistenti
-/// 
+///
 /// **Pattern Critico di Centratura:**
 /// Usa `Expanded` + `Align` per i slot laterali, garantendo che il
 /// bottone centrale rimanga perfettamente centrato anche quando
 /// left/right sono null.
-/// 
+///
 /// Esempio:
 /// ```dart
 /// UniversalActionBar(
@@ -70,35 +71,11 @@ class UniversalActionBar extends StatelessWidget {
       isFullWidth: isSingleAction,
     );
 
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding ?? context.spacingMd,
-      ),
-      child: isSingleAction
-          ? primaryButton
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Slot sinistro con SizedBox fissa
-                SizedBox(
-                  width: 56,
-                  child: leftAction ?? const SizedBox.shrink(),
-                ),
-
-                SizedBox(width: context.spacingSm),
-
-                // Bottone primario centrale (pill button) - Expanded
-                Expanded(child: primaryButton),
-
-                SizedBox(width: context.spacingSm),
-
-                // Slot destro con SizedBox fissa
-                SizedBox(
-                  width: 56,
-                  child: rightAction ?? const SizedBox.shrink(),
-                ),
-              ],
-            ),
+    return TriSlotBar(
+      horizontalPadding: horizontalPadding,
+      left: leftAction,
+      right: rightAction,
+      center: primaryButton,
     );
   }
 }
@@ -137,7 +114,7 @@ class _PrimaryPillButton extends StatelessWidget {
         onTap: isEnabled ? onPressed : null,
         child: Container(
           width: isFullWidth ? double.infinity : null,
-          height: 56,
+          height: context.responsive(56),
           padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
           decoration: BoxDecoration(
             // Nessun colore qui: il colore di sfondo è già gestito da Material.
@@ -152,8 +129,8 @@ class _PrimaryPillButton extends StatelessWidget {
           child: isLoading
               ? Center(
                   child: SizedBox(
-                    width: 24,
-                    height: 24,
+                    width: context.responsive(24),
+                    height: context.responsive(24),
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: colorScheme.primary,
@@ -168,16 +145,20 @@ class _PrimaryPillButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (icon != null) ...[
-                      Icon(icon, color: colorScheme.onSurfaceVariant, size: context.iconSizeMd),
+                      Icon(
+                        icon,
+                        color: colorScheme.onSurfaceVariant,
+                        size: context.iconSizeMd,
+                      ),
                       SizedBox(width: context.spacingSm),
                     ],
                     Flexible(
                       child: Text(
                         label,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

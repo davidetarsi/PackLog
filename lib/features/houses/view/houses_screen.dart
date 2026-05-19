@@ -10,6 +10,11 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/widgets/ds_badge.dart';
+import '../../../shared/widgets/entity_context_menu.dart';
+import '../../../shared/widgets/error_retry_dialog.dart';
+import 'add_edit_house_screen.dart';
 
 class HousesScreen extends ConsumerStatefulWidget {
   const HousesScreen({super.key});
@@ -54,6 +59,8 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
                         icon: Icons.home_outlined,
                         title: 'houses.no_houses'.tr(),
                         subtitle: 'houses.no_houses_subtitle'.tr(),
+                        tapHint: 'houses.no_houses_tap_hint'.tr(),
+                        onTap: () => showAddEditHouseSheet(context),
                       ),
                     ),
                   ),
@@ -70,14 +77,13 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
               });
 
             return RefreshIndicator(
-              onRefresh: () async =>
-                  ref.refresh(houseNotifierProvider.future),
+              onRefresh: () async => ref.refresh(houseNotifierProvider.future),
               color: colorScheme.primary,
               child: ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.only(
                   top: context.spacingMd,
-                  bottom: AppConstants.floatingNavBarPadding,
+                  bottom: context.navBarReservedHeight,
                 ),
                 itemCount: sortedHouses.length,
                 itemBuilder: (context, index) {
@@ -103,13 +109,80 @@ class _HouseCard extends ConsumerWidget {
 
   const _HouseCard({required this.house});
 
+  Future<void> _onLongPress(BuildContext context, WidgetRef ref) async {
+    final action = await showEntityContextMenu(
+      context: context,
+      entityType: 'common.house_type'.tr(),
+      showSetPrimaryAction: true,
+      isPrimary: house.isPrimary,
+    );
+    if (action == null || !context.mounted) return;
+
+    switch (action) {
+      case EntityContextMenuAction.copy:
+        final success = await ErrorRetryDialog.executeWithRetry(
+          context: context,
+          operation: () async {
+            await ref
+                .read(houseNotifierProvider.notifier)
+                .duplicateHouse(house.id);
+          },
+          errorTitle: 'common.error'.tr(),
+          errorMessage: 'errors.save_house_failed'.tr(),
+        );
+        if (success && context.mounted) {
+          AppSnackBar.showSuccess(
+            context,
+            'dialogs.copy_success'.tr(args: [house.name]),
+          );
+        }
+      case EntityContextMenuAction.delete:
+        final confirmed = await DialogHelpers.showDeleteConfirmation(
+          context: context,
+          itemType: 'common.house_type'.tr(),
+          itemName: house.name,
+        );
+        if (confirmed && context.mounted) {
+          final success = await ErrorRetryDialog.executeWithRetry(
+            context: context,
+            operation: () async {
+              await ref
+                  .read(houseNotifierProvider.notifier)
+                  .deleteHouse(house.id);
+            },
+            errorTitle: 'common.error'.tr(),
+            errorMessage: 'errors.delete_failed'.tr(args: [house.name]),
+          );
+          if (success && context.mounted) {
+            AppSnackBar.showSuccess(context, 'houses.delete'.tr());
+          }
+        }
+      case EntityContextMenuAction.save:
+        break; // not used for houses
+      case EntityContextMenuAction.setPrimary:
+        await ErrorRetryDialog.executeWithRetry(
+          context: context,
+          operation: () async {
+            await ref
+                .read(houseNotifierProvider.notifier)
+                .setPrimaryHouse(house.id);
+          },
+          errorTitle: 'common.error'.tr(),
+          errorMessage: 'errors.save_house_failed'.tr(),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final statsAsync = ref.watch(houseStatsProvider(house.id));
 
     return Card(
-      margin: context.responsiveSymmetricPadding(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.symmetric(
+        horizontal: context.spacingMd,
+        vertical: context.spacingSm,
+      ),
       elevation: 0,
       color: Colors.transparent,
       shape: RoundedRectangleBorder(
@@ -117,8 +190,7 @@ class _HouseCard extends ConsumerWidget {
           AppConstants.cardBorderRadius + 4,
         ),
         side: BorderSide(
-          color:
-              colorScheme.outline.withValues(alpha: 0.2),
+          color: colorScheme.outlineVariant,
           width: /* house.isPrimary ? 1.5 : */ 1,
         ),
       ),
@@ -131,6 +203,7 @@ class _HouseCard extends ConsumerWidget {
             onTap: () {
               context.push('/houses/${house.id}');
             },
+            onLongPress: () => _onLongPress(context, ref),
             child: Padding(
               padding: EdgeInsets.all(context.spacingMd),
               child: Column(
@@ -139,11 +212,9 @@ class _HouseCard extends ConsumerWidget {
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.all(context.spacingSm + 4),
+                        padding: context.cardPaddingDense,
                         decoration: BoxDecoration(
-                          color: house.isPrimary
-                              ? colorScheme.primary.withValues(alpha: 0.1)
-                              : colorScheme.primaryContainer,
+                          color: colorScheme.primaryContainer,
                           borderRadius: context.responsiveBorderRadius(
                             AppConstants.cardBorderRadius,
                           ),
@@ -164,28 +235,30 @@ class _HouseCard extends ConsumerWidget {
                             Text(
                               house.name,
                               style: TextStyle(
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w700, // 20px → w700
                                 fontSize: context.fontSizeLg,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (house.locationDisplayName != null || house.description != null) ...[
+                            if (house.locationDisplayName != null ||
+                                house.description != null) ...[
                               SizedBox(height: context.spacingXs),
                               Row(
                                 children: [
                                   Icon(
                                     Icons.location_on_outlined,
                                     size: 14,
-                                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                    color: colorScheme.onSurfaceVariant,
                                   ),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
-                                      house.locationDisplayName ?? house.description!,
+                                      house.locationDisplayName ??
+                                          house.description!,
                                       style: TextStyle(
                                         fontSize: context.fontSizeSm + 1,
-                                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                        color: colorScheme.onSurfaceVariant,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -199,13 +272,16 @@ class _HouseCard extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  
+
                   // Divider
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-                    child: Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.2)),
+                    child: Divider(
+                      height: 1,
+                      color: colorScheme.outlineVariant,
+                    ),
                   ),
-                  
+
                   // Stats row
                   statsAsync.when(
                     data: (stats) => Row(
@@ -213,28 +289,30 @@ class _HouseCard extends ConsumerWidget {
                         Icon(
                           Icons.inventory_2_outlined,
                           size: 16,
-                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'houses.total_items'.tr(args: [stats.totalItems.toString()]),
+                          'houses.total_items'.tr(
+                            args: [stats.totalItems.toString()],
+                          ),
                           style: TextStyle(
                             fontSize: context.fontSizeSm,
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                         const Spacer(),
                         if (stats.hasItemsInTrip)
-                          _Badge(
+                          DsStatusBadge(
+                            type: DsStatusBadgeType.onTrip,
                             label: 'houses.badge_in_trip'.tr(),
-                            color: colorScheme.primary,
                           ),
                         if (stats.hasItemsInTrip && stats.hasTemporaryItems)
                           const SizedBox(width: 8),
                         if (stats.hasTemporaryItems)
-                          _Badge(
+                          DsStatusBadge(
+                            type: DsStatusBadgeType.temporary,
                             label: 'houses.badge_guest'.tr(),
-                            color: Colors.blue,
                           ),
                       ],
                     ),
@@ -245,53 +323,16 @@ class _HouseCard extends ConsumerWidget {
               ),
             ),
           ),
-          
+
           // Badge principale in alto a destra (stile bookmark/salvato)
           if (house.isPrimary)
+            // push_pin = "casa principale/fissata" — non bookmark (riservato ai viaggi salvati)
             Positioned(
               top: 0,
               right: 12,
-              child: Icon(
-                Icons.bookmark,
-                size: 20,
-                color: colorScheme.primary,
-              ),
+              child: Icon(Icons.push_pin, size: 20, color: colorScheme.primary),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// Widget per i badge "In viaggio" e "Ospite"
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _Badge({
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
       ),
     );
   }

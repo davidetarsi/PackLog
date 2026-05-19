@@ -7,35 +7,18 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 
-/// Widget riutilizzabile per il form delle info del viaggio.
-/// 
-/// Contiene:
-/// - Campo nome viaggio (in pill tab grande)
-/// - Card con date partenza/ritorno
-/// - Card con selezione casa + location autocomplete
 class TripInfoForm extends ConsumerStatefulWidget {
-  /// Nome iniziale del viaggio
   final String? initialName;
-  
-  /// Descrizione iniziale (opzionale)
   final String? initialDescription;
-  
-  /// Data/ora partenza iniziale
   final DateTime? initialDepartureDateTime;
-  
-  /// Data/ora ritorno iniziale
   final DateTime? initialReturnDateTime;
-  
-  /// ID casa destinazione iniziale
   final String? initialDestinationHouseId;
-  
-  /// Località destinazione iniziale (modello completo)
   final LocationSuggestionModel? initialDestinationLocation;
 
-  
-  /// Callback quando i dati cambiano
   final void Function({
     String? name,
     String? description,
@@ -43,7 +26,8 @@ class TripInfoForm extends ConsumerStatefulWidget {
     DateTime? returnDateTime,
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
-  }) onChanged;
+  })
+  onChanged;
 
   const TripInfoForm({
     super.key,
@@ -67,20 +51,22 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   DateTime? _returnDateTime;
   String? _destinationHouseId;
   LocationSuggestionModel? _destinationLocation;
+  late bool _useHouseDestination;
 
-  // Colore arancione per le icone
-  static const Color _accentColor = Colors.orange;
+  // _accentColor rimosso — usare colorScheme.primary nei build methods.
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName ?? '');
-    _descriptionController = TextEditingController(text: widget.initialDescription ?? '');
+    _descriptionController = TextEditingController(
+      text: widget.initialDescription ?? '',
+    );
     _departureDateTime = widget.initialDepartureDateTime;
     _returnDateTime = widget.initialReturnDateTime;
     _destinationHouseId = widget.initialDestinationHouseId;
     _destinationLocation = widget.initialDestinationLocation;
-    
+    _useHouseDestination = widget.initialDestinationHouseId != null;
   }
 
   @override
@@ -93,137 +79,68 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   void _notifyChanged() {
     widget.onChanged(
       name: _nameController.text.trim(),
-      description: _descriptionController.text.trim().isEmpty 
-          ? null 
+      description: _descriptionController.text.trim().isEmpty
+          ? null
           : _descriptionController.text.trim(),
       departureDateTime: _departureDateTime,
       returnDateTime: _returnDateTime,
       destinationHouseId: _destinationHouseId,
-      destinationLocation: _destinationHouseId == null 
-          ? _destinationLocation 
+      destinationLocation: _destinationHouseId == null
+          ? _destinationLocation
           : null,
     );
   }
 
-  Future<void> _pickDepartureDateTime() async {
-    final date = await showDatePicker(
+  Future<void> _pickDateRange() async {
+    final now = DateTime.now();
+    final range = await showDateRangePicker(
       context: context,
-      initialDate: _departureDateTime ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-      helpText: 'trips.select_departure_date'.tr(),
+      initialDateRange: (_departureDateTime != null && _returnDateTime != null)
+          ? DateTimeRange(start: _departureDateTime!, end: _returnDateTime!)
+          : null,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 365 * 5)),
     );
-    if (date == null || !mounted) return;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: _departureDateTime != null
-          ? TimeOfDay.fromDateTime(_departureDateTime!)
-          : TimeOfDay.now(),
-      helpText: 'trips.select_departure_time'.tr(),
-    );
-    if (time == null || !mounted) return;
+    if (range == null || !mounted) return;
 
     setState(() {
-      _departureDateTime = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute,
-      );
-      final autoReturn = _departureDateTime!.add(const Duration(hours: 1));
-      if (_returnDateTime == null || _returnDateTime!.isBefore(_departureDateTime!)) {
-        _returnDateTime = autoReturn;
-      }
-    });
-    _notifyChanged();
-  }
-
-  Future<void> _pickReturnDateTime() async {
-    final initialDate = _returnDateTime ?? _departureDateTime ?? DateTime.now();
-    final date = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: _departureDateTime ?? DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-      helpText: 'trips.select_return_date'.tr(),
-    );
-    if (date == null || !mounted) return;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: _returnDateTime != null
-          ? TimeOfDay.fromDateTime(_returnDateTime!)
-          : TimeOfDay.now(),
-      helpText: 'trips.select_return_time'.tr(),
-    );
-    if (time == null || !mounted) return;
-
-    setState(() {
-      _returnDateTime = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute,
-      );
+      _departureDateTime = range.start;
+      _returnDateTime = range.end;
     });
     _notifyChanged();
   }
 
   Future<void> _showDestinationHousePicker(List<HouseModel> houses) async {
-    final selected = await showModalBottomSheet<String>(
+    final selected = await DsPickerSheet.show<HouseModel>(
       context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'trips.select_destination_house'.tr(),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.cancel_outlined, color: _accentColor),
-            title: Text('common.none_insert_location'.tr()),
-            trailing: _destinationHouseId == null
-                ? const Icon(Icons.check, color: _accentColor)
-                : null,
-            onTap: () => Navigator.pop(context, ''),
-          ),
-          const Divider(),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: houses.length,
-              itemBuilder: (context, index) {
-                final house = houses[index];
-                return ListTile(
-                  leading: const Icon(Icons.home_outlined, color: _accentColor),
-                  title: Text(house.name),
-                  subtitle: house.description != null ? Text(house.description!) : null,
-                  trailing: _destinationHouseId == house.id
-                      ? const Icon(Icons.check, color: _accentColor)
-                      : null,
-                  onTap: () => Navigator.pop(context, house.id),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
+      title: 'trips.select_destination_house'.tr(),
+      items: houses,
+      getLabel: (h) => h.name,
+      getSubtitle: (h) => h.description,
+      getIcon: (_) => Icons.home_outlined,
+      selected: houses.where((h) => h.id == _destinationHouseId).firstOrNull,
     );
 
-    if (selected != null) {
+    if (selected != null && mounted) {
       setState(() {
-        _destinationHouseId = selected.isEmpty ? null : selected;
-        if (_destinationHouseId != null) {
-          _destinationLocation = null;
-        }
+        _destinationHouseId = selected.id;
+        _destinationLocation = null;
       });
       _notifyChanged();
     }
   }
 
-  String _formatDateTimeLine(DateTime? dateTime) {
-    if (dateTime == null) return 'common.tap_to_set'.tr();
-    return '${DateFormat('d MMM y').format(dateTime)} • ${DateFormat('HH:mm').format(dateTime)}';
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return '—';
+    return DateFormat('d MMM y').format(dt);
+  }
+
+  String _getSelectedHouseName(List<HouseModel> houses) {
+    if (_destinationHouseId == null) {
+      return 'common.none_selected'.tr();
+    }
+    final house = houses.where((h) => h.id == _destinationHouseId).firstOrNull;
+    return house?.name ?? 'common.unknown_house'.tr();
   }
 
   @override
@@ -234,26 +151,19 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Nome viaggio - Pill tab grande senza bordi
-        Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHigh,
-            borderRadius: context.responsiveBorderRadius(24),
-          ),
-          padding: EdgeInsets.symmetric(
-            horizontal: context.spacingMd,
-            vertical: context.spacingSm,
-          ),
+        // ── Nome viaggio ───────────────────────────────────────────────
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: context.spacingSm),
           child: TextFormField(
             controller: _nameController,
             style: TextStyle(
               fontSize: context.fontSizeXl,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
             ),
             decoration: InputDecoration(
               hintText: 'trips.name_hint'.tr(),
               hintStyle: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.4),
+                color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.normal,
               ),
               border: InputBorder.none,
@@ -270,218 +180,240 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
             },
           ),
         ),
-        
+
         SizedBox(height: context.spacingMd),
-        
-        // Card Date - Layout verticale
+
+        // ── Date - riga unica con range picker ─────────────────────────
         Card(
           margin: EdgeInsets.zero,
           elevation: 0,
           color: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
-            side: BorderSide(
-              color: colorScheme.outline.withValues(alpha: 0.2),
+            borderRadius: context.responsiveBorderRadius(
+              AppConstants.cardBorderRadius,
             ),
+            side: BorderSide(color: colorScheme.outlineVariant),
           ),
-          child: Column(
-            children: [
-              // Partenza
-              _buildDateRow(
-                context,
-                colorScheme,
-                icon: Icons.calendar_month_outlined,
-                label: 'common.departure'.tr(),
-                dateTime: _departureDateTime,
-                onTap: _pickDepartureDateTime,
-                onClear: () {
-                  setState(() => _departureDateTime = null);
-                  _notifyChanged();
-                },
-              ),
-              // Linea arancione di collegamento
-              Padding(
-                padding: const EdgeInsets.only(left: 27),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 2,
-                      height: 16,
-                      color: _accentColor,
+          child: InkWell(
+            onTap: _pickDateRange,
+            borderRadius: context.responsiveBorderRadius(
+              AppConstants.cardBorderRadius,
+            ),
+            child: Padding(
+              padding: context.cardPaddingHero,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_month_outlined,
+                    color: colorScheme.primary,
+                    size: 22,
+                  ),
+                  SizedBox(width: context.spacingMd),
+                  Expanded(
+                    child:
+                        (_departureDateTime != null || _returnDateTime != null)
+                        ? Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'common.departure'.tr(),
+                                      style: TextStyle(
+                                        fontSize: context.fontSizeXs,
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _formatDate(_departureDateTime),
+                                      style: TextStyle(
+                                        fontSize: context.fontSizeSm,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                child: Icon(
+                                  Icons.arrow_forward,
+                                  color: colorScheme.primary,
+                                  size: 16,
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'common.return'.tr(),
+                                      style: TextStyle(
+                                        fontSize: context.fontSizeXs,
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _formatDate(_returnDateTime),
+                                      style: TextStyle(
+                                        fontSize: context.fontSizeSm,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            'common.tap_to_set_dates'.tr(),
+                            style: TextStyle(
+                              fontSize: context.fontSizeMd,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.38,
+                              ),
+                            ),
+                          ),
+                  ),
+                  if (_departureDateTime != null || _returnDateTime != null)
+                    IconButton(
+                      icon: Icon(
+                        Icons.clear,
+                        color: colorScheme.primary,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _departureDateTime = null;
+                          _returnDateTime = null;
+                        });
+                        _notifyChanged();
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                  ],
-                ),
+                ],
               ),
-              // Ritorno
-              _buildDateRow(
-                context,
-                colorScheme,
-                icon: Icons.calendar_month_outlined,
-                label: 'common.return'.tr(),
-                dateTime: _returnDateTime,
-                onTap: _pickReturnDateTime,
-                onClear: () {
-                  setState(() => _returnDateTime = null);
-                  _notifyChanged();
-                },
-              ),
-            ],
+            ),
           ),
         ),
-        
+
         SizedBox(height: context.spacingMd),
-        
-        // Card Destinazione
+
+        // ── Toggle destinazione — AppPillTab al posto di SegmentedButton ──
+        // AppPillTab è il componente standard dell'app per filtri/toggle.
+        // SegmentedButton era l'unico uso nel codebase (DS §4.8).
+        AppPillTab<bool>(
+          items: const [false, true],
+          selectedItem: _useHouseDestination,
+          getLabel: (v) => v
+              ? 'common.destination_house'.tr()
+              : 'common.destination_other'.tr(),
+          getIcon: (v) => v
+              ? const Icon(Icons.home_outlined, size: 18)
+              : const Icon(Icons.place_outlined, size: 18),
+          onSelected: (v) {
+            setState(() {
+              _useHouseDestination = v;
+              if (_useHouseDestination) {
+                _destinationLocation = null;
+              } else {
+                _destinationHouseId = null;
+              }
+            });
+            _notifyChanged();
+          },
+        ),
+
+        SizedBox(height: context.spacingSm),
+
+        // ── Contenuto destinazione ─────────────────────────────────────
         Card(
           margin: EdgeInsets.zero,
           elevation: 0,
           color: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
-            side: BorderSide(
-              color: colorScheme.outline.withValues(alpha: 0.2),
+            borderRadius: context.responsiveBorderRadius(
+              AppConstants.cardBorderRadius,
             ),
+            side: BorderSide(color: colorScheme.outlineVariant),
           ),
-          child: Column(
-            children: [
-              // Selezione casa - allineato con icona
-              housesAsync.when(
-                data: (houses) => _buildDestinationRow(
-                  context,
-                  colorScheme,
-                  icon: Icons.home_outlined,
-                  label: 'common.arrival_house'.tr(),
-                  value: _getSelectedHouseName(houses),
-                  hasValue: _destinationHouseId != null,
-                  onTap: () => _showDestinationHousePicker(houses),
-                  onClear: _destinationHouseId != null
-                      ? () {
-                          setState(() => _destinationHouseId = null);
-                          _notifyChanged();
-                        }
-                      : null,
-                ),
-                loading: () => Padding(
-                  padding: EdgeInsets.all(context.spacingMd),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                error: (e, _) => Padding(
-                  padding: EdgeInsets.all(context.spacingMd),
-                  child: ErrorState(
-                    error: e,
-                    onRetry: () => ref.invalidate(houseNotifierProvider),
+          child: _useHouseDestination
+              ? housesAsync.when(
+                  data: (houses) =>
+                      _buildHouseRow(context, colorScheme, houses),
+                  loading: () => Padding(
+                    padding: EdgeInsets.all(context.spacingMd),
+                    child: const Center(child: CircularProgressIndicator()),
                   ),
-                ),
-              ),
-              // Location autocomplete (solo se nessuna casa selezionata)
-              if (_destinationHouseId == null) ...[
-                Divider(height: 1, indent: 56, endIndent: context.spacingMd),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.spacingMd,
-                    vertical: context.spacingSm + 4,
+                  error: (e, _) => Padding(
+                    padding: EdgeInsets.all(context.spacingMd),
+                    child: ErrorState(
+                      error: e,
+                      onRetry: () => ref.invalidate(houseNotifierProvider),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.search,
-                        color: _accentColor,
-                        size: 22,
-                      ),
-                      SizedBox(width: context.spacingMd),
-                      Expanded(
-                        child: LocationAutocompleteField(
-                          initialValue: _destinationLocation?.displayName,
-                          labelText: null,
-                          hintText: 'trips.destination_hint'.tr(),
-                          showBorder: false,
-                          onLocationSelected: (location) {
-                            setState(() {
-                              _destinationLocation = location;
-                            });
-                            _notifyChanged();
-                          },
-                          onTextChanged: (text) {
-                            // Se l'utente digita manualmente senza selezionare,
-                            // creiamo un modello minimale con solo il displayName
-                            setState(() {
-                              if (text.isEmpty) {
-                                _destinationLocation = null;
-                              } else if (_destinationLocation?.displayName != text) {
-                                // L'utente sta digitando, crea un modello temporaneo
-                                _destinationLocation = LocationSuggestionModel(
-                                  placeId: '',
-                                  displayName: text,
-                                );
-                              }
-                            });
-                            _notifyChanged();
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
+                )
+              : _buildLocationRow(context, colorScheme),
         ),
       ],
     );
   }
 
-  Widget _buildDateRow(
+  Widget _buildHouseRow(
     BuildContext context,
-    ColorScheme colorScheme, {
-    required IconData icon,
-    required String label,
-    required DateTime? dateTime,
-    required VoidCallback onTap,
-    required VoidCallback onClear,
-  }) {
+    ColorScheme colorScheme,
+    List<HouseModel> houses,
+  ) {
     return InkWell(
-      onTap: onTap,
+      onTap: () => _showDestinationHousePicker(houses),
+      borderRadius: context.responsiveBorderRadius(
+        AppConstants.cardBorderRadius,
+      ),
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: context.spacingMd,
-          vertical: context.spacingSm + 4,
+          vertical: context.spacingMd,
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: _accentColor,
-              size: 22,
-            ),
+            Icon(Icons.home_outlined, color: colorScheme.primary, size: 22),
             SizedBox(width: context.spacingMd),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    label,
+                    'common.arrival_house'.tr(),
                     style: TextStyle(
-                      fontSize: context.fontSizeSm,
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      fontSize: context.fontSizeXxs,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 6),
                   Text(
-                    _formatDateTimeLine(dateTime),
+                    _getSelectedHouseName(houses),
                     style: TextStyle(
-                      fontSize: context.fontSizeMd,
-                      color: dateTime != null 
-                          ? colorScheme.onSurface 
-                          : colorScheme.onSurface.withValues(alpha: 0.4),
+                      fontSize: context.fontSizeSm,
+                      color: _destinationHouseId != null
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurface.withValues(alpha: 0.38),
                     ),
                   ),
                 ],
               ),
             ),
-            if (dateTime != null)
+            if (_destinationHouseId != null)
               IconButton(
-                icon: const Icon(Icons.clear, color: _accentColor, size: 20),
-                onPressed: onClear,
+                icon: Icon(Icons.clear, color: colorScheme.primary, size: 20),
+                onPressed: () {
+                  setState(() => _destinationHouseId = null);
+                  _notifyChanged();
+                },
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -491,77 +423,45 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     );
   }
 
-  Widget _buildDestinationRow(
-    BuildContext context,
-    ColorScheme colorScheme, {
-    required IconData icon,
-    required String label,
-    required String value,
-    required bool hasValue,
-    required VoidCallback? onTap,
-    required VoidCallback? onClear,
-    Widget? customContent,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.spacingMd,
-          vertical: context.spacingSm + 4,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: _accentColor,
-              size: 22,
+  Widget _buildLocationRow(BuildContext context, ColorScheme colorScheme) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacingMd,
+        vertical: context.spacingSm + 4,
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.search, color: colorScheme.primary, size: 22),
+          Expanded(
+            child: LocationAutocompleteField(
+              initialValue: _destinationLocation?.displayName,
+              labelText: null,
+              hintText: 'trips.destination_hint'.tr(),
+              hintStyle: TextStyle(
+                color: colorScheme.onSurface.withValues(alpha: 0.38),
+              ),
+              showBorder: false,
+              onLocationSelected: (location) {
+                setState(() => _destinationLocation = location);
+                _notifyChanged();
+              },
+              onTextChanged: (text) {
+                setState(() {
+                  if (text.isEmpty) {
+                    _destinationLocation = null;
+                  } else if (_destinationLocation?.displayName != text) {
+                    _destinationLocation = LocationSuggestionModel(
+                      placeId: '',
+                      displayName: text,
+                    );
+                  }
+                });
+                _notifyChanged();
+              },
             ),
-            SizedBox(width: context.spacingMd),
-            if (customContent != null)
-              customContent
-            else
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: context.fontSizeSm,
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: context.fontSizeMd,
-                        color: hasValue 
-                            ? colorScheme.onSurface 
-                            : colorScheme.onSurface.withValues(alpha: 0.4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            if (onClear != null)
-              IconButton(
-                icon: const Icon(Icons.clear, color: _accentColor, size: 20),
-                onPressed: onClear,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
-  }
-
-  String _getSelectedHouseName(List<HouseModel> houses) {
-    if (_destinationHouseId == null) {
-      return 'common.none_selected'.tr();
-    }
-    final house = houses.where((h) => h.id == _destinationHouseId).firstOrNull;
-    return house?.name ?? 'common.unknown_house'.tr();
   }
 }

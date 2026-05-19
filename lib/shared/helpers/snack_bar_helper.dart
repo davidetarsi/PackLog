@@ -17,6 +17,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../theme/app_spacing.dart';
+
 /// Utility statica per mostrare SnackBar con lo stile del Design System.
 class AppSnackBar {
   AppSnackBar._();
@@ -80,7 +82,7 @@ class AppSnackBar {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          margin: const EdgeInsets.all(16),
+          margin: EdgeInsets.all(context.spacingMd),
         ),
       );
   }

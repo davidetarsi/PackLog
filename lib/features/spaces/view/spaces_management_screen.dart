@@ -37,10 +37,12 @@ class SpacesManagementSheet extends ConsumerWidget {
     WidgetRef ref,
     SpaceModel space,
   ) async {
-    final itemCount = await ref.read(itemRepositoryProvider).countItemsBySpace(space.id);
-    
+    final itemCount = await ref
+        .read(itemRepositoryProvider)
+        .countItemsBySpace(space.id);
+
     if (!context.mounted) return;
-    
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -92,7 +94,7 @@ class SpacesManagementSheet extends ConsumerWidget {
         // Invalida i provider per aggiornare immediatamente la UI
         ref.invalidate(spacesByHouseProvider(houseId));
         ref.invalidate(itemNotifierProvider(houseId));
-        
+
         AppSnackBar.showSuccess(
           context,
           'spaces.space_deleted'.tr(args: [space.name]),
@@ -155,9 +157,7 @@ class SpacesManagementSheet extends ConsumerWidget {
                       color: Colors.transparent,
                       shape: RoundedRectangleBorder(
                         borderRadius: context.responsiveBorderRadius(12),
-                        side: BorderSide(
-                          color: colorScheme.outline.withValues(alpha: 0.2),
-                        ),
+                        side: BorderSide(color: colorScheme.outlineVariant),
                       ),
                       child: ListTile(
                         leading: Icon(
@@ -179,7 +179,9 @@ class SpacesManagementSheet extends ConsumerWidget {
                                   spaceId: space.id,
                                 );
                                 if (context.mounted) {
-                                  ref.invalidate(spacesByHouseProvider(houseId));
+                                  ref.invalidate(
+                                    spacesByHouseProvider(houseId),
+                                  );
                                   ref.invalidate(itemNotifierProvider(houseId));
                                 }
                                 break;
