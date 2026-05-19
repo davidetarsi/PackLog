@@ -96,9 +96,9 @@ Each object must have EXACTLY these keys:
        _proxyUrl = proxyUrl,
        _anonKey = anonKey,
        _client = client ?? http.Client(),
-       _jwtProvider = jwtProvider ?? (
-           () => Supabase.instance.client.auth.currentSession?.accessToken
-       );
+       _jwtProvider =
+           jwtProvider ??
+           (() => Supabase.instance.client.auth.currentSession?.accessToken);
 
   // ── Public orchestrators ──────────────────────────────────────────────────
 
@@ -220,7 +220,9 @@ Each object must have EXACTLY these keys:
     }
 
     if (response.statusCode == 429) {
-      throw const GptLimitExceededException('Hai raggiunto il limite mensile di analisi AI.');
+      throw const GptLimitExceededException(
+        'Hai raggiunto il limite mensile di analisi AI.',
+      );
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {

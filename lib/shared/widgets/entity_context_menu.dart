@@ -49,7 +49,9 @@ Future<EntityContextMenuAction?> showEntityContextMenu({
                 ),
                 ListTile(
                   leading: Icon(
-                    isSaved ? Icons.bookmark_remove_outlined : Icons.bookmark_add_outlined,
+                    isSaved
+                        ? Icons.bookmark_remove_outlined
+                        : Icons.bookmark_add_outlined,
                     color: colorScheme.primary,
                   ),
                   title: Text(
@@ -58,8 +60,10 @@ Future<EntityContextMenuAction?> showEntityContextMenu({
                         : 'dialogs.context_menu_save'.tr(args: [entityType]),
                     style: TextStyle(color: colorScheme.onSurface),
                   ),
-                  onTap: () =>
-                      Navigator.pop(dialogContext, EntityContextMenuAction.save),
+                  onTap: () => Navigator.pop(
+                    dialogContext,
+                    EntityContextMenuAction.save,
+                  ),
                 ),
               ],
               if (showSetPrimaryAction && !isPrimary) ...[
@@ -70,12 +74,18 @@ Future<EntityContextMenuAction?> showEntityContextMenu({
                   color: colorScheme.outlineVariant,
                 ),
                 ListTile(
-                  leading: Icon(Icons.star_outline_rounded, color: colorScheme.primary),
+                  leading: Icon(
+                    Icons.star_outline_rounded,
+                    color: colorScheme.primary,
+                  ),
                   title: Text(
                     'dialogs.context_menu_set_primary'.tr(),
                     style: TextStyle(color: colorScheme.onSurface),
                   ),
-                  onTap: () => Navigator.pop(dialogContext, EntityContextMenuAction.setPrimary),
+                  onTap: () => Navigator.pop(
+                    dialogContext,
+                    EntityContextMenuAction.setPrimary,
+                  ),
                 ),
               ],
               Divider(

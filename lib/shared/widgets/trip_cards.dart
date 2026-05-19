@@ -153,6 +153,10 @@ class TripCardCompact extends ConsumerWidget {
             errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
           );
         }
+      case EntityContextMenuAction.save:
+        break; // not used here
+      case EntityContextMenuAction.setPrimary:
+        break; // not used here
     }
   }
 

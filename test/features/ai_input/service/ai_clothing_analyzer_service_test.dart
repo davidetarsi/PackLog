@@ -25,10 +25,8 @@ void main() {
     test('throws GptLimitExceededException on HTTP 429', () async {
       final service = _makeService(
         MockClient(
-          (_) async => http.Response(
-            '{"error":"Monthly GPT limit reached"}',
-            429,
-          ),
+          (_) async =>
+              http.Response('{"error":"Monthly GPT limit reached"}', 429),
         ),
       );
 
@@ -40,9 +38,7 @@ void main() {
 
     test('throws VisionAnalysisException on HTTP 500', () async {
       final service = _makeService(
-        MockClient(
-          (_) async => http.Response('{"error":"internal"}', 500),
-        ),
+        MockClient((_) async => http.Response('{"error":"internal"}', 500)),
       );
 
       await expectLater(
@@ -51,30 +47,36 @@ void main() {
       );
     });
 
-    test('throws VisionAnalysisException on HTTP 503 (OpenAI upstream rate limit)', () async {
-      final service = _makeService(
-        MockClient(
-          (_) async => http.Response('{"error":"Service unavailable"}', 503),
-        ),
-      );
+    test(
+      'throws VisionAnalysisException on HTTP 503 (OpenAI upstream rate limit)',
+      () async {
+        final service = _makeService(
+          MockClient(
+            (_) async => http.Response('{"error":"Service unavailable"}', 503),
+          ),
+        );
 
-      await expectLater(
-        service.processClothingItem(_fakeImageFile()),
-        throwsA(isA<VisionAnalysisException>()),
-      );
-    });
+        await expectLater(
+          service.processClothingItem(_fakeImageFile()),
+          throwsA(isA<VisionAnalysisException>()),
+        );
+      },
+    );
 
-    test('throws VisionAnalysisException when jwtProvider returns null', () async {
-      final service = AiClothingAnalyzerService(
-        proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
-        anonKey: 'fake-anon-key',
-        jwtProvider: () => null,
-      );
+    test(
+      'throws VisionAnalysisException when jwtProvider returns null',
+      () async {
+        final service = AiClothingAnalyzerService(
+          proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
+          anonKey: 'fake-anon-key',
+          jwtProvider: () => null,
+        );
 
-      await expectLater(
-        service.processClothingItem(_fakeImageFile()),
-        throwsA(isA<VisionAnalysisException>()),
-      );
-    });
+        await expectLater(
+          service.processClothingItem(_fakeImageFile()),
+          throwsA(isA<VisionAnalysisException>()),
+        );
+      },
+    );
   });
 }

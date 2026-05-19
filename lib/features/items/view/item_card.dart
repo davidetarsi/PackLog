@@ -133,10 +133,10 @@ class ItemCard extends ConsumerWidget {
                 .read(itemSelectionNotifierProvider.notifier)
                 .toggleItem(item.id)
           : () => showAddEditItemSheet(
-                context,
-                houseId: item.houseId,
-                itemId: item.id,
-              ),
+              context,
+              houseId: item.houseId,
+              itemId: item.id,
+            ),
       // Long press attiva la selezione multipla dal primo item premuto.
       // Disabilitato se in selezione o se l'item è in viaggio.
       onLongPress: isSelectionActive || hasAnyOnTrip

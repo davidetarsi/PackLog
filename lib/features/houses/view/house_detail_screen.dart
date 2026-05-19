@@ -413,7 +413,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         // Bottone "seleziona tutti" / "deseleziona tutti"
         IconButton(
           icon: Icon(
-            allSelected ? Icons.indeterminate_check_box_outlined : Icons.check_box_outlined,
+            allSelected
+                ? Icons.indeterminate_check_box_outlined
+                : Icons.check_box_outlined,
             color: colorScheme.primary,
           ),
           tooltip: allSelected
@@ -522,10 +524,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     };
 
     return Padding(
-      padding: EdgeInsets.only(
-        left: context.spacingMd,
-        top: context.spacingSm,
-      ),
+      padding: EdgeInsets.only(left: context.spacingMd, top: context.spacingSm),
       child: AppPillTab<String?>.nullable(
         items: tabItems,
         selectedItem: _spaceFilter,
@@ -537,8 +536,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
           final space = spaces.firstWhere((s) => s.id == spaceId);
           return '${space.name} (${spaceCounts[spaceId] ?? 0})';
         },
-        onSelected: (String? spaceId) =>
-            setState(() => _spaceFilter = spaceId),
+        onSelected: (String? spaceId) => setState(() => _spaceFilter = spaceId),
         scrollPadding: EdgeInsets.zero,
       ),
     );
@@ -571,8 +569,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     final housesAsync = ref.watch(houseNotifierProvider);
     final spacesAsync = ref.watch(spacesByHouseProvider(widget.houseId));
     final allItems =
-        ref.watch(itemNotifierProvider(widget.houseId)).value ??
-        const [];
+        ref.watch(itemNotifierProvider(widget.houseId)).value ?? const [];
 
     // Stato della selezione multipla: osservato globalmente qui e propagato
     // verso il basso tramite il provider (ItemCard lo osserva autonomamente).
