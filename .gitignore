@@ -53,3 +53,15 @@ app.*.map.json
 .cursor/
 .vscode/
 
+# Claude Code local config (non committare impostazioni locali)
+.claude/settings.json
+.claude/settings.local.json
+.claude/worktrees/
+
+# Documentazione locale generata (piani, spec, note)
+docs/
+
+# Firebase / Google Services (contiene project ID e client ID)
+android/google-services.json
+ios/Runner/GoogleService-Info.plist
+
