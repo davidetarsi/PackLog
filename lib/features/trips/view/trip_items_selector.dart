@@ -13,17 +13,17 @@ import '../../../shared/widgets/quantity_stepper.dart';
 import '../../../shared/widgets/universal_item_tile.dart';
 
 /// Widget riutilizzabile per selezionare gli oggetti da portare in viaggio.
-/// 
+///
 /// Contiene:
 /// - Filtri per casa e categoria
 /// - Lista oggetti con icona, nome, quantità e bottoni +/-
 class TripItemsSelector extends ConsumerStatefulWidget {
   /// Oggetti già selezionati
   final List<TripItem> selectedItems;
-  
+
   /// Callback quando la selezione cambia
   final void Function(List<TripItem> items) onSelectionChanged;
-  
+
   /// Se true, il widget si adatta al contenuto (per uso in scroll parent)
   final bool shrinkWrap;
 
@@ -44,7 +44,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
   late List<TripItem> _items;
 
   // _accentColor rimosso — usare colorScheme.primary nei build methods.
-  
+
   // Lista di opzioni categoria (include "Tutto" = null)
   static final List<_CategoryFilterOption> _categoryOptions = [
     _CategoryFilterOption('common.all'.tr(), null),
@@ -60,7 +60,9 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     // Pre-seleziona la casa primaria così la lista è già popolata all'apertura.
     // Usiamo addPostFrameCallback perché i provider sono accessibili solo
     // dopo il primo build.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _autoSelectPrimaryHouse());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _autoSelectPrimaryHouse(),
+    );
   }
 
   void _autoSelectPrimaryHouse() {
@@ -102,13 +104,15 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     setState(() {
       _items.removeWhere((i) => i.id == item.id);
       if (newQuantity > 0) {
-        _items.add(TripItem(
-          id: item.id,
-          name: item.name,
-          category: item.category,
-          quantity: newQuantity,
-          originHouseId: houseId,
-        ));
+        _items.add(
+          TripItem(
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            quantity: newQuantity,
+            originHouseId: houseId,
+          ),
+        );
       }
     });
     widget.onSelectionChanged(_items);
@@ -137,14 +141,16 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
       children: [
         _buildFilters(context, colorScheme, housesAsync),
         SizedBox(height: context.spacingSm),
-        Expanded(
-          child: _buildItemsList(context, colorScheme),
-        ),
+        Expanded(child: _buildItemsList(context, colorScheme)),
       ],
     );
   }
 
-  Widget _buildFilters(BuildContext context, ColorScheme colorScheme, AsyncValue<List<HouseModel>> housesAsync) {
+  Widget _buildFilters(
+    BuildContext context,
+    ColorScheme colorScheme,
+    AsyncValue<List<HouseModel>> housesAsync,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -167,7 +173,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
                 (h) => h?.id == _selectedHouseId,
                 orElse: () => null,
               );
-              
+
               return AppPillTab<HouseModel>.nullable(
                 items: houses,
                 selectedItem: selectedHouse,
@@ -188,9 +194,9 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             ),
           ),
         ),
-        
+
         SizedBox(height: context.spacingMd),
-        
+
         // Filtro categoria
         Text(
           'common.category'.tr(),
@@ -221,7 +227,6 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     );
   }
 
-
   Widget _buildItemsList(BuildContext context, ColorScheme colorScheme) {
     if (_selectedHouseId == null) {
       return _buildEmptyHouseState(context);
@@ -245,7 +250,11 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         // Costruisce la lista piatta con header intercalati
         final rows = <Widget>[];
         for (final entry in grouped.entries) {
-          rows.addAll(entry.value.map((item) => _buildItemCard(context, colorScheme, item)));
+          rows.addAll(
+            entry.value.map(
+              (item) => _buildItemCard(context, colorScheme, item),
+            ),
+          );
           rows.add(SizedBox(height: context.spacingSm));
         }
 
@@ -260,7 +269,10 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     );
   }
 
-  Widget _buildItemsListShrinkWrap(BuildContext context, ColorScheme colorScheme) {
+  Widget _buildItemsListShrinkWrap(
+    BuildContext context,
+    ColorScheme colorScheme,
+  ) {
     if (_selectedHouseId == null) {
       return _buildEmptyHouseStateShrinkWrap(context);
     }
@@ -286,7 +298,9 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
           children: [
             for (final entry in grouped.entries) ...[
               //_buildCategoryHeader(context, entry.key),
-              ...entry.value.map((item) => _buildItemCard(context, colorScheme, item)),
+              ...entry.value.map(
+                (item) => _buildItemCard(context, colorScheme, item),
+              ),
               SizedBox(height: context.spacingSm),
             ],
           ],
@@ -352,7 +366,9 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             Text(
               _selectedCategory == null
                   ? 'common.no_items_in_house'.tr()
-                  : 'common.no_items_in_category'.tr(namedArgs: {'category': _selectedCategory!.displayName}),
+                  : 'common.no_items_in_category'.tr(
+                      namedArgs: {'category': _selectedCategory!.displayName},
+                    ),
               style: TextStyle(
                 color: colorScheme.onSurface.withValues(alpha: 0.38),
                 fontSize: context.fontSizeMd,
@@ -419,7 +435,9 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               Text(
                 _selectedCategory == null
                     ? 'common.no_items_in_house'.tr()
-                    : 'common.no_items_in_category'.tr(namedArgs: {'category': _selectedCategory!.displayName}),
+                    : 'common.no_items_in_category'.tr(
+                        namedArgs: {'category': _selectedCategory!.displayName},
+                      ),
                 style: TextStyle(
                   color: colorScheme.onSurface.withValues(alpha: 0.38),
                   fontSize: context.fontSizeMd,
@@ -433,17 +451,21 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     );
   }
 
-  Widget _buildItemCard(BuildContext context, ColorScheme colorScheme, ItemModel item) {
+  Widget _buildItemCard(
+    BuildContext context,
+    ColorScheme colorScheme,
+    ItemModel item,
+  ) {
     final selectedQuantity = _getSelectedQuantity(item.id);
     final maxQuantity = item.quantity ?? 1;
     final isSelected = selectedQuantity > 0;
 
     return UniversalItemTile(
       useListTile: false,
-      backgroundColor: isSelected 
+      backgroundColor: isSelected
           ? colorScheme.primary.withValues(alpha: 0.08) // state layer hover
           : colorScheme.surface,
-      borderColor: isSelected 
+      borderColor: isSelected
           ? colorScheme.primary.withValues(alpha: 0.5)
           : colorScheme.outlineVariant,
       borderWidth: isSelected ? 2 : 1,
@@ -455,10 +477,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
           color: colorScheme.surfaceContainerHighest,
           borderRadius: context.responsiveBorderRadius(12),
         ),
-        child: Icon(
-          item.category.icon,
-          color: colorScheme.primary,
-        ),
+        child: Icon(item.category.icon, color: colorScheme.primary),
       ),
       title: Text(
         item.name,
@@ -471,7 +490,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         'common.available_quantity'.tr(args: [maxQuantity.toString()]),
         style: TextStyle(
           fontSize: context.fontSizeSm,
-            color: colorScheme.onSurfaceVariant,
+          color: colorScheme.onSurfaceVariant,
         ),
       ),
       trailing: maxQuantity == 1

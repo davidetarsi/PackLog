@@ -7,9 +7,9 @@ class DialogHelpers {
   DialogHelpers._();
 
   /// Mostra un dialog di conferma eliminazione.
-  /// 
+  ///
   /// Ritorna `true` se l'utente conferma, `false` altrimenti.
-  /// 
+  ///
   /// Esempio:
   /// ```dart
   /// final confirmed = await DialogHelpers.showDeleteConfirmation(
@@ -44,7 +44,9 @@ class DialogHelpers {
             onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(
               'dialogs.delete_confirm'.tr(),
-              style: TextStyle(color: Theme.of(dialogContext).colorScheme.error),
+              style: TextStyle(
+                color: Theme.of(dialogContext).colorScheme.error,
+              ),
             ),
           ),
         ],
@@ -55,9 +57,9 @@ class DialogHelpers {
   }
 
   /// Mostra un dialog generico di conferma.
-  /// 
+  ///
   /// Ritorna `true` se l'utente conferma, `false` altrimenti.
-  /// 
+  ///
   /// Esempio:
   /// ```dart
   /// final confirmed = await DialogHelpers.showConfirmation(
@@ -103,7 +105,7 @@ class DialogHelpers {
   }
 
   /// Mostra un dialog informativo con un solo bottone "OK".
-  /// 
+  ///
   /// Esempio:
   /// ```dart
   /// await DialogHelpers.showInfo(
@@ -130,7 +132,11 @@ class DialogHelpers {
             if (icon != null) ...[
               Icon(
                 icon,
-                color: iconColor ?? Theme.of(dialogContext).extension<AppColorsExtension>()!.warning,
+                color:
+                    iconColor ??
+                    Theme.of(
+                      dialogContext,
+                    ).extension<AppColorsExtension>()!.warning,
                 size: 48,
               ),
               const SizedBox(height: 16),

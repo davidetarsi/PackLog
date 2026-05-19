@@ -35,10 +35,10 @@ extension ItemCategoryExtension on ItemCategory {
   /// Icona Material associata alla categoria.
   /// Fonte unica di verità: tutti i widget dell'app devono usare questo getter.
   IconData get icon => switch (this) {
-    ItemCategory.vestiti    => Icons.checkroom,
+    ItemCategory.vestiti => Icons.checkroom,
     ItemCategory.toiletries => Icons.soap,
     ItemCategory.elettronica => Icons.devices,
-    ItemCategory.varie      => Icons.category,
+    ItemCategory.varie => Icons.category,
   };
 }
 
@@ -53,11 +53,11 @@ class ItemModel with _$ItemModel {
     required ItemCategory category,
     String? description,
     int? quantity,
-    
+
     /// ID dello spazio a cui appartiene l'oggetto (opzionale).
     /// Se null, l'oggetto appartiene al pool generale della casa.
     String? spaceId,
-    
+
     required DateTime createdAt,
     required DateTime updatedAt,
   }) = _ItemModel;

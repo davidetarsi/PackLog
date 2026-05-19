@@ -188,7 +188,7 @@
     "edit_info": "Modifica informazioni",
     "edit_items": "Modifica oggetti",
     "save_items": "Salva oggetti",
-    "modify": "Modifica",
+    "modify": "Modifica viaggio",
     "manage_sheet_title": "Modifica viaggio",
     "duplicate_success": "\"{}\" duplicato con successo",
     "trip_info": "Informazioni viaggio",
@@ -353,6 +353,9 @@
     "delete_confirm": "Elimina",
     "cancel": "Annulla",
     "context_menu_copy": "Copia {}",
+    "context_menu_save": "Salva {}",
+    "context_menu_unsave": "Rimuovi dai salvati {}",
+    "context_menu_set_primary": "Imposta come principale",
     "context_menu_delete": "Elimina {}",
     "copy_success": "\"{}\" copiato con successo"
   },
@@ -523,7 +526,7 @@
     },
     "items": {
       "title": "Aggiungi i tuoi oggetti",
-      "description": "Inserisci oggetti velocemente con il rapid fire, oppure importa direttamente da una foto con l'intelligenza artificiale."
+      "description": "Aggiungi tutti i tuoi oggetti rapidamente da tastiera, oppure importa direttamente da una foto con l'intelligenza artificiale."
     },
     "trips": {
       "title": "I tuoi viaggi",

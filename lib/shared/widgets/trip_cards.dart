@@ -147,9 +147,7 @@ class TripCardCompact extends ConsumerWidget {
           await ErrorRetryDialog.executeWithRetry(
             context: context,
             operation: () async {
-              await ref
-                  .read(tripNotifierProvider.notifier)
-                  .deleteTrip(trip.id);
+              await ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id);
             },
             errorTitle: 'common.error'.tr(),
             errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
@@ -168,13 +166,15 @@ class TripCardCompact extends ConsumerWidget {
       margin: EdgeInsets.zero,
       color: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius:
-            context.responsiveBorderRadius(AppConstants.cardBorderRadius),
+        borderRadius: context.responsiveBorderRadius(
+          AppConstants.cardBorderRadius,
+        ),
         side: BorderSide(color: cs.outlineVariant),
       ),
       child: InkWell(
-        borderRadius:
-            context.responsiveBorderRadius(AppConstants.cardBorderRadius),
+        borderRadius: context.responsiveBorderRadius(
+          AppConstants.cardBorderRadius,
+        ),
         onTap: () => context.push('/trips/${trip.id}'),
         onLongPress: () => _onLongPress(context, ref),
         child: Padding(
@@ -319,8 +319,9 @@ class _TripItemPreview extends StatelessWidget {
                     item.name,
                     style: TextStyle(
                       fontSize: context.fontSizeXs,
-                      decoration:
-                          item.isChecked ? TextDecoration.lineThrough : null,
+                      decoration: item.isChecked
+                          ? TextDecoration.lineThrough
+                          : null,
                       color: item.isChecked
                           ? cs.onSurface.withValues(alpha: 0.5)
                           : null,

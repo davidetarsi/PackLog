@@ -55,9 +55,9 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
       final now = DateTime.now();
 
       // Cascade soft-delete: items della casa (con syncStatus per propagare al cloud)
-      await (update(items)
-            ..where((i) => i.houseId.equals(id) & i.isDeleted.equals(false)))
-          .write(
+      await (update(
+        items,
+      )..where((i) => i.houseId.equals(id) & i.isDeleted.equals(false))).write(
         ItemsCompanion(
           isDeleted: const Value(true),
           syncStatus: const Value(SyncStatus.pendingUpdate),
@@ -66,16 +66,16 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
       );
 
       // Cascade soft-delete: spazi della casa
-      await (update(spaces)
-            ..where((s) => s.houseId.equals(id) & s.isDeleted.equals(false)))
-          .write(
+      await (update(
+        spaces,
+      )..where((s) => s.houseId.equals(id) & s.isDeleted.equals(false))).write(
         SpacesCompanion(isDeleted: const Value(true), updatedAt: Value(now)),
       );
 
       // Cascade soft-delete: bagagli della casa
-      await (update(luggages)
-            ..where((l) => l.houseId.equals(id) & l.isDeleted.equals(false)))
-          .write(
+      await (update(
+        luggages,
+      )..where((l) => l.houseId.equals(id) & l.isDeleted.equals(false))).write(
         LuggagesCompanion(isDeleted: const Value(true), updatedAt: Value(now)),
       );
 
@@ -106,38 +106,31 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
 
   /// Recovery: re-queues soft-deleted records stuck as "synced".
   Future<int> markDeletedAsPendingSync() {
-    return (update(houses)
-          ..where(
-            (h) =>
-                h.isDeleted.equals(true) &
-                h.syncStatus.equalsValue(SyncStatus.synced),
-          ))
+    return (update(houses)..where(
+          (h) =>
+              h.isDeleted.equals(true) &
+              h.syncStatus.equalsValue(SyncStatus.synced),
+        ))
         .write(
-      const HousesCompanion(
-        syncStatus: Value(SyncStatus.pendingUpdate),
-      ),
-    );
+          const HousesCompanion(syncStatus: Value(SyncStatus.pendingUpdate)),
+        );
   }
 
   /// Returns houses pending sync: syncStatus != synced AND retries below limit.
   Future<List<House>> getPendingSyncHouses({int maxRetries = 5}) {
     final now = DateTime.now();
-    return (select(houses)
-          ..where(
-            (h) =>
-                h.syncStatus.equalsValue(SyncStatus.synced).not() &
-                h.syncRetryCount.isSmallerThanValue(maxRetries) &
-                (h.nextSyncAttemptAt.isNull() |
-                    h.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
-          ))
+    return (select(houses)..where(
+          (h) =>
+              h.syncStatus.equalsValue(SyncStatus.synced).not() &
+              h.syncRetryCount.isSmallerThanValue(maxRetries) &
+              (h.nextSyncAttemptAt.isNull() |
+                  h.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
+        ))
         .get();
   }
 
   /// Marks a house as successfully synced with the remote server.
-  Future<void> markHouseAsSynced(
-    String houseId,
-    DateTime serverUpdatedAt,
-  ) {
+  Future<void> markHouseAsSynced(String houseId, DateTime serverUpdatedAt) {
     return (update(houses)..where((h) => h.id.equals(houseId))).write(
       HousesCompanion(
         syncStatus: const Value(SyncStatus.synced),
@@ -152,15 +145,14 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
 
   /// Increments the retry counter and records the error message.
   Future<void> incrementSyncRetry(String houseId, String errorMessage) async {
-    final house = await (select(houses)
-          ..where((h) => h.id.equals(houseId)))
-        .getSingleOrNull();
+    final house = await (select(
+      houses,
+    )..where((h) => h.id.equals(houseId))).getSingleOrNull();
     if (house == null) return;
 
     final newRetryCount = house.syncRetryCount + 1;
     final backoffSeconds = 2 << (newRetryCount - 1); // 2, 4, 8, 16, ...
-    final nextAttempt =
-        DateTime.now().add(Duration(seconds: backoffSeconds));
+    final nextAttempt = DateTime.now().add(Duration(seconds: backoffSeconds));
 
     await (update(houses)..where((h) => h.id.equals(houseId))).write(
       HousesCompanion(

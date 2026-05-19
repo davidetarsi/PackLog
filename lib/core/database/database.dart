@@ -288,9 +288,7 @@ class AppDatabase extends _$AppDatabase {
           // mai stati sincronizzati e dovranno essere caricati al primo login.
           const tables = ['houses', 'items', 'spaces', 'luggages', 'trips'];
           for (final table in tables) {
-            await customStatement(
-              'ALTER TABLE $table ADD COLUMN user_id TEXT',
-            );
+            await customStatement('ALTER TABLE $table ADD COLUMN user_id TEXT');
             await customStatement(
               'ALTER TABLE $table ADD COLUMN sync_status INTEGER NOT NULL DEFAULT 1',
             );

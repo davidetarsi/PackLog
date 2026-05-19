@@ -47,7 +47,9 @@ class _AddEditHouseSheetState extends State<AddEditHouseSheet> {
       onCancel: () => Navigator.pop(context),
       onSave: _handleSave,
       isLoading: _isLoading,
-      saveLabel: widget.houseId != null ? 'common.save'.tr() : 'common.create'.tr(),
+      saveLabel: widget.houseId != null
+          ? 'common.save'.tr()
+          : 'common.create'.tr(),
       child: HouseFormContent(
         key: _formKey,
         houseId: widget.houseId,
@@ -69,15 +71,14 @@ class AddEditHouseScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(houseId != null ? 'houses.edit'.tr() : 'houses.add_new'.tr()),
+        title: Text(
+          houseId != null ? 'houses.edit'.tr() : 'houses.add_new'.tr(),
+        ),
       ),
       body: ListView(
         padding: EdgeInsets.all(context.spacingMd),
         children: [
-          HouseFormContent(
-            houseId: houseId,
-            onSaved: () => context.go('/'),
-          ),
+          HouseFormContent(houseId: houseId, onSaved: () => context.go('/')),
         ],
       ),
     );

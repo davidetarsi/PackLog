@@ -21,18 +21,14 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   /// Ottiene gli oggetti non eliminati di una casa specifica
   Future<List<Item>> getItemsByHouseId(String houseId) {
     return (select(items)
-          ..where(
-            (i) => i.houseId.equals(houseId) & i.isDeleted.equals(false),
-          ))
+          ..where((i) => i.houseId.equals(houseId) & i.isDeleted.equals(false)))
         .get();
   }
 
   /// Ottiene gli oggetti non eliminati di una casa come stream
   Stream<List<Item>> watchItemsByHouseId(String houseId) {
     return (select(items)
-          ..where(
-            (i) => i.houseId.equals(houseId) & i.isDeleted.equals(false),
-          ))
+          ..where((i) => i.houseId.equals(houseId) & i.isDeleted.equals(false)))
         .watch();
   }
 
@@ -76,16 +72,14 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   /// Agisce solo sui record non già eliminati.
   Future<int> deleteItemsByHouseId(String houseId) {
     return (update(items)
-          ..where(
-            (i) => i.houseId.equals(houseId) & i.isDeleted.equals(false),
-          ))
+          ..where((i) => i.houseId.equals(houseId) & i.isDeleted.equals(false)))
         .write(
-      ItemsCompanion(
-        isDeleted: const Value(true),
-        syncStatus: const Value(SyncStatus.pendingUpdate),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+          ItemsCompanion(
+            isDeleted: const Value(true),
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
   }
 
   /// Inserisce multiple oggetti (per migrazione)
@@ -99,49 +93,45 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
 
   /// Ottiene gli oggetti non eliminati di una casa filtrati per spazio specifico
   Future<List<Item>> getItemsBySpaceId(String houseId, String spaceId) {
-    return (select(items)
-          ..where(
-            (i) =>
-                i.houseId.equals(houseId) &
-                i.spaceId.equals(spaceId) &
-                i.isDeleted.equals(false),
-          ))
+    return (select(items)..where(
+          (i) =>
+              i.houseId.equals(houseId) &
+              i.spaceId.equals(spaceId) &
+              i.isDeleted.equals(false),
+        ))
         .get();
   }
 
   /// Ottiene gli oggetti non eliminati nel pool generale di una casa (spaceId == null)
   Future<List<Item>> getItemsInGeneralPool(String houseId) {
-    return (select(items)
-          ..where(
-            (i) =>
-                i.houseId.equals(houseId) &
-                i.spaceId.isNull() &
-                i.isDeleted.equals(false),
-          ))
+    return (select(items)..where(
+          (i) =>
+              i.houseId.equals(houseId) &
+              i.spaceId.isNull() &
+              i.isDeleted.equals(false),
+        ))
         .get();
   }
 
   /// Stream degli oggetti non eliminati filtrati per spazio
   Stream<List<Item>> watchItemsBySpaceId(String houseId, String spaceId) {
-    return (select(items)
-          ..where(
-            (i) =>
-                i.houseId.equals(houseId) &
-                i.spaceId.equals(spaceId) &
-                i.isDeleted.equals(false),
-          ))
+    return (select(items)..where(
+          (i) =>
+              i.houseId.equals(houseId) &
+              i.spaceId.equals(spaceId) &
+              i.isDeleted.equals(false),
+        ))
         .watch();
   }
 
   /// Stream degli oggetti non eliminati nel pool generale
   Stream<List<Item>> watchItemsInGeneralPool(String houseId) {
-    return (select(items)
-          ..where(
-            (i) =>
-                i.houseId.equals(houseId) &
-                i.spaceId.isNull() &
-                i.isDeleted.equals(false),
-          ))
+    return (select(items)..where(
+          (i) =>
+              i.houseId.equals(houseId) &
+              i.spaceId.isNull() &
+              i.isDeleted.equals(false),
+        ))
         .watch();
   }
 
@@ -191,36 +181,29 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   }
 
   Future<int> markDeletedAsPendingSync() {
-    return (update(items)
-          ..where(
-            (i) =>
-                i.isDeleted.equals(true) &
-                i.syncStatus.equalsValue(SyncStatus.synced),
-          ))
+    return (update(items)..where(
+          (i) =>
+              i.isDeleted.equals(true) &
+              i.syncStatus.equalsValue(SyncStatus.synced),
+        ))
         .write(
-      const ItemsCompanion(
-        syncStatus: Value(SyncStatus.pendingUpdate),
-      ),
-    );
+          const ItemsCompanion(syncStatus: Value(SyncStatus.pendingUpdate)),
+        );
   }
 
   Future<List<Item>> getPendingSyncItems({int maxRetries = 5}) {
     final now = DateTime.now();
-    return (select(items)
-          ..where(
-            (i) =>
-                i.syncStatus.equalsValue(SyncStatus.synced).not() &
-                i.syncRetryCount.isSmallerThanValue(maxRetries) &
-                (i.nextSyncAttemptAt.isNull() |
-                    i.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
-          ))
+    return (select(items)..where(
+          (i) =>
+              i.syncStatus.equalsValue(SyncStatus.synced).not() &
+              i.syncRetryCount.isSmallerThanValue(maxRetries) &
+              (i.nextSyncAttemptAt.isNull() |
+                  i.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
+        ))
         .get();
   }
 
-  Future<void> markItemAsSynced(
-    String itemId,
-    DateTime serverUpdatedAt,
-  ) {
+  Future<void> markItemAsSynced(String itemId, DateTime serverUpdatedAt) {
     return (update(items)..where((i) => i.id.equals(itemId))).write(
       ItemsCompanion(
         syncStatus: const Value(SyncStatus.synced),
@@ -234,15 +217,14 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   }
 
   Future<void> incrementSyncRetry(String itemId, String errorMessage) async {
-    final item = await (select(items)
-          ..where((i) => i.id.equals(itemId)))
-        .getSingleOrNull();
+    final item = await (select(
+      items,
+    )..where((i) => i.id.equals(itemId))).getSingleOrNull();
     if (item == null) return;
 
     final newRetryCount = item.syncRetryCount + 1;
     final backoffSeconds = 2 << (newRetryCount - 1);
-    final nextAttempt =
-        DateTime.now().add(Duration(seconds: backoffSeconds));
+    final nextAttempt = DateTime.now().add(Duration(seconds: backoffSeconds));
 
     await (update(items)..where((i) => i.id.equals(itemId))).write(
       ItemsCompanion(
@@ -274,11 +256,9 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     String toHouseId,
   ) async {
     if (itemIds.isEmpty) return;
-    await (update(items)
-          ..where(
-            (t) => t.id.isIn(itemIds) & t.houseId.equals(fromHouseId),
-          ))
-        .write(
+    await (update(
+      items,
+    )..where((t) => t.id.isIn(itemIds) & t.houseId.equals(fromHouseId))).write(
       ItemsCompanion(
         houseId: Value(toHouseId),
         spaceId: const Value(null),

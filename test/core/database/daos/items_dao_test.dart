@@ -6,7 +6,7 @@ import 'package:pack_log/features/items/model/item_model.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for ItemsDao.
-/// 
+///
 /// Focus: Testing batch insert operations and basic CRUD.
 void main() {
   late AppDatabase database;
@@ -20,69 +20,74 @@ void main() {
   });
 
   group('ItemsDao - Batch Insert Operations', () {
-    test('insertMultipleItems should insert all items in a single transaction', () async {
-      // === ARRANGE ===
-      // Create a house (required for foreign key)
-      final houseId = 'test-house-1';
-      await database.housesDao.insertHouse(HousesCompanion.insert(
-        id: houseId,
-        name: 'Test House',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ));
+    test(
+      'insertMultipleItems should insert all items in a single transaction',
+      () async {
+        // === ARRANGE ===
+        // Create a house (required for foreign key)
+        final houseId = 'test-house-1';
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: houseId,
+            name: 'Test House',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
 
-      // Prepare multiple items
-      final items = [
-        ItemsCompanion.insert(
-          id: 'item-1',
-          houseId: houseId,
-          name: 'T-shirt',
-          category: ItemCategory.vestiti,
-          quantity: Value(3),
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-        ItemsCompanion.insert(
-          id: 'item-2',
-          houseId: houseId,
-          name: 'Laptop',
-          category: ItemCategory.elettronica,
-          quantity: Value(1),
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-        ItemsCompanion.insert(
-          id: 'item-3',
-          houseId: houseId,
-          name: 'Shampoo',
-          category: ItemCategory.toiletries,
-          quantity: Value(2),
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
+        // Prepare multiple items
+        final items = [
+          ItemsCompanion.insert(
+            id: 'item-1',
+            houseId: houseId,
+            name: 'T-shirt',
+            category: ItemCategory.vestiti,
+            quantity: Value(3),
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+          ItemsCompanion.insert(
+            id: 'item-2',
+            houseId: houseId,
+            name: 'Laptop',
+            category: ItemCategory.elettronica,
+            quantity: Value(1),
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+          ItemsCompanion.insert(
+            id: 'item-3',
+            houseId: houseId,
+            name: 'Shampoo',
+            category: ItemCategory.toiletries,
+            quantity: Value(2),
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
 
-      // === ACT ===
-      await database.itemsDao.insertMultipleItems(items);
+        // === ACT ===
+        await database.itemsDao.insertMultipleItems(items);
 
-      // === ASSERT ===
-      final allItems = await database.itemsDao.getAllItems();
-      expect(allItems.length, 3);
+        // === ASSERT ===
+        final allItems = await database.itemsDao.getAllItems();
+        expect(allItems.length, 3);
 
-      final tshirt = allItems.firstWhere((i) => i.id == 'item-1');
-      expect(tshirt.name, 'T-shirt');
-      expect(tshirt.category, ItemCategory.vestiti);
-      expect(tshirt.quantity, 3);
+        final tshirt = allItems.firstWhere((i) => i.id == 'item-1');
+        expect(tshirt.name, 'T-shirt');
+        expect(tshirt.category, ItemCategory.vestiti);
+        expect(tshirt.quantity, 3);
 
-      final laptop = allItems.firstWhere((i) => i.id == 'item-2');
-      expect(laptop.name, 'Laptop');
-      expect(laptop.category, ItemCategory.elettronica);
+        final laptop = allItems.firstWhere((i) => i.id == 'item-2');
+        expect(laptop.name, 'Laptop');
+        expect(laptop.category, ItemCategory.elettronica);
 
-      final shampoo = allItems.firstWhere((i) => i.id == 'item-3');
-      expect(shampoo.name, 'Shampoo');
-      expect(shampoo.category, ItemCategory.toiletries);
-      expect(shampoo.quantity, 2);
-    });
+        final shampoo = allItems.firstWhere((i) => i.id == 'item-3');
+        expect(shampoo.name, 'Shampoo');
+        expect(shampoo.category, ItemCategory.toiletries);
+        expect(shampoo.quantity, 2);
+      },
+    );
 
     test('insertMultipleItems should handle empty list gracefully', () async {
       // === ARRANGE ===
@@ -96,65 +101,76 @@ void main() {
       expect(allItems, isEmpty);
     });
 
-    test('insertMultipleItems should handle large batches efficiently', () async {
-      // === ARRANGE ===
-      final houseId = 'test-house-1';
-      await database.housesDao.insertHouse(HousesCompanion.insert(
-        id: houseId,
-        name: 'Test House',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ));
-
-      // Generate 50 items to simulate a realistic bulk creation scenario
-      final items = List.generate(50, (index) {
-        return ItemsCompanion.insert(
-          id: 'item-$index',
-          houseId: houseId,
-          name: 'Item $index',
-          category: ItemCategory.varie,
-          quantity: Value(index % 5 + 1),
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
+    test(
+      'insertMultipleItems should handle large batches efficiently',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'test-house-1';
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: houseId,
+            name: 'Test House',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
         );
-      });
 
-      // === ACT ===
-      final stopwatch = Stopwatch()..start();
-      await database.itemsDao.insertMultipleItems(items);
-      stopwatch.stop();
+        // Generate 50 items to simulate a realistic bulk creation scenario
+        final items = List.generate(50, (index) {
+          return ItemsCompanion.insert(
+            id: 'item-$index',
+            houseId: houseId,
+            name: 'Item $index',
+            category: ItemCategory.varie,
+            quantity: Value(index % 5 + 1),
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+        });
 
-      // === ASSERT ===
-      final allItems = await database.itemsDao.getAllItems();
-      expect(allItems.length, 50);
+        // === ACT ===
+        final stopwatch = Stopwatch()..start();
+        await database.itemsDao.insertMultipleItems(items);
+        stopwatch.stop();
 
-      // Performance check: batch insert should be fast (<500ms for 50 items)
-      expect(stopwatch.elapsedMilliseconds, lessThan(500),
-          reason: 'Batch insert took ${stopwatch.elapsedMilliseconds}ms');
-    });
+        // === ASSERT ===
+        final allItems = await database.itemsDao.getAllItems();
+        expect(allItems.length, 50);
 
-    test('insertMultipleItems should respect foreign key constraints', () async {
-      // === ARRANGE ===
-      final nonExistentHouseId = 'non-existent-house';
+        // Performance check: batch insert should be fast (<500ms for 50 items)
+        expect(
+          stopwatch.elapsedMilliseconds,
+          lessThan(500),
+          reason: 'Batch insert took ${stopwatch.elapsedMilliseconds}ms',
+        );
+      },
+    );
 
-      final items = [
-        ItemsCompanion.insert(
-          id: 'item-1',
-          houseId: nonExistentHouseId,
-          name: 'Orphan Item',
-          category: ItemCategory.varie,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      ];
+    test(
+      'insertMultipleItems should respect foreign key constraints',
+      () async {
+        // === ARRANGE ===
+        final nonExistentHouseId = 'non-existent-house';
 
-      // === ACT & ASSERT ===
-      // Should throw due to foreign key constraint (houseId must exist)
-      expect(
-        () => database.itemsDao.insertMultipleItems(items),
-        throwsA(isA<Exception>()),
-      );
-    });
+        final items = [
+          ItemsCompanion.insert(
+            id: 'item-1',
+            houseId: nonExistentHouseId,
+            name: 'Orphan Item',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
+
+        // === ACT & ASSERT ===
+        // Should throw due to foreign key constraint (houseId must exist)
+        expect(
+          () => database.itemsDao.insertMultipleItems(items),
+          throwsA(isA<Exception>()),
+        );
+      },
+    );
 
     test('moveItemsToHouse should move items still at fromHouseId', () async {
       // === ARRANGE ===
@@ -162,24 +178,28 @@ void main() {
       final houseBId = 'house-destination';
 
       for (final id in [houseAId, houseBId]) {
-        await database.housesDao.insertHouse(HousesCompanion.insert(
-          id: id,
-          name: 'House $id',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ));
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: id,
+            name: 'House $id',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
       }
 
       final itemIds = ['move-item-1', 'move-item-2', 'move-item-3'];
       for (final id in itemIds) {
-        await database.itemsDao.insertItem(ItemsCompanion.insert(
-          id: id,
-          houseId: houseAId,
-          name: 'Item $id',
-          category: ItemCategory.varie,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ));
+        await database.itemsDao.insertItem(
+          ItemsCompanion.insert(
+            id: id,
+            houseId: houseAId,
+            name: 'Item $id',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
       }
 
       // === ACT ===
@@ -189,15 +209,17 @@ void main() {
       final movedItems = await database.itemsDao.getItemsByHouseId(houseBId);
       expect(movedItems.length, 3);
       expect(movedItems.every((i) => i.houseId == houseBId), isTrue);
-      expect(movedItems.every((i) => i.spaceId == null), isTrue,
-          reason: 'spaceId must be cleared on transfer');
+      expect(
+        movedItems.every((i) => i.spaceId == null),
+        isTrue,
+        reason: 'spaceId must be cleared on transfer',
+      );
 
       final remainingInA = await database.itemsDao.getItemsByHouseId(houseAId);
       expect(remainingInA, isEmpty);
     });
 
-    test(
-        'moveItemsToHouse MUST NOT move items not at fromHouseId '
+    test('moveItemsToHouse MUST NOT move items not at fromHouseId '
         '(regression test for pull-to-refresh bug)', () async {
       // This test verifies the critical fix: items already relocated to a
       // different house (e.g., because they are currently on an active trip)
@@ -214,28 +236,35 @@ void main() {
       final houseCId = 'house-c';
 
       for (final id in [houseAId, houseBId, houseCId]) {
-        await database.housesDao.insertHouse(HousesCompanion.insert(
-          id: id,
-          name: 'House $id',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ));
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: id,
+            name: 'House $id',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
       }
 
       // Item is currently in House B (relocated, not House A anymore)
-      await database.itemsDao.insertItem(ItemsCompanion.insert(
-        id: 'relocated-item',
-        houseId: houseBId,
-        name: 'Relocated Item',
-        category: ItemCategory.varie,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ));
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'relocated-item',
+          houseId: houseBId,
+          name: 'Relocated Item',
+          category: ItemCategory.varie,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
 
       // === ACT: reprocess T_old (completed, A → C) ===
       // fromHouseId = houseAId but item is at houseB → WHERE clause mismatch
-      await database.itemsDao
-          .moveItemsToHouse(['relocated-item'], houseAId, houseCId);
+      await database.itemsDao.moveItemsToHouse(
+        ['relocated-item'],
+        houseAId,
+        houseCId,
+      );
 
       // === ASSERT: item must remain in House B, untouched ===
       final itemsInB = await database.itemsDao.getItemsByHouseId(houseBId);
@@ -243,8 +272,11 @@ void main() {
       expect(itemsInB.first.id, 'relocated-item');
 
       final itemsInC = await database.itemsDao.getItemsByHouseId(houseCId);
-      expect(itemsInC, isEmpty,
-          reason: 'Item must NOT have been moved to House C');
+      expect(
+        itemsInC,
+        isEmpty,
+        reason: 'Item must NOT have been moved to House C',
+      );
     });
 
     test('moveItemsToHouse should be idempotent', () async {
@@ -252,34 +284,47 @@ void main() {
       final houseAId = 'idem-house-a';
       final houseBId = 'idem-house-b';
       for (final id in [houseAId, houseBId]) {
-        await database.housesDao.insertHouse(HousesCompanion.insert(
-          id: id,
-          name: 'House $id',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ));
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: id,
+            name: 'House $id',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
       }
 
-      await database.itemsDao.insertItem(ItemsCompanion.insert(
-        id: 'idempotent-item',
-        houseId: houseAId,
-        name: 'Idempotent Item',
-        category: ItemCategory.varie,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ));
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'idempotent-item',
+          houseId: houseAId,
+          name: 'Idempotent Item',
+          category: ItemCategory.varie,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
 
       // === ACT: move once, then rerun (simulates repeated TripNotifier builds) ===
-      await database.itemsDao
-          .moveItemsToHouse(['idempotent-item'], houseAId, houseBId);
+      await database.itemsDao.moveItemsToHouse(
+        ['idempotent-item'],
+        houseAId,
+        houseBId,
+      );
       // Second call: item is now at B, fromHouseId is still A → no-op
-      await database.itemsDao
-          .moveItemsToHouse(['idempotent-item'], houseAId, houseBId);
+      await database.itemsDao.moveItemsToHouse(
+        ['idempotent-item'],
+        houseAId,
+        houseBId,
+      );
 
       // === ASSERT ===
       final itemsInB = await database.itemsDao.getItemsByHouseId(houseBId);
-      expect(itemsInB.length, 1,
-          reason: 'Exactly one item in B after idempotent calls');
+      expect(
+        itemsInB.length,
+        1,
+        reason: 'Exactly one item in B after idempotent calls',
+      );
 
       final itemsInA = await database.itemsDao.getItemsByHouseId(houseAId);
       expect(itemsInA, isEmpty);
@@ -294,12 +339,14 @@ void main() {
     test('insertMultipleItems should be atomic - all or nothing', () async {
       // === ARRANGE ===
       final houseId = 'test-house-1';
-      await database.housesDao.insertHouse(HousesCompanion.insert(
-        id: houseId,
-        name: 'Test House',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ));
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: houseId,
+          name: 'Test House',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
 
       // Create a mix of valid and invalid items (invalid due to duplicate ID)
       final items = [
@@ -339,42 +386,51 @@ void main() {
 
     setUp(() async {
       houseId = 'sync-house';
-      await database.housesDao.insertHouse(HousesCompanion.insert(
-        id: houseId,
-        name: 'Sync House',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ));
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: houseId,
+          name: 'Sync House',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
     });
 
-    Future<void> insertItem(String id, {SyncStatus status = SyncStatus.pendingCreate}) async {
-      await database.itemsDao.insertItem(ItemsCompanion.insert(
-        id: id,
-        houseId: houseId,
-        name: 'Item $id',
-        category: ItemCategory.varie,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ));
+    Future<void> insertItem(
+      String id, {
+      SyncStatus status = SyncStatus.pendingCreate,
+    }) async {
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: id,
+          houseId: houseId,
+          name: 'Item $id',
+          category: ItemCategory.varie,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
       if (status != SyncStatus.pendingCreate) {
-        await (database.update(database.items)
-              ..where((i) => i.id.equals(id)))
+        await (database.update(database.items)..where((i) => i.id.equals(id)))
             .write(ItemsCompanion(syncStatus: Value(status)));
       }
     }
 
-    test('getPendingSyncItems returns only non-synced items below retry limit', () async {
-      await insertItem('pending-1');
-      await insertItem('pending-2', status: SyncStatus.pendingUpdate);
-      await insertItem('synced-1', status: SyncStatus.synced);
+    test(
+      'getPendingSyncItems returns only non-synced items below retry limit',
+      () async {
+        await insertItem('pending-1');
+        await insertItem('pending-2', status: SyncStatus.pendingUpdate);
+        await insertItem('synced-1', status: SyncStatus.synced);
 
-      final pending = await database.itemsDao.getPendingSyncItems();
+        final pending = await database.itemsDao.getPendingSyncItems();
 
-      expect(pending, hasLength(2));
-      final ids = pending.map((i) => i.id).toSet();
-      expect(ids, containsAll(['pending-1', 'pending-2']));
-      expect(ids, isNot(contains('synced-1')));
-    });
+        expect(pending, hasLength(2));
+        final ids = pending.map((i) => i.id).toSet();
+        expect(ids, containsAll(['pending-1', 'pending-2']));
+        expect(ids, isNot(contains('synced-1')));
+      },
+    );
 
     test('getPendingSyncItems excludes items exceeding maxRetries', () async {
       await insertItem('retry-exhausted');
@@ -382,19 +438,24 @@ void main() {
             ..where((i) => i.id.equals('retry-exhausted')))
           .write(const ItemsCompanion(syncRetryCount: Value(5)));
 
-      final pending = await database.itemsDao.getPendingSyncItems(maxRetries: 5);
+      final pending = await database.itemsDao.getPendingSyncItems(
+        maxRetries: 5,
+      );
       expect(pending, isEmpty);
     });
 
-    test('getPendingSyncItems includes soft-deleted items (to propagate deletion to server)', () async {
-      await insertItem('deleted-pending');
-      await database.itemsDao.deleteItem('deleted-pending');
+    test(
+      'getPendingSyncItems includes soft-deleted items (to propagate deletion to server)',
+      () async {
+        await insertItem('deleted-pending');
+        await database.itemsDao.deleteItem('deleted-pending');
 
-      final pending = await database.itemsDao.getPendingSyncItems();
-      expect(pending, hasLength(1));
-      expect(pending.first.id, equals('deleted-pending'));
-      expect(pending.first.isDeleted, isTrue);
-    });
+        final pending = await database.itemsDao.getPendingSyncItems();
+        expect(pending, hasLength(1));
+        expect(pending.first.id, equals('deleted-pending'));
+        expect(pending.first.isDeleted, isTrue);
+      },
+    );
 
     test('getPendingSyncItems respects nextSyncAttemptAt cooldown', () async {
       await insertItem('cooldown-item');

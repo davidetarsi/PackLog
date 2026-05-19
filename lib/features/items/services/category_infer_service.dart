@@ -63,14 +63,20 @@ class CategoryInferService {
     for (final token in tokens) {
       final tokenDirectMatch = _dictionary.exactMatches[token];
       if (tokenDirectMatch != null) {
-        return (category: tokenDirectMatch, confidence: InferConfidence.partial);
+        return (
+          category: tokenDirectMatch,
+          confidence: InferConfidence.partial,
+        );
       }
 
       final lemmatizedToken = _dictionary.lemmatize(token);
       if (lemmatizedToken != token) {
         final tokenExactMatch = _dictionary.exactMatches[lemmatizedToken];
         if (tokenExactMatch != null) {
-          return (category: tokenExactMatch, confidence: InferConfidence.partial);
+          return (
+            category: tokenExactMatch,
+            confidence: InferConfidence.partial,
+          );
         }
       }
 
@@ -78,7 +84,7 @@ class CategoryInferService {
         if (lemmatizedToken.startsWith(rootEntry.root)) {
           return (
             category: rootEntry.category,
-            confidence: InferConfidence.partial
+            confidence: InferConfidence.partial,
           );
         }
       }
@@ -87,7 +93,7 @@ class CategoryInferService {
         if (exactEntry.key.startsWith(lemmatizedToken)) {
           return (
             category: exactEntry.value,
-            confidence: InferConfidence.partial
+            confidence: InferConfidence.partial,
           );
         }
       }
@@ -129,7 +135,9 @@ Future<CategoryDictionary> dynamicDictionary(Ref ref) async {
   try {
     return await repo.loadDictionary(locale);
   } catch (e) {
-    debugPrint('[dynamicDictionaryProvider] Fallback to bundled dictionary: $e');
+    debugPrint(
+      '[dynamicDictionaryProvider] Fallback to bundled dictionary: $e',
+    );
     return ItalianDictionary();
   }
 }

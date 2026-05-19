@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import '../theme/app_spacing.dart';
 
 /// Widget riutilizzabile per regolare la quantità di un item.
-/// 
+///
 /// Fornisce pulsanti +/- per incrementare e decrementare un valore intero.
 /// Supporta limiti minimi e massimi opzionali.
-/// 
+///
 /// Esempio:
 /// ```dart
 /// QuantityStepper(
@@ -84,11 +84,12 @@ class QuantityStepper extends StatelessWidget {
           alignment: Alignment.center,
           child: Text(
             value.toString(),
-            style: valueTextStyle ??
+            style:
+                valueTextStyle ??
                 Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w500, // titleMedium ≈ 16px → w500
-                      color: effectiveAccent,
-                    ),
+                  fontWeight: FontWeight.w500, // titleMedium ≈ 16px → w500
+                  color: effectiveAccent,
+                ),
           ),
         ),
         SizedBox(width: context.spacingXs),

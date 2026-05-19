@@ -7,18 +7,18 @@ import '../exceptions/backup_exceptions.dart';
 import 'database_backup_service.dart';
 
 /// Implementazione concreta di [DatabaseBackupService] per SQLite.
-/// 
+///
 /// Gestisce l'export e import del file SQLite fisico, rispettando:
 /// - **WAL (Write-Ahead Logging)**: Chiude sempre il DB prima di operazioni sul file
 /// - **Clean Wipe**: Elimina .sqlite, .sqlite-wal, .sqlite-shm prima di import
 /// - **Validation**: Verifica che il file sia un database SQLite valido
-/// 
+///
 /// **CRITICAL**: Questa classe NON gestisce l'invalidazione del provider.
 /// È responsabilità del chiamante (BackupController) invalidare [databaseProvider]
 /// dopo import/restore per ricreare una connessione fresca.
 class SqliteBackupService implements DatabaseBackupService {
   static const String _dbFileName = 'stuff_tracker.db';
-  
+
   final AppDatabase _database;
 
   const SqliteBackupService(this._database);
@@ -33,14 +33,14 @@ class SqliteBackupService implements DatabaseBackupService {
   Future<List<String>> _getAllDatabaseFilePaths() async {
     final dbPath = await _getDatabasePath();
     return [
-      dbPath,                   // db.sqlite
-      '$dbPath-wal',           // db.sqlite-wal (Write-Ahead Log)
-      '$dbPath-shm',           // db.sqlite-shm (Shared Memory)
+      dbPath, // db.sqlite
+      '$dbPath-wal', // db.sqlite-wal (Write-Ahead Log)
+      '$dbPath-shm', // db.sqlite-shm (Shared Memory)
     ];
   }
 
   /// Chiude il database e attende che tutte le operazioni in sospeso siano completate.
-  /// 
+  ///
   /// **CRITICAL**: Questo flush il WAL al file principale e rilascia tutti i lock.
   Future<void> _closeDatabaseSafely() async {
     try {
@@ -83,11 +83,9 @@ class SqliteBackupService implements DatabaseBackupService {
       // STEP 3: Verifica che il database esista
       if (!await dbFile.exists()) {
         debugPrint('[SqliteBackup] ❌ File database non trovato');
-        throw ExportFailedException(
-          'File database non trovato: $dbPath',
-        );
+        throw ExportFailedException('File database non trovato: $dbPath');
       }
-      
+
       final sourceStat = await dbFile.stat();
       debugPrint('[SqliteBackup] ✅ File trovato (${sourceStat.size} bytes)');
 
@@ -114,9 +112,7 @@ class SqliteBackupService implements DatabaseBackupService {
       debugPrint('[SqliteBackup] ➤ STEP 5: Verifica file esportato...');
       if (!await exportedFile.exists()) {
         debugPrint('[SqliteBackup] ❌ File esportato non trovato');
-        throw ExportFailedException(
-          'File esportato non creato correttamente',
-        );
+        throw ExportFailedException('File esportato non creato correttamente');
       }
 
       final stat = await exportedFile.stat();
@@ -124,9 +120,7 @@ class SqliteBackupService implements DatabaseBackupService {
         debugPrint('[SqliteBackup] ❌ File esportato vuoto');
         // Cleanup file vuoto
         await exportedFile.delete();
-        throw ExportFailedException(
-          'File esportato è vuoto',
-        );
+        throw ExportFailedException('File esportato è vuoto');
       }
 
       debugPrint('[SqliteBackup] ✅ File esportato valido (${stat.size} bytes)');
@@ -136,11 +130,11 @@ class SqliteBackupService implements DatabaseBackupService {
       debugPrint('[SqliteBackup] 📊 Dimensione: ${stat.size} bytes');
       debugPrint('═══════════════════════════════════════════════════');
       debugPrint('');
-      
+
       return exportedFile;
     } catch (e, stack) {
       if (e is BackupException) rethrow;
-      
+
       throw ExportFailedException(
         'Export fallito',
         originalError: e,
@@ -153,7 +147,9 @@ class SqliteBackupService implements DatabaseBackupService {
   Future<void> importData(String sourcePath) async {
     try {
       debugPrint('');
-      debugPrint('[SqliteBackup] 📥 Inizio import fisico da: ${p.basename(sourcePath)}');
+      debugPrint(
+        '[SqliteBackup] 📥 Inizio import fisico da: ${p.basename(sourcePath)}',
+      );
 
       final sourceFile = File(sourcePath);
 
@@ -161,11 +157,9 @@ class SqliteBackupService implements DatabaseBackupService {
       debugPrint('[SqliteBackup] ➤ Sub-step 1: Verifica esistenza file...');
       if (!await sourceFile.exists()) {
         debugPrint('[SqliteBackup] ❌ File sorgente non trovato');
-        throw ImportFailedException(
-          'File sorgente non trovato: $sourcePath',
-        );
+        throw ImportFailedException('File sorgente non trovato: $sourcePath');
       }
-      
+
       final sourceStat = await sourceFile.stat();
       debugPrint('[SqliteBackup] ✅ File trovato (${sourceStat.size} bytes)');
 
@@ -211,12 +205,14 @@ class SqliteBackupService implements DatabaseBackupService {
       }
 
       final stat = await newDbFile.stat();
-      debugPrint('[SqliteBackup] ✅ Database importato e verificato (${stat.size} bytes)');
+      debugPrint(
+        '[SqliteBackup] ✅ Database importato e verificato (${stat.size} bytes)',
+      );
       debugPrint('[SqliteBackup] 🎉 Import fisico completato');
       debugPrint('');
     } catch (e, stack) {
       if (e is BackupException) rethrow;
-      
+
       throw ImportFailedException(
         'Import fallito',
         originalError: e,
@@ -226,12 +222,12 @@ class SqliteBackupService implements DatabaseBackupService {
   }
 
   /// Elimina completamente tutti i file del database (main, WAL, SHM).
-  /// 
+  ///
   /// Questa è l'operazione "Clean Wipe" richiesta prima di ogni import.
   Future<void> _cleanWipeDatabaseFiles() async {
     try {
       final dbFiles = await _getAllDatabaseFilePaths();
-      
+
       debugPrint('[SqliteBackup] 🧹 Clean Wipe in corso...');
       for (final filePath in dbFiles) {
         final file = File(filePath);
@@ -274,13 +270,13 @@ class SqliteBackupService implements DatabaseBackupService {
       // Verifica SQLite magic bytes (primi 16 bytes devono essere "SQLite format 3\0")
       final bytes = await file.openRead(0, 16).first;
       final header = String.fromCharCodes(bytes.take(16));
-      
+
       final isValid = header.startsWith('SQLite format 3');
-      
+
       if (!isValid) {
         debugPrint('[SqliteBackup] File non è un database SQLite valido');
       }
-      
+
       return isValid;
     } catch (e) {
       debugPrint('[SqliteBackup] Errore durante validazione: $e');

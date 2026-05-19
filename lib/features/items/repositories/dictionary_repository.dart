@@ -20,8 +20,9 @@ class DictionaryRepository {
     final cachedJson = prefs.getString('$_jsonCachePrefix$locale');
 
     if (cachedJson != null) {
-      final dictionary =
-          await DynamicCategoryDictionary.parseInIsolate(cachedJson);
+      final dictionary = await DynamicCategoryDictionary.parseInIsolate(
+        cachedJson,
+      );
 
       _checkForUpdatesInBackground(locale, prefs);
 
@@ -37,10 +38,7 @@ class DictionaryRepository {
     });
   }
 
-  Future<void> _checkForUpdates(
-    String locale,
-    SharedPreferences prefs,
-  ) async {
+  Future<void> _checkForUpdates(String locale, SharedPreferences prefs) async {
     final response = await _supabase
         .from('app_config')
         .select('value')
@@ -66,8 +64,9 @@ class DictionaryRepository {
         .download('dictionary_$locale.json');
 
     final jsonString = utf8.decode(bytes);
-    final dictionary =
-        await DynamicCategoryDictionary.parseInIsolate(jsonString);
+    final dictionary = await DynamicCategoryDictionary.parseInIsolate(
+      jsonString,
+    );
 
     await prefs.setString('$_jsonCachePrefix$locale', jsonString);
     await prefs.setInt('$_versionCachePrefix$locale', dictionary.version);

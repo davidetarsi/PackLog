@@ -20,7 +20,7 @@ LuggageRepository luggageRepository(Ref ref) {
 }
 
 /// Interfaccia astratta per il repository dei bagagli.
-/// 
+///
 /// Definisce le operazioni CRUD per i bagagli riutilizzabili
 /// e la gestione delle associazioni con i viaggi (M:N).
 abstract class LuggageRepository {
@@ -31,19 +31,19 @@ abstract class LuggageRepository {
   Future<List<LuggageModel>> getLuggagesByHouseId(String houseId);
   Future<bool> deleteLuggage(String id);
   Future<void> updateLuggage(LuggageModel model);
-  
+
   /// Conta il numero di bagagli in una casa
   Future<int> countLuggagesByHouse(String houseId);
-  
+
   /// Ottiene i bagagli associati a un viaggio specifico (via junction table)
   Future<List<LuggageModel>> getLuggagesByTripId(String tripId);
-  
+
   /// Associa un bagaglio a un viaggio
   Future<void> linkLuggageToTrip(String tripId, String luggageId);
-  
+
   /// Rimuove l'associazione tra un bagaglio e un viaggio
   Future<void> unlinkLuggageFromTrip(String tripId, String luggageId);
-  
+
   /// Sostituisce tutti i bagagli di un viaggio
   Future<void> replaceTripLuggages(String tripId, List<String> luggageIds);
 }

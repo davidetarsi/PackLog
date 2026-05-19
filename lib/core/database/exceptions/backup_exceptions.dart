@@ -1,7 +1,7 @@
 library;
 
 /// Custom exceptions per operazioni di backup e restore del database.
-/// 
+///
 /// Fornisce exception specifiche per ogni tipo di fallimento,
 /// permettendo una gestione degli errori più granulare e user-friendly.
 
@@ -13,14 +13,11 @@ abstract class BackupException extends AppException {
   final Object? originalError;
   final StackTrace? stackTrace;
 
-  const BackupException(
-    this.message, {
-    this.originalError,
-    this.stackTrace,
-  });
+  const BackupException(this.message, {this.originalError, this.stackTrace});
 
   @override
-  String toString() => 'BackupException: $message'
+  String toString() =>
+      'BackupException: $message'
       '${originalError != null ? ' (${originalError.toString()})' : ''}';
 }
 
@@ -33,7 +30,8 @@ class ExportFailedException extends BackupException {
   });
 
   @override
-  String toString() => 'ExportFailedException: $message'
+  String toString() =>
+      'ExportFailedException: $message'
       '${originalError != null ? ' (${originalError.toString()})' : ''}';
 }
 
@@ -46,7 +44,8 @@ class ImportFailedException extends BackupException {
   });
 
   @override
-  String toString() => 'ImportFailedException: $message'
+  String toString() =>
+      'ImportFailedException: $message'
       '${originalError != null ? ' (${originalError.toString()})' : ''}';
 }
 
@@ -59,7 +58,8 @@ class ImportValidationException extends BackupException {
   });
 
   @override
-  String toString() => 'ImportValidationException: $message'
+  String toString() =>
+      'ImportValidationException: $message'
       '${originalError != null ? ' (${originalError.toString()})' : ''}';
 }
 
@@ -72,7 +72,8 @@ class DatabaseCloseException extends BackupException {
   });
 
   @override
-  String toString() => 'DatabaseCloseException: $message'
+  String toString() =>
+      'DatabaseCloseException: $message'
       '${originalError != null ? ' (${originalError.toString()})' : ''}';
 }
 
@@ -86,6 +87,7 @@ class BackupRollbackException extends BackupException {
   });
 
   @override
-  String toString() => 'BackupRollbackException: $message'
+  String toString() =>
+      'BackupRollbackException: $message'
       '${originalError != null ? ' (${originalError.toString()})' : ''}';
 }

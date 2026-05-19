@@ -77,7 +77,7 @@ void main() {
       final expectation = expectLater(
         stream,
         emitsInOrder([
-          isEmpty,      // Stato iniziale appena ci si iscrive
+          isEmpty, // Stato iniziale appena ci si iscrive
           hasLength(1), // Stato atteso DOPO il nostro inserimento
         ]),
       );

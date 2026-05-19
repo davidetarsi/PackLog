@@ -151,16 +151,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                   const ContentSlide(
                     icon: Icons.home_outlined,
+                    videoAsset: 'assets/onboarding/houses.mp4',
                     titleKey: 'onboarding.houses.title',
                     descriptionKey: 'onboarding.houses.description',
                   ),
                   const ContentSlide(
                     icon: Icons.inventory_2_outlined,
+                    videoAsset: 'assets/onboarding/items.mp4',
                     titleKey: 'onboarding.items.title',
                     descriptionKey: 'onboarding.items.description',
                   ),
                   const ContentSlide(
                     icon: Icons.luggage_outlined,
+                    videoAsset: 'assets/onboarding/trips.mp4',
                     titleKey: 'onboarding.trips.title',
                     descriptionKey: 'onboarding.trips.description',
                   ),

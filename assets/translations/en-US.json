@@ -190,6 +190,7 @@
     "save_items": "Save items",
     "manage": "Manage",
     "manage_sheet_title": "Manage trip",
+    "modify": "Modify trip",
     "duplicate_success": "\"{}\" duplicated successfully",
     "trip_info": "Trip information",
     "items_to_bring": "Items to bring",
@@ -353,6 +354,9 @@
     "delete_confirm": "Delete",
     "cancel": "Cancel",
     "context_menu_copy": "Copy {}",
+    "context_menu_save": "Save {}",
+    "context_menu_unsave": "Unsave {}",
+    "context_menu_set_primary": "Set as main",
     "context_menu_delete": "Delete {}",
     "copy_success": "\"{}\" copied successfully"
   },

@@ -7,21 +7,21 @@ import '../theme/theme.dart';
 import 'trip_info_badges.dart';
 
 /// Card riassuntiva per un viaggio.
-/// 
+///
 /// Mostra:
 /// - Nome del viaggio
 /// - Date di partenza e ritorno
 /// - Destinazione (casa o località)
 /// - Barra di progresso degli oggetti preparati
-/// 
+///
 /// Usabile sia nella lista viaggi che nel dettaglio viaggio.
 class TripSummaryCard extends ConsumerWidget {
   /// Il viaggio da mostrare
   final TripModel trip;
-  
+
   /// Se true, la card è cliccabile e naviga al dettaglio
   final bool isClickable;
-  
+
   /// Callback opzionale quando la card viene premuta
   final VoidCallback? onTap;
 
@@ -69,24 +69,26 @@ class TripSummaryCard extends ConsumerWidget {
               ),
             ],
           ),
-          
+
           SizedBox(height: context.spacingSm),
-          
+
           // 2. Wrap di Badge orizzontali (Date, Luogo, Bagagli)
           TripInfoBadges(trip: trip),
-          
+
           SizedBox(height: context.spacingMd),
-          
+
           // 3. Barra progresso e conteggio
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'common.items_ready'.tr(args: [
-                  trip.completedCount.toString(),
-                  trip.totalCount.toString(),
-                  //percentageInt.toString(),
-                ]),
+                'common.items_ready'.tr(
+                  args: [
+                    trip.completedCount.toString(),
+                    trip.totalCount.toString(),
+                    //percentageInt.toString(),
+                  ],
+                ),
                 style: TextStyle(
                   fontSize: context.fontSizeSm,
                   color: colorScheme.onSurfaceVariant,
@@ -120,10 +122,7 @@ class TripSummaryCard extends ConsumerWidget {
         borderRadius: context.responsiveBorderRadius(
           AppConstants.cardBorderRadius + 4,
         ),
-        side: BorderSide(
-          color: colorScheme.outlineVariant,
-          width: 1,
-        ),
+        side: BorderSide(color: colorScheme.outlineVariant, width: 1),
       ),
       child: isClickable && (onTap != null || onLongPress != null)
           ? InkWell(

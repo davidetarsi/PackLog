@@ -4,17 +4,17 @@ import '../../features/items/model/item_model.dart';
 import '../theme/app_spacing.dart';
 
 /// Widget riutilizzabile per l'intestazione di una sezione di categoria.
-/// 
+///
 /// Mostra un'icona e il nome della categoria, con un trailing widget opzionale
 /// (es: badge con conteggio item).
-/// 
+///
 /// Esempio base:
 /// ```dart
 /// CategorySectionHeader(
 ///   category: ItemCategory.vestiti,
 /// )
 /// ```
-/// 
+///
 /// Esempio con trailing:
 /// ```dart
 /// CategorySectionHeader(
@@ -64,19 +64,15 @@ class CategorySectionHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            category.icon,
-            size: effectiveIconSize,
-            color: effectiveColor,
-          ),
+          Icon(category.icon, size: effectiveIconSize, color: effectiveColor),
           SizedBox(width: context.spacingSm),
           Expanded(
             child: Text(
               _getCategoryName(category),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: effectiveColor,
-                    fontWeight: FontWeight.w500, // titleSmall ≈ 14px → w500
-                  ),
+                color: effectiveColor,
+                fontWeight: FontWeight.w500, // titleSmall ≈ 14px → w500
+              ),
             ),
           ),
           if (trailing != null) ...[

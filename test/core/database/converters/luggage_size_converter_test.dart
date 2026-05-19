@@ -3,7 +3,7 @@ import 'package:pack_log/core/database/converters/luggage_size_converter.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 
 /// Unit tests for LuggageSizeConverter (Drift TypeConverter).
-/// 
+///
 /// Tests the bidirectional conversion between LuggageSize enum and String:
 /// - toSql: LuggageSize → String (for SQLite storage)
 /// - fromSql: String → LuggageSize (for deserialization)
@@ -111,7 +111,11 @@ void main() {
       // - Database corruption
       // - Schema evolution (new types added later)
       // - Manual DB edits
-      expect(result, equals(LuggageSize.custom), reason: 'Unknown values should default to custom');
+      expect(
+        result,
+        equals(LuggageSize.custom),
+        reason: 'Unknown values should default to custom',
+      );
     });
 
     test('should fallback to custom for empty string', () {
@@ -119,7 +123,11 @@ void main() {
       final result = converter.fromSql('');
 
       // === ASSERT ===
-      expect(result, equals(LuggageSize.custom), reason: 'Empty string should default to custom');
+      expect(
+        result,
+        equals(LuggageSize.custom),
+        reason: 'Empty string should default to custom',
+      );
     });
 
     test('should fallback to custom for invalid format', () {
@@ -127,10 +135,10 @@ void main() {
       final testCases = [
         'HOLD_BAGGAGE', // Uppercase
         'hold-baggage', // Wrong separator
-        'holdBaggage',  // camelCase
+        'holdBaggage', // camelCase
         'hold baggage', // Space instead of underscore
-        '123',          // Numeric
-        'null',         // String "null"
+        '123', // Numeric
+        'null', // String "null"
       ];
 
       // === ASSERT ===

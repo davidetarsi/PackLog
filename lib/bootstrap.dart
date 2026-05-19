@@ -74,10 +74,13 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
   // Solo servizi critici per il funzionamento dell'app (local-first).
   // Supabase serve al sync orchestrator, persistence al DB.
   await Future.wait([
-    _guardedInit('Supabase', () => Supabase.initialize(
-      url: AppConfig.supabaseUrl,
-      anonKey: AppConfig.supabaseAnonKey,
-    )),
+    _guardedInit(
+      'Supabase',
+      () => Supabase.initialize(
+        url: AppConfig.supabaseUrl,
+        anonKey: AppConfig.supabaseAnonKey,
+      ),
+    ),
     _initializePersistence(),
   ]);
 
@@ -94,21 +97,28 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
 });
 
 void _initNonCriticalServices() {
-  final bool sentryEnabled = AppConfig.sentryDsn.isNotEmpty &&
+  final bool sentryEnabled =
+      AppConfig.sentryDsn.isNotEmpty &&
       AppConfig.sentryDsn != 'MISSING_SENTRY_DSN';
-  final bool amplitudeEnabled = AppConfig.amplitudeApiKey.isNotEmpty &&
+  final bool amplitudeEnabled =
+      AppConfig.amplitudeApiKey.isNotEmpty &&
       AppConfig.amplitudeApiKey != 'MISSING_AMPLITUDE_API_KEY';
 
   if (sentryEnabled) {
-    _guardedInit('Sentry', () => SentryFlutter.init((options) {
-      options.dsn = AppConfig.sentryDsn;
-      options.environment = _currentEnvironment.name;
-      options.tracesSampleRate = 1.0;
-    }));
+    _guardedInit(
+      'Sentry',
+      () => SentryFlutter.init((options) {
+        options.dsn = AppConfig.sentryDsn;
+        options.environment = _currentEnvironment.name;
+        options.tracesSampleRate = 1.0;
+      }),
+    );
   }
   if (amplitudeEnabled) {
-    _guardedInit('Amplitude',
-        () => Amplitude.getInstance().init(AppConfig.amplitudeApiKey));
+    _guardedInit(
+      'Amplitude',
+      () => Amplitude.getInstance().init(AppConfig.amplitudeApiKey),
+    );
   }
 }
 
@@ -181,10 +191,7 @@ Future<void> bootstrap(Environment env) async {
 
     runApp(
       EasyLocalization(
-        supportedLocales: const [
-          Locale('it', 'IT'),
-          Locale('en', 'US'),
-        ],
+        supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
         path: 'assets/translations',
         fallbackLocale: const Locale('it', 'IT'),
         child: ProviderScope(
@@ -222,7 +229,9 @@ void _validateConfig(Environment env) {
       rethrow;
     }
     // In dev logghiamo il problema senza interrompere lo sviluppo.
-    debugPrint('[Bootstrap] ⚠️  Configurazione incompleta (ignorata in dev): $e');
+    debugPrint(
+      '[Bootstrap] ⚠️  Configurazione incompleta (ignorata in dev): $e',
+    );
   }
 }
 
@@ -330,11 +339,7 @@ class MyApp extends ConsumerWidget {
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
-        home: const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        ),
+        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
       ),
       error: (error, _) => MaterialApp(
         debugShowCheckedModeBanner: environment == Environment.dev,

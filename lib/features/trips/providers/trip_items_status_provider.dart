@@ -89,11 +89,13 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
   final tripsAsync = ref.watch(tripNotifierProvider);
   // Fallback retrocompatibilità: item con originHouseId vuoto vengono risolti
   // verificando a quale casa appartiene effettivamente l'ItemModel.
-  final houseItemIdSet = ref
-      .watch(itemNotifierProvider(houseId))
-      .valueOrNull
-      ?.map((i) => i.id)
-      .toSet() ?? {};
+  final houseItemIdSet =
+      ref
+          .watch(itemNotifierProvider(houseId))
+          .valueOrNull
+          ?.map((i) => i.id)
+          .toSet() ??
+      {};
 
   return tripsAsync.when(
     data: (trips) {
@@ -101,7 +103,8 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
       for (final trip in trips) {
         if (trip.isActive) {
           for (final item in trip.items) {
-            final belongsToThisHouse = item.originHouseId == houseId ||
+            final belongsToThisHouse =
+                item.originHouseId == houseId ||
                 (item.originHouseId.isEmpty &&
                     houseItemIdSet.contains(item.id));
             if (belongsToThisHouse) {
@@ -127,11 +130,13 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
 @riverpod
 Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
   final tripsAsync = ref.watch(tripNotifierProvider);
-  final houseItemIdSet = ref
-      .watch(itemNotifierProvider(houseId))
-      .valueOrNull
-      ?.map((i) => i.id)
-      .toSet() ?? {};
+  final houseItemIdSet =
+      ref
+          .watch(itemNotifierProvider(houseId))
+          .valueOrNull
+          ?.map((i) => i.id)
+          .toSet() ??
+      {};
 
   return tripsAsync.when(
     data: (trips) {
@@ -141,7 +146,8 @@ Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
       for (final trip in trips) {
         if (trip.isActive) {
           for (final item in trip.items) {
-            final belongsToThisHouse = item.originHouseId == houseId ||
+            final belongsToThisHouse =
+                item.originHouseId == houseId ||
                 (item.originHouseId.isEmpty &&
                     houseItemIdSet.contains(item.id));
             if (belongsToThisHouse) {

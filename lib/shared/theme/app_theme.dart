@@ -19,7 +19,7 @@ class AppTheme {
       // #E85D04: arancione brand light. onPrimary bianco garantisce WCAG AA.
       primary: Color(0xFFE85D04),
       onPrimary: Colors.white,
-      primaryContainer: Color(0xFFFFE0CC),
+      primaryContainer: Color.fromARGB(255, 255, 245, 238),
       onPrimaryContainer: Color(0xFF4A1F00),
       // ── Secondary ─────────────────────────────────────────────────────────
       // Grigio neutro per azioni secondarie, distinto dal brand orange.
@@ -34,15 +34,15 @@ class AppTheme {
       tertiaryContainer: Color(0xFFFEF3C7),
       onTertiaryContainer: Color(0xFF451A03),
       // ── Superfici (beige caldo) ────────────────────────────────────────────
-      surface: Color(0xFFFAF5F0),
+      surface: Color.fromARGB(255, 255, 252, 249),
       onSurface: Color(0xFF1A1A1A),
       // onSurfaceVariant calibrato per leggibilità secondaria WCAG AA in light.
       onSurfaceVariant: Color(0xFF595959),
       surfaceContainerLowest: Colors.white,
       surfaceContainerLow: Color(0xFFF5F0EC),
-      surfaceContainer: Color(0xFFF0E8DD),
-      surfaceContainerHigh: Color(0xFFE8DECF),
-      surfaceContainerHighest: Color(0xFFDDD0BC),
+      surfaceContainer: Color.fromARGB(255, 255, 248, 235),
+      surfaceContainerHigh: Color.fromARGB(255, 218, 210, 196),
+      surfaceContainerHighest: Color.fromARGB(255, 220, 209, 195),
       // ── Bordi ─────────────────────────────────────────────────────────────
       // outline: bordo forte (selezionato, focus). outlineVariant: divider/card.
       outline: Color(0xFFB8B8B8),
@@ -228,12 +228,13 @@ class AppTheme {
         // (no dipendenza da AppColors statici).
         ErrorEmptyThemeExtension(
           emptyStateTitle: TextStyle(
-            fontSize: AppSpacing.fontLg,   // 20px → w700 se titolo hero, w400 per stato vuoto
+            fontSize: AppSpacing
+                .fontLg, // 20px → w700 se titolo hero, w400 per stato vuoto
             fontWeight: FontWeight.w400,
             color: colorScheme.onSurfaceVariant,
           ),
           emptyStateSubtitle: TextStyle(
-            fontSize: AppSpacing.fontSm,   // 16px → body → w400
+            fontSize: AppSpacing.fontSm, // 16px → body → w400
             fontWeight: FontWeight.w400,
             color: colorScheme.onSurfaceVariant,
           ),

@@ -112,7 +112,10 @@ class DriftItemRepository implements ItemRepository {
     );
 
     if (!result.success) {
-      throw EntitySaveException('updateItem(${model.name})', cause: result.error);
+      throw EntitySaveException(
+        'updateItem(${model.name})',
+        cause: result.error,
+      );
     }
 
     debugPrint('[ItemRepo] Oggetto aggiornato: ${model.name}');
@@ -134,7 +137,10 @@ class DriftItemRepository implements ItemRepository {
     );
 
     if (!result.success) {
-      throw EntitySaveException('insertMultipleItems(${models.length} items)', cause: result.error);
+      throw EntitySaveException(
+        'insertMultipleItems(${models.length} items)',
+        cause: result.error,
+      );
     }
 
     debugPrint('[ItemRepo] ${models.length} oggetti inseriti con successo');
@@ -234,7 +240,10 @@ class DriftItemRepository implements ItemRepository {
     );
 
     if (!result.success) {
-      throw EntitySaveException('deleteItems(${itemIds.length} items)', cause: result.error);
+      throw EntitySaveException(
+        'deleteItems(${itemIds.length} items)',
+        cause: result.error,
+      );
     }
 
     debugPrint('[ItemRepo] ${itemIds.length} oggetti eliminati in bulk');
@@ -260,7 +269,10 @@ class DriftItemRepository implements ItemRepository {
     );
 
     if (!result.success) {
-      throw EntitySaveException('moveItemsToHouse(${itemIds.length} items)', cause: result.error);
+      throw EntitySaveException(
+        'moveItemsToHouse(${itemIds.length} items)',
+        cause: result.error,
+      );
     }
 
     debugPrint(

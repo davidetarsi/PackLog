@@ -1,27 +1,27 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:file_picker/file_picker.dart';
+// import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path/path.dart' as p;
+// import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
-import '../../../core/database/controllers/backup_controller.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
+// import '../../../core/database/controllers/backup_controller.dart';
+// import 'package:sentry_flutter/sentry_flutter.dart';
 
-import '../../../core/database/exceptions/backup_exceptions.dart';
-import '../../../core/monitoring/monitoring_service.dart';
+// import '../../../core/database/exceptions/backup_exceptions.dart';
+// import '../../../core/monitoring/monitoring_service.dart';
 import '../../../shared/config/app_config.dart';
-import '../../../shared/constants/app_constants.dart';
+// import '../../../shared/constants/app_constants.dart'; // used by backup dialog
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/providers/package_info_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/widgets/ds_section_header.dart';
-import '../providers/last_export_path_provider.dart';
+// import '../providers/last_export_path_provider.dart';
 import '../services/feedback_url_service.dart';
 import '../widgets/language_tile.dart';
 import '../widgets/theme_tile.dart';
@@ -134,270 +134,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // Backup — Export
+  // Backup — Export [COMMENTATO: non usato con Supabase cloud]
   // -------------------------------------------------------------------------
 
-  Future<void> _handleExportDatabase(BuildContext context) async {
-    ExportResult? exportResult;
-
-    try {
-      debugPrint('[ProfileScreen] 📤 Utente ha richiesto export database');
-      if (!context.mounted) return;
-
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text('backup.export_database'.tr()),
-            ],
-          ),
-        ),
-      );
-
-      final controller = ref.read(backupControllerProvider.notifier);
-      exportResult = await controller.exportToTemporaryFile();
-
-      debugPrint('[ProfileScreen] ✅ Export: ${exportResult.path}');
-
-      await ref
-          .read(lastExportPathProvider.notifier)
-          .updateLastExportPath(exportResult.path);
-
-      if (!context.mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-
-      AppSnackBar.showSuccess(
-        context,
-        'backup.export_saved_to'.tr(args: [p.basename(exportResult.path)]),
-      );
-    } catch (e, stack) {
-      debugPrint('[ProfileScreen] ❌ Export fallito: $e\n$stack');
-      if (context.mounted) {
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (_) {}
-      }
-      if (exportResult == null && context.mounted) {
-        AppSnackBar.showError(context, 'backup.export_failed'.tr());
-      }
-    }
-  }
+  // Future<void> _handleExportDatabase(BuildContext context) async {
+  //   ExportResult? exportResult;
+  //   try {
+  //     debugPrint('[ProfileScreen] 📤 Utente ha richiesto export database');
+  //     if (!context.mounted) return;
+  //     showDialog<void>(
+  //       context: context,
+  //       barrierDismissible: false,
+  //       builder: (ctx) => AlertDialog(
+  //         content: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             const CircularProgressIndicator(),
+  //             const SizedBox(height: 16),
+  //             Text('backup.export_database'.tr()),
+  //           ],
+  //         ),
+  //       ),
+  //     );
+  //     final controller = ref.read(backupControllerProvider.notifier);
+  //     exportResult = await controller.exportToTemporaryFile();
+  //     debugPrint('[ProfileScreen] ✅ Export: ${exportResult.path}');
+  //     await ref.read(lastExportPathProvider.notifier).updateLastExportPath(exportResult.path);
+  //     if (!context.mounted) return;
+  //     Navigator.of(context, rootNavigator: true).pop();
+  //     AppSnackBar.showSuccess(context, 'backup.export_saved_to'.tr(args: [p.basename(exportResult.path)]));
+  //   } catch (e, stack) {
+  //     debugPrint('[ProfileScreen] ❌ Export fallito: $e\n$stack');
+  //     if (context.mounted) { try { Navigator.of(context, rootNavigator: true).pop(); } catch (_) {} }
+  //     if (exportResult == null && context.mounted) { AppSnackBar.showError(context, 'backup.export_failed'.tr()); }
+  //   }
+  // }
 
   // -------------------------------------------------------------------------
-  // Backup — Import
+  // Backup — Import [COMMENTATO: non usato con Supabase cloud]
   // -------------------------------------------------------------------------
 
-  Future<void> _handleImportDatabase(BuildContext context) async {
-    try {
-      debugPrint('[ProfileScreen] 📥 Utente ha richiesto import database');
-
-      final backupDirPath = await ref
-          .read(backupControllerProvider.notifier)
-          .getBackupDirectoryPath();
-
-      if (!context.mounted) return;
-
-      final confirmed = await _showImportWarningDialog(
-        context,
-        backupDirPath: backupDirPath,
-      );
-      if (confirmed != true) return;
-
-      if (!context.mounted) return;
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text('backup.creating_safety_backup'.tr()),
-            ],
-          ),
-        ),
-      );
-
-      final controller = ref.read(backupControllerProvider.notifier);
-      String? preCreatedBackupPath;
-      try {
-        preCreatedBackupPath = await controller.createSafetyBackup();
-      } catch (e) {
-        if (context.mounted) {
-          Navigator.of(context, rootNavigator: true).pop();
-          AppSnackBar.showError(context, 'backup.safety_backup_failed'.tr());
-        }
-        return;
-      }
-      if (!context.mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
-        allowMultiple: false,
-        withData: false,
-        withReadStream: false,
-      );
-
-      if (result == null || result.files.isEmpty) return;
-      final filePath = result.files.single.path;
-      if (filePath == null) return;
-
-      if (!controller.validateImportFileName(filePath)) {
-        if (context.mounted) {
-          AppSnackBar.showError(
-            context,
-            'backup.import_validation_failed'.tr(),
-          );
-        }
-        return;
-      }
-
-      if (!context.mounted) return;
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text('backup.importing_data'.tr()),
-            ],
-          ),
-        ),
-      );
-
-      final importResult = await controller.importDatabase(
-        filePath,
-        preCreatedBackupPath: preCreatedBackupPath,
-      );
-
-      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
-
-      if (context.mounted) {
-        if (importResult.success) {
-          AppSnackBar.showSuccess(context, 'backup.import_success'.tr());
-        } else {
-          AppSnackBar.showError(
-            context,
-            importResult.errorMessage ?? 'backup.import_failed'.tr(),
-          );
-        }
-      }
-    } on BackupRollbackException catch (e, st) {
-      // Il rollback del backup di sicurezza è fallito: il DB potrebbe essere
-      // in uno stato inconsistente. È lo scenario più critico dell'intera app.
-      debugPrint('[ProfileScreen] 🚨 BackupRollbackException: $e');
-      ref.read(monitoringServiceProvider).captureException(
-        e,
-        stackTrace: st,
-        level: SentryLevel.fatal,
-        tags: {'operation': 'import_database_rollback'},
-      );
-      if (context.mounted) {
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (_) {}
-        await _showRollbackErrorDialog(context);
-      }
-    } catch (e) {
-      debugPrint('[ProfileScreen] ❌ Errore critico durante import: $e');
-      if (context.mounted) {
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (_) {}
-        AppSnackBar.showError(context, 'backup.critical_error'.tr());
-      }
-    }
-  }
-
-  Future<void> _showRollbackErrorDialog(BuildContext context) async {
-    final colorScheme = Theme.of(context).colorScheme;
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        icon: Icon(Icons.warning_amber_rounded, color: colorScheme.error, size: 40),
-        title: Text('backup.rollback_error_title'.tr()),
-        content: Text('backup.rollback_error_message'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text('common.ok'.tr()),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<bool> _showImportWarningDialog(
-    BuildContext context, {
-    required String backupDirPath,
-  }) async {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('backup.import_warning_title'.tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('backup.import_warning_message'.tr()),
-            const SizedBox(height: 16),
-            Text(
-              'backup.safety_backup_path_label'.tr(),
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(context.spacingSm),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius:
-                    BorderRadius.circular(AppConstants.inputBorderRadius),
-              ),
-              child: SelectableText(
-                backupDirPath,
-                style: TextStyle(
-                  fontSize: context.fontSizeXxs,
-                  fontFamily: 'monospace',
-                  color: colorScheme.primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text('common.cancel'.tr()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(
-              'common.confirm'.tr(),
-              style: TextStyle(color: colorScheme.error),
-            ),
-          ),
-        ],
-      ),
-    );
-    return confirmed ?? false;
-  }
+  // Future<void> _handleImportDatabase(BuildContext context) async { ... }
+  // Future<void> _showRollbackErrorDialog(BuildContext context) async { ... }
+  // Future<bool> _showImportWarningDialog(BuildContext context, {required String backupDirPath}) async { ... }
 
   // -------------------------------------------------------------------------
   // URL helpers
@@ -468,8 +247,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final currentLocale = context.locale;
-    final languageName =
-        currentLocale.languageCode == 'it' ? 'Italiano' : 'English';
+    final languageName = currentLocale.languageCode == 'it'
+        ? 'Italiano'
+        : 'English';
 
     final themeModeAsync = ref.watch(themeModeNotifierProvider);
     final themeModeName = themeModeAsync.when(
@@ -507,8 +287,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               themeModeAsync.valueOrNull == ThemeMode.light
                   ? Icons.light_mode
                   : themeModeAsync.valueOrNull == ThemeMode.dark
-                      ? Icons.dark_mode
-                      : Icons.brightness_auto,
+                  ? Icons.dark_mode
+                  : Icons.brightness_auto,
             ),
             title: Text('settings.theme'.tr()),
             subtitle: Text(themeModeName),
@@ -517,63 +297,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           const Divider(),
 
-          // ── Backup & Ripristino ──────────────────────────────────────────
-          DsSectionHeader(
-            label: 'backup.title'.tr(),
-            padding: EdgeInsets.fromLTRB(context.spacingMd, context.spacingLg, context.spacingMd, context.spacingSm),
-          ),
-
-          Consumer(
-            builder: (context, ref, _) {
-              final exportPathAsync = ref.watch(lastExportPathProvider);
-              final displayPath = exportPathAsync.valueOrNull ?? '...';
-              return ListTile(
-                leading: const Icon(Icons.upload_file),
-                title: Text('backup.export_database'.tr()),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('backup.export_subtitle'.tr()),
-                    const SizedBox(height: 8),
-                    Text(
-                      'backup.path_label'.tr(),
-                      style: TextStyle(
-                        fontSize: context.fontSizeXxs,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    SelectableText(
-                      displayPath,
-                      style: TextStyle(
-                        fontSize: context.fontSizeXxs,
-                        fontFamily: 'monospace',
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                isThreeLine: true,
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _handleExportDatabase(context),
-              );
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.download),
-            title: Text('backup.import_database'.tr()),
-            subtitle: Text('backup.import_subtitle'.tr()),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _handleImportDatabase(context),
-          ),
-          const Divider(),
+          // ── Backup & Ripristino [COMMENTATO: non usato con Supabase cloud] ──
+          // DsSectionHeader(label: 'backup.title'.tr(), ...),
+          // Consumer(builder: (context, ref, _) { ... }),  // export tile
+          // ListTile(...),  // import tile
+          // const Divider(),
 
           // ── About ────────────────────────────────────────────────────────
           DsSectionHeader(
             label: 'settings.about_section_title'.tr(),
-            padding: EdgeInsets.fromLTRB(context.spacingMd, context.spacingLg, context.spacingMd, context.spacingSm),
+            padding: EdgeInsets.fromLTRB(
+              context.spacingMd,
+              context.spacingLg,
+              context.spacingMd,
+              context.spacingSm,
+            ),
           ),
 
           ListTile(
@@ -595,7 +333,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: Text('settings.about'.tr()),
-            subtitle: ref.watch(packageInfoProvider).when(
+            subtitle: ref
+                .watch(packageInfoProvider)
+                .when(
                   data: (info) =>
                       Text('${'common.version'.tr()} ${info.version}'),
                   loading: () => Text('${'common.version'.tr()} …'),
@@ -615,12 +355,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           if (kDebugMode) ...[
             DsSectionHeader(
               label: '🛠️  Dev Tools',
-              padding: EdgeInsets.fromLTRB(context.spacingMd, context.spacingLg, context.spacingMd, context.spacingSm),
+              padding: EdgeInsets.fromLTRB(
+                context.spacingMd,
+                context.spacingLg,
+                context.spacingMd,
+                context.spacingSm,
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.palette_outlined),
               title: const Text('DS Theme Showcase'),
-              subtitle: const Text('Visual QA: Light vs Dark, palette, typography'),
+              subtitle: const Text(
+                'Visual QA: Light vs Dark, palette, typography',
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/dev/ds-showcase'),
             ),

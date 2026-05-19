@@ -25,11 +25,11 @@ const _sampleDictionaryJson = {
   'exactMatches': {'maglietta': 'vestiti', 'laptop': 'elettronica'},
   'stopWords': ['il', 'lo'],
   'rootKeywords': [
-    {'root': 'magli', 'category': 'vestiti'}
+    {'root': 'magli', 'category': 'vestiti'},
   ],
   'irregularPlurals': {'jeans': 'jeans'},
   'lemmatizeSuffixes': [
-    {'from': 'i', 'to': ''}
+    {'from': 'i', 'to': ''},
   ],
 };
 
@@ -44,21 +44,23 @@ void main() {
   });
 
   group('loadDictionary', () {
-    test('returns cached dictionary when available in SharedPreferences',
-        () async {
-      final jsonString = jsonEncode(_sampleDictionaryJson);
-      SharedPreferences.setMockInitialValues({
-        'dictionary_json_cache_it': jsonString,
-        'dictionary_version_cache_it': 3,
-      });
+    test(
+      'returns cached dictionary when available in SharedPreferences',
+      () async {
+        final jsonString = jsonEncode(_sampleDictionaryJson);
+        SharedPreferences.setMockInitialValues({
+          'dictionary_json_cache_it': jsonString,
+          'dictionary_version_cache_it': 3,
+        });
 
-      final dictionary = await repository.loadDictionary('it');
+        final dictionary = await repository.loadDictionary('it');
 
-      expect(dictionary.version, 3);
-      expect(dictionary.locale, 'it');
-      expect(dictionary.exactMatches['maglietta'], ItemCategory.vestiti);
-      expect(dictionary.exactMatches['laptop'], ItemCategory.elettronica);
-    });
+        expect(dictionary.version, 3);
+        expect(dictionary.locale, 'it');
+        expect(dictionary.exactMatches['maglietta'], ItemCategory.vestiti);
+        expect(dictionary.exactMatches['laptop'], ItemCategory.elettronica);
+      },
+    );
 
     test('downloads from Supabase when cache is empty', () async {
       SharedPreferences.setMockInitialValues({});
@@ -71,8 +73,9 @@ void main() {
 
       when(() => mockSupabase.storage).thenReturn(mockStorage);
       when(() => mockStorage.from('dictionaries')).thenReturn(mockFileApi);
-      when(() => mockFileApi.download('dictionary_it.json'))
-          .thenAnswer((_) async => bytes);
+      when(
+        () => mockFileApi.download('dictionary_it.json'),
+      ).thenAnswer((_) async => bytes);
 
       final dictionary = await repository.loadDictionary('it');
 
@@ -115,8 +118,9 @@ void main() {
 
       when(() => mockSupabase.storage).thenReturn(mockStorage);
       when(() => mockStorage.from('dictionaries')).thenReturn(mockFileApi);
-      when(() => mockFileApi.download('dictionary_it.json'))
-          .thenThrow(StorageException('Network error'));
+      when(
+        () => mockFileApi.download('dictionary_it.json'),
+      ).thenThrow(StorageException('Network error'));
 
       expect(
         () => repository.loadDictionary('it'),

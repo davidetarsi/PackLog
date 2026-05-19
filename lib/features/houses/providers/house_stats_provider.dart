@@ -24,38 +24,42 @@ Future<HouseStats> houseStats(Ref ref, String houseId) async {
   // Ottieni tutti gli oggetti della casa
   final itemsAsync = ref.watch(itemNotifierProvider(houseId));
   final items = itemsAsync.value ?? [];
-  
+
   // Ottieni tutti i viaggi
   final tripsAsync = await ref.watch(tripNotifierProvider.future);
-  
+
   // Filtra solo i viaggi effettivamente in corso (non upcoming né completed)
   final activeTrips = tripsAsync.where((trip) => trip.isActive).toList();
-  
+
   // Calcola se ci sono oggetti della casa in viaggio
   bool hasItemsInTrip = false;
   for (final trip in activeTrips) {
     // Controlla se il viaggio contiene oggetti che originano da questa casa
-    final hasItemsFromThisHouse = trip.items.any((item) => item.originHouseId == houseId);
+    final hasItemsFromThisHouse = trip.items.any(
+      (item) => item.originHouseId == houseId,
+    );
     if (hasItemsFromThisHouse) {
       hasItemsInTrip = true;
       break;
     }
   }
-  
+
   // Calcola se ci sono oggetti temporanei (da altre case)
   bool hasTemporaryItems = false;
   for (final trip in activeTrips) {
     // Controlla se il viaggio è destinato a questa casa
     // e contiene oggetti che NON originano da questa casa
     if (trip.destinationHouseId == houseId) {
-      final hasItemsFromOtherHouses = trip.items.any((item) => item.originHouseId != houseId);
+      final hasItemsFromOtherHouses = trip.items.any(
+        (item) => item.originHouseId != houseId,
+      );
       if (hasItemsFromOtherHouses) {
         hasTemporaryItems = true;
         break;
       }
     }
   }
-  
+
   return HouseStats(
     totalItems: items.length,
     hasItemsInTrip: hasItemsInTrip,

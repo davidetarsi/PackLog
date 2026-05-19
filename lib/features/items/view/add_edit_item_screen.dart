@@ -81,11 +81,13 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
     if (confirmed == true && mounted) {
       // Chiudi il bottom sheet prima di eliminare
       Navigator.pop(context);
-      
+
       // Esegui eliminazione con retry
       await ErrorRetryDialog.executeWithRetry(
         context: context,
-        operation: () => ref.read(itemNotifierProvider(widget.houseId!).notifier).deleteItem(widget.itemId!, widget.houseId!),
+        operation: () => ref
+            .read(itemNotifierProvider(widget.houseId!).notifier)
+            .deleteItem(widget.itemId!, widget.houseId!),
         errorTitle: 'common.error'.tr(),
         errorMessage: 'errors.delete_item_failed'.tr(args: [itemName]),
       );
@@ -95,15 +97,15 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
   @override
   Widget build(BuildContext context) {
     return StandardBottomSheetLayout(
-      title: widget.itemId != null
-          ? 'items.edit'.tr()
-          : 'items.add_new'.tr(),
+      title: widget.itemId != null ? 'items.edit'.tr() : 'items.add_new'.tr(),
       onCancel: () => Navigator.pop(context),
       onSave: _handleSave,
       showDeleteButton: widget.itemId != null, // Solo in edit mode
       onDelete: widget.itemId != null ? _handleDelete : null,
       isLoading: _isLoading,
-      saveLabel: widget.itemId != null ? 'common.save'.tr() : 'common.create'.tr(),
+      saveLabel: widget.itemId != null
+          ? 'common.save'.tr()
+          : 'common.create'.tr(),
       child: ItemFormContent(
         key: _formKey,
         houseId: widget.houseId,
@@ -120,4 +122,3 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
     );
   }
 }
-

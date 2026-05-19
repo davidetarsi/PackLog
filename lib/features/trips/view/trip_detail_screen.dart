@@ -262,9 +262,7 @@ class _TripItemCard extends ConsumerWidget {
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
           fontWeight: FontWeight.w500,
           decoration: item.isChecked ? TextDecoration.lineThrough : null,
-          color: item.isChecked
-              ? context.textTertiary
-              : colorScheme.onSurface,
+          color: item.isChecked ? context.textTertiary : colorScheme.onSurface,
         ),
       ),
       /* subtitle: Text(

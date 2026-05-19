@@ -86,7 +86,7 @@ class TripNotifier extends _$TripNotifier {
         try {
           await itemRepo.moveItemsToHouse(
             entry.value,
-            entry.key,               // fromHouseId: filtra nel WHERE SQL
+            entry.key, // fromHouseId: filtra nel WHERE SQL
             trip.destinationHouseId!, // toHouseId
           );
           debugPrint(
@@ -98,16 +98,18 @@ class TripNotifier extends _$TripNotifier {
             '[TripNotifier] Errore nel trasferimento batch '
             '${entry.key} → ${trip.destinationHouseId}: $e',
           );
-          ref.read(monitoringServiceProvider).captureException(
-            e,
-            stackTrace: st,
-            tags: {
-              'operation': 'auto_transfer_items',
-              'trip_id': trip.id,
-              'from_house': entry.key,
-              'to_house': trip.destinationHouseId!,
-            },
-          );
+          ref
+              .read(monitoringServiceProvider)
+              .captureException(
+                e,
+                stackTrace: st,
+                tags: {
+                  'operation': 'auto_transfer_items',
+                  'trip_id': trip.id,
+                  'from_house': entry.key,
+                  'to_house': trip.destinationHouseId!,
+                },
+              );
         }
       }
     }
@@ -173,10 +175,9 @@ class TripNotifier extends _$TripNotifier {
       await repository!.addTrip(model);
       final List<TripModel> trips = await repository!.getAllTrips();
       state = AsyncData(trips);
-      ref.read(coreAnalyticsServiceProvider).trackTripCreated(
-        tripId: model.id,
-        totalTrips: trips.length,
-      );
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackTripCreated(tripId: model.id, totalTrips: trips.length);
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);

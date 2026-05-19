@@ -7,7 +7,8 @@ part 'luggages_dao.g.dart';
 
 /// DAO per le operazioni CRUD sui bagagli.
 @DriftAccessor(tables: [Luggages, TripLuggageEntries])
-class LuggagesDao extends DatabaseAccessor<AppDatabase> with _$LuggagesDaoMixin {
+class LuggagesDao extends DatabaseAccessor<AppDatabase>
+    with _$LuggagesDaoMixin {
   LuggagesDao(super.db);
 
   /// Ottiene tutti i bagagli non eliminati
@@ -17,18 +18,14 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase> with _$LuggagesDaoMixin 
   /// Ottiene tutti i bagagli non eliminati di una casa specifica
   Future<List<Luggage>> getLuggagesByHouse(String houseId) {
     return (select(luggages)
-          ..where(
-            (l) => l.houseId.equals(houseId) & l.isDeleted.equals(false),
-          ))
+          ..where((l) => l.houseId.equals(houseId) & l.isDeleted.equals(false)))
         .get();
   }
 
   /// Ottiene tutti i bagagli non eliminati di una casa come stream
   Stream<List<Luggage>> watchLuggagesByHouse(String houseId) {
     return (select(luggages)
-          ..where(
-            (l) => l.houseId.equals(houseId) & l.isDeleted.equals(false),
-          ))
+          ..where((l) => l.houseId.equals(houseId) & l.isDeleted.equals(false)))
         .watch();
   }
 
@@ -65,16 +62,16 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase> with _$LuggagesDaoMixin 
 
   /// Ottiene i bagagli non eliminati associati a un viaggio tramite junction table.
   Future<List<Luggage>> getLuggagesByTrip(String tripId) async {
-    final query = select(luggages).join([
-      innerJoin(
-        tripLuggageEntries,
-        tripLuggageEntries.luggageId.equalsExp(luggages.id),
-      ),
-    ])
-      ..where(
-        tripLuggageEntries.tripId.equals(tripId) &
-            luggages.isDeleted.equals(false),
-      );
+    final query =
+        select(luggages).join([
+          innerJoin(
+            tripLuggageEntries,
+            tripLuggageEntries.luggageId.equalsExp(luggages.id),
+          ),
+        ])..where(
+          tripLuggageEntries.tripId.equals(tripId) &
+              luggages.isDeleted.equals(false),
+        );
 
     final results = await query.get();
     return results.map((row) => row.readTable(luggages)).toList();
@@ -83,18 +80,16 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase> with _$LuggagesDaoMixin 
   /// Associa un bagaglio a un viaggio (inserisce entry nella junction table).
   Future<void> linkLuggageToTrip(String tripId, String luggageId) async {
     await into(tripLuggageEntries).insert(
-      TripLuggageEntriesCompanion.insert(
-        tripId: tripId,
-        luggageId: luggageId,
-      ),
+      TripLuggageEntriesCompanion.insert(tripId: tripId, luggageId: luggageId),
     );
   }
 
   /// Rimuove l'associazione tra un bagaglio e un viaggio.
   Future<void> unlinkLuggageFromTrip(String tripId, String luggageId) async {
-    await (delete(tripLuggageEntries)
-          ..where((entry) =>
-              entry.tripId.equals(tripId) & entry.luggageId.equals(luggageId)))
+    await (delete(tripLuggageEntries)..where(
+          (entry) =>
+              entry.tripId.equals(tripId) & entry.luggageId.equals(luggageId),
+        ))
         .go();
   }
 
@@ -108,9 +103,9 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase> with _$LuggagesDaoMixin 
     List<String> luggageIds,
   ) async {
     await transaction(() async {
-      await (delete(tripLuggageEntries)
-            ..where((entry) => entry.tripId.equals(tripId)))
-          .go();
+      await (delete(
+        tripLuggageEntries,
+      )..where((entry) => entry.tripId.equals(tripId))).go();
 
       if (luggageIds.isNotEmpty) {
         await batch((batch) {

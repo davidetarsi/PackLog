@@ -73,7 +73,9 @@ class LuggagesManagementSheet extends ConsumerWidget {
       final success = await ErrorRetryDialog.executeWithRetry(
         context: context,
         operation: () async {
-          await ref.read(luggageNotifierProvider.notifier).deleteLuggage(luggage.id);
+          await ref
+              .read(luggageNotifierProvider.notifier)
+              .deleteLuggage(luggage.id);
         },
         errorTitle: 'common.error'.tr(),
         errorMessage: 'errors.delete_luggage_failed'.tr(args: [luggage.name]),
@@ -142,9 +144,7 @@ class LuggagesManagementSheet extends ConsumerWidget {
                       color: Colors.transparent,
                       shape: RoundedRectangleBorder(
                         borderRadius: context.responsiveBorderRadius(12),
-                        side: BorderSide(
-                          color: colorScheme.outlineVariant,
-                        ),
+                        side: BorderSide(color: colorScheme.outlineVariant),
                       ),
                       child: ListTile(
                         leading: Icon(
@@ -165,7 +165,9 @@ class LuggagesManagementSheet extends ConsumerWidget {
                                   luggageId: luggage.id,
                                 );
                                 if (context.mounted) {
-                                  ref.invalidate(luggagesByHouseProvider(houseId));
+                                  ref.invalidate(
+                                    luggagesByHouseProvider(houseId),
+                                  );
                                 }
                                 break;
                               case 'delete':

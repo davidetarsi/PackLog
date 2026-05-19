@@ -23,9 +23,7 @@ void main() {
     mockRepository = MockItemRepository();
 
     container = ProviderContainer(
-      overrides: [
-        itemRepositoryProvider.overrideWithValue(mockRepository),
-      ],
+      overrides: [itemRepositoryProvider.overrideWithValue(mockRepository)],
     );
   });
 
@@ -39,10 +37,7 @@ void main() {
       notifier.addManualItem(ItemCategory.varie);
 
       // Usiamo await expectLater per catturare correttamente l'eccezione asincrona
-      await expectLater(
-        notifier.saveToDatabase(),
-        throwsA(isA<StateError>()),
-      );
+      await expectLater(notifier.saveToDatabase(), throwsA(isA<StateError>()));
 
       verifyNever(() => mockRepository.insertMultipleItems(any()));
     });
@@ -51,10 +46,7 @@ void main() {
       final notifier = container.read(bulkCreationNotifierProvider.notifier);
       notifier.setTargetHouse('test-house-1');
 
-      await expectLater(
-        notifier.saveToDatabase(),
-        throwsA(isA<StateError>()),
-      );
+      await expectLater(notifier.saveToDatabase(), throwsA(isA<StateError>()));
 
       verifyNever(() => mockRepository.insertMultipleItems(any()));
     });
@@ -67,12 +59,14 @@ void main() {
 
       await expectLater(
         notifier.saveToDatabase(),
-        throwsA(isA<StateError>().having(
-          (e) => e.message,
-          'message',
-          // FIX: Usiamo la chiave di localizzazione corretta che la tua app lancia
-          contains('bulk_creation.no_items'),
-        )),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            // FIX: Usiamo la chiave di localizzazione corretta che la tua app lancia
+            contains('bulk_creation.no_items'),
+          ),
+        ),
       );
 
       verifyNever(() => mockRepository.insertMultipleItems(any()));
@@ -91,16 +85,19 @@ void main() {
       expect(state.allItems, hasLength(2));
 
       // Mock successful insertion
-      when(() => mockRepository.insertMultipleItems(any()))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRepository.insertMultipleItems(any()),
+      ).thenAnswer((_) async {});
 
       // === ACT ===
       await notifier.saveToDatabase();
 
       // === ASSERT ===
-      final captured = verify(
-        () => mockRepository.insertMultipleItems(captureAny()),
-      ).captured.single as List<ItemModel>;
+      final captured =
+          verify(
+                () => mockRepository.insertMultipleItems(captureAny()),
+              ).captured.single
+              as List<ItemModel>;
 
       // Verify correct number of items
       expect(captured, hasLength(2));
@@ -118,32 +115,36 @@ void main() {
       }
     });
 
-    test('should invalidate itemNotifierProvider after successful save', () async {
-      // === ARRANGE ===
-      final houseId = 'house-456';
-      final notifier = container.read(bulkCreationNotifierProvider.notifier);
+    test(
+      'should invalidate itemNotifierProvider after successful save',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'house-456';
+        final notifier = container.read(bulkCreationNotifierProvider.notifier);
 
-      notifier.setTargetHouse(houseId);
-      notifier.addManualItem(ItemCategory.varie);
+        notifier.setTargetHouse(houseId);
+        notifier.addManualItem(ItemCategory.varie);
 
-      when(() => mockRepository.insertMultipleItems(any()))
-          .thenAnswer((_) async {});
+        when(
+          () => mockRepository.insertMultipleItems(any()),
+        ).thenAnswer((_) async {});
 
-      // Listen to the provider to detect invalidation
-      var invalidationCount = 0;
-      container.listen(
-        itemNotifierProvider(houseId),
-        (previous, next) => invalidationCount++,
-        fireImmediately: false,
-      );
+        // Listen to the provider to detect invalidation
+        var invalidationCount = 0;
+        container.listen(
+          itemNotifierProvider(houseId),
+          (previous, next) => invalidationCount++,
+          fireImmediately: false,
+        );
 
-      // === ACT ===
-      await notifier.saveToDatabase();
+        // === ACT ===
+        await notifier.saveToDatabase();
 
-      // === ASSERT ===
-      // Provider should be invalidated after save
-      expect(invalidationCount, greaterThan(0));
-    });
+        // === ASSERT ===
+        // Provider should be invalidated after save
+        expect(invalidationCount, greaterThan(0));
+      },
+    );
 
     test('should reset state after successful save', () async {
       // === ARRANGE ===
@@ -153,8 +154,9 @@ void main() {
       notifier.setGender(UserGender.female);
       notifier.addManualItem(ItemCategory.vestiti);
 
-      when(() => mockRepository.insertMultipleItems(any()))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRepository.insertMultipleItems(any()),
+      ).thenAnswer((_) async {});
 
       // Verify state before save
       var stateBefore = container.read(bulkCreationNotifierProvider);
@@ -181,16 +183,19 @@ void main() {
       notifier.setTargetSpace('kitchen-space');
       notifier.addManualItem(ItemCategory.varie);
 
-      when(() => mockRepository.insertMultipleItems(any()))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRepository.insertMultipleItems(any()),
+      ).thenAnswer((_) async {});
 
       // === ACT ===
       await notifier.saveToDatabase();
 
       // === ASSERT ===
-      final captured = verify(
-        () => mockRepository.insertMultipleItems(captureAny()),
-      ).captured.single as List<ItemModel>;
+      final captured =
+          verify(
+                () => mockRepository.insertMultipleItems(captureAny()),
+              ).captured.single
+              as List<ItemModel>;
 
       expect(captured.first.spaceId, 'kitchen-space');
     });
@@ -203,19 +208,20 @@ void main() {
       notifier.addManualItem(ItemCategory.varie);
 
       // Mock repository failure
-      when(() => mockRepository.insertMultipleItems(any()))
-          .thenThrow(Exception('Database connection failed'));
+      when(
+        () => mockRepository.insertMultipleItems(any()),
+      ).thenThrow(Exception('Database connection failed'));
 
       // === ACT & ASSERT ===
-      expect(
-        () => notifier.saveToDatabase(),
-        throwsException,
-      );
+      expect(() => notifier.saveToDatabase(), throwsException);
 
       // State should NOT be reset on failure
       final stateAfterError = container.read(bulkCreationNotifierProvider);
-      expect(stateAfterError.allItems, isNotEmpty,
-          reason: 'State should be preserved on save failure');
+      expect(
+        stateAfterError.allItems,
+        isNotEmpty,
+        reason: 'State should be preserved on save failure',
+      );
     });
 
     test('should correctly map all DraftItem fields to ItemModel', () async {
@@ -231,16 +237,19 @@ void main() {
       notifier.renameItem(itemId, 'Custom Laptop');
       notifier.updateQuantity(itemId, 2); // Quantity becomes 3
 
-      when(() => mockRepository.insertMultipleItems(any()))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRepository.insertMultipleItems(any()),
+      ).thenAnswer((_) async {});
 
       // === ACT ===
       await notifier.saveToDatabase();
 
       // === ASSERT ===
-      final captured = verify(
-        () => mockRepository.insertMultipleItems(captureAny()),
-      ).captured.single as List<ItemModel>;
+      final captured =
+          verify(
+                () => mockRepository.insertMultipleItems(captureAny()),
+              ).captured.single
+              as List<ItemModel>;
 
       final savedItem = captured.first;
       expect(savedItem.name, 'Custom Laptop');

@@ -6,7 +6,7 @@ import '../repositories/luggage_repository.dart';
 part 'luggage_provider.g.dart';
 
 /// Notifier globale per tutti i bagagli dell'app.
-/// 
+///
 /// Gestisce CRUD operations con state caching e invalidation automatica.
 @Riverpod(keepAlive: true)
 class LuggageNotifier extends _$LuggageNotifier {
@@ -68,7 +68,7 @@ class LuggageNotifier extends _$LuggageNotifier {
 }
 
 /// Family provider per ottenere i bagagli di una casa specifica.
-/// 
+///
 /// Filtra i bagagli in base all'houseId e li mantiene in cache.
 @riverpod
 Future<List<LuggageModel>> luggagesByHouse(Ref ref, String houseId) async {
@@ -77,7 +77,7 @@ Future<List<LuggageModel>> luggagesByHouse(Ref ref, String houseId) async {
 }
 
 /// Family provider per ottenere i bagagli di un viaggio.
-/// 
+///
 /// Usa la junction table per caricare solo i bagagli associati.
 @riverpod
 Future<List<LuggageModel>> luggagesByTrip(Ref ref, String tripId) async {

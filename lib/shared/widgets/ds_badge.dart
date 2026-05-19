@@ -106,19 +106,19 @@ class DsStatusBadge extends StatelessWidget {
 
   /// Shortcut "In viaggio".
   factory DsStatusBadge.onTrip({Key? key, IconData? icon}) => DsStatusBadge(
-        key: key,
-        type: DsStatusBadgeType.onTrip,
-        label: 'common.in_transit'.tr(),
-        icon: icon,
-      );
+    key: key,
+    type: DsStatusBadgeType.onTrip,
+    label: 'common.in_transit'.tr(),
+    icon: icon,
+  );
 
   /// Shortcut "Temporaneo/Ospite".
   factory DsStatusBadge.temporary({Key? key, IconData? icon}) => DsStatusBadge(
-        key: key,
-        type: DsStatusBadgeType.temporary,
-        label: 'common.temporary'.tr(),
-        icon: icon,
-      );
+    key: key,
+    type: DsStatusBadgeType.temporary,
+    label: 'common.temporary'.tr(),
+    icon: icon,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -187,11 +187,7 @@ class DsInfoBadge extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const DsInfoBadge({
-    super.key,
-    required this.icon,
-    required this.label,
-  });
+  const DsInfoBadge({super.key, required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {

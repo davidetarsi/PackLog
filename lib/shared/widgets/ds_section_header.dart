@@ -57,7 +57,8 @@ class DsSectionHeader extends StatelessWidget {
     final effectiveColor = color ?? Theme.of(context).colorScheme.primary;
 
     return Padding(
-      padding: padding ??
+      padding:
+          padding ??
           EdgeInsets.symmetric(
             horizontal: context.spacingMd,
             vertical: context.spacingSm,
@@ -72,7 +73,8 @@ class DsSectionHeader extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                fontSize: context.fontSizeXs, // 14px → w500 (regola DS size→weight)
+                fontSize:
+                    context.fontSizeXs, // 14px → w500 (regola DS size→weight)
                 fontWeight: FontWeight.w500,
                 color: effectiveColor,
               ),

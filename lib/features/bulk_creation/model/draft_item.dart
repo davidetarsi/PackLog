@@ -7,7 +7,7 @@ part 'draft_item.freezed.dart';
 part 'draft_item.g.dart';
 
 /// Rappresenta un item temporaneo prima del salvataggio nel database.
-/// 
+///
 /// Utilizzato durante il flusso di creazione massiva per permettere
 /// all'utente di modificare nome, categoria e quantità prima di confermare.
 @freezed
@@ -33,7 +33,7 @@ class DraftItem with _$DraftItem {
   }) = _DraftItem;
 
   /// Restituisce il nome normalizzato per il confronto e il merge.
-  /// 
+  ///
   /// Usato per identificare item duplicati durante l'aggregazione dei template.
   String get normalizedName => name.toLowerCase().trim();
 

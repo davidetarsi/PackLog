@@ -80,9 +80,9 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
         _forcedCategory = null;
         if (_textController.text.trim().isNotEmpty) {
           final service = ref.read(categoryInferServiceProvider).valueOrNull;
-        if (service != null) {
-          _inferResult = service.infer(_textController.text.trim());
-        }
+          if (service != null) {
+            _inferResult = service.infer(_textController.text.trim());
+          }
         }
       } else {
         _forcedCategory = category;
@@ -158,7 +158,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           // FORZA i figli a prendere tutta la larghezza disponibile!
-          crossAxisAlignment: CrossAxisAlignment.stretch, 
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // --- BLOCCO 1: ROW DELLE CATEGORIE (Separate e fluttuanti) ---
             AnimatedSize(
@@ -206,10 +206,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceContainerLow,
                   // Il bordo dinamico come richiesto
-                  border: Border.all(
-                    color: Colors.transparent,
-                    width: 1.5,
-                  ),
+                  border: Border.all(color: Colors.transparent, width: 1.5),
                   // Mantiene perennemente la forma a pillola (metà altezza)
                   borderRadius: BorderRadius.circular(widget.height / 2),
                 ),
@@ -217,7 +214,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                 // Gestione fluida del padding orizzontale
                 padding: EdgeInsets.only(
                   left: _isExpanded ? context.spacingSm : context.spacingMd,
-                  right: 6.0, 
+                  right: 6.0,
                 ),
                 child: Row(
                   children: [
@@ -227,7 +224,8 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                         icon: Icon(Icons.add, size: context.responsive(24)),
                         onPressed: () {
                           final name = _textController.text.trim();
-                          final category = _forcedCategory ??
+                          final category =
+                              _forcedCategory ??
                               _inferResult?.category ??
                               ItemCategory.varie;
                           widget.onOpenFullForm?.call(name, category);
@@ -253,7 +251,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
                           // Nessun padding aggiuntivo, lo gestisce il Container padre
-                          contentPadding: EdgeInsets.zero, 
+                          contentPadding: EdgeInsets.zero,
                           isDense: true,
                         ),
                         textInputAction: TextInputAction.done,
@@ -262,7 +260,6 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
                     ),
-
 
                     // Bottone Invia
                     _SubmitButton(

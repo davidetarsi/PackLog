@@ -19,10 +19,7 @@ const _sampleJson = {
     {'root': 'magli', 'category': 'vestiti'},
     {'root': 'sham', 'category': 'toiletries'},
   ],
-  'irregularPlurals': {
-    'jeans': 'jeans',
-    'shorts': 'shorts',
-  },
+  'irregularPlurals': {'jeans': 'jeans', 'shorts': 'shorts'},
   'lemmatizeSuffixes': [
     {'from': 'i', 'to': ''},
     {'from': 'e', 'to': 'a'},
@@ -71,8 +68,9 @@ void main() {
   group('DynamicCategoryDictionary.parseFromJsonString', () {
     test('parses JSON string correctly', () {
       final jsonString = jsonEncode(_sampleJson);
-      final dictionary =
-          DynamicCategoryDictionary.parseFromJsonString(jsonString);
+      final dictionary = DynamicCategoryDictionary.parseFromJsonString(
+        jsonString,
+      );
       expect(dictionary.version, 2);
       expect(dictionary.exactMatches['maglietta'], ItemCategory.vestiti);
     });
@@ -145,7 +143,7 @@ void main() {
         'exactMatches': {'shirt': 'vestiti'},
         'stopWords': ['the'],
         'rootKeywords': [
-          {'root': 'shirt', 'category': 'vestiti'}
+          {'root': 'shirt', 'category': 'vestiti'},
         ],
       };
       final dictionary = DynamicCategoryDictionary.fromJson(minimalJson);

@@ -98,7 +98,10 @@ class DriftHouseRepository implements HouseRepository {
     );
 
     if (!result.success) {
-      throw EntitySaveException('updateHouse(${model.name})', cause: result.error);
+      throw EntitySaveException(
+        'updateHouse(${model.name})',
+        cause: result.error,
+      );
     }
 
     debugPrint('[HouseRepo] Casa aggiornata: ${model.name}');

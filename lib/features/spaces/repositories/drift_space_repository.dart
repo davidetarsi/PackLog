@@ -8,7 +8,7 @@ import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../core/database/services/database_service.dart';
 
 /// Implementazione del repository Space usando Drift (SQLite).
-/// 
+///
 /// Fornisce operazioni robuste con:
 /// - Retry automatico per operazioni fallite
 /// - Transazioni atomiche
@@ -32,11 +32,11 @@ class DriftSpaceRepository implements SpaceRepository {
       operationName: 'addSpace(${model.name})',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
       throw EntitySaveException('addSpace(${model.name})', cause: result.error);
     }
-    
+
     debugPrint('[SpaceRepo] Spazio aggiunto: ${model.name}');
   }
 
@@ -46,11 +46,11 @@ class DriftSpaceRepository implements SpaceRepository {
       () => _dao.getSpaceById(id),
       operationName: 'getSpaceById($id)',
     );
-    
+
     if (!result.success || result.data == null) {
       throw EntityNotFoundException('getSpaceById($id)');
     }
-    
+
     return _toModel(result.data!);
   }
 
@@ -60,12 +60,12 @@ class DriftSpaceRepository implements SpaceRepository {
       () => _dao.getAllSpaces(),
       operationName: 'getAllSpaces',
     );
-    
+
     if (!result.success) {
       debugPrint('[SpaceRepo] Errore caricando spazi: ${result.error}');
       return [];
     }
-    
+
     return result.data!.map(_toModel).toList();
   }
 
@@ -75,12 +75,14 @@ class DriftSpaceRepository implements SpaceRepository {
       () => _dao.getSpacesByHouse(houseId),
       operationName: 'getSpacesByHouseId($houseId)',
     );
-    
+
     if (!result.success) {
-      debugPrint('[SpaceRepo] Errore caricando spazi per casa: ${result.error}');
+      debugPrint(
+        '[SpaceRepo] Errore caricando spazi per casa: ${result.error}',
+      );
       return [];
     }
-    
+
     return result.data!.map(_toModel).toList();
   }
 
@@ -91,12 +93,12 @@ class DriftSpaceRepository implements SpaceRepository {
       operationName: 'deleteSpace($id)',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
       debugPrint('[SpaceRepo] Errore eliminando spazio: ${result.error}');
       return false;
     }
-    
+
     debugPrint('[SpaceRepo] Spazio eliminato: $id');
     return result.data! > 0;
   }
@@ -108,11 +110,14 @@ class DriftSpaceRepository implements SpaceRepository {
       operationName: 'updateSpace(${model.name})',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
-      throw EntitySaveException('updateSpace(${model.name})', cause: result.error);
+      throw EntitySaveException(
+        'updateSpace(${model.name})',
+        cause: result.error,
+      );
     }
-    
+
     debugPrint('[SpaceRepo] Spazio aggiornato: ${model.name}');
   }
 
@@ -122,20 +127,20 @@ class DriftSpaceRepository implements SpaceRepository {
       () => _dao.countSpacesByHouse(houseId),
       operationName: 'countSpacesByHouse($houseId)',
     );
-    
+
     if (!result.success) {
       debugPrint('[SpaceRepo] Errore contando spazi: ${result.error}');
       return 0;
     }
-    
+
     return result.data!;
   }
 
   /// Stream reattivo di tutti gli spazi di una casa
   Stream<List<SpaceModel>> watchSpacesByHouseId(String houseId) {
-    return _dao.watchSpacesByHouse(houseId).map(
-      (spaces) => spaces.map(_toModel).toList(),
-    );
+    return _dao
+        .watchSpacesByHouse(houseId)
+        .map((spaces) => spaces.map(_toModel).toList());
   }
 
   // === Conversioni ===

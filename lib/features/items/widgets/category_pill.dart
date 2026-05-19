@@ -60,7 +60,8 @@ class CategoryPill extends StatelessWidget {
               _labelForCategory(category),
               style: TextStyle(
                 fontSize: context.fontSizeXs,
-                fontWeight: FontWeight.w600, // 14px selected → w500 base + 1 livello selezionato
+                fontWeight: FontWeight
+                    .w600, // 14px selected → w500 base + 1 livello selezionato
                 color: foregroundColor,
               ),
             ),

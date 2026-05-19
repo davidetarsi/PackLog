@@ -17,8 +17,9 @@ mixin SyncableTable on Table {
   TextColumn get userId => text().nullable()();
 
   /// Current sync state of this record.
-  IntColumn get syncStatus => intEnum<SyncStatus>()
-      .withDefault(Constant(SyncStatus.pendingCreate.index))();
+  IntColumn get syncStatus => intEnum<SyncStatus>().withDefault(
+    Constant(SyncStatus.pendingCreate.index),
+  )();
 
   /// Number of consecutive failed sync attempts for this record.
   IntColumn get syncRetryCount => integer().withDefault(const Constant(0))();

@@ -57,12 +57,15 @@ class ThemeTile extends StatelessWidget {
                 title,
                 style: TextStyle(
                   fontSize: context.fontSizeSm,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, // 16px selected +1 = w600
+                  fontWeight: isSelected
+                      ? FontWeight.w600
+                      : FontWeight.w500, // 16px selected +1 = w600
                   color: isSelected ? colorScheme.primary : null,
                 ),
               ),
             ),
-            if (isSelected) Icon(Icons.check_circle, color: colorScheme.primary),
+            if (isSelected)
+              Icon(Icons.check_circle, color: colorScheme.primary),
           ],
         ),
       ),

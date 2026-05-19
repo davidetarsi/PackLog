@@ -13,7 +13,8 @@ class MockSupabaseRepository extends Mock implements SupabaseRepository {}
 
 class MockMonitoringService extends Mock implements AppMonitoringService {}
 
-class MockTombstoneConfigService extends Mock implements TombstoneConfigService {}
+class MockTombstoneConfigService extends Mock
+    implements TombstoneConfigService {}
 
 void main() {
   late AppDatabase database;
@@ -36,8 +37,9 @@ void main() {
       ),
     ).thenReturn(null);
 
-    when(() => mockTombstoneConfig.getRetentionDays())
-        .thenAnswer((_) async => 15);
+    when(
+      () => mockTombstoneConfig.getRetentionDays(),
+    ).thenAnswer((_) async => 15);
 
     syncService = SyncService(
       housesDao: database.housesDao,
@@ -55,48 +57,71 @@ void main() {
 
   Future<void> insertHouse(String id, {DateTime? updatedAt}) async {
     final now = updatedAt ?? DateTime.now();
-    await database.housesDao.insertHouse(HousesCompanion.insert(
-      id: id,
-      name: 'House $id',
-      createdAt: now,
-      updatedAt: now,
-    ));
+    await database.housesDao.insertHouse(
+      HousesCompanion.insert(
+        id: id,
+        name: 'House $id',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
   }
 
-  Future<void> insertItem(String id, String houseId, {DateTime? updatedAt}) async {
+  Future<void> insertItem(
+    String id,
+    String houseId, {
+    DateTime? updatedAt,
+  }) async {
     final now = updatedAt ?? DateTime.now();
-    await database.itemsDao.insertItem(ItemsCompanion.insert(
-      id: id,
-      houseId: houseId,
-      name: 'Item $id',
-      category: ItemCategory.varie,
-      createdAt: now,
-      updatedAt: now,
-    ));
+    await database.itemsDao.insertItem(
+      ItemsCompanion.insert(
+        id: id,
+        houseId: houseId,
+        name: 'Item $id',
+        category: ItemCategory.varie,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
   }
 
   Future<void> insertTrip(String id, {DateTime? updatedAt}) async {
     final now = updatedAt ?? DateTime.now();
-    await database.tripsDao.insertTrip(TripsCompanion.insert(
-      id: id,
-      name: 'Trip $id',
-      createdAt: now,
-      updatedAt: now,
-    ));
+    await database.tripsDao.insertTrip(
+      TripsCompanion.insert(
+        id: id,
+        name: 'Trip $id',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
   }
 
   group('SyncService - processQueue', () {
     test('pushes local record when remote does not exist', () async {
       await insertHouse('h1');
 
-      when(() => mockRemote.fetchHouseById('h1', sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async => null);
-      when(() => mockRemote.upsertHouse(any(), sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRemote.fetchHouseById(
+          'h1',
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockRemote.upsertHouse(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async {});
 
       await syncService.processQueue();
 
-      verify(() => mockRemote.upsertHouse(any(), sentryTrace: any(named: 'sentryTrace'))).called(1);
+      verify(
+        () => mockRemote.upsertHouse(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).called(1);
 
       final house = await database.housesDao.getHouseById('h1');
       expect(house!.syncStatus, equals(SyncStatus.synced));
@@ -107,18 +132,33 @@ void main() {
       final remoteTime = DateTime(2026, 4, 28, 12, 0);
       await insertHouse('h2', updatedAt: localTime);
 
-      when(() => mockRemote.fetchHouseById('h2', sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async => {
-                'id': 'h2',
-                'name': 'Remote House',
-                'updated_at': remoteTime.toIso8601String(),
-              });
-      when(() => mockRemote.upsertHouse(any(), sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRemote.fetchHouseById(
+          'h2',
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer(
+        (_) async => {
+          'id': 'h2',
+          'name': 'Remote House',
+          'updated_at': remoteTime.toIso8601String(),
+        },
+      );
+      when(
+        () => mockRemote.upsertHouse(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async {});
 
       await syncService.processQueue();
 
-      verify(() => mockRemote.upsertHouse(any(), sentryTrace: any(named: 'sentryTrace'))).called(1);
+      verify(
+        () => mockRemote.upsertHouse(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).called(1);
     });
 
     test('pulls remote when remote is newer or equal', () async {
@@ -126,30 +166,41 @@ void main() {
       final remoteTime = DateTime(2026, 4, 28, 14, 0);
       await insertHouse('h3', updatedAt: localTime);
 
-      when(() => mockRemote.fetchHouseById('h3', sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async => {
-                'id': 'h3',
-                'name': 'Updated Remote House',
-                'description': null,
-                'location_place_id': null,
-                'location_display_name': null,
-                'location_name': null,
-                'location_city': null,
-                'location_state': null,
-                'location_country': null,
-                'location_type': null,
-                'location_lat': null,
-                'location_lon': null,
-                'icon_name': 'home',
-                'is_primary': false,
-                'created_at': localTime.toIso8601String(),
-                'updated_at': remoteTime.toIso8601String(),
-                'is_deleted': false,
-              });
+      when(
+        () => mockRemote.fetchHouseById(
+          'h3',
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer(
+        (_) async => {
+          'id': 'h3',
+          'name': 'Updated Remote House',
+          'description': null,
+          'location_place_id': null,
+          'location_display_name': null,
+          'location_name': null,
+          'location_city': null,
+          'location_state': null,
+          'location_country': null,
+          'location_type': null,
+          'location_lat': null,
+          'location_lon': null,
+          'icon_name': 'home',
+          'is_primary': false,
+          'created_at': localTime.toIso8601String(),
+          'updated_at': remoteTime.toIso8601String(),
+          'is_deleted': false,
+        },
+      );
 
       await syncService.processQueue();
 
-      verifyNever(() => mockRemote.upsertHouse(any(), sentryTrace: any(named: 'sentryTrace')));
+      verifyNever(
+        () => mockRemote.upsertHouse(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      );
 
       final house = await database.housesDao.getHouseById('h3');
       expect(house!.name, equals('Updated Remote House'));
@@ -160,12 +211,24 @@ void main() {
       await insertHouse('fail-house');
       await insertHouse('ok-house');
 
-      when(() => mockRemote.fetchHouseById('fail-house', sentryTrace: any(named: 'sentryTrace')))
-          .thenThrow(Exception('network error'));
-      when(() => mockRemote.fetchHouseById('ok-house', sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async => null);
-      when(() => mockRemote.upsertHouse(any(), sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRemote.fetchHouseById(
+          'fail-house',
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenThrow(Exception('network error'));
+      when(
+        () => mockRemote.fetchHouseById(
+          'ok-house',
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockRemote.upsertHouse(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async {});
 
       await syncService.processQueue();
 
@@ -184,29 +247,53 @@ void main() {
       await insertItem('fk-item', 'fk-house');
       await insertTrip('fk-trip');
 
-      when(() => mockRemote.fetchHouseById(any(), sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async {
+      when(
+        () => mockRemote.fetchHouseById(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async {
         callOrder.add('house');
         return null;
       });
-      when(() => mockRemote.upsertHouse(any(), sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRemote.upsertHouse(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async {});
 
-      when(() => mockRemote.fetchItemById(any(), sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async {
+      when(
+        () => mockRemote.fetchItemById(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async {
         callOrder.add('item');
         return null;
       });
-      when(() => mockRemote.upsertItem(any(), sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRemote.upsertItem(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async {});
 
-      when(() => mockRemote.fetchTripById(any(), sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async {
+      when(
+        () => mockRemote.fetchTripById(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async {
         callOrder.add('trip');
         return null;
       });
-      when(() => mockRemote.upsertTrip(any(), sentryTrace: any(named: 'sentryTrace')))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRemote.upsertTrip(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async {});
 
       await syncService.processQueue();
 

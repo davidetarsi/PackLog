@@ -5,7 +5,7 @@ import '../../../shared/helpers/bottom_sheet_handle.dart';
 import '../../../shared/theme/app_spacing.dart';
 
 /// Bottom sheet per gestire azioni sul viaggio
-/// 
+///
 /// Mostra un menu con le azioni disponibili:
 /// - Modifica informazioni
 /// - Modifica oggetti
@@ -23,10 +23,7 @@ Future<void> showTripManagementSheet(
 class TripManagementSheet extends StatelessWidget {
   final String tripId;
 
-  const TripManagementSheet({
-    super.key,
-    required this.tripId,
-  });
+  const TripManagementSheet({super.key, required this.tripId});
 
   @override
   Widget build(BuildContext context) {

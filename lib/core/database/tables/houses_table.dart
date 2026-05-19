@@ -64,8 +64,7 @@ class Houses extends Table with SyncableTable {
   /// Flag di eliminazione logica.
   /// `true` = l'utente ha eliminato la casa; la riga rimane nel DB per la
   /// sincronizzazione cloud e verrà purgata dopo la propagazione al server.
-  BoolColumn get isDeleted =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 
   /// Timestamp dell'ultima sincronizzazione con il cloud.
   /// `null` = mai sincronizzato (record solo locale).

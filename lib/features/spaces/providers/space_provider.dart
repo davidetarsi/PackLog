@@ -6,7 +6,7 @@ import '../repositories/space_repository.dart';
 part 'space_provider.g.dart';
 
 /// Notifier globale per tutti gli spazi dell'app.
-/// 
+///
 /// Gestisce CRUD operations con state caching e invalidation automatica.
 @Riverpod(keepAlive: true)
 class SpaceNotifier extends _$SpaceNotifier {
@@ -68,7 +68,7 @@ class SpaceNotifier extends _$SpaceNotifier {
 }
 
 /// Family provider per ottenere gli spazi di una casa specifica.
-/// 
+///
 /// Filtra gli spazi in base all'houseId e li mantiene in cache.
 @riverpod
 Future<List<SpaceModel>> spacesByHouse(Ref ref, String houseId) async {

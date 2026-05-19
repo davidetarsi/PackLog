@@ -11,7 +11,6 @@ import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/helpers/design_system.dart';
 
-
 /// Enum per le tab di filtro
 enum TripFilterTab {
   upcoming('trips.filter_upcoming'),
@@ -105,6 +104,8 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     final action = await showEntityContextMenu(
       context: context,
       entityType: 'common.trip_type'.tr(),
+      showSaveAction: true,
+      isSaved: trip.isSaved,
     );
     if (action == null || !mounted) return;
 
@@ -113,10 +114,21 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
         await ErrorRetryDialog.executeWithRetry(
           context: context,
           operation: () async {
-            await ref.read(tripNotifierProvider.notifier).duplicateTrip(trip.id);
+            await ref
+                .read(tripNotifierProvider.notifier)
+                .duplicateTrip(trip.id);
           },
           errorTitle: 'common.error'.tr(),
           errorMessage: 'errors.duplicate_trip_failed'.tr(args: [trip.name]),
+        );
+      case EntityContextMenuAction.save:
+        await ErrorRetryDialog.executeWithRetry(
+          context: context,
+          operation: () async {
+            await ref.read(tripNotifierProvider.notifier).toggleSaved(trip.id);
+          },
+          errorTitle: 'common.error'.tr(),
+          errorMessage: 'errors.save_trip_failed'.tr(args: [trip.name]),
         );
       case EntityContextMenuAction.delete:
         final confirmed = await DialogHelpers.showDeleteConfirmation(
@@ -134,6 +146,8 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
             errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
           );
         }
+      case EntityContextMenuAction.setPrimary:
+        break; // not used for trips
     }
   }
 
@@ -252,10 +266,8 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                         if (showNextTripCard) ...[
                           TripCardHero(
                             trip: nextTrip,
-                            onTap: () =>
-                                context.push('/trips/${nextTrip.id}'),
-                            onLongPress: () =>
-                                _handleTripLongPress(nextTrip),
+                            onTap: () => context.push('/trips/${nextTrip.id}'),
+                            onLongPress: () => _handleTripLongPress(nextTrip),
                           ),
                           SizedBox(height: context.spacingSm),
                         ],
@@ -263,7 +275,6 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
                           _buildFilterEmptyState(context, colorScheme)
                         else if (tripsForMasonry.isNotEmpty)
                           _TripsMasonry(trips: tripsForMasonry),
-
                       ],
                     ),
                   ),
@@ -320,7 +331,6 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   }
 }
 
-
 /// Masonry a 2 colonne per le trip card compatte.
 ///
 /// Distribuisce le card tra colonne sinistra/destra usando una stima
@@ -368,10 +378,12 @@ class _TripsMasonry extends StatelessWidget {
         Expanded(
           child: Column(
             children: left
-                .map((t) => Padding(
-                      padding: EdgeInsets.only(bottom: context.spacingMd),
-                      child: TripCardCompact(trip: t),
-                    ))
+                .map(
+                  (t) => Padding(
+                    padding: EdgeInsets.only(bottom: context.spacingMd),
+                    child: TripCardCompact(trip: t),
+                  ),
+                )
                 .toList(),
           ),
         ),
@@ -379,10 +391,12 @@ class _TripsMasonry extends StatelessWidget {
         Expanded(
           child: Column(
             children: right
-                .map((t) => Padding(
-                      padding: EdgeInsets.only(bottom: context.spacingMd),
-                      child: TripCardCompact(trip: t),
-                    ))
+                .map(
+                  (t) => Padding(
+                    padding: EdgeInsets.only(bottom: context.spacingMd),
+                    child: TripCardCompact(trip: t),
+                  ),
+                )
                 .toList(),
           ),
         ),

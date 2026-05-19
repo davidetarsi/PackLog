@@ -55,12 +55,10 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   Future<int> deleteTrip(String id) async {
     return transaction(() async {
       // Cleanup fisico dei dati snapshot/junction (non hanno isDeleted)
-      await (delete(tripItemEntries)
-            ..where((ti) => ti.tripId.equals(id)))
-          .go();
-      await (delete(tripLuggageEntries)
-            ..where((tle) => tle.tripId.equals(id)))
-          .go();
+      await (delete(tripItemEntries)..where((ti) => ti.tripId.equals(id))).go();
+      await (delete(
+        tripLuggageEntries,
+      )..where((tle) => tle.tripId.equals(id))).go();
 
       return (update(trips)..where((t) => t.id.equals(id))).write(
         TripsCompanion(
@@ -83,16 +81,16 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
 
   /// Ottiene tutti gli oggetti di un viaggio
   Future<List<TripItemEntry>> getTripItemsByTripId(String tripId) {
-    return (select(tripItemEntries)
-          ..where((ti) => ti.tripId.equals(tripId)))
-        .get();
+    return (select(
+      tripItemEntries,
+    )..where((ti) => ti.tripId.equals(tripId))).get();
   }
 
   /// Ottiene gli oggetti di un viaggio come stream
   Stream<List<TripItemEntry>> watchTripItemsByTripId(String tripId) {
-    return (select(tripItemEntries)
-          ..where((ti) => ti.tripId.equals(tripId)))
-        .watch();
+    return (select(
+      tripItemEntries,
+    )..where((ti) => ti.tripId.equals(tripId))).watch();
   }
 
   /// Inserisce un oggetto nel viaggio
@@ -112,9 +110,9 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
 
   /// Elimina fisicamente tutti gli oggetti di un viaggio
   Future<int> deleteTripItemsByTripId(String tripId) {
-    return (delete(tripItemEntries)
-          ..where((ti) => ti.tripId.equals(tripId)))
-        .go();
+    return (delete(
+      tripItemEntries,
+    )..where((ti) => ti.tripId.equals(tripId))).go();
   }
 
   /// Inserisce multiple oggetti viaggio (per migrazione)
@@ -269,31 +267,27 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   }
 
   Future<int> markDeletedAsPendingSync() {
-    return (update(trips)
-          ..where(
-            (t) =>
-                t.isDeleted.equals(true) &
-                t.syncStatus.equalsValue(SyncStatus.synced),
-          ))
+    return (update(trips)..where(
+          (t) =>
+              t.isDeleted.equals(true) &
+              t.syncStatus.equalsValue(SyncStatus.synced),
+        ))
         .write(
-      const TripsCompanion(
-        syncStatus: Value(SyncStatus.pendingUpdate),
-      ),
-    );
+          const TripsCompanion(syncStatus: Value(SyncStatus.pendingUpdate)),
+        );
   }
 
   /// Returns trips pending sync: syncStatus != synced AND retries below limit.
   /// Includes soft-deleted trips so deletions propagate to Supabase.
   Future<List<Trip>> getPendingSyncTrips({int maxRetries = 5}) {
     final now = DateTime.now();
-    return (select(trips)
-          ..where(
-            (t) =>
-                t.syncStatus.equalsValue(SyncStatus.synced).not() &
-                t.syncRetryCount.isSmallerThanValue(maxRetries) &
-                (t.nextSyncAttemptAt.isNull() |
-                    t.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
-          ))
+    return (select(trips)..where(
+          (t) =>
+              t.syncStatus.equalsValue(SyncStatus.synced).not() &
+              t.syncRetryCount.isSmallerThanValue(maxRetries) &
+              (t.nextSyncAttemptAt.isNull() |
+                  t.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
+        ))
         .get();
   }
 
@@ -301,10 +295,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   ///
   /// Resets retry state and records the server-provided timestamp
   /// in [lastSyncedAt] for future delta-sync queries.
-  Future<void> markTripAsSynced(
-    String tripId,
-    DateTime serverUpdatedAt,
-  ) {
+  Future<void> markTripAsSynced(String tripId, DateTime serverUpdatedAt) {
     return (update(trips)..where((t) => t.id.equals(tripId))).write(
       TripsCompanion(
         syncStatus: const Value(SyncStatus.synced),
@@ -322,15 +313,14 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   /// Uses a read-then-write to increment atomically via Drift's
   /// type-safe API (avoids raw SQL DateTime serialization issues).
   Future<void> incrementSyncRetry(String tripId, String errorMessage) async {
-    final trip = await (select(trips)
-          ..where((t) => t.id.equals(tripId)))
-        .getSingleOrNull();
+    final trip = await (select(
+      trips,
+    )..where((t) => t.id.equals(tripId))).getSingleOrNull();
     if (trip == null) return;
 
     final newRetryCount = trip.syncRetryCount + 1;
     final backoffSeconds = 2 << (newRetryCount - 1);
-    final nextAttempt =
-        DateTime.now().add(Duration(seconds: backoffSeconds));
+    final nextAttempt = DateTime.now().add(Duration(seconds: backoffSeconds));
 
     await (update(trips)..where((t) => t.id.equals(tripId))).write(
       TripsCompanion(

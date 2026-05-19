@@ -7,9 +7,7 @@ part 'monitoring_service.g.dart';
 
 class AppMonitoringService {
   void identifyUser(String userId) {
-    Sentry.configureScope(
-      (scope) => scope.setUser(SentryUser(id: userId)),
-    );
+    Sentry.configureScope((scope) => scope.setUser(SentryUser(id: userId)));
   }
 
   void clearUser() {

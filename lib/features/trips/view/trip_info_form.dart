@@ -26,7 +26,8 @@ class TripInfoForm extends ConsumerStatefulWidget {
     DateTime? returnDateTime,
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
-  }) onChanged;
+  })
+  onChanged;
 
   const TripInfoForm({
     super.key,
@@ -202,10 +203,15 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
               padding: context.cardPaddingHero,
               child: Row(
                 children: [
-                  Icon(Icons.calendar_month_outlined, color: colorScheme.primary, size: 22),
+                  Icon(
+                    Icons.calendar_month_outlined,
+                    color: colorScheme.primary,
+                    size: 22,
+                  ),
                   SizedBox(width: context.spacingMd),
                   Expanded(
-                    child: (_departureDateTime != null || _returnDateTime != null)
+                    child:
+                        (_departureDateTime != null || _returnDateTime != null)
                         ? Row(
                             children: [
                               Expanded(
@@ -222,14 +228,22 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                                     const SizedBox(height: 2),
                                     Text(
                                       _formatDate(_departureDateTime),
-                                      style: TextStyle(fontSize: context.fontSizeSm),
+                                      style: TextStyle(
+                                        fontSize: context.fontSizeSm,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                                child: Icon(Icons.arrow_forward, color: colorScheme.primary, size: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                child: Icon(
+                                  Icons.arrow_forward,
+                                  color: colorScheme.primary,
+                                  size: 16,
+                                ),
                               ),
                               Expanded(
                                 child: Column(
@@ -245,7 +259,9 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                                     const SizedBox(height: 2),
                                     Text(
                                       _formatDate(_returnDateTime),
-                                      style: TextStyle(fontSize: context.fontSizeSm),
+                                      style: TextStyle(
+                                        fontSize: context.fontSizeSm,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -256,13 +272,19 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                             'common.tap_to_set_dates'.tr(),
                             style: TextStyle(
                               fontSize: context.fontSizeMd,
-                              color: colorScheme.onSurface.withValues(alpha: 0.38),
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.38,
+                              ),
                             ),
                           ),
                   ),
                   if (_departureDateTime != null || _returnDateTime != null)
                     IconButton(
-                      icon: Icon(Icons.clear, color: colorScheme.primary, size: 20),
+                      icon: Icon(
+                        Icons.clear,
+                        color: colorScheme.primary,
+                        size: 20,
+                      ),
                       onPressed: () {
                         setState(() {
                           _departureDateTime = null;
@@ -310,18 +332,19 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
 
         // ── Contenuto destinazione ─────────────────────────────────────
         Card(
-            margin: EdgeInsets.zero,
-            elevation: 0,
-            color: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: context.responsiveBorderRadius(
-                AppConstants.cardBorderRadius,
-              ),
-              side: BorderSide(color: colorScheme.outlineVariant),
+          margin: EdgeInsets.zero,
+          elevation: 0,
+          color: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: context.responsiveBorderRadius(
+              AppConstants.cardBorderRadius,
             ),
-            child: _useHouseDestination
-                ? housesAsync.when(
-                  data: (houses) => _buildHouseRow(context, colorScheme, houses),
+            side: BorderSide(color: colorScheme.outlineVariant),
+          ),
+          child: _useHouseDestination
+              ? housesAsync.when(
+                  data: (houses) =>
+                      _buildHouseRow(context, colorScheme, houses),
                   loading: () => Padding(
                     padding: EdgeInsets.all(context.spacingMd),
                     child: const Center(child: CircularProgressIndicator()),
@@ -347,7 +370,9 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   ) {
     return InkWell(
       onTap: () => _showDestinationHousePicker(houses),
-      borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
+      borderRadius: context.responsiveBorderRadius(
+        AppConstants.cardBorderRadius,
+      ),
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: context.spacingMd,
@@ -413,7 +438,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
               labelText: null,
               hintText: 'trips.destination_hint'.tr(),
               hintStyle: TextStyle(
-                      color: colorScheme.onSurface.withValues(alpha: 0.38),
+                color: colorScheme.onSurface.withValues(alpha: 0.38),
               ),
               showBorder: false,
               onLocationSelected: (location) {

@@ -12,7 +12,8 @@ abstract class AuthDomainException extends AppException {
   });
 
   @override
-  String toString() => '$runtimeType: $message'
+  String toString() =>
+      '$runtimeType: $message'
       '${originalError != null ? ' (${originalError.toString()})' : ''}';
 }
 

@@ -69,16 +69,24 @@ abstract class AppColors {
   @Deprecated('Usa colorScheme.outline. DS Fase 2.')
   static const Color border = Color(0xFF3A3A3A);
 
-  @Deprecated('Usa colorScheme.primaryContainer / onPrimaryContainer. DS Fase 2.')
+  @Deprecated(
+    'Usa colorScheme.primaryContainer / onPrimaryContainer. DS Fase 2.',
+  )
   static const Color badgeSelected = Color(0xFF3D2000);
 
-  @Deprecated('Usa colorScheme.primaryContainer / onPrimaryContainer. DS Fase 2.')
+  @Deprecated(
+    'Usa colorScheme.primaryContainer / onPrimaryContainer. DS Fase 2.',
+  )
   static const Color badgeSelectedText = Color(0xFFFF8A50);
 
-  @Deprecated('Usa colorScheme.surfaceContainerHighest / onSurfaceVariant. DS Fase 2.')
+  @Deprecated(
+    'Usa colorScheme.surfaceContainerHighest / onSurfaceVariant. DS Fase 2.',
+  )
   static const Color badgeUnselected = Color(0xFF2D2D2D);
 
-  @Deprecated('Usa colorScheme.surfaceContainerHighest / onSurfaceVariant. DS Fase 2.')
+  @Deprecated(
+    'Usa colorScheme.surfaceContainerHighest / onSurfaceVariant. DS Fase 2.',
+  )
   static const Color badgeUnselectedText = Color(0xFFB0B0B0);
 }
 
@@ -201,19 +209,39 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     return AppColorsExtension(
       success: Color.lerp(success, other.success, t)!,
       onSuccess: Color.lerp(onSuccess, other.onSuccess, t)!,
-      successContainer: Color.lerp(successContainer, other.successContainer, t)!,
-      onSuccessContainer:
-          Color.lerp(onSuccessContainer, other.onSuccessContainer, t)!,
+      successContainer: Color.lerp(
+        successContainer,
+        other.successContainer,
+        t,
+      )!,
+      onSuccessContainer: Color.lerp(
+        onSuccessContainer,
+        other.onSuccessContainer,
+        t,
+      )!,
       warning: Color.lerp(warning, other.warning, t)!,
       onWarning: Color.lerp(onWarning, other.onWarning, t)!,
-      warningContainer: Color.lerp(warningContainer, other.warningContainer, t)!,
-      onWarningContainer:
-          Color.lerp(onWarningContainer, other.onWarningContainer, t)!,
+      warningContainer: Color.lerp(
+        warningContainer,
+        other.warningContainer,
+        t,
+      )!,
+      onWarningContainer: Color.lerp(
+        onWarningContainer,
+        other.onWarningContainer,
+        t,
+      )!,
       itemTemporary: Color.lerp(itemTemporary, other.itemTemporary, t)!,
-      itemTemporaryBackground:
-          Color.lerp(itemTemporaryBackground, other.itemTemporaryBackground, t)!,
-      itemTemporaryText:
-          Color.lerp(itemTemporaryText, other.itemTemporaryText, t)!,
+      itemTemporaryBackground: Color.lerp(
+        itemTemporaryBackground,
+        other.itemTemporaryBackground,
+        t,
+      )!,
+      itemTemporaryText: Color.lerp(
+        itemTemporaryText,
+        other.itemTemporaryText,
+        t,
+      )!,
     );
   }
 }
