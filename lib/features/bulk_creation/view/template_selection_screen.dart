@@ -124,10 +124,10 @@ class _GenderPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      return Container(
-        // Margine solo su lato, top e bottom = 0:
-        // la distanza picker→griglia è gestita dal padding top del GridView (16px).
-        margin: EdgeInsets.symmetric(horizontal: context.spacingMd),
+    return Container(
+      // Margine solo su lato, top e bottom = 0:
+      // la distanza picker→griglia è gestita dal padding top del GridView (16px).
+      margin: EdgeInsets.symmetric(horizontal: context.spacingMd),
       alignment: Alignment.center,
       child: AppPillTab<UserGender>(
         items: UserGender.values,
@@ -193,7 +193,9 @@ class _TemplateCard extends StatelessWidget {
               width: isSelected ? 2 : 1,
             ),
             borderRadius: context.responsiveBorderRadius(16),
-            color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
+            color: isSelected
+                ? colorScheme.primaryContainer
+                : Colors.transparent,
           ),
           child: Stack(
             children: [
@@ -219,7 +221,8 @@ class _TemplateCard extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 fontWeight: isSelected
-                                    ? FontWeight.w600 // 16px selected +1 = w600
+                                    ? FontWeight
+                                          .w600 // 16px selected +1 = w600
                                     : FontWeight.w400,
                                 color: isSelected
                                     ? colorScheme.primary

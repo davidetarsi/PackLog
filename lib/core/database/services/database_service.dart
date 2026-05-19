@@ -6,10 +6,10 @@ import '../database.dart';
 class RetryConfig {
   /// Numero massimo di tentativi
   final int maxAttempts;
-  
+
   /// Delay iniziale tra i tentativi (in millisecondi)
   final int initialDelayMs;
-  
+
   /// Fattore di moltiplicazione del delay per ogni retry (exponential backoff)
   final double backoffMultiplier;
 
@@ -18,10 +18,10 @@ class RetryConfig {
     this.initialDelayMs = 100,
     this.backoffMultiplier = 2.0,
   });
-  
+
   /// Configurazione di default
   static const defaultConfig = RetryConfig();
-  
+
   /// Configurazione per operazioni critiche (più tentativi)
   static const criticalConfig = RetryConfig(
     maxAttempts: 5,
@@ -45,19 +45,11 @@ class DatabaseResult<T> {
   });
 
   factory DatabaseResult.success(T data, {int attempts = 1}) {
-    return DatabaseResult._(
-      data: data,
-      success: true,
-      attempts: attempts,
-    );
+    return DatabaseResult._(data: data, success: true, attempts: attempts);
   }
 
   factory DatabaseResult.failure(String error, {int attempts = 1}) {
-    return DatabaseResult._(
-      success: false,
-      error: error,
-      attempts: attempts,
-    );
+    return DatabaseResult._(success: false, error: error, attempts: attempts);
   }
 }
 
@@ -78,7 +70,7 @@ class DatabaseResult<T> {
 /// TODO(remote-db): Riabilitare [executeWithRetry] quando si migra al DB remoto.
 class DatabaseService {
   final AppDatabase _database;
-  
+
   DatabaseService(this._database);
 
   /// Esegue un'operazione database con un singolo tentativo.
@@ -133,7 +125,7 @@ class DatabaseService {
   }
 
   /// Esegue un'operazione in una transazione atomica.
-  /// 
+  ///
   /// Se qualsiasi parte dell'operazione fallisce, tutte le modifiche
   /// vengono annullate (rollback).
   Future<DatabaseResult<T>> executeInTransaction<T>(
@@ -144,7 +136,7 @@ class DatabaseService {
       final result = await _database.transaction(() async {
         return await operation();
       });
-      
+
       return DatabaseResult.success(result);
     } catch (e) {
       debugPrint(
@@ -155,7 +147,7 @@ class DatabaseService {
   }
 
   /// Esegue un'operazione in transazione con retry automatico.
-  /// 
+  ///
   /// Combina i vantaggi di entrambi: atomicità e resilienza.
   Future<DatabaseResult<T>> executeAtomicWithRetry<T>(
     Future<T> Function() operation, {
@@ -170,7 +162,7 @@ class DatabaseService {
   }
 
   /// Esegue un batch di operazioni in una singola transazione.
-  /// 
+  ///
   /// Utile per inserimenti multipli o operazioni correlate.
   Future<DatabaseResult<void>> executeBatch(
     Future<void> Function() operations, {
@@ -198,21 +190,21 @@ class DatabaseService {
   /// Ottiene statistiche sul database.
   Future<Map<String, int>> getStats() async {
     try {
-      final houses = await _database.customSelect(
-        'SELECT COUNT(*) as count FROM houses',
-      ).getSingle();
-      
-      final items = await _database.customSelect(
-        'SELECT COUNT(*) as count FROM items',
-      ).getSingle();
-      
-      final trips = await _database.customSelect(
-        'SELECT COUNT(*) as count FROM trips',
-      ).getSingle();
-      
-      final tripItems = await _database.customSelect(
-        'SELECT COUNT(*) as count FROM trip_item_entries',
-      ).getSingle();
+      final houses = await _database
+          .customSelect('SELECT COUNT(*) as count FROM houses')
+          .getSingle();
+
+      final items = await _database
+          .customSelect('SELECT COUNT(*) as count FROM items')
+          .getSingle();
+
+      final trips = await _database
+          .customSelect('SELECT COUNT(*) as count FROM trips')
+          .getSingle();
+
+      final tripItems = await _database
+          .customSelect('SELECT COUNT(*) as count FROM trip_item_entries')
+          .getSingle();
 
       return {
         'houses': houses.read<int>('count'),

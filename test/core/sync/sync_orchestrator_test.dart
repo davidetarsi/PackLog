@@ -27,10 +27,12 @@ void main() {
     connectivityController =
         StreamController<List<ConnectivityResult>>.broadcast();
 
-    when(() => mockConnectivity.onConnectivityChanged)
-        .thenAnswer((_) => connectivityController.stream);
-    when(() => mockConnectivity.checkConnectivity())
-        .thenAnswer((_) async => [ConnectivityResult.wifi]);
+    when(
+      () => mockConnectivity.onConnectivityChanged,
+    ).thenAnswer((_) => connectivityController.stream);
+    when(
+      () => mockConnectivity.checkConnectivity(),
+    ).thenAnswer((_) async => [ConnectivityResult.wifi]);
     when(() => mockService.processQueue()).thenAnswer((_) async {});
     when(
       () => mockMonitoring.logBreadcrumb(
@@ -46,10 +48,10 @@ void main() {
   });
 
   SyncOrchestrator makeOrchestrator() => SyncOrchestrator(
-        mockService,
-        mockMonitoring,
-        connectivity: mockConnectivity,
-      );
+    mockService,
+    mockMonitoring,
+    connectivity: mockConnectivity,
+  );
 
   group('SyncOrchestrator', () {
     test('triggers sync on connectivity change with network', () async {

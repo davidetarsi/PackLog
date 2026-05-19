@@ -72,7 +72,9 @@ class DsIconPicker extends StatelessWidget {
                 color: isSelected ? cs.primary : cs.outlineVariant,
                 width: isSelected ? 2 : 1,
               ),
-              borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+              borderRadius: BorderRadius.circular(
+                AppConstants.inputBorderRadius,
+              ),
             ),
             child: Icon(
               iconData,

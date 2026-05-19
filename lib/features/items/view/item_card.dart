@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/item_model.dart';
 import '../providers/item_selection_provider.dart';
 import '../../../shared/widgets/widgets.dart';
+import 'add_edit_item_screen.dart';
 
 class ItemCard extends ConsumerWidget {
   final ItemModel item;
@@ -81,9 +82,9 @@ class ItemCard extends ConsumerWidget {
       } else if (item.description != null) {
         subtitle = Text(
           item.description!,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
         );
       }
     }
@@ -111,9 +112,9 @@ class ItemCard extends ConsumerWidget {
       leading: leading,
       title: Text(
         item.name,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w500,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
       ),
       subtitle: subtitle,
       trailing: isSelectionActive
@@ -126,28 +127,26 @@ class ItemCard extends ConsumerWidget {
               ),
             ),
       // In selection mode: tap tutta la card per selezionare/deselezionare.
-      // In normal mode: tap apre l'edit sheet (disabilitato se tutto in viaggio).
+      // In normal mode: tap apre l'edit sheet.
       onTap: isSelectionActive
           ? () => ref
                 .read(itemSelectionNotifierProvider.notifier)
                 .toggleItem(item.id)
-          : null,
-          /* isFullyOnTrip
-              ? null
-              : () => _onEdit(context), */
+          : () => showAddEditItemSheet(
+                context,
+                houseId: item.houseId,
+                itemId: item.id,
+              ),
       // Long press attiva la selezione multipla dal primo item premuto.
       // Disabilitato se in selezione o se l'item è in viaggio.
       onLongPress: isSelectionActive || hasAnyOnTrip
           ? null
           : () {
-              ref
-                  .read(itemSelectionNotifierProvider.notifier)
-                  .toggleMode();
+              ref.read(itemSelectionNotifierProvider.notifier).toggleMode();
               ref
                   .read(itemSelectionNotifierProvider.notifier)
                   .toggleItem(item.id);
             },
     );
   }
-
 }

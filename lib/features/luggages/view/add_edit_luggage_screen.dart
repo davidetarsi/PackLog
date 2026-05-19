@@ -13,10 +13,8 @@ Future<void> showAddEditLuggageSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => AddEditLuggageSheet(
-      houseId: houseId,
-      luggageId: luggageId,
-    ),
+    builder: (context) =>
+        AddEditLuggageSheet(houseId: houseId, luggageId: luggageId),
   );
 }
 
@@ -25,11 +23,7 @@ class AddEditLuggageSheet extends StatefulWidget {
   final String houseId;
   final String? luggageId;
 
-  const AddEditLuggageSheet({
-    super.key,
-    required this.houseId,
-    this.luggageId,
-  });
+  const AddEditLuggageSheet({super.key, required this.houseId, this.luggageId});
 
   @override
   State<AddEditLuggageSheet> createState() => _AddEditLuggageSheetState();
@@ -56,7 +50,9 @@ class _AddEditLuggageSheetState extends State<AddEditLuggageSheet> {
       onCancel: () => Navigator.pop(context),
       onSave: _handleSave,
       isLoading: _isLoading,
-      saveLabel: widget.luggageId != null ? 'common.save'.tr() : 'common.create'.tr(),
+      saveLabel: widget.luggageId != null
+          ? 'common.save'.tr()
+          : 'common.create'.tr(),
       child: LuggageFormContent(
         key: _formKey,
         houseId: widget.houseId,

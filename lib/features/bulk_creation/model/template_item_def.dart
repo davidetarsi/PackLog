@@ -2,7 +2,7 @@ import '../../items/model/item_model.dart';
 import 'user_gender.dart';
 
 /// Definizione di un item all'interno di un template di viaggio.
-/// 
+///
 /// Rappresenta un oggetto "tipico" per un certo tipo di viaggio,
 /// con la possibilità di filtrarlo per genere dell'utente.
 class TemplateItemDef {
@@ -16,10 +16,10 @@ class TemplateItemDef {
   final int defaultQuantity;
 
   /// Generi a cui questo oggetto si applica.
-  /// 
+  ///
   /// Se `null`, l'oggetto è universale (si applica a tutti i generi).
   /// Se specificato, l'oggetto verrà incluso solo per i generi indicati.
-  /// 
+  ///
   /// Esempi:
   /// - `[UserGender.female]`: Solo per utenti femminili (es. Bikini)
   /// - `[UserGender.male]`: Solo per utenti maschili (es. Rasoio elettrico)

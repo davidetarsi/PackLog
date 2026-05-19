@@ -28,12 +28,12 @@ class SyncService {
     required SupabaseRepository remote,
     required AppMonitoringService monitoring,
     required TombstoneConfigService tombstoneConfig,
-  })  : _housesDao = housesDao,
-        _itemsDao = itemsDao,
-        _tripsDao = tripsDao,
-        _remote = remote,
-        _monitoring = monitoring,
-        _tombstoneConfig = tombstoneConfig;
+  }) : _housesDao = housesDao,
+       _itemsDao = itemsDao,
+       _tripsDao = tripsDao,
+       _remote = remote,
+       _monitoring = monitoring,
+       _tombstoneConfig = tombstoneConfig;
 
   /// One-time recovery: re-marks soft-deleted records that were incorrectly
   /// left as "synced" (due to a prior timezone bug that caused pulls instead
@@ -42,11 +42,14 @@ class SyncService {
   Future<void> _recoverStaleSoftDeletes() async {
     if (_recoveryDone) return;
     _recoveryDone = true;
-    final count = await _housesDao.markDeletedAsPendingSync() +
+    final count =
+        await _housesDao.markDeletedAsPendingSync() +
         await _itemsDao.markDeletedAsPendingSync() +
         await _tripsDao.markDeletedAsPendingSync();
     if (count > 0) {
-      debugPrint('[SyncService] Recovery: $count stale soft-deleted records re-queued');
+      debugPrint(
+        '[SyncService] Recovery: $count stale soft-deleted records re-queued',
+      );
     }
   }
 
@@ -107,7 +110,9 @@ class SyncService {
           // FK violation: la casa di questo item non è ancora locale (es. is_deleted=true
           // su Supabase). L'item verrà recuperato al prossimo fullPull una volta che
           // la casa viene ripristinata, oppure ignorato se la casa è definitivamente cancellata.
-          debugPrint('[SyncService] fullPull: skip item $id — ${e.runtimeType}');
+          debugPrint(
+            '[SyncService] fullPull: skip item $id — ${e.runtimeType}',
+          );
         }
       }
 
@@ -216,7 +221,9 @@ class SyncService {
       userId: Value(r['user_id'] as String?),
       name: Value(r['name'] as String),
       description: Value(r['description'] as String?),
-      departureDateTime: Value(_parseNullableDateTime(r['departure_date_time'])),
+      departureDateTime: Value(
+        _parseNullableDateTime(r['departure_date_time']),
+      ),
       returnDateTime: Value(_parseNullableDateTime(r['return_date_time'])),
       destinationHouseId: Value(r['destination_house_id'] as String?),
       locationPlaceId: Value(r['location_place_id'] as String?),
@@ -268,7 +275,8 @@ class SyncService {
         localIsDeleted: house.isDeleted,
         sentryTraceId: house.sentryTraceId,
         toJson: () => _houseToJson(house),
-        fetchRemote: (trace) => _remote.fetchHouseById(house.id, sentryTrace: trace),
+        fetchRemote: (trace) =>
+            _remote.fetchHouseById(house.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertHouse(data, sentryTrace: trace),
         pullLocal: (remote) => _pullHouse(house.id, remote),
         markSynced: (ts) => _housesDao.markHouseAsSynced(house.id, ts),
@@ -288,7 +296,8 @@ class SyncService {
         localIsDeleted: item.isDeleted,
         sentryTraceId: item.sentryTraceId,
         toJson: () => _itemToJson(item),
-        fetchRemote: (trace) => _remote.fetchItemById(item.id, sentryTrace: trace),
+        fetchRemote: (trace) =>
+            _remote.fetchItemById(item.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertItem(data, sentryTrace: trace),
         pullLocal: (remote) => _pullItem(item.id, remote),
         markSynced: (ts) => _itemsDao.markItemAsSynced(item.id, ts),
@@ -308,7 +317,8 @@ class SyncService {
         localIsDeleted: trip.isDeleted,
         sentryTraceId: trip.sentryTraceId,
         toJson: () => _tripToJson(trip),
-        fetchRemote: (trace) => _remote.fetchTripById(trip.id, sentryTrace: trace),
+        fetchRemote: (trace) =>
+            _remote.fetchTripById(trip.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertTrip(data, sentryTrace: trace),
         pullLocal: (remote) => _pullTrip(trip.id, remote),
         markSynced: (ts) => _tripsDao.markTripAsSynced(trip.id, ts),
@@ -340,7 +350,8 @@ class SyncService {
     required String? sentryTraceId,
     required Map<String, dynamic> Function() toJson,
     required Future<Map<String, dynamic>?> Function(String? trace) fetchRemote,
-    required Future<void> Function(Map<String, dynamic> data, String? trace) upsert,
+    required Future<void> Function(Map<String, dynamic> data, String? trace)
+    upsert,
     required Future<void> Function(Map<String, dynamic> remote) pullLocal,
     required Future<void> Function(DateTime serverUpdatedAt) markSynced,
     required Future<void> Function(String errorMessage) incrementRetry,
@@ -366,16 +377,22 @@ class SyncService {
 
         if (remote == null) {
           if (syncStatus == SyncStatus.pendingCreate && !localIsDeleted) {
-            debugPrint('[SyncService] $entity $id: remote not found, never-synced new record -- pushing');
+            debugPrint(
+              '[SyncService] $entity $id: remote not found, never-synced new record -- pushing',
+            );
             final data = toJson();
             await upsert(data, traceHeader);
           } else {
             final retentionDays = await _tombstoneConfig.getRetentionDays();
-            final cutoff = DateTime.now().toUtc().subtract(Duration(days: retentionDays));
+            final cutoff = DateTime.now().toUtc().subtract(
+              Duration(days: retentionDays),
+            );
             final referenceTime = (lastSyncedAt ?? createdAt).toUtc();
 
             if (referenceTime.isBefore(cutoff)) {
-              debugPrint('[SyncService] $entity $id: remote not found, older than $retentionDays days -- purging locally');
+              debugPrint(
+                '[SyncService] $entity $id: remote not found, older than $retentionDays days -- purging locally',
+              );
               onPurge();
               await markSynced(DateTime.now());
               transaction.status = const SpanStatus.ok();
@@ -384,25 +401,36 @@ class SyncService {
 
             debugPrint('[SyncService] $entity $id: remote not found, pushing');
             final data = toJson();
-            debugPrint('[SyncService] $entity $id: is_deleted=${data['is_deleted']}');
+            debugPrint(
+              '[SyncService] $entity $id: is_deleted=${data['is_deleted']}',
+            );
             await upsert(data, traceHeader);
           }
         } else {
-          final remoteUpdatedAt = DateTime.parse(remote['updated_at'] as String);
+          final remoteUpdatedAt = DateTime.parse(
+            remote['updated_at'] as String,
+          );
           final remoteIsDeleted = remote['is_deleted'] as bool? ?? false;
           final localUtc = localUpdatedAt.toUtc();
           final remoteUtc = remoteUpdatedAt.toUtc();
-          debugPrint('[SyncService] $entity $id: localUtc=$localUtc remoteUtc=$remoteUtc localDel=$localIsDeleted remoteDel=$remoteIsDeleted');
+          debugPrint(
+            '[SyncService] $entity $id: localUtc=$localUtc remoteUtc=$remoteUtc localDel=$localIsDeleted remoteDel=$remoteIsDeleted',
+          );
 
-          final localWins = localUtc.isAfter(remoteUtc) ||
+          final localWins =
+              localUtc.isAfter(remoteUtc) ||
               (localIsDeleted && !remoteIsDeleted);
 
           if (localWins) {
             final data = toJson();
-            debugPrint('[SyncService] $entity $id: pushing (is_deleted=${data['is_deleted']})');
+            debugPrint(
+              '[SyncService] $entity $id: pushing (is_deleted=${data['is_deleted']})',
+            );
             await upsert(data, traceHeader);
           } else {
-            debugPrint('[SyncService] $entity $id: pulling (is_deleted=$remoteIsDeleted)');
+            debugPrint(
+              '[SyncService] $entity $id: pulling (is_deleted=$remoteIsDeleted)',
+            );
             await pullLocal(remote);
           }
         }
@@ -544,8 +572,12 @@ class SyncService {
         id: Value(id),
         name: Value(remote['name'] as String),
         description: Value(remote['description'] as String?),
-        departureDateTime: Value(_parseNullableDateTime(remote['departure_date_time'])),
-        returnDateTime: Value(_parseNullableDateTime(remote['return_date_time'])),
+        departureDateTime: Value(
+          _parseNullableDateTime(remote['departure_date_time']),
+        ),
+        returnDateTime: Value(
+          _parseNullableDateTime(remote['return_date_time']),
+        ),
         destinationHouseId: Value(remote['destination_house_id'] as String?),
         locationPlaceId: Value(remote['location_place_id'] as String?),
         locationDisplayName: Value(remote['location_display_name'] as String?),

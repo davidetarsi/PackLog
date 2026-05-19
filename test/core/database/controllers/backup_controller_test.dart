@@ -15,8 +15,11 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 /// Mock classes for testing BackupController in isolation.
 class MockDatabaseBackupService extends Mock implements DatabaseBackupService {}
+
 class MockBackupService extends Mock implements BackupService {}
+
 class MockFile extends Mock implements File {}
+
 class MockFileStat extends Mock implements FileStat {}
 
 /// Fake platform interface per testare il file system in modo agnostico (Clean Architecture).
@@ -55,7 +58,9 @@ void main() {
     container = ProviderContainer(
       overrides: [
         appDatabaseProvider.overrideWithValue(database),
-        databaseBackupServiceProvider.overrideWithValue(mockDatabaseBackupService),
+        databaseBackupServiceProvider.overrideWithValue(
+          mockDatabaseBackupService,
+        ),
         backupServiceProvider.overrideWithValue(mockBackupService),
       ],
     );
@@ -82,8 +87,12 @@ void main() {
           invocation,
         ) async {
           capturedDestinationPath = invocation.positionalArguments[0] as String;
-          when(() => mockExportedFile.path).thenReturn(capturedDestinationPath!);
-          when(() => mockExportedFile.stat()).thenAnswer((_) async => mockFileStat);
+          when(
+            () => mockExportedFile.path,
+          ).thenReturn(capturedDestinationPath!);
+          when(
+            () => mockExportedFile.stat(),
+          ).thenAnswer((_) async => mockFileStat);
           when(() => mockFileStat.size).thenReturn(1024 * 50); // 50 KB
           return mockExportedFile;
         });
@@ -95,8 +104,14 @@ void main() {
         // === ASSERT ===
         verify(() => mockDatabaseBackupService.exportData(any())).called(1);
         expect(capturedDestinationPath, isNotNull);
-        expect(capturedDestinationPath, contains(AppConstants.backupFilePrefix));
-        expect(capturedDestinationPath, endsWith(AppConstants.databaseFileExtension));
+        expect(
+          capturedDestinationPath,
+          contains(AppConstants.backupFilePrefix),
+        );
+        expect(
+          capturedDestinationPath,
+          endsWith(AppConstants.databaseFileExtension),
+        );
 
         // AGGIORNATO: Regex che supporta il formato completo (data e ora)
         final fileName = capturedDestinationPath!.split('/').last;
@@ -107,7 +122,7 @@ void main() {
         final datePartMatch = RegExp(
           r'pack-log-export-db-(\d{2})(\d{2})(\d{4})-\d{6}\.db$',
         ).firstMatch(fileName);
-        
+
         expect(datePartMatch, isNotNull);
 
         final day = int.parse(datePartMatch!.group(1)!);
@@ -135,7 +150,9 @@ void main() {
       ) async {
         capturedPath = invocation.positionalArguments[0] as String;
         when(() => mockExportedFile.path).thenReturn(capturedPath!);
-        when(() => mockExportedFile.stat()).thenAnswer((_) async => mockFileStat);
+        when(
+          () => mockExportedFile.stat(),
+        ).thenAnswer((_) async => mockFileStat);
         when(() => mockFileStat.size).thenReturn(2048);
         return mockExportedFile;
       });
@@ -163,7 +180,9 @@ void main() {
         capturedPaths.add(path);
 
         when(() => mockExportedFile.path).thenReturn(path);
-        when(() => mockExportedFile.stat()).thenAnswer((_) async => mockFileStat);
+        when(
+          () => mockExportedFile.stat(),
+        ).thenAnswer((_) async => mockFileStat);
         when(() => mockFileStat.size).thenReturn(1024);
         return mockExportedFile;
       });
@@ -178,8 +197,9 @@ void main() {
     });
 
     test('should throw exception when backup service fails', () async {
-      when(() => mockDatabaseBackupService.exportData(any()))
-          .thenThrow(Exception('Disk full'));
+      when(
+        () => mockDatabaseBackupService.exportData(any()),
+      ).thenThrow(Exception('Disk full'));
 
       final controller = container.read(backupControllerProvider.notifier);
 
@@ -198,7 +218,9 @@ void main() {
 
       // AGGIORNATO: Le stringhe di test mockate ora rispettano il formato rigoroso
       expect(
-        controller.validateImportFileName('pack-log-export-db-17022026-123456.db'),
+        controller.validateImportFileName(
+          'pack-log-export-db-17022026-123456.db',
+        ),
         isTrue,
       );
 
@@ -210,7 +232,9 @@ void main() {
       );
 
       expect(
-        controller.validateImportFileName('pack-log-export-db-31122099-235959.db'),
+        controller.validateImportFileName(
+          'pack-log-export-db-31122099-235959.db',
+        ),
         isTrue,
       );
     });
@@ -219,7 +243,10 @@ void main() {
       final controller = container.read(backupControllerProvider.notifier);
 
       expect(controller.validateImportFileName('my-database.db'), isFalse);
-      expect(controller.validateImportFileName('backup-17022026-123456.db'), isFalse);
+      expect(
+        controller.validateImportFileName('backup-17022026-123456.db'),
+        isFalse,
+      );
       expect(
         controller.validateImportFileName('pack-log-export-17022026-123456.db'),
         isFalse,
@@ -235,9 +262,13 @@ void main() {
       final expectedPath = '/fake/path/pack-log-export-db-17022026-123456.db';
       final expectedSize = 1024 * 100;
 
-      when(() => mockDatabaseBackupService.exportData(any())).thenAnswer((_) async {
+      when(() => mockDatabaseBackupService.exportData(any())).thenAnswer((
+        _,
+      ) async {
         when(() => mockExportedFile.path).thenReturn(expectedPath);
-        when(() => mockExportedFile.stat()).thenAnswer((_) async => mockFileStat);
+        when(
+          () => mockExportedFile.stat(),
+        ).thenAnswer((_) async => mockFileStat);
         when(() => mockFileStat.size).thenReturn(expectedSize);
         return mockExportedFile;
       });
@@ -262,7 +293,9 @@ void main() {
         ) async {
           capturedPath = invocation.positionalArguments[0] as String;
           when(() => mockExportedFile.path).thenReturn(capturedPath!);
-          when(() => mockExportedFile.stat()).thenAnswer((_) async => mockFileStat);
+          when(
+            () => mockExportedFile.stat(),
+          ).thenAnswer((_) async => mockFileStat);
           when(() => mockFileStat.size).thenReturn(1024);
           return mockExportedFile;
         });
@@ -275,7 +308,10 @@ void main() {
 
         expect(fileName, startsWith(AppConstants.backupFilePrefix));
         expect(fileName, endsWith(AppConstants.databaseFileExtension));
-        expect(fileName, matches(RegExp(r'^pack-log-export-db-\d{8}-\d{6}\.db$')));
+        expect(
+          fileName,
+          matches(RegExp(r'^pack-log-export-db-\d{8}-\d{6}\.db$')),
+        );
       },
     );
   });
@@ -291,7 +327,9 @@ void main() {
       ) async {
         capturedPath = invocation.positionalArguments[0] as String;
         when(() => mockExportedFile.path).thenReturn(capturedPath!);
-        when(() => mockExportedFile.stat()).thenAnswer((_) async => mockFileStat);
+        when(
+          () => mockExportedFile.stat(),
+        ).thenAnswer((_) async => mockFileStat);
         when(() => mockFileStat.size).thenReturn(1024);
         return mockExportedFile;
       });
@@ -306,8 +344,15 @@ void main() {
         r'pack-log-export-db-(\d{2})(\d{2})(\d{4})-\d{6}\.db',
       ).firstMatch(fileName);
 
-      expect(fileName, matches(RegExp(r'^pack-log-export-db-\d{8}-\d{6}\.db$')));
-      expect(dateMatch, isNotNull, reason: 'Filename should match ddmmyyyy format');
+      expect(
+        fileName,
+        matches(RegExp(r'^pack-log-export-db-\d{8}-\d{6}\.db$')),
+      );
+      expect(
+        dateMatch,
+        isNotNull,
+        reason: 'Filename should match ddmmyyyy format',
+      );
 
       final day = dateMatch!.group(1)!;
       final month = dateMatch.group(2)!;
@@ -331,7 +376,9 @@ void main() {
       ) async {
         capturedPath = invocation.positionalArguments[0] as String;
         when(() => mockExportedFile.path).thenReturn(capturedPath!);
-        when(() => mockExportedFile.stat()).thenAnswer((_) async => mockFileStat);
+        when(
+          () => mockExportedFile.stat(),
+        ).thenAnswer((_) async => mockFileStat);
         when(() => mockFileStat.size).thenReturn(1024);
         return mockExportedFile;
       });
@@ -342,7 +389,9 @@ void main() {
       expect(capturedPath, isNotNull);
       final fileName = capturedPath!.split('/').last;
 
-      final dateMatch = RegExp(r'pack-log-export-db-(\d{8})-\d{6}\.db').firstMatch(fileName);
+      final dateMatch = RegExp(
+        r'pack-log-export-db-(\d{8})-\d{6}\.db',
+      ).firstMatch(fileName);
       expect(dateMatch, isNotNull);
 
       final datePart = dateMatch!.group(1)!;
@@ -356,9 +405,13 @@ void main() {
       final mockExportedFile = MockFile();
       final mockFileStat = MockFileStat();
 
-      when(() => mockDatabaseBackupService.exportData(any())).thenAnswer((_) async {
+      when(() => mockDatabaseBackupService.exportData(any())).thenAnswer((
+        _,
+      ) async {
         when(() => mockExportedFile.path).thenReturn('/fake/path/file.db');
-        when(() => mockExportedFile.stat()).thenAnswer((_) async => mockFileStat);
+        when(
+          () => mockExportedFile.stat(),
+        ).thenAnswer((_) async => mockFileStat);
         when(() => mockFileStat.size).thenReturn(1024);
         return mockExportedFile;
       });
@@ -373,9 +426,13 @@ void main() {
       final mockExportedFile = MockFile();
       final mockFileStat = MockFileStat();
 
-      when(() => mockDatabaseBackupService.exportData(any())).thenAnswer((_) async {
+      when(() => mockDatabaseBackupService.exportData(any())).thenAnswer((
+        _,
+      ) async {
         when(() => mockExportedFile.path).thenReturn('/fake/path/file.db');
-        when(() => mockExportedFile.stat()).thenAnswer((_) async => mockFileStat);
+        when(
+          () => mockExportedFile.stat(),
+        ).thenAnswer((_) async => mockFileStat);
         when(() => mockFileStat.size).thenReturn(1024);
         return mockExportedFile;
       });
@@ -383,45 +440,67 @@ void main() {
       final controller = container.read(backupControllerProvider.notifier);
       await controller.exportToTemporaryFile();
 
-      verifyNever(() => mockBackupService.createBackup(reason: any(named: 'reason')));
+      verifyNever(
+        () => mockBackupService.createBackup(reason: any(named: 'reason')),
+      );
       verifyNever(() => mockBackupService.createAutoBackupIfNeeded());
     });
   });
 
   group('BackupController - Import Validation', () {
-    test('should fail validation when attempting to import a corrupted file (invalid Magic Bytes)', () async {
-      final corruptedFilePath = '/path/to/pack-log-export-db-17022026-999999.db';
+    test(
+      'should fail validation when attempting to import a corrupted file (invalid Magic Bytes)',
+      () async {
+        final corruptedFilePath =
+            '/path/to/pack-log-export-db-17022026-999999.db';
 
-      // Setup di default per non far crashare Mocktail
-      when(() => mockBackupService.createBackup(reason: any(named: 'reason'))).thenAnswer((_) async => '/backups/safety.db');
-      when(() => mockDatabaseBackupService.importData(any())).thenAnswer((_) async => {});
-      
-      // Il file è invalido
-      when(() => mockDatabaseBackupService.validateDatabaseFile(corruptedFilePath)).thenAnswer((_) async => false);
+        // Setup di default per non far crashare Mocktail
+        when(
+          () => mockBackupService.createBackup(reason: any(named: 'reason')),
+        ).thenAnswer((_) async => '/backups/safety.db');
+        when(
+          () => mockDatabaseBackupService.importData(any()),
+        ).thenAnswer((_) async => {});
 
-      final controller = container.read(backupControllerProvider.notifier);
-      final result = await controller.importDatabase(corruptedFilePath);
+        // Il file è invalido
+        when(
+          () =>
+              mockDatabaseBackupService.validateDatabaseFile(corruptedFilePath),
+        ).thenAnswer((_) async => false);
 
-      expect(result.success, isFalse);
-      verifyNever(() => mockDatabaseBackupService.importData(corruptedFilePath));
-    });
+        final controller = container.read(backupControllerProvider.notifier);
+        final result = await controller.importDatabase(corruptedFilePath);
 
-    test('should fail validation when filename does not start with correct prefix', () async {
-      final invalidFilePath = '/path/to/my-random-backup.db';
+        expect(result.success, isFalse);
+        verifyNever(
+          () => mockDatabaseBackupService.importData(corruptedFilePath),
+        );
+      },
+    );
 
-      final controller = container.read(backupControllerProvider.notifier);
-      final result = await controller.importDatabase(invalidFilePath);
+    test(
+      'should fail validation when filename does not start with correct prefix',
+      () async {
+        final invalidFilePath = '/path/to/my-random-backup.db';
 
-      expect(result.success, isFalse);
-      verifyNever(() => mockDatabaseBackupService.importData(any()));
-    });
+        final controller = container.read(backupControllerProvider.notifier);
+        final result = await controller.importDatabase(invalidFilePath);
+
+        expect(result.success, isFalse);
+        verifyNever(() => mockDatabaseBackupService.importData(any()));
+      },
+    );
 
     test('should fail when safety backup creation fails', () async {
       final validFilePath = '/path/to/pack-log-export-db-17022026-123456.db';
 
       // Il backup di sicurezza fallisce (restituisce null)
-      when(() => mockBackupService.createBackup(reason: any(named: 'reason'))).thenAnswer((_) async => null);
-      when(() => mockDatabaseBackupService.validateDatabaseFile(any())).thenAnswer((_) async => true);
+      when(
+        () => mockBackupService.createBackup(reason: any(named: 'reason')),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockDatabaseBackupService.validateDatabaseFile(any()),
+      ).thenAnswer((_) async => true);
 
       final controller = container.read(backupControllerProvider.notifier);
       final result = await controller.importDatabase(validFilePath);
@@ -432,84 +511,119 @@ void main() {
   });
 
   group('BackupController - Disaster Recovery', () {
-    test('should trigger automatic rollback if the import process fails mid-operation', () async {
-      final validFilePath = '/path/to/pack-log-export-db-17022026-123456.db';
-      
-      when(() => mockBackupService.createBackup(reason: any(named: 'reason'))).thenAnswer((_) async => '/backups/safety.db');
-      when(() => mockDatabaseBackupService.validateDatabaseFile(any())).thenAnswer((_) async => true);
-      
-      // L'importazione sputa un'eccezione
-      when(() => mockDatabaseBackupService.importData(any())).thenThrow(Exception('Corruption detected'));
+    test(
+      'should trigger automatic rollback if the import process fails mid-operation',
+      () async {
+        final validFilePath = '/path/to/pack-log-export-db-17022026-123456.db';
 
-      final controller = container.read(backupControllerProvider.notifier);
-      final result = await controller.importDatabase(validFilePath);
+        when(
+          () => mockBackupService.createBackup(reason: any(named: 'reason')),
+        ).thenAnswer((_) async => '/backups/safety.db');
+        when(
+          () => mockDatabaseBackupService.validateDatabaseFile(any()),
+        ).thenAnswer((_) async => true);
 
-      // Deve fallire in modo pulito
-      expect(result.success, isFalse);
-    });
+        // L'importazione sputa un'eccezione
+        when(
+          () => mockDatabaseBackupService.importData(any()),
+        ).thenThrow(Exception('Corruption detected'));
 
-    test('should return critical error when both import and rollback fail', () async {
-      final validFilePath = '/path/to/pack-log-export-db-17022026-123456.db';
-      
-      when(() => mockBackupService.createBackup(reason: any(named: 'reason'))).thenAnswer((_) async => '/backups/safety.db');
-      when(() => mockDatabaseBackupService.validateDatabaseFile(any())).thenAnswer((_) async => true);
-      
-      // L'importazione fallisce per tutti i file, anche per il rollback
-      when(() => mockDatabaseBackupService.importData(any())).thenThrow(Exception('Critical error'));
+        final controller = container.read(backupControllerProvider.notifier);
+        final result = await controller.importDatabase(validFilePath);
 
-      final controller = container.read(backupControllerProvider.notifier);
-      final result = await controller.importDatabase(validFilePath);
+        // Deve fallire in modo pulito
+        expect(result.success, isFalse);
+      },
+    );
 
-      expect(result.success, isFalse);
-    });
+    test(
+      'should return critical error when both import and rollback fail',
+      () async {
+        final validFilePath = '/path/to/pack-log-export-db-17022026-123456.db';
 
-    test('should successfully import and NOT trigger rollback on success', () async {
-      // 1. Creiamo file fisici REALI nella cartella temporanea del server.
-      final tempDir = Directory.systemTemp;
-      
-      final validFile = File('${tempDir.path}/pack-log-export-db-17022026-123456.db');
-      validFile.createSync(recursive: true);
-      validFile.writeAsStringSync('SQLite format 3\x00 dummy data');
-      
-      final safetyFile = File('${tempDir.path}/safety-backup-pack-log.db');
-      safetyFile.createSync(recursive: true);
-      
-      // 2. Mockiamo i servizi passando i file reali appena creati
-      when(() => mockDatabaseBackupService.exportData(any()))
-          .thenAnswer((_) async => safetyFile);
-          
-      when(() => mockBackupService.createBackup(reason: any(named: 'reason')))
-          .thenAnswer((_) async => safetyFile.path);
-          
-      when(() => mockDatabaseBackupService.validateDatabaseFile(any()))
-          .thenAnswer((_) async => true);
+        when(
+          () => mockBackupService.createBackup(reason: any(named: 'reason')),
+        ).thenAnswer((_) async => '/backups/safety.db');
+        when(
+          () => mockDatabaseBackupService.validateDatabaseFile(any()),
+        ).thenAnswer((_) async => true);
 
-      final controller = container.read(backupControllerProvider.notifier);
-      
-      // 3. Lanciamo l'importazione usando il percorso reale
-      final result = await controller.importDatabase(validFile.path);
+        // L'importazione fallisce per tutti i file, anche per il rollback
+        when(
+          () => mockDatabaseBackupService.importData(any()),
+        ).thenThrow(Exception('Critical error'));
 
-      // 4. Pulizia
-      if (validFile.existsSync()) validFile.deleteSync();
-      if (safetyFile.existsSync()) safetyFile.deleteSync();
+        final controller = container.read(backupControllerProvider.notifier);
+        final result = await controller.importDatabase(validFilePath);
 
-      // 5. Asserzione Black-Box: ci interessa solo che l'esito sia un successo trionfale!
-      expect(result.success, isTrue);
-    });
+        expect(result.success, isFalse);
+      },
+    );
 
-    test('should detect validation exception type and return appropriate error message', () async {
-      final validFilePath = '/path/to/pack-log-export-db-17022026-123456.db';
-      
-      when(() => mockBackupService.createBackup(reason: any(named: 'reason'))).thenAnswer((_) async => '/backups/safety.db');
-      when(() => mockDatabaseBackupService.importData(any())).thenAnswer((_) async => {});
-      
-      // La validazione non ritorna false, ma lancia un'eccezione esplicita
-      when(() => mockDatabaseBackupService.validateDatabaseFile(any())).thenThrow(const ImportValidationException('Format errato'));
+    test(
+      'should successfully import and NOT trigger rollback on success',
+      () async {
+        // 1. Creiamo file fisici REALI nella cartella temporanea del server.
+        final tempDir = Directory.systemTemp;
 
-      final controller = container.read(backupControllerProvider.notifier);
-      final result = await controller.importDatabase(validFilePath);
+        final validFile = File(
+          '${tempDir.path}/pack-log-export-db-17022026-123456.db',
+        );
+        validFile.createSync(recursive: true);
+        validFile.writeAsStringSync('SQLite format 3\x00 dummy data');
 
-      expect(result.success, isFalse);
-    });
+        final safetyFile = File('${tempDir.path}/safety-backup-pack-log.db');
+        safetyFile.createSync(recursive: true);
+
+        // 2. Mockiamo i servizi passando i file reali appena creati
+        when(
+          () => mockDatabaseBackupService.exportData(any()),
+        ).thenAnswer((_) async => safetyFile);
+
+        when(
+          () => mockBackupService.createBackup(reason: any(named: 'reason')),
+        ).thenAnswer((_) async => safetyFile.path);
+
+        when(
+          () => mockDatabaseBackupService.validateDatabaseFile(any()),
+        ).thenAnswer((_) async => true);
+
+        final controller = container.read(backupControllerProvider.notifier);
+
+        // 3. Lanciamo l'importazione usando il percorso reale
+        final result = await controller.importDatabase(validFile.path);
+
+        // 4. Pulizia
+        if (validFile.existsSync()) validFile.deleteSync();
+        if (safetyFile.existsSync()) safetyFile.deleteSync();
+
+        // 5. Asserzione Black-Box: ci interessa solo che l'esito sia un successo trionfale!
+        expect(result.success, isTrue);
+      },
+    );
+
+    test(
+      'should detect validation exception type and return appropriate error message',
+      () async {
+        final validFilePath = '/path/to/pack-log-export-db-17022026-123456.db';
+
+        when(
+          () => mockBackupService.createBackup(reason: any(named: 'reason')),
+        ).thenAnswer((_) async => '/backups/safety.db');
+        when(
+          () => mockDatabaseBackupService.importData(any()),
+        ).thenAnswer((_) async => {});
+
+        // La validazione non ritorna false, ma lancia un'eccezione esplicita
+        when(
+          () => mockDatabaseBackupService.validateDatabaseFile(any()),
+        ).thenThrow(const ImportValidationException('Format errato'));
+
+        final controller = container.read(backupControllerProvider.notifier);
+        final result = await controller.importDatabase(validFilePath);
+
+        expect(result.success, isFalse);
+      },
+    );
   });
 }

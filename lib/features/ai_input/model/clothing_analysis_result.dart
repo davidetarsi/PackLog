@@ -80,13 +80,18 @@ class ClothingAnalysisResult {
       score -= 1;
     }
 
-    if (formality == 'Formal' || formality == 'Business' || formality == 'Loungewear') {
+    if (formality == 'Formal' ||
+        formality == 'Business' ||
+        formality == 'Loungewear') {
       score -= 1;
     } else if (formality == 'Casual' || formality == 'Smart Casual') {
       score += 1;
     }
 
-    if (baseColor == 'Nero' || baseColor == 'Bianco' || baseColor == 'Grigio' || baseColor == 'Blu navy') {
+    if (baseColor == 'Nero' ||
+        baseColor == 'Bianco' ||
+        baseColor == 'Grigio' ||
+        baseColor == 'Blu navy') {
       score += 1;
     }
 
@@ -98,19 +103,20 @@ class ClothingAnalysisResult {
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'category': category,
-        'baseColor': baseColor,
-        'pattern': pattern,
-        'coverage': coverage,
-        'fit': fit,
-        'warmth': warmth,
-        'formality': formality,
-        'activityTags': activityTags,
-      };
+    'name': name,
+    'category': category,
+    'baseColor': baseColor,
+    'pattern': pattern,
+    'coverage': coverage,
+    'fit': fit,
+    'warmth': warmth,
+    'formality': formality,
+    'activityTags': activityTags,
+  };
 
   @override
-  String toString() => 'ClothingAnalysisResult('
+  String toString() =>
+      'ClothingAnalysisResult('
       'name: $name, category: $category, baseColor: $baseColor, '
       'pattern: $pattern, coverage: $coverage, fit: $fit, '
       'warmth: $warmth, formality: $formality, '
@@ -137,14 +143,14 @@ class ClothingAnalysisResult {
 
   @override
   int get hashCode => Object.hash(
-        name,
-        category,
-        baseColor,
-        pattern,
-        coverage,
-        fit,
-        warmth,
-        formality,
-        Object.hashAll(activityTags),
-      );
+    name,
+    category,
+    baseColor,
+    pattern,
+    coverage,
+    fit,
+    warmth,
+    formality,
+    Object.hashAll(activityTags),
+  );
 }

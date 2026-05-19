@@ -29,8 +29,8 @@ class DynamicCategoryDictionary implements CategoryDictionary {
     required this.stopWords,
     required Map<String, String> irregularPlurals,
     required List<({String from, String to})> lemmatizeSuffixes,
-  })  : _irregularPlurals = irregularPlurals,
-        _lemmatizeSuffixes = lemmatizeSuffixes;
+  }) : _irregularPlurals = irregularPlurals,
+       _lemmatizeSuffixes = lemmatizeSuffixes;
 
   @override
   String lemmatize(String word) {
@@ -61,13 +61,15 @@ class DynamicCategoryDictionary implements CategoryDictionary {
     );
 
     final rawRoots = json['rootKeywords'] as List<dynamic>;
-    final rootKeywords = rawRoots.map((e) {
-      final map = e as Map<String, dynamic>;
-      return (
-        root: map['root'] as String,
-        category: _parseCategory(map['category'] as String),
-      );
-    }).toList(growable: false);
+    final rootKeywords = rawRoots
+        .map((e) {
+          final map = e as Map<String, dynamic>;
+          return (
+            root: map['root'] as String,
+            category: _parseCategory(map['category'] as String),
+          );
+        })
+        .toList(growable: false);
 
     final rawStop = json['stopWords'] as List<dynamic>;
     final stopWords = rawStop.cast<String>().toSet();
@@ -77,10 +79,12 @@ class DynamicCategoryDictionary implements CategoryDictionary {
     final irregularPlurals = rawIrregular.cast<String, String>();
 
     final rawSuffixes = json['lemmatizeSuffixes'] as List<dynamic>? ?? [];
-    final lemmatizeSuffixes = rawSuffixes.map((e) {
-      final map = e as Map<String, dynamic>;
-      return (from: map['from'] as String, to: map['to'] as String);
-    }).toList(growable: false);
+    final lemmatizeSuffixes = rawSuffixes
+        .map((e) {
+          final map = e as Map<String, dynamic>;
+          return (from: map['from'] as String, to: map['to'] as String);
+        })
+        .toList(growable: false);
 
     return DynamicCategoryDictionary(
       version: json['version'] as int,
@@ -100,9 +104,7 @@ class DynamicCategoryDictionary implements CategoryDictionary {
     );
   }
 
-  static Future<DynamicCategoryDictionary> parseInIsolate(
-    String jsonString,
-  ) {
+  static Future<DynamicCategoryDictionary> parseInIsolate(String jsonString) {
     return compute(parseFromJsonString, jsonString);
   }
 }

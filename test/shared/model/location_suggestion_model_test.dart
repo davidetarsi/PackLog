@@ -3,7 +3,7 @@ import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/model/location_type.dart';
 
 /// Unit tests for LocationSuggestionModel domain logic.
-/// 
+///
 /// Tests pure domain methods including:
 /// - deduplicationKey generation for preventing duplicate suggestions in UI
 /// - Key consistency and uniqueness
@@ -11,24 +11,27 @@ import 'package:pack_log/shared/model/location_type.dart';
 /// - Edge cases (null fields, empty strings)
 void main() {
   group('LocationSuggestionModel - Deduplication Key', () {
-    test('should generate unique key based on name, locationType, and country', () {
-      // === ARRANGE ===
-      final location = LocationSuggestionModel(
-        placeId: 'place-123',
-        displayName: 'Milan, Italy',
-        name: 'Milan',
-        city: 'Milan',
-        country: 'Italy',
-        locationType: LocationType.city,
-      );
+    test(
+      'should generate unique key based on name, locationType, and country',
+      () {
+        // === ARRANGE ===
+        final location = LocationSuggestionModel(
+          placeId: 'place-123',
+          displayName: 'Milan, Italy',
+          name: 'Milan',
+          city: 'Milan',
+          country: 'Italy',
+          locationType: LocationType.city,
+        );
 
-      // === ACT ===
-      final key = location.deduplicationKey;
+        // === ACT ===
+        final key = location.deduplicationKey;
 
-      // === ASSERT ===
-      // Key format: "normalizedName|locationType|normalizedCountry"
-      expect(key, equals('milan|city|italy'));
-    });
+        // === ASSERT ===
+        // Key format: "normalizedName|locationType|normalizedCountry"
+        expect(key, equals('milan|city|italy'));
+      },
+    );
 
     test('should normalize name to lowercase and trim whitespace', () {
       // === ARRANGE ===
@@ -44,7 +47,11 @@ void main() {
       final key = location.deduplicationKey;
 
       // === ASSERT ===
-      expect(key, equals('rome|city|italy'), reason: 'Should normalize to lowercase and trim');
+      expect(
+        key,
+        equals('rome|city|italy'),
+        reason: 'Should normalize to lowercase and trim',
+      );
     });
 
     test('should use displayName as fallback when name is null', () {
@@ -61,66 +68,84 @@ void main() {
       final key = location.deduplicationKey;
 
       // === ASSERT ===
-      expect(key, equals('paris, france|city|france'), reason: 'Should use displayName when name is null');
+      expect(
+        key,
+        equals('paris, france|city|france'),
+        reason: 'Should use displayName when name is null',
+      );
     });
 
-    test('should create different keys for cities with same name in different countries', () {
-      // === ARRANGE ===
-      // Architectural Intent: Prevent false duplicates (e.g., Paris, France vs Paris, Texas)
-      final parisFrance = LocationSuggestionModel(
-        placeId: 'place-paris-fr',
-        displayName: 'Paris, France',
-        name: 'Paris',
-        country: 'France',
-        locationType: LocationType.city,
-      );
+    test(
+      'should create different keys for cities with same name in different countries',
+      () {
+        // === ARRANGE ===
+        // Architectural Intent: Prevent false duplicates (e.g., Paris, France vs Paris, Texas)
+        final parisFrance = LocationSuggestionModel(
+          placeId: 'place-paris-fr',
+          displayName: 'Paris, France',
+          name: 'Paris',
+          country: 'France',
+          locationType: LocationType.city,
+        );
 
-      final parisUSA = LocationSuggestionModel(
-        placeId: 'place-paris-us',
-        displayName: 'Paris, Texas, USA',
-        name: 'Paris',
-        country: 'United States',
-        locationType: LocationType.city,
-      );
+        final parisUSA = LocationSuggestionModel(
+          placeId: 'place-paris-us',
+          displayName: 'Paris, Texas, USA',
+          name: 'Paris',
+          country: 'United States',
+          locationType: LocationType.city,
+        );
 
-      // === ACT ===
-      final keyFrance = parisFrance.deduplicationKey;
-      final keyUSA = parisUSA.deduplicationKey;
+        // === ACT ===
+        final keyFrance = parisFrance.deduplicationKey;
+        final keyUSA = parisUSA.deduplicationKey;
 
-      // === ASSERT ===
-      expect(keyFrance, equals('paris|city|france'));
-      expect(keyUSA, equals('paris|city|united states'));
-      expect(keyFrance, isNot(equals(keyUSA)), reason: 'Different countries = different keys');
-    });
+        // === ASSERT ===
+        expect(keyFrance, equals('paris|city|france'));
+        expect(keyUSA, equals('paris|city|united states'));
+        expect(
+          keyFrance,
+          isNot(equals(keyUSA)),
+          reason: 'Different countries = different keys',
+        );
+      },
+    );
 
-    test('should create different keys for same name with different location types', () {
-      // === ARRANGE ===
-      // Architectural Intent: Distinguish between "New York" (city) and "New York" (state)
-      final newYorkCity = LocationSuggestionModel(
-        placeId: 'place-nyc',
-        displayName: 'New York City',
-        name: 'New York',
-        country: 'USA',
-        locationType: LocationType.city,
-      );
+    test(
+      'should create different keys for same name with different location types',
+      () {
+        // === ARRANGE ===
+        // Architectural Intent: Distinguish between "New York" (city) and "New York" (state)
+        final newYorkCity = LocationSuggestionModel(
+          placeId: 'place-nyc',
+          displayName: 'New York City',
+          name: 'New York',
+          country: 'USA',
+          locationType: LocationType.city,
+        );
 
-      final newYorkState = LocationSuggestionModel(
-        placeId: 'place-nys',
-        displayName: 'New York State',
-        name: 'New York',
-        country: 'USA',
-        locationType: LocationType.state,
-      );
+        final newYorkState = LocationSuggestionModel(
+          placeId: 'place-nys',
+          displayName: 'New York State',
+          name: 'New York',
+          country: 'USA',
+          locationType: LocationType.state,
+        );
 
-      // === ACT ===
-      final cityKey = newYorkCity.deduplicationKey;
-      final stateKey = newYorkState.deduplicationKey;
+        // === ACT ===
+        final cityKey = newYorkCity.deduplicationKey;
+        final stateKey = newYorkState.deduplicationKey;
 
-      // === ASSERT ===
-      expect(cityKey, equals('new york|city|usa'));
-      expect(stateKey, equals('new york|state|usa'));
-      expect(cityKey, isNot(equals(stateKey)), reason: 'Different types = different keys');
-    });
+        // === ASSERT ===
+        expect(cityKey, equals('new york|city|usa'));
+        expect(stateKey, equals('new york|state|usa'));
+        expect(
+          cityKey,
+          isNot(equals(stateKey)),
+          reason: 'Different types = different keys',
+        );
+      },
+    );
 
     test('should handle null country gracefully', () {
       // === ARRANGE ===
@@ -136,7 +161,11 @@ void main() {
       final key = location.deduplicationKey;
 
       // === ASSERT ===
-      expect(key, equals('unknown|other|'), reason: 'Null country should result in empty string');
+      expect(
+        key,
+        equals('unknown|other|'),
+        reason: 'Null country should result in empty string',
+      );
     });
 
     test('should handle empty country string', () {
@@ -153,7 +182,11 @@ void main() {
       final key = location.deduplicationKey;
 
       // === ASSERT ===
-      expect(key, equals('location|city|'), reason: 'Empty country should be included as empty');
+      expect(
+        key,
+        equals('location|city|'),
+        reason: 'Empty country should be included as empty',
+      );
     });
 
     test('should create identical keys for duplicate suggestions', () {
@@ -309,7 +342,11 @@ void main() {
       final keys = suggestions.map((s) => s.deduplicationKey).toSet();
 
       // === ASSERT ===
-      expect(keys, hasLength(1), reason: 'All 3 suggestions are the same city, should deduplicate');
+      expect(
+        keys,
+        hasLength(1),
+        reason: 'All 3 suggestions are the same city, should deduplicate',
+      );
       expect(keys.first, equals('barcelona|city|spain'));
     });
 
@@ -338,7 +375,12 @@ void main() {
       // === ASSERT ===
       // Both are named Springfield in USA, so they'll have the same key
       // This is a limitation - we'd need state/city info in the key for more granular deduplication
-      expect(keys, hasLength(1), reason: 'Current implementation creates same key for same name+country+type');
+      expect(
+        keys,
+        hasLength(1),
+        reason:
+            'Current implementation creates same key for same name+country+type',
+      );
     });
   });
 }

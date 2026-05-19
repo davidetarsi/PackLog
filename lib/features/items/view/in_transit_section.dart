@@ -19,7 +19,7 @@ class InTransitSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -46,11 +46,16 @@ class InTransitSection extends StatelessWidget {
               style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
             children: items.map((item) {
-              final matchingHouses = houses.where((h) => h.id == item.originHouseId);
-              final originHouse = matchingHouses.isNotEmpty ? matchingHouses.first : null;
+              final matchingHouses = houses.where(
+                (h) => h.id == item.originHouseId,
+              );
+              final originHouse = matchingHouses.isNotEmpty
+                  ? matchingHouses.first
+                  : null;
               return InTransitItemCard(
                 item: item,
-                originHouseName: originHouse?.name ?? 'common.unknown_house'.tr(),
+                originHouseName:
+                    originHouse?.name ?? 'common.unknown_house'.tr(),
               );
             }).toList(),
           ),

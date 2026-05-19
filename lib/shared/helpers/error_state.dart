@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../theme/error_empty_theme_extension.dart';
 
 /// Widget standardizzato per stati di errore.
-/// 
+///
 /// Mostra un'icona di errore, un messaggio e un bottone "Riprova".
-/// 
+///
 /// Gli stili (colori, dimensioni, font) vengono letti dal tema tramite `ErrorEmptyThemeExtension`,
 /// ma possono essere sovrascritti tramite i parametri opzionali.
-/// 
+///
 /// Esempio base (usa stili dal tema):
 /// ```dart
 /// DsErrorState(
@@ -16,7 +16,7 @@ import '../theme/error_empty_theme_extension.dart';
 ///   onRetry: () => ref.read(provider.notifier).refresh(),
 /// )
 /// ```
-/// 
+///
 /// Esempio con override:
 /// ```dart
 /// DsErrorState(
@@ -29,25 +29,25 @@ import '../theme/error_empty_theme_extension.dart';
 class ErrorState extends StatelessWidget {
   /// Oggetto errore o messaggio di errore
   final Object error;
-  
+
   /// Callback chiamato quando l'utente preme "Riprova"
   final VoidCallback onRetry;
-  
+
   /// Messaggio personalizzato (se null, mostra "Errore: $error")
   final String? message;
-  
+
   /// Icona personalizzata (se null, usa Icons.error_outline)
   final IconData? icon;
-  
+
   /// Colore icona personalizzato (se null, usa il colore dal tema)
   final Color? iconColor;
-  
+
   /// Stile del messaggio personalizzato (se null, usa lo stile dal tema)
   final TextStyle? messageStyle;
-  
+
   /// Dimensione icona personalizzata (se null, usa la dimensione dal tema)
   final double? iconSize;
-  
+
   /// Label bottone personalizzata (se null, usa la label dal tema)
   final String? retryLabel;
 
@@ -66,7 +66,7 @@ class ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = context.errorEmptyTheme;
-    
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

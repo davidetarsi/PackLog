@@ -94,7 +94,7 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
       final now = DateTime.now();
       final housesAsync = ref.read(houseNotifierProvider);
       final existingHouses = housesAsync.value ?? [];
-      
+
       final willBePrimary = widget.houseId == null && existingHouses.isEmpty;
 
       final house = widget.houseId != null
@@ -102,7 +102,9 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
               if (existingHouses.isEmpty) {
                 throw StateError('Casa non trovata');
               }
-              final existing = existingHouses.firstWhere((h) => h.id == widget.houseId);
+              final existing = existingHouses.firstWhere(
+                (h) => h.id == widget.houseId,
+              );
               return existing.copyWith(
                 name: _nameController.text.trim(),
                 location: _selectedLocation,
@@ -158,7 +160,9 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
             decoration: InputDecoration(
               labelText: 'houses.name_label'.tr(),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                borderRadius: BorderRadius.circular(
+                  AppConstants.inputBorderRadius,
+                ),
               ),
             ),
             validator: (value) {
@@ -206,7 +210,9 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.inputBorderRadius,
+                  ),
                 ),
               ),
               child: _isLoading
@@ -215,7 +221,11 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(widget.houseId != null ? 'common.save'.tr() : 'common.create'.tr()),
+                  : Text(
+                      widget.houseId != null
+                          ? 'common.save'.tr()
+                          : 'common.create'.tr(),
+                    ),
             ),
           ],
         ],

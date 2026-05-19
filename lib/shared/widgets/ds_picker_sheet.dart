@@ -94,9 +94,9 @@ class DsPickerSheet<T> extends StatelessWidget {
               ),
               child: Text(
                 title,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
             const Divider(height: 1),

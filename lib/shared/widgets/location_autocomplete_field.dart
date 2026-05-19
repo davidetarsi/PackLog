@@ -171,19 +171,21 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
   Future<List<LocationSuggestionModel>> _fetchLocationSuggestions(
     String query,
   ) async {
-    final uri = Uri.parse('${AppConfig.supabaseUrl}/functions/v1/geocode-proxy').replace(
-      queryParameters: {
-        'text': query,
-        'lang': context.locale.languageCode.substring(0, 2),
-        'limit': '15',
-        'bias': 'countrycode:none',
-      },
-    );
+    final uri = Uri.parse('${AppConfig.supabaseUrl}/functions/v1/geocode-proxy')
+        .replace(
+          queryParameters: {
+            'text': query,
+            'lang': context.locale.languageCode.substring(0, 2),
+            'limit': '15',
+            'bias': 'countrycode:none',
+          },
+        );
 
     try {
-      final response = await http.get(uri, headers: {
-        'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
-      });
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}'},
+      );
 
       if (response.statusCode != 200) {
         throw Exception('Errore HTTP Geoapify: ${response.statusCode}');
@@ -193,16 +195,18 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       final geoapifyResponse = GeoapifyResponseModel.fromJson(json);
 
       final suggestions = geoapifyResponse.features
-          .map((feature) => LocationSuggestionModel.fromGeoapifyFeature(feature))
+          .map(
+            (feature) => LocationSuggestionModel.fromGeoapifyFeature(feature),
+          )
           .where((s) => s.displayName.isNotEmpty)
           // ARCHITECTURE CHOICE: Filtro applicativo per garantire solo macro-aree.
           // Scartiamo tutto ciò che finisce nel bucket 'other' (strade, ristoranti, etc.)
-          .where((s) => s.locationType != LocationType.other) 
+          .where((s) => s.locationType != LocationType.other)
           .toList();
 
       final seen = <String>{};
       final uniqueSuggestions = <LocationSuggestionModel>[];
-      
+
       for (final suggestion in suggestions) {
         if (seen.add(suggestion.deduplicationKey)) {
           uniqueSuggestions.add(suggestion);
@@ -213,7 +217,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
     } catch (e) {
       // In produzione, loggare l'errore su Crashlytics/Sentry, non stamparlo solo in console
       debugPrint('[LocationAutocompleteField] Errore API: $e');
-      rethrow; 
+      rethrow;
     }
   }
 
@@ -321,11 +325,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           border: index < _suggestions.length - 1
-              ? Border(
-                  bottom: BorderSide(
-                    color: colorScheme.outlineVariant,
-                  ),
-                )
+              ? Border(bottom: BorderSide(color: colorScheme.outlineVariant))
               : null,
         ),
         child: Row(

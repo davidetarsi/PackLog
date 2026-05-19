@@ -170,7 +170,9 @@ class _SectionDivider extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant)),
+          Expanded(
+            child: Divider(color: Theme.of(context).colorScheme.outlineVariant),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             child: Text(
@@ -183,7 +185,9 @@ class _SectionDivider extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant)),
+          Expanded(
+            child: Divider(color: Theme.of(context).colorScheme.outlineVariant),
+          ),
         ],
       ),
     );
@@ -275,21 +279,73 @@ class _ColorPaletteSection extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           child: Column(
             children: [
-              _ColorRow(label: 'primary', color: cs.primary, onColor: cs.onPrimary),
-              _ColorRow(label: 'primaryContainer', color: cs.primaryContainer, onColor: cs.onPrimaryContainer),
-              _ColorRow(label: 'secondary', color: cs.secondary, onColor: cs.onSecondary),
-              _ColorRow(label: 'tertiary (on-trip)', color: cs.tertiary, onColor: cs.onTertiary),
-              _ColorRow(label: 'tertiaryContainer', color: cs.tertiaryContainer, onColor: cs.onTertiaryContainer),
+              _ColorRow(
+                label: 'primary',
+                color: cs.primary,
+                onColor: cs.onPrimary,
+              ),
+              _ColorRow(
+                label: 'primaryContainer',
+                color: cs.primaryContainer,
+                onColor: cs.onPrimaryContainer,
+              ),
+              _ColorRow(
+                label: 'secondary',
+                color: cs.secondary,
+                onColor: cs.onSecondary,
+              ),
+              _ColorRow(
+                label: 'tertiary (on-trip)',
+                color: cs.tertiary,
+                onColor: cs.onTertiary,
+              ),
+              _ColorRow(
+                label: 'tertiaryContainer',
+                color: cs.tertiaryContainer,
+                onColor: cs.onTertiaryContainer,
+              ),
               _ColorRow(label: 'error', color: cs.error, onColor: cs.onError),
-              _ColorRow(label: 'surface', color: cs.surface, onColor: cs.onSurface),
-              _ColorRow(label: 'surfaceContainer', color: cs.surfaceContainer, onColor: cs.onSurface),
-              _ColorRow(label: 'onSurfaceVariant', color: cs.onSurfaceVariant, onColor: cs.surface),
-              _ColorRow(label: 'outline', color: cs.outline, onColor: cs.surface),
-              _ColorRow(label: 'outlineVariant', color: cs.outlineVariant, onColor: cs.onSurface),
+              _ColorRow(
+                label: 'surface',
+                color: cs.surface,
+                onColor: cs.onSurface,
+              ),
+              _ColorRow(
+                label: 'surfaceContainer',
+                color: cs.surfaceContainer,
+                onColor: cs.onSurface,
+              ),
+              _ColorRow(
+                label: 'onSurfaceVariant',
+                color: cs.onSurfaceVariant,
+                onColor: cs.surface,
+              ),
+              _ColorRow(
+                label: 'outline',
+                color: cs.outline,
+                onColor: cs.surface,
+              ),
+              _ColorRow(
+                label: 'outlineVariant',
+                color: cs.outlineVariant,
+                onColor: cs.onSurface,
+              ),
               if (appColors != null) ...[
-                _ColorRow(label: 'success (ext)', color: appColors.success, onColor: appColors.onSuccess),
-                _ColorRow(label: 'successContainer', color: appColors.successContainer, onColor: appColors.onSuccessContainer),
-                _ColorRow(label: 'warning (ext)', color: appColors.warning, onColor: cs.onPrimary),
+                _ColorRow(
+                  label: 'success (ext)',
+                  color: appColors.success,
+                  onColor: appColors.onSuccess,
+                ),
+                _ColorRow(
+                  label: 'successContainer',
+                  color: appColors.successContainer,
+                  onColor: appColors.onSuccessContainer,
+                ),
+                _ColorRow(
+                  label: 'warning (ext)',
+                  color: appColors.warning,
+                  onColor: cs.onPrimary,
+                ),
               ],
             ],
           ),
@@ -304,7 +360,11 @@ class _ColorRow extends StatelessWidget {
   final Color color;
   final Color onColor;
 
-  const _ColorRow({required this.label, required this.color, required this.onColor});
+  const _ColorRow({
+    required this.label,
+    required this.color,
+    required this.onColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -416,11 +476,20 @@ class _BadgesSection extends StatelessWidget {
               DsQuantityBadge(current: 3),
               DsQuantityBadge(current: 3, max: 5),
               DsQuantityBadge(current: 3, isSelected: true),
-              DsStatusBadge(type: DsStatusBadgeType.onTrip, label: 'In viaggio'),
+              DsStatusBadge(
+                type: DsStatusBadgeType.onTrip,
+                label: 'In viaggio',
+              ),
               DsStatusBadge(type: DsStatusBadgeType.temporary, label: 'Ospite'),
-              DsStatusBadge(type: DsStatusBadgeType.primary, label: 'Principale'),
+              DsStatusBadge(
+                type: DsStatusBadgeType.primary,
+                label: 'Principale',
+              ),
               DsStatusBadge(type: DsStatusBadgeType.success, label: 'Pronto'),
-              DsInfoBadge(icon: Icons.calendar_today_outlined, label: '12–19 giu'),
+              DsInfoBadge(
+                icon: Icons.calendar_today_outlined,
+                label: '12–19 giu',
+              ),
               DsInfoBadge(icon: Icons.location_on_outlined, label: 'Milano'),
             ],
           ),
@@ -458,9 +527,7 @@ class _TripCardsSection extends StatelessWidget {
           builder: (ctx, theme) {
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              child: ProviderScope(
-                child: TripCardHero(trip: _stubTrip),
-              ),
+              child: ProviderScope(child: TripCardHero(trip: _stubTrip)),
             );
           },
         ),

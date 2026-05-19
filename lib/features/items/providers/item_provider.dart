@@ -20,7 +20,10 @@ class ItemNotifier extends _$ItemNotifier {
   }
 
   /// Filtra gli items per spazio specifico
-  Future<List<ItemModel>> getItemsBySpace(String houseId, String spaceId) async {
+  Future<List<ItemModel>> getItemsBySpace(
+    String houseId,
+    String spaceId,
+  ) async {
     repository ??= ref.read(itemRepositoryProvider);
     return repository!.getItemsBySpaceId(houseId, spaceId);
   }
@@ -38,11 +41,13 @@ class ItemNotifier extends _$ItemNotifier {
       await repository!.addItem(model);
       final items = await repository!.getItemsByHouseId(model.houseId);
       state = AsyncData(items);
-      ref.read(coreAnalyticsServiceProvider).trackItemAdded(
-        itemId: model.id,
-        category: model.category.name,
-        totalItems: items.length,
-      );
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackItemAdded(
+            itemId: model.id,
+            category: model.category.name,
+            totalItems: items.length,
+          );
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -124,10 +129,7 @@ class ItemNotifier extends _$ItemNotifier {
   /// In caso di errore imposta `state = AsyncError` (stesso contratto degli
   /// altri metodi del notifier) — il chiamante può leggere `state.hasError`
   /// oppure catturare l'eccezione se ha bisogno di feedback UI dedicato.
-  Future<void> bulkMove(
-    List<String> itemIds,
-    String destinationHouseId,
-  ) async {
+  Future<void> bulkMove(List<String> itemIds, String destinationHouseId) async {
     if (itemIds.isEmpty) return;
     repository ??= ref.read(itemRepositoryProvider);
 

@@ -6,8 +6,9 @@ import '../../../core/database/database.dart';
 import '../../../core/database/daos/luggages_dao.dart';
 import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../core/database/services/database_service.dart';
+
 /// Implementazione del repository Luggage usando Drift (SQLite).
-/// 
+///
 /// Fornisce operazioni robuste con:
 /// - Retry automatico per operazioni fallite
 /// - Transazioni atomiche per junction table operations
@@ -31,11 +32,14 @@ class DriftLuggageRepository implements LuggageRepository {
       operationName: 'addLuggage(${model.name})',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
-      throw EntitySaveException('addLuggage(${model.name})', cause: result.error);
+      throw EntitySaveException(
+        'addLuggage(${model.name})',
+        cause: result.error,
+      );
     }
-    
+
     debugPrint('[LuggageRepo] Bagaglio aggiunto: ${model.name}');
   }
 
@@ -45,11 +49,11 @@ class DriftLuggageRepository implements LuggageRepository {
       () => _dao.getLuggageById(id),
       operationName: 'getLuggageById($id)',
     );
-    
+
     if (!result.success || result.data == null) {
       throw EntityNotFoundException('getLuggageById($id)');
     }
-    
+
     return _toModel(result.data!);
   }
 
@@ -59,12 +63,12 @@ class DriftLuggageRepository implements LuggageRepository {
       () => _dao.getAllLuggages(),
       operationName: 'getAllLuggages',
     );
-    
+
     if (!result.success) {
       debugPrint('[LuggageRepo] Errore caricando bagagli: ${result.error}');
       return [];
     }
-    
+
     return result.data!.map(_toModel).toList();
   }
 
@@ -74,12 +78,14 @@ class DriftLuggageRepository implements LuggageRepository {
       () => _dao.getLuggagesByHouse(houseId),
       operationName: 'getLuggagesByHouseId($houseId)',
     );
-    
+
     if (!result.success) {
-      debugPrint('[LuggageRepo] Errore caricando bagagli per casa: ${result.error}');
+      debugPrint(
+        '[LuggageRepo] Errore caricando bagagli per casa: ${result.error}',
+      );
       return [];
     }
-    
+
     return result.data!.map(_toModel).toList();
   }
 
@@ -90,12 +96,12 @@ class DriftLuggageRepository implements LuggageRepository {
       operationName: 'deleteLuggage($id)',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
       debugPrint('[LuggageRepo] Errore eliminando bagaglio: ${result.error}');
       return false;
     }
-    
+
     debugPrint('[LuggageRepo] Bagaglio eliminato: $id');
     return result.data! > 0;
   }
@@ -107,11 +113,14 @@ class DriftLuggageRepository implements LuggageRepository {
       operationName: 'updateLuggage(${model.name})',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
-      throw EntitySaveException('updateLuggage(${model.name})', cause: result.error);
+      throw EntitySaveException(
+        'updateLuggage(${model.name})',
+        cause: result.error,
+      );
     }
-    
+
     debugPrint('[LuggageRepo] Bagaglio aggiornato: ${model.name}');
   }
 
@@ -121,12 +130,12 @@ class DriftLuggageRepository implements LuggageRepository {
       () => _dao.countLuggagesByHouse(houseId),
       operationName: 'countLuggagesByHouse($houseId)',
     );
-    
+
     if (!result.success) {
       debugPrint('[LuggageRepo] Errore contando bagagli: ${result.error}');
       return 0;
     }
-    
+
     return result.data!;
   }
 
@@ -136,12 +145,14 @@ class DriftLuggageRepository implements LuggageRepository {
       () => _dao.getLuggagesByTrip(tripId),
       operationName: 'getLuggagesByTripId($tripId)',
     );
-    
+
     if (!result.success) {
-      debugPrint('[LuggageRepo] Errore caricando bagagli per viaggio: ${result.error}');
+      debugPrint(
+        '[LuggageRepo] Errore caricando bagagli per viaggio: ${result.error}',
+      );
       return [];
     }
-    
+
     return result.data!.map(_toModel).toList();
   }
 
@@ -152,11 +163,14 @@ class DriftLuggageRepository implements LuggageRepository {
       operationName: 'linkLuggageToTrip(trip: $tripId, luggage: $luggageId)',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
-      throw EntitySaveException('linkLuggageToTrip(trip: $tripId, luggage: $luggageId)', cause: result.error);
+      throw EntitySaveException(
+        'linkLuggageToTrip(trip: $tripId, luggage: $luggageId)',
+        cause: result.error,
+      );
     }
-    
+
     debugPrint('[LuggageRepo] Bagaglio $luggageId associato a viaggio $tripId');
   }
 
@@ -164,37 +178,50 @@ class DriftLuggageRepository implements LuggageRepository {
   Future<void> unlinkLuggageFromTrip(String tripId, String luggageId) async {
     final result = await _dbService.executeWithRetry(
       () => _dao.unlinkLuggageFromTrip(tripId, luggageId),
-      operationName: 'unlinkLuggageFromTrip(trip: $tripId, luggage: $luggageId)',
+      operationName:
+          'unlinkLuggageFromTrip(trip: $tripId, luggage: $luggageId)',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
-      throw EntitySaveException('unlinkLuggageFromTrip(trip: $tripId, luggage: $luggageId)', cause: result.error);
+      throw EntitySaveException(
+        'unlinkLuggageFromTrip(trip: $tripId, luggage: $luggageId)',
+        cause: result.error,
+      );
     }
-    
+
     debugPrint('[LuggageRepo] Bagaglio $luggageId rimosso da viaggio $tripId');
   }
 
   @override
-  Future<void> replaceTripLuggages(String tripId, List<String> luggageIds) async {
+  Future<void> replaceTripLuggages(
+    String tripId,
+    List<String> luggageIds,
+  ) async {
     final result = await _dbService.executeAtomicWithRetry(
       () => _dao.replaceTripLuggages(tripId, luggageIds),
-      operationName: 'replaceTripLuggages(trip: $tripId, count: ${luggageIds.length})',
+      operationName:
+          'replaceTripLuggages(trip: $tripId, count: ${luggageIds.length})',
       config: RetryConfig.criticalConfig,
     );
-    
+
     if (!result.success) {
-      throw EntitySaveException('replaceTripLuggages(trip: $tripId)', cause: result.error);
+      throw EntitySaveException(
+        'replaceTripLuggages(trip: $tripId)',
+        cause: result.error,
+      );
     }
-    
-    debugPrint('[LuggageRepo] Bagagli viaggio $tripId aggiornati: ${luggageIds.length} bagagli');
+
+    debugPrint(
+      '[LuggageRepo] Bagagli viaggio $tripId aggiornati: ${luggageIds.length} bagagli',
+    );
   }
 
   /// Stream reattivo di tutti i bagagli di una casa
   Stream<List<LuggageModel>> watchLuggagesByHouseId(String houseId) {
-    return _dao.watchLuggagesByHouse(houseId).map(
-      (luggages) => luggages.map(_toModel).toList(),
-    );
+    return _dao
+        .watchLuggagesByHouse(houseId)
+        .map((luggages) => luggages.map(_toModel).toList());
   }
 
   // === Conversioni ===

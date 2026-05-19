@@ -57,11 +57,12 @@ class _ItemCategorySectionState extends State<ItemCategorySection> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'common.items_count'
-                        .tr(args: [widget.items.length.toString()]),
+                    'common.items_count'.tr(
+                      args: [widget.items.length.toString()],
+                    ),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   SizedBox(width: context.spacingXs),
                   Icon(
@@ -92,9 +93,7 @@ class _ItemCategorySectionState extends State<ItemCategorySection> {
           ),
 
         // ── Spaziatura inferiore tra sezioni ─────────────────────────────────
-        SliverToBoxAdapter(
-          child: SizedBox(height: context.spacingSm),
-        ),
+        SliverToBoxAdapter(child: SizedBox(height: context.spacingSm)),
       ],
     );
   }

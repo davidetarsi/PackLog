@@ -2,7 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 /// Icone predefinite disponibili per le case.
-/// 
+///
 /// Ogni casa può avere un'icona personalizzata scelta tra queste opzioni.
 class HouseIcons {
   HouseIcons._(); // Costruttore privato per impedire l'istanziazione
@@ -15,7 +15,7 @@ class HouseIcons {
     'apartment': Icons.apartment_rounded,
     'business': Icons.business_rounded,
     'homeWork': Icons.home_work_rounded,
-    'sailing': Icons.sailing_rounded,        // villaggio vacanze/mare
+    'sailing': Icons.sailing_rounded, // villaggio vacanze/mare
     'castle': Icons.castle_rounded,
     'hotel': Icons.hotel_rounded,
     'store': Icons.store_rounded,
@@ -26,7 +26,7 @@ class HouseIcons {
   /// Nomi visualizzabili coerenti con le icone
   static Map<String, String> get displayNames => {
     'home': 'house_icons.home'.tr(),
-    'apartment': 'house_icons.apartment'.tr(), 
+    'apartment': 'house_icons.apartment'.tr(),
     'business': 'house_icons.business'.tr(),
     'homeWork': 'house_icons.homeWork'.tr(),
     'sailing': 'house_icons.sailing'.tr(),

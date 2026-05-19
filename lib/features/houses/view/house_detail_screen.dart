@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
+import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import 'package:pack_log/shared/widgets/tri_slot_bar.dart';
 import '../providers/house_provider.dart';
@@ -13,6 +14,8 @@ import '../../items/providers/item_provider.dart';
 import '../../items/providers/item_selection_provider.dart';
 import '../../items/widgets/rapid_fire_input.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
+import '../../spaces/model/space_model.dart';
+import '../../spaces/providers/space_provider.dart';
 import '../../spaces/view/spaces_management_screen.dart';
 import '../../luggages/view/luggages_management_screen.dart';
 import 'add_edit_house_screen.dart';
@@ -24,6 +27,19 @@ import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+
+enum _CategoryTab {
+  all('trips.filter_all', null),
+  vestiti('categories.vestiti', ItemCategory.vestiti),
+  toiletries('categories.toiletries', ItemCategory.toiletries),
+  elettronica('categories.elettronica', ItemCategory.elettronica),
+  varie('categories.varie', ItemCategory.varie);
+
+  final String labelKey;
+  final ItemCategory? categoryFilter;
+  const _CategoryTab(this.labelKey, this.categoryFilter);
+  String get label => labelKey.tr();
+}
 
 /// Durata delle transizioni animate tra le due modalità della UI
 /// (normale ↔ selezione multipla).
@@ -40,7 +56,9 @@ class HouseDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
-  String? _currentSpaceId;
+  /// null = tutti gli item, 'default' = pool generale, spaceId = spazio specifico.
+  String? _spaceFilter;
+  _CategoryTab _categoryTab = _CategoryTab.all;
   bool _isRapidFireExpanded = false;
 
   // -------------------------------------------------------------------------
@@ -69,7 +87,8 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
             ),
             ListTile(
               leading: Icon(
-                Icons.push_pin, // push_pin per "casa principale" — bookmark riservato ai viaggi salvati
+                Icons
+                    .push_pin, // push_pin per "casa principale" — bookmark riservato ai viaggi salvati
                 color: isPrimary
                     ? null
                     : Theme.of(sheetContext).colorScheme.primary,
@@ -290,8 +309,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     if (selectedIds.isEmpty) return;
 
     final allHouses = ref.read(houseNotifierProvider).value ?? [];
-    final otherHouses =
-        allHouses.where((h) => h.id != widget.houseId).toList();
+    final otherHouses = allHouses.where((h) => h.id != widget.houseId).toList();
 
     if (!context.mounted) return;
 
@@ -395,7 +413,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         // Bottone "seleziona tutti" / "deseleziona tutti"
         IconButton(
           icon: Icon(
-            allSelected ? Icons.deselect : Icons.select_all,
+            allSelected ? Icons.indeterminate_check_box_outlined : Icons.check_box_outlined,
             color: colorScheme.primary,
           ),
           tooltip: allSelected
@@ -462,7 +480,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         ),
         center: RapidFireInput(
           houseId: houseId,
-          currentSpaceId: _currentSpaceId,
+          currentSpaceId: (_spaceFilter != null && _spaceFilter != 'default')
+              ? _spaceFilter
+              : null,
           height: elementHeight,
           onOpenFullForm: (name, category) =>
               _openFullFormFromRapidFire(houseId, name, category),
@@ -477,11 +497,67 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               ? null
               : CircularActionButton(
                   icon: Icons.auto_awesome,
-                  onPressed: () =>
-                      context.push('/houses/$houseId/ai-import'),
+                  onPressed: () => context.push('/houses/$houseId/ai-import'),
                   showBorder: true,
                 ),
         ),
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Filter pills
+  // -------------------------------------------------------------------------
+
+  Widget _buildSpacePills(
+    BuildContext context,
+    List<SpaceModel> spaces,
+    List<ItemModel> allItems,
+  ) {
+    final tabItems = <String?>[null, 'default', ...spaces.map((s) => s.id)];
+    final generalPoolCount = allItems.where((i) => i.spaceId == null).length;
+    final spaceCounts = {
+      for (final s in spaces)
+        s.id: allItems.where((i) => i.spaceId == s.id).length,
+    };
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: context.spacingMd,
+        top: context.spacingSm,
+      ),
+      child: AppPillTab<String?>.nullable(
+        items: tabItems,
+        selectedItem: _spaceFilter,
+        getLabel: (spaceId) {
+          if (spaceId == null) return 'spaces.all_items'.tr();
+          if (spaceId == 'default') {
+            return '${'spaces.default'.tr()} ($generalPoolCount)';
+          }
+          final space = spaces.firstWhere((s) => s.id == spaceId);
+          return '${space.name} (${spaceCounts[spaceId] ?? 0})';
+        },
+        onSelected: (String? spaceId) =>
+            setState(() => _spaceFilter = spaceId),
+        scrollPadding: EdgeInsets.zero,
+      ),
+    );
+  }
+
+  Widget _buildCategoryPills(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: context.spacingMd,
+        top: context.spacingSm,
+        bottom: context.spacingSm,
+      ),
+      child: AppPillTab<_CategoryTab>(
+        items: _CategoryTab.values,
+        selectedItem: _categoryTab,
+        getLabel: (tab) => tab.label,
+        onSelected: (tab) => setState(() => _categoryTab = tab),
+        height: 40,
+        scrollPadding: EdgeInsets.symmetric(horizontal: context.spacingSm),
       ),
     );
   }
@@ -493,6 +569,10 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final housesAsync = ref.watch(houseNotifierProvider);
+    final spacesAsync = ref.watch(spacesByHouseProvider(widget.houseId));
+    final allItems =
+        ref.watch(itemNotifierProvider(widget.houseId)).value ??
+        const [];
 
     // Stato della selezione multipla: osservato globalmente qui e propagato
     // verso il basso tramite il provider (ItemCard lo osserva autonomamente).
@@ -502,15 +582,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     final hasSelection = selectedCount > 0;
 
     // IDs di tutti gli item permanenti della casa: servono per "seleziona tutti".
-    // Accesso diretto al valore cache del provider (senza await) per mantenere
-    // la build sincrona.
-    final allItemIds =
-        ref
-            .watch(itemNotifierProvider(widget.houseId))
-            .value
-            ?.map((i) => i.id)
-            .toList() ??
-        const [];
+    final allItemIds = allItems.map((i) => i.id).toList();
 
     return housesAsync.when(
       data: (houses) {
@@ -550,12 +622,38 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               allItemIds,
             ),
           ),
-          body: ItemsScreen(
-            houseId: widget.houseId,
-            houseName: house.name,
-            onSpaceFilterChanged: (spaceId) {
-              _currentSpaceId = spaceId;
-            },
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Riga 1: filtro spazi (solo se esistono spazi) ────────────
+              spacesAsync.when(
+                data: (spaces) {
+                  // Spazio selezionato eliminato: reset al "tutti"
+                  if (_spaceFilter != null &&
+                      _spaceFilter != 'default' &&
+                      !spaces.any((s) => s.id == _spaceFilter)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) setState(() => _spaceFilter = null);
+                    });
+                  }
+                  if (spaces.isEmpty) return const SizedBox.shrink();
+                  return _buildSpacePills(context, spaces, allItems);
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+              // ── Riga 2: filtro categorie ──────────────────────────────────
+              _buildCategoryPills(context),
+              // ── Contenuto ─────────────────────────────────────────────────
+              Expanded(
+                child: ItemsScreen(
+                  houseId: widget.houseId,
+                  houseName: house.name,
+                  selectedSpaceId: _spaceFilter,
+                  categoryFilter: _categoryTab.categoryFilter,
+                ),
+              ),
+            ],
           ),
           // Bottom bar: transizione animata tra barra normale e barra selezione.
           bottomContent: AnimatedSwitcher(

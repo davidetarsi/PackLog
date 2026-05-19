@@ -25,8 +25,9 @@ class SyncOrchestrator with WidgetsBindingObserver {
 
   void init() {
     WidgetsBinding.instance.addObserver(this);
-    _connectivitySubscription =
-        _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
+      _onConnectivityChanged,
+    );
   }
 
   void dispose() {
@@ -92,7 +93,9 @@ class SyncOrchestrator with WidgetsBindingObserver {
   Future<void> _attemptSyncIfOnline(String trigger) async {
     final results = await _connectivity.checkConnectivity();
     final hasNet = _hasNetwork(results);
-    debugPrint('[SyncOrchestrator] $trigger: hasNetwork=$hasNet isSyncing=$_isSyncing');
+    debugPrint(
+      '[SyncOrchestrator] $trigger: hasNetwork=$hasNet isSyncing=$_isSyncing',
+    );
     if (hasNet) {
       await _attemptSync(trigger);
     }

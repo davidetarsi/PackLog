@@ -32,12 +32,11 @@ class AppConfig {
   );
 
   /// URL del questionario Google per segnalare errori o inviare suggerimenti.
-  static const String feedbackUrl = 
+  static const String feedbackUrl =
       'https://docs.google.com/forms/d/e/1FAIpQLScKqaRKMwmwfi6Fq51-1z6SlZezeuB2q7kDyEr-BBDZwGocKQ/viewform';
 
   /// URL della repository GitHub del progetto.
-  static const String githubUrl =
-      'https://github.com/davidetarsi/PackLog';
+  static const String githubUrl = 'https://github.com/davidetarsi/PackLog';
 
   static void validate() {
     final missing = <String>[];
@@ -51,10 +50,12 @@ class AppConfig {
     if (sentryDsn.isEmpty || sentryDsn == 'MISSING_SENTRY_DSN') {
       missing.add('SENTRY_DSN');
     }
-    if (amplitudeApiKey.isEmpty || amplitudeApiKey == 'MISSING_AMPLITUDE_API_KEY') {
+    if (amplitudeApiKey.isEmpty ||
+        amplitudeApiKey == 'MISSING_AMPLITUDE_API_KEY') {
       missing.add('AMPLITUDE_API_KEY');
     }
-    if (googleWebClientId.isEmpty || googleWebClientId == 'MISSING_GOOGLE_WEB_CLIENT_ID') {
+    if (googleWebClientId.isEmpty ||
+        googleWebClientId == 'MISSING_GOOGLE_WEB_CLIENT_ID') {
       missing.add('GOOGLE_WEB_CLIENT_ID');
     }
     if (missing.isNotEmpty) {

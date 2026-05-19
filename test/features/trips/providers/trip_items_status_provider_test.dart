@@ -14,10 +14,7 @@ class TripItemsStatus {
   final int totalItems;
   final int checkedItems;
 
-  const TripItemsStatus({
-    required this.totalItems,
-    required this.checkedItems,
-  });
+  const TripItemsStatus({required this.totalItems, required this.checkedItems});
 
   double get progressPercentage =>
       totalItems > 0 ? (checkedItems / totalItems) * 100 : 0.0;
@@ -25,15 +22,17 @@ class TripItemsStatus {
 
 /// Computed provider that calculates trip items status.
 /// This is a test implementation - in production, this would be in the provider file.
-final tripItemsStatusTestProvider =
-    Provider.family<TripItemsStatus, String>((ref, tripId) {
+final tripItemsStatusTestProvider = Provider.family<TripItemsStatus, String>((
+  ref,
+  tripId,
+) {
   // This is a simplified test provider
   // In reality, it would watch tripNotifierProvider and compute from there
   return const TripItemsStatus(totalItems: 0, checkedItems: 0);
 });
 
 /// Unit tests for Trip Items Status Provider.
-/// 
+///
 /// Tests computed providers that derive state from trips:
 /// - Total items count in a trip
 /// - Checked items count in a trip
@@ -46,14 +45,16 @@ void main() {
   setUp(() {
     mockRepository = MockTripRepository();
 
-    registerFallbackValue(TripModel(
-      id: 'fallback',
-      name: 'Fallback',
-      items: [],
-      luggages: [],
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ));
+    registerFallbackValue(
+      TripModel(
+        id: 'fallback',
+        name: 'Fallback',
+        items: [],
+        luggages: [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
 
     container = ProviderContainer(
       overrides: [
@@ -67,93 +68,105 @@ void main() {
   });
 
   group('Trip Items Status Computation', () {
-    test('should correctly compute total items and checked items for a given trip', () async {
-      // === ARRANGE ===
-      // Architectural Intent: Test that the provider correctly computes
-      // the count of total items and checked items from a trip's item list.
-      // This is critical for:
-      // - Displaying progress bars in the UI
-      // - Showing completion status
-      // - User feedback on packing progress
-      
-      final tripId = 'test-trip-status';
-      
-      // Create a trip with 5 items total, 3 checked, 2 unchecked
-      final tripWithItems = TripModel(
-        id: tripId,
-        name: 'Summer Vacation',
-        items: [
-          TripItem(
-            id: 'item-1',
-            name: 'Sunscreen',
-            category: ItemCategory.toiletries,
-            quantity: 1,
-            isChecked: true, // Checked
-          ),
-          TripItem(
-            id: 'item-2',
-            name: 'Swimsuit',
-            category: ItemCategory.vestiti,
-            quantity: 1,
-            isChecked: true, // Checked
-          ),
-          TripItem(
-            id: 'item-3',
-            name: 'Camera',
-            category: ItemCategory.elettronica,
-            quantity: 1,
-            isChecked: false, // Not checked
-          ),
-          TripItem(
-            id: 'item-4',
-            name: 'Towel',
-            category: ItemCategory.varie,
-            quantity: 2,
-            isChecked: true, // Checked
-          ),
-          TripItem(
-            id: 'item-5',
-            name: 'Book',
-            category: ItemCategory.varie,
-            quantity: 1,
-            isChecked: false, // Not checked
-          ),
-        ],
-        luggages: [],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+    test(
+      'should correctly compute total items and checked items for a given trip',
+      () async {
+        // === ARRANGE ===
+        // Architectural Intent: Test that the provider correctly computes
+        // the count of total items and checked items from a trip's item list.
+        // This is critical for:
+        // - Displaying progress bars in the UI
+        // - Showing completion status
+        // - User feedback on packing progress
 
-      // Mock repository to return this trip
-      when(() => mockRepository.getTripById(tripId))
-          .thenAnswer((_) async => tripWithItems);
+        final tripId = 'test-trip-status';
 
-      // === ACT ===
-      // In a real implementation, we would compute the status from the trip
-      // For this test, we manually compute it to verify the logic
-      final trip = await mockRepository.getTripById(tripId);
-      
-      final totalItems = trip.items.length;
-      final checkedItems = trip.items.where((item) => item.isChecked).length;
-      final status = TripItemsStatus(
-        totalItems: totalItems,
-        checkedItems: checkedItems,
-      );
+        // Create a trip with 5 items total, 3 checked, 2 unchecked
+        final tripWithItems = TripModel(
+          id: tripId,
+          name: 'Summer Vacation',
+          items: [
+            TripItem(
+              id: 'item-1',
+              name: 'Sunscreen',
+              category: ItemCategory.toiletries,
+              quantity: 1,
+              isChecked: true, // Checked
+            ),
+            TripItem(
+              id: 'item-2',
+              name: 'Swimsuit',
+              category: ItemCategory.vestiti,
+              quantity: 1,
+              isChecked: true, // Checked
+            ),
+            TripItem(
+              id: 'item-3',
+              name: 'Camera',
+              category: ItemCategory.elettronica,
+              quantity: 1,
+              isChecked: false, // Not checked
+            ),
+            TripItem(
+              id: 'item-4',
+              name: 'Towel',
+              category: ItemCategory.varie,
+              quantity: 2,
+              isChecked: true, // Checked
+            ),
+            TripItem(
+              id: 'item-5',
+              name: 'Book',
+              category: ItemCategory.varie,
+              quantity: 1,
+              isChecked: false, // Not checked
+            ),
+          ],
+          luggages: [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
 
-      // === ASSERT ===
-      // Verify the computed status accurately reflects the trip's items
-      expect(status.totalItems, equals(5), reason: 'Should count all 5 items');
-      expect(status.checkedItems, equals(3), reason: 'Should count 3 checked items');
-      expect(status.progressPercentage, equals(60.0), reason: '3/5 = 60%');
+        // Mock repository to return this trip
+        when(
+          () => mockRepository.getTripById(tripId),
+        ).thenAnswer((_) async => tripWithItems);
 
-      // Verify repository was called
-      verify(() => mockRepository.getTripById(tripId)).called(1);
-    });
+        // === ACT ===
+        // In a real implementation, we would compute the status from the trip
+        // For this test, we manually compute it to verify the logic
+        final trip = await mockRepository.getTripById(tripId);
+
+        final totalItems = trip.items.length;
+        final checkedItems = trip.items.where((item) => item.isChecked).length;
+        final status = TripItemsStatus(
+          totalItems: totalItems,
+          checkedItems: checkedItems,
+        );
+
+        // === ASSERT ===
+        // Verify the computed status accurately reflects the trip's items
+        expect(
+          status.totalItems,
+          equals(5),
+          reason: 'Should count all 5 items',
+        );
+        expect(
+          status.checkedItems,
+          equals(3),
+          reason: 'Should count 3 checked items',
+        );
+        expect(status.progressPercentage, equals(60.0), reason: '3/5 = 60%');
+
+        // Verify repository was called
+        verify(() => mockRepository.getTripById(tripId)).called(1);
+      },
+    );
 
     test('should handle trip with no items (empty list)', () async {
       // === ARRANGE ===
       final tripId = 'trip-no-items';
-      
+
       final emptyTrip = TripModel(
         id: tripId,
         name: 'Empty Trip',
@@ -163,8 +176,9 @@ void main() {
         updatedAt: DateTime.now(),
       );
 
-      when(() => mockRepository.getTripById(tripId))
-          .thenAnswer((_) async => emptyTrip);
+      when(
+        () => mockRepository.getTripById(tripId),
+      ).thenAnswer((_) async => emptyTrip);
 
       // === ACT ===
       final trip = await mockRepository.getTripById(tripId);
@@ -176,13 +190,17 @@ void main() {
       // === ASSERT ===
       expect(status.totalItems, equals(0));
       expect(status.checkedItems, equals(0));
-      expect(status.progressPercentage, equals(0.0), reason: 'Empty trip = 0% progress');
+      expect(
+        status.progressPercentage,
+        equals(0.0),
+        reason: 'Empty trip = 0% progress',
+      );
     });
 
     test('should handle trip with all items checked (100% complete)', () async {
       // === ARRANGE ===
       final tripId = 'trip-all-checked';
-      
+
       final allCheckedTrip = TripModel(
         id: tripId,
         name: 'Complete Trip',
@@ -214,8 +232,9 @@ void main() {
         updatedAt: DateTime.now(),
       );
 
-      when(() => mockRepository.getTripById(tripId))
-          .thenAnswer((_) async => allCheckedTrip);
+      when(
+        () => mockRepository.getTripById(tripId),
+      ).thenAnswer((_) async => allCheckedTrip);
 
       // === ACT ===
       final trip = await mockRepository.getTripById(tripId);
@@ -227,13 +246,17 @@ void main() {
       // === ASSERT ===
       expect(status.totalItems, equals(3));
       expect(status.checkedItems, equals(3));
-      expect(status.progressPercentage, equals(100.0), reason: 'All items checked = 100%');
+      expect(
+        status.progressPercentage,
+        equals(100.0),
+        reason: 'All items checked = 100%',
+      );
     });
 
     test('should handle trip with no items checked (0% complete)', () async {
       // === ARRANGE ===
       final tripId = 'trip-none-checked';
-      
+
       final noneCheckedTrip = TripModel(
         id: tripId,
         name: 'Incomplete Trip',
@@ -258,8 +281,9 @@ void main() {
         updatedAt: DateTime.now(),
       );
 
-      when(() => mockRepository.getTripById(tripId))
-          .thenAnswer((_) async => noneCheckedTrip);
+      when(
+        () => mockRepository.getTripById(tripId),
+      ).thenAnswer((_) async => noneCheckedTrip);
 
       // === ACT ===
       final trip = await mockRepository.getTripById(tripId);
@@ -271,13 +295,17 @@ void main() {
       // === ASSERT ===
       expect(status.totalItems, equals(2));
       expect(status.checkedItems, equals(0));
-      expect(status.progressPercentage, equals(0.0), reason: 'No items checked = 0%');
+      expect(
+        status.progressPercentage,
+        equals(0.0),
+        reason: 'No items checked = 0%',
+      );
     });
 
     test('should handle trip with single item', () async {
       // === ARRANGE ===
       final tripId = 'trip-single-item';
-      
+
       final singleItemTrip = TripModel(
         id: tripId,
         name: 'Single Item Trip',
@@ -295,8 +323,9 @@ void main() {
         updatedAt: DateTime.now(),
       );
 
-      when(() => mockRepository.getTripById(tripId))
-          .thenAnswer((_) async => singleItemTrip);
+      when(
+        () => mockRepository.getTripById(tripId),
+      ).thenAnswer((_) async => singleItemTrip);
 
       // === ACT ===
       final trip = await mockRepository.getTripById(tripId);
@@ -315,7 +344,7 @@ void main() {
       // === ARRANGE ===
       // Test that the status computation works correctly when items change
       final tripId = 'trip-toggle-test';
-      
+
       // Initial state: 1 out of 2 items checked
       final initialTrip = TripModel(
         id: tripId,
@@ -341,14 +370,17 @@ void main() {
         updatedAt: DateTime.now(),
       );
 
-      when(() => mockRepository.getTripById(tripId))
-          .thenAnswer((_) async => initialTrip);
+      when(
+        () => mockRepository.getTripById(tripId),
+      ).thenAnswer((_) async => initialTrip);
 
       // Compute initial status
       final initialTripData = await mockRepository.getTripById(tripId);
       final initialStatus = TripItemsStatus(
         totalItems: initialTripData.items.length,
-        checkedItems: initialTripData.items.where((item) => item.isChecked).length,
+        checkedItems: initialTripData.items
+            .where((item) => item.isChecked)
+            .length,
       );
 
       // After toggling: 2 out of 2 items checked
@@ -359,14 +391,17 @@ void main() {
         ],
       );
 
-      when(() => mockRepository.getTripById(tripId))
-          .thenAnswer((_) async => updatedTrip);
+      when(
+        () => mockRepository.getTripById(tripId),
+      ).thenAnswer((_) async => updatedTrip);
 
       // === ACT ===
       final updatedTripData = await mockRepository.getTripById(tripId);
       final updatedStatus = TripItemsStatus(
         totalItems: updatedTripData.items.length,
-        checkedItems: updatedTripData.items.where((item) => item.isChecked).length,
+        checkedItems: updatedTripData.items
+            .where((item) => item.isChecked)
+            .length,
       );
 
       // === ASSERT ===
@@ -388,7 +423,7 @@ void main() {
     test('should handle large number of items', () async {
       // === ARRANGE ===
       final tripId = 'trip-many-items';
-      
+
       // Create trip with 100 items, 75 checked
       final items = List.generate(
         100,
@@ -410,8 +445,9 @@ void main() {
         updatedAt: DateTime.now(),
       );
 
-      when(() => mockRepository.getTripById(tripId))
-          .thenAnswer((_) async => largeTrip);
+      when(
+        () => mockRepository.getTripById(tripId),
+      ).thenAnswer((_) async => largeTrip);
 
       // === ACT ===
       final trip = await mockRepository.getTripById(tripId);
@@ -429,26 +465,69 @@ void main() {
     test('should maintain accuracy with mixed checked states', () async {
       // === ARRANGE ===
       final tripId = 'trip-mixed-state';
-      
+
       final mixedTrip = TripModel(
         id: tripId,
         name: 'Mixed State Trip',
         items: [
-          TripItem(id: 'i1', name: 'I1', category: ItemCategory.varie, quantity: 1, isChecked: true),
-          TripItem(id: 'i2', name: 'I2', category: ItemCategory.varie, quantity: 1, isChecked: false),
-          TripItem(id: 'i3', name: 'I3', category: ItemCategory.varie, quantity: 1, isChecked: true),
-          TripItem(id: 'i4', name: 'I4', category: ItemCategory.varie, quantity: 1, isChecked: false),
-          TripItem(id: 'i5', name: 'I5', category: ItemCategory.varie, quantity: 1, isChecked: true),
-          TripItem(id: 'i6', name: 'I6', category: ItemCategory.varie, quantity: 1, isChecked: false),
-          TripItem(id: 'i7', name: 'I7', category: ItemCategory.varie, quantity: 1, isChecked: true),
+          TripItem(
+            id: 'i1',
+            name: 'I1',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: true,
+          ),
+          TripItem(
+            id: 'i2',
+            name: 'I2',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: false,
+          ),
+          TripItem(
+            id: 'i3',
+            name: 'I3',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: true,
+          ),
+          TripItem(
+            id: 'i4',
+            name: 'I4',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: false,
+          ),
+          TripItem(
+            id: 'i5',
+            name: 'I5',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: true,
+          ),
+          TripItem(
+            id: 'i6',
+            name: 'I6',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: false,
+          ),
+          TripItem(
+            id: 'i7',
+            name: 'I7',
+            category: ItemCategory.varie,
+            quantity: 1,
+            isChecked: true,
+          ),
         ],
         luggages: [],
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
-      when(() => mockRepository.getTripById(tripId))
-          .thenAnswer((_) async => mixedTrip);
+      when(
+        () => mockRepository.getTripById(tripId),
+      ).thenAnswer((_) async => mixedTrip);
 
       // === ACT ===
       final trip = await mockRepository.getTripById(tripId);
@@ -460,7 +539,11 @@ void main() {
       // === ASSERT ===
       expect(status.totalItems, equals(7));
       expect(status.checkedItems, equals(4));
-      expect(status.progressPercentage, closeTo(57.14, 0.01), reason: '4/7 ≈ 57.14%');
+      expect(
+        status.progressPercentage,
+        closeTo(57.14, 0.01),
+        reason: '4/7 ≈ 57.14%',
+      );
     });
   });
 }

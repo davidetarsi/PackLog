@@ -58,11 +58,7 @@ class StatusIconOverlay extends StatelessWidget {
           color: backgroundColor,
           borderRadius: BorderRadius.circular(AppConstants.badgeBorderRadius),
         ),
-        child: Icon(
-          icon,
-          size: iconSize,
-          color: iconColor,
-        ),
+        child: Icon(icon, size: iconSize, color: iconColor),
       ),
     );
   }

@@ -6,7 +6,6 @@ import '../../features/houses/providers/house_provider.dart';
 import '../theme/app_spacing.dart';
 import 'ds_badge.dart';
 
-
 /// Badge informativi per un viaggio (date, destinazione, bagagli).
 ///
 /// Mostra (solo se disponibili):
@@ -31,7 +30,9 @@ class TripInfoBadges extends ConsumerWidget {
     if (trip.destinationHouseId != null) {
       final houses = ref.watch(houseNotifierProvider).valueOrNull;
       if (houses != null) {
-        final house = houses.where((h) => h.id == trip.destinationHouseId).firstOrNull;
+        final house = houses
+            .where((h) => h.id == trip.destinationHouseId)
+            .firstOrNull;
         if (house != null) return house.name;
       }
       return 'common.unknown_house'.tr();
@@ -50,7 +51,8 @@ class TripInfoBadges extends ConsumerWidget {
 
     if (trip.returnDateTime != null) {
       final ret = trip.returnDateTime!;
-      final sameDay = departure.day == ret.day &&
+      final sameDay =
+          departure.day == ret.day &&
           departure.month == ret.month &&
           departure.year == ret.year;
       return sameDay
@@ -67,21 +69,17 @@ class TripInfoBadges extends ConsumerWidget {
 
     final List<Widget> badges = [
       if (formattedDates.isNotEmpty)
-        DsInfoBadge(
-          icon: Icons.calendar_today_outlined,
-          label: formattedDates,
-        ),
-      DsInfoBadge(
-        icon: Icons.place,
-        label: destinationName,
-      ),
+        DsInfoBadge(icon: Icons.calendar_today_outlined, label: formattedDates),
+      DsInfoBadge(icon: Icons.place, label: destinationName),
       if (trip.luggageCount > 0)
         DsInfoBadge(
           icon: Icons.luggage,
-          label: 'common.luggages_count'.tr(args: [
-            trip.luggageCount.toString(),
-            trip.totalLuggageVolume.toString(),
-          ]),
+          label: 'common.luggages_count'.tr(
+            args: [
+              trip.luggageCount.toString(),
+              trip.totalLuggageVolume.toString(),
+            ],
+          ),
         ),
     ];
 
@@ -105,4 +103,3 @@ class TripInfoBadges extends ConsumerWidget {
     );
   }
 }
-

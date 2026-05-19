@@ -77,8 +77,7 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
               });
 
             return RefreshIndicator(
-              onRefresh: () async =>
-                  ref.refresh(houseNotifierProvider.future),
+              onRefresh: () async => ref.refresh(houseNotifierProvider.future),
               color: colorScheme.primary,
               child: ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -114,6 +113,8 @@ class _HouseCard extends ConsumerWidget {
     final action = await showEntityContextMenu(
       context: context,
       entityType: 'common.house_type'.tr(),
+      showSetPrimaryAction: true,
+      isPrimary: house.isPrimary,
     );
     if (action == null || !context.mounted) return;
 
@@ -122,7 +123,9 @@ class _HouseCard extends ConsumerWidget {
         final success = await ErrorRetryDialog.executeWithRetry(
           context: context,
           operation: () async {
-            await ref.read(houseNotifierProvider.notifier).duplicateHouse(house.id);
+            await ref
+                .read(houseNotifierProvider.notifier)
+                .duplicateHouse(house.id);
           },
           errorTitle: 'common.error'.tr(),
           errorMessage: 'errors.save_house_failed'.tr(),
@@ -143,18 +146,30 @@ class _HouseCard extends ConsumerWidget {
           final success = await ErrorRetryDialog.executeWithRetry(
             context: context,
             operation: () async {
-              await ref.read(houseNotifierProvider.notifier).deleteHouse(house.id);
+              await ref
+                  .read(houseNotifierProvider.notifier)
+                  .deleteHouse(house.id);
             },
             errorTitle: 'common.error'.tr(),
             errorMessage: 'errors.delete_failed'.tr(args: [house.name]),
           );
           if (success && context.mounted) {
-            AppSnackBar.showSuccess(
-              context,
-              'houses.delete'.tr(),
-            );
+            AppSnackBar.showSuccess(context, 'houses.delete'.tr());
           }
         }
+      case EntityContextMenuAction.save:
+        break; // not used for houses
+      case EntityContextMenuAction.setPrimary:
+        await ErrorRetryDialog.executeWithRetry(
+          context: context,
+          operation: () async {
+            await ref
+                .read(houseNotifierProvider.notifier)
+                .setPrimaryHouse(house.id);
+          },
+          errorTitle: 'common.error'.tr(),
+          errorMessage: 'errors.save_house_failed'.tr(),
+        );
     }
   }
 
@@ -175,8 +190,7 @@ class _HouseCard extends ConsumerWidget {
           AppConstants.cardBorderRadius + 4,
         ),
         side: BorderSide(
-          color:
-              colorScheme.outlineVariant,
+          color: colorScheme.outlineVariant,
           width: /* house.isPrimary ? 1.5 : */ 1,
         ),
       ),
@@ -227,7 +241,8 @@ class _HouseCard extends ConsumerWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (house.locationDisplayName != null || house.description != null) ...[
+                            if (house.locationDisplayName != null ||
+                                house.description != null) ...[
                               SizedBox(height: context.spacingXs),
                               Row(
                                 children: [
@@ -239,7 +254,8 @@ class _HouseCard extends ConsumerWidget {
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
-                                      house.locationDisplayName ?? house.description!,
+                                      house.locationDisplayName ??
+                                          house.description!,
                                       style: TextStyle(
                                         fontSize: context.fontSizeSm + 1,
                                         color: colorScheme.onSurfaceVariant,
@@ -256,13 +272,16 @@ class _HouseCard extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  
+
                   // Divider
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-                      child: Divider(height: 1, color: colorScheme.outlineVariant),
+                    child: Divider(
+                      height: 1,
+                      color: colorScheme.outlineVariant,
+                    ),
                   ),
-                  
+
                   // Stats row
                   statsAsync.when(
                     data: (stats) => Row(
@@ -274,7 +293,9 @@ class _HouseCard extends ConsumerWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'houses.total_items'.tr(args: [stats.totalItems.toString()]),
+                          'houses.total_items'.tr(
+                            args: [stats.totalItems.toString()],
+                          ),
                           style: TextStyle(
                             fontSize: context.fontSizeSm,
                             color: colorScheme.onSurfaceVariant,
@@ -302,22 +323,17 @@ class _HouseCard extends ConsumerWidget {
               ),
             ),
           ),
-          
+
           // Badge principale in alto a destra (stile bookmark/salvato)
           if (house.isPrimary)
             // push_pin = "casa principale/fissata" — non bookmark (riservato ai viaggi salvati)
             Positioned(
               top: 0,
               right: 12,
-              child: Icon(
-                Icons.push_pin,
-                size: 20,
-                color: colorScheme.primary,
-              ),
+              child: Icon(Icons.push_pin, size: 20, color: colorScheme.primary),
             ),
         ],
       ),
     );
   }
 }
-

@@ -16,19 +16,17 @@ class SupabaseAuthRepository implements AuthRepository {
   SupabaseAuthRepository({
     sb.SupabaseClient? client,
     GoogleSignIn? googleSignIn,
-  })  : _client = client ?? sb.Supabase.instance.client,
-        _googleSignIn = googleSignIn ??
-            GoogleSignIn(serverClientId: AppConfig.googleWebClientId);
+  }) : _client = client ?? sb.Supabase.instance.client,
+       _googleSignIn =
+           googleSignIn ??
+           GoogleSignIn(serverClientId: AppConfig.googleWebClientId);
 
   @override
   AuthState get currentAuthState {
     final session = _client.auth.currentSession;
     final user = _client.auth.currentUser;
     if (session != null && user != null) {
-      return AuthState.authenticated(
-        userId: user.id,
-        email: user.email ?? '',
-      );
+      return AuthState.authenticated(userId: user.id, email: user.email ?? '');
     }
     return const AuthState.unauthenticated();
   }
@@ -64,30 +62,26 @@ class SupabaseAuthRepository implements AuthRepository {
       debugPrint('[Auth] 3/4 Tokens ottenuti, invio a Supabase...');
 
       if (idToken == null) {
-        throw const SignInFailedException(
-          'Failed to obtain Google ID token',
-        );
+        throw const SignInFailedException('Failed to obtain Google ID token');
       }
 
-      await _client.auth.signInWithIdToken(
-        provider: sb.OAuthProvider.google,
-        idToken: idToken,
-        accessToken: accessToken,
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () => throw const SignInFailedException(
-          'Connessione a Supabase scaduta. Controlla la connessione o riprova.',
-        ),
-      );
+      await _client.auth
+          .signInWithIdToken(
+            provider: sb.OAuthProvider.google,
+            idToken: idToken,
+            accessToken: accessToken,
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () => throw const SignInFailedException(
+              'Connessione a Supabase scaduta. Controlla la connessione o riprova.',
+            ),
+          );
       debugPrint('[Auth] 4/4 ✅ Supabase auth completata');
     } on SignInFailedException {
       rethrow;
     } on sb.AuthException catch (e, st) {
-      throw SignInFailedException(
-        e.message,
-        originalError: e,
-        stackTrace: st,
-      );
+      throw SignInFailedException(e.message, originalError: e, stackTrace: st);
     } catch (e, st) {
       throw SignInFailedException(
         'Unexpected error during Google sign-in',
@@ -103,16 +97,9 @@ class SupabaseAuthRepository implements AuthRepository {
     required String password,
   }) async {
     try {
-      await _client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
+      await _client.auth.signInWithPassword(email: email, password: password);
     } on sb.AuthException catch (e, st) {
-      throw SignInFailedException(
-        e.message,
-        originalError: e,
-        stackTrace: st,
-      );
+      throw SignInFailedException(e.message, originalError: e, stackTrace: st);
     }
   }
 
@@ -122,16 +109,9 @@ class SupabaseAuthRepository implements AuthRepository {
     required String password,
   }) async {
     try {
-      await _client.auth.signUp(
-        email: email,
-        password: password,
-      );
+      await _client.auth.signUp(email: email, password: password);
     } on sb.AuthException catch (e, st) {
-      throw SignUpFailedException(
-        e.message,
-        originalError: e,
-        stackTrace: st,
-      );
+      throw SignUpFailedException(e.message, originalError: e, stackTrace: st);
     }
   }
 
@@ -141,11 +121,7 @@ class SupabaseAuthRepository implements AuthRepository {
       await _googleSignIn.signOut();
       await _client.auth.signOut();
     } on sb.AuthException catch (e, st) {
-      throw SignOutFailedException(
-        e.message,
-        originalError: e,
-        stackTrace: st,
-      );
+      throw SignOutFailedException(e.message, originalError: e, stackTrace: st);
     }
   }
 }

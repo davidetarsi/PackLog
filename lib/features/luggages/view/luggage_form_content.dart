@@ -121,7 +121,9 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
       context: context,
       operation: () async {
         if (isEditing) {
-          await ref.read(luggageNotifierProvider.notifier).updateLuggage(luggage);
+          await ref
+              .read(luggageNotifierProvider.notifier)
+              .updateLuggage(luggage);
         } else {
           await ref.read(luggageNotifierProvider.notifier).addLuggage(luggage);
         }
@@ -239,9 +241,11 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
                   SizedBox(width: context.spacingSm),
                   Expanded(
                     child: Text(
-                      'common.approx_volume'.tr(args: [
-                        _selectedSize.approximateVolumeLiters.toString(),
-                      ]),
+                      'common.approx_volume'.tr(
+                        args: [
+                          _selectedSize.approximateVolumeLiters.toString(),
+                        ],
+                      ),
                       style: TextStyle(
                         fontSize: context.fontSizeSm,
                         color: colorScheme.onSurfaceVariant,

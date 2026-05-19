@@ -16,10 +16,7 @@ class CoreAnalyticsService {
   }) {
     return _analytics.logEvent(
       'House_Created',
-      properties: {
-        'house_id': houseId,
-        'is_first_house': totalHouses == 1,
-      },
+      properties: {'house_id': houseId, 'is_first_house': totalHouses == 1},
     );
   }
 
@@ -44,10 +41,7 @@ class CoreAnalyticsService {
   }) {
     return _analytics.logEvent(
       'Trip_Created',
-      properties: {
-        'trip_id': tripId,
-        'is_first_trip': totalTrips == 1,
-      },
+      properties: {'trip_id': tripId, 'is_first_trip': totalTrips == 1},
     );
   }
 }

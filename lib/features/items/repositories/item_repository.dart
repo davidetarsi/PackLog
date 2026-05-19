@@ -27,16 +27,16 @@ abstract class ItemRepository {
   Future<List<ItemModel>> getItemsByHouseId(String houseId);
   Future<bool> deleteItem(String id);
   Future<void> updateItem(ItemModel model);
-  
+
   /// Inserisce multipli oggetti in una singola transazione atomica
   Future<void> insertMultipleItems(List<ItemModel> models);
-  
+
   /// Ottiene gli oggetti di una casa filtrati per spazio specifico
   Future<List<ItemModel>> getItemsBySpaceId(String houseId, String spaceId);
-  
+
   /// Ottiene gli oggetti nel pool generale di una casa (spaceId == null)
   Future<List<ItemModel>> getItemsInGeneralPool(String houseId);
-  
+
   /// Conta gli oggetti in uno spazio specifico
   Future<int> countItemsBySpace(String spaceId);
 

@@ -18,18 +18,14 @@ class SpacesDao extends DatabaseAccessor<AppDatabase> with _$SpacesDaoMixin {
   /// Ottiene tutti gli spazi non eliminati di una casa specifica
   Future<List<Space>> getSpacesByHouse(String houseId) {
     return (select(spaces)
-          ..where(
-            (s) => s.houseId.equals(houseId) & s.isDeleted.equals(false),
-          ))
+          ..where((s) => s.houseId.equals(houseId) & s.isDeleted.equals(false)))
         .get();
   }
 
   /// Ottiene tutti gli spazi non eliminati di una casa come stream
   Stream<List<Space>> watchSpacesByHouse(String houseId) {
     return (select(spaces)
-          ..where(
-            (s) => s.houseId.equals(houseId) & s.isDeleted.equals(false),
-          ))
+          ..where((s) => s.houseId.equals(houseId) & s.isDeleted.equals(false)))
         .watch();
   }
 
@@ -61,11 +57,9 @@ class SpacesDao extends DatabaseAccessor<AppDatabase> with _$SpacesDaoMixin {
     return transaction(() async {
       // Ripristino pool: gli item dello spazio tornano nel pool generale della casa.
       // Agisce solo sugli item non già eliminati per evitare write inutili.
-      await (update(items)
-            ..where(
-              (i) => i.spaceId.equals(id) & i.isDeleted.equals(false),
-            ))
-          .write(
+      await (update(
+        items,
+      )..where((i) => i.spaceId.equals(id) & i.isDeleted.equals(false))).write(
         ItemsCompanion(
           spaceId: const Value(null),
           syncStatus: const Value(SyncStatus.pendingUpdate),
@@ -86,9 +80,7 @@ class SpacesDao extends DatabaseAccessor<AppDatabase> with _$SpacesDaoMixin {
   Future<int> countSpacesByHouse(String houseId) async {
     final query = selectOnly(spaces)
       ..addColumns([spaces.id.count()])
-      ..where(
-        spaces.houseId.equals(houseId) & spaces.isDeleted.equals(false),
-      );
+      ..where(spaces.houseId.equals(houseId) & spaces.isDeleted.equals(false));
 
     final result = await query.getSingleOrNull();
     return result?.read(spaces.id.count()) ?? 0;

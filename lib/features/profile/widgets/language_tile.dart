@@ -54,7 +54,8 @@ class LanguageTile extends StatelessWidget {
                 ),
               ),
             ),
-            if (isSelected) Icon(Icons.check_circle, color: colorScheme.primary),
+            if (isSelected)
+              Icon(Icons.check_circle, color: colorScheme.primary),
           ],
         ),
       ),

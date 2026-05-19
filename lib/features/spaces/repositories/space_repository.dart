@@ -20,7 +20,7 @@ SpaceRepository spaceRepository(Ref ref) {
 }
 
 /// Interfaccia astratta per il repository degli spazi.
-/// 
+///
 /// Definisce le operazioni CRUD per gli spazi/armadi all'interno delle case.
 abstract class SpaceRepository {
   Future<bool> init();
@@ -30,7 +30,7 @@ abstract class SpaceRepository {
   Future<List<SpaceModel>> getSpacesByHouseId(String houseId);
   Future<bool> deleteSpace(String id);
   Future<void> updateSpace(SpaceModel model);
-  
+
   /// Conta il numero di spazi in una casa
   Future<int> countSpacesByHouse(String houseId);
 }

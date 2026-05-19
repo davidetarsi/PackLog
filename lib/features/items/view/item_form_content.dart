@@ -216,9 +216,13 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
         context: context,
         operation: () async {
           if (isEditing) {
-            await ref.read(itemNotifierProvider(houseId).notifier).updateItem(item);
+            await ref
+                .read(itemNotifierProvider(houseId).notifier)
+                .updateItem(item);
           } else {
-            await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
+            await ref
+                .read(itemNotifierProvider(houseId).notifier)
+                .addItem(item);
           }
         },
         errorTitle: 'errors.save_error'.tr(),
@@ -325,10 +329,8 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
             ],
           ),
           SizedBox(height: context.spacingMd),
-          if (_selectedHouseId != null)
-            _buildSpaceSelector(),
-          if (_selectedHouseId != null)
-            SizedBox(height: context.spacingMd),
+          if (_selectedHouseId != null) _buildSpaceSelector(),
+          if (_selectedHouseId != null) SizedBox(height: context.spacingMd),
           TextFormField(
             controller: _descriptionController,
             decoration: InputDecoration(
@@ -359,7 +361,11 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                       width: context.responsive(20),
                       child: const CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(widget.itemId != null ? 'common.save'.tr() : 'common.create'.tr()),
+                  : Text(
+                      widget.itemId != null
+                          ? 'common.save'.tr()
+                          : 'common.create'.tr(),
+                    ),
             ),
           ],
         ],
@@ -527,7 +533,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
 
   Future<void> _showSpacePicker(List spaces) async {
     const defaultSpaceSentinel = '_default_space_sentinel_';
-    
+
     final selected = await showModalBottomSheet<String?>(
       context: context,
       builder: (sheetContext) => Column(
@@ -547,7 +553,10 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
               children: [
                 // Default space option
                 ListTile(
-                  leading: Icon(Icons.inventory_2, size: sheetContext.iconSizeMd),
+                  leading: Icon(
+                    Icons.inventory_2,
+                    size: sheetContext.iconSizeMd,
+                  ),
                   title: Text('spaces.default'.tr()),
                   trailing: _selectedSpaceId == null
                       ? Icon(
@@ -556,7 +565,8 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                           size: sheetContext.iconSizeMd,
                         )
                       : null,
-                  onTap: () => Navigator.pop(sheetContext, defaultSpaceSentinel),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, defaultSpaceSentinel),
                 ),
                 // Spaces
                 ...spaces.map((space) {

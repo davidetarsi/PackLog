@@ -26,8 +26,9 @@ void main() {
         email: 'test@test.com',
       );
       when(() => mockRepo.currentAuthState).thenReturn(expected);
-      when(() => mockRepo.authStateChanges)
-          .thenAnswer((_) => const Stream.empty());
+      when(
+        () => mockRepo.authStateChanges,
+      ).thenAnswer((_) => const Stream.empty());
 
       final container = ProviderContainer(
         overrides: [
@@ -44,10 +45,12 @@ void main() {
 
     test('updates state when auth stream emits', () async {
       final controller = StreamController<AuthState>.broadcast();
-      when(() => mockRepo.currentAuthState)
-          .thenReturn(const AuthState.unauthenticated());
-      when(() => mockRepo.authStateChanges)
-          .thenAnswer((_) => controller.stream);
+      when(
+        () => mockRepo.currentAuthState,
+      ).thenReturn(const AuthState.unauthenticated());
+      when(
+        () => mockRepo.authStateChanges,
+      ).thenAnswer((_) => controller.stream);
 
       final container = ProviderContainer(
         overrides: [
@@ -61,10 +64,7 @@ void main() {
         controller.close();
       });
 
-      expect(
-        container.read(authNotifierProvider),
-        isA<Unauthenticated>(),
-      );
+      expect(container.read(authNotifierProvider), isA<Unauthenticated>());
 
       const authenticated = AuthState.authenticated(
         userId: 'user-2',
@@ -84,8 +84,9 @@ void main() {
         email: 'test@test.com',
       );
       when(() => mockRepo.currentAuthState).thenReturn(state);
-      when(() => mockRepo.authStateChanges)
-          .thenAnswer((_) => const Stream.empty());
+      when(
+        () => mockRepo.authStateChanges,
+      ).thenAnswer((_) => const Stream.empty());
 
       final container = ProviderContainer(
         overrides: [
@@ -100,10 +101,12 @@ void main() {
     });
 
     test('returns null when unauthenticated', () {
-      when(() => mockRepo.currentAuthState)
-          .thenReturn(const AuthState.unauthenticated());
-      when(() => mockRepo.authStateChanges)
-          .thenAnswer((_) => const Stream.empty());
+      when(
+        () => mockRepo.currentAuthState,
+      ).thenReturn(const AuthState.unauthenticated());
+      when(
+        () => mockRepo.authStateChanges,
+      ).thenAnswer((_) => const Stream.empty());
 
       final container = ProviderContainer(
         overrides: [

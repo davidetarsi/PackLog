@@ -62,10 +62,7 @@ class QuantityBadge extends StatelessWidget {
     );
 
     if (onTap != null) {
-      return GestureDetector(
-        onTap: onTap,
-        child: widget,
-      );
+      return GestureDetector(onTap: onTap, child: widget);
     }
 
     return widget;
@@ -96,7 +93,9 @@ class OnTripQuantityBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       ),
       child: Text(
-        showPartial ? '$text ${'common.in_transit'.tr().toLowerCase()}' : 'common.in_transit'.tr(),
+        showPartial
+            ? '$text ${'common.in_transit'.tr().toLowerCase()}'
+            : 'common.in_transit'.tr(),
         style: TextStyle(
           color: colorScheme.onTertiaryContainer,
           fontSize: context.fontSizeXxs,
@@ -122,7 +121,11 @@ class OnTripBadge extends StatelessWidget {
       ),
       child: Text(
         'common.in_transit'.tr(),
-        style: TextStyle(color: colorScheme.onTertiary, fontSize: context.fontSizeXxs, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          color: colorScheme.onTertiary,
+          fontSize: context.fontSizeXxs,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -143,7 +146,11 @@ class TemporaryBadge extends StatelessWidget {
       ),
       child: Text(
         'common.temporary'.tr(),
-        style: TextStyle(color: appColors.itemTemporaryText, fontSize: context.fontSizeXxs, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          color: appColors.itemTemporaryText,
+          fontSize: context.fontSizeXxs,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

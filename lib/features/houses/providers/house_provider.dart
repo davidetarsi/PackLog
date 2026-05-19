@@ -26,10 +26,9 @@ class HouseNotifier extends _$HouseNotifier {
       await repository!.addHouse(model);
       final houses = await repository!.getAllHouses();
       state = AsyncData(houses);
-      ref.read(coreAnalyticsServiceProvider).trackHouseCreated(
-        houseId: model.id,
-        totalHouses: houses.length,
-      );
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackHouseCreated(houseId: model.id, totalHouses: houses.length);
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -104,7 +103,7 @@ class HouseNotifier extends _$HouseNotifier {
     state = const AsyncLoading();
     try {
       final houses = await repository!.getAllHouses();
-      
+
       // Aggiorna ogni casa: solo quella selezionata sarà isPrimary = true
       for (final house in houses) {
         if (house.isPrimary && house.id != houseId) {
@@ -115,7 +114,7 @@ class HouseNotifier extends _$HouseNotifier {
           await repository!.updateHouse(house.copyWith(isPrimary: true));
         }
       }
-      
+
       // Ricarica le case aggiornate
       final updatedHouses = await repository!.getAllHouses();
       state = AsyncData(updatedHouses);

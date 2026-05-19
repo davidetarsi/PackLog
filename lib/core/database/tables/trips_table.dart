@@ -68,8 +68,7 @@ class Trips extends Table with SyncableTable {
   // ── Soft Delete / Sync ──────────────────────────────────────────────────────
 
   /// Flag di eliminazione logica.
-  BoolColumn get isDeleted =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 
   /// Timestamp dell'ultima sincronizzazione con il cloud.
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();

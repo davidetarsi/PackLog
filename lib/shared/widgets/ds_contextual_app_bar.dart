@@ -17,7 +17,8 @@ import 'package:flutter/material.dart';
 /// Deve essere usato nel parametro `appBar` di [Scaffold].
 /// Wrappato automaticamente in [PreferredSize] per soddisfare l'interfaccia
 /// [PreferredSizeWidget] richiesta da [Scaffold.appBar].
-class DsContextualAppBar extends StatelessWidget implements PreferredSizeWidget {
+class DsContextualAppBar extends StatelessWidget
+    implements PreferredSizeWidget {
   /// AppBar mostrata in modalità normale.
   final PreferredSizeWidget normalAppBar;
 

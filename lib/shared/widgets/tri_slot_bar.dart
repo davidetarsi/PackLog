@@ -23,7 +23,7 @@ class TriSlotBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hPadding = horizontalPadding ?? context.spacingMd;
-     // Larghezza fissa per slot laterali
+    // Larghezza fissa per slot laterali
 
     // Se non ci sono azioni laterali, restituiamo solo il centro per efficienza
     if (left == null && right == null) {
@@ -45,7 +45,7 @@ class TriSlotBar extends StatelessWidget {
             width: sideSlotWidth,
             child: left ?? const SizedBox.shrink(),
           ),
-          
+
           SizedBox(width: context.spacingSm),
 
           // Slot Centrale (Flessibile)

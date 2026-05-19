@@ -379,7 +379,7 @@ class _CreatePillTab extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: context.spacingMd + context.spacingXs, // 20 scalato
-            vertical: context.spacingSm + context.spacingXs,   // 12 scalato
+            vertical: context.spacingSm + context.spacingXs, // 12 scalato
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

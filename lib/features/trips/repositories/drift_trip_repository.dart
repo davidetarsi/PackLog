@@ -24,7 +24,12 @@ class DriftTripRepository implements TripRepository {
   final DatabaseService _dbService;
   final String? Function() _getCurrentUserId;
 
-  DriftTripRepository(this._dao, this._luggagesDao, this._dbService, this._getCurrentUserId);
+  DriftTripRepository(
+    this._dao,
+    this._luggagesDao,
+    this._dbService,
+    this._getCurrentUserId,
+  );
 
   @override
   Future<bool> init() async {
@@ -172,7 +177,10 @@ class DriftTripRepository implements TripRepository {
     );
 
     if (!result.success) {
-      throw EntitySaveException('duplicateTrip($originalTripId)', cause: result.error);
+      throw EntitySaveException(
+        'duplicateTrip($originalTripId)',
+        cause: result.error,
+      );
     }
 
     debugPrint('[TripRepo] Viaggio duplicato: $originalTripId -> $newTripId');
@@ -202,7 +210,10 @@ class DriftTripRepository implements TripRepository {
     );
 
     if (!result.success) {
-      throw EntitySaveException('updateTrip(${trip.name})', cause: result.error);
+      throw EntitySaveException(
+        'updateTrip(${trip.name})',
+        cause: result.error,
+      );
     }
 
     debugPrint(
