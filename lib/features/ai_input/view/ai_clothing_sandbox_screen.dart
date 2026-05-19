@@ -15,8 +15,22 @@ import '../../items/repositories/item_repository.dart';
 import '../model/clothing_analysis_result.dart';
 import '../service/ai_clothing_analyzer_service.dart';
 
-/// AI Bulk Import screen: picks up to 5 images, runs them through GPT-4o Vision
-/// sequentially, and lets the user review/edit results before saving to the DB.
+/// Raggruppa una foto sorgente con i risultati AI estratti da essa.
+class _PhotoGroup {
+  final File photo;
+  final List<ClothingAnalysisResult> results;
+  final List<TextEditingController> controllers;
+
+  _PhotoGroup({
+    required this.photo,
+    required this.results,
+    required this.controllers,
+  });
+}
+
+/// AI Bulk Import screen: picks up to 5 images (gallery or camera), runs them
+/// through GPT-4o Vision sequentially, and lets the user review/edit results
+/// before saving to the DB.
 ///
 /// Not wired to any provider for its own AI state — uses local state intentionally.
 class AiClothingSandboxScreen extends ConsumerStatefulWidget {
@@ -33,8 +47,7 @@ class _AiClothingSandboxScreenState
     extends ConsumerState<AiClothingSandboxScreen> {
   // ── Local state ─────────────────────────────────────────────────────────────
 
-  List<ClothingAnalysisResult> _results = [];
-  final List<TextEditingController> _nameControllers = [];
+  final List<_PhotoGroup> _photoGroups = [];
   bool _isLoading = false;
   String? _errorMessage;
   late String _selectedHouseId = widget.houseId;
@@ -43,6 +56,13 @@ class _AiClothingSandboxScreenState
   int _totalImages = 0;
 
   final _uuid = const Uuid();
+
+  // ── Computed helpers ─────────────────────────────────────────────────────────
+
+  int get _totalPhotosSelected => _photoGroups.length;
+  int get _remainingSlots => 5 - _totalPhotosSelected;
+  List<ClothingAnalysisResult> get _allResults =>
+      _photoGroups.expand((g) => g.results).toList();
 
   // ── Service ──────────────────────────────────────────────────────────────────
 
@@ -55,54 +75,99 @@ class _AiClothingSandboxScreenState
 
   @override
   void dispose() {
-    for (final c in _nameControllers) {
-      c.dispose();
+    for (final group in _photoGroups) {
+      for (final c in group.controllers) {
+        c.dispose();
+      }
     }
     super.dispose();
   }
 
-  // ── Logic ────────────────────────────────────────────────────────────────────
+  // ── Picker ───────────────────────────────────────────────────────────────────
 
-  Future<void> _pickAndProcessImages() async {
-    final pickedFiles = await ImagePicker().pickMultiImage(imageQuality: 80);
-    if (pickedFiles.isEmpty) return;
+  Future<void> _showPickerSheet() async {
+    if (_remainingSlots <= 0) return;
 
-    if (pickedFiles.length > 5) {
-      _showErrorSnackBar('Puoi selezionare al massimo 5 immagini alla volta.');
-      return;
-    }
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Galleria'),
+              subtitle: Text(
+                'Max $_remainingSlots ${_remainingSlots == 1 ? 'foto' : 'foto'} selezionabili',
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickFromGallery();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Fotocamera'),
+              subtitle: const Text('Scatta una foto'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickFromCamera();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
+  Future<void> _pickFromGallery() async {
+    final pickedFiles = await ImagePicker().pickMultiImage(
+      imageQuality: 80,
+      limit: _remainingSlots,
+    );
+    if (pickedFiles.isEmpty || !mounted) return;
+    await _processFiles(pickedFiles.map((f) => File(f.path)).toList());
+  }
+
+  Future<void> _pickFromCamera() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 80,
+    );
+    if (picked == null || !mounted) return;
+    await _processFiles([File(picked.path)]);
+  }
+
+  // ── Processing ───────────────────────────────────────────────────────────────
+
+  Future<void> _processFiles(List<File> files) async {
     if (!mounted) return;
 
     setState(() {
-      _results = [];
-      for (final c in _nameControllers) {
-        c.dispose();
-      }
-      _nameControllers.clear();
-      _errorMessage = null;
-      _rawJsonDump = null;
       _isLoading = true;
       _processingIndex = 0;
-      _totalImages = pickedFiles.length;
+      _totalImages = files.length;
+      _errorMessage = null;
     });
 
     try {
-      for (var i = 0; i < pickedFiles.length; i++) {
+      for (var i = 0; i < files.length; i++) {
         if (!mounted) return;
         setState(() => _processingIndex = i + 1);
 
-        final file = File(pickedFiles[i].path);
+        final file = files[i];
         final (processedBytes: _, :result, :rawJson) = await _service
             .processWithIntermediateResult(file);
 
         if (!mounted) return;
         setState(() {
-          _results.addAll(result);
-          _rawJsonDump = rawJson; // last response kept for debug panel
-          for (final item in result) {
-            _nameControllers.add(TextEditingController(text: item.name));
-          }
+          final controllers = result
+              .map((item) => TextEditingController(text: item.name))
+              .toList();
+          _photoGroups.add(
+            _PhotoGroup(photo: file, results: result, controllers: controllers),
+          );
+          _rawJsonDump = rawJson;
         });
       }
     } on GptLimitExceededException catch (e) {
@@ -123,22 +188,28 @@ class _AiClothingSandboxScreenState
     }
   }
 
-  void _deleteItem(int index) {
+  // ── Item actions ─────────────────────────────────────────────────────────────
+
+  void _deleteItem(int groupIndex, int itemIndex) {
     setState(() {
-      _results.removeAt(index);
-      _nameControllers[index].dispose();
-      _nameControllers.removeAt(index);
+      _photoGroups[groupIndex].controllers[itemIndex].dispose();
+      _photoGroups[groupIndex].results.removeAt(itemIndex);
+      _photoGroups[groupIndex].controllers.removeAt(itemIndex);
+      if (_photoGroups[groupIndex].results.isEmpty) {
+        _photoGroups.removeAt(groupIndex);
+      }
     });
   }
 
   Future<void> _saveItems() async {
-    if (_results.isEmpty) return;
+    final allResults = _allResults;
+    if (allResults.isEmpty) return;
 
     setState(() => _isLoading = true);
 
     try {
       final now = DateTime.now();
-      final items = _results.map((item) {
+      final items = allResults.map((item) {
         return ItemModel(
           id: _uuid.v4(),
           houseId: _selectedHouseId,
@@ -158,11 +229,12 @@ class _AiClothingSandboxScreenState
 
       final saved = items.length;
       setState(() {
-        _results.clear();
-        for (final c in _nameControllers) {
-        c.dispose();
-      }
-        _nameControllers.clear();
+        for (final group in _photoGroups) {
+          for (final c in group.controllers) {
+            c.dispose();
+          }
+        }
+        _photoGroups.clear();
         _rawJsonDump = null;
         _errorMessage = null;
       });
@@ -209,20 +281,23 @@ class _AiClothingSandboxScreenState
 
   @override
   Widget build(BuildContext context) {
+    final canAddMore = !_isLoading && _remainingSlots > 0;
+
     return Scaffold(
       appBar: AppBar(title: const Text('AI Bulk Import ✨')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isLoading ? null : _pickAndProcessImages,
+        onPressed: canAddMore ? _showPickerSheet : null,
         icon: const Icon(Icons.add_photo_alternate),
-        label: const Text('Scegli immagini'),
+        label: _totalPhotosSelected == 0
+            ? const Text('Scegli immagini')
+            : Text('Aggiungi foto ($_totalPhotosSelected/5)'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      bottomNavigationBar: _results.isNotEmpty
+      bottomNavigationBar: _photoGroups.isNotEmpty
           ? _buildBottomBar(context)
           : null,
       body: SafeArea(
         child: SingleChildScrollView(
-          // bottom: 100 lascia spazio al FAB (56px) + safe area + respiro
           padding: EdgeInsets.fromLTRB(
             context.spacingMd,
             context.spacingMd,
@@ -237,7 +312,7 @@ class _AiClothingSandboxScreenState
 
   Widget _buildBody(BuildContext context) {
     if (_isLoading) return _buildLoading(context);
-    if (_results.isEmpty) return _buildEmptyState(context);
+    if (_photoGroups.isEmpty) return _buildEmptyState(context);
     return _buildResults(context);
   }
 
@@ -297,10 +372,10 @@ class _AiClothingSandboxScreenState
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          if (_results.isNotEmpty) ...[
+          if (_photoGroups.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              '${_results.length} capi trovati finora',
+              '${_allResults.length} capi trovati finora',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.primary,
               ),
@@ -314,6 +389,7 @@ class _AiClothingSandboxScreenState
   // ── Results state ────────────────────────────────────────────────────────────
 
   Widget _buildResults(BuildContext context) {
+    final allResults = _allResults;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -332,12 +408,11 @@ class _AiClothingSandboxScreenState
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    '${_results.length} ${_results.length == 1 ? 'capo' : 'capi'} identificati',
+                    '${allResults.length} ${allResults.length == 1 ? 'capo' : 'capi'} identificati',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  const Spacer(),
                 ],
               ),
               const SizedBox(height: 6),
@@ -351,23 +426,38 @@ class _AiClothingSandboxScreenState
           ),
         ),
 
-        // ── Editable item cards ───────────────────────────────────────────────
-        ...List.generate(_results.length, (i) {
-          return Padding(
-            padding: EdgeInsets.only(bottom: i < _results.length - 1 ? 12 : 0),
-            child: _EditableResultCard(
-              item: _results[i],
-              index: i + 1,
-              controller: _nameControllers[i],
-              onNameChanged: (value) {
-                setState(() {
-                  _results[i] = _results[i].copyWith(name: value);
-                });
-              },
-              onDelete: () => _deleteItem(i),
+        // ── Grouped by photo ──────────────────────────────────────────────────
+        for (var gi = 0; gi < _photoGroups.length; gi++) ...[
+          _PhotoGroupHeader(
+            photo: _photoGroups[gi].photo,
+            photoIndex: gi + 1,
+            totalPhotos: _photoGroups.length,
+          ),
+          const SizedBox(height: 8),
+          for (var ii = 0; ii < _photoGroups[gi].results.length; ii++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _EditableResultCard(
+                item: _photoGroups[gi].results[ii],
+                index: ii + 1,
+                controller: _photoGroups[gi].controllers[ii],
+                onNameChanged: (value) {
+                  setState(() {
+                    _photoGroups[gi].results[ii] = _photoGroups[gi].results[ii]
+                        .copyWith(name: value);
+                  });
+                },
+                onDelete: () => _deleteItem(gi, ii),
+              ),
             ),
-          );
-        }),
+          if (gi < _photoGroups.length - 1)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Divider(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+            ),
+        ],
 
         // ── Error banner ──────────────────────────────────────────────────────
         if (_errorMessage != null) ...[
@@ -407,7 +497,6 @@ class _AiClothingSandboxScreenState
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ── House dropdown ──────────────────────────────────────────────
             Expanded(
               child: housesAsync.when(
                 loading: () => const LinearProgressIndicator(),
@@ -442,7 +531,6 @@ class _AiClothingSandboxScreenState
               ),
             ),
             const SizedBox(width: 12),
-            // ── Save button ─────────────────────────────────────────────────
             ElevatedButton(
               onPressed: _isLoading ? null : _saveItems,
               style: ElevatedButton.styleFrom(
@@ -453,11 +541,44 @@ class _AiClothingSandboxScreenState
                   vertical: 14,
                 ),
               ),
-              child: Text('Salva ${_results.length}'),
+              child: Text('Salva ${_allResults.length}'),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Photo group header ────────────────────────────────────────────────────────
+
+class _PhotoGroupHeader extends StatelessWidget {
+  final File photo;
+  final int photoIndex;
+  final int totalPhotos;
+
+  const _PhotoGroupHeader({
+    required this.photo,
+    required this.photoIndex,
+    required this.totalPhotos,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(photo, width: 56, height: 56, fit: BoxFit.cover),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          totalPhotos > 1 ? 'Foto $photoIndex di $totalPhotos' : 'Foto',
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }
@@ -508,7 +629,7 @@ class _EditableResultCard extends StatelessWidget {
                     '$index',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.w600, // labelSmall ≈ 12px → w600
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
