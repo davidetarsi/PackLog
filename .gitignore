@@ -62,5 +62,6 @@ app.*.map.json
 docs/
 
 # Firebase / Google Services (contiene project ID e client ID)
+
 ios/Runner/GoogleService-Info.plist
 
