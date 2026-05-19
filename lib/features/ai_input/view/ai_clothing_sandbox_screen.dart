@@ -459,7 +459,7 @@ class _AiClothingSandboxScreenState
             ),
         ],
 
-        // ── Error banner ──────────────────────────────────────────────────────
+        // ── Error banner ─────────────────────────────────────────────────────
         if (_errorMessage != null) ...[
           const SizedBox(height: 12),
           _ErrorBanner(message: _errorMessage!),
