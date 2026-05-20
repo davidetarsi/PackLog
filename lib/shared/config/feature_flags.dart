@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 /// ```dart
 /// if (!kEnableAiSandbox) return _ErrorScreen(message: '...');
 /// ```
+/// 
 const bool kEnableAiSandbox = bool.fromEnvironment(
   'ENABLE_AI_SANDBOX',
   defaultValue: kDebugMode,
