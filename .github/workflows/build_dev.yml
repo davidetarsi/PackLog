@@ -36,7 +36,6 @@ jobs:
       - name: 🔐 Decode and convert debug keystore to JKS
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           echo "$KEYSTORE_B64" | base64 --decode > /tmp/debug.p12
           keytool -importkeystore \
@@ -44,8 +43,8 @@ jobs:
             -srcstoretype PKCS12 \
             -destkeystore android/app/debug.keystore \
             -deststoretype JKS \
-            -srcalias "$KEY_ALIAS" \
-            -destalias "$KEY_ALIAS" \
+            -srcalias androiddebugkey \
+            -destalias androiddebugkey \
             -srcstorepass android \
             -deststorepass android \
             -srckeypass android \
@@ -56,7 +55,7 @@ jobs:
         run: |
           echo "storePassword=android" > android/key.properties
           echo "keyPassword=android" >> android/key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "keyAlias=androiddebugkey" >> android/key.properties
           echo "storeFile=debug.keystore" >> android/key.properties
 
       - name: 📖 Extract Version from pubspec.yaml
