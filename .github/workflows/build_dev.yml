@@ -33,6 +33,31 @@ jobs:
         # evitare blocchi se ci sono rimasugli di cache
         run: dart run build_runner build -d
 
+      - name: 🔐 Decode and convert debug keystore to JKS
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 --decode > /tmp/debug.p12
+          keytool -importkeystore \
+            -srckeystore /tmp/debug.p12 \
+            -srcstoretype PKCS12 \
+            -destkeystore android/app/debug.keystore \
+            -deststoretype JKS \
+            -srcalias androiddebugkey \
+            -destalias androiddebugkey \
+            -srcstorepass android \
+            -deststorepass android \
+            -srckeypass android \
+            -destkeypass android \
+            -noprompt
+
+      - name: 🔑 Create key.properties (debug signing)
+        run: |
+          echo "storePassword=android" > android/key.properties
+          echo "keyPassword=android" >> android/key.properties
+          echo "keyAlias=androiddebugkey" >> android/key.properties
+          echo "storeFile=debug.keystore" >> android/key.properties
+
       - name: 📖 Extract Version from pubspec.yaml
         id: get_version
         run: |
@@ -42,7 +67,14 @@ jobs:
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: 🏗️ Build DEV APK
-        run: flutter build apk --flavor dev --target lib/main_dev.dart --dart-define=GEOAPIFY_KEY=DEV_KEY_PLACEHOLDER --target-platform android-arm64
+        run: |
+          flutter build apk --flavor dev --target lib/main_dev.dart --target-platform android-arm64 \
+            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+            --dart-define=AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }} \
+            --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }} \
+            --dart-define=ENABLE_AI_SANDBOX=true
 
       # ── NUOVO STEP: Ridenominazione del file ──
       - name: 🏷️ Rename APK File
