@@ -35,7 +35,7 @@ jobs:
 
       - name: 🔐 Decode and convert debug keystore to JKS
         env:
-          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
           echo "$KEYSTORE_B64" | base64 --decode > /tmp/debug.p12
           keytool -importkeystore \
