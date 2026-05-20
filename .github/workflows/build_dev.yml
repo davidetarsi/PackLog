@@ -33,6 +33,16 @@ jobs:
         # evitare blocchi se ci sono rimasugli di cache
         run: dart run build_runner build -d
 
+      - name: 🔐 Decode Debug Keystore
+        run: echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 --decode > android/app/debug.keystore
+
+      - name: 🔑 Create key.properties (debug signing)
+        run: |
+          echo "storePassword=${{ secrets.DEBUG_KEYSTORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.DEBUG_KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.DEBUG_KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=debug.keystore" >> android/key.properties
+
       - name: 📖 Extract Version from pubspec.yaml
         id: get_version
         run: |
@@ -48,7 +58,8 @@ jobs:
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
             --dart-define=AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }} \
-            --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+            --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }} \
+            --dart-define=ENABLE_AI_SANDBOX=true
 
       # ── NUOVO STEP: Ridenominazione del file ──
       - name: 🏷️ Rename APK File
