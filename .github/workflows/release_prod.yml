@@ -9,6 +9,8 @@ jobs:
   build-and-release:
     name: Build & Release PROD
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: ⬇️ Checkout Repository
