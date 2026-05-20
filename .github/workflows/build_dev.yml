@@ -34,26 +34,31 @@ jobs:
         run: dart run build_runner build -d
 
       - name: 🔐 Decode and convert debug keystore to JKS
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          STORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 --decode > /tmp/debug.p12
+          echo "$KEYSTORE_B64" | base64 --decode > /tmp/debug.p12
           keytool -importkeystore \
             -srckeystore /tmp/debug.p12 \
             -srcstoretype PKCS12 \
             -destkeystore android/app/debug.keystore \
             -deststoretype JKS \
-            -srcalias ${{ secrets.DEBUG_KEY_ALIAS }} \
-            -destalias ${{ secrets.DEBUG_KEY_ALIAS }} \
-            -srcstorepass ${{ secrets.DEBUG_KEYSTORE_PASSWORD }} \
-            -deststorepass ${{ secrets.DEBUG_KEYSTORE_PASSWORD }} \
-            -srckeypass ${{ secrets.DEBUG_KEY_PASSWORD }} \
-            -destkeypass ${{ secrets.DEBUG_KEY_PASSWORD }} \
+            -srcalias "$KEY_ALIAS" \
+            -destalias "$KEY_ALIAS" \
+            -srcstorepass "$STORE_PASS" \
+            -deststorepass "$STORE_PASS" \
+            -srckeypass "$KEY_PASS" \
+            -destkeypass "$KEY_PASS" \
             -noprompt
 
       - name: 🔑 Create key.properties (debug signing)
         run: |
-          echo "storePassword=${{ secrets.DEBUG_KEYSTORE_PASSWORD }}" > android/key.properties
-          echo "keyPassword=${{ secrets.DEBUG_KEY_PASSWORD }}" >> android/key.properties
-          echo "keyAlias=${{ secrets.DEBUG_KEY_ALIAS }}" >> android/key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
           echo "storeFile=debug.keystore" >> android/key.properties
 
       - name: 📖 Extract Version from pubspec.yaml
