@@ -39,6 +39,7 @@ jobs:
         # Questo step verrà eseguito SOLO se lo step precedente non ha fatto 'exit 1'
         uses: mathieudutour/github-tag-action@v6.2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+          github_token: ${{ secrets.PAT_TOKEN }}
           custom_tag: ${{ steps.get_version.outputs.VERSION }}
           tag_prefix: ""

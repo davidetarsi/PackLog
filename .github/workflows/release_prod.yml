@@ -49,8 +49,20 @@ jobs:
 
       - name: 🏗️ Build PROD AppBundle (AAB) & APK
         run: |
-          flutter build appbundle --flavor prod --target lib/main_prod.dart --release --dart-define=GEO_API_KEY=${{ secrets.GEOAPIFY_KEY_PROD }}
-          flutter build apk --flavor prod --target lib/main_prod.dart --release --dart-define=GEO_API_KEY=${{ secrets.GEOAPIFY_KEY_PROD }}
+          flutter build appbundle --flavor prod --target lib/main_prod.dart --release \
+            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+            --dart-define=AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }} \
+            --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }} \
+            --dart-define=ENABLE_AI_SANDBOX=true
+          flutter build apk --flavor prod --target lib/main_prod.dart --release \
+            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+            --dart-define=AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }} \
+            --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }} \
+            --dart-define=ENABLE_AI_SANDBOX=true
 
       - name: 🏷️ Create GitHub Release
         uses: softprops/action-gh-release@v2
