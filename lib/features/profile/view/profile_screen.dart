@@ -343,11 +343,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
           ),
 
-          ListTile(
+          /* ListTile(
             leading: const Icon(Icons.storage),
             title: Text('common.storage'.tr()),
             subtitle: Text('common.data_saved_locally'.tr()),
-          ),
+          ), */
 
           const Divider(),
 
