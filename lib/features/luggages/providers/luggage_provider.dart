@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/sync/sync_provider.dart';
 import '../model/luggage_model.dart';
 import '../repositories/luggage_repository.dart';
 
@@ -26,6 +28,10 @@ class LuggageNotifier extends _$LuggageNotifier {
       await repository!.addLuggage(model);
       final luggages = await repository!.getAllLuggages();
       state = AsyncData(luggages);
+      ref.read(coreAnalyticsServiceProvider).trackLuggageCreated(
+        size: model.sizeType.name,
+      );
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -38,6 +44,7 @@ class LuggageNotifier extends _$LuggageNotifier {
       await repository!.updateLuggage(model);
       final luggages = await repository!.getAllLuggages();
       state = AsyncData(luggages);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -50,6 +57,7 @@ class LuggageNotifier extends _$LuggageNotifier {
       await repository!.deleteLuggage(id);
       final luggages = await repository!.getAllLuggages();
       state = AsyncData(luggages);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }

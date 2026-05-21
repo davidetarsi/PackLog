@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/sync/sync_provider.dart';
 import '../model/space_model.dart';
 import '../repositories/space_repository.dart';
 
@@ -26,6 +28,8 @@ class SpaceNotifier extends _$SpaceNotifier {
       await repository!.addSpace(model);
       final spaces = await repository!.getAllSpaces();
       state = AsyncData(spaces);
+      ref.read(coreAnalyticsServiceProvider).trackSpaceCreated();
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -38,6 +42,7 @@ class SpaceNotifier extends _$SpaceNotifier {
       await repository!.updateSpace(model);
       final spaces = await repository!.getAllSpaces();
       state = AsyncData(spaces);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -50,6 +55,7 @@ class SpaceNotifier extends _$SpaceNotifier {
       await repository!.deleteSpace(id);
       final spaces = await repository!.getAllSpaces();
       state = AsyncData(spaces);
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
