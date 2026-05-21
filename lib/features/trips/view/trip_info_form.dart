@@ -70,6 +70,9 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
         final house =
             houses.where((h) => h.id == _destinationHouseId).firstOrNull;
         _destinationHouseName = house?.displayName;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _notifyChanged();
+        });
       });
     }
   }
@@ -301,6 +304,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                 _destinationLocation = null;
               } else {
                 _destinationHouseId = null;
+                _destinationHouseName = null;
               }
             });
             _notifyChanged();
