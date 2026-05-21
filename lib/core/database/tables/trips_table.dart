@@ -9,7 +9,7 @@ class Trips extends Table with SyncableTable {
   TextColumn get id => text()();
 
   /// Nome del viaggio
-  TextColumn get name => text().withLength(min: 1, max: 200)();
+  TextColumn get name => text()();
 
   /// Descrizione opzionale
   TextColumn get description => text().nullable()();

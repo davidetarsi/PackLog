@@ -240,7 +240,8 @@
     "confirm_all_arrived": "Confirm all arrived",
     "all_items_confirmed": "All items confirmed",
     "no_destination": "No destination",
-    "add_clothes": "Add clothes"
+    "add_clothes": "Add clothes",
+    "unnamed_destination": "Trip"
   },
   "common": {
     "save": "Save",

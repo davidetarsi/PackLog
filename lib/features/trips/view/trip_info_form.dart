@@ -12,7 +12,6 @@ import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 
 class TripInfoForm extends ConsumerStatefulWidget {
-  final String? initialName;
   final String? initialDescription;
   final DateTime? initialDepartureDateTime;
   final DateTime? initialReturnDateTime;
@@ -20,7 +19,6 @@ class TripInfoForm extends ConsumerStatefulWidget {
   final LocationSuggestionModel? initialDestinationLocation;
 
   final void Function({
-    String? name,
     String? description,
     DateTime? departureDateTime,
     DateTime? returnDateTime,
@@ -31,7 +29,6 @@ class TripInfoForm extends ConsumerStatefulWidget {
 
   const TripInfoForm({
     super.key,
-    this.initialName,
     this.initialDescription,
     this.initialDepartureDateTime,
     this.initialReturnDateTime,
@@ -45,7 +42,6 @@ class TripInfoForm extends ConsumerStatefulWidget {
 }
 
 class _TripInfoFormState extends ConsumerState<TripInfoForm> {
-  late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
@@ -58,7 +54,6 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.initialName ?? '');
     _descriptionController = TextEditingController(
       text: widget.initialDescription ?? '',
     );
@@ -71,14 +66,12 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
   void _notifyChanged() {
     widget.onChanged(
-      name: _nameController.text.trim(),
       description: _descriptionController.text.trim().isEmpty
           ? null
           : _descriptionController.text.trim(),
@@ -115,7 +108,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       context: context,
       title: 'trips.select_destination_house'.tr(),
       items: houses,
-      getLabel: (h) => h.name,
+      getLabel: (h) => h.displayName,
       getSubtitle: (h) => h.description,
       getIcon: (_) => Icons.home_outlined,
       selected: houses.where((h) => h.id == _destinationHouseId).firstOrNull,
@@ -140,7 +133,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       return 'common.none_selected'.tr();
     }
     final house = houses.where((h) => h.id == _destinationHouseId).firstOrNull;
-    return house?.name ?? 'common.unknown_house'.tr();
+    return house?.displayName ?? 'common.unknown_house'.tr();
   }
 
   @override
@@ -151,38 +144,6 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Nome viaggio ───────────────────────────────────────────────
-        Padding(
-          padding: EdgeInsets.symmetric(vertical: context.spacingSm),
-          child: TextFormField(
-            controller: _nameController,
-            style: TextStyle(
-              fontSize: context.fontSizeXl,
-              fontWeight: FontWeight.w700,
-            ),
-            decoration: InputDecoration(
-              hintText: 'trips.name_hint'.tr(),
-              hintStyle: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.normal,
-              ),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-            ),
-            onChanged: (_) => _notifyChanged(),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'common.name_required_validation'.tr();
-              }
-              return null;
-            },
-          ),
-        ),
-
-        SizedBox(height: context.spacingMd),
-
         // ── Date - riga unica con range picker ─────────────────────────
         Card(
           margin: EdgeInsets.zero,

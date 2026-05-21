@@ -239,7 +239,8 @@
     "confirm_all_arrived": "Conferma tutto arrivato",
     "all_items_confirmed": "Tutti gli oggetti confermati",
     "no_destination": "Nessuna destinazione",
-    "add_clothes": "Aggiungi vestiti"
+    "add_clothes": "Aggiungi vestiti",
+    "unnamed_destination": "Viaggio"
   },
   "common": {
     "save": "Salva",
