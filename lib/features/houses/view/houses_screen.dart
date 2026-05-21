@@ -136,14 +136,14 @@ class _HouseCard extends ConsumerWidget {
         if (success && context.mounted) {
           AppSnackBar.showSuccess(
             context,
-            'dialogs.copy_success'.tr(args: [house.name]),
+            'dialogs.copy_success'.tr(args: [house.displayName]),
           );
         }
       case EntityContextMenuAction.delete:
         final confirmed = await DialogHelpers.showDeleteConfirmation(
           context: context,
           itemType: 'common.house_type'.tr(),
-          itemName: house.name,
+          itemName: house.displayName,
         );
         if (confirmed && context.mounted) {
           final success = await ErrorRetryDialog.executeWithRetry(
@@ -154,7 +154,7 @@ class _HouseCard extends ConsumerWidget {
                   .deleteHouse(house.id);
             },
             errorTitle: 'common.error'.tr(),
-            errorMessage: 'errors.delete_failed'.tr(args: [house.name]),
+            errorMessage: 'errors.delete_failed'.tr(args: [house.displayName]),
           );
           if (success && context.mounted) {
             AppSnackBar.showSuccess(context, 'houses.delete'.tr());
@@ -236,7 +236,7 @@ class _HouseCard extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              house.name,
+                              house.displayName,
                               style: TextStyle(
                                 fontWeight: FontWeight.w700, // 20px → w700
                                 fontSize: context.fontSizeLg,
@@ -244,8 +244,9 @@ class _HouseCard extends ConsumerWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (house.locationDisplayName != null ||
-                                house.description != null) ...[
+                            if (house.name.isNotEmpty &&
+                                (house.locationDisplayName != null ||
+                                    house.description != null)) ...[
                               SizedBox(height: context.spacingXs),
                               Row(
                                 children: [
