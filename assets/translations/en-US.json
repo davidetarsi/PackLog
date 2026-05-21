@@ -26,6 +26,7 @@
     "no_houses_title": "No houses yet",
     "name_required": "Name*",
     "name_label": "Name *",
+    "name_optional_hint": "Optional — leave blank to use the city name",
     "location_required": "Location*",
     "location_label": "Location *",
     "location_hint": "Search for city, region or state...",

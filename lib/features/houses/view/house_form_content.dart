@@ -154,25 +154,6 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextFormField(
-            controller: _nameController,
-            autofocus: widget.houseId == null,
-            decoration: InputDecoration(
-              labelText: 'houses.name_label'.tr(),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(
-                  AppConstants.inputBorderRadius,
-                ),
-              ),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'common.name_required_validation'.tr();
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 24),
           LocationAutocompleteField(
             labelText: 'houses.location_label'.tr(),
             initialValue: _locationText,
@@ -184,6 +165,19 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
                 _locationText = location.displayName;
               });
             },
+          ),
+          const SizedBox(height: 24),
+          TextFormField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              labelText: 'houses.name_label'.tr(),
+              hintText: 'houses.name_optional_hint'.tr(),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(
+                  AppConstants.inputBorderRadius,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 24),
           Align(

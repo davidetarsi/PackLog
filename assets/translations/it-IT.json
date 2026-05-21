@@ -26,6 +26,7 @@
     "no_houses_title": "Nessuna casa presente",
     "name_required": "Nome*",
     "name_label": "Nome *",
+    "name_optional_hint": "Opzionale — lascia vuoto per usare la città",
     "location_required": "Località*",
     "location_label": "Località *",
     "location_hint": "Cerca città, regione o stato...",
