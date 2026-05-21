@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import '../providers/trip_provider.dart';
 import '../model/trip_model.dart';
+import '../../houses/providers/house_provider.dart';
 import '../../items/model/item_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/constants/app_constants.dart';
@@ -56,6 +57,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripNotifierProvider);
+    final housesAsync = ref.watch(houseNotifierProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return tripsAsync.when(
@@ -69,13 +71,19 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         final filteredItems = _filterItems(trip.items);
         final bool hasItems = trip.items.isNotEmpty;
 
+        final house = housesAsync.valueOrNull
+            ?.where((h) => h.id == trip.destinationHouseId)
+            .firstOrNull;
+        final displayDestination =
+            house?.displayName ?? trip.destinationDisplayName ?? '';
+
         return StickyCtaScaffold(
           appBar: AppBar(
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: () => context.pop(),
             ),
-            title: Text(trip.name),
+            title: Text(displayDestination),
           ),
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
