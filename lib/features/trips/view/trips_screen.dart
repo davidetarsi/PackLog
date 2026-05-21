@@ -285,12 +285,16 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return EmptyState(
       icon: Icons.luggage_outlined,
-      title: 'trips.no_trips'.tr(),
-      subtitle: 'trips.no_trips_subtitle'.tr(),
-      tapHint: 'trips.no_trips_tap_hint'.tr(),
-      onTap: () => context.push('/new-trip'),
+      iconColor: colorScheme.primary,
+      title: 'trips.no_trips_title'.tr(),
+      action: FilledButton.icon(
+        onPressed: () => context.push('/new-trip'),
+        icon: const Icon(Icons.add),
+        label: Text('trips.no_trips_subtitle'.tr()),
+      ),
     );
   }
 

@@ -57,10 +57,13 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
                       height: constraints.maxHeight,
                       child: EmptyState(
                         icon: Icons.home_outlined,
-                        title: 'houses.no_houses'.tr(),
-                        subtitle: 'houses.no_houses_subtitle'.tr(),
-                        tapHint: 'houses.no_houses_tap_hint'.tr(),
-                        onTap: () => showAddEditHouseSheet(context),
+                        iconColor: colorScheme.primary,
+                        title: 'houses.no_houses_title'.tr(),
+                        action: FilledButton.icon(
+                          onPressed: () => showAddEditHouseSheet(context),
+                          icon: const Icon(Icons.add),
+                          label: Text('houses.no_houses_subtitle'.tr()),
+                        ),
                       ),
                     ),
                   ),
