@@ -26,11 +26,13 @@ class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 /// - Repository methods are called with correct parameters
 void main() {
   late MockItemRepository mockRepository;
+  late MockCoreAnalyticsService mockAnalytics;
   late ProviderContainer container;
 
   setUp(() {
     // Initialize the mock repository
     mockRepository = MockItemRepository();
+    mockAnalytics = MockCoreAnalyticsService();
 
     // Register fallback values for any() matchers
     registerFallbackValue(
@@ -43,15 +45,22 @@ void main() {
         updatedAt: DateTime.now(),
       ),
     );
-
-    final mockAnalytics = MockCoreAnalyticsService();
     when(
       () => mockAnalytics.trackItemAdded(
         itemId: any(named: 'itemId'),
         category: any(named: 'category'),
         totalItems: any(named: 'totalItems'),
       ),
-    ).thenAnswer((_) async {});
+    ).thenReturn(null);
+    when(
+      () => mockAnalytics.trackItemDeleted(category: any(named: 'category')),
+    ).thenReturn(null);
+    when(
+      () => mockAnalytics.trackItemBulkDeleted(count: any(named: 'count')),
+    ).thenReturn(null);
+    when(
+      () => mockAnalytics.trackItemBulkMoved(count: any(named: 'count')),
+    ).thenReturn(null);
 
     final mockSync = MockSyncOrchestrator();
     when(() => mockSync.requestSync()).thenReturn(null);
@@ -1004,6 +1013,70 @@ void main() {
       final state = container.read(itemNotifierProvider(houseId));
       expect(state, isA<AsyncError<List<ItemModel>>>());
       expect(state.hasError, isTrue);
+    });
+  });
+
+  group('ItemNotifier - Analytics', () {
+    test('deleteItem fires trackItemDeleted with correct category', () async {
+      final item = ItemModel(
+        id: 'item-1',
+        houseId: 'house-1',
+        name: 'Sneakers',
+        category: ItemCategory.vestiti,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      when(() => mockRepository.getItemsByHouseId('house-1'))
+          .thenAnswer((_) async => [item]);
+
+      // Prime the state so deleteItem can read it
+      await container.read(itemNotifierProvider('house-1').future);
+
+      when(() => mockRepository.deleteItem('item-1'))
+          .thenAnswer((_) async => true);
+      when(() => mockRepository.getItemsByHouseId('house-1'))
+          .thenAnswer((_) async => []);
+
+      await container
+          .read(itemNotifierProvider('house-1').notifier)
+          .deleteItem('item-1', 'house-1');
+
+      verify(
+        () => mockAnalytics.trackItemDeleted(category: 'vestiti'),
+      ).called(1);
+    });
+
+    test('bulkDelete fires trackItemBulkDeleted with count', () async {
+      when(() => mockRepository.deleteItems(['a', 'b']))
+          .thenAnswer((_) async {});
+      when(() => mockRepository.getItemsByHouseId('house-1'))
+          .thenAnswer((_) async => []);
+
+      // Ensure state is primed
+      await container.read(itemNotifierProvider('house-1').future);
+
+      await container
+          .read(itemNotifierProvider('house-1').notifier)
+          .bulkDelete(['a', 'b']);
+
+      verify(() => mockAnalytics.trackItemBulkDeleted(count: 2)).called(1);
+    });
+
+    test('bulkMove fires trackItemBulkMoved with count', () async {
+      when(
+        () => mockRepository.moveItemsToHouse(['a'], 'house-1', 'house-2'),
+      ).thenAnswer((_) async {});
+      when(() => mockRepository.getItemsByHouseId('house-1'))
+          .thenAnswer((_) async => []);
+
+      await container.read(itemNotifierProvider('house-1').future);
+
+      await container
+          .read(itemNotifierProvider('house-1').notifier)
+          .bulkMove(['a'], 'house-2');
+
+      verify(() => mockAnalytics.trackItemBulkMoved(count: 1)).called(1);
     });
   });
 }
