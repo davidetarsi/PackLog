@@ -8,7 +8,7 @@ class Houses extends Table with SyncableTable {
   TextColumn get id => text()();
 
   /// Nome della casa
-  TextColumn get name => text().withLength(min: 1, max: 100)();
+  TextColumn get name => text().withLength(max: 100)();
 
   /// Descrizione opzionale
   TextColumn get description => text().nullable()();

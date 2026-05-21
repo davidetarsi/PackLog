@@ -58,7 +58,8 @@
     "house_not_found": "Casa non trovata",
     "house_not_found_message": "La casa richiesta non è stata trovata.",
     "back_to_houses": "Torna alla lista case",
-    "primary": "Principale"
+    "primary": "Principale",
+    "unnamed_house": "Casa senza nome"
   },
   "items": {
     "add": "Oggetto",

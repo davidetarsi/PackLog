@@ -3,6 +3,26 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/model/location_type.dart';
 
+HouseModel _makeHouse({
+  String name = '',
+  String? cityName,
+  String? locationDisplayName,
+}) =>
+    HouseModel(
+      id: 'test-id',
+      name: name,
+      location: (cityName != null || locationDisplayName != null)
+          ? LocationSuggestionModel(
+              placeId: 'test-place',
+              displayName: locationDisplayName ?? '',
+              city: cityName,
+              locationType: LocationType.city,
+            )
+          : null,
+      createdAt: DateTime(2024),
+      updatedAt: DateTime(2024),
+    );
+
 /// Unit tests for HouseModel domain logic.
 ///
 /// Tests pure domain methods including:
@@ -231,6 +251,37 @@ void main() {
 
       // === ACT & ASSERT ===
       expect(house.isPrimary, isTrue);
+    });
+  });
+
+  group('HouseModel - displayName', () {
+    test('returns name when name is non-empty', () {
+      final house = _makeHouse(name: 'Villa Bella');
+      expect(house.displayName, 'Villa Bella');
+    });
+
+    test('trims whitespace from name', () {
+      final house = _makeHouse(name: '  Villa Bella  ');
+      expect(house.displayName, 'Villa Bella');
+    });
+
+    test('returns cityName when name is empty', () {
+      final house = _makeHouse(name: '', cityName: 'Milano');
+      expect(house.displayName, 'Milano');
+    });
+
+    test('returns locationDisplayName when name and cityName are empty/null', () {
+      final house = _makeHouse(
+        name: '',
+        cityName: null,
+        locationDisplayName: 'Via Roma 1, Milano',
+      );
+      expect(house.displayName, 'Via Roma 1, Milano');
+    });
+
+    test('whitespace-only name falls back to city', () {
+      final house = _makeHouse(name: '   ', cityName: 'Roma');
+      expect(house.displayName, 'Roma');
     });
   });
 }

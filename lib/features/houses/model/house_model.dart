@@ -1,5 +1,6 @@
 // ignore_for_file: non_abstract_class_inherits_abstract_member
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 
@@ -42,6 +43,15 @@ class HouseModel with _$HouseModel {
 
   /// Restituisce la città della località
   String? get cityName => location?.city;
+
+  /// Restituisce il nome da mostrare in UI.
+  /// Priorità: name (trimmed) → cityName → locationDisplayName → fallback l10n.
+  String get displayName {
+    final String trimmedName = name.trim();
+    if (trimmedName.isNotEmpty) return trimmedName;
+    final String fallback = cityName ?? locationDisplayName ?? '';
+    return fallback.isNotEmpty ? fallback : 'houses.unnamed_house'.tr();
+  }
 
   factory HouseModel.fromJson(Map<String, dynamic> json) =>
       _$HouseModelFromJson(json);

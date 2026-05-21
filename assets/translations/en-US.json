@@ -58,7 +58,8 @@
     "house_not_found": "House not found",
     "house_not_found_message": "The requested house was not found.",
     "back_to_houses": "Back to houses",
-    "primary": "Primary"
+    "primary": "Primary",
+    "unnamed_house": "Unnamed house"
   },
   "items": {
     "category_vestiti": "Clothes",
