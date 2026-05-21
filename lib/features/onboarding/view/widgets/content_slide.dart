@@ -34,7 +34,10 @@ class _ContentSlideState extends State<ContentSlide> {
   }
 
   Future<void> _initVideo() async {
-    final controller = VideoPlayerController.asset(widget.videoAsset!);
+    final controller = VideoPlayerController.asset(
+      widget.videoAsset!,
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    );
     try {
       await controller.initialize();
       controller
@@ -69,10 +72,10 @@ class _ContentSlideState extends State<ContentSlide> {
 
     final Widget visual;
     if (_videoReady && _controller != null) {
-      visual = ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: AspectRatio(
-          aspectRatio: _controller!.value.aspectRatio,
+      visual = AspectRatio(
+        aspectRatio: _controller!.value.aspectRatio,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
           child: VideoPlayer(_controller!),
         ),
       );
@@ -85,10 +88,7 @@ class _ContentSlideState extends State<ContentSlide> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 240),
-            child: visual,
-          ),
+          Flexible(child: visual),
           SizedBox(height: context.spacingLg),
           Text(
             widget.titleKey.tr(),
