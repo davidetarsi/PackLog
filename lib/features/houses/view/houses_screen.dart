@@ -244,7 +244,7 @@ class _HouseCard extends ConsumerWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (house.name.isNotEmpty &&
+                            if (house.name.trim().isNotEmpty &&
                                 (house.locationDisplayName != null ||
                                     house.description != null)) ...[
                               SizedBox(height: context.spacingXs),
