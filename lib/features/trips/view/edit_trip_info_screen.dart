@@ -33,6 +33,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
   DateTime? _returnDateTime;
   String? _destinationHouseId;
   LocationSuggestionModel? _destinationLocation;
+  String? _destinationName;
 
   @override
   void initState() {
@@ -58,8 +59,8 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
   }
 
   String _buildTripName() {
-    final dest = (_destinationLocation?.displayName.trim().isNotEmpty == true)
-        ? _destinationLocation!.displayName
+    final dest = (_destinationName?.trim().isNotEmpty == true)
+        ? _destinationName!
         : 'trips.unnamed_destination'.tr();
 
     final dep = _departureDateTime != null
@@ -77,6 +78,11 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_trip == null) return;
+
+    if (_destinationLocation == null && _destinationHouseId == null) {
+      AppSnackBar.showWarning(context, 'common.required_field_error'.tr());
+      return;
+    }
 
     // Validazione date
     if (_departureDateTime != null && _returnDateTime != null) {
@@ -148,6 +154,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
                   returnDateTime,
                   destinationHouseId,
                   destinationLocation,
+                  destinationName,
                 }) {
                   setState(() {
                     _description = description;
@@ -155,6 +162,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
                     _returnDateTime = returnDateTime;
                     _destinationHouseId = destinationHouseId;
                     _destinationLocation = destinationLocation;
+                    _destinationName = destinationName;
                   });
                 },
           ),

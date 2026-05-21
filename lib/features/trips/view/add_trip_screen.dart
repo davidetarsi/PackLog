@@ -36,6 +36,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
   DateTime? _returnDateTime;
   String? _destinationHouseId;
   LocationSuggestionModel? _destinationLocation;
+  String? _destinationName;
   List<TripItem> _selectedItems = [];
   List<LuggageModel> _selectedLuggages = [];
 
@@ -67,8 +68,8 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
   }
 
   String _buildTripName() {
-    final dest = (_destinationLocation?.displayName.trim().isNotEmpty == true)
-        ? _destinationLocation!.displayName
+    final dest = (_destinationName?.trim().isNotEmpty == true)
+        ? _destinationName!
         : 'trips.unnamed_destination'.tr();
 
     final dep = _departureDateTime != null
@@ -199,6 +200,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                       returnDateTime,
                       destinationHouseId,
                       destinationLocation,
+                      destinationName,
                     }) {
                       setState(() {
                         _description = description;
@@ -206,6 +208,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                         _returnDateTime = returnDateTime;
                         _destinationHouseId = destinationHouseId;
                         _destinationLocation = destinationLocation;
+                        _destinationName = destinationName;
                       });
                     },
               ),

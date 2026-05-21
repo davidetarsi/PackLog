@@ -24,6 +24,7 @@ class TripInfoForm extends ConsumerStatefulWidget {
     DateTime? returnDateTime,
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
+    String? destinationName,
   })
   onChanged;
 
@@ -46,6 +47,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
   String? _destinationHouseId;
+  String? _destinationHouseName;
   LocationSuggestionModel? _destinationLocation;
   late bool _useHouseDestination;
 
@@ -62,6 +64,14 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     _destinationHouseId = widget.initialDestinationHouseId;
     _destinationLocation = widget.initialDestinationLocation;
     _useHouseDestination = widget.initialDestinationHouseId != null;
+    if (_destinationHouseId != null) {
+      final housesAsync = ref.read(houseNotifierProvider);
+      housesAsync.whenData((houses) {
+        final house =
+            houses.where((h) => h.id == _destinationHouseId).firstOrNull;
+        _destinationHouseName = house?.displayName;
+      });
+    }
   }
 
   @override
@@ -71,6 +81,12 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   }
 
   void _notifyChanged() {
+    final destinationName = _destinationHouseId != null
+        ? _destinationHouseName
+        : (_destinationLocation?.displayName.trim().isNotEmpty == true
+              ? _destinationLocation!.displayName
+              : null);
+
     widget.onChanged(
       description: _descriptionController.text.trim().isEmpty
           ? null
@@ -81,6 +97,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       destinationLocation: _destinationHouseId == null
           ? _destinationLocation
           : null,
+      destinationName: destinationName,
     );
   }
 
@@ -117,6 +134,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     if (selected != null && mounted) {
       setState(() {
         _destinationHouseId = selected.id;
+        _destinationHouseName = selected.displayName;
         _destinationLocation = null;
       });
       _notifyChanged();
@@ -372,7 +390,10 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
               IconButton(
                 icon: Icon(Icons.clear, color: colorScheme.primary, size: 20),
                 onPressed: () {
-                  setState(() => _destinationHouseId = null);
+                  setState(() {
+                    _destinationHouseId = null;
+                    _destinationHouseName = null;
+                  });
                   _notifyChanged();
                 },
                 padding: EdgeInsets.zero,
