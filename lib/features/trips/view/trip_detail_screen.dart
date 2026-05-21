@@ -203,8 +203,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   }
 }
 
-/// Bottoni di azione in basso
-/// Card per un singolo item del viaggio
 class _TripItemCard extends ConsumerWidget {
   final TripItem item;
   final String tripId;
