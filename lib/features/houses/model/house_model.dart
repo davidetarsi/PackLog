@@ -47,9 +47,9 @@ class HouseModel with _$HouseModel {
   /// Restituisce il nome da mostrare in UI.
   /// Priorità: name (trimmed) → cityName → locationDisplayName → fallback l10n.
   String get displayName {
-    final String trimmedName = name.trim();
+    final trimmedName = name.trim();
     if (trimmedName.isNotEmpty) return trimmedName;
-    final String fallback = cityName ?? locationDisplayName ?? '';
+    final fallback = cityName ?? locationDisplayName ?? '';
     return fallback.isNotEmpty ? fallback : 'houses.unnamed_house'.tr();
   }
 

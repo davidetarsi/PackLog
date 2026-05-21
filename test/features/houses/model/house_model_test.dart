@@ -283,5 +283,11 @@ void main() {
       final house = _makeHouse(name: '   ', cityName: 'Roma');
       expect(house.displayName, 'Roma');
     });
+
+    test('returns raw l10n key when name, city, and locationDisplayName are all empty', () {
+      final house = _makeHouse(name: '', cityName: null, locationDisplayName: null);
+      // easy_localization not initialised in unit tests — .tr() returns the raw key
+      expect(house.displayName, 'houses.unnamed_house');
+    });
   });
 }
