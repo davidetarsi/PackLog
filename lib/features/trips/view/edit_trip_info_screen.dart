@@ -28,7 +28,6 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
   TripModel? _trip;
 
   // Dati modificabili
-  String _name = '';
   String? _description;
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
@@ -48,7 +47,6 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
       if (trip != null) {
         setState(() {
           _trip = trip;
-          _name = trip.name;
           _description = trip.description;
           _departureDateTime = trip.departureDateTime;
           _returnDateTime = trip.returnDateTime;
@@ -59,13 +57,24 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     });
   }
 
+  String _buildTripName() {
+    final dest = (_destinationLocation?.displayName.trim().isNotEmpty == true)
+        ? _destinationLocation!.displayName
+        : 'trips.unnamed_destination'.tr();
+
+    final dep = _departureDateTime != null
+        ? DateFormat.yMd(context.locale.toString()).format(_departureDateTime!)
+        : '';
+    final ret = _returnDateTime != null
+        ? DateFormat.yMd(context.locale.toString()).format(_returnDateTime!)
+        : '';
+
+    if (dep.isEmpty) return dest;
+    return ret.isEmpty ? '$dest, $dep' : '$dest, $dep – $ret';
+  }
+
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
-
-    if (_name.trim().isEmpty) {
-      AppSnackBar.showWarning(context, 'common.required_field_error'.tr());
-      return;
-    }
 
     if (_trip == null) return;
 
@@ -83,7 +92,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     setState(() => _isLoading = true);
 
     final updatedTrip = _trip!.copyWith(
-      name: _name.trim(),
+      name: _buildTripName(),
       description: _description,
       departureDateTime: _departureDateTime,
       returnDateTime: _returnDateTime,
@@ -127,7 +136,6 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.all(context.spacingMd),
           child: TripInfoForm(
-            initialName: _name,
             initialDescription: _description,
             initialDepartureDateTime: _departureDateTime,
             initialReturnDateTime: _returnDateTime,
@@ -135,7 +143,6 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
             initialDestinationLocation: _destinationLocation,
             onChanged:
                 ({
-                  name,
                   description,
                   departureDateTime,
                   returnDateTime,
@@ -143,7 +150,6 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
                   destinationLocation,
                 }) {
                   setState(() {
-                    if (name != null) _name = name;
                     _description = description;
                     _departureDateTime = departureDateTime;
                     _returnDateTime = returnDateTime;
