@@ -19,11 +19,13 @@ import 'ds_badge.dart';
 class TripInfoBadges extends ConsumerWidget {
   final TripModel trip;
   final Axis direction;
+  final bool showDestination;
 
   const TripInfoBadges({
     super.key,
     required this.trip,
     this.direction = Axis.horizontal,
+    this.showDestination = true,
   });
 
   String _getDestinationName(WidgetRef ref) {
@@ -33,7 +35,7 @@ class TripInfoBadges extends ConsumerWidget {
         final house = houses
             .where((h) => h.id == trip.destinationHouseId)
             .firstOrNull;
-        if (house != null) return house.name;
+        if (house != null) return house.displayName;
       }
       return 'common.unknown_house'.tr();
     }
@@ -65,12 +67,13 @@ class TripInfoBadges extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final formattedDates = _formatTripDates();
-    final destinationName = _getDestinationName(ref);
+    final destinationName = showDestination ? _getDestinationName(ref) : '';
 
     final List<Widget> badges = [
       if (formattedDates.isNotEmpty)
         DsInfoBadge(icon: Icons.calendar_today_outlined, label: formattedDates),
-      DsInfoBadge(icon: Icons.place, label: destinationName),
+      if (showDestination)
+        DsInfoBadge(icon: Icons.place, label: destinationName),
       if (trip.luggageCount > 0)
         DsInfoBadge(
           icon: Icons.luggage,

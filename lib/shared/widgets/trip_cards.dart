@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/houses/providers/house_provider.dart';
 import '../../features/trips/model/trip_model.dart';
 import '../../features/trips/providers/trip_provider.dart';
 import '../constants/app_constants.dart';
@@ -39,6 +40,12 @@ class TripCardHero extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    final housesAsync = ref.watch(houseNotifierProvider);
+    final house = housesAsync.valueOrNull
+        ?.where((h) => h.id == trip.destinationHouseId)
+        .firstOrNull;
+    final displayDestination =
+        house?.displayName ?? trip.destinationDisplayName ?? '';
 
     Widget content = Padding(
       padding: EdgeInsets.all(context.spacingMd),
@@ -51,7 +58,7 @@ class TripCardHero extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  trip.name,
+                  displayDestination,
                   style: TextStyle(
                     fontWeight: FontWeight.w600, // ≥24px → w600
                     fontSize: context.fontSizeTitle,
@@ -69,7 +76,7 @@ class TripCardHero extends ConsumerWidget {
             ],
           ),
           SizedBox(height: context.spacingSm),
-          TripInfoBadges(trip: trip),
+          TripInfoBadges(trip: trip, showDestination: false),
           SizedBox(height: context.spacingMd),
           _TripProgress(trip: trip),
         ],
@@ -164,6 +171,12 @@ class TripCardCompact extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final itemsToShow = trip.items.length.clamp(0, maxPreviewItems);
+    final housesAsync = ref.watch(houseNotifierProvider);
+    final house = housesAsync.valueOrNull
+        ?.where((h) => h.id == trip.destinationHouseId)
+        .firstOrNull;
+    final displayDestination =
+        house?.displayName ?? trip.destinationDisplayName ?? '';
 
     return Card(
       elevation: 0,
@@ -193,7 +206,7 @@ class TripCardCompact extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      trip.name,
+                      displayDestination,
                       style: TextStyle(
                         fontWeight: FontWeight.w700, // 18px → w700
                         fontSize: context.fontSizeMd,
