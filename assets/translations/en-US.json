@@ -24,9 +24,8 @@
     "no_houses_subtitle": "Add your first house",
     "no_houses_tap_hint": "Tap to add a house",
     "no_houses_title": "No houses yet",
-    "name_required": "Name*",
-    "name_label": "Name *",
-    "name_optional_hint": "Optional — leave blank to use the city name",
+    "name_required": "Name",
+    "name_label": "Name",
     "location_required": "Location*",
     "location_label": "Location *",
     "location_hint": "Search for city, region or state...",
@@ -241,7 +240,8 @@
     "all_items_confirmed": "All items confirmed",
     "no_destination": "No destination",
     "add_clothes": "Add clothes",
-    "unnamed_destination": "Trip"
+    "unnamed_destination": "Trip",
+    "destination_required": "Please select a destination"
   },
   "common": {
     "save": "Save",

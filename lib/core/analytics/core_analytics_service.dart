@@ -6,6 +6,9 @@ import 'analytics_service.dart';
 
 part 'core_analytics_service.g.dart';
 
+// Analytics event names and properties use String (not domain enums) intentionally:
+// this layer lives in core/ and must not import from features/.
+// Callers convert enums to strings with .name before passing them here.
 class CoreAnalyticsService {
   final AppAnalyticsService _analytics;
 
@@ -16,6 +19,8 @@ class CoreAnalyticsService {
       try {
         await _analytics.logEvent(eventName, properties: properties);
       } catch (e) {
+        // Defense-in-depth: AppAnalyticsService.logEvent already catches internally,
+        // but this guards against future implementations that may not.
         debugPrint('[Analytics] _safeLogEvent failed for $eventName: $e');
       }
     }();

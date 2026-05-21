@@ -24,9 +24,8 @@
     "no_houses_subtitle": "Aggiungi la tua prima casa",
     "no_houses_tap_hint": "Tocca per aggiungere una casa",
     "no_houses_title": "Nessuna casa presente",
-    "name_required": "Nome*",
-    "name_label": "Nome *",
-    "name_optional_hint": "Opzionale — lascia vuoto per usare la città",
+    "name_required": "Nome",
+    "name_label": "Nome",
     "location_required": "Località*",
     "location_label": "Località *",
     "location_hint": "Cerca città, regione o stato...",
@@ -240,7 +239,8 @@
     "all_items_confirmed": "Tutti gli oggetti confermati",
     "no_destination": "Nessuna destinazione",
     "add_clothes": "Aggiungi vestiti",
-    "unnamed_destination": "Viaggio"
+    "unnamed_destination": "Viaggio",
+    "destination_required": "Seleziona una destinazione"
   },
   "common": {
     "save": "Salva",

@@ -80,7 +80,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     if (_trip == null) return;
 
     if (_destinationLocation == null && _destinationHouseId == null) {
-      AppSnackBar.showWarning(context, 'common.required_field_error'.tr());
+      AppSnackBar.showSuccess(context, 'trips.destination_required'.tr());
       return;
     }
 
