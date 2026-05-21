@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -10,23 +11,38 @@ class CoreAnalyticsService {
 
   CoreAnalyticsService(this._analytics);
 
-  Future<void> trackHouseCreated({
-    required String houseId,
-    required int totalHouses,
-  }) {
-    return _analytics.logEvent(
-      'House_Created',
+  void _safeLogEvent(String eventName, {Map<String, dynamic>? properties}) {
+    () async {
+      try {
+        await _analytics.logEvent(eventName, properties: properties);
+      } catch (e) {
+        debugPrint('[Analytics] _safeLogEvent failed for $eventName: $e');
+      }
+    }();
+  }
+
+  // ── house_ ────────────────────────────────────────────────────────────────
+
+  void trackHouseCreated({required String houseId, required int totalHouses}) {
+    _safeLogEvent(
+      'house_created',
       properties: {'house_id': houseId, 'is_first_house': totalHouses == 1},
     );
   }
 
-  Future<void> trackItemAdded({
+  void trackHouseDeleted() => _safeLogEvent('house_deleted');
+
+  void trackHouseDuplicated() => _safeLogEvent('house_duplicated');
+
+  // ── item_ ─────────────────────────────────────────────────────────────────
+
+  void trackItemAdded({
     required String itemId,
     required String category,
     required int totalItems,
   }) {
-    return _analytics.logEvent(
-      'Item_Added',
+    _safeLogEvent(
+      'item_added',
       properties: {
         'item_id': itemId,
         'item_category': category,
@@ -35,14 +51,91 @@ class CoreAnalyticsService {
     );
   }
 
-  Future<void> trackTripCreated({
-    required String tripId,
-    required int totalTrips,
-  }) {
-    return _analytics.logEvent(
-      'Trip_Created',
+  void trackItemDeleted({required String category}) {
+    _safeLogEvent('item_deleted', properties: {'item_category': category});
+  }
+
+  void trackItemBulkDeleted({required int count}) {
+    _safeLogEvent('item_bulk_deleted', properties: {'count': count});
+  }
+
+  void trackItemBulkMoved({required int count}) {
+    _safeLogEvent('item_bulk_moved', properties: {'count': count});
+  }
+
+  // ── space_ ────────────────────────────────────────────────────────────────
+
+  void trackSpaceCreated() => _safeLogEvent('space_created');
+
+  // ── luggage_ ──────────────────────────────────────────────────────────────
+
+  void trackLuggageCreated({required String size}) {
+    _safeLogEvent('luggage_created', properties: {'size': size});
+  }
+
+  // ── trip_ ─────────────────────────────────────────────────────────────────
+
+  void trackTripCreated({required String tripId, required int totalTrips}) {
+    _safeLogEvent(
+      'trip_created',
       properties: {'trip_id': tripId, 'is_first_trip': totalTrips == 1},
     );
+  }
+
+  void trackTripDeleted() => _safeLogEvent('trip_deleted');
+
+  void trackTripDuplicated() => _safeLogEvent('trip_duplicated');
+
+  void trackTripSavedToggled({required bool isSaved}) {
+    _safeLogEvent('trip_saved_toggled', properties: {'is_saved': isSaved});
+  }
+
+  // ── bulk_ ─────────────────────────────────────────────────────────────────
+
+  void trackBulkTemplateToggled({
+    required String templateKey,
+    required bool isSelected,
+    required int totalSelected,
+  }) {
+    _safeLogEvent(
+      'bulk_template_toggled',
+      properties: {
+        'template_key': templateKey,
+        'is_selected': isSelected,
+        'total_selected': totalSelected,
+      },
+    );
+  }
+
+  void trackBulkGenderSet({required String gender}) {
+    _safeLogEvent('bulk_gender_set', properties: {'gender': gender});
+  }
+
+  void trackBulkSessionSaved({
+    required int itemCount,
+    required int templateCount,
+    required bool hasManualItems,
+  }) {
+    _safeLogEvent(
+      'bulk_session_saved',
+      properties: {
+        'item_count': itemCount,
+        'template_count': templateCount,
+        'has_manual_items': hasManualItems,
+      },
+    );
+  }
+
+  // ── ai_ ───────────────────────────────────────────────────────────────────
+
+  void trackAiInputSubmitted() => _safeLogEvent('ai_input_submitted');
+
+  void trackAiInputCompleted({required int itemCount}) {
+    _safeLogEvent('ai_input_completed', properties: {'item_count': itemCount});
+  }
+
+  void trackAiInputFailed({required String errorType}) {
+    _safeLogEvent('ai_input_failed', properties: {'error_type': errorType});
   }
 }
 
