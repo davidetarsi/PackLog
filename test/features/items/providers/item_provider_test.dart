@@ -1069,6 +1069,8 @@ void main() {
       ).thenAnswer((_) async {});
       when(() => mockRepository.getItemsByHouseId('house-1'))
           .thenAnswer((_) async => []);
+      when(() => mockRepository.getItemsByHouseId('house-2'))
+          .thenAnswer((_) async => []);
 
       await container.read(itemNotifierProvider('house-1').future);
 
