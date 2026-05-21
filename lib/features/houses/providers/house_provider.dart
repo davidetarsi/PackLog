@@ -55,6 +55,7 @@ class HouseNotifier extends _$HouseNotifier {
       await repository!.deleteHouse(id);
       final houses = await repository!.getAllHouses();
       state = AsyncData(houses);
+      ref.read(coreAnalyticsServiceProvider).trackHouseDeleted();
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -88,6 +89,7 @@ class HouseNotifier extends _$HouseNotifier {
       await repository!.addHouse(copy);
       final houses = await repository!.getAllHouses();
       state = AsyncData(houses);
+      ref.read(coreAnalyticsServiceProvider).trackHouseDuplicated();
       ref.read(syncOrchestratorProvider).requestSync();
       return newId;
     } catch (error, stackTrace) {
