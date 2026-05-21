@@ -204,6 +204,7 @@ class TripNotifier extends _$TripNotifier {
       await repository!.deleteTrip(id);
       final List<TripModel> trips = await repository!.getAllTrips();
       state = AsyncData(trips);
+      ref.read(coreAnalyticsServiceProvider).trackTripDeleted();
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -252,6 +253,7 @@ class TripNotifier extends _$TripNotifier {
       final String newTripId = await repository!.duplicateTrip(tripId);
       final List<TripModel> trips = await repository!.getAllTrips();
       state = AsyncData(trips);
+      ref.read(coreAnalyticsServiceProvider).trackTripDuplicated();
       ref.read(syncOrchestratorProvider).requestSync();
       return newTripId;
     } catch (error, stackTrace) {
@@ -290,6 +292,9 @@ class TripNotifier extends _$TripNotifier {
       await repository!.updateTrip(updatedTrip);
       final List<TripModel> newTrips = await repository!.getAllTrips();
       state = AsyncData(newTrips);
+      ref.read(coreAnalyticsServiceProvider).trackTripSavedToggled(
+        isSaved: updatedTrip.isSaved,
+      );
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
