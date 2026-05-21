@@ -125,7 +125,7 @@ class TripCardCompact extends ConsumerWidget {
     this.maxPreviewItems = 5,
   });
 
-  Future<void> _onLongPress(BuildContext context, WidgetRef ref) async {
+  Future<void> _onLongPress(BuildContext context, WidgetRef ref, String displayDestination) async {
     final action = await showEntityContextMenu(
       context: context,
       entityType: 'common.trip_type'.tr(),
@@ -142,13 +142,13 @@ class TripCardCompact extends ConsumerWidget {
                 .duplicateTrip(trip.id);
           },
           errorTitle: 'common.error'.tr(),
-          errorMessage: 'errors.duplicate_trip_failed'.tr(args: [trip.name]),
+          errorMessage: 'errors.duplicate_trip_failed'.tr(args: [displayDestination]),
         );
       case EntityContextMenuAction.delete:
         final confirmed = await DialogHelpers.showDeleteConfirmation(
           context: context,
           itemType: 'common.trip_type'.tr(),
-          itemName: trip.name,
+          itemName: displayDestination,
         );
         if (confirmed && context.mounted) {
           await ErrorRetryDialog.executeWithRetry(
@@ -157,7 +157,7 @@ class TripCardCompact extends ConsumerWidget {
               await ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id);
             },
             errorTitle: 'common.error'.tr(),
-            errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
+            errorMessage: 'errors.delete_trip_failed'.tr(args: [displayDestination]),
           );
         }
       case EntityContextMenuAction.save:
@@ -193,7 +193,7 @@ class TripCardCompact extends ConsumerWidget {
           AppConstants.cardBorderRadius,
         ),
         onTap: () => context.push('/trips/${trip.id}'),
-        onLongPress: () => _onLongPress(context, ref),
+        onLongPress: () => _onLongPress(context, ref, displayDestination),
         child: Padding(
           padding: context.cardPaddingHero,
           child: Column(
