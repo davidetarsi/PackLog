@@ -236,7 +236,8 @@
     "delete_confirmation": "Sei sicuro di voler eliminare \"{}\"?",
     "confirm_all_arrived": "Conferma tutto arrivato",
     "all_items_confirmed": "Tutti gli oggetti confermati",
-    "no_destination": "Nessuna destinazione"
+    "no_destination": "Nessuna destinazione",
+    "add_clothes": "Aggiungi vestiti"
   },
   "common": {
     "save": "Salva",

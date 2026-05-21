@@ -237,7 +237,8 @@
     "delete_confirmation": "Are you sure you want to delete \"{}\"?",
     "confirm_all_arrived": "Confirm all arrived",
     "all_items_confirmed": "All items confirmed",
-    "no_destination": "No destination"
+    "no_destination": "No destination",
+    "add_clothes": "Add clothes"
   },
   "common": {
     "save": "Save",

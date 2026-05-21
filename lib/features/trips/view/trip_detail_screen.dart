@@ -15,8 +15,6 @@ import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/widgets/universal_item_tile.dart';
 import '../../../shared/helpers/design_system.dart';
-import '../../../shared/helpers/snack_bar_helper.dart';
-import 'trip_management_sheet.dart';
 
 /// Enum per le tab di filtro delle categorie
 enum TripItemFilterTab {
@@ -69,6 +67,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
 
         final trip = matchingTrips.first;
         final filteredItems = _filterItems(trip.items);
+        final bool hasItems = trip.items.isNotEmpty;
 
         return StickyCtaScaffold(
           appBar: AppBar(
@@ -124,17 +123,21 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           // Action bar unificata in basso
           bottomContent: UniversalActionBar(
             horizontalPadding: 0,
-            primaryLabel: 'trips.modify'.tr(),
-            primaryIcon: Icons.edit,
-            onPrimaryPressed: () => _showManageSheet(context),
+            primaryLabel: hasItems
+                ? 'trips.edit_items'.tr()
+                : 'trips.add_clothes'.tr(),
+            primaryIcon: hasItems ? Icons.checklist : Icons.add_circle_outline,
+            onPrimaryPressed: () =>
+                context.push('/trips/${widget.tripId}/edit-items'),
             leftAction: CircularActionButton(
               icon: Icons.delete_outline,
               onPressed: () => _showDeleteDialog(context, trip),
               showBorder: true,
             ),
             rightAction: CircularActionButton(
-              icon: Icons.copy,
-              onPressed: () => _handleDuplicate(context, trip),
+              icon: Icons.edit_outlined,
+              onPressed: () =>
+                  context.push('/trips/${widget.tripId}/edit-info'),
               showBorder: true,
             ),
           ),
@@ -177,36 +180,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
       ),
     );
-  }
-
-  /// Apre il bottom sheet per gestire il viaggio
-  Future<void> _showManageSheet(BuildContext context) async {
-    await showTripManagementSheet(context, tripId: widget.tripId);
-  }
-
-  /// Gestisce la duplicazione del viaggio (Deep Copy)
-  Future<void> _handleDuplicate(BuildContext context, TripModel trip) async {
-    try {
-      final newTripId = await ref
-          .read(tripNotifierProvider.notifier)
-          .duplicateTrip(widget.tripId);
-
-      if (context.mounted) {
-        AppSnackBar.showSuccess(
-          context,
-          'trips.duplicate_success'.tr(args: [trip.name]),
-        );
-        // Naviga al nuovo viaggio duplicato
-        context.push('/trips/$newTripId');
-      }
-    } catch (e) {
-      if (context.mounted) {
-        AppSnackBar.showError(
-          context,
-          'errors.duplicate_trip_failed'.tr(args: [trip.name]),
-        );
-      }
-    }
   }
 
   Future<void> _showDeleteDialog(BuildContext context, TripModel trip) async {
