@@ -177,7 +177,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               return AppPillTab<HouseModel>.nullable(
                 items: houses,
                 selectedItem: selectedHouse,
-                getLabel: (house) => house.name,
+                getLabel: (house) => house.displayName,
                 getIcon: (house) => Icon(Icons.home_outlined, size: 16),
                 onSelected: (house) {
                   setState(() {

@@ -55,7 +55,7 @@ class InTransitSection extends StatelessWidget {
               return InTransitItemCard(
                 item: item,
                 originHouseName:
-                    originHouse?.name ?? 'common.unknown_house'.tr(),
+                    originHouse?.displayName ?? 'common.unknown_house'.tr(),
               );
             }).toList(),
           ),

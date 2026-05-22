@@ -43,7 +43,7 @@ class HouseSelectionScreen extends ConsumerWidget {
               final house = houses[index];
               return _HouseCard(
                 houseId: house.id,
-                houseName: house.name,
+                houseName: house.displayName,
                 iconName: house.iconName,
                 isPrimary: house.isPrimary,
                 colorScheme: colorScheme,

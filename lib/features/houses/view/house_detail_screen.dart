@@ -609,7 +609,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
             normalAppBar: _buildNormalAppBar(
               context,
               colorScheme,
-              house.name,
+              house.displayName,
               HouseIcons.getIcon(house.iconName),
             ),
             selectionAppBar: _buildSelectionAppBar(
@@ -645,7 +645,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               Expanded(
                 child: ItemsScreen(
                   houseId: widget.houseId,
-                  houseName: house.name,
+                  houseName: house.displayName,
                   selectedSpaceId: _spaceFilter,
                   categoryFilter: _categoryTab.categoryFilter,
                 ),
@@ -700,7 +700,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                       colorScheme,
                       widget.houseId,
                       house.isPrimary,
-                      house.name,
+                      house.displayName,
                     ),
                   ),
           ),
