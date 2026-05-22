@@ -787,6 +787,59 @@ void main() {
       expect(inB.length, 1);
       expect(inB.first.id, 'sel-1');
     });
+
+    test('moveItemsToHouse with spaceId should persist space on moved item',
+        () async {
+      // === ARRANGE ===
+      const houseAId = 'repo-spaceId-house-a';
+      const houseBId = 'repo-spaceId-house-b';
+      const spaceId = 'repo-spaceId-space-1';
+
+      for (final id in [houseAId, houseBId]) {
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: id,
+            name: 'House $id',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+      }
+      await database.spacesDao.insertSpace(
+        SpacesCompanion.insert(
+          id: spaceId,
+          houseId: houseBId,
+          name: 'Bedroom',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      final now = DateTime.now();
+      final item = ItemModel(
+        id: 'repo-spaceId-item-1',
+        houseId: houseAId,
+        name: 'Jacket',
+        category: ItemCategory.vestiti,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.addItem(item);
+
+      // === ACT ===
+      await repository.moveItemsToHouse(
+        [item.id],
+        houseAId,
+        houseBId,
+        spaceId: spaceId,
+      );
+
+      // === ASSERT ===
+      final moved = await repository.getItemsByHouseId(houseBId);
+      expect(moved.length, 1);
+      expect(moved.first.spaceId, equals(spaceId),
+          reason: 'spaceId must be propagated from repo to DAO');
+    });
   });
 
   group('DriftItemRepository - Batch Operations', () {

@@ -56,6 +56,7 @@ abstract class ItemRepository {
   Future<void> moveItemsToHouse(
     List<String> itemIds,
     String fromHouseId,
-    String toHouseId,
-  );
+    String toHouseId, {
+    String? spaceId,
+  });
 }

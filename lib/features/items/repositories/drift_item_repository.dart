@@ -257,12 +257,14 @@ class DriftItemRepository implements ItemRepository {
   Future<void> moveItemsToHouse(
     List<String> itemIds,
     String fromHouseId,
-    String toHouseId,
-  ) async {
+    String toHouseId, {
+    String? spaceId,
+  }) async {
     if (itemIds.isEmpty) return;
 
     final result = await _dbService.executeWithRetry(
-      () => _dao.moveItemsToHouse(itemIds, fromHouseId, toHouseId),
+      () => _dao.moveItemsToHouse(itemIds, fromHouseId, toHouseId,
+          spaceId: spaceId),
       operationName:
           'moveItemsToHouse(${itemIds.length} items: $fromHouseId -> $toHouseId)',
       config: RetryConfig.criticalConfig,
@@ -294,6 +296,7 @@ class DriftItemRepository implements ItemRepository {
       spaceId: item.spaceId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
+      aiMetadata: item.aiMetadata,
     );
   }
 
@@ -310,6 +313,7 @@ class DriftItemRepository implements ItemRepository {
       createdAt: Value(model.createdAt),
       updatedAt: Value(model.updatedAt),
       userId: Value(_getCurrentUserId()),
+      aiMetadata: Value(model.aiMetadata),
     );
   }
 }
