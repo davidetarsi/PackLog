@@ -134,13 +134,22 @@ class ItemNotifier extends _$ItemNotifier {
   /// In caso di errore imposta `state = AsyncError` (stesso contratto degli
   /// altri metodi del notifier) — il chiamante può leggere `state.hasError`
   /// oppure catturare l'eccezione se ha bisogno di feedback UI dedicato.
-  Future<void> bulkMove(List<String> itemIds, String destinationHouseId) async {
+  Future<void> bulkMove(
+    List<String> itemIds,
+    String destinationHouseId, {
+    String? spaceId,
+  }) async {
     if (itemIds.isEmpty) return;
     repository ??= ref.read(itemRepositoryProvider);
 
     try {
       // fromHouseId è sempre la casa corrente di questo notifier.
-      await repository!.moveItemsToHouse(itemIds, houseId, destinationHouseId);
+      await repository!.moveItemsToHouse(
+        itemIds,
+        houseId,
+        destinationHouseId,
+        spaceId: spaceId,
+      );
 
       final updated = await repository!.getItemsByHouseId(houseId);
       state = AsyncData(updated);

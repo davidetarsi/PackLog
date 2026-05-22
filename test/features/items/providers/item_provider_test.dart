@@ -1014,6 +1014,39 @@ void main() {
       expect(state, isA<AsyncError<List<ItemModel>>>());
       expect(state.hasError, isTrue);
     });
+
+    test('bulkMove passes spaceId to repository when provided', () async {
+      const houseId = 'bulk-move-spaceid-source';
+      const destId = 'bulk-move-spaceid-dest';
+      const spaceId = 'bulk-move-space-1';
+
+      when(() => mockRepository.getItemsByHouseId(houseId))
+          .thenAnswer((_) async => []);
+      when(() => mockRepository.getItemsByHouseId(destId))
+          .thenAnswer((_) async => []);
+      when(
+        () => mockRepository.moveItemsToHouse(
+          ['item-z'],
+          houseId,
+          destId,
+          spaceId: spaceId,
+        ),
+      ).thenAnswer((_) async {});
+
+      await container.read(itemNotifierProvider(houseId).future);
+      await container
+          .read(itemNotifierProvider(houseId).notifier)
+          .bulkMove(['item-z'], destId, spaceId: spaceId);
+
+      verify(
+        () => mockRepository.moveItemsToHouse(
+          ['item-z'],
+          houseId,
+          destId,
+          spaceId: spaceId,
+        ),
+      ).called(1);
+    });
   });
 
   group('ItemNotifier - Analytics', () {
