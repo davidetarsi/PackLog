@@ -80,8 +80,6 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
     100,
   ];
 
-  bool get _needsHouseSelection => widget.houseId == null;
-
   @override
   void initState() {
     super.initState();
@@ -249,17 +247,15 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_needsHouseSelection) ...[
-            housesAsync.when(
-              data: (houses) => _buildHouseSelector(houses),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('${' common.error'.tr()}: $e'),
-            ),
-            SizedBox(height: context.spacingMd),
-          ],
+          housesAsync.when(
+            data: (houses) => _buildHouseSelector(houses),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Text('${' common.error'.tr()}: $e'),
+          ),
+          SizedBox(height: context.spacingMd),
           TextFormField(
             controller: _nameController,
-            autofocus: !_needsHouseSelection,
+            autofocus: widget.houseId != null,
             decoration: InputDecoration(
               labelText: 'items.name_label'.tr(),
               border: OutlineInputBorder(
@@ -424,7 +420,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                           (h) => h.id == _selectedHouseId,
                           orElse: () => houses.first,
                         )
-                        .name
+                        .displayName
                   : 'items.select_house_prompt'.tr(),
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: _selectedHouseId == null ? context.textDisabled : null,
@@ -459,7 +455,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                 final house = houses[index];
                 return ListTile(
                   leading: Icon(Icons.home, size: itemContext.iconSizeMd),
-                  title: Text(house.name),
+                  title: Text(house.displayName),
                   subtitle: house.description != null
                       ? Text(house.description!)
                       : null,
