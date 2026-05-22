@@ -103,6 +103,7 @@
     "bulk_move_title": "Sposta in...",
     "bulk_move_success": "{} oggetti spostati in {}",
     "bulk_move_no_houses": "Nessun'altra casa disponibile",
+    "bulk_move_sheet_title": "Sposta {} oggetti",
     "rapid_fire_hint": "Aggiungi oggetto..."
   },
   "categories": {
@@ -205,6 +206,8 @@
     "select_house_to_view_items": "Seleziona una casa per vedere gli oggetti",
     "no_items_in_list": "Nessun oggetto nella lista",
     "no_items_in_category_filter": "Nessun oggetto in \"{}\"",
+    "select_dates": "Seleziona date",
+    "confirm_dates": "Conferma date",
     "select_departure_date": "Seleziona data di partenza",
     "select_departure_time": "Seleziona ora di partenza",
     "select_return_date": "Seleziona data di ritorno",
@@ -240,7 +243,8 @@
     "no_destination": "Nessuna destinazione",
     "add_clothes": "Aggiungi vestiti",
     "unnamed_destination": "Viaggio",
-    "destination_required": "Seleziona una destinazione"
+    "destination_required": "Seleziona una destinazione",
+    "dates_required": "Seleziona le date di partenza e ritorno"
   },
   "common": {
     "save": "Salva",

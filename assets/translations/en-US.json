@@ -103,6 +103,7 @@
     "bulk_move_title": "Move to...",
     "bulk_move_success": "{} items moved to {}",
     "bulk_move_no_houses": "No other houses available",
+    "bulk_move_sheet_title": "Move {} items",
     "rapid_fire_hint": "Add item..."
   },
   "categories": {
@@ -206,6 +207,8 @@
     "select_house_to_view_items": "Select a house to view items",
     "no_items_in_list": "No items in the list",
     "no_items_in_category_filter": "No items in \"{}\"",
+    "select_dates": "Select dates",
+    "confirm_dates": "Confirm dates",
     "select_departure_date": "Select departure date",
     "select_departure_time": "Select departure time",
     "select_return_date": "Select return date",
@@ -241,7 +244,8 @@
     "no_destination": "No destination",
     "add_clothes": "Add clothes",
     "unnamed_destination": "Trip",
-    "destination_required": "Please select a destination"
+    "destination_required": "Please select a destination",
+    "dates_required": "Please select departure and return dates"
   },
   "common": {
     "save": "Save",
