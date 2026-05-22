@@ -250,18 +250,20 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   ///
   /// Azzera anche [spaceId]: gli oggetti arrivano nel pool generale della casa
   /// di destinazione e l'utente potrà assegnarli a uno spazio in seguito.
+  /// Se [spaceId] è fornito, gli oggetti arrivano direttamente a quello spazio.
   Future<void> moveItemsToHouse(
     List<String> itemIds,
     String fromHouseId,
-    String toHouseId,
-  ) async {
+    String toHouseId, {
+    String? spaceId,
+  }) async {
     if (itemIds.isEmpty) return;
     await (update(
       items,
     )..where((t) => t.id.isIn(itemIds) & t.houseId.equals(fromHouseId))).write(
       ItemsCompanion(
         houseId: Value(toHouseId),
-        spaceId: const Value(null),
+        spaceId: Value(spaceId),
         updatedAt: Value(DateTime.now()),
       ),
     );

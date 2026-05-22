@@ -336,6 +336,55 @@ void main() {
       expect(allItems, isEmpty);
     });
 
+    test('moveItemsToHouse with spaceId should assign space to moved items',
+        () async {
+      // === ARRANGE ===
+      const houseAId = 'dao-spaceId-house-a';
+      const houseBId = 'dao-spaceId-house-b';
+      const spaceId = 'dao-spaceId-space-1';
+
+      for (final id in [houseAId, houseBId]) {
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: id,
+            name: 'House $id',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+      }
+      await database.spacesDao.insertSpace(
+        SpacesCompanion.insert(
+          id: spaceId,
+          houseId: houseBId,
+          name: 'Bedroom',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      const itemId = 'dao-spaceId-item-1';
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: itemId,
+          houseId: houseAId,
+          name: 'Shirt',
+          category: ItemCategory.vestiti,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      // === ACT ===
+      await database.itemsDao
+          .moveItemsToHouse([itemId], houseAId, houseBId, spaceId: spaceId);
+
+      // === ASSERT ===
+      final moved = await database.itemsDao.getItemsByHouseId(houseBId);
+      expect(moved.length, 1);
+      expect(moved.first.spaceId, equals(spaceId),
+          reason: 'spaceId must be set when passed to moveItemsToHouse');
+    });
+
     test('insertMultipleItems should be atomic - all or nothing', () async {
       // === ARRANGE ===
       final houseId = 'test-house-1';
