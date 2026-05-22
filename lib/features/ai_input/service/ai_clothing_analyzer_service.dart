@@ -5,6 +5,8 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/monitoring/monitoring_service.dart';
 import '../model/clothing_analysis_result.dart';
 
 // ── Custom Exceptions ─────────────────────────────────────────────────────────
@@ -85,6 +87,8 @@ Each object must have EXACTLY these keys:
   final String _anonKey;
   final http.Client _client;
   final String? Function() _jwtProvider;
+  final CoreAnalyticsService? _analytics;
+  final AppMonitoringService? _monitoring;
 
   AiClothingAnalyzerService({
     // required String removeBgApiKey, // ← REMOVE.BG DISABILITATO
@@ -92,13 +96,17 @@ Each object must have EXACTLY these keys:
     required String anonKey,
     http.Client? client,
     String? Function()? jwtProvider,
+    CoreAnalyticsService? analytics,
+    AppMonitoringService? monitoring,
   }) : // _removeBgApiKey = removeBgApiKey, // ← REMOVE.BG DISABILITATO
        _proxyUrl = proxyUrl,
        _anonKey = anonKey,
        _client = client ?? http.Client(),
        _jwtProvider =
            jwtProvider ??
-           (() => Supabase.instance.client.auth.currentSession?.accessToken);
+           (() => Supabase.instance.client.auth.currentSession?.accessToken),
+       _analytics = analytics,
+       _monitoring = monitoring;
 
   // ── Public orchestrators ──────────────────────────────────────────────────
 
@@ -107,12 +115,21 @@ Each object must have EXACTLY these keys:
   ///
   /// Throws a [ClothingAnalysisException] subclass on any failure.
   Future<List<ClothingItem>> processClothingItem(File imageFile) async {
-    // REMOVE.BG DISABILITATO: si salta lo step di background removal
-    // final Uint8List transparentPng = await _removeBackground(imageFile);
-    // return (await _analyzeImage(transparentPng)).items;
+    _analytics?.trackAiInputSubmitted();
+    try {
+      // REMOVE.BG DISABILITATO: si salta lo step di background removal
+      // final Uint8List transparentPng = await _removeBackground(imageFile);
+      // return (await _analyzeImage(transparentPng)).items;
 
-    final Uint8List imageBytes = await imageFile.readAsBytes();
-    return (await _analyzeImage(imageBytes)).items;
+      final Uint8List imageBytes = await imageFile.readAsBytes();
+      final result = (await _analyzeImage(imageBytes)).items;
+      _analytics?.trackAiInputCompleted(itemCount: result.length);
+      return result;
+    } on ClothingAnalysisException catch (e, st) {
+      _analytics?.trackAiInputFailed(errorType: e.runtimeType.toString());
+      _monitoring?.captureException(e, stackTrace: st, tags: {'operation': 'ai_input'});
+      rethrow;
+    }
   }
 
   /// Stesso di [processClothingItem] ma restituisce anche i bytes dell'immagine
@@ -123,17 +140,25 @@ Each object must have EXACTLY these keys:
     ({Uint8List processedBytes, List<ClothingItem> result, String rawJson})
   >
   processWithIntermediateResult(File imageFile) async {
-    // REMOVE.BG DISABILITATO: si usano i bytes originali al posto del PNG trasparente
-    // final Uint8List processedBytes = await _removeBackground(imageFile);
-    // final analyzed = await _analyzeImage(processedBytes);
+    _analytics?.trackAiInputSubmitted();
+    try {
+      // REMOVE.BG DISABILITATO: si usano i bytes originali al posto del PNG trasparente
+      // final Uint8List processedBytes = await _removeBackground(imageFile);
+      // final analyzed = await _analyzeImage(processedBytes);
 
-    final Uint8List processedBytes = await imageFile.readAsBytes();
-    final analyzed = await _analyzeImage(processedBytes);
-    return (
-      processedBytes: processedBytes,
-      result: analyzed.items,
-      rawJson: analyzed.rawJson,
-    );
+      final Uint8List processedBytes = await imageFile.readAsBytes();
+      final analyzed = await _analyzeImage(processedBytes);
+      _analytics?.trackAiInputCompleted(itemCount: analyzed.items.length);
+      return (
+        processedBytes: processedBytes,
+        result: analyzed.items,
+        rawJson: analyzed.rawJson,
+      );
+    } on ClothingAnalysisException catch (e, st) {
+      _analytics?.trackAiInputFailed(errorType: e.runtimeType.toString());
+      _monitoring?.captureException(e, stackTrace: st, tags: {'operation': 'ai_input'});
+      rethrow;
+    }
   }
 
   // ── Step 1: Background removal [DISABILITATO] ─────────────────────────────

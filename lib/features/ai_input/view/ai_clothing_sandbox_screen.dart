@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/monitoring/monitoring_service.dart';
+import '../../../core/sync/sync_provider.dart';
 import '../../../shared/config/app_config.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_spacing.dart';
@@ -66,12 +70,20 @@ class _AiClothingSandboxScreenState
 
   // ── Service ──────────────────────────────────────────────────────────────────
 
-  late final AiClothingAnalyzerService _service = AiClothingAnalyzerService(
-    proxyUrl: '${AppConfig.supabaseUrl}/functions/v1/openai-proxy',
-    anonKey: AppConfig.supabaseAnonKey,
-  );
+  late final AiClothingAnalyzerService _service;
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────
+
+  @override
+  void initState() {
+    super.initState();
+    _service = AiClothingAnalyzerService(
+      proxyUrl: '${AppConfig.supabaseUrl}/functions/v1/openai-proxy',
+      anonKey: AppConfig.supabaseAnonKey,
+      analytics: ref.read(coreAnalyticsServiceProvider),
+      monitoring: ref.read(monitoringServiceProvider),
+    );
+  }
 
   @override
   void dispose() {
@@ -218,12 +230,14 @@ class _AiClothingSandboxScreenState
           quantity: 1,
           createdAt: now,
           updatedAt: now,
+          aiMetadata: jsonEncode(item.toJson()),
         );
       }).toList();
 
       final repo = ref.read(itemRepositoryProvider);
       await repo.insertMultipleItems(items);
       ref.invalidate(itemNotifierProvider(_selectedHouseId));
+      ref.read(syncOrchestratorProvider).requestSync();
 
       if (!mounted) return;
 
