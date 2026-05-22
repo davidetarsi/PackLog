@@ -1,6 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/sync/sync_provider.dart';
 import '../../items/model/item_model.dart';
 import '../../items/repositories/item_repository.dart';
 import '../../items/providers/item_provider.dart';
@@ -32,11 +34,15 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
   void setGender(UserGender gender) {
     state = state.copyWith(gender: gender);
     _rebuildItems();
+    ref.read(coreAnalyticsServiceProvider).trackBulkGenderSet(
+      gender: gender.name,
+    );
   }
 
   /// Aggiunge o rimuove un template dalla selezione.
   void toggleTemplate(String templateKey) {
     final Set<String> updatedSelection = Set.from(state.selectedTemplateKeys);
+    final isSelected = !updatedSelection.contains(templateKey);
 
     if (updatedSelection.contains(templateKey)) {
       updatedSelection.remove(templateKey);
@@ -46,6 +52,11 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
 
     state = state.copyWith(selectedTemplateKeys: updatedSelection);
     _rebuildItems();
+    ref.read(coreAnalyticsServiceProvider).trackBulkTemplateToggled(
+      templateKey: templateKey,
+      isSelected: isSelected,
+      totalSelected: updatedSelection.length,
+    );
   }
 
   /// Rinomina un item esistente.
@@ -400,6 +411,12 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
 
     // Invalidazione provider per refresh UI
     ref.invalidate(itemNotifierProvider(state.targetHouseId!));
+    ref.read(syncOrchestratorProvider).requestSync();
+    ref.read(coreAnalyticsServiceProvider).trackBulkSessionSaved(
+      itemCount: itemModels.length,
+      templateCount: state.selectedTemplateKeys.length,
+      hasManualItems: state.manualItems.isNotEmpty,
+    );
 
     // Reset dello stato del wizard
     reset();

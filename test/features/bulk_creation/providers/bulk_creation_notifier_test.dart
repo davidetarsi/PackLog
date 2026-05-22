@@ -6,13 +6,21 @@ import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/bulk_creation/providers/bulk_creation_provider.dart';
 import 'package:pack_log/features/bulk_creation/model/user_gender.dart';
+import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/sync/sync_orchestrator.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
 
 /// Mock del repository degli item.
 class MockItemRepository extends Mock implements ItemRepository {}
 
+class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
+
+class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
+
 void main() {
   late MockItemRepository mockRepository;
   late ProviderContainer container;
+  late MockCoreAnalyticsService mockAnalytics;
 
   setUpAll(() {
     // Registra fallback per argomenti any()
@@ -21,9 +29,34 @@ void main() {
 
   setUp(() {
     mockRepository = MockItemRepository();
+    mockAnalytics = MockCoreAnalyticsService();
+    final mockSync = MockSyncOrchestrator();
+
+    when(() => mockSync.requestSync()).thenReturn(null);
+    when(
+      () => mockAnalytics.trackBulkSessionSaved(
+        itemCount: any(named: 'itemCount'),
+        templateCount: any(named: 'templateCount'),
+        hasManualItems: any(named: 'hasManualItems'),
+      ),
+    ).thenReturn(null);
+    when(
+      () => mockAnalytics.trackBulkGenderSet(gender: any(named: 'gender')),
+    ).thenReturn(null);
+    when(
+      () => mockAnalytics.trackBulkTemplateToggled(
+        templateKey: any(named: 'templateKey'),
+        isSelected: any(named: 'isSelected'),
+        totalSelected: any(named: 'totalSelected'),
+      ),
+    ).thenReturn(null);
 
     container = ProviderContainer(
-      overrides: [itemRepositoryProvider.overrideWithValue(mockRepository)],
+      overrides: [
+        itemRepositoryProvider.overrideWithValue(mockRepository),
+        coreAnalyticsServiceProvider.overrideWithValue(mockAnalytics),
+        syncOrchestratorProvider.overrideWithValue(mockSync),
+      ],
     );
   });
 
@@ -257,6 +290,35 @@ void main() {
       expect(savedItem.quantity, 3);
       expect(savedItem.houseId, 'house-mapping-test');
       expect(savedItem.description, isNull);
+    });
+  });
+
+  group('BulkCreationNotifier - Analytics', () {
+    test('saveToDatabase fires trackBulkSessionSaved with correct properties',
+        () async {
+      when(() => mockRepository.insertMultipleItems(any()))
+          .thenAnswer((_) async {});
+
+      final notifier = container.read(bulkCreationNotifierProvider.notifier);
+      notifier.setTargetHouse('house-1');
+      notifier.addManualItem(ItemCategory.varie);
+      notifier.addManualItem(ItemCategory.varie);
+
+      await notifier.saveToDatabase();
+
+      verify(
+        () => mockAnalytics.trackBulkSessionSaved(
+          itemCount: 2,
+          templateCount: 0,
+          hasManualItems: true,
+        ),
+      ).called(1);
+    });
+
+    test('setGender fires trackBulkGenderSet', () {
+      final notifier = container.read(bulkCreationNotifierProvider.notifier);
+      notifier.setGender(UserGender.male);
+      verify(() => mockAnalytics.trackBulkGenderSet(gender: 'male')).called(1);
     });
   });
 }
