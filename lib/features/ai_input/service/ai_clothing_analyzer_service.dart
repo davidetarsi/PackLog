@@ -126,7 +126,7 @@ Each object must have EXACTLY these keys:
       _analytics?.trackAiInputCompleted(itemCount: result.length);
       return result;
     } on ClothingAnalysisException catch (e, st) {
-      _analytics?.trackAiInputFailed(errorType: e.runtimeType.toString());
+      _analytics?.trackAiInputFailed(errorType: _errorType(e));
       _monitoring?.captureException(e, stackTrace: st, tags: {'operation': 'ai_input'});
       rethrow;
     }
@@ -155,11 +155,18 @@ Each object must have EXACTLY these keys:
         rawJson: analyzed.rawJson,
       );
     } on ClothingAnalysisException catch (e, st) {
-      _analytics?.trackAiInputFailed(errorType: e.runtimeType.toString());
+      _analytics?.trackAiInputFailed(errorType: _errorType(e));
       _monitoring?.captureException(e, stackTrace: st, tags: {'operation': 'ai_input'});
       rethrow;
     }
   }
+
+  static String _errorType(ClothingAnalysisException e) => switch (e) {
+    VisionAnalysisException() => 'VisionAnalysisException',
+    ResponseParsingException() => 'ResponseParsingException',
+    GptLimitExceededException() => 'GptLimitExceededException',
+    BackgroundRemovalException() => 'BackgroundRemovalException',
+  };
 
   // ── Step 1: Background removal [DISABILITATO] ─────────────────────────────
   //
