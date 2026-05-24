@@ -370,6 +370,10 @@
     "context_menu_delete": "Delete {}",
     "copy_success": "\"{}\" copied successfully"
   },
+  "profile": {
+    "ai_usage_title": "AI Analysis",
+    "ai_usage_subtitle": "{} / {} analyses this month"
+  },
   "settings": {
     "title": "Profile",
     "language": "Language",

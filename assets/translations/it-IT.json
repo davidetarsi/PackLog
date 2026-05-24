@@ -369,6 +369,10 @@
     "context_menu_delete": "Elimina {}",
     "copy_success": "\"{}\" copiato con successo"
   },
+  "profile": {
+    "ai_usage_title": "Analisi AI",
+    "ai_usage_subtitle": "{} / {} analisi questo mese"
+  },
   "settings": {
     "title": "Profilo",
     "language": "Lingua",
