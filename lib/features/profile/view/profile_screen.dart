@@ -1,6 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
 // import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/auth/auth_state.dart';
+import '../providers/gpt_usage_provider.dart';
 // import '../../../core/database/controllers/backup_controller.dart';
 // import 'package:sentry_flutter/sentry_flutter.dart';
 
@@ -251,6 +252,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ? 'Italiano'
         : 'English';
 
+    final authState = ref.watch(authNotifierProvider);
+    final displayName = switch (authState) {
+      Authenticated(:final displayName) => displayName,
+      Unauthenticated() => null,
+    };
+    final userEmail = switch (authState) {
+      Authenticated(:final email) => email,
+      Unauthenticated() => '',
+    };
+    final gptUsageAsync = ref.watch(gptUsageProvider);
+
     final themeModeAsync = ref.watch(themeModeNotifierProvider);
     final themeModeName = themeModeAsync.when(
       data: (mode) => switch (mode) {
@@ -272,6 +284,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       body: ListView(
         children: [
+          // ── Account identity ────────────────────────────────────────────
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: Text(
+              (displayName != null && displayName.isNotEmpty)
+                  ? displayName
+                  : userEmail,
+            ),
+            subtitle: Text(userEmail),
+          ),
+          const Divider(),
+
           // ── Preferenze ──────────────────────────────────────────────────
           ListTile(
             leading: const Icon(Icons.language),
@@ -294,6 +318,62 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             subtitle: Text(themeModeName),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showThemeDialog(context),
+          ),
+          const Divider(),
+
+          // ── AI usage ────────────────────────────────────────────────────
+          gptUsageAsync.when(
+            data: (usage) => ListTile(
+              leading: const Icon(Icons.auto_awesome_outlined),
+              title: Text('profile.ai_usage_title'.tr()),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(height: context.spacingXs),
+                  LinearProgressIndicator(
+                    value: usage.progress,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  SizedBox(height: context.spacingXs),
+                  Text(
+                    'profile.ai_usage_subtitle'.tr(
+                      args: [
+                        usage.monthlyCount.toString(),
+                        usage.monthlyCap.toString(),
+                      ],
+                    ),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            loading: () => ListTile(
+              leading: const Icon(Icons.auto_awesome_outlined),
+              title: Text('profile.ai_usage_title'.tr()),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(height: context.spacingXs),
+                  const LinearProgressIndicator(),
+                ],
+              ),
+            ),
+            error: (error, _) => ListTile(
+              leading: const Icon(Icons.auto_awesome_outlined),
+              title: Text('profile.ai_usage_title'.tr()),
+              subtitle: Text(
+                'errors.load_failed'.tr(),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ),
           ),
           const Divider(),
 
@@ -348,33 +428,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             title: Text('common.storage'.tr()),
             subtitle: Text('common.data_saved_locally'.tr()),
           ), */
-
           const Divider(),
 
-          // ── Dev Tools (kDebugMode only) ──────────────────────────────
-          if (kDebugMode) ...[
-            DsSectionHeader(
-              label: '🛠️  Dev Tools',
-              padding: EdgeInsets.fromLTRB(
-                context.spacingMd,
-                context.spacingLg,
-                context.spacingMd,
-                context.spacingSm,
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.palette_outlined),
-              title: const Text('DS Theme Showcase'),
-              subtitle: const Text(
-                'Visual QA: Light vs Dark, palette, typography',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/dev/ds-showcase'),
-            ),
-            const Divider(),
-          ],
-
-          // ── Account ──────────────────────────────────────────────────
+          // ── Account ─────────────────────────────────────────────────
           const SizedBox(height: 8),
 
           Padding(
