@@ -10,7 +10,6 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/helpers/design_system.dart';
-import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 
 class BulkMoveDestination {
@@ -55,30 +54,19 @@ class BulkMoveSheet extends ConsumerStatefulWidget {
 
 class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
   HouseModel? _selectedHouse;
+  bool _spaceConfirmed = false;
   String? _selectedSpaceId;
 
-  Future<void> _pickHouse(List<HouseModel> allHouses) async {
-    final otherHouses = allHouses
-        .where((h) => h.id != widget.sourceHouseId)
-        .toList();
-    final picked = await DsPickerSheet.show<HouseModel>(
-      context: context,
-      title: 'items.bulk_move_title'.tr(),
-      items: otherHouses,
-      getLabel: (h) => h.displayName,
-      getSubtitle: (h) => h.isPrimary ? 'houses.primary'.tr() : null,
-      getIcon: (h) => HouseIcons.getIcon(h.iconName),
-      selected: _selectedHouse,
-    );
-    if (picked == null || !mounted) return;
+  void _selectHouse(HouseModel house) {
     setState(() {
-      _selectedHouse = picked;
+      _selectedHouse = house;
+      _spaceConfirmed = false;
       _selectedSpaceId = null;
     });
   }
 
   void _confirm() {
-    if (_selectedHouse == null) return;
+    if (_selectedHouse == null || !_spaceConfirmed) return;
     Navigator.of(context).pop(
       BulkMoveDestination(
         houseId: _selectedHouse!.id,
@@ -92,11 +80,17 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final allHouses = ref.watch(houseNotifierProvider).value ?? [];
+    final otherHouses = allHouses
+        .where((h) => h.id != widget.sourceHouseId)
+        .toList();
     final spacesAsync = _selectedHouse != null
         ? ref.watch(spacesByHouseProvider(_selectedHouse!.id))
         : null;
 
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: const BorderRadius.vertical(
@@ -122,31 +116,39 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
                 textAlign: TextAlign.center,
               ),
             ),
-            ListTile(
-              leading: Icon(
-                _selectedHouse != null
-                    ? HouseIcons.getIcon(_selectedHouse!.iconName)
-                    : Icons.home_outlined,
-                color: cs.primary,
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ...otherHouses.map(
+                      (house) => ListTile(
+                        leading: Icon(
+                          HouseIcons.getIcon(house.iconName),
+                          color: _selectedHouse?.id == house.id
+                              ? cs.primary
+                              : cs.onSurfaceVariant,
+                        ),
+                        title: Text(house.displayName),
+                        trailing: _selectedHouse?.id == house.id
+                            ? Icon(Icons.check, color: cs.primary)
+                            : null,
+                        onTap: () => _selectHouse(house),
+                      ),
+                    ),
+                    if (_selectedHouse != null && spacesAsync != null)
+                      _buildSpaceSection(spacesAsync),
+                  ],
+                ),
               ),
-              title: Text(
-                _selectedHouse?.displayName ?? 'common.select_house'.tr(),
-                style: _selectedHouse == null
-                    ? Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      )
-                    : null,
-              ),
-              trailing: const Icon(Icons.arrow_drop_down),
-              onTap: () => _pickHouse(allHouses),
             ),
-            const Divider(height: 1),
-            if (_selectedHouse != null) _buildSpaceList(spacesAsync!),
             SizedBox(height: context.spacingMd),
             UniversalActionBar(
               primaryLabel: 'common.move'.tr(),
               primaryIcon: Icons.local_shipping_outlined,
-              onPrimaryPressed: _selectedHouse == null ? null : _confirm,
+              onPrimaryPressed: (_selectedHouse != null && _spaceConfirmed)
+                  ? _confirm
+                  : null,
             ),
           ],
         ),
@@ -154,38 +156,58 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
     );
   }
 
-  Widget _buildSpaceList(AsyncValue<List<SpaceModel>> spacesAsync) {
+  Widget _buildSpaceSection(AsyncValue<List<SpaceModel>> spacesAsync) {
     final cs = Theme.of(context).colorScheme;
 
-    final defaultTile = ListTile(
-      leading: Icon(Icons.inventory_2, color: cs.onSurfaceVariant),
-      title: Text('spaces.default'.tr()),
-      trailing: _selectedSpaceId == null
-          ? Icon(Icons.check, color: cs.primary)
-          : null,
-      onTap: () => setState(() => _selectedSpaceId = null),
-    );
-
     return spacesAsync.when(
-      data: (spaces) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          defaultTile,
-          ...spaces.map(
-            (s) => ListTile(
-              leading: Icon(
-                SpaceIcons.getIcon(s.iconName ?? 'meeting_room'),
-                color: cs.onSurfaceVariant,
-              ),
-              title: Text(s.name),
-              trailing: _selectedSpaceId == s.id
+      data: (spaces) {
+        if (spaces.isEmpty) {
+          // No spaces defined for this house: auto-select null (default) so
+          // the confirm button activates without requiring user input.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_spaceConfirmed) {
+              setState(() {
+                _spaceConfirmed = true;
+                _selectedSpaceId = null;
+              });
+            }
+          });
+          return const SizedBox.shrink();
+        }
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.inventory_2, color: cs.onSurfaceVariant),
+              title: Text('spaces.default'.tr()),
+              trailing: (_spaceConfirmed && _selectedSpaceId == null)
                   ? Icon(Icons.check, color: cs.primary)
                   : null,
-              onTap: () => setState(() => _selectedSpaceId = s.id),
+              onTap: () => setState(() {
+                _selectedSpaceId = null;
+                _spaceConfirmed = true;
+              }),
             ),
-          ),
-        ],
-      ),
+            ...spaces.map(
+              (s) => ListTile(
+                leading: Icon(
+                  SpaceIcons.getIcon(s.iconName ?? 'meeting_room'),
+                  color: cs.onSurfaceVariant,
+                ),
+                title: Text(s.name),
+                trailing: (_spaceConfirmed && _selectedSpaceId == s.id)
+                    ? Icon(Icons.check, color: cs.primary)
+                    : null,
+                onTap: () => setState(() {
+                  _selectedSpaceId = s.id;
+                  _spaceConfirmed = true;
+                }),
+              ),
+            ),
+          ],
+        );
+      },
       loading: () => const Padding(
         padding: EdgeInsets.all(16),
         child: Center(child: CircularProgressIndicator()),
@@ -193,7 +215,7 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
       error: (_, stack) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          defaultTile,
+          const Divider(height: 1),
           ListTile(
             enabled: false,
             leading: const Icon(Icons.error_outline),
