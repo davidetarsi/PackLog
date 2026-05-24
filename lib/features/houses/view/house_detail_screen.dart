@@ -21,7 +21,7 @@ import '../../luggages/view/luggages_management_screen.dart';
 import 'add_edit_house_screen.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/widgets/ds_contextual_app_bar.dart';
-import '../../../shared/widgets/ds_picker_sheet.dart';
+import '../../items/view/bulk_move_sheet.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
@@ -308,29 +308,23 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     final selectedIds = selectionState.selectedIds.toList();
     if (selectedIds.isEmpty) return;
 
-    final allHouses = ref.read(houseNotifierProvider).value ?? [];
-    final otherHouses = allHouses.where((h) => h.id != widget.houseId).toList();
-
     if (!context.mounted) return;
 
-    final destination = await DsPickerSheet.show(
-      context: context,
-      title: 'items.bulk_move_title'.tr(),
-      items: otherHouses,
-      getLabel: (h) => h.name,
-      getSubtitle: (h) => h.isPrimary ? 'houses.primary'.tr() : null,
-      getIcon: (h) => HouseIcons.getIcon(h.iconName),
+    final dest = await BulkMoveSheet.show(
+      context,
+      itemCount: selectedIds.length,
+      sourceHouseId: widget.houseId,
     );
 
-    if (destination == null || !mounted) return;
+    if (dest == null || !mounted) return;
 
-    final destinationName = destination.name;
+    final destinationName = dest.houseDisplayName;
     final count = selectedIds.length;
 
     try {
       await ref
           .read(itemNotifierProvider(widget.houseId).notifier)
-          .bulkMove(selectedIds, destination.id);
+          .bulkMove(selectedIds, dest.houseId, spaceId: dest.spaceId);
 
       if (mounted) {
         AppSnackBar.showSuccess(
