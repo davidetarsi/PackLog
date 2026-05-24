@@ -31,7 +31,7 @@ Future<GptUsageModel> gptUsage(Ref ref) async {
       .single();
 
   return GptUsageModel(
-    monthlyCount: data['gpt_monthly_count'] as int,
-    monthlyCap: data['gpt_monthly_cap'] as int,
+    monthlyCount: (data['gpt_monthly_count'] as int?) ?? 0,
+    monthlyCap: (data['gpt_monthly_cap'] as int?) ?? 0,
   );
 }
