@@ -63,6 +63,15 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
       _spaceConfirmed = false;
       _selectedSpaceId = null;
     });
+    // Auto-confirm if the house has no spaces
+    ref.read(spacesByHouseProvider(house.id).future).then((spaces) {
+      if (mounted && !_spaceConfirmed && spaces.isEmpty) {
+        setState(() {
+          _spaceConfirmed = true;
+          _selectedSpaceId = null;
+        });
+      }
+    });
   }
 
   void _confirm() {
@@ -79,10 +88,7 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final allHouses = ref.watch(houseNotifierProvider).value ?? [];
-    final otherHouses = allHouses
-        .where((h) => h.id != widget.sourceHouseId)
-        .toList();
+    final housesAsync = ref.watch(houseNotifierProvider);
     final spacesAsync = _selectedHouse != null
         ? ref.watch(spacesByHouseProvider(_selectedHouse!.id))
         : null;
@@ -121,19 +127,40 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    ...otherHouses.map(
-                      (house) => ListTile(
-                        leading: Icon(
-                          HouseIcons.getIcon(house.iconName),
-                          color: _selectedHouse?.id == house.id
-                              ? cs.primary
-                              : cs.onSurfaceVariant,
-                        ),
-                        title: Text(house.displayName),
-                        trailing: _selectedHouse?.id == house.id
-                            ? Icon(Icons.check, color: cs.primary)
-                            : null,
-                        onTap: () => _selectHouse(house),
+                    housesAsync.when(
+                      data: (allHouses) {
+                        final otherHouses = allHouses
+                            .where((h) => h.id != widget.sourceHouseId)
+                            .toList();
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: otherHouses
+                              .map(
+                                (house) => ListTile(
+                                  leading: Icon(
+                                    HouseIcons.getIcon(house.iconName),
+                                    color: _selectedHouse?.id == house.id
+                                        ? cs.primary
+                                        : cs.onSurfaceVariant,
+                                  ),
+                                  title: Text(house.displayName),
+                                  trailing: _selectedHouse?.id == house.id
+                                      ? Icon(Icons.check, color: cs.primary)
+                                      : null,
+                                  onTap: () => _selectHouse(house),
+                                ),
+                              )
+                              .toList(),
+                        );
+                      },
+                      loading: () => const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (err, _) => ListTile(
+                        enabled: false,
+                        leading: const Icon(Icons.error_outline),
+                        title: Text('errors.load_failed'.tr()),
                       ),
                     ),
                     if (_selectedHouse != null && spacesAsync != null)
@@ -162,16 +189,6 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
     return spacesAsync.when(
       data: (spaces) {
         if (spaces.isEmpty) {
-          // No spaces defined for this house: auto-select null (default) so
-          // the confirm button activates without requiring user input.
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && !_spaceConfirmed) {
-              setState(() {
-                _spaceConfirmed = true;
-                _selectedSpaceId = null;
-              });
-            }
-          });
           return const SizedBox.shrink();
         }
         return Column(
