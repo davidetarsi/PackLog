@@ -29,7 +29,7 @@ class SupabaseAuthRepository implements AuthRepository {
       return AuthState.authenticated(
         userId: user.id,
         email: user.email ?? '',
-        displayName: user.userMetadata?['full_name'] as String?,
+        displayName: user.userMetadata?['full_name']?.toString(),
       );
     }
     return const AuthState.unauthenticated();
@@ -44,7 +44,7 @@ class SupabaseAuthRepository implements AuthRepository {
         return AuthState.authenticated(
           userId: user.id,
           email: user.email ?? '',
-          displayName: user.userMetadata?['full_name'] as String?,
+          displayName: user.userMetadata?['full_name']?.toString(),
         );
       }
       return const AuthState.unauthenticated();
