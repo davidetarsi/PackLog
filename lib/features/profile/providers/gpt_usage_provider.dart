@@ -18,7 +18,7 @@ class GptUsageModel {
 
 @Riverpod(keepAlive: true)
 Future<GptUsageModel> gptUsage(Ref ref) async {
-  final userId = ref.watch(currentUserIdProvider);
+  final userId = ref.read(currentUserIdProvider);
   if (userId == null) throw Exception('Not authenticated');
 
   final data = await Supabase.instance.client

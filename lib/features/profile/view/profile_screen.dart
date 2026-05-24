@@ -292,7 +292,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ? displayName
                   : userEmail,
             ),
-            subtitle: Text(userEmail),
+            subtitle: userEmail.isNotEmpty ? Text(userEmail) : null,
           ),
           const Divider(),
 
