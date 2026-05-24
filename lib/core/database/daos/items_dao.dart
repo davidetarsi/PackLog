@@ -264,6 +264,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       ItemsCompanion(
         houseId: Value(toHouseId),
         spaceId: Value(spaceId),
+        syncStatus: const Value(SyncStatus.pendingUpdate),
         updatedAt: Value(DateTime.now()),
       ),
     );

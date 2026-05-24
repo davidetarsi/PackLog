@@ -250,7 +250,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
           housesAsync.when(
             data: (houses) => _buildHouseSelector(houses),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('${' common.error'.tr()}: $e'),
+            error: (e, _) => Text('${'common.error'.tr()}: $e'),
           ),
           SizedBox(height: context.spacingMd),
           TextFormField(

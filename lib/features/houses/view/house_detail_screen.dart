@@ -334,7 +334,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         AppSnackBar.showError(context, 'errors.save_error'.tr());
       }
