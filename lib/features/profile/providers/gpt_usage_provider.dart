@@ -7,10 +7,7 @@ import '../../../core/auth/auth_provider.dart';
 part 'gpt_usage_provider.g.dart';
 
 class GptUsageModel {
-  const GptUsageModel({
-    required this.monthlyCount,
-    required this.monthlyCap,
-  });
+  const GptUsageModel({required this.monthlyCount, required this.monthlyCap});
 
   final int monthlyCount;
   final int monthlyCap;
@@ -19,7 +16,7 @@ class GptUsageModel {
       monthlyCap > 0 ? (monthlyCount / monthlyCap).clamp(0.0, 1.0) : 0.0;
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<GptUsageModel> gptUsage(Ref ref) async {
   final userId = ref.watch(currentUserIdProvider);
   if (userId == null) throw Exception('Not authenticated');
