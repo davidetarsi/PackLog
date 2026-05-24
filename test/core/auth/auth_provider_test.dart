@@ -43,6 +43,33 @@ void main() {
       expect(state, equals(expected));
     });
 
+    test('includes displayName from repository state', () {
+      const expected = AuthState.authenticated(
+        userId: 'user-3',
+        email: 'name@test.com',
+        displayName: 'Mario Rossi',
+      );
+      when(() => mockRepo.currentAuthState).thenReturn(expected);
+      when(() => mockRepo.authStateChanges)
+          .thenAnswer((_) => const Stream.empty());
+
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockRepo),
+          ...mockAnalyticsOverrides(),
+          ...mockMonitoringOverrides(),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final state = container.read(authNotifierProvider);
+      expect(state, equals(expected));
+      expect(
+        (state as Authenticated).displayName,
+        equals('Mario Rossi'),
+      );
+    });
+
     test('updates state when auth stream emits', () async {
       final controller = StreamController<AuthState>.broadcast();
       when(

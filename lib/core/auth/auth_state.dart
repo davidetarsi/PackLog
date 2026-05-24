@@ -7,6 +7,7 @@ sealed class AuthState with _$AuthState {
   const factory AuthState.authenticated({
     required String userId,
     required String email,
+    String? displayName,
   }) = Authenticated;
 
   const factory AuthState.unauthenticated() = Unauthenticated;

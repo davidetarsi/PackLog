@@ -26,7 +26,11 @@ class SupabaseAuthRepository implements AuthRepository {
     final session = _client.auth.currentSession;
     final user = _client.auth.currentUser;
     if (session != null && user != null) {
-      return AuthState.authenticated(userId: user.id, email: user.email ?? '');
+      return AuthState.authenticated(
+        userId: user.id,
+        email: user.email ?? '',
+        displayName: user.userMetadata?['full_name'] as String?,
+      );
     }
     return const AuthState.unauthenticated();
   }
@@ -40,6 +44,7 @@ class SupabaseAuthRepository implements AuthRepository {
         return AuthState.authenticated(
           userId: user.id,
           email: user.email ?? '',
+          displayName: user.userMetadata?['full_name'] as String?,
         );
       }
       return const AuthState.unauthenticated();
