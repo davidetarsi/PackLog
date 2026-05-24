@@ -282,171 +282,174 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         // non si può fare pop verso un livello superiore.
         automaticallyImplyLeading: false,
       ),
-      body: ListView(
-        children: [
-          // ── Account identity ────────────────────────────────────────────
-          ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: Text(
-              (displayName != null && displayName.isNotEmpty)
-                  ? displayName
-                  : userEmail,
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(gptUsageProvider),
+        child: ListView(
+          children: [
+            // ── Account identity ────────────────────────────────────────────
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: Text(
+                (displayName != null && displayName.isNotEmpty)
+                    ? displayName
+                    : userEmail,
+              ),
+              subtitle: userEmail.isNotEmpty ? Text(userEmail) : null,
             ),
-            subtitle: userEmail.isNotEmpty ? Text(userEmail) : null,
-          ),
-          const Divider(),
+            const Divider(),
 
-          // ── Preferenze ──────────────────────────────────────────────────
-          ListTile(
-            leading: const Icon(Icons.language),
-            title: Text('settings.language'.tr()),
-            subtitle: Text(languageName),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showLanguageDialog(context),
-          ),
-          const Divider(),
-
-          ListTile(
-            leading: Icon(
-              themeModeAsync.valueOrNull == ThemeMode.light
-                  ? Icons.light_mode
-                  : themeModeAsync.valueOrNull == ThemeMode.dark
-                  ? Icons.dark_mode
-                  : Icons.brightness_auto,
+            // ── Preferenze ──────────────────────────────────────────────────
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: Text('settings.language'.tr()),
+              subtitle: Text(languageName),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showLanguageDialog(context),
             ),
-            title: Text('settings.theme'.tr()),
-            subtitle: Text(themeModeName),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showThemeDialog(context),
-          ),
-          const Divider(),
+            const Divider(),
 
-          // ── AI usage ────────────────────────────────────────────────────
-          gptUsageAsync.when(
-            data: (usage) => ListTile(
-              leading: const Icon(Icons.auto_awesome_outlined),
-              title: Text('profile.ai_usage_title'.tr()),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(height: context.spacingXs),
-                  LinearProgressIndicator(
-                    value: usage.progress,
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    color: Theme.of(context).colorScheme.primary,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  SizedBox(height: context.spacingXs),
-                  Text(
-                    'profile.ai_usage_subtitle'.tr(
-                      args: [
-                        usage.monthlyCount.toString(),
-                        usage.monthlyCap.toString(),
-                      ],
+            ListTile(
+              leading: Icon(
+                themeModeAsync.valueOrNull == ThemeMode.light
+                    ? Icons.light_mode
+                    : themeModeAsync.valueOrNull == ThemeMode.dark
+                    ? Icons.dark_mode
+                    : Icons.brightness_auto,
+              ),
+              title: Text('settings.theme'.tr()),
+              subtitle: Text(themeModeName),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showThemeDialog(context),
+            ),
+            const Divider(),
+
+            // ── AI usage ────────────────────────────────────────────────────
+            gptUsageAsync.when(
+              data: (usage) => ListTile(
+                leading: const Icon(Icons.auto_awesome_outlined),
+                title: Text('profile.ai_usage_title'.tr()),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(height: context.spacingXs),
+                    LinearProgressIndicator(
+                      value: usage.progress,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    style: Theme.of(context).textTheme.bodySmall,
+                    SizedBox(height: context.spacingXs),
+                    Text(
+                      'profile.ai_usage_subtitle'.tr(
+                        args: [
+                          usage.monthlyCount.toString(),
+                          usage.monthlyCap.toString(),
+                        ],
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              loading: () => ListTile(
+                leading: const Icon(Icons.auto_awesome_outlined),
+                title: Text('profile.ai_usage_title'.tr()),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(height: context.spacingXs),
+                    const LinearProgressIndicator(),
+                  ],
+                ),
+              ),
+              error: (error, _) => ListTile(
+                leading: const Icon(Icons.auto_awesome_outlined),
+                title: Text('profile.ai_usage_title'.tr()),
+                subtitle: Text(
+                  'errors.load_failed'.tr(),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
                   ),
-                ],
-              ),
-            ),
-            loading: () => ListTile(
-              leading: const Icon(Icons.auto_awesome_outlined),
-              title: Text('profile.ai_usage_title'.tr()),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(height: context.spacingXs),
-                  const LinearProgressIndicator(),
-                ],
-              ),
-            ),
-            error: (error, _) => ListTile(
-              leading: const Icon(Icons.auto_awesome_outlined),
-              title: Text('profile.ai_usage_title'.tr()),
-              subtitle: Text(
-                'errors.load_failed'.tr(),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
                 ),
               ),
             ),
-          ),
-          const Divider(),
+            const Divider(),
 
-          // ── Backup & Ripristino [COMMENTATO: non usato con Supabase cloud] ──
-          // DsSectionHeader(label: 'backup.title'.tr(), ...),
-          // Consumer(builder: (context, ref, _) { ... }),  // export tile
-          // ListTile(...),  // import tile
-          // const Divider(),
+            // ── Backup & Ripristino [COMMENTATO: non usato con Supabase cloud] ──
+            // DsSectionHeader(label: 'backup.title'.tr(), ...),
+            // Consumer(builder: (context, ref, _) { ... }),  // export tile
+            // ListTile(...),  // import tile
+            // const Divider(),
 
-          // ── About ────────────────────────────────────────────────────────
-          DsSectionHeader(
-            label: 'settings.about_section_title'.tr(),
-            padding: EdgeInsets.fromLTRB(
-              context.spacingMd,
-              context.spacingLg,
-              context.spacingMd,
-              context.spacingSm,
+            // ── About ────────────────────────────────────────────────────────
+            DsSectionHeader(
+              label: 'settings.about_section_title'.tr(),
+              padding: EdgeInsets.fromLTRB(
+                context.spacingMd,
+                context.spacingLg,
+                context.spacingMd,
+                context.spacingSm,
+              ),
             ),
-          ),
 
-          ListTile(
-            leading: const Icon(Icons.feedback_outlined),
-            title: Text('settings.feedback'.tr()),
-            subtitle: Text('settings.feedback_subtitle'.tr()),
-            trailing: const Icon(Icons.open_in_new, size: 18),
-            onTap: () => _openFeedbackForm(context),
-          ),
+            ListTile(
+              leading: const Icon(Icons.feedback_outlined),
+              title: Text('settings.feedback'.tr()),
+              subtitle: Text('settings.feedback_subtitle'.tr()),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => _openFeedbackForm(context),
+            ),
 
-          ListTile(
-            leading: const Icon(Icons.code),
-            title: Text('settings.view_project'.tr()),
-            subtitle: Text('settings.view_project_subtitle'.tr()),
-            trailing: const Icon(Icons.open_in_new, size: 18),
-            onTap: () => _launchUrl(context, AppConfig.githubUrl),
-          ),
+            ListTile(
+              leading: const Icon(Icons.code),
+              title: Text('settings.view_project'.tr()),
+              subtitle: Text('settings.view_project_subtitle'.tr()),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => _launchUrl(context, AppConfig.githubUrl),
+            ),
 
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: Text('settings.about'.tr()),
-            subtitle: ref
-                .watch(packageInfoProvider)
-                .when(
-                  data: (info) =>
-                      Text('${'common.version'.tr()} ${info.version}'),
-                  loading: () => Text('${'common.version'.tr()} …'),
-                  error: (_, _) => Text('${'common.version'.tr()} —'),
-                ),
-          ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: Text('settings.about'.tr()),
+              subtitle: ref
+                  .watch(packageInfoProvider)
+                  .when(
+                    data: (info) =>
+                        Text('${'common.version'.tr()} ${info.version}'),
+                    loading: () => Text('${'common.version'.tr()} …'),
+                    error: (_, _) => Text('${'common.version'.tr()} —'),
+                  ),
+            ),
 
-          /* ListTile(
+            /* ListTile(
             leading: const Icon(Icons.storage),
             title: Text('common.storage'.tr()),
             subtitle: Text('common.data_saved_locally'.tr()),
           ), */
-          const Divider(),
+            const Divider(),
 
-          // ── Account ─────────────────────────────────────────────────
-          const SizedBox(height: 8),
+            // ── Account ─────────────────────────────────────────────────
+            const SizedBox(height: 8),
 
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-            child: FilledButton.tonalIcon(
-              onPressed: () => _handleSignOut(context),
-              icon: const Icon(Icons.logout),
-              label: Text('login.sign_out'.tr()),
-              style: FilledButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+              child: FilledButton.tonalIcon(
+                onPressed: () => _handleSignOut(context),
+                icon: const Icon(Icons.logout),
+                label: Text('login.sign_out'.tr()),
+                style: FilledButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 24),
-        ],
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
