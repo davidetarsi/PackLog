@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import '../../houses/model/house_model.dart';
 import '../../houses/providers/house_provider.dart';
+import '../../spaces/model/space_model.dart';
 import '../../spaces/providers/space_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
@@ -43,10 +44,8 @@ class BulkMoveSheet extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => BulkMoveSheet(
-        itemCount: itemCount,
-        sourceHouseId: sourceHouseId,
-      ),
+      builder: (_) =>
+          BulkMoveSheet(itemCount: itemCount, sourceHouseId: sourceHouseId),
     );
   }
 
@@ -58,11 +57,10 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
   HouseModel? _selectedHouse;
   String? _selectedSpaceId;
 
-  Future<void> _pickHouse() async {
-    final allHouses = ref.read(houseNotifierProvider).value ?? [];
-    final otherHouses =
-        allHouses.where((h) => h.id != widget.sourceHouseId).toList();
-    if (!context.mounted) return;
+  Future<void> _pickHouse(List<HouseModel> allHouses) async {
+    final otherHouses = allHouses
+        .where((h) => h.id != widget.sourceHouseId)
+        .toList();
     final picked = await DsPickerSheet.show<HouseModel>(
       context: context,
       title: 'items.bulk_move_title'.tr(),
@@ -93,6 +91,10 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final allHouses = ref.watch(houseNotifierProvider).value ?? [];
+    final spacesAsync = _selectedHouse != null
+        ? ref.watch(spacesByHouseProvider(_selectedHouse!.id))
+        : null;
 
     return Container(
       decoration: BoxDecoration(
@@ -113,8 +115,9 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
                 vertical: context.spacingSm,
               ),
               child: Text(
-                'items.bulk_move_sheet_title'
-                    .tr(args: [widget.itemCount.toString()]),
+                'items.bulk_move_sheet_title'.tr(
+                  args: [widget.itemCount.toString()],
+                ),
                 style: Theme.of(context).textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
@@ -129,17 +132,16 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
               title: Text(
                 _selectedHouse?.displayName ?? 'common.select_house'.tr(),
                 style: _selectedHouse == null
-                    ? Theme.of(context)
-                        .textTheme
-                        .bodyLarge
-                        ?.copyWith(color: cs.onSurfaceVariant)
+                    ? Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      )
                     : null,
               ),
               trailing: const Icon(Icons.arrow_drop_down),
-              onTap: _pickHouse,
+              onTap: () => _pickHouse(allHouses),
             ),
             const Divider(height: 1),
-            if (_selectedHouse != null) _buildSpaceList(_selectedHouse!.id),
+            if (_selectedHouse != null) _buildSpaceList(spacesAsync!),
             SizedBox(height: context.spacingMd),
             UniversalActionBar(
               primaryLabel: 'common.move'.tr(),
@@ -152,8 +154,7 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
     );
   }
 
-  Widget _buildSpaceList(String houseId) {
-    final spacesAsync = ref.watch(spacesByHouseProvider(houseId));
+  Widget _buildSpaceList(AsyncValue<List<SpaceModel>> spacesAsync) {
     final cs = Theme.of(context).colorScheme;
 
     final defaultTile = ListTile(
@@ -189,7 +190,7 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
         padding: EdgeInsets.all(16),
         child: Center(child: CircularProgressIndicator()),
       ),
-      error: (_, _) => Column(
+      error: (_, stack) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           defaultTile,
