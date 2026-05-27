@@ -60,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -312,6 +312,13 @@ class AppDatabase extends _$AppDatabase {
               'ALTER TABLE $table ADD COLUMN next_sync_attempt_at INTEGER',
             );
           }
+        }
+
+        if (from < 9) {
+          // Migrazione v8 → v9: AI metadata su items
+          await customStatement(
+            'ALTER TABLE items ADD COLUMN ai_metadata TEXT',
+          );
         }
       },
       beforeOpen: (details) async {

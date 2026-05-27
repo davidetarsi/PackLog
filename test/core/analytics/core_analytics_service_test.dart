@@ -105,10 +105,8 @@ void main() {
       service.trackItemBulkMoved(count: 3);
       await pump();
       verify(
-        () => mockAnalytics.logEvent(
-          'item_bulk_moved',
-          properties: {'count': 3},
-        ),
+        () =>
+            mockAnalytics.logEvent('item_bulk_moved', properties: {'count': 3}),
       ).called(1);
     });
   });
@@ -151,16 +149,19 @@ void main() {
       ).called(1);
     });
 
-    test('trackTripSavedToggled logs trip_saved_toggled with is_saved', () async {
-      service.trackTripSavedToggled(isSaved: true);
-      await pump();
-      verify(
-        () => mockAnalytics.logEvent(
-          'trip_saved_toggled',
-          properties: {'is_saved': true},
-        ),
-      ).called(1);
-    });
+    test(
+      'trackTripSavedToggled logs trip_saved_toggled with is_saved',
+      () async {
+        service.trackTripSavedToggled(isSaved: true);
+        await pump();
+        verify(
+          () => mockAnalytics.logEvent(
+            'trip_saved_toggled',
+            properties: {'is_saved': true},
+          ),
+        ).called(1);
+      },
+    );
   });
 
   group('bulk events', () {
@@ -223,16 +224,19 @@ void main() {
       ).called(1);
     });
 
-    test('trackAiInputCompleted logs ai_input_completed with item_count', () async {
-      service.trackAiInputCompleted(itemCount: 4);
-      await pump();
-      verify(
-        () => mockAnalytics.logEvent(
-          'ai_input_completed',
-          properties: {'item_count': 4},
-        ),
-      ).called(1);
-    });
+    test(
+      'trackAiInputCompleted logs ai_input_completed with item_count',
+      () async {
+        service.trackAiInputCompleted(itemCount: 4);
+        await pump();
+        verify(
+          () => mockAnalytics.logEvent(
+            'ai_input_completed',
+            properties: {'item_count': 4},
+          ),
+        ).called(1);
+      },
+    );
 
     test('trackAiInputFailed logs ai_input_failed with error_type', () async {
       service.trackAiInputFailed(errorType: 'VisionAnalysisException');
@@ -249,7 +253,8 @@ void main() {
   group('resilienza', () {
     test('analytics failure non propaga eccezione al chiamante', () async {
       when(
-        () => mockAnalytics.logEvent(any(), properties: any(named: 'properties')),
+        () =>
+            mockAnalytics.logEvent(any(), properties: any(named: 'properties')),
       ).thenThrow(Exception('network error'));
 
       expect(() => service.trackHouseDeleted(), returnsNormally);

@@ -495,6 +495,7 @@ class SyncService {
       'created_at': item.createdAt.toUtc().toIso8601String(),
       'updated_at': item.updatedAt.toUtc().toIso8601String(),
       'is_deleted': item.isDeleted,
+      'ai_metadata': item.aiMetadata,
     };
   }
 
@@ -562,6 +563,7 @@ class SyncService {
         createdAt: Value(DateTime.parse(remote['created_at'] as String)),
         updatedAt: Value(DateTime.parse(remote['updated_at'] as String)),
         isDeleted: Value(remote['is_deleted'] as bool? ?? false),
+        aiMetadata: Value(remote['ai_metadata'] as String?),
       ),
     );
   }

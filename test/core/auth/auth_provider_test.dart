@@ -50,8 +50,9 @@ void main() {
         displayName: 'Mario Rossi',
       );
       when(() => mockRepo.currentAuthState).thenReturn(expected);
-      when(() => mockRepo.authStateChanges)
-          .thenAnswer((_) => const Stream.empty());
+      when(
+        () => mockRepo.authStateChanges,
+      ).thenAnswer((_) => const Stream.empty());
 
       final container = ProviderContainer(
         overrides: [
@@ -64,10 +65,7 @@ void main() {
 
       final state = container.read(authNotifierProvider);
       expect(state, equals(expected));
-      expect(
-        (state as Authenticated).displayName,
-        equals('Mario Rossi'),
-      );
+      expect((state as Authenticated).displayName, equals('Mario Rossi'));
     });
 
     test('updates state when auth stream emits', () async {

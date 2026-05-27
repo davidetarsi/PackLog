@@ -60,6 +60,9 @@ class ItemModel with _$ItemModel {
 
     required DateTime createdAt,
     required DateTime updatedAt,
+
+    /// Metadati AI generati da GPT-4o Vision (JSON serializzato).
+    String? aiMetadata,
   }) = _ItemModel;
 
   factory ItemModel.empty(String houseId) {

@@ -247,11 +247,6 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          housesAsync.when(
-            data: (houses) => _buildHouseSelector(houses),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('${'common.error'.tr()}: $e'),
-          ),
           SizedBox(height: context.spacingMd),
           TextFormField(
             controller: _nameController,
@@ -325,6 +320,11 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
             ],
           ),
           SizedBox(height: context.spacingMd),
+          housesAsync.when(
+            data: (houses) => _buildHouseSelector(houses),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Text('${'common.error'.tr()}: $e'),
+          ),
           if (_selectedHouseId != null) _buildSpaceSelector(),
           if (_selectedHouseId != null) SizedBox(height: context.spacingMd),
           TextFormField(

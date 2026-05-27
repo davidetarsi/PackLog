@@ -294,26 +294,29 @@ void main() {
   });
 
   group('BulkCreationNotifier - Analytics', () {
-    test('saveToDatabase fires trackBulkSessionSaved with correct properties',
-        () async {
-      when(() => mockRepository.insertMultipleItems(any()))
-          .thenAnswer((_) async {});
+    test(
+      'saveToDatabase fires trackBulkSessionSaved with correct properties',
+      () async {
+        when(
+          () => mockRepository.insertMultipleItems(any()),
+        ).thenAnswer((_) async {});
 
-      final notifier = container.read(bulkCreationNotifierProvider.notifier);
-      notifier.setTargetHouse('house-1');
-      notifier.addManualItem(ItemCategory.varie);
-      notifier.addManualItem(ItemCategory.varie);
+        final notifier = container.read(bulkCreationNotifierProvider.notifier);
+        notifier.setTargetHouse('house-1');
+        notifier.addManualItem(ItemCategory.varie);
+        notifier.addManualItem(ItemCategory.varie);
 
-      await notifier.saveToDatabase();
+        await notifier.saveToDatabase();
 
-      verify(
-        () => mockAnalytics.trackBulkSessionSaved(
-          itemCount: 2,
-          templateCount: 0,
-          hasManualItems: true,
-        ),
-      ).called(1);
-    });
+        verify(
+          () => mockAnalytics.trackBulkSessionSaved(
+            itemCount: 2,
+            templateCount: 0,
+            hasManualItems: true,
+          ),
+        ).called(1);
+      },
+    );
 
     test('setGender fires trackBulkGenderSet', () {
       final notifier = container.read(bulkCreationNotifierProvider.notifier);

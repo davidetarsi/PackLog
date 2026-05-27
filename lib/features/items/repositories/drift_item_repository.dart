@@ -263,8 +263,12 @@ class DriftItemRepository implements ItemRepository {
     if (itemIds.isEmpty) return;
 
     final result = await _dbService.executeWithRetry(
-      () => _dao.moveItemsToHouse(itemIds, fromHouseId, toHouseId,
-          spaceId: spaceId),
+      () => _dao.moveItemsToHouse(
+        itemIds,
+        fromHouseId,
+        toHouseId,
+        spaceId: spaceId,
+      ),
       operationName:
           'moveItemsToHouse(${itemIds.length} items: $fromHouseId -> $toHouseId)',
       config: RetryConfig.criticalConfig,

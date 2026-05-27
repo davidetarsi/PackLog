@@ -34,9 +34,9 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
   void setGender(UserGender gender) {
     state = state.copyWith(gender: gender);
     _rebuildItems();
-    ref.read(coreAnalyticsServiceProvider).trackBulkGenderSet(
-      gender: gender.name,
-    );
+    ref
+        .read(coreAnalyticsServiceProvider)
+        .trackBulkGenderSet(gender: gender.name);
   }
 
   /// Aggiunge o rimuove un template dalla selezione.
@@ -52,11 +52,13 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
 
     state = state.copyWith(selectedTemplateKeys: updatedSelection);
     _rebuildItems();
-    ref.read(coreAnalyticsServiceProvider).trackBulkTemplateToggled(
-      templateKey: templateKey,
-      isSelected: isSelected,
-      totalSelected: updatedSelection.length,
-    );
+    ref
+        .read(coreAnalyticsServiceProvider)
+        .trackBulkTemplateToggled(
+          templateKey: templateKey,
+          isSelected: isSelected,
+          totalSelected: updatedSelection.length,
+        );
   }
 
   /// Rinomina un item esistente.
@@ -412,11 +414,13 @@ class BulkCreationNotifier extends _$BulkCreationNotifier {
     // Invalidazione provider per refresh UI
     ref.invalidate(itemNotifierProvider(state.targetHouseId!));
     ref.read(syncOrchestratorProvider).requestSync();
-    ref.read(coreAnalyticsServiceProvider).trackBulkSessionSaved(
-      itemCount: itemModels.length,
-      templateCount: state.selectedTemplateKeys.length,
-      hasManualItems: state.manualItems.isNotEmpty,
-    );
+    ref
+        .read(coreAnalyticsServiceProvider)
+        .trackBulkSessionSaved(
+          itemCount: itemModels.length,
+          templateCount: state.selectedTemplateKeys.length,
+          hasManualItems: state.manualItems.isNotEmpty,
+        );
 
     // Reset dello stato del wizard
     reset();

@@ -70,14 +70,20 @@ class ItemNotifier extends _$ItemNotifier {
   Future<void> deleteItem(String id, String houseId) async {
     repository ??= ref.read(itemRepositoryProvider);
     // Leggi la category prima di impostare AsyncLoading (lo state è ancora valido)
-    final category = state.value?.where((i) => i.id == id).firstOrNull?.category.name;
+    final category = state.value
+        ?.where((i) => i.id == id)
+        .firstOrNull
+        ?.category
+        .name;
     state = const AsyncLoading();
     try {
       await repository!.deleteItem(id);
       final items = await repository!.getItemsByHouseId(houseId);
       state = AsyncData(items);
       if (category != null) {
-        ref.read(coreAnalyticsServiceProvider).trackItemDeleted(category: category);
+        ref
+            .read(coreAnalyticsServiceProvider)
+            .trackItemDeleted(category: category);
       }
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
@@ -114,7 +120,9 @@ class ItemNotifier extends _$ItemNotifier {
 
       final updated = await repository!.getItemsByHouseId(houseId);
       state = AsyncData(updated);
-      ref.read(coreAnalyticsServiceProvider).trackItemBulkDeleted(count: itemIds.length);
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackItemBulkDeleted(count: itemIds.length);
       ref.read(itemSelectionNotifierProvider.notifier).clear();
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
@@ -153,7 +161,9 @@ class ItemNotifier extends _$ItemNotifier {
 
       final updated = await repository!.getItemsByHouseId(houseId);
       state = AsyncData(updated);
-      ref.read(coreAnalyticsServiceProvider).trackItemBulkMoved(count: itemIds.length);
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackItemBulkMoved(count: itemIds.length);
       ref.invalidate(itemNotifierProvider(destinationHouseId));
       ref.read(itemSelectionNotifierProvider.notifier).clear();
       ref.read(syncOrchestratorProvider).requestSync();

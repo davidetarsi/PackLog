@@ -34,6 +34,9 @@ mixin _$ItemModel {
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime get updatedAt => throw _privateConstructorUsedError;
 
+  /// Metadati AI generati da GPT-4o Vision (JSON serializzato).
+  String? get aiMetadata => throw _privateConstructorUsedError;
+
   /// Serializes this ItemModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -59,6 +62,7 @@ abstract class $ItemModelCopyWith<$Res> {
     String? spaceId,
     DateTime createdAt,
     DateTime updatedAt,
+    String? aiMetadata,
   });
 }
 
@@ -86,6 +90,7 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
     Object? spaceId = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
+    Object? aiMetadata = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -125,6 +130,10 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
                 ? _value.updatedAt
                 : updatedAt // ignore: cast_nullable_to_non_nullable
                       as DateTime,
+            aiMetadata: freezed == aiMetadata
+                ? _value.aiMetadata
+                : aiMetadata // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -150,6 +159,7 @@ abstract class _$$ItemModelImplCopyWith<$Res>
     String? spaceId,
     DateTime createdAt,
     DateTime updatedAt,
+    String? aiMetadata,
   });
 }
 
@@ -176,6 +186,7 @@ class __$$ItemModelImplCopyWithImpl<$Res>
     Object? spaceId = freezed,
     Object? createdAt = null,
     Object? updatedAt = null,
+    Object? aiMetadata = freezed,
   }) {
     return _then(
       _$ItemModelImpl(
@@ -215,6 +226,10 @@ class __$$ItemModelImplCopyWithImpl<$Res>
             ? _value.updatedAt
             : updatedAt // ignore: cast_nullable_to_non_nullable
                   as DateTime,
+        aiMetadata: freezed == aiMetadata
+            ? _value.aiMetadata
+            : aiMetadata // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -233,6 +248,7 @@ class _$ItemModelImpl extends _ItemModel {
     this.spaceId,
     required this.createdAt,
     required this.updatedAt,
+    this.aiMetadata,
   }) : super._();
 
   factory _$ItemModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -260,9 +276,13 @@ class _$ItemModelImpl extends _ItemModel {
   @override
   final DateTime updatedAt;
 
+  /// Metadati AI generati da GPT-4o Vision (JSON serializzato).
+  @override
+  final String? aiMetadata;
+
   @override
   String toString() {
-    return 'ItemModel(id: $id, houseId: $houseId, name: $name, category: $category, description: $description, quantity: $quantity, spaceId: $spaceId, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'ItemModel(id: $id, houseId: $houseId, name: $name, category: $category, description: $description, quantity: $quantity, spaceId: $spaceId, createdAt: $createdAt, updatedAt: $updatedAt, aiMetadata: $aiMetadata)';
   }
 
   @override
@@ -283,7 +303,9 @@ class _$ItemModelImpl extends _ItemModel {
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            (identical(other.aiMetadata, aiMetadata) ||
+                other.aiMetadata == aiMetadata));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -299,6 +321,7 @@ class _$ItemModelImpl extends _ItemModel {
     spaceId,
     createdAt,
     updatedAt,
+    aiMetadata,
   );
 
   /// Create a copy of ItemModel
@@ -326,6 +349,7 @@ abstract class _ItemModel extends ItemModel {
     final String? spaceId,
     required final DateTime createdAt,
     required final DateTime updatedAt,
+    final String? aiMetadata,
   }) = _$ItemModelImpl;
   _ItemModel._() : super._();
 
@@ -353,6 +377,10 @@ abstract class _ItemModel extends ItemModel {
   DateTime get createdAt;
   @override
   DateTime get updatedAt;
+
+  /// Metadati AI generati da GPT-4o Vision (JSON serializzato).
+  @override
+  String? get aiMetadata;
 
   /// Create a copy of ItemModel
   /// with the given fields replaced by the non-null parameter values.

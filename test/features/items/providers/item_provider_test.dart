@@ -1020,10 +1020,12 @@ void main() {
       const destId = 'bulk-move-spaceid-dest';
       const spaceId = 'bulk-move-space-1';
 
-      when(() => mockRepository.getItemsByHouseId(houseId))
-          .thenAnswer((_) async => []);
-      when(() => mockRepository.getItemsByHouseId(destId))
-          .thenAnswer((_) async => []);
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRepository.getItemsByHouseId(destId),
+      ).thenAnswer((_) async => []);
       when(
         () => mockRepository.moveItemsToHouse(
           ['item-z'],
@@ -1060,16 +1062,19 @@ void main() {
         updatedAt: DateTime.now(),
       );
 
-      when(() => mockRepository.getItemsByHouseId('house-1'))
-          .thenAnswer((_) async => [item]);
+      when(
+        () => mockRepository.getItemsByHouseId('house-1'),
+      ).thenAnswer((_) async => [item]);
 
       // Prime the state so deleteItem can read it
       await container.read(itemNotifierProvider('house-1').future);
 
-      when(() => mockRepository.deleteItem('item-1'))
-          .thenAnswer((_) async => true);
-      when(() => mockRepository.getItemsByHouseId('house-1'))
-          .thenAnswer((_) async => []);
+      when(
+        () => mockRepository.deleteItem('item-1'),
+      ).thenAnswer((_) async => true);
+      when(
+        () => mockRepository.getItemsByHouseId('house-1'),
+      ).thenAnswer((_) async => []);
 
       await container
           .read(itemNotifierProvider('house-1').notifier)
@@ -1081,17 +1086,19 @@ void main() {
     });
 
     test('bulkDelete fires trackItemBulkDeleted with count', () async {
-      when(() => mockRepository.deleteItems(['a', 'b']))
-          .thenAnswer((_) async {});
-      when(() => mockRepository.getItemsByHouseId('house-1'))
-          .thenAnswer((_) async => []);
+      when(
+        () => mockRepository.deleteItems(['a', 'b']),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockRepository.getItemsByHouseId('house-1'),
+      ).thenAnswer((_) async => []);
 
       // Ensure state is primed
       await container.read(itemNotifierProvider('house-1').future);
 
-      await container
-          .read(itemNotifierProvider('house-1').notifier)
-          .bulkDelete(['a', 'b']);
+      await container.read(itemNotifierProvider('house-1').notifier).bulkDelete(
+        ['a', 'b'],
+      );
 
       verify(() => mockAnalytics.trackItemBulkDeleted(count: 2)).called(1);
     });
@@ -1100,16 +1107,18 @@ void main() {
       when(
         () => mockRepository.moveItemsToHouse(['a'], 'house-1', 'house-2'),
       ).thenAnswer((_) async {});
-      when(() => mockRepository.getItemsByHouseId('house-1'))
-          .thenAnswer((_) async => []);
-      when(() => mockRepository.getItemsByHouseId('house-2'))
-          .thenAnswer((_) async => []);
+      when(
+        () => mockRepository.getItemsByHouseId('house-1'),
+      ).thenAnswer((_) async => []);
+      when(
+        () => mockRepository.getItemsByHouseId('house-2'),
+      ).thenAnswer((_) async => []);
 
       await container.read(itemNotifierProvider('house-1').future);
 
-      await container
-          .read(itemNotifierProvider('house-1').notifier)
-          .bulkMove(['a'], 'house-2');
+      await container.read(itemNotifierProvider('house-1').notifier).bulkMove([
+        'a',
+      ], 'house-2');
 
       verify(() => mockAnalytics.trackItemBulkMoved(count: 1)).called(1);
     });

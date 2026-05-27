@@ -1,6 +1,3 @@
-/// File per le API keys e le costanti pubbliche dell'applicazione.
-/// IMPORTANTE: Questo file NON deve essere caricato su Git.
-/// Contiene chiavi API sensibili.
 library;
 
 class AppConfig {

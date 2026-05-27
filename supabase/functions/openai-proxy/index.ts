@@ -41,22 +41,28 @@ Deno.serve(async (req) => {
   } = await supabaseAdmin.auth.getUser(authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader);
   if (authError || !user) return errorResponse(401, "Invalid token");
 
+  console.log("[proxy] user_id:", user.id);
+
   // 2. Atomic cap check + increment (TOCTOU-safe via SQL function)
+  const p_now = new Date().toISOString();
+  console.log("[proxy] calling increment_gpt_count, p_now:", p_now);
   const { data: allowed, error: rpcError } = await supabaseAdmin.rpc(
     "increment_gpt_count",
-    { p_user_id: user.id, p_now: new Date().toISOString() },
+    { p_user_id: user.id, p_now },
   );
   if (rpcError) {
-    console.error("increment_gpt_count failed", rpcError.message);
+    console.error("[proxy] increment_gpt_count RPC error:", rpcError.message, rpcError.code);
     return errorResponse(500, "Usage check failed");
   }
+  console.log("[proxy] increment_gpt_count returned:", allowed);
   if (!allowed) return errorResponse(429, "Monthly GPT limit reached");
 
   // 3. Forward to OpenAI with compensating transaction on error
   const apiKey = Deno.env.get("OPENAI_KEY");
   if (!apiKey) {
+    console.error("[proxy] DECREMENT reason: OPENAI_KEY not configured");
     const { error: decrementError } = await supabaseAdmin.rpc("decrement_gpt_count", { p_user_id: user.id });
-    if (decrementError) console.error("COUNTER_ROLLBACK_FAILED", { userId: user.id, error: decrementError.message });
+    if (decrementError) console.error("[proxy] COUNTER_ROLLBACK_FAILED:", decrementError.message);
     return errorResponse(500, "OPENAI_KEY not configured");
   }
 
@@ -74,24 +80,28 @@ Deno.serve(async (req) => {
       },
     );
 
+    console.log("[proxy] OpenAI status:", response.status);
+
     if (!response.ok) {
-      const { error: decrementError } = await supabaseAdmin.rpc("decrement_gpt_count", { p_user_id: user.id });
-      if (decrementError) console.error("COUNTER_ROLLBACK_FAILED", { userId: user.id, error: decrementError.message });
       const errorText = await response.text();
+      console.error("[proxy] DECREMENT reason: OpenAI non-2xx", response.status, errorText.slice(0, 200));
+      const { error: decrementError } = await supabaseAdmin.rpc("decrement_gpt_count", { p_user_id: user.id });
+      if (decrementError) console.error("[proxy] COUNTER_ROLLBACK_FAILED:", decrementError.message);
       // Map OpenAI 429 (API rate limit) to 503 to avoid confusion with the user's monthly cap (our 429)
       const mappedStatus = response.status === 429 ? 503 : response.status;
       return errorResponse(mappedStatus, `OpenAI error: ${errorText}`);
     }
 
     const data = await response.text();
+    console.log("[proxy] success, response length:", data.length);
     return new Response(data, {
       status: response.status,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("OpenAI fetch failed", error);
+    console.error("[proxy] DECREMENT reason: fetch exception:", error);
     const { error: decrementError } = await supabaseAdmin.rpc("decrement_gpt_count", { p_user_id: user.id });
-    if (decrementError) console.error("COUNTER_ROLLBACK_FAILED", { userId: user.id, error: decrementError.message });
+    if (decrementError) console.error("[proxy] COUNTER_ROLLBACK_FAILED:", decrementError.message);
     return errorResponse(500, "Network error communicating with AI provider");
   }
 });

@@ -7,21 +7,20 @@ HouseModel _makeHouse({
   String name = '',
   String? cityName,
   String? locationDisplayName,
-}) =>
-    HouseModel(
-      id: 'test-id',
-      name: name,
-      location: (cityName != null || locationDisplayName != null)
-          ? LocationSuggestionModel(
-              placeId: 'test-place',
-              displayName: locationDisplayName ?? '',
-              city: cityName,
-              locationType: LocationType.city,
-            )
-          : null,
-      createdAt: DateTime(2024),
-      updatedAt: DateTime(2024),
-    );
+}) => HouseModel(
+  id: 'test-id',
+  name: name,
+  location: (cityName != null || locationDisplayName != null)
+      ? LocationSuggestionModel(
+          placeId: 'test-place',
+          displayName: locationDisplayName ?? '',
+          city: cityName,
+          locationType: LocationType.city,
+        )
+      : null,
+  createdAt: DateTime(2024),
+  updatedAt: DateTime(2024),
+);
 
 /// Unit tests for HouseModel domain logic.
 ///
@@ -270,24 +269,34 @@ void main() {
       expect(house.displayName, 'Milano');
     });
 
-    test('returns locationDisplayName when name and cityName are empty/null', () {
-      final house = _makeHouse(
-        name: '',
-        cityName: null,
-        locationDisplayName: 'Via Roma 1, Milano',
-      );
-      expect(house.displayName, 'Via Roma 1, Milano');
-    });
+    test(
+      'returns locationDisplayName when name and cityName are empty/null',
+      () {
+        final house = _makeHouse(
+          name: '',
+          cityName: null,
+          locationDisplayName: 'Via Roma 1, Milano',
+        );
+        expect(house.displayName, 'Via Roma 1, Milano');
+      },
+    );
 
     test('whitespace-only name falls back to city', () {
       final house = _makeHouse(name: '   ', cityName: 'Roma');
       expect(house.displayName, 'Roma');
     });
 
-    test('returns raw l10n key when name, city, and locationDisplayName are all empty', () {
-      final house = _makeHouse(name: '', cityName: null, locationDisplayName: null);
-      // easy_localization not initialised in unit tests — .tr() returns the raw key
-      expect(house.displayName, 'houses.unnamed_house');
-    });
+    test(
+      'returns raw l10n key when name, city, and locationDisplayName are all empty',
+      () {
+        final house = _makeHouse(
+          name: '',
+          cityName: null,
+          locationDisplayName: null,
+        );
+        // easy_localization not initialised in unit tests — .tr() returns the raw key
+        expect(house.displayName, 'houses.unnamed_house');
+      },
+    );
   });
 }

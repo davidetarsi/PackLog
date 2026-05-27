@@ -539,7 +539,7 @@
     "gallery_subtitle": "Max {} foto selezionabili",
     "source_camera": "Fotocamera",
     "camera_subtitle": "Scatta una foto",
-    "empty_title": "Scegli fino a 5 foto di outfit",
+    "empty_title": "Scegli fino a 5 foto di outfit \n DEBUG: controlla le caratteristiche di ogni item e verifica che i valori trovati abbiano senso, grazie :)",
     "empty_subtitle": "GPT-4o analizzerà ogni immagine e identificherà i capi d'abbigliamento",
     "loading_progress": "Analisi immagine {} di {}…",
     "loading": "Caricamento…",

@@ -171,7 +171,7 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
             controller: _nameController,
             decoration: InputDecoration(
               labelText: 'houses.name_label'.tr(),
-              hintText: 'houses.name_optional_hint'.tr(),
+              //hintText: 'houses.name_optional_hint'.tr(),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(
                   AppConstants.inputBorderRadius,

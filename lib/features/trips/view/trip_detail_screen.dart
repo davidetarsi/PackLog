@@ -139,7 +139,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 context.push('/trips/${widget.tripId}/edit-items'),
             leftAction: CircularActionButton(
               icon: Icons.delete_outline,
-              onPressed: () => _showDeleteDialog(context, trip, displayDestination),
+              onPressed: () =>
+                  _showDeleteDialog(context, trip, displayDestination),
               showBorder: true,
             ),
             rightAction: CircularActionButton(
@@ -190,7 +191,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     );
   }
 
-  Future<void> _showDeleteDialog(BuildContext context, TripModel trip, String displayDestination) async {
+  Future<void> _showDeleteDialog(
+    BuildContext context,
+    TripModel trip,
+    String displayDestination,
+  ) async {
     final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
       itemType: 'common.list_type'.tr(),
@@ -202,7 +207,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         operation: () =>
             ref.read(tripNotifierProvider.notifier).deleteTrip(widget.tripId),
         errorTitle: 'errors.delete_error'.tr(),
-        errorMessage: 'errors.delete_trip_failed'.tr(args: [displayDestination]),
+        errorMessage: 'errors.delete_trip_failed'.tr(
+          args: [displayDestination],
+        ),
       );
       if (success && context.mounted) {
         context.pop();

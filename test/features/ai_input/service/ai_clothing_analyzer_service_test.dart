@@ -23,15 +23,14 @@ AiClothingAnalyzerService _makeService(
   http.Client mockClient, {
   CoreAnalyticsService? analytics,
   AppMonitoringService? monitoring,
-}) =>
-    AiClothingAnalyzerService(
-      proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
-      anonKey: 'fake-anon-key',
-      client: mockClient,
-      jwtProvider: () => 'fake-jwt-token',
-      analytics: analytics,
-      monitoring: monitoring,
-    );
+}) => AiClothingAnalyzerService(
+  proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
+  anonKey: 'fake-anon-key',
+  client: mockClient,
+  jwtProvider: () => 'fake-jwt-token',
+  analytics: analytics,
+  monitoring: monitoring,
+);
 
 void main() {
   group('AiClothingAnalyzerService', () {
@@ -129,54 +128,57 @@ void main() {
         ).thenReturn(null);
       });
 
-      test('processClothingItem fires submitted + completed on success',
-          () async {
-        final service = _makeService(
-          MockClient((_) async => http.Response(validOpenAiResponse, 200)),
-          analytics: mockAnalytics,
-        );
+      test(
+        'processClothingItem fires submitted + completed on success',
+        () async {
+          final service = _makeService(
+            MockClient((_) async => http.Response(validOpenAiResponse, 200)),
+            analytics: mockAnalytics,
+          );
 
-        await service.processClothingItem(_fakeImageFile());
+          await service.processClothingItem(_fakeImageFile());
 
-        verify(() => mockAnalytics.trackAiInputSubmitted()).called(1);
-        verify(
-          () => mockAnalytics.trackAiInputCompleted(itemCount: 1),
-        ).called(1);
-        verifyNever(
-          () => mockAnalytics.trackAiInputFailed(
-            errorType: any(named: 'errorType'),
-          ),
-        );
-      });
+          verify(() => mockAnalytics.trackAiInputSubmitted()).called(1);
+          verify(
+            () => mockAnalytics.trackAiInputCompleted(itemCount: 1),
+          ).called(1);
+          verifyNever(
+            () => mockAnalytics.trackAiInputFailed(
+              errorType: any(named: 'errorType'),
+            ),
+          );
+        },
+      );
 
       test(
-          'processClothingItem fires submitted + failed on error, then rethrows',
-          () async {
-        final service = _makeService(
-          MockClient((_) async => http.Response('{}', 500)),
-          analytics: mockAnalytics,
-          monitoring: mockMonitoring,
-        );
+        'processClothingItem fires submitted + failed on error, then rethrows',
+        () async {
+          final service = _makeService(
+            MockClient((_) async => http.Response('{}', 500)),
+            analytics: mockAnalytics,
+            monitoring: mockMonitoring,
+          );
 
-        await expectLater(
-          service.processClothingItem(_fakeImageFile()),
-          throwsA(isA<VisionAnalysisException>()),
-        );
+          await expectLater(
+            service.processClothingItem(_fakeImageFile()),
+            throwsA(isA<VisionAnalysisException>()),
+          );
 
-        verify(() => mockAnalytics.trackAiInputSubmitted()).called(1);
-        verify(
-          () => mockAnalytics.trackAiInputFailed(
-            errorType: 'VisionAnalysisException',
-          ),
-        ).called(1);
-        verify(
-          () => mockMonitoring.captureException(
-            any(),
-            stackTrace: any(named: 'stackTrace'),
-            tags: any(named: 'tags'),
-          ),
-        ).called(1);
-      });
+          verify(() => mockAnalytics.trackAiInputSubmitted()).called(1);
+          verify(
+            () => mockAnalytics.trackAiInputFailed(
+              errorType: 'VisionAnalysisException',
+            ),
+          ).called(1);
+          verify(
+            () => mockMonitoring.captureException(
+              any(),
+              stackTrace: any(named: 'stackTrace'),
+              tags: any(named: 'tags'),
+            ),
+          ).called(1);
+        },
+      );
     });
   });
 }

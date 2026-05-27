@@ -83,6 +83,11 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
     return ret.isEmpty ? '$dest, $dep' : '$dest, $dep – $ret';
   }
 
+  bool get _canSave =>
+      _departureDateTime != null &&
+      _returnDateTime != null &&
+      (_destinationHouseId != null || _destinationLocation != null);
+
   Future<void> _saveTrip() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -91,15 +96,18 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
       return;
     }
 
+    if (_departureDateTime == null || _returnDateTime == null) {
+      AppSnackBar.showSuccess(context, 'trips.dates_required'.tr());
+      return;
+    }
+
     // Validazione date
-    if (_departureDateTime != null && _returnDateTime != null) {
-      if (_returnDateTime!.isBefore(_departureDateTime!)) {
-        AppSnackBar.showWarning(
-          context,
-          'common.return_before_departure_error'.tr(),
-        );
-        return;
-      }
+    if (_returnDateTime!.isBefore(_departureDateTime!)) {
+      AppSnackBar.showWarning(
+        context,
+        'common.return_before_departure_error'.tr(),
+      );
+      return;
     }
 
     setState(() => _isLoading = true);
@@ -310,7 +318,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
             ? 'common.save_changes'.tr()
             : 'trips.create_trip'.tr(),
         primaryIcon: Icons.save,
-        onPrimaryPressed: _isLoading ? null : _saveTrip,
+        onPrimaryPressed: (_isLoading || !_canSave) ? null : _saveTrip,
         isLoading: _isLoading,
       ),
     );

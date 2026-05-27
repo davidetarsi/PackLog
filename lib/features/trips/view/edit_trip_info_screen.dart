@@ -84,15 +84,18 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
       return;
     }
 
+    if (_departureDateTime == null || _returnDateTime == null) {
+      AppSnackBar.showSuccess(context, 'trips.dates_required'.tr());
+      return;
+    }
+
     // Validazione date
-    if (_departureDateTime != null && _returnDateTime != null) {
-      if (_returnDateTime!.isBefore(_departureDateTime!)) {
-        AppSnackBar.showWarning(
-          context,
-          'common.return_before_departure_error'.tr(),
-        );
-        return;
-      }
+    if (_returnDateTime!.isBefore(_departureDateTime!)) {
+      AppSnackBar.showWarning(
+        context,
+        'common.return_before_departure_error'.tr(),
+      );
+      return;
     }
 
     setState(() => _isLoading = true);

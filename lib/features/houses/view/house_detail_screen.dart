@@ -575,7 +575,14 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     // IDs di tutti gli item permanenti della casa: servono per "seleziona tutti".
     final allItemIds = allItems.map((i) => i.id).toList();
 
-    return housesAsync.when(
+    return PopScope(
+      canPop: !isSelectionMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          ref.read(itemSelectionNotifierProvider.notifier).clear();
+        }
+      },
+      child: housesAsync.when(
       data: (houses) {
         final matchingHouses = houses.where((h) => h.id == widget.houseId);
         if (matchingHouses.isEmpty) {
@@ -708,6 +715,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
           error: error,
           onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
         ),
+      ),
       ),
     );
   }

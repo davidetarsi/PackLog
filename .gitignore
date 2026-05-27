@@ -51,7 +51,8 @@ app.*.map.json
 
 # Cursor related
 .cursor/
-.vscode/
+.vscode/*
+!.vscode/launch.json.example
 
 # Claude Code local config (non committare impostazioni locali)
 .claude/settings.json

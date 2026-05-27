@@ -55,6 +55,9 @@ class Items extends Table with SyncableTable {
   /// Timestamp dell'ultima sincronizzazione con il cloud.
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
 
+  /// Metadati AI generati da GPT-4o Vision (JSON serializzato).
+  TextColumn get aiMetadata => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

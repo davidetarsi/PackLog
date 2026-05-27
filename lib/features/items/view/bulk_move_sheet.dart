@@ -57,20 +57,13 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
   bool _spaceConfirmed = false;
   String? _selectedSpaceId;
 
-  void _selectHouse(HouseModel house) {
+  Future<void> _selectHouse(HouseModel house) async {
+    final spaces = await ref.read(spacesByHouseProvider(house.id).future);
+    if (!mounted) return;
     setState(() {
       _selectedHouse = house;
-      _spaceConfirmed = false;
+      _spaceConfirmed = spaces.isEmpty;
       _selectedSpaceId = null;
-    });
-    // Auto-confirm if the house has no spaces
-    ref.read(spacesByHouseProvider(house.id).future).then((spaces) {
-      if (mounted && !_spaceConfirmed && spaces.isEmpty) {
-        setState(() {
-          _spaceConfirmed = true;
-          _selectedSpaceId = null;
-        });
-      }
     });
   }
 
@@ -225,10 +218,7 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
           ],
         );
       },
-      loading: () => const Padding(
-        padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () => const SizedBox.shrink(),
       error: (_, stack) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [

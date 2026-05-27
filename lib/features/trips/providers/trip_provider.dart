@@ -292,9 +292,9 @@ class TripNotifier extends _$TripNotifier {
       await repository!.updateTrip(updatedTrip);
       final List<TripModel> newTrips = await repository!.getAllTrips();
       state = AsyncData(newTrips);
-      ref.read(coreAnalyticsServiceProvider).trackTripSavedToggled(
-        isSaved: updatedTrip.isSaved,
-      );
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackTripSavedToggled(isSaved: updatedTrip.isSaved);
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);

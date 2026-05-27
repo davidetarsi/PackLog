@@ -88,7 +88,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 6. Backfill existing users (run once after creating the table)
--- INSERT INTO public.users (id, email)
--- SELECT id, email FROM auth.users
--- ON CONFLICT (id) DO NOTHING;
+-- 6. Backfill existing users (run once after creating the table, for users who signed up before this table existed)
+INSERT INTO public.users (id, email)
+SELECT id, email FROM auth.users
+ON CONFLICT (id) DO NOTHING;

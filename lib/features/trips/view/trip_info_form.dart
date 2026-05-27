@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
+import '../model/trip_date_range.dart';
+import '../view/trip_date_range_screen.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
@@ -67,8 +69,9 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     if (_destinationHouseId != null) {
       final housesAsync = ref.read(houseNotifierProvider);
       housesAsync.whenData((houses) {
-        final house =
-            houses.where((h) => h.id == _destinationHouseId).firstOrNull;
+        final house = houses
+            .where((h) => h.id == _destinationHouseId)
+            .firstOrNull;
         _destinationHouseName = house?.displayName;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _notifyChanged();
@@ -105,19 +108,18 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   }
 
   Future<void> _pickDateRange() async {
-    final result = await showModalBottomSheet<DateTimeRange>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _TripDatePickerSheet(
-        initialDeparture: _departureDateTime,
-        initialReturn: _returnDateTime,
+    final result = await Navigator.of(context).push<TripDateRange>(
+      MaterialPageRoute(
+        builder: (_) => TripDateRangeScreen(
+          initialDeparture: _departureDateTime,
+          initialReturn: _returnDateTime,
+        ),
       ),
     );
     if (result == null || !mounted) return;
     setState(() {
-      _departureDateTime = result.start;
-      _returnDateTime = result.end;
+      _departureDateTime = result.departureDate;
+      _returnDateTime = result.returnDate;
     });
     _notifyChanged();
   }
@@ -239,10 +241,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
               AppConstants.cardBorderRadius,
             ),
             child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.spacingMd,
-                vertical: context.spacingMd,
-              ),
+              padding: context.cardPaddingHero,
               child: Row(
                 children: [
                   Icon(
@@ -252,14 +251,13 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                   ),
                   SizedBox(width: context.spacingMd),
                   Expanded(
-                    child: (_departureDateTime != null ||
-                            _returnDateTime != null)
+                    child:
+                        (_departureDateTime != null || _returnDateTime != null)
                         ? Row(
                             children: [
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       'common.departure'.tr(),
@@ -279,8 +277,8 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: context.spacingXs,
                                 ),
                                 child: Icon(
                                   Icons.arrow_forward,
@@ -290,8 +288,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                               ),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       'common.return'.tr(),
@@ -449,188 +446,6 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _TripDatePickerSheet extends StatefulWidget {
-  final DateTime? initialDeparture;
-  final DateTime? initialReturn;
-
-  const _TripDatePickerSheet({this.initialDeparture, this.initialReturn});
-
-  @override
-  State<_TripDatePickerSheet> createState() => _TripDatePickerSheetState();
-}
-
-class _TripDatePickerSheetState extends State<_TripDatePickerSheet> {
-  DateTime? _departure;
-  DateTime? _return;
-
-  @override
-  void initState() {
-    super.initState();
-    _departure = widget.initialDeparture;
-    _return = widget.initialReturn;
-  }
-
-  Future<void> _pickDeparture() async {
-    final now = DateTime.now();
-    final d = await showDatePicker(
-      context: context,
-      initialDate: _departure ?? now,
-      firstDate: now.subtract(const Duration(days: 365)),
-      lastDate: now.add(const Duration(days: 365 * 5)),
-    );
-    if (d == null || !mounted) return;
-    setState(() {
-      _departure = d;
-      if (_return != null && !_return!.isAfter(d)) _return = null;
-    });
-  }
-
-  Future<void> _pickReturn() async {
-    final now = DateTime.now();
-    final d = await showDatePicker(
-      context: context,
-      initialDate: _return ?? (_departure ?? now),
-      firstDate: _departure ?? now,
-      lastDate: now.add(const Duration(days: 365 * 5)),
-    );
-    if (d == null || !mounted) return;
-    setState(() => _return = d);
-  }
-
-  String _formatDate(DateTime? dt) {
-    if (dt == null) return '—';
-    return DateFormat('d MMM y').format(dt);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final canSave = _departure != null && _return != null;
-
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, canSave ? 0 : 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            _buildDateRow(
-              context: context,
-              cs: cs,
-              icon: Icons.flight_takeoff,
-              label: 'common.departure'.tr(),
-              date: _departure,
-              onTap: _pickDeparture,
-            ),
-            const SizedBox(height: 8),
-            _buildDateRow(
-              context: context,
-              cs: cs,
-              icon: Icons.flight_land,
-              label: 'common.return'.tr(),
-              date: _return,
-              onTap: _pickReturn,
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              child: canSave
-                  ? Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: () => Navigator.of(context).pop(
-                            DateTimeRange(start: _departure!, end: _return!),
-                          ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: cs.primary,
-                            foregroundColor: cs.onPrimary,
-                            minimumSize: const Size.fromHeight(56),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(28),
-                            ),
-                          ),
-                          child: Text('common.save'.tr()),
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
-            ),
-            if (canSave) const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateRow({
-    required BuildContext context,
-    required ColorScheme cs,
-    required IconData icon,
-    required String label,
-    required DateTime? date,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      color: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-        side: BorderSide(color: cs.outlineVariant),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(icon, color: cs.primary, size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _formatDate(date),
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: date != null
-                            ? cs.onSurface
-                            : cs.onSurface.withValues(alpha: 0.38),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

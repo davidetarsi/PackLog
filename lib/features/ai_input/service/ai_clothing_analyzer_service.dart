@@ -127,7 +127,11 @@ Each object must have EXACTLY these keys:
       return result;
     } on ClothingAnalysisException catch (e, st) {
       _analytics?.trackAiInputFailed(errorType: _errorType(e));
-      _monitoring?.captureException(e, stackTrace: st, tags: {'operation': 'ai_input'});
+      _monitoring?.captureException(
+        e,
+        stackTrace: st,
+        tags: {'operation': 'ai_input'},
+      );
       rethrow;
     }
   }
@@ -156,7 +160,11 @@ Each object must have EXACTLY these keys:
       );
     } on ClothingAnalysisException catch (e, st) {
       _analytics?.trackAiInputFailed(errorType: _errorType(e));
-      _monitoring?.captureException(e, stackTrace: st, tags: {'operation': 'ai_input'});
+      _monitoring?.captureException(
+        e,
+        stackTrace: st,
+        tags: {'operation': 'ai_input'},
+      );
       rethrow;
     }
   }

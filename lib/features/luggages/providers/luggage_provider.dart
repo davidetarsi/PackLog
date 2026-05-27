@@ -28,9 +28,9 @@ class LuggageNotifier extends _$LuggageNotifier {
       await repository!.addLuggage(model);
       final luggages = await repository!.getAllLuggages();
       state = AsyncData(luggages);
-      ref.read(coreAnalyticsServiceProvider).trackLuggageCreated(
-        size: model.sizeType.name,
-      );
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackLuggageCreated(size: model.sizeType.name);
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
