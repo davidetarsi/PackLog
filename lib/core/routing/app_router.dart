@@ -24,6 +24,7 @@ import '../../features/ai_input/view/ai_clothing_sandbox_screen.dart';
 import '../../features/bulk_creation/view/house_selection_screen.dart';
 import '../../features/bulk_creation/view/template_selection_screen.dart';
 import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
+import '../../features/tour/controllers/tour_orchestrator.dart';
 import '../../shared/dev/ds_theme_showcase_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 
@@ -98,7 +99,7 @@ GoRouter appRouter(Ref ref) {
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
-            MainShell(navigationShell: navigationShell),
+            TourListener(child: MainShell(navigationShell: navigationShell)),
         branches: [
           StatefulShellBranch(
             navigatorKey: _profileNavigatorKey,
