@@ -579,5 +579,37 @@
       "title": "I tuoi viaggi",
       "description": "Crea un viaggio e seleziona gli oggetti da portare. Durante il viaggio li ritrovi automaticamente segnati come \"in viaggio\"."
     }
+  },
+  "tour": {
+    "relaunch_title": "Ripeti il tour",
+    "relaunch_subtitle": "Rivedi le funzioni principali di Pack Log",
+    "step_counter": "{current} / {total}",
+    "skip": "Salta",
+    "next": "Avanti",
+    "finish": "Inizia",
+    "step1": {
+      "title": "Le tue case",
+      "body": "Organizza gli oggetti per casa e per spazio. Puoi avere più case, ognuna con i suoi spazi."
+    },
+    "step2": {
+      "title": "Crea la prima casa",
+      "body": "Tocca il + per aggiungere una casa. Da lì aggiungi spazi e riempi tutto di oggetti."
+    },
+    "step3": {
+      "title": "I tuoi viaggi",
+      "body": "Crea un viaggio, scegli gli oggetti da portare da ogni casa, e spunta la checklist mentre fai la valigia."
+    },
+    "step4": {
+      "title": "Importa con l'AI",
+      "body": "Dentro una casa trovi il bottone AI import. Carica una foto e Pack Log riconosce i vestiti e li aggiunge alla lista in automatico."
+    },
+    "step5": {
+      "title": "Sposta oggetti tra case",
+      "body": "Tieni premuto su un oggetto e seleziona Sposta per trasferirlo in un'altra casa o spazio in un solo gesto."
+    },
+    "step6": {
+      "title": "Il tuo profilo",
+      "body": "Da qui puoi cambiare lingua, tema, e rieseguire questo tour quando vuoi."
+    }
   }
 }

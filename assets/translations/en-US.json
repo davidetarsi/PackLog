@@ -580,5 +580,37 @@
       "title": "Your trips",
       "description": "Create a trip and select the items to bring. During the trip, they're automatically marked as \"travelling\"."
     }
+  },
+  "tour": {
+    "relaunch_title": "Replay tour",
+    "relaunch_subtitle": "Review Pack Log's main features",
+    "step_counter": "{current} / {total}",
+    "skip": "Skip",
+    "next": "Next",
+    "finish": "Let's go",
+    "step1": {
+      "title": "Your homes",
+      "body": "Organize items by home and space. You can have multiple homes, each with their own spaces."
+    },
+    "step2": {
+      "title": "Create your first home",
+      "body": "Tap the + to add a home. From there, add spaces and fill them with items."
+    },
+    "step3": {
+      "title": "Your trips",
+      "body": "Create a trip, choose items to bring from any home, and check them off as you pack."
+    },
+    "step4": {
+      "title": "Import with AI",
+      "body": "Inside a home you'll find the AI import button. Upload a photo and Pack Log auto-detects your clothes and adds them to the list."
+    },
+    "step5": {
+      "title": "Move items between homes",
+      "body": "Long-press an item and select Move to transfer it to another home or space in one tap."
+    },
+    "step6": {
+      "title": "Your profile",
+      "body": "Change language, theme, and relaunch this tour anytime from here."
+    }
   }
 }
