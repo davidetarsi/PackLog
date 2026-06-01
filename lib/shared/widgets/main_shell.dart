@@ -6,6 +6,7 @@ import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/items/view/add_edit_item_screen.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
+import '../../features/tour/tour_keys.dart';
 
 /// Shell principale dell'app con tab bar persistente
 class MainShell extends ConsumerStatefulWidget {
@@ -143,6 +144,10 @@ class _MainShellState extends ConsumerState<MainShell>
         extendBody: true,
         body: Stack(
           children: [
+            // Anchor invisibile per gli step info-card del tour (nessun spotlight)
+            Center(
+              child: SizedBox(key: tourKeys.infoCardTarget, width: 1, height: 1),
+            ),
             // Contenuto principale
             widget.navigationShell,
 
@@ -242,6 +247,7 @@ class _MainShellState extends ConsumerState<MainShell>
                 children: [
                   Expanded(
                     child: _NavItem(
+                      key: tourKeys.profileTab,
                       icon: Icons.person_3_outlined,
                       selectedIcon: Icons.person_3,
                       label: 'common.profile'.tr(),
@@ -251,6 +257,7 @@ class _MainShellState extends ConsumerState<MainShell>
                   ),
                   Expanded(
                     child: _NavItem(
+                      key: tourKeys.housesTab,
                       icon: Icons.home_outlined,
                       selectedIcon: Icons.home,
                       label: 'navigation.houses'.tr(),
@@ -260,6 +267,7 @@ class _MainShellState extends ConsumerState<MainShell>
                   ),
                   Expanded(
                     child: _NavItem(
+                      key: tourKeys.tripsTab,
                       icon: Icons.luggage_outlined,
                       selectedIcon: Icons.luggage,
                       label: 'navigation.trips'.tr(),
@@ -298,6 +306,7 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const _NavItem({
+    super.key,
     required this.icon,
     required this.selectedIcon,
     required this.label,
