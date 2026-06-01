@@ -6,9 +6,11 @@ import 'package:go_router/go_router.dart';
 // import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../../features/tour/providers/tour_status_provider.dart';
 import '../providers/gpt_usage_provider.dart';
 // import '../../../core/database/controllers/backup_controller.dart';
 // import 'package:sentry_flutter/sentry_flutter.dart';
@@ -384,6 +386,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // Consumer(builder: (context, ref, _) { ... }),  // export tile
             // ListTile(...),  // import tile
             // const Divider(),
+
+            // ── Tour ──────────────────────────────────────────────────────────────────
+            ListTile(
+              leading: const Icon(Icons.tour_outlined),
+              title: Text('tour.relaunch_title'.tr()),
+              subtitle: Text('tour.relaunch_subtitle'.tr()),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                ref.read(analyticsServiceProvider).logEvent('tour_relaunched');
+                context.go('/');
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => ref.read(tourStatusProvider.notifier).resetTour(),
+                );
+              },
+            ),
+            const Divider(),
 
             // ── About ────────────────────────────────────────────────────────
             DsSectionHeader(
