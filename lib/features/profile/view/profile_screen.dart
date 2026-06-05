@@ -395,10 +395,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 ref.read(analyticsServiceProvider).logEvent('tour_relaunched');
+                ref.read(tourStatusProvider.notifier).resetTour();
                 context.go('/');
-                WidgetsBinding.instance.addPostFrameCallback(
-                  (_) => ref.read(tourStatusProvider.notifier).resetTour(),
-                );
               },
             ),
             const Divider(),

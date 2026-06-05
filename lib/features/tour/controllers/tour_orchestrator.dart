@@ -48,19 +48,21 @@ class _TourListenerState extends ConsumerState<TourListener> {
     int currentStep = 0;
     analytics.logEvent('tour_started');
 
+    final targets = _buildTargets(context);
+
     TutorialCoachMark(
-      targets: _buildTargets(
-        context,
-        onStepViewed: (index, name) {
-          currentStep = index;
-          analytics.logEvent(
-            'tour_step_viewed',
-            properties: {'step_index': index, 'step_name': name},
-          );
-        },
-      ),
+      targets: targets,
       colorShadow: Colors.black,
       opacityShadow: 0.8,
+      hideSkip: true,
+      beforeFocus: (target) {
+        final index = targets.indexWhere((t) => t.identify == target.identify);
+        currentStep = index;
+        analytics.logEvent(
+          'tour_step_viewed',
+          properties: {'step_index': index, 'step_name': target.identify},
+        );
+      },
       onFinish: () {
         analytics.logEvent('tour_completed');
         ref.read(tourStatusProvider.notifier).markCompleted();
@@ -76,10 +78,7 @@ class _TourListenerState extends ConsumerState<TourListener> {
     ).show(context: context);
   }
 
-  List<TargetFocus> _buildTargets(
-    BuildContext context, {
-    required void Function(int index, String name) onStepViewed,
-  }) {
+  List<TargetFocus> _buildTargets(BuildContext context) {
     TargetFocus makeStep({
       required String identify,
       required GlobalKey keyTarget,
@@ -97,7 +96,6 @@ class _TourListenerState extends ConsumerState<TourListener> {
           TargetContent(
             align: contentAlign,
             builder: (ctx, controller) {
-              onStepViewed(index, identify);
               return TourStepContent(
                 title: 'tour.step${index + 1}.title'.tr(),
                 body: 'tour.step${index + 1}.body'.tr(),
