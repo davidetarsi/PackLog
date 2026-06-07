@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../model/house_model.dart';
+import '../../items/model/item_model.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/database/services/persistence_services.dart';
@@ -22,6 +23,7 @@ HouseRepository houseRepository(Ref ref) {
 abstract class HouseRepository {
   Future<bool> init();
   Future<void> addHouse(HouseModel model);
+  Future<String> createHouseWithItems(HouseModel house, List<ItemModel> items);
   Future<HouseModel> getHouseById(String id);
   Future<List<HouseModel>> getAllHouses();
   Future<bool> deleteHouse(String id);

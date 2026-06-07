@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import '../model/house_model.dart';
+import '../../items/model/item_model.dart';
 import 'house_repository.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/houses_dao.dart';
@@ -41,6 +42,45 @@ class DriftHouseRepository implements HouseRepository {
     }
 
     debugPrint('[HouseRepo] Casa aggiunta: ${model.name}');
+  }
+
+  @override
+  Future<String> createHouseWithItems(
+    HouseModel house,
+    List<ItemModel> initialItems,
+  ) async {
+    final housesCompanion = _toCompanion(house);
+    final itemCompanions = initialItems.map((item) => ItemsCompanion(
+      id: Value(item.id),
+      houseId: Value(item.houseId),
+      name: Value(item.name),
+      category: Value(item.category),
+      description: Value(item.description),
+      quantity: Value(item.quantity),
+      spaceId: Value(item.spaceId),
+      createdAt: Value(item.createdAt),
+      updatedAt: Value(item.updatedAt),
+      userId: Value(_getCurrentUserId()),
+      aiMetadata: Value(item.aiMetadata),
+    )).toList();
+
+    final result = await _dbService.executeWithRetry<void>(
+      () => _dao.createHouseWithItems(housesCompanion, itemCompanions),
+      operationName: 'createHouseWithItems(${house.name})',
+      config: RetryConfig.criticalConfig,
+    );
+
+    if (!result.success) {
+      throw EntitySaveException(
+        'createHouseWithItems(${house.name})',
+        cause: result.error,
+      );
+    }
+
+    debugPrint(
+      '[HouseRepo] Casa di default creata con ${initialItems.length} item: ${house.name}',
+    );
+    return house.id;
   }
 
   @override

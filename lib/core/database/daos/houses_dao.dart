@@ -39,6 +39,19 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
     return into(houses).insert(house);
   }
 
+  /// Creates a house and its initial items atomically (for onboarding default house).
+  Future<void> createHouseWithItems(
+    HousesCompanion house,
+    List<ItemsCompanion> initialItems,
+  ) {
+    return transaction(() async {
+      await into(houses).insert(house);
+      if (initialItems.isNotEmpty) {
+        await batch((b) => b.insertAll(items, initialItems));
+      }
+    });
+  }
+
   /// Aggiorna una casa esistente
   Future<bool> updateHouse(HousesCompanion house) {
     return update(houses).replace(house);
