@@ -189,11 +189,18 @@ Future<void> bootstrap(Environment env) async {
 
     await EasyLocalization.ensureInitialized();
 
+    final deviceLangCode =
+        WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+    final startLocale = deviceLangCode == 'it'
+        ? const Locale('it', 'IT')
+        : const Locale('en', 'US');
+
     runApp(
       EasyLocalization(
         supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
         path: 'assets/translations',
-        fallbackLocale: const Locale('it', 'IT'),
+        fallbackLocale: const Locale('en', 'US'),
+        startLocale: startLocale,
         child: ProviderScope(
           observers: [AppErrorObserver()],
           child: MyApp(environment: env),
