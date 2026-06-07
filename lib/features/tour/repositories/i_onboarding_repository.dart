@@ -1,4 +1,4 @@
-import '../providers/post_login_onboarding_provider.dart';
+import '../model/onboarding_state.dart';
 
 abstract class IOnboardingRepository {
   Future<OnboardingStep> loadStep();
