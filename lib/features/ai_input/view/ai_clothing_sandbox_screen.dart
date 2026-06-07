@@ -7,16 +7,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/monitoring/monitoring_service.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/config/app_config.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../houses/model/house_model.dart';
 import '../../houses/providers/house_provider.dart';
+import '../../houses/repositories/house_repository.dart';
 import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/repositories/item_repository.dart';
+import '../../tour/providers/post_login_onboarding_provider.dart';
+import '../../tour/tour_keys.dart';
 import '../model/clothing_analysis_result.dart';
 import '../service/ai_clothing_analyzer_service.dart';
 
@@ -39,9 +45,21 @@ class _PhotoGroup {
 ///
 /// Not wired to any provider for its own AI state — uses local state intentionally.
 class AiClothingSandboxScreen extends ConsumerStatefulWidget {
-  final String houseId;
+  final String? houseId;
+  final bool isFirstTimeOnboarding;
 
-  const AiClothingSandboxScreen({super.key, required this.houseId});
+  const AiClothingSandboxScreen({
+    super.key,
+    this.houseId,
+    this.isFirstTimeOnboarding = false,
+  }) : assert(
+          !isFirstTimeOnboarding || houseId == null,
+          'In onboarding mode houseId must be null — the house is created at save time',
+        ),
+       assert(
+          isFirstTimeOnboarding || houseId != null,
+          'houseId is required when not in onboarding mode',
+        );
 
   @override
   ConsumerState<AiClothingSandboxScreen> createState() =>
@@ -55,7 +73,8 @@ class _AiClothingSandboxScreenState
   final List<_PhotoGroup> _photoGroups = [];
   bool _isLoading = false;
   String? _errorMessage;
-  late String _selectedHouseId = widget.houseId;
+  late String? _selectedHouseId = widget.houseId;
+  bool _onboardingTooltipShown = false;
   String? _rawJsonDump;
   int _processingIndex = 0;
   int _totalImages = 0;
@@ -184,6 +203,13 @@ class _AiClothingSandboxScreenState
           );
           _rawJsonDump = rawJson;
         });
+        if (widget.isFirstTimeOnboarding &&
+            _photoGroups.isNotEmpty &&
+            !_onboardingTooltipShown) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _showAiSaveTooltip();
+          });
+        }
       }
     } on GptLimitExceededException catch (e) {
       if (!mounted) return;
@@ -217,6 +243,14 @@ class _AiClothingSandboxScreenState
   }
 
   Future<void> _saveItems() async {
+    if (widget.isFirstTimeOnboarding) {
+      await _saveItemsOnboarding();
+    } else {
+      await _saveItemsNormal();
+    }
+  }
+
+  Future<void> _saveItemsNormal() async {
     final allResults = _allResults;
     if (allResults.isEmpty) return;
 
@@ -227,7 +261,7 @@ class _AiClothingSandboxScreenState
       final items = allResults.map((item) {
         return ItemModel(
           id: _uuid.v4(),
-          houseId: _selectedHouseId,
+          houseId: _selectedHouseId!,
           name: item.name,
           category: _mapCategory(item.category),
           quantity: 1,
@@ -239,8 +273,73 @@ class _AiClothingSandboxScreenState
 
       final repo = ref.read(itemRepositoryProvider);
       await repo.insertMultipleItems(items);
-      ref.invalidate(itemNotifierProvider(_selectedHouseId));
+      ref.invalidate(itemNotifierProvider(_selectedHouseId!));
       ref.read(syncOrchestratorProvider).requestSync();
+
+      if (!mounted) return;
+
+      final saved = items.length;
+      setState(() {
+        for (final group in _photoGroups) {
+          for (final c in group.controllers) {
+            c.dispose();
+          }
+        }
+        _photoGroups.clear();
+        _rawJsonDump = null;
+        _errorMessage = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ai_import.save_success'.tr(args: [saved.toString()])),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showErrorSnackBar('ai_import.save_error'.tr(args: [e.toString()]));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveItemsOnboarding() async {
+    final allResults = _allResults;
+    if (allResults.isEmpty) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final now = DateTime.now();
+      final houseId = _uuid.v4();
+      final house = HouseModel(
+        id: houseId,
+        name: 'onboarding.default_house_name'.tr(),
+        createdAt: now,
+        updatedAt: now,
+      );
+      final items = allResults.map((item) {
+        return ItemModel(
+          id: _uuid.v4(),
+          houseId: houseId,
+          name: item.name,
+          category: _mapCategory(item.category),
+          quantity: 1,
+          createdAt: now,
+          updatedAt: now,
+          aiMetadata: jsonEncode(item.toJson()),
+        );
+      }).toList();
+
+      await ref.read(houseRepositoryProvider).createHouseWithItems(house, items);
+      ref.invalidate(houseNotifierProvider);
+      ref.read(syncOrchestratorProvider).requestSync();
+
+      if (!mounted) return;
+
+      await ref.read(postLoginOnboardingProvider.notifier).completeAi(houseId);
 
       if (!mounted) return;
 
@@ -290,6 +389,60 @@ class _AiClothingSandboxScreenState
         duration: const Duration(seconds: 6),
       ),
     );
+  }
+
+  void _showAiSaveTooltip() {
+    if (_onboardingTooltipShown) return;
+    setState(() => _onboardingTooltipShown = true);
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'ai_save_tooltip',
+          keyTarget: tourKeys.infoCardTarget,
+          shape: ShapeLightFocus.Circle,
+          radius: 1,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              builder: (ctx, controller) {
+                final colorScheme = Theme.of(context).colorScheme;
+                final textTheme = Theme.of(context).textTheme;
+                return Container(
+                  padding: EdgeInsets.all(context.spacingMd),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'onboarding_tour.ai_save_tooltip'.tr(),
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      SizedBox(height: context.spacingMd),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton(
+                          onPressed: () => controller.next(),
+                          child: Text('tour.finish'.tr()),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.8,
+      hideSkip: true,
+    ).show(context: context);
   }
 
   // ── Build ────────────────────────────────────────────────────────────────────
@@ -507,7 +660,6 @@ class _AiClothingSandboxScreenState
   // ── Bottom bar (house selector + save) ───────────────────────────────────────
 
   Widget _buildBottomBar(BuildContext context) {
-    final housesAsync = ref.watch(houseNotifierProvider);
     return SafeArea(
       child: Container(
         padding: EdgeInsets.fromLTRB(
@@ -527,42 +679,10 @@ class _AiClothingSandboxScreenState
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Expanded(
-              child: housesAsync.when(
-                loading: () => const LinearProgressIndicator(),
-                error: (_, _) => Text('errors.load_failed'.tr()),
-                data: (houses) => DropdownButtonFormField<String>(
-                  initialValue: _selectedHouseId,
-                  isDense: true,
-                  decoration: InputDecoration(
-                    labelText: 'ai_import.destination_house'.tr(),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        AppConstants.inputBorderRadius,
-                      ),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: context.spacingMd,
-                      vertical: context.spacingSm,
-                    ),
-                  ),
-                  items: houses
-                      .map(
-                        (h) => DropdownMenuItem<String>(
-                          value: h.id,
-                          child: Text(h.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _isLoading
-                      ? null
-                      : (v) {
-                          if (v != null) setState(() => _selectedHouseId = v);
-                        },
-                ),
-              ),
-            ),
-            SizedBox(width: context.spacingMd),
+            if (!widget.isFirstTimeOnboarding) ...[
+              Expanded(child: _buildHouseDropdown(context)),
+              SizedBox(width: context.spacingMd),
+            ],
             ElevatedButton(
               onPressed: _isLoading ? null : _saveItems,
               style: ElevatedButton.styleFrom(
@@ -581,6 +701,43 @@ class _AiClothingSandboxScreenState
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHouseDropdown(BuildContext context) {
+    final housesAsync = ref.watch(houseNotifierProvider);
+    return housesAsync.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (_, _) => Text('errors.load_failed'.tr()),
+      data: (houses) => DropdownButtonFormField<String>(
+        initialValue: _selectedHouseId,
+        isDense: true,
+        decoration: InputDecoration(
+          labelText: 'ai_import.destination_house'.tr(),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              AppConstants.inputBorderRadius,
+            ),
+          ),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: context.spacingMd,
+            vertical: context.spacingSm,
+          ),
+        ),
+        items: houses
+            .map(
+              (h) => DropdownMenuItem<String>(
+                value: h.id,
+                child: Text(h.name),
+              ),
+            )
+            .toList(),
+        onChanged: _isLoading
+            ? null
+            : (v) {
+                if (v != null) setState(() => _selectedHouseId = v);
+              },
       ),
     );
   }
