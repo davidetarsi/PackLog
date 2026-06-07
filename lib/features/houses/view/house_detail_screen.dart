@@ -18,6 +18,8 @@ import '../../spaces/model/space_model.dart';
 import '../../spaces/providers/space_provider.dart';
 import '../../spaces/view/spaces_management_screen.dart';
 import '../../luggages/view/luggages_management_screen.dart';
+import '../../tour/model/onboarding_state.dart';
+import '../../tour/providers/post_login_onboarding_provider.dart';
 import 'add_edit_house_screen.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/widgets/ds_contextual_app_bar.dart';
@@ -333,6 +335,11 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
             args: [count.toString(), destinationName],
           ),
         );
+        final onboardingState = ref.read(postLoginOnboardingProvider).valueOrNull;
+        if (onboardingState?.step == OnboardingStep.moveItemsTooltip &&
+            widget.houseId == onboardingState?.defaultHouseId) {
+          await ref.read(postLoginOnboardingProvider.notifier).advance();
+        }
       }
     } catch (e) {
       if (mounted) {
