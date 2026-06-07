@@ -7,4 +7,5 @@ class _TourKeys {
   final tripsTab = GlobalKey();
   final profileTab = GlobalKey();
   final infoCardTarget = GlobalKey();
+  final houseFab = GlobalKey();
 }

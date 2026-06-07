@@ -7,6 +7,9 @@ import '../../features/items/view/add_edit_item_screen.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 import '../../features/tour/tour_keys.dart';
+import '../../features/houses/providers/house_provider.dart';
+import '../../features/tour/model/onboarding_state.dart';
+import '../../features/tour/providers/post_login_onboarding_provider.dart';
 
 /// Shell principale dell'app con tab bar persistente
 class MainShell extends ConsumerStatefulWidget {
@@ -101,9 +104,23 @@ class _MainShellState extends ConsumerState<MainShell>
     showAddEditItemSheet(context);
   }
 
-  void _onCreateHouse() {
+  Future<void> _onCreateHouse() async {
     _closeCreateMenu();
-    showAddEditHouseSheet(context);
+    final onboardingStep =
+        ref.read(postLoginOnboardingProvider).valueOrNull?.step;
+    final housesBefore =
+        ref.read(houseNotifierProvider).valueOrNull?.length ?? 0;
+
+    await showAddEditHouseSheet(context);
+
+    if (!mounted) return;
+    if (onboardingStep == OnboardingStep.houseTooltip) {
+      final housesAfter =
+          ref.read(houseNotifierProvider).valueOrNull?.length ?? 0;
+      if (housesAfter > housesBefore) {
+        await ref.read(postLoginOnboardingProvider.notifier).advance();
+      }
+    }
   }
 
   void _onCreateBulk() {
@@ -207,7 +224,7 @@ class _MainShellState extends ConsumerState<MainShell>
                             icon: Icons.home,
                             label: 'houses.add'.tr(),
                             colorScheme: colorScheme,
-                            onTap: _onCreateHouse,
+                            onTap: () => _onCreateHouse(),
                           ),
                         ],
                       ),
@@ -277,6 +294,7 @@ class _MainShellState extends ConsumerState<MainShell>
                   ),
                   Expanded(
                     child: _NavItem(
+                      key: tourKeys.houseFab,
                       icon: _isCreateMenuOpen
                           ? Icons.close
                           : Icons.add_circle_outline,
