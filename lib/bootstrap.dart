@@ -191,9 +191,7 @@ Future<void> bootstrap(Environment env) async {
 
     final deviceLangCode =
         WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-    final startLocale = deviceLangCode == 'it'
-        ? const Locale('it', 'IT')
-        : const Locale('en', 'US');
+    final startLocale = resolveLocale(deviceLangCode);
 
     runApp(
       EasyLocalization(
