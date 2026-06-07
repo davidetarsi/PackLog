@@ -167,9 +167,9 @@ Le chiavi `infoCardTarget` e `tripsTab` già esistono e vengono riusate.
 |------|-----------|--------|------|-------------|
 | `houseTooltip` | `TourListener` | `tourKeys.houseFab` | Spotlight | Layer UI: dopo `await addHouse(...)` con successo → `ref.read(provider.notifier).advance()` |
 | `defaultHouseTooltip` *(solo se `!skippedAi`)* | `TourListener` | `tourKeys.infoCardTarget` | Card centrata | Tap "Avanti" sulla card |
-| `moveItemsTooltip` *(solo se `!skippedAi`)* | `HouseDetailScreen` | `tourKeys.infoCardTarget` | Card centrata | Layer UI: dopo `await bulkMove(...)` con successo → `ref.read(provider.notifier).advance()`. Il trigger di visualizzazione è `addPostFrameCallback` al primo caricamento se `houseId == defaultHouseId && step == moveItemsTooltip` |
+| `moveItemsTooltip` *(solo se `!skippedAi`)* | `TourTriggerWrapper` (via Router) | `tourKeys.infoCardTarget` | Card centrata | **Gestito dal Router:** Non inquinare la vista originale. Il Router wrappa `HouseDetailScreen` in un `TourTriggerWrapper` che lancia `addPostFrameCallback`. L'avanzamento avviene chiamando il provider dopo la mutazione `bulkMove`. |
 | `createTripTooltip` | `TourListener` | `tourKeys.tripsTab` | Spotlight | Tap "Avanti" sulla card |
-| `tripCreationTooltip` | `AddTripScreen` | `tourKeys.infoCardTarget` | Card centrata | Tap "Ok" sulla card. Il trigger di visualizzazione è `addPostFrameCallback` al primo caricamento se `step == tripCreationTooltip` |
+| `tripCreationTooltip` | `TourTriggerWrapper` (via Router) | `tourKeys.infoCardTarget` | Card centrata | **Gestito dal Router:** Il Router wrappa `AddTripScreen` nel `TourTriggerWrapper`. Tap "Ok" sulla card per avanzare. |
 
 **"Salta" su ogni tooltip:** chiama `notifier.markDone()` → `step = done` immediato.
 
@@ -243,8 +243,7 @@ tour.trip_creation_tooltip.body
 | Modifica | `lib/features/tour/controllers/tour_orchestrator.dart` — evolve in `PostLoginOnboardingListener`, rimuove riferimenti a `tourStatusProvider` |
 | Modifica | `lib/features/tour/tour_keys.dart` — aggiunge `houseFab` |
 | Modifica | `lib/features/ai_input/view/ai_clothing_sandbox_screen.dart` — aggiunge `isFirstTimeOnboarding`, transazione atomica in `_saveItems`, tooltip su risultati |
-| Modifica | `lib/features/houses/view/house_detail_screen.dart` — tooltip `moveItemsTooltip` via `addPostFrameCallback` |
-| Modifica | `lib/features/trips/view/add_trip_screen.dart` — tooltip `tripCreationTooltip` via `addPostFrameCallback` |
+| Crea | `lib/features/tour/widgets/tour_trigger_wrapper.dart` — ConsumerWidget generico usato nel router per avvolgere le screen target e sparare i tooltip isolando la logica di business. |
 | Modifica | `lib/features/onboarding/view/onboarding_screen.dart` — rimuove slide lingua e logica locale |
 | Modifica | `lib/core/routing/app_router.dart` — aggiunge route `/onboarding-ai-intro`, redirect per `step == aiIntro`, rimuove redirect per `tour_status` |
 | Modifica | `lib/features/profile/view/profile_screen.dart` — `reset()` con conteggio case |

@@ -15,7 +15,7 @@ part 'package_info_provider.g.dart';
 ///   error: (_, __) => Text('—'),
 /// );
 /// ```
-// ignore: deprecated_member_use_from_same_package
 @Riverpod(keepAlive: true)
+// ignore: deprecated_member_use_from_same_package
 Future<PackageInfo> packageInfo(PackageInfoRef ref) =>
     PackageInfo.fromPlatform();

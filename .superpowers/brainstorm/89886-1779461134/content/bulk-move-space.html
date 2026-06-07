@@ -1,0 +1,100 @@
+<h2>Bulk Move — selezione Casa + Spazio</h2>
+<p class="subtitle">Quando premi "Sposta" dopo long press, come funziona la selezione della destinazione?</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">A — Due step: prima casa, poi spazio</div>
+    <div class="mockup-body">
+      <div style="padding: 16px; font-family: sans-serif; font-size: 13px;">
+
+        <div style="font-weight: 700; margin-bottom: 12px; color: #333;">Step 1 — Seleziona casa</div>
+        <div style="border: 1px solid #eee; border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
+          <div style="padding: 12px 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; background: #fff8f4;">
+            <span>🏠</span><span style="flex:1; font-weight: 600;">Milano</span>
+            <span style="color: #e87d2b; font-size: 18px;">✓</span>
+          </div>
+          <div style="padding: 12px 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px;">
+            <span>🏡</span><span>Roma centro</span>
+          </div>
+          <div style="padding: 12px 16px; display: flex; align-items: center; gap: 10px;">
+            <span>🏢</span><span>Ufficio</span>
+          </div>
+        </div>
+
+        <div style="font-weight: 700; margin-bottom: 8px; color: #333;">Step 2 — Spazio in "Milano" (opzionale)</div>
+        <div style="border: 1px solid #eee; border-radius: 12px; overflow: hidden;">
+          <div style="padding: 12px 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; color: #888; font-style: italic;">
+            <span>⬜</span><span>Nessuno spazio</span>
+          </div>
+          <div style="padding: 12px 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; background: #fff8f4;">
+            <span>🚪</span><span style="flex: 1;">Camera da letto</span>
+            <span style="color: #e87d2b; font-size: 18px;">✓</span>
+          </div>
+          <div style="padding: 12px 16px; display: flex; align-items: center; gap: 10px;">
+            <span>🪣</span><span>Bagno</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 12px; text-align: center; font-size: 11px; color: #888;">Due sheet separati in sequenza</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B — Sheet unico: casa in alto, spazio sotto</div>
+    <div class="mockup-body">
+      <div style="padding: 16px; font-family: sans-serif; font-size: 13px;">
+
+        <div style="font-size: 11px; color: #888; font-weight: 600; margin-bottom: 6px; text-transform: uppercase;">Casa destinazione</div>
+        <div style="border: 1.5px solid #e87d2b; border-radius: 12px; padding: 12px 16px; background: #fff8f4; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span>🏠</span>
+          <span style="flex: 1; font-weight: 600;">Milano</span>
+          <span style="color: #e87d2b;">▾</span>
+        </div>
+
+        <div style="height: 1px; background: #eee; margin: 12px 0;"></div>
+
+        <div style="font-size: 11px; color: #888; font-weight: 600; margin-bottom: 6px; text-transform: uppercase;">Spazio (opzionale)</div>
+        <div style="border: 1px solid #ccc; border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
+          <div style="padding: 10px 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; color: #888; font-style: italic;">
+            <span>⬜</span><span>Nessuno spazio</span>
+          </div>
+          <div style="padding: 10px 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; background: #fff8f4;">
+            <span>🚪</span>
+            <span style="flex: 1;">Camera da letto</span>
+            <span style="color: #e87d2b; font-size: 16px;">✓</span>
+          </div>
+          <div style="padding: 10px 16px; display: flex; align-items: center; gap: 10px;">
+            <span>🪣</span><span>Bagno</span>
+          </div>
+        </div>
+
+        <div style="border: 1.5px solid #e87d2b; border-radius: 30px; padding: 14px; text-align: center; font-weight: 600; color: #666;">
+          Sposta 3 oggetti →
+        </div>
+        <div style="margin-top: 8px; text-align: center; font-size: 11px; color: #888;">Un unico sheet, spazio si aggiorna al cambio casa</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="background: #f0f8ff; border: 1px solid #b0d4e8; border-radius: 10px; padding: 12px 16px; margin: 16px 0; font-size: 13px;">
+  <strong>📌 Nota:</strong> In entrambe le opzioni gli spazi mostrati sono della <strong>casa destinazione</strong> (non della casa sorgente). Scegliere uno spazio è sempre opzionale — se non ne selezioni uno, l'item va nel default della casa.
+</div>
+
+<div class="options" style="margin-top: 8px;">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Due step sequenziali</h3>
+      <p>Prima DsPickerSheet per la casa, poi (se ha spazi) DsPickerSheet per lo spazio. Consistente con i pattern esistenti, zero codice nuovo.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Sheet unico combinato</h3>
+      <p>Dropdown casa in cima + lista spazi sotto nello stesso sheet. UX più fluida, ma richiede un componente custom.</p>
+    </div>
+  </div>
+</div>

@@ -1,6 +1,13 @@
 {
   "permissions": {
     "allow": [
+      "Agent",
+      "Edit",
+      "Write",
+      "Read",
+      "Bash(dart run build_runner *)",
+      "Bash(rm lib/*)",
+      "Bash(rm test/*)",
       "Bash(powershell -Command \"Get-ChildItem 'c:\\\\Users\\\\d.tarsi\\\\OneDrive - Reply\\\\Desktop\\\\Progetti\\\\personale\\\\stuff_tracker\\\\.vscode' -Force\")",
       "Bash(flutter analyze *)",
       "Bash(Remove-Item -Path \"C:\\\\dev\\\\flutter\\\\bin\\\\cache\\\\engine.realm\" -Force -ErrorAction SilentlyContinue)",
@@ -16,7 +23,15 @@
       "Bash(git -C /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2 branch --show-current)",
       "Bash(git -C /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2 branch -a)",
       "Bash(git -C /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2 log --oneline feature/wip-refactor-ui..claude/funny-kowalevski-fb5717)",
-      "Bash(git -C /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2 log --oneline feature/wip-refactor-ui..claude/nervous-montalcini-61d0a5)"
+      "Bash(git -C /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2 log --oneline feature/wip-refactor-ui..claude/nervous-montalcini-61d0a5)",
+      "Bash(flutter test *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git -C /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2 stash)",
+      "Bash(git -C /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2 stash pop)",
+      "Bash(dart analyze *)",
+      "Bash(sed -n '420,435p' /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2/lib/features/items/view/item_form_content.dart)",
+      "Bash(sed -n '513,525p' /Users/davide/Desktop/Personal/Progetti/stuff_tracker_2/lib/features/items/view/item_form_content.dart)"
     ]
   }
 }
