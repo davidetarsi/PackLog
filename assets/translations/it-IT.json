@@ -578,7 +578,8 @@
     "trips": {
       "title": "I tuoi viaggi",
       "description": "Crea un viaggio e seleziona gli oggetti da portare. Durante il viaggio li ritrovi automaticamente segnati come \"in viaggio\"."
-    }
+    },
+    "default_house_name": "Casa di prova"
   },
   "tour": {
     "relaunch_title": "Ripeti il tour",
@@ -610,6 +611,35 @@
     "step6": {
       "title": "Il tuo profilo",
       "body": "Da qui puoi cambiare lingua, tema, e rieseguire questo tour quando vuoi."
+    },
+    "house_tooltip": {
+      "title": "Crea la tua prima casa",
+      "body": "Tocca il + per aprire il menu di creazione e aggiungi la tua prima casa."
+    },
+    "default_house_tooltip": {
+      "title": "Apri la Casa di prova",
+      "body": "I tuoi oggetti AI sono nella 'Casa di prova'. Toccala per aprirla e spostarli dove vuoi."
+    },
+    "move_items_tooltip": {
+      "title": "Sposta gli oggetti",
+      "body": "Tieni premuto su un oggetto per selezionarlo, seleziona quelli che vuoi spostare, poi tocca Sposta."
+    },
+    "create_trip_tooltip": {
+      "title": "Crea il tuo primo viaggio",
+      "body": "Vai nella sezione Viaggi e crea il tuo primo viaggio con la tua lista di cose da portare."
+    },
+    "trip_creation_tooltip": {
+      "title": "Organizza il tuo viaggio",
+      "body": "Qui puoi aggiungere una destinazione, le date e scegliere gli oggetti da portare. Ogni viaggio ha la sua checklist."
     }
+  },
+  "onboarding_tour": {
+    "ai_intro": {
+      "title": "Facciamo una prova",
+      "body": "Carica una foto del tuo outfit o scattane una. L'AI riconosce i capi e li salva per te.",
+      "cta": "Scatta o carica una foto",
+      "skip": "Salta"
+    },
+    "ai_save_tooltip": "Salveremo questi oggetti in una nuova casa 'Casa di prova'. Potrai spostarli quando vuoi."
   }
 }

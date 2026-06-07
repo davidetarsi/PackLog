@@ -579,7 +579,8 @@
     "trips": {
       "title": "Your trips",
       "description": "Create a trip and select the items to bring. During the trip, they're automatically marked as \"travelling\"."
-    }
+    },
+    "default_house_name": "Demo House"
   },
   "tour": {
     "relaunch_title": "Replay tour",
@@ -611,6 +612,35 @@
     "step6": {
       "title": "Your profile",
       "body": "Change language, theme, and relaunch this tour anytime from here."
+    },
+    "house_tooltip": {
+      "title": "Create your first home",
+      "body": "Tap + to open the create menu and add your first home."
+    },
+    "default_house_tooltip": {
+      "title": "Open the Demo House",
+      "body": "Your AI items are in 'Demo House'. Tap it to open and move them wherever you like."
+    },
+    "move_items_tooltip": {
+      "title": "Move items",
+      "body": "Long-press an item to select it, select the ones you want to move, then tap Move."
+    },
+    "create_trip_tooltip": {
+      "title": "Create your first trip",
+      "body": "Head to Trips and create your first trip with a packing list."
+    },
+    "trip_creation_tooltip": {
+      "title": "Plan your trip",
+      "body": "Add a destination, dates, and choose what to pack. Every trip gets its own checklist."
     }
+  },
+  "onboarding_tour": {
+    "ai_intro": {
+      "title": "Let's try it out",
+      "body": "Upload a photo of your outfit or take one now. The AI recognises your clothes and saves them for you.",
+      "cta": "Take or upload a photo",
+      "skip": "Skip"
+    },
+    "ai_save_tooltip": "We'll save these items in a new 'Demo House'. You can move them whenever you like."
   }
 }
