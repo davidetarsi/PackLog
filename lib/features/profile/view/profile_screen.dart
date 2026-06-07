@@ -10,7 +10,8 @@ import '../../../core/analytics/analytics_service.dart';
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/auth_state.dart';
-import '../../../features/tour/providers/tour_status_provider.dart';
+import '../../../features/houses/providers/house_provider.dart';
+import '../../../features/tour/providers/post_login_onboarding_provider.dart';
 import '../providers/gpt_usage_provider.dart';
 // import '../../../core/database/controllers/backup_controller.dart';
 // import 'package:sentry_flutter/sentry_flutter.dart';
@@ -393,10 +394,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               title: Text('tour.relaunch_title'.tr()),
               subtitle: Text('tour.relaunch_subtitle'.tr()),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () {
+              onTap: () async {
                 ref.read(analyticsServiceProvider).logEvent('tour_relaunched');
-                ref.read(tourStatusProvider.notifier).resetTour();
-                context.go('/');
+                final houses = ref.read(houseNotifierProvider).valueOrNull ?? [];
+                await ref
+                    .read(postLoginOnboardingProvider.notifier)
+                    .reset(hasExistingHouses: houses.isNotEmpty);
+                if (context.mounted) context.go('/');
               },
             ),
             const Divider(),
