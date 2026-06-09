@@ -23,6 +23,7 @@ import '../../items/providers/item_provider.dart';
 import '../../items/repositories/item_repository.dart';
 import '../../tour/providers/post_login_onboarding_provider.dart';
 import '../../tour/tour_keys.dart';
+import '../model/clothing_analysis_exception.dart';
 import '../model/clothing_analysis_result.dart';
 import '../service/ai_clothing_analyzer_service.dart';
 
@@ -47,11 +48,13 @@ class _PhotoGroup {
 class AiClothingSandboxScreen extends ConsumerStatefulWidget {
   final String? houseId;
   final bool isFirstTimeOnboarding;
+  final ImageSource? autoSource;
 
   const AiClothingSandboxScreen({
     super.key,
     this.houseId,
     this.isFirstTimeOnboarding = false,
+    this.autoSource,
   }) : assert(
           !isFirstTimeOnboarding || houseId == null,
           'In onboarding mode houseId must be null — the house is created at save time',
@@ -103,6 +106,16 @@ class _AiClothingSandboxScreenState
       analytics: ref.read(coreAnalyticsServiceProvider),
       monitoring: ref.read(monitoringServiceProvider),
     );
+    if (widget.autoSource != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (widget.autoSource == ImageSource.gallery) {
+          _pickFromGallery();
+        } else {
+          _pickFromCamera();
+        }
+      });
+    }
   }
 
   @override
