@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/monitoring/monitoring_service.dart';
+import 'package:pack_log/features/ai_input/model/clothing_analysis_exception.dart';
 import 'package:pack_log/features/ai_input/service/ai_clothing_analyzer_service.dart';
 
 File _fakeImageFile() {
