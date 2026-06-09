@@ -83,11 +83,6 @@ class _AiClothingSandboxScreenState
         c.dispose();
       }
     }
-    // Reset notifier state when screen is disposed.
-    // Use addPostFrameCallback to avoid modifying provider during dispose.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(aiImportNotifierProvider.notifier).reset();
-    });
     super.dispose();
   }
 
@@ -108,9 +103,17 @@ class _AiClothingSandboxScreenState
       }
       _controllers.removeLast();
     }
-    // Items removed within a group
+    // Items added or removed within a group
     for (var gi = 0; gi < _controllers.length; gi++) {
       final resultCount = next.photoGroups[gi].results.length;
+      // Add controllers for new items
+      while (_controllers[gi].length < resultCount) {
+        final ii = _controllers[gi].length;
+        _controllers[gi].add(
+          TextEditingController(text: next.photoGroups[gi].results[ii].name),
+        );
+      }
+      // Remove controllers for deleted items
       while (_controllers[gi].length > resultCount) {
         _controllers[gi].last.dispose();
         _controllers[gi].removeLast();
@@ -411,7 +414,7 @@ class _AiClothingSandboxScreenState
     AiImportState state,
     AiImportNotifier notifier,
   ) {
-    final allResults = notifier.allResults;
+    final allResults = state.photoGroups.expand((g) => g.results).toList();
     final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
@@ -567,7 +570,7 @@ class _AiClothingSandboxScreenState
               ),
               child: Text(
                 'ai_import.save_button'.tr(
-                  args: [notifier.allResults.length.toString()],
+                  args: [state.photoGroups.expand((g) => g.results).length.toString()],
                 ),
               ),
             ),
