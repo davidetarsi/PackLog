@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -9,6 +10,13 @@ import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/features/ai_input/model/clothing_analysis_exception.dart';
 import 'package:pack_log/features/ai_input/service/ai_clothing_analyzer_service.dart';
+
+/// Wraps a content string in the minimal OpenAI response envelope.
+String _openAiResponse(String content) => jsonEncode({
+  'choices': [
+    {'message': {'content': content}},
+  ],
+});
 
 File _fakeImageFile() {
   final f = File('${Directory.systemTemp.path}/test_img.png')
@@ -92,6 +100,108 @@ void main() {
       },
     );
 
+    group('processClothingItem — success and parsing', () {
+      const _validItemsJson =
+          '[{"name":"T-Shirt","category":"Upper Body","subCategory":"T-Shirt","baseColor":"Bianco",'
+          '"pattern":"Solid","coverage":"Short-sleeve","fit":"Regular",'
+          '"warmth":2,"formality":"Casual","activityTags":["Everyday"]}]';
+
+      test('returns correct ClothingItem list from valid JSON response',
+          () async {
+        final service = _makeService(
+          MockClient(
+            (_) async =>
+                http.Response(_openAiResponse(_validItemsJson), 200),
+          ),
+        );
+
+        final items = await service.processClothingItem(_fakeImageFile());
+
+        expect(items, hasLength(1));
+        expect(items.first.name, 'T-Shirt');
+        expect(items.first.category, 'Upper Body');
+        expect(items.first.subCategory, 'T-Shirt');
+        expect(items.first.baseColor, 'Bianco');
+        expect(items.first.warmth, 2);
+        expect(items.first.activityTags, ['Everyday']);
+      });
+
+      test('strips markdown fences from content before parsing', () async {
+        // GPT sometimes wraps its JSON output in ```json ... ``` fences.
+        const fencedContent = '```json\n$_validItemsJson\n```';
+        final service = _makeService(
+          MockClient(
+            (_) async =>
+                http.Response(_openAiResponse(fencedContent), 200),
+          ),
+        );
+
+        final items = await service.processClothingItem(_fakeImageFile());
+
+        expect(items, hasLength(1));
+        expect(items.first.name, 'T-Shirt');
+      });
+
+      test('throws ResponseParsingException on malformed JSON content',
+          () async {
+        final service = _makeService(
+          MockClient(
+            (_) async =>
+                http.Response(_openAiResponse('not valid json'), 200),
+          ),
+        );
+
+        await expectLater(
+          service.processClothingItem(_fakeImageFile()),
+          throwsA(isA<ResponseParsingException>()),
+        );
+      });
+
+      test(
+          'throws ResponseParsingException when choices array is empty',
+          () async {
+        final service = _makeService(
+          MockClient(
+            (_) async =>
+                http.Response(jsonEncode({'choices': []}), 200),
+          ),
+        );
+
+        await expectLater(
+          service.processClothingItem(_fakeImageFile()),
+          throwsA(isA<ResponseParsingException>()),
+        );
+      });
+    });
+
+    group('processClothingItem — auth and network', () {
+      test('throws VisionAnalysisException on empty JWT string', () async {
+        final service = AiClothingAnalyzerService(
+          proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
+          anonKey: 'fake-anon-key',
+          jwtProvider: () => '',
+        );
+
+        await expectLater(
+          service.processClothingItem(_fakeImageFile()),
+          throwsA(isA<VisionAnalysisException>()),
+        );
+      });
+
+      test('throws VisionAnalysisException on socket/network error', () async {
+        final service = _makeService(
+          MockClient(
+            (_) async => throw const SocketException('Network unreachable'),
+          ),
+        );
+
+        await expectLater(
+          service.processClothingItem(_fakeImageFile()),
+          throwsA(isA<VisionAnalysisException>()),
+        );
+      });
+    });
+
     group('Analytics tracking', () {
       late MockCoreAnalyticsService mockAnalytics;
       late MockAppMonitoringService mockMonitoring;
@@ -100,7 +210,7 @@ void main() {
 {
   "choices": [{
     "message": {
-      "content": "[{\\"name\\": \\"T-Shirt\\", \\"category\\": \\"Upper Body\\", \\"baseColor\\": \\"Bianco\\", \\"pattern\\": \\"Solid\\", \\"coverage\\": \\"Short-sleeve\\", \\"fit\\": \\"Regular\\", \\"warmth\\": 2, \\"formality\\": \\"Casual\\", \\"activityTags\\": [\\"Everyday\\"]}]"
+      "content": "[{\\"name\\": \\"T-Shirt\\", \\"category\\": \\"Upper Body\\", \\"subCategory\\": \\"T-Shirt\\", \\"baseColor\\": \\"Bianco\\", \\"pattern\\": \\"Solid\\", \\"coverage\\": \\"Short-sleeve\\", \\"fit\\": \\"Regular\\", \\"warmth\\": 2, \\"formality\\": \\"Casual\\", \\"activityTags\\": [\\"Everyday\\"]}]"
     }
   }]
 }

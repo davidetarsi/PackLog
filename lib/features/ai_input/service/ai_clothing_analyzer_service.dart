@@ -43,13 +43,19 @@ Respond ONLY with a raw JSON array of objects — no markdown, no code fences.
 Each object must have EXACTLY these keys:
 - "name": string (Short descriptive name in Italian, e.g. "Giacca in pelle", "Jeans slim")
 - "category": string (ONE OF: "Upper Body", "Lower Body", "Shoes", "Outerwear", "Accessory")
+- "subCategory": string (ONE OF based on category:
+  Upper Body → "T-Shirt", "Shirt", "Polo", "Hoodie", "Sweatshirt", "Sweater", "Tank Top", "Crop Top"
+  Lower Body → "Jeans", "Shorts", "Trousers", "Leggings", "Skirt", "Sweatpants", "Swimwear"
+  Shoes → "Sneakers", "Sandals", "Boots", "Flip-Flops", "Loafers", "Dress Shoes", "Hiking Boots"
+  Outerwear → "Coat", "Rain Jacket", "Down Jacket", "Windbreaker", "Blazer"
+  Accessory → "Cap/Hat", "Belt", "Bag", "Scarf", "Sunglasses", "Jewelry", "Watch")
 - "baseColor": string (Primary color in Italian, e.g. "Nero", "Bianco", "Blu navy")
 - "pattern": string (ONE OF: "Solid", "Striped", "Plaid", "Graphic", "Logo", "Floral", "Other")
 - "coverage": string (ONE OF: "Short-sleeve", "Long-sleeve", "Sleeveless", "Shorts", "Full-length", "Cropped", "N/A")
 - "fit": string (ONE OF: "Skinny", "Regular", "Oversize", "N/A")
 - "warmth": integer (1 to 5: 1=canottiera/sandali, 2=t-shirt/sneakers, 3=felpa/jeans, 4=cappotto/stivali, 5=piumino/scarponi)
 - "formality": string (ONE OF: "Loungewear", "Casual", "Smart Casual", "Business", "Formal")
-- "activityTags": array of strings (ONLY from: ["Everyday", "Office", "Active", "Beach", "Evening Out", "Home"])
+- "activityTags": array of 1-3 strings (ONLY from: ["Everyday", "Office", "Beach", "Swimming", "Hiking", "Sport", "Formal", "Lounge"])
 ''';
 
   // final String _removeBgApiKey; // ← REMOVE.BG DISABILITATO
@@ -92,42 +98,9 @@ Each object must have EXACTLY these keys:
       // return (await _analyzeImage(transparentPng)).items;
 
       final Uint8List imageBytes = await imageFile.readAsBytes();
-      final result = (await _analyzeImage(imageBytes)).items;
+      final result = await _analyzeImage(imageBytes);
       _analytics?.trackAiInputCompleted(itemCount: result.length);
       return result;
-    } on ClothingAnalysisException catch (e, st) {
-      _analytics?.trackAiInputFailed(errorType: _errorType(e));
-      _monitoring?.captureException(
-        e,
-        stackTrace: st,
-        tags: {'operation': 'ai_input'},
-      );
-      rethrow;
-    }
-  }
-
-  /// Stesso di [processClothingItem] ma restituisce anche i bytes dell'immagine
-  /// e il raw JSON string dalla risposta OpenAI (utile per la sandbox UI).
-  ///
-  /// Throws a [ClothingAnalysisException] subclass on any failure.
-  Future<
-    ({Uint8List processedBytes, List<ClothingItem> result, String rawJson})
-  >
-  processWithIntermediateResult(File imageFile) async {
-    _analytics?.trackAiInputSubmitted();
-    try {
-      // REMOVE.BG DISABILITATO: si usano i bytes originali al posto del PNG trasparente
-      // final Uint8List processedBytes = await _removeBackground(imageFile);
-      // final analyzed = await _analyzeImage(processedBytes);
-
-      final Uint8List processedBytes = await imageFile.readAsBytes();
-      final analyzed = await _analyzeImage(processedBytes);
-      _analytics?.trackAiInputCompleted(itemCount: analyzed.items.length);
-      return (
-        processedBytes: processedBytes,
-        result: analyzed.items,
-        rawJson: analyzed.rawJson,
-      );
     } on ClothingAnalysisException catch (e, st) {
       _analytics?.trackAiInputFailed(errorType: _errorType(e));
       _monitoring?.captureException(
@@ -179,13 +152,10 @@ Each object must have EXACTLY these keys:
   // ── Step 2: Vision analysis ───────────────────────────────────────────────
 
   /// Sends the image bytes to GPT-4o Vision and parses the result.
-  /// Returns both the parsed items and the raw cleaned JSON string for debugging.
   ///
   /// Throws [VisionAnalysisException] on non-2xx response.
   /// Throws [ResponseParsingException] on schema mismatch or malformed JSON.
-  Future<({List<ClothingItem> items, String rawJson})> _analyzeImage(
-    Uint8List imageBytes,
-  ) async {
+  Future<List<ClothingItem>> _analyzeImage(Uint8List imageBytes) async {
     final base64Image = base64Encode(imageBytes);
 
     final body = jsonEncode({
@@ -246,13 +216,11 @@ Each object must have EXACTLY these keys:
 
   // ── Response parsing ──────────────────────────────────────────────────────
 
-  /// Extracts the assistant message content from the OpenAI response envelope,
-  /// parses it into a list of [ClothingItem], and returns the cleaned JSON string.
+  /// Extracts the assistant message content from the OpenAI response envelope
+  /// and parses it into a list of [ClothingItem].
   ///
   /// Throws [ResponseParsingException] on any schema or JSON error.
-  ({List<ClothingItem> items, String rawJson}) _parseOpenAiResponse(
-    String responseBody,
-  ) {
+  List<ClothingItem> _parseOpenAiResponse(String responseBody) {
     try {
       final envelope = jsonDecode(responseBody) as Map<String, dynamic>;
       final choices = envelope['choices'] as List<dynamic>;
@@ -261,18 +229,16 @@ Each object must have EXACTLY these keys:
               as String;
 
       // Pulizia di sicurezza nel caso GPT aggiunga markdown tipo ```json
-      final rawJson = content
+      final cleaned = content
           .replaceAll('```json', '')
           .replaceAll('```', '')
           .trim();
 
-      final List<dynamic> parsedList = jsonDecode(rawJson) as List<dynamic>;
+      final List<dynamic> parsedList = jsonDecode(cleaned) as List<dynamic>;
 
-      final items = parsedList
+      return parsedList
           .map((item) => ClothingItem.fromJson(item as Map<String, dynamic>))
           .toList();
-
-      return (items: items, rawJson: rawJson);
     } on ResponseParsingException {
       rethrow;
     } catch (e) {

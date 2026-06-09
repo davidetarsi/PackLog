@@ -5,6 +5,7 @@ typedef ClothingItem = ClothingAnalysisResult;
 class ClothingAnalysisResult {
   final String name;
   final String category;
+  final String subCategory;
   final String baseColor;
   final String pattern;
   final String coverage;
@@ -16,6 +17,7 @@ class ClothingAnalysisResult {
   const ClothingAnalysisResult({
     required this.name,
     required this.category,
+    this.subCategory = '',
     required this.baseColor,
     required this.pattern,
     required this.coverage,
@@ -29,6 +31,7 @@ class ClothingAnalysisResult {
     return ClothingAnalysisResult(
       name: json['name'] as String? ?? 'Sconosciuto',
       category: json['category'] as String? ?? '',
+      subCategory: json['subCategory'] as String? ?? '',
       baseColor: json['baseColor'] as String? ?? '',
       pattern: json['pattern'] as String? ?? '',
       coverage: json['coverage'] as String? ?? '',
@@ -44,6 +47,7 @@ class ClothingAnalysisResult {
   ClothingAnalysisResult copyWith({
     String? name,
     String? category,
+    String? subCategory,
     String? baseColor,
     String? pattern,
     String? coverage,
@@ -55,6 +59,7 @@ class ClothingAnalysisResult {
     return ClothingAnalysisResult(
       name: name ?? this.name,
       category: category ?? this.category,
+      subCategory: subCategory ?? this.subCategory,
       baseColor: baseColor ?? this.baseColor,
       pattern: pattern ?? this.pattern,
       coverage: coverage ?? this.coverage,
@@ -105,6 +110,7 @@ class ClothingAnalysisResult {
   Map<String, dynamic> toJson() => {
     'name': name,
     'category': category,
+    'subCategory': subCategory,
     'baseColor': baseColor,
     'pattern': pattern,
     'coverage': coverage,
@@ -117,8 +123,8 @@ class ClothingAnalysisResult {
   @override
   String toString() =>
       'ClothingAnalysisResult('
-      'name: $name, category: $category, baseColor: $baseColor, '
-      'pattern: $pattern, coverage: $coverage, fit: $fit, '
+      'name: $name, category: $category, subCategory: $subCategory, '
+      'baseColor: $baseColor, pattern: $pattern, coverage: $coverage, fit: $fit, '
       'warmth: $warmth, formality: $formality, '
       'calculatedVersatility: $calculatedVersatility, activityTags: $activityTags)';
 
@@ -128,6 +134,7 @@ class ClothingAnalysisResult {
     if (other is! ClothingAnalysisResult) return false;
     if (name != other.name) return false;
     if (category != other.category) return false;
+    if (subCategory != other.subCategory) return false;
     if (baseColor != other.baseColor) return false;
     if (pattern != other.pattern) return false;
     if (coverage != other.coverage) return false;
@@ -145,6 +152,7 @@ class ClothingAnalysisResult {
   int get hashCode => Object.hash(
     name,
     category,
+    subCategory,
     baseColor,
     pattern,
     coverage,

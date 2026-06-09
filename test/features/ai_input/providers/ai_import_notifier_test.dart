@@ -46,6 +46,7 @@ ClothingAnalysisResult _fakeResult({String name = 'T-Shirt'}) =>
     ClothingAnalysisResult(
       name: name,
       category: 'Upper Body',
+      subCategory: 'T-Shirt',
       baseColor: 'Bianco',
       pattern: 'Solid',
       coverage: 'Short-sleeve',
@@ -59,13 +60,8 @@ void _stubServiceSuccess(
   MockAiClothingAnalyzerService service,
   List<ClothingAnalysisResult> results,
 ) {
-  when(() => service.processWithIntermediateResult(any())).thenAnswer(
-    (_) async => (
-      processedBytes: Uint8List(0),
-      result: results,
-      rawJson: '[]',
-    ),
-  );
+  when(() => service.processClothingItem(any()))
+      .thenAnswer((_) async => results);
 }
 
 ProviderContainer _makeContainer({
@@ -196,7 +192,7 @@ void main() {
       final container = _makeContainer(service: service);
       addTearDown(container.dispose);
 
-      when(() => service.processWithIntermediateResult(any()))
+      when(() => service.processClothingItem(any()))
           .thenThrow(const GptLimitExceededException('Monthly limit reached'));
 
       await container
@@ -216,7 +212,7 @@ void main() {
       final container = _makeContainer(service: service);
       addTearDown(container.dispose);
 
-      when(() => service.processWithIntermediateResult(any()))
+      when(() => service.processClothingItem(any()))
           .thenThrow(const VisionAnalysisException('Vision failed'));
 
       await container
@@ -230,6 +226,53 @@ void main() {
     });
 
     test(
+        'partial failure: first file OK, second throws → 1 group + errorMessage',
+        () async {
+      final service = MockAiClothingAnalyzerService();
+      final container = _makeContainer(service: service);
+      addTearDown(container.dispose);
+
+      var callCount = 0;
+      when(() => service.processClothingItem(any())).thenAnswer((_) async {
+        callCount++;
+        if (callCount == 1) return [_fakeResult()];
+        throw const VisionAnalysisException('Second image failed');
+      });
+
+      await container.read(aiImportNotifierProvider.notifier).processFiles([
+        _fakeFile(),
+        _fakeFile(),
+      ]);
+
+      final state = container.read(aiImportNotifierProvider);
+      expect(state.photoGroups, hasLength(1));
+      expect(state.photoGroups.first.results.first.name, 'T-Shirt');
+      expect(state.errorMessage, contains('Second image failed'));
+      expect(state.isLoading, isFalse);
+    });
+
+    test(
+        'unexpected (non-ClothingAnalysis) exception sets errorMessage and isLoading=false',
+        () async {
+      final service = MockAiClothingAnalyzerService();
+      final container = _makeContainer(service: service);
+      addTearDown(container.dispose);
+
+      when(() => service.processClothingItem(any()))
+          .thenThrow(Exception('Unexpected DB error'));
+
+      await container
+          .read(aiImportNotifierProvider.notifier)
+          .processFiles([_fakeFile()]);
+
+      final state = container.read(aiImportNotifierProvider);
+      // easy_localization returns the key itself in tests (no real locale loaded).
+      expect(state.errorMessage, contains('ai_import.unexpected_error'));
+      expect(state.isLoading, isFalse);
+      expect(state.photoGroups, isEmpty);
+    });
+
+    test(
         'concurrent call while isLoading is true: second call is a no-op',
         () async {
       final service = MockAiClothingAnalyzerService();
@@ -237,13 +280,8 @@ void main() {
       addTearDown(container.dispose);
 
       // Slow completer that won't resolve until we tell it to
-      final completer = Completer<
-          ({
-            Uint8List processedBytes,
-            List<ClothingAnalysisResult> result,
-            String rawJson
-          })>();
-      when(() => service.processWithIntermediateResult(any()))
+      final completer = Completer<List<ClothingAnalysisResult>>();
+      when(() => service.processClothingItem(any()))
           .thenAnswer((_) => completer.future);
 
       // Start first call (don't await — it hangs)
@@ -260,14 +298,10 @@ void main() {
           .processFiles([_fakeFile()]);
 
       // Only 1 service call was ever made
-      verify(() => service.processWithIntermediateResult(any())).called(1);
+      verify(() => service.processClothingItem(any())).called(1);
 
       // Resolve the hanging first call so the container can dispose cleanly
-      completer.complete((
-        processedBytes: Uint8List(0),
-        result: [_fakeResult()],
-        rawJson: '[]',
-      ));
+      completer.complete([_fakeResult()]);
       await firstCall;
     });
   });
@@ -330,6 +364,30 @@ void main() {
       final state = container.read(aiImportNotifierProvider);
       expect(state.photoGroups.first.results[0].name, 'Polo');
       expect(state.photoGroups.first.results[1].name, 'Jeans');
+    });
+
+    test('multi-group: update in group 1 does not affect group 0', () async {
+      final service = MockAiClothingAnalyzerService();
+      final container = _makeContainer(service: service);
+      addTearDown(container.dispose);
+
+      // Seed two separate groups (one call each).
+      _stubServiceSuccess(service, [_fakeResult(name: 'T-Shirt')]);
+      await container
+          .read(aiImportNotifierProvider.notifier)
+          .processFiles([_fakeFile()]);
+      _stubServiceSuccess(service, [_fakeResult(name: 'Jeans')]);
+      await container
+          .read(aiImportNotifierProvider.notifier)
+          .processFiles([_fakeFile()]);
+
+      container
+          .read(aiImportNotifierProvider.notifier)
+          .updateItemName(1, 0, 'Pantaloni');
+
+      final state = container.read(aiImportNotifierProvider);
+      expect(state.photoGroups[0].results[0].name, 'T-Shirt');
+      expect(state.photoGroups[1].results[0].name, 'Pantaloni');
     });
   });
 
