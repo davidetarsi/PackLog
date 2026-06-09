@@ -38,6 +38,7 @@ class AiImportNotifier extends _$AiImportNotifier {
   // ── Processing ────────────────────────────────────────────────────────────
 
   Future<void> processFiles(List<File> files) async {
+    if (state.isLoading) return;
     state = state.copyWith(
       isLoading: true,
       processingIndex: 0,
@@ -112,10 +113,12 @@ class AiImportNotifier extends _$AiImportNotifier {
   /// Throws if [state.selectedHouseId] is null.
   Future<void> saveItems() async {
     final houseId = state.selectedHouseId;
-    assert(
-      houseId != null,
-      'selectedHouseId must be set before calling saveItems',
-    );
+    if (houseId == null) {
+      state = state.copyWith(
+        errorMessage: 'ai_import.no_house_selected'.tr(),
+      );
+      return;
+    }
 
     final results = allResults;
     if (results.isEmpty) return;
@@ -128,7 +131,7 @@ class AiImportNotifier extends _$AiImportNotifier {
               .map(
                 (r) => ItemModel(
                   id: _uuid.v4(),
-                  houseId: houseId!,
+                  houseId: houseId,
                   name: r.name,
                   category: _mapCategory(r.category),
                   quantity: 1,
@@ -140,7 +143,7 @@ class AiImportNotifier extends _$AiImportNotifier {
               .toList();
 
       await ref.read(itemRepositoryProvider).insertMultipleItems(items);
-      ref.invalidate(itemNotifierProvider(houseId!));
+      ref.invalidate(itemNotifierProvider(houseId));
       ref.read(syncOrchestratorProvider).requestSync();
       state = const AiImportState();
     } catch (e) {
@@ -185,6 +188,7 @@ class AiImportNotifier extends _$AiImportNotifier {
 
       await ref.read(houseRepositoryProvider).createHouseWithItems(house, items);
       ref.invalidate(houseNotifierProvider);
+      ref.invalidate(itemNotifierProvider(houseId));
       ref.read(syncOrchestratorProvider).requestSync();
       await ref.read(postLoginOnboardingProvider.notifier).completeAi(houseId);
       state = const AiImportState();
