@@ -53,4 +53,9 @@ class AppConstants {
 
   /// Altezza fissa per tab filtri compatti (raro).
   static const double pillTabCompact = 32.0;
+
+  // ── AI Import ────────────────────────────────────────────────────────────────
+
+  /// Width of score label column in AI result cards.
+  static const double aiScoreLabelWidth = 76.0;
 }
