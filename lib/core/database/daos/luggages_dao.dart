@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../database.dart';
 import '../tables/luggages_table.dart';
+import '../tables/mixins/syncable_table.dart';
 import '../tables/trip_luggage_entries_table.dart';
 
 part 'luggages_dao.g.dart';
@@ -41,9 +42,18 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase>
     return into(luggages).insert(luggage);
   }
 
-  /// Aggiorna un bagaglio esistente
-  Future<bool> updateLuggage(LuggagesCompanion luggage) {
-    return update(luggages).replace(luggage);
+  /// Aggiorna un bagaglio esistente.
+  ///
+  /// Usa `.write()` parziale + `syncStatus = pendingUpdate`. Vedi
+  /// [HousesDao.updateHouse] per la motivazione.
+  Future<bool> updateLuggage(LuggagesCompanion luggage) async {
+    final companion = luggage.syncStatus.present
+        ? luggage
+        : luggage.copyWith(syncStatus: const Value(SyncStatus.pendingUpdate));
+    final count = await (update(
+      luggages,
+    )..where((l) => l.id.equals(luggage.id.value))).write(companion);
+    return count > 0;
   }
 
   /// Soft-delete di un bagaglio.
@@ -135,5 +145,96 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase>
 
     final result = await query.getSingleOrNull();
     return result?.read(luggages.id.count()) ?? 0;
+  }
+
+  // === SYNC OPERATIONS ===
+
+  /// Ottiene un bagaglio per ID indipendentemente dal flag isDeleted.
+  /// Usato dal sync per rilevare record locali prima di insert/update da remoto.
+  Future<Luggage?> findLuggageById(String id) {
+    return (select(luggages)..where((l) => l.id.equals(id))).getSingleOrNull();
+  }
+
+  /// Physical DELETE after successful sync of a soft-deleted record.
+  Future<void> purgeLuggage(String id) {
+    return (delete(luggages)..where((l) => l.id.equals(id))).go();
+  }
+
+  /// Wipes ALL rows. Vedi [HousesDao.wipeAll].
+  Future<void> wipeAll() => delete(luggages).go();
+
+  /// Recovery: re-queues soft-deleted records stuck as "synced".
+  Future<int> markDeletedAsPendingSync() {
+    return (update(luggages)..where(
+          (l) =>
+              l.isDeleted.equals(true) &
+              l.syncStatus.equalsValue(SyncStatus.synced),
+        ))
+        .write(
+          const LuggagesCompanion(syncStatus: Value(SyncStatus.pendingUpdate)),
+        );
+  }
+
+  /// Returns luggages pending sync: syncStatus != synced AND retries below limit.
+  Future<List<Luggage>> getPendingSyncLuggages({int maxRetries = 5}) {
+    final now = DateTime.now();
+    return (select(luggages)..where(
+          (l) =>
+              l.syncStatus.equalsValue(SyncStatus.synced).not() &
+              l.syncRetryCount.isSmallerThanValue(maxRetries) &
+              (l.nextSyncAttemptAt.isNull() |
+                  l.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
+        ))
+        .get();
+  }
+
+  /// Non aggiorna `updatedAt`: pivot LWW; vedi [HousesDao.markHouseAsSynced].
+  Future<void> markLuggageAsSynced(
+    String luggageId,
+    DateTime serverUpdatedAt,
+  ) {
+    return (update(luggages)..where((l) => l.id.equals(luggageId))).write(
+      LuggagesCompanion(
+        syncStatus: const Value(SyncStatus.synced),
+        syncRetryCount: const Value(0),
+        lastSyncError: const Value(null),
+        lastSyncedAt: Value(serverUpdatedAt),
+        nextSyncAttemptAt: const Value(null),
+      ),
+    );
+  }
+
+  /// Resets retry state on records bloccati oltre soglia. Vedi
+  /// [HousesDao.resetSyncRetries] per il contratto.
+  Future<int> resetSyncRetries() {
+    return (update(luggages)
+          ..where((l) => l.syncRetryCount.isBiggerThanValue(0)))
+        .write(
+          const LuggagesCompanion(
+            syncRetryCount: Value(0),
+            lastSyncError: Value(null),
+            nextSyncAttemptAt: Value(null),
+          ),
+        );
+  }
+
+  Future<void> incrementSyncRetry(String luggageId, String errorMessage) async {
+    final luggage = await (select(
+      luggages,
+    )..where((l) => l.id.equals(luggageId))).getSingleOrNull();
+    if (luggage == null) return;
+
+    final newRetryCount = luggage.syncRetryCount + 1;
+    final backoffSeconds = 2 << (newRetryCount - 1);
+    final nextAttempt = DateTime.now().add(Duration(seconds: backoffSeconds));
+
+    await (update(luggages)..where((l) => l.id.equals(luggageId))).write(
+      LuggagesCompanion(
+        syncRetryCount: Value(newRetryCount),
+        lastSyncError: Value(errorMessage),
+        nextSyncAttemptAt: Value(nextAttempt),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 }

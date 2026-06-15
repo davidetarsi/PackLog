@@ -52,9 +52,24 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
     });
   }
 
-  /// Aggiorna una casa esistente
-  Future<bool> updateHouse(HousesCompanion house) {
-    return update(houses).replace(house);
+  /// Aggiorna una casa esistente.
+  ///
+  /// Usa `.write()` parziale sui soli campi del companion (non `.replace()`):
+  /// preserva `lastSyncedAt`, `syncRetryCount`, ecc. che il chiamante non
+  /// imposta. Forza `syncStatus = pendingUpdate` così che il record venga
+  /// rispinto al cloud (sovrascrive eventuali valori del companion).
+  Future<bool> updateHouse(HousesCompanion house) async {
+    // Solo se il chiamante non ha settato esplicitamente syncStatus
+    // forziamo pendingUpdate (caso tipico: repository = mutazione utente).
+    // Se l'ha settato lo rispettiamo (es. test integration che vogliono
+    // preservare pendingCreate sul primo edit pre-sync).
+    final companion = house.syncStatus.present
+        ? house
+        : house.copyWith(syncStatus: const Value(SyncStatus.pendingUpdate));
+    final count = await (update(
+      houses,
+    )..where((h) => h.id.equals(house.id.value))).write(companion);
+    return count > 0;
   }
 
   /// Soft-delete di una casa con cascade manuale su Items, Spaces e Luggages.
@@ -78,18 +93,26 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
         ),
       );
 
-      // Cascade soft-delete: spazi della casa
+      // Cascade soft-delete: spazi della casa (con syncStatus per propagare al cloud)
       await (update(
         spaces,
       )..where((s) => s.houseId.equals(id) & s.isDeleted.equals(false))).write(
-        SpacesCompanion(isDeleted: const Value(true), updatedAt: Value(now)),
+        SpacesCompanion(
+          isDeleted: const Value(true),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+          updatedAt: Value(now),
+        ),
       );
 
-      // Cascade soft-delete: bagagli della casa
+      // Cascade soft-delete: bagagli della casa (con syncStatus per propagare al cloud)
       await (update(
         luggages,
       )..where((l) => l.houseId.equals(id) & l.isDeleted.equals(false))).write(
-        LuggagesCompanion(isDeleted: const Value(true), updatedAt: Value(now)),
+        LuggagesCompanion(
+          isDeleted: const Value(true),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+          updatedAt: Value(now),
+        ),
       );
 
       // Soft-delete della casa stessa
@@ -117,6 +140,13 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
     return (delete(houses)..where((h) => h.id.equals(id))).go();
   }
 
+  /// Wipes ALL rows. Used at account switch to clear the previous user's
+  /// data before pulling the new one. `ON DELETE CASCADE` su items/spaces/
+  /// luggages e su trip_*_entries propaga la cancellazione, ma per coerenza
+  /// gli altri DAO espongono anch'essi `wipeAll()` e il chiamante (SyncService)
+  /// li orchestra in ordine.
+  Future<void> wipeAll() => delete(houses).go();
+
   /// Recovery: re-queues soft-deleted records stuck as "synced".
   Future<int> markDeletedAsPendingSync() {
     return (update(houses)..where(
@@ -143,6 +173,10 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
   }
 
   /// Marks a house as successfully synced with the remote server.
+  ///
+  /// Non aggiorna `updatedAt`: è il pivot del Last-Write-Wins; un bump qui
+  /// renderebbe il timestamp locale posteriore a quello pushato al server
+  /// e farebbe perdere edit concorrenti da altri device.
   Future<void> markHouseAsSynced(String houseId, DateTime serverUpdatedAt) {
     return (update(houses)..where((h) => h.id.equals(houseId))).write(
       HousesCompanion(
@@ -151,9 +185,25 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
         lastSyncError: const Value(null),
         lastSyncedAt: Value(serverUpdatedAt),
         nextSyncAttemptAt: const Value(null),
-        updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  /// Resets retry state on records that were giving up: dopo 5 fallimenti
+  /// consecutivi `getPendingSyncHouses` li nasconde finché `syncRetryCount`
+  /// non torna sotto soglia. Tipicamente chiamato su `connectivity_restored`
+  /// o all'avvio dell'app per dare una nuova chance ai record bloccati.
+  ///
+  /// Returns: number of rows reset.
+  Future<int> resetSyncRetries() {
+    return (update(houses)..where((h) => h.syncRetryCount.isBiggerThanValue(0)))
+        .write(
+          const HousesCompanion(
+            syncRetryCount: Value(0),
+            lastSyncError: Value(null),
+            nextSyncAttemptAt: Value(null),
+          ),
+        );
   }
 
   /// Increments the retry counter and records the error message.

@@ -4,6 +4,17 @@ import 'package:drift/drift.dart';
 ///
 /// Stored as integer index via Drift's `intEnum`:
 ///   synced=0, pendingCreate=1, pendingUpdate=2, pendingDelete=3
+///
+/// Note su [pendingDelete]: oggi le soft-delete viaggiano come
+/// `pendingUpdate` + `is_deleted = true` perché il `SyncService` tratta il
+/// caso "remote winner = tombstone" in modo identico a un update. Lo lasciamo
+/// nell'enum (e non lo rimuoviamo) per due ragioni:
+///   1. Compatibilità DB: righe esistenti potrebbero avere `syncStatus = 3`
+///      da versioni precedenti; rimuovere l'enum value romperebbe il
+///      `TypeConverter`.
+///   2. Evoluzione: distinguere `pendingDelete` può servire in futuro per
+///      ottimizzare il payload remoto (es. spedire solo `{id, is_deleted}`
+///      senza il resto delle colonne).
 enum SyncStatus { synced, pendingCreate, pendingUpdate, pendingDelete }
 
 /// Mixin that adds sync-related columns to entity tables.

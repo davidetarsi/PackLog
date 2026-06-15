@@ -1,5 +1,5 @@
-import 'package:drift/drift.dart';
-import 'package:flutter_test/flutter_test.dart' hide isNull, isNotNull;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
@@ -356,6 +356,70 @@ void main() {
         expect(await database.luggagesDao.getLuggagesByHouse(houseId), isEmpty);
       },
     );
+
+    test(
+      'should mark cascaded spaces and luggages as pendingUpdate for sync',
+      () async {
+        // ARRANGE: house with 1 space and 1 luggage, all synced.
+        const houseId = 'h-cascade-sync';
+        final now = DateTime.now();
+
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: houseId,
+            name: 'House',
+            createdAt: now,
+            updatedAt: now,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: 's-cascade',
+            houseId: houseId,
+            name: 'Armadio',
+            createdAt: now,
+            updatedAt: now,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.luggagesDao.insertLuggage(
+          LuggagesCompanion.insert(
+            id: 'l-cascade',
+            houseId: houseId,
+            name: 'Zaino',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: now,
+            updatedAt: now,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+
+        // ACT
+        await database.housesDao.deleteHouse(houseId);
+
+        // ASSERT: read the rows directly bypassing isDeleted filter.
+        final spaceRow = await (database.select(database.spaces)
+              ..where((s) => s.id.equals('s-cascade')))
+            .getSingle();
+        expect(
+          spaceRow.syncStatus,
+          equals(SyncStatus.pendingUpdate),
+          reason:
+              'cascade must mark the space pending so the tombstone propagates',
+        );
+
+        final luggageRow = await (database.select(database.luggages)
+              ..where((l) => l.id.equals('l-cascade')))
+            .getSingle();
+        expect(
+          luggageRow.syncStatus,
+          equals(SyncStatus.pendingUpdate),
+          reason:
+              'cascade must mark the luggage pending so the tombstone propagates',
+        );
+      },
+    );
   });
 
   group('HousesDao - CRUD Operations', () {
@@ -556,6 +620,124 @@ void main() {
       expect(house.syncRetryCount, equals(0));
       expect(house.lastSyncError, equals(null));
       expect(house.userId, equals(null));
+    });
+
+    test('markHouseAsSynced does not bump updatedAt (LWW correctness)', () async {
+      final originalUpdatedAt = DateTime(2026, 5, 1, 8, 0);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'h-no-bump',
+          name: 'House',
+          createdAt: DateTime(2026, 5, 1, 7, 0),
+          updatedAt: originalUpdatedAt,
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
+
+      final serverTs = DateTime(2026, 5, 1, 12, 0);
+      await database.housesDao.markHouseAsSynced('h-no-bump', serverTs);
+
+      final house = await database.housesDao.getHouseById('h-no-bump');
+      expect(
+        house!.updatedAt,
+        equals(originalUpdatedAt),
+        reason:
+            'updatedAt is the LWW pivot — bumping it on bookkeeping ops loses '
+            'concurrent edits from other devices',
+      );
+      expect(house.syncStatus, equals(SyncStatus.synced));
+      expect(house.lastSyncedAt, equals(serverTs));
+    });
+
+    test('resetSyncRetries clears retry counter, error and backoff', () async {
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'h-blocked',
+          name: 'House',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      // Simulate 5 failed sync attempts: record blocked from further retries.
+      for (var i = 0; i < 5; i++) {
+        await database.housesDao.incrementSyncRetry('h-blocked', 'boom');
+      }
+      var house = await database.housesDao.getHouseById('h-blocked');
+      expect(house!.syncRetryCount, equals(5));
+      expect(house.lastSyncError, equals('boom'));
+      expect(house.nextSyncAttemptAt, isNotNull);
+
+      final reset = await database.housesDao.resetSyncRetries();
+
+      expect(
+        reset,
+        greaterThan(0),
+        reason: 'should return the number of records reset',
+      );
+      house = await database.housesDao.getHouseById('h-blocked');
+      expect(house!.syncRetryCount, equals(0));
+      expect(house.lastSyncError, isNull);
+      expect(house.nextSyncAttemptAt, isNull);
+    });
+
+    test('wipeAll physically removes every house row', () async {
+      await insertHouse('h-1');
+      await insertHouse('h-2');
+      await insertHouse('h-3', status: SyncStatus.synced);
+
+      await database.housesDao.wipeAll();
+
+      // Bypass isDeleted filter: nothing should remain at all.
+      final allRows = await database.select(database.houses).get();
+      expect(
+        allRows,
+        isEmpty,
+        reason: 'wipeAll must do a physical delete, not soft-delete',
+      );
+    });
+
+    test('updateHouse preserves sync metadata when companion omits sync fields', () async {
+      final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'h-keep-sync',
+          name: 'Original',
+          createdAt: DateTime(2026, 5, 1, 7, 0),
+          updatedAt: DateTime(2026, 5, 1, 7, 0),
+          syncStatus: const Value(SyncStatus.synced),
+          syncRetryCount: const Value(3),
+          lastSyncedAt: Value(originalSyncedAt),
+        ),
+      );
+
+      // Caller (repository) updates only the model fields, omitting sync
+      // metadata — the DAO must preserve them and mark the record pending.
+      await database.housesDao.updateHouse(
+        HousesCompanion(
+          id: const Value('h-keep-sync'),
+          name: const Value('Renamed'),
+          createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
+          updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
+        ),
+      );
+
+      final house = await database.housesDao.getHouseById('h-keep-sync');
+      expect(house!.name, equals('Renamed'));
+      expect(
+        house.lastSyncedAt,
+        equals(originalSyncedAt),
+        reason: 'updateHouse must not reset lastSyncedAt',
+      );
+      expect(
+        house.syncRetryCount,
+        equals(3),
+        reason: 'updateHouse must not reset syncRetryCount',
+      );
+      expect(
+        house.syncStatus,
+        equals(SyncStatus.pendingUpdate),
+        reason: 'updateHouse must mark the record pending so it gets pushed',
+      );
     });
   });
 }

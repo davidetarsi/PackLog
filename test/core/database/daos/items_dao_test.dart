@@ -573,5 +573,112 @@ void main() {
       expect(item.syncRetryCount, equals(0));
       expect(item.lastSyncError, isNull);
     });
+
+    test('markItemAsSynced does not bump updatedAt (LWW correctness)', () async {
+      final originalUpdatedAt = DateTime(2026, 5, 1, 8, 0);
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'i-no-bump',
+          houseId: houseId,
+          name: 'Item',
+          category: ItemCategory.varie,
+          createdAt: DateTime(2026, 5, 1, 7, 0),
+          updatedAt: originalUpdatedAt,
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
+
+      final serverTs = DateTime(2026, 5, 1, 12, 0);
+      await database.itemsDao.markItemAsSynced('i-no-bump', serverTs);
+
+      final item = await database.itemsDao.getItemById('i-no-bump');
+      expect(
+        item!.updatedAt,
+        equals(originalUpdatedAt),
+        reason: 'updatedAt is the LWW pivot — must not be bumped on sync ack',
+      );
+      expect(item.syncStatus, equals(SyncStatus.synced));
+      expect(item.lastSyncedAt, equals(serverTs));
+    });
+
+    test('resetSyncRetries clears retry counter, error and backoff', () async {
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'i-blocked',
+          houseId: houseId,
+          name: 'Item',
+          category: ItemCategory.varie,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      for (var i = 0; i < 5; i++) {
+        await database.itemsDao.incrementSyncRetry('i-blocked', 'boom');
+      }
+
+      final reset = await database.itemsDao.resetSyncRetries();
+      expect(reset, greaterThan(0));
+
+      final item = await database.itemsDao.getItemById('i-blocked');
+      expect(item!.syncRetryCount, equals(0));
+      expect(item.lastSyncError, isNull);
+      expect(item.nextSyncAttemptAt, isNull);
+    });
+
+    test('wipeAll physically removes every item row', () async {
+      await insertItem('i-1');
+      await insertItem('i-2', status: SyncStatus.synced);
+
+      await database.itemsDao.wipeAll();
+
+      final allRows = await database.select(database.items).get();
+      expect(allRows, isEmpty);
+    });
+
+    test('updateItem preserves sync metadata when companion omits sync fields', () async {
+      final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'i-keep-sync',
+          houseId: houseId,
+          name: 'Original',
+          category: ItemCategory.varie,
+          createdAt: DateTime(2026, 5, 1, 7, 0),
+          updatedAt: DateTime(2026, 5, 1, 7, 0),
+          syncStatus: const Value(SyncStatus.synced),
+          syncRetryCount: const Value(3),
+          lastSyncedAt: Value(originalSyncedAt),
+        ),
+      );
+
+      await database.itemsDao.updateItem(
+        ItemsCompanion(
+          id: const Value('i-keep-sync'),
+          houseId: Value(houseId),
+          name: const Value('Renamed'),
+          category: const Value(ItemCategory.varie),
+          createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
+          updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
+        ),
+      );
+
+      final item = await database.itemsDao.getItemById('i-keep-sync');
+      expect(item!.name, equals('Renamed'));
+      expect(
+        item.lastSyncedAt,
+        equals(originalSyncedAt),
+        reason: 'updateItem must not reset lastSyncedAt',
+      );
+      expect(
+        item.syncRetryCount,
+        equals(3),
+        reason: 'updateItem must not reset syncRetryCount',
+      );
+      expect(
+        item.syncStatus,
+        equals(SyncStatus.pendingUpdate),
+        reason: 'updateItem must mark the record pending so it gets pushed',
+      );
+    });
   });
 }

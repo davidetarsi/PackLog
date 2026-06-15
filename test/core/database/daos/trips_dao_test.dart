@@ -1,5 +1,5 @@
-import 'package:drift/drift.dart';
-import 'package:flutter_test/flutter_test.dart' hide isNull, isNotNull;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
@@ -1044,6 +1044,38 @@ void main() {
       },
     );
 
+    test('should apply custom nameSuffix when provided (i18n)', () async {
+      final houseId = 'house-suffix';
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: houseId,
+          name: 'Home',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      final originalTripId = 'trip-orig';
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: originalTripId,
+          name: 'Summer',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      await database.tripsDao.duplicateTrip(
+        originalTripId,
+        'trip-dup-en',
+        nameSuffix: ' (copy)',
+      );
+
+      final dup = await database.tripsDao.getTripById('trip-dup-en');
+      expect(dup, isNotNull);
+      expect(dup!.name, equals('Summer (copy)'));
+    });
+
     test('should throw exception when duplicating non-existent trip', () async {
       // === ACT & ASSERT ===
       expect(
@@ -1183,6 +1215,139 @@ void main() {
       expect(trip.syncRetryCount, equals(0));
       expect(trip.lastSyncError, equals(null));
       expect(trip.userId, equals(null));
+    });
+
+    test('markTripAsSynced does not bump updatedAt (LWW correctness)', () async {
+      final originalUpdatedAt = DateTime(2026, 5, 1, 8, 0);
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 't-no-bump',
+          name: 'Trip',
+          createdAt: DateTime(2026, 5, 1, 7, 0),
+          updatedAt: originalUpdatedAt,
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
+
+      final serverTs = DateTime(2026, 5, 1, 12, 0);
+      await database.tripsDao.markTripAsSynced('t-no-bump', serverTs);
+
+      final trip = await database.tripsDao.getTripById('t-no-bump');
+      expect(
+        trip!.updatedAt,
+        equals(originalUpdatedAt),
+        reason: 'updatedAt is the LWW pivot — must not be bumped on sync ack',
+      );
+      expect(trip.syncStatus, equals(SyncStatus.synced));
+      expect(trip.lastSyncedAt, equals(serverTs));
+    });
+
+    test('resetSyncRetries clears retry counter, error and backoff', () async {
+      await insertTrip('t-blocked');
+      for (var i = 0; i < 5; i++) {
+        await database.tripsDao.incrementSyncRetry('t-blocked', 'boom');
+      }
+
+      final reset = await database.tripsDao.resetSyncRetries();
+      expect(reset, greaterThan(0));
+
+      final trip = await database.tripsDao.getTripById('t-blocked');
+      expect(trip!.syncRetryCount, equals(0));
+      expect(trip.lastSyncError, isNull);
+      expect(trip.nextSyncAttemptAt, isNull);
+    });
+
+    test(
+      'setTripItemChecked toggles only isChecked, preserves other fields and bumps trip',
+      () async {
+        await insertTrip('t-toggle');
+        // Force trip synced so we can verify the pendingUpdate transition.
+        await (database.update(database.trips)
+              ..where((t) => t.id.equals('t-toggle')))
+            .write(const TripsCompanion(syncStatus: Value(SyncStatus.synced)));
+
+        await database.tripsDao.insertTripItem(
+          TripItemEntriesCompanion.insert(
+            id: 'ti-1',
+            tripId: 't-toggle',
+            name: 'Sweater',
+            category: ItemCategory.vestiti,
+            quantity: const Value(3),
+            originHouseId: const Value('h-origin'),
+            isChecked: const Value(false),
+          ),
+        );
+
+        await database.tripsDao.setTripItemChecked('ti-1', 't-toggle', true);
+
+        final entries = await database.tripsDao.getTripItemsByTripId('t-toggle');
+        expect(entries, hasLength(1));
+        final entry = entries.first;
+        expect(entry.isChecked, isTrue, reason: 'isChecked must be toggled');
+        expect(entry.name, equals('Sweater'));
+        expect(entry.category, equals(ItemCategory.vestiti));
+        expect(entry.quantity, equals(3));
+        expect(entry.originHouseId, equals('h-origin'));
+
+        final trip = await database.tripsDao.findTripById('t-toggle');
+        expect(
+          trip!.syncStatus,
+          equals(SyncStatus.pendingUpdate),
+          reason:
+              'bumping trip.updatedAt must mark it pending so sync propagates',
+        );
+      },
+    );
+
+    test('wipeAll physically removes every trip and its snapshots', () async {
+      await insertTrip('t-1');
+      await insertTrip('t-2', status: SyncStatus.synced);
+      // Attach a snapshot item to verify FK cascade also clears entries.
+      await database.tripsDao.insertTripItem(
+        TripItemEntriesCompanion.insert(
+          id: 'ti-wipe',
+          tripId: 't-1',
+          name: 'Item',
+          category: ItemCategory.varie,
+        ),
+      );
+
+      await database.tripsDao.wipeAll();
+
+      final trips = await database.select(database.trips).get();
+      final entries = await database.select(database.tripItemEntries).get();
+      expect(trips, isEmpty);
+      expect(entries, isEmpty, reason: 'cascade must clear snapshots too');
+    });
+
+    test('updateTrip preserves sync metadata when companion omits sync fields', () async {
+      final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 't-keep-sync',
+          name: 'Original',
+          createdAt: DateTime(2026, 5, 1, 7, 0),
+          updatedAt: DateTime(2026, 5, 1, 7, 0),
+          syncStatus: const Value(SyncStatus.synced),
+          syncRetryCount: const Value(3),
+          lastSyncedAt: Value(originalSyncedAt),
+        ),
+      );
+
+      await database.tripsDao.updateTrip(
+        TripsCompanion(
+          id: const Value('t-keep-sync'),
+          name: const Value('Renamed'),
+          createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
+          updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
+        ),
+      );
+
+      final trip = await database.tripsDao.getTripById('t-keep-sync');
+      expect(trip!.name, equals('Renamed'));
+      expect(trip.lastSyncedAt, equals(originalSyncedAt));
+      expect(trip.syncRetryCount, equals(3));
+      expect(trip.syncStatus, equals(SyncStatus.pendingUpdate));
     });
   });
 }

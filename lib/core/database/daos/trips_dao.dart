@@ -41,9 +41,18 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
     return into(trips).insert(trip);
   }
 
-  /// Aggiorna un viaggio esistente
-  Future<bool> updateTrip(TripsCompanion trip) {
-    return update(trips).replace(trip);
+  /// Aggiorna un viaggio esistente.
+  ///
+  /// Usa `.write()` parziale + `syncStatus = pendingUpdate`. Vedi
+  /// [HousesDao.updateHouse] per la motivazione.
+  Future<bool> updateTrip(TripsCompanion trip) async {
+    final companion = trip.syncStatus.present
+        ? trip
+        : trip.copyWith(syncStatus: const Value(SyncStatus.pendingUpdate));
+    final count = await (update(
+      trips,
+    )..where((t) => t.id.equals(trip.id.value))).write(companion);
+    return count > 0;
   }
 
   /// Soft-delete di un viaggio con cleanup fisico dei dati snapshot.
@@ -103,6 +112,34 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
     return update(tripItemEntries).replace(tripItem);
   }
 
+  /// Toggle `isChecked` su una singola entry preservando gli altri campi.
+  ///
+  /// Path hot dell'app: ogni spunta durante il packing chiama questo metodo.
+  /// Differenze rispetto a `replaceTripItems`:
+  ///   1. `.write()` parziale sulla sola colonna `isChecked` → niente
+  ///      DELETE+INSERT all di una checklist potenzialmente lunga.
+  ///   2. Bump di `trip.updatedAt` (via [updateTrip]) per consistenza LWW e
+  ///      per marcare il trip come `pendingUpdate` (sync ack).
+  /// Eseguito in transazione: l'entry e il trip cambiano atomicamente.
+  Future<void> setTripItemChecked(
+    String itemId,
+    String tripId,
+    bool isChecked,
+  ) {
+    return transaction(() async {
+      await (update(tripItemEntries)..where(
+            (e) => e.id.equals(itemId) & e.tripId.equals(tripId),
+          ))
+          .write(TripItemEntriesCompanion(isChecked: Value(isChecked)));
+      await updateTrip(
+        TripsCompanion(
+          id: Value(tripId),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    });
+  }
+
   /// Elimina fisicamente un oggetto dal viaggio (dato snapshot, nessun isDeleted)
   Future<int> deleteTripItem(String id) {
     return (delete(tripItemEntries)..where((ti) => ti.id.equals(id))).go();
@@ -146,7 +183,11 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   ///
   /// Returns: ID del nuovo viaggio creato
   /// Throws: Exception se il viaggio originale non esiste o è stato eliminato
-  Future<String> duplicateTrip(String originalTripId, String newTripId) async {
+  Future<String> duplicateTrip(
+    String originalTripId,
+    String newTripId, {
+    String nameSuffix = ' (Copia)',
+  }) async {
     return transaction(() async {
       final originalTrip = await getTripById(originalTripId);
       if (originalTrip == null) {
@@ -156,7 +197,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
       final now = DateTime.now();
       final newTrip = TripsCompanion.insert(
         id: newTripId,
-        name: '${originalTrip.name} (Copia)',
+        name: '${originalTrip.name}$nameSuffix',
         description: Value(originalTrip.description),
         departureDateTime: Value(originalTrip.departureDateTime),
         returnDateTime: Value(originalTrip.returnDateTime),
@@ -266,6 +307,10 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
     return (delete(trips)..where((t) => t.id.equals(id))).go();
   }
 
+  /// Wipes ALL rows. La cascade FK su `trip_item_entries` e
+  /// `trip_luggage_entries` ripulisce snapshot e junction in automatico.
+  Future<void> wipeAll() => delete(trips).go();
+
   Future<int> markDeletedAsPendingSync() {
     return (update(trips)..where(
           (t) =>
@@ -295,6 +340,8 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   ///
   /// Resets retry state and records the server-provided timestamp
   /// in [lastSyncedAt] for future delta-sync queries.
+  ///
+  /// Non aggiorna `updatedAt`: pivot LWW; vedi [HousesDao.markHouseAsSynced].
   Future<void> markTripAsSynced(String tripId, DateTime serverUpdatedAt) {
     return (update(trips)..where((t) => t.id.equals(tripId))).write(
       TripsCompanion(
@@ -303,9 +350,21 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
         lastSyncError: const Value(null),
         lastSyncedAt: Value(serverUpdatedAt),
         nextSyncAttemptAt: const Value(null),
-        updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  /// Resets retry state on records bloccati oltre soglia. Vedi
+  /// [HousesDao.resetSyncRetries] per il contratto.
+  Future<int> resetSyncRetries() {
+    return (update(trips)..where((t) => t.syncRetryCount.isBiggerThanValue(0)))
+        .write(
+          const TripsCompanion(
+            syncRetryCount: Value(0),
+            lastSyncError: Value(null),
+            nextSyncAttemptAt: Value(null),
+          ),
+        );
   }
 
   /// Increments the retry counter and records the error message.

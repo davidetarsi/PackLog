@@ -50,9 +50,19 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     return into(items).insert(item);
   }
 
-  /// Aggiorna un oggetto esistente
-  Future<bool> updateItem(ItemsCompanion item) {
-    return update(items).replace(item);
+  /// Aggiorna un oggetto esistente.
+  ///
+  /// Usa `.write()` parziale: preserva i campi sync che il chiamante omette
+  /// (`lastSyncedAt`, `syncRetryCount`, ecc.) e forza `syncStatus = pendingUpdate`
+  /// per garantirne la propagazione al cloud.
+  Future<bool> updateItem(ItemsCompanion item) async {
+    final companion = item.syncStatus.present
+        ? item
+        : item.copyWith(syncStatus: const Value(SyncStatus.pendingUpdate));
+    final count = await (update(
+      items,
+    )..where((i) => i.id.equals(item.id.value))).write(companion);
+    return count > 0;
   }
 
   /// Soft-delete di un singolo oggetto
@@ -180,6 +190,9 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     return (delete(items)..where((i) => i.id.equals(id))).go();
   }
 
+  /// Wipes ALL rows. Vedi [HousesDao.wipeAll].
+  Future<void> wipeAll() => delete(items).go();
+
   Future<int> markDeletedAsPendingSync() {
     return (update(items)..where(
           (i) =>
@@ -203,6 +216,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         .get();
   }
 
+  /// Non aggiorna `updatedAt`: è il pivot LWW; vedi [HousesDao.markHouseAsSynced].
   Future<void> markItemAsSynced(String itemId, DateTime serverUpdatedAt) {
     return (update(items)..where((i) => i.id.equals(itemId))).write(
       ItemsCompanion(
@@ -211,9 +225,21 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         lastSyncError: const Value(null),
         lastSyncedAt: Value(serverUpdatedAt),
         nextSyncAttemptAt: const Value(null),
-        updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  /// Resets retry state on records bloccati oltre soglia. Vedi
+  /// [HousesDao.resetSyncRetries] per il contratto.
+  Future<int> resetSyncRetries() {
+    return (update(items)..where((i) => i.syncRetryCount.isBiggerThanValue(0)))
+        .write(
+          const ItemsCompanion(
+            syncRetryCount: Value(0),
+            lastSyncError: Value(null),
+            nextSyncAttemptAt: Value(null),
+          ),
+        );
   }
 
   Future<void> incrementSyncRetry(String itemId, String errorMessage) async {
