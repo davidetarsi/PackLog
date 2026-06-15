@@ -6,17 +6,12 @@ import 'clothing_analysis_result.dart';
 
 part 'ai_import_state.freezed.dart';
 
-class PhotoGroup {
-  final File photo;
-  final List<ClothingAnalysisResult> results;
-
-  const PhotoGroup({required this.photo, required this.results});
-
-  PhotoGroup copyWith({File? photo, List<ClothingAnalysisResult>? results}) =>
-      PhotoGroup(
-        photo: photo ?? this.photo,
-        results: results ?? this.results,
-      );
+@freezed
+class PhotoGroup with _$PhotoGroup {
+  const factory PhotoGroup({
+    required File photo,
+    required List<ClothingAnalysisResult> results,
+  }) = _PhotoGroup;
 }
 
 @freezed

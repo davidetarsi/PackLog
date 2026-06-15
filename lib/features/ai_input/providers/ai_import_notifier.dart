@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../houses/model/house_model.dart';
 import '../../houses/providers/house_provider.dart';
@@ -20,7 +21,7 @@ import 'ai_clothing_analyzer_service_provider.dart';
 
 part 'ai_import_notifier.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class AiImportNotifier extends _$AiImportNotifier {
   static const _maxPhotos = 5;
   final _uuid = const Uuid();
@@ -51,8 +52,7 @@ class AiImportNotifier extends _$AiImportNotifier {
       for (var i = 0; i < files.length; i++) {
         state = state.copyWith(processingIndex: i + 1);
         final file = files[i];
-        final (processedBytes: _, :result, rawJson: _) =
-            await service.processWithIntermediateResult(file);
+        final result = await service.processClothingItem(file);
 
         state = state.copyWith(
           photoGroups: [
@@ -145,6 +145,9 @@ class AiImportNotifier extends _$AiImportNotifier {
       await ref.read(itemRepositoryProvider).insertMultipleItems(items);
       ref.invalidate(itemNotifierProvider(houseId));
       ref.read(syncOrchestratorProvider).requestSync();
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackAiItemsSaved(count: items.length, isOnboarding: false);
       state = const AiImportState();
     } catch (e) {
       state = state.copyWith(
@@ -190,6 +193,9 @@ class AiImportNotifier extends _$AiImportNotifier {
       ref.invalidate(houseNotifierProvider);
       ref.invalidate(itemNotifierProvider(houseId));
       ref.read(syncOrchestratorProvider).requestSync();
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackAiItemsSaved(count: items.length, isOnboarding: true);
       await ref.read(postLoginOnboardingProvider.notifier).completeAi(houseId);
       state = const AiImportState();
     } catch (e) {
