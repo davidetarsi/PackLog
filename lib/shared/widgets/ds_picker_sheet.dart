@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
-import '../helpers/bottom_sheet_handle.dart';
+import 'ds_bottom_sheet_handle.dart';
 import '../theme/app_spacing.dart';
 
 /// Bottom sheet generico per la **selezione di un elemento da una lista**.
@@ -86,7 +86,7 @@ class DsPickerSheet<T> extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const BottomSheetHandle(),
+            const DsBottomSheetHandle(),
             Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
@@ -135,7 +135,7 @@ class DsPickerSheet<T> extends StatelessWidget {
                   },
                 ),
               ),
-            const SizedBox(height: 8),
+            AppSpacing.gapSm,
           ],
         ),
       ),

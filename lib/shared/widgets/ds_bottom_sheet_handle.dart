@@ -4,17 +4,7 @@ import 'package:flutter/material.dart';
 ///
 /// Mostra una barra orizzontale grigia che indica che il bottom sheet
 /// può essere trascinato.
-///
-/// Esempio:
-/// ```dart
-/// Column(
-///   children: [
-///     DsBottomSheetHandle(),
-///     // ... resto del contenuto
-///   ],
-/// )
-/// ```
-class BottomSheetHandle extends StatelessWidget {
+class DsBottomSheetHandle extends StatelessWidget {
   /// Larghezza della barra (default: 40)
   final double width;
 
@@ -27,7 +17,7 @@ class BottomSheetHandle extends StatelessWidget {
   /// Colore personalizzato (se null, usa il colore del theme)
   final Color? color;
 
-  const BottomSheetHandle({
+  const DsBottomSheetHandle({
     super.key,
     this.width = 40,
     this.height = 4,
@@ -50,3 +40,7 @@ class BottomSheetHandle extends StatelessWidget {
     );
   }
 }
+
+/// Alias legacy. I nuovi call site usano [DsBottomSheetHandle].
+@Deprecated('Use DsBottomSheetHandle')
+typedef BottomSheetHandle = DsBottomSheetHandle;

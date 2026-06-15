@@ -6,8 +6,9 @@ import '../theme/error_empty_theme_extension.dart';
 ///
 /// Mostra un'icona di errore, un messaggio e un bottone "Riprova".
 ///
-/// Gli stili (colori, dimensioni, font) vengono letti dal tema tramite `ErrorEmptyThemeExtension`,
-/// ma possono essere sovrascritti tramite i parametri opzionali.
+/// Gli stili (colori, dimensioni, font) vengono letti dal tema tramite
+/// `ErrorEmptyThemeExtension`, ma possono essere sovrascritti tramite i
+/// parametri opzionali.
 ///
 /// Esempio base (usa stili dal tema):
 /// ```dart
@@ -16,17 +17,7 @@ import '../theme/error_empty_theme_extension.dart';
 ///   onRetry: () => ref.read(provider.notifier).refresh(),
 /// )
 /// ```
-///
-/// Esempio con override:
-/// ```dart
-/// DsErrorState(
-///   error: error,
-///   onRetry: () => ...,
-///   message: 'Qualcosa è andato storto',
-///   icon: Icons.warning,
-/// )
-/// ```
-class ErrorState extends StatelessWidget {
+class DsErrorState extends StatelessWidget {
   /// Oggetto errore o messaggio di errore
   final Object error;
 
@@ -51,7 +42,7 @@ class ErrorState extends StatelessWidget {
   /// Label bottone personalizzata (se null, usa la label dal tema)
   final String? retryLabel;
 
-  const ErrorState({
+  const DsErrorState({
     super.key,
     required this.error,
     required this.onRetry,
@@ -95,3 +86,7 @@ class ErrorState extends StatelessWidget {
     );
   }
 }
+
+/// Alias legacy. I nuovi call site usano [DsErrorState].
+@Deprecated('Use DsErrorState')
+typedef ErrorState = DsErrorState;

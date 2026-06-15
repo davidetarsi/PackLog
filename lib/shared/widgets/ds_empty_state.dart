@@ -6,10 +6,7 @@ import '../theme/error_empty_theme_extension.dart';
 /// Mostra un'icona, un titolo, un sottotitolo opzionale e un'azione opzionale
 /// in un layout verticale centrato.
 ///
-/// Gli stili (colori, dimensioni, font) vengono letti dal tema tramite `ErrorEmptyThemeExtension`,
-/// ma possono essere sovrascritti tramite i parametri opzionali.
-///
-/// Esempio base (usa stili dal tema):
+/// Esempio:
 /// ```dart
 /// DsEmptyState(
 ///   icon: Icons.home_outlined,
@@ -17,49 +14,23 @@ import '../theme/error_empty_theme_extension.dart';
 ///   subtitle: 'Aggiungi la tua prima casa',
 /// )
 /// ```
-///
-/// Esempio con override:
-/// ```dart
-/// DsEmptyState(
-///   icon: Icons.home_outlined,
-///   title: 'Nessuna casa',
-///   iconColor: Colors.blue,  // Override del colore dal tema
-/// )
-/// ```
-class EmptyState extends StatelessWidget {
-  /// Icona da mostrare in alto
+class DsEmptyState extends StatelessWidget {
   final IconData icon;
-
-  /// Titolo principale
   final String title;
-
-  /// Sottotitolo opzionale
   final String? subtitle;
-
-  /// Widget azione opzionale (es: bottone)
   final Widget? action;
-
-  /// Colore dell'icona (se null, usa il colore dal tema)
   final Color? iconColor;
-
-  /// Stile del titolo (se null, usa lo stile dal tema)
   final TextStyle? titleStyle;
-
-  /// Stile del sottotitolo (se null, usa lo stile dal tema)
   final TextStyle? subtitleStyle;
-
-  /// Dimensione dell'icona (se null, usa la dimensione dal tema)
   final double? iconSize;
 
   /// Callback opzionale invocata al tap sull'intero widget.
-  /// Se fornita, il widget diventa tappabile (InkWell).
   final VoidCallback? onTap;
 
   /// Testo del hint mostrato sotto il subtitle quando [onTap] è fornito.
-  /// Suggerisce all'utente che può toccare per eseguire un'azione.
   final String? tapHint;
 
-  const EmptyState({
+  const DsEmptyState({
     super.key,
     required this.icon,
     required this.title,
@@ -131,3 +102,7 @@ class EmptyState extends StatelessWidget {
     return content;
   }
 }
+
+/// Alias legacy. I nuovi call site usano [DsEmptyState].
+@Deprecated('Use DsEmptyState')
+typedef EmptyState = DsEmptyState;

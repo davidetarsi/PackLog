@@ -139,7 +139,7 @@ class DialogHelpers {
                     ).extension<AppColorsExtension>()!.warning,
                 size: 48,
               ),
-              const SizedBox(height: 16),
+              AppSpacing.gapMd,
             ],
             Text(message),
           ],

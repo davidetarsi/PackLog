@@ -1,6 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import '../helpers/bottom_sheet_handle.dart';
+import 'ds_bottom_sheet_handle.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 import 'universal_action_bar.dart';
@@ -93,7 +93,7 @@ class StandardBottomSheetLayout extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Handle
-            const BottomSheetHandle(),
+            const DsBottomSheetHandle(),
 
             // Header con titolo e bottone chiudi
             Padding(

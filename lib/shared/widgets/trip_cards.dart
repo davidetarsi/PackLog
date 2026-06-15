@@ -143,7 +143,10 @@ class TripCardCompact extends ConsumerWidget {
           operation: () async {
             await ref
                 .read(tripNotifierProvider.notifier)
-                .duplicateTrip(trip.id);
+                .duplicateTrip(
+                  trip.id,
+                  nameSuffix: 'trips.duplicate_suffix'.tr(),
+                );
           },
           errorTitle: 'common.error'.tr(),
           errorMessage: 'errors.duplicate_trip_failed'.tr(

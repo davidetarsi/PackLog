@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
 
 /// Risultato del dialog di errore.
 enum ErrorDialogResult {
@@ -140,7 +141,7 @@ class _ErrorDialog extends StatelessWidget {
           onPressed: () => Navigator.pop(context, ErrorDialogResult.cancel),
           child: Text(cancelText ?? 'common.cancel'.tr()),
         ),
-        const SizedBox(width: 8),
+        AppSpacing.hGapSm,
         FilledButton.icon(
           onPressed: () => Navigator.pop(context, ErrorDialogResult.retry),
           icon: const Icon(Icons.refresh),

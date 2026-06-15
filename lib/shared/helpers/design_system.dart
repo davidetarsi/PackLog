@@ -7,9 +7,9 @@
 library;
 
 // Components
-export 'empty_state.dart';
-export 'error_state.dart';
-export 'bottom_sheet_handle.dart';
+export '../widgets/ds_empty_state.dart';
+export '../widgets/ds_error_state.dart';
+export '../widgets/ds_bottom_sheet_handle.dart';
 
 // Helpers
 export 'dialog_helpers.dart';

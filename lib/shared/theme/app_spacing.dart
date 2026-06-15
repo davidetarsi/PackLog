@@ -72,10 +72,14 @@ class AppSpacing {
   /// Gap grande tra gruppi di contenuto
   static const SizedBox gapLg = SizedBox(height: lg);
 
+  /// Gap extra-large per sezioni isolate (es. CTA finale di un form)
+  static const SizedBox gapXl = SizedBox(height: xl);
+
   // === Gap orizzontali ===
 
   static const SizedBox hGapSm = SizedBox(width: sm);
   static const SizedBox hGapMd = SizedBox(width: md);
+  static const SizedBox hGapLg = SizedBox(width: lg);
 }
 
 /// Extension per calcolare valori responsive basati sulla larghezza dello schermo.

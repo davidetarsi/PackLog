@@ -15,8 +15,9 @@ class StickyCtaScaffold extends StatelessWidget {
   /// Contenuto scrollabile principale
   final Widget body;
 
-  /// CTA sticky in basso (bottoni, form controls)
-  final Widget bottomContent;
+  /// CTA sticky in basso (bottoni, form controls). Se null, non viene mostrata
+  /// nessuna barra e il body occupa tutto lo spazio disponibile.
+  final Widget? bottomContent;
 
   /// Colore di background del CTA (default: surface)
   final Color? ctaBackgroundColor;
@@ -32,7 +33,7 @@ class StickyCtaScaffold extends StatelessWidget {
     super.key,
     this.appBar,
     required this.body,
-    required this.bottomContent,
+    this.bottomContent,
     this.ctaBackgroundColor,
     this.showCtaShadow = true,
     this.ctaPadding,
@@ -46,34 +47,35 @@ class StickyCtaScaffold extends StatelessWidget {
       appBar: appBar,
       body:
           body, // Il framework calcola in automatico lo spazio per non andare sotto il CTA
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: ctaBackgroundColor ?? colorScheme.surface,
-          /*boxShadow: showCtaShadow
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
-                ]
-              : null, */
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding:
-                ctaPadding ??
-                EdgeInsets.only(
-                  left: context.spacingMd,
-                  right: context.spacingMd,
-                  top: context.spacingMd,
-                  bottom: context
-                      .spacingSm, // <-- Questo abbassa i bottoni e riduce lo spessore della banda
+      bottomNavigationBar: bottomContent == null
+          ? null
+          : Container(
+              decoration: BoxDecoration(
+                color: ctaBackgroundColor ?? colorScheme.surface,
+                /*boxShadow: showCtaShadow
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, -2),
+                        ),
+                      ]
+                    : null, */
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding:
+                      ctaPadding ??
+                      EdgeInsets.only(
+                        left: context.spacingMd,
+                        right: context.spacingMd,
+                        top: context.spacingMd,
+                        bottom: context.spacingSm,
+                      ),
+                  child: bottomContent,
                 ),
-            child: bottomContent,
-          ),
-        ),
-      ),
+              ),
+            ),
     );
   }
 }
