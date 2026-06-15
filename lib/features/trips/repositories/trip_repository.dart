@@ -27,5 +27,9 @@ abstract class TripRepository {
   Future<List<TripModel>> getAllTrips();
   Future<bool> deleteTrip(String id);
   Future<void> updateTrip(TripModel model);
-  Future<String> duplicateTrip(String tripId);
+  Future<String> duplicateTrip(String tripId, {String nameSuffix = ' (Copia)'});
+
+  /// Fast-path per il toggle della singola voce di checklist nel packing.
+  /// Vedi [TripsDao.setTripItemChecked].
+  Future<void> setTripItemChecked(String tripId, String itemId, bool isChecked);
 }

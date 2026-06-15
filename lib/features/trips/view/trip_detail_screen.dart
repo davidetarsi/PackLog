@@ -161,7 +161,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   Widget _buildNotFoundScreen(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('common.not_found'.tr())),
-      body: EmptyState(
+      body: DsEmptyState(
         icon: Icons.luggage_outlined,
         title: 'common.not_found'.tr(),
         action: ElevatedButton.icon(
@@ -178,13 +178,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         ? 'trips.no_items_in_list'.tr()
         : 'trips.no_items_in_category_filter'.tr(args: [_selectedTab.label]);
 
-    return EmptyState(icon: Icons.inventory_2_outlined, title: message);
+    return DsEmptyState(icon: Icons.inventory_2_outlined, title: message);
   }
 
   Widget _buildErrorScreen(BuildContext context, Object error) {
     return Scaffold(
       appBar: AppBar(title: Text('common.error'.tr())),
-      body: ErrorState(
+      body: DsErrorState(
         error: error,
         onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
       ),

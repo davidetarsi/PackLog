@@ -166,12 +166,15 @@ class DriftTripRepository implements TripRepository {
   }
 
   @override
-  Future<String> duplicateTrip(String originalTripId) async {
+  Future<String> duplicateTrip(
+    String originalTripId, {
+    String nameSuffix = ' (Copia)',
+  }) async {
     final newTripId = const Uuid().v4();
 
     // Usa transazione atomica per copiare viaggio + tutti gli items
     final result = await _dbService.executeAtomicWithRetry(
-      () => _dao.duplicateTrip(originalTripId, newTripId),
+      () => _dao.duplicateTrip(originalTripId, newTripId, nameSuffix: nameSuffix),
       operationName: 'duplicateTrip($originalTripId)',
       config: RetryConfig.criticalConfig,
     );
@@ -185,6 +188,24 @@ class DriftTripRepository implements TripRepository {
 
     debugPrint('[TripRepo] Viaggio duplicato: $originalTripId -> $newTripId');
     return newTripId;
+  }
+
+  @override
+  Future<void> setTripItemChecked(
+    String tripId,
+    String itemId,
+    bool isChecked,
+  ) async {
+    final result = await _dbService.executeWithRetry<void>(
+      () => _dao.setTripItemChecked(itemId, tripId, isChecked),
+      operationName: 'setTripItemChecked($tripId, $itemId)',
+    );
+    if (!result.success) {
+      throw EntitySaveException(
+        'setTripItemChecked($tripId, $itemId)',
+        cause: result.error,
+      );
+    }
   }
 
   @override

@@ -280,33 +280,34 @@ void main() {
       final provider = tripNotifierProvider;
       await container.read(provider.future);
 
-      // Mock updateTrip and refresh with toggled item
-      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
-
-      final tripWithToggledItem = tripWithItems.copyWith(
-        items: [
-          tripWithItems.items[0].copyWith(isChecked: true), // Toggled
-          tripWithItems.items[1],
-        ],
-      );
-
       when(
-        () => mockRepository.getAllTrips(),
-      ).thenAnswer((_) async => [tripWithToggledItem]);
+        () => mockRepository.setTripItemChecked(any(), any(), any()),
+      ).thenAnswer((_) async {});
 
       // === ACT ===
       final notifier = container.read(provider.notifier);
       await notifier.toggleItemCheck('trip-with-items', 'item-1');
 
       // === ASSERT ===
+      // Optimistic state update senza reload completo: la lista in memoria
+      // riflette già il toggle.
       final finalState = container.read(provider);
       expect(finalState.value, hasLength(1));
-
       final trip = finalState.value!.first;
       final toggledItem = trip.items.firstWhere((i) => i.id == 'item-1');
       expect(toggledItem.isChecked, isTrue);
 
-      verify(() => mockRepository.updateTrip(any())).called(1);
+      verify(
+        () => mockRepository.setTripItemChecked(
+          'trip-with-items',
+          'item-1',
+          true,
+        ),
+      ).called(1);
+      verifyNever(() => mockRepository.updateTrip(any()));
+      // getAllTrips chiamato solo una volta nel build iniziale, non dopo
+      // il toggle (no reload completo).
+      verify(() => mockRepository.getAllTrips()).called(1);
     });
 
     test('should toggle saved status and refresh state', () async {
@@ -401,11 +402,15 @@ void main() {
         final addException = Exception('Failed to add trip');
         when(() => mockRepository.addTrip(any())).thenThrow(addException);
 
-        // === ACT ===
+        // === ACT + ASSERT ===
+        // Contract: notifier rethrows so ErrorRetryDialog/forms see the failure;
+        // state still becomes AsyncError before rethrow.
         final notifier = container.read(provider.notifier);
-        await notifier.addTrip(newTrip);
+        await expectLater(
+          notifier.addTrip(newTrip),
+          throwsA(equals(addException)),
+        );
 
-        // === ASSERT ===
         final finalState = container.read(provider);
         expect(finalState, isA<AsyncError<List<TripModel>>>());
         expect(finalState.error, equals(addException));
@@ -441,11 +446,13 @@ void main() {
         final updateException = Exception('Update failed');
         when(() => mockRepository.updateTrip(any())).thenThrow(updateException);
 
-        // === ACT ===
+        // === ACT + ASSERT ===
         final notifier = container.read(provider.notifier);
-        await notifier.updateTrip(updatedTrip);
+        await expectLater(
+          notifier.updateTrip(updatedTrip),
+          throwsA(equals(updateException)),
+        );
 
-        // === ASSERT ===
         final finalState = container.read(provider);
         expect(finalState, isA<AsyncError<List<TripModel>>>());
         expect(finalState.error, equals(updateException));
@@ -477,11 +484,13 @@ void main() {
         final deleteException = Exception('Delete failed');
         when(() => mockRepository.deleteTrip(any())).thenThrow(deleteException);
 
-        // === ACT ===
+        // === ACT + ASSERT ===
         final notifier = container.read(provider.notifier);
-        await notifier.deleteTrip(existingTrip.id);
+        await expectLater(
+          notifier.deleteTrip(existingTrip.id),
+          throwsA(equals(deleteException)),
+        );
 
-        // === ASSERT ===
         final finalState = container.read(provider);
         expect(finalState, isA<AsyncError<List<TripModel>>>());
         expect(finalState.error, equals(deleteException));

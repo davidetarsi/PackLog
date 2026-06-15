@@ -188,7 +188,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => ErrorState(
+            error: (e, _) => DsErrorState(
               error: e,
               onRetry: () => ref.invalidate(houseNotifierProvider),
             ),

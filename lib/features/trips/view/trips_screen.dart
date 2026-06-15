@@ -116,7 +116,10 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
           operation: () async {
             await ref
                 .read(tripNotifierProvider.notifier)
-                .duplicateTrip(trip.id);
+                .duplicateTrip(
+                  trip.id,
+                  nameSuffix: 'trips.duplicate_suffix'.tr(),
+                );
           },
           errorTitle: 'common.error'.tr(),
           errorMessage: 'errors.duplicate_trip_failed'.tr(args: [trip.name]),
@@ -286,7 +289,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 
   Widget _buildEmptyState(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return EmptyState(
+    return DsEmptyState(
       icon: Icons.luggage_outlined,
       iconColor: colorScheme.primary,
       title: 'trips.no_trips_title'.tr(),
@@ -323,12 +326,12 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: context.spacingXl * 2),
-      child: EmptyState(icon: icon, title: message),
+      child: DsEmptyState(icon: icon, title: message),
     );
   }
 
   Widget _buildErrorState(BuildContext context, WidgetRef ref, Object error) {
-    return ErrorState(
+    return DsErrorState(
       error: error,
       onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
     );

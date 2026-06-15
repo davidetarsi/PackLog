@@ -325,12 +325,14 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
   }
 
   Widget _buildLuggageSelector() {
-    final luggagesAsync = ref.watch(luggageNotifierProvider);
+    // Cross-house list: in fase di creazione viaggio l'utente può
+    // selezionare bagagli da qualunque casa.
+    final luggagesAsync = ref.watch(allLuggagesProvider);
 
     return luggagesAsync.when(
       data: (allLuggages) {
         if (allLuggages.isEmpty) {
-          return EmptyState(
+          return DsEmptyState(
             icon: Icons.luggage_outlined,
             title: 'luggages.no_luggages'.tr(),
             subtitle: 'luggages.no_luggages_subtitle'.tr(),

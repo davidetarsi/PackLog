@@ -213,7 +213,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                   ),
                   error: (e, _) => Padding(
                     padding: EdgeInsets.all(context.spacingMd),
-                    child: ErrorState(
+                    child: DsErrorState(
                       error: e,
                       onRetry: () => ref.invalidate(houseNotifierProvider),
                     ),
