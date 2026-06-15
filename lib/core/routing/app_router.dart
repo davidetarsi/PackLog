@@ -21,6 +21,7 @@ import '../../features/trips/view/add_trip_screen.dart';
 import '../../features/trips/view/edit_trip_info_screen.dart';
 import '../../features/trips/view/edit_trip_items_screen.dart';
 import '../../features/ai_input/view/ai_clothing_sandbox_screen.dart';
+import '../../features/ai_input/view/ai_results_screen.dart';
 import '../../features/bulk_creation/view/house_selection_screen.dart';
 import '../../features/bulk_creation/view/template_selection_screen.dart';
 import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
@@ -126,11 +127,10 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => const AiOnboardingIntroScreen(),
       ),
       GoRoute(
-        path: '/onboarding-ai-intro/sandbox',
-        name: 'onboarding-ai-intro-sandbox',
-        builder: (context, state) => const AiClothingSandboxScreen(
-          isFirstTimeOnboarding: true,
-        ),
+        path: '/onboarding-ai-intro/results',
+        name: 'onboarding-ai-intro-results',
+        builder: (context, state) =>
+            const AiResultsScreen(isFirstTimeOnboarding: true),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -196,6 +196,18 @@ GoRouter appRouter(Ref ref) {
             return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
           }
           return AiClothingSandboxScreen(houseId: id);
+        },
+      ),
+      GoRoute(
+        path: '/houses/:id/ai-import/results',
+        name: 'ai-import-results',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
+          }
+          return AiResultsScreen(houseId: id, isFirstTimeOnboarding: false);
         },
       ),
       GoRoute(
@@ -300,38 +312,17 @@ GoRouter appRouter(Ref ref) {
         },
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      appBar: AppBar(title: Text('common.error'.tr())),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'common.navigation_error'.tr(args: [state.error.toString()]),
-              style: TextStyle(
-                fontSize: context.fontSizeMd,
-                fontWeight: FontWeight.w700,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => context.go('/'),
-              child: Text('common.back_to_home'.tr()),
-            ),
-          ],
-        ),
-      ),
+    errorBuilder: (context, state) => _ErrorScreen(
+      message: 'common.navigation_error'.tr(args: [state.error.toString()]),
     ),
   );
 }
 
+/// Pagina di errore "full screen" usata dal router quando un path matcha ma
+/// i parametri sono invalidi, una feature è disabilitata, o `errorBuilder`
+/// finale di GoRouter ha catturato un errore di navigazione. Single source
+/// of truth: prima esisteva sia inline in `errorBuilder` sia come classe
+/// separata, con lo stesso layout copiato due volte.
 class _ErrorScreen extends StatelessWidget {
   final String message;
 
@@ -350,7 +341,7 @@ class _ErrorScreen extends StatelessWidget {
               size: 64,
               color: Theme.of(context).colorScheme.error,
             ),
-            const SizedBox(height: 16),
+            AppSpacing.gapMd,
             Text(
               message,
               style: TextStyle(
@@ -359,7 +350,7 @@ class _ErrorScreen extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            AppSpacing.gapMd,
             ElevatedButton(
               onPressed: () => context.go('/'),
               child: Text('common.back_to_home'.tr()),

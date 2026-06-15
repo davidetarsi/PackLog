@@ -105,12 +105,18 @@ void _initNonCriticalServices() {
       AppConfig.amplitudeApiKey != 'MISSING_AMPLITUDE_API_KEY';
 
   if (sentryEnabled) {
+    // Sample rate per env: in dev catturiamo tutto per facilitare il debug,
+    // in prod 10% per non bruciare la quota performance al crescere degli utenti.
+    final double tracesSampleRate = switch (_currentEnvironment) {
+      Environment.prod => 0.1,
+      Environment.dev => 1.0,
+    };
     _guardedInit(
       'Sentry',
       () => SentryFlutter.init((options) {
         options.dsn = AppConfig.sentryDsn;
         options.environment = _currentEnvironment.name;
-        options.tracesSampleRate = 1.0;
+        options.tracesSampleRate = tracesSampleRate;
       }),
     );
   }

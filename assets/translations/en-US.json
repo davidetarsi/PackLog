@@ -4,6 +4,10 @@
     "subtitle": "Organize your stuff, wherever you are",
     "sign_in_google": "Sign in with Google",
     "sign_in_failed": "Sign in failed. Please try again.",
+    "invalid_credentials": "Email or password is incorrect.",
+    "email_not_confirmed": "Please confirm your email before signing in. Check your inbox.",
+    "network_error": "No connection or slow network. Check your connection and try again.",
+    "cancelled": "Sign-in cancelled.",
     "sign_out": "Sign out",
     "sign_out_failed": "Error during sign out"
   },
@@ -184,6 +188,7 @@
   },
   "trips": {
     "title": "Trips",
+    "duplicate_suffix": " (Copy)",
     "add": "Trip",
     "add_new": "New Trip",
     "create_trip": "Create trip",
@@ -372,7 +377,17 @@
   },
   "profile": {
     "ai_usage_title": "AI Analysis",
-    "ai_usage_subtitle": "{} / {} analyses this month"
+    "ai_usage_subtitle": "{} / {} analyses this month",
+    "logout_confirm_title": "Sign out?",
+    "logout_confirm_body": "Are you sure you want to sign out?",
+    "logout_warning_title": "Unsynced changes",
+    "logout_warning_body": "You have {} local changes not yet uploaded to the cloud. What do you want to do?",
+    "logout_sync_first": "Sync then sign out",
+    "logout_force": "Sign out anyway",
+    "sync_status_title": "Sync status",
+    "sync_status_synced": "All synced",
+    "sync_status_pending": "{} pending changes",
+    "sync_status_retry": "Retry now"
   },
   "settings": {
     "title": "Profile",
@@ -535,7 +550,6 @@
   "ai_import": {
     "title": "AI Bulk Import",
     "pick_images": "Choose images",
-    "add_photos": "Add photos ({}/5)",
     "source_gallery": "Gallery",
     "gallery_subtitle": "Max {} photos selectable",
     "source_camera": "Camera",
@@ -547,7 +561,6 @@
     "items_found_so_far": "{} items found so far",
     "items_identified": "{} items identified",
     "edit_hint": "Edit names or delete before saving",
-    "destination_house": "Destination house",
     "save_button": "Save {}",
     "photo_of": "Photo {} of {}",
     "photo": "Photo",
@@ -563,7 +576,11 @@
     "field_warmth": "Warmth",
     "field_versatility": "Versatility",
     "field_activities": "Activities",
-    "debug_raw_json": "Debug: JSON"
+    "debug_raw_json": "Debug: JSON",
+    "save_in_house": "Save to {} ({})",
+    "choose_house": "Choose a house",
+    "choose_house_title": "Where to save?",
+    "no_house_selected": "No house selected"
   },
   "onboarding": {
     "next": "Next",

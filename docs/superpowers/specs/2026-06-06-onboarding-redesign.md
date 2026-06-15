@@ -262,3 +262,7 @@ tour.trip_creation_tooltip.body
 - **Domain notifier (`HouseNotifier`, `ItemNotifier`) non importano il provider di onboarding** — l'accoppiamento è solo nel layer UI
 - **`TourStepContent`, `tourKeys`, `TutorialCoachMark`** — riusati senza modifiche strutturali
 - **`IOnboardingRepository`** — mockabile nei test; coerente con il pattern repository del resto del codebase
+
+
+800 991 815
+04221744299

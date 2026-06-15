@@ -4,6 +4,10 @@
     "subtitle": "Organizza i tuoi oggetti, ovunque tu sia",
     "sign_in_google": "Accedi con Google",
     "sign_in_failed": "Accesso fallito. Riprova.",
+    "invalid_credentials": "Email o password non corretti.",
+    "email_not_confirmed": "Conferma la tua email prima di accedere. Controlla la casella di posta.",
+    "network_error": "Connessione assente o lenta. Verifica la rete e riprova.",
+    "cancelled": "Accesso annullato.",
     "sign_out": "Esci",
     "sign_out_failed": "Errore durante la disconnessione"
   },
@@ -184,6 +188,8 @@
   },
   "trips": {
     "title": "Viaggi",
+    "manage": "Gestisci viaggi",
+    "duplicate_suffix": " (Copia)",
     "add": "Viaggio",
     "add_new": "Nuovo viaggio",
     "create_trip": "Crea viaggio",
@@ -371,7 +377,17 @@
   },
   "profile": {
     "ai_usage_title": "Analisi AI",
-    "ai_usage_subtitle": "{} / {} analisi questo mese"
+    "ai_usage_subtitle": "{} / {} analisi questo mese",
+    "logout_confirm_title": "Esci dall'account?",
+    "logout_confirm_body": "Sei sicuro di voler disconnetterti?",
+    "logout_warning_title": "Modifiche non sincronizzate",
+    "logout_warning_body": "Hai {} modifiche locali non ancora caricate sul cloud. Cosa vuoi fare?",
+    "logout_sync_first": "Sincronizza ed esci",
+    "logout_force": "Esci comunque",
+    "sync_status_title": "Stato sincronizzazione",
+    "sync_status_synced": "Tutto sincronizzato",
+    "sync_status_pending": "{} modifiche in attesa",
+    "sync_status_retry": "Riprova ora"
   },
   "settings": {
     "title": "Profilo",
@@ -534,19 +550,17 @@
   "ai_import": {
     "title": "AI Bulk Import",
     "pick_images": "Scegli immagini",
-    "add_photos": "Aggiungi foto ({}/5)",
     "source_gallery": "Galleria",
     "gallery_subtitle": "Max {} foto selezionabili",
     "source_camera": "Fotocamera",
     "camera_subtitle": "Scatta una foto",
-    "empty_title": "Scegli fino a 5 foto di outfit \n DEBUG: controlla le caratteristiche di ogni item e verifica che i valori trovati abbiano senso, grazie :)",
+    "empty_title": "Scegli fino a 5 foto di outfit",
     "empty_subtitle": "GPT-4o analizzerà ogni immagine e identificherà i capi d'abbigliamento",
     "loading_progress": "Analisi immagine {} di {}…",
     "loading": "Caricamento…",
     "items_found_so_far": "{} capi trovati finora",
     "items_identified": "{} capi identificati",
     "edit_hint": "Modifica nomi o elimina prima di salvare",
-    "destination_house": "Casa di destinazione",
     "save_button": "Salva {}",
     "photo_of": "Foto {} di {}",
     "photo": "Foto",
@@ -562,7 +576,11 @@
     "field_warmth": "Calore",
     "field_versatility": "Versatilità",
     "field_activities": "Attività",
-    "debug_raw_json": "Debug: JSON"
+    "debug_raw_json": "Debug: JSON",
+    "save_in_house": "Salva in {} ({})",
+    "choose_house": "Scegli una casa",
+    "choose_house_title": "In quale casa salvare?",
+    "no_house_selected": "Nessuna casa selezionata"
   },
   "onboarding": {
     "next": "Avanti",

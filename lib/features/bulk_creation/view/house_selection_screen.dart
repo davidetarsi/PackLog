@@ -28,7 +28,7 @@ class HouseSelectionScreen extends ConsumerWidget {
       body: housesAsync.when(
         data: (houses) {
           if (houses.isEmpty) {
-            return EmptyState(
+            return DsEmptyState(
               icon: Icons.home_outlined,
               title: 'houses.no_houses'.tr(),
               subtitle: 'houses.create_first_house'.tr(),
@@ -55,7 +55,7 @@ class HouseSelectionScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => ErrorState(
+        error: (err, stack) => DsErrorState(
           error: err,
           onRetry: () => ref.invalidate(houseNotifierProvider),
         ),
