@@ -57,7 +57,10 @@ class SupabaseAuthRepository implements AuthRepository {
       debugPrint('[Auth] 1/4 avvio Google sign-in...');
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        throw const SignInFailedException('Google sign-in cancelled by user');
+        throw const SignInFailedException(
+          'Google sign-in cancelled by user',
+          reason: AuthFailureReason.cancelled,
+        );
       }
       debugPrint('[Auth] 2/4 Google user ottenuto, richiedo tokens...');
 
@@ -80,16 +83,23 @@ class SupabaseAuthRepository implements AuthRepository {
             const Duration(seconds: 30),
             onTimeout: () => throw const SignInFailedException(
               'Connessione a Supabase scaduta. Controlla la connessione o riprova.',
+              reason: AuthFailureReason.networkError,
             ),
           );
       debugPrint('[Auth] 4/4 ✅ Supabase auth completata');
     } on SignInFailedException {
       rethrow;
     } on sb.AuthException catch (e, st) {
-      throw SignInFailedException(e.message, originalError: e, stackTrace: st);
+      throw SignInFailedException(
+        e.message,
+        reason: reasonFromSupabaseError(e),
+        originalError: e,
+        stackTrace: st,
+      );
     } catch (e, st) {
       throw SignInFailedException(
         'Unexpected error during Google sign-in',
+        reason: reasonFromSupabaseError(e),
         originalError: e,
         stackTrace: st,
       );
@@ -104,7 +114,12 @@ class SupabaseAuthRepository implements AuthRepository {
     try {
       await _client.auth.signInWithPassword(email: email, password: password);
     } on sb.AuthException catch (e, st) {
-      throw SignInFailedException(e.message, originalError: e, stackTrace: st);
+      throw SignInFailedException(
+        e.message,
+        reason: reasonFromSupabaseError(e),
+        originalError: e,
+        stackTrace: st,
+      );
     }
   }
 

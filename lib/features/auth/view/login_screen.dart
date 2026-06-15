@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../shared/helpers/exception_message.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 
@@ -46,10 +47,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .read(analyticsServiceProvider)
           .logEvent(
             'login_failed',
-            properties: {'method': 'google', 'error': e.toString()},
+            properties: {
+              'method': 'google',
+              'reason': e.reason.name,
+              'error': e.toString(),
+            },
           );
-      if (mounted) {
-        AppSnackBar.showError(context, 'login.sign_in_failed'.tr());
+      // Mostra il messaggio specifico al reason solo se non è stato
+      // l'utente a cancellare (in quel caso nessuna snackbar — pseudo-noop UX).
+      if (mounted && e.reason != AuthFailureReason.cancelled) {
+        AppSnackBar.showError(context, exceptionMessage(e));
         debugPrint('[LoginScreen] Sign-in failed: $e');
       }
     } catch (e) {
@@ -60,7 +67,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             properties: {'method': 'google', 'error': e.toString()},
           );
       if (mounted) {
-        AppSnackBar.showError(context, 'login.sign_in_failed'.tr());
+        AppSnackBar.showError(context, exceptionMessage(e));
         debugPrint('[LoginScreen] Unexpected error: $e');
       }
     } finally {
@@ -85,7 +92,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               autofillHints: const [AutofillHints.email],
               decoration: const InputDecoration(labelText: 'Email'),
             ),
-            const SizedBox(height: 8),
+            AppSpacing.gapSm,
             TextField(
               controller: passwordController,
               obscureText: true,
@@ -159,7 +166,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const Icon(Icons.app_shortcut, size: 80),
                   ),
                 ),
-                const SizedBox(height: 24),
+                AppSpacing.gapLg,
 
                 Text(
                   'Pack Log',
@@ -168,7 +175,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     color: colorScheme.onSurface,
                   ),
                 ),
-                const SizedBox(height: 8),
+                AppSpacing.gapSm,
 
                 Text(
                   'login.subtitle'.tr(),
@@ -207,7 +214,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
 
                 if (kDebugMode) ...[
-                  const SizedBox(height: 8),
+                  AppSpacing.gapSm,
                   TextButton(
                     onPressed: _isLoading ? null : _showDevLoginDialog,
                     child: const Text(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/analytics/analytics_service.dart';
+import '../../core/analytics/core_analytics_service.dart';
 import '../../core/monitoring/monitoring_service.dart';
 import 'auth_repository.dart';
 import 'auth_state.dart';
@@ -24,7 +25,10 @@ class AuthNotifier extends _$AuthNotifier {
     final initial = repo.currentAuthState;
     _resolveIdentity(initial);
 
+    AuthState previous = initial;
     final subscription = repo.authStateChanges.listen((authState) {
+      _trackAuthTransition(previous, authState);
+      previous = authState;
       state = authState;
       _resolveIdentity(authState);
     });
@@ -47,6 +51,18 @@ class AuthNotifier extends _$AuthNotifier {
         ref.read(analyticsServiceProvider).clearUser();
     }
     debugPrint('[Auth] _resolveIdentity completato');
+  }
+
+  /// Traccia il funnel di attivazione: emette `login_completed` alla prima
+  /// transizione Unauthenticated → Authenticated, e `logout` alla transizione
+  /// inversa. Idempotente sugli "stessi stati ripetuti".
+  void _trackAuthTransition(AuthState prev, AuthState next) {
+    final analytics = ref.read(coreAnalyticsServiceProvider);
+    if (next is Authenticated && prev is! Authenticated) {
+      analytics.trackLoginCompleted();
+    } else if (next is Unauthenticated && prev is Authenticated) {
+      analytics.trackLogout();
+    }
   }
 }
 
