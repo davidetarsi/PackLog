@@ -17,6 +17,24 @@ class SyncOrchestrator with WidgetsBindingObserver {
   /// Usato per notificare i notifier dei dati di rifetchare.
   void Function()? onFullPullComplete;
 
+  /// Chiamato immediatamente prima di ogni `processQueue` (push) che parte
+  /// davvero (dopo che il mutex è stato acquisito). Non chiamato quando il
+  /// mutex scarta un sync concorrente.
+  ///
+  /// Usato da [sync_provider] per invalidare subito `pendingChangesCountProvider`
+  /// così la `SyncStatusTile` mostra lo stato di caricamento mentre il push
+  /// è in corso, invece di restare su un valore cacheato potenzialmente stale.
+  void Function()? onSyncStarted;
+
+  /// Chiamato da [sync_provider] dopo ogni tentativo di processQueue (push),
+  /// **anche se fallisce**: il numero di record pending può essere cambiato
+  /// in entrambi i casi (alcuni passati a `synced`, altri ancora `pending*`)
+  /// e la UI counter deve riflettere il nuovo conteggio.
+  ///
+  /// Non viene chiamato quando il mutex blocca un sync concorrente: in quel
+  /// caso il sync in-flight produrrà il proprio callback alla fine.
+  void Function()? onProcessQueueComplete;
+
   SyncOrchestrator(
     this._syncService,
     this._monitoring, {
@@ -82,11 +100,57 @@ class SyncOrchestrator with WidgetsBindingObserver {
     try {
       await _syncService.fullPull(userId);
       onFullPullComplete?.call();
+      // Auto-flush: chiude la finestra di skip-by-mutex per le mutazioni
+      // locali tentate mentre il fullPull era in volo (es. TripNotifier.build()
+      // → transferItemsForCompletedTrips → moveItemsToHouse → pendingUpdate).
+      // Senza questo, i record resterebbero pending fino al prossimo trigger
+      // (mutazione utente, app_resume, connectivity_restored).
+      await _flushPendingIfAny();
     } catch (e, st) {
       debugPrint('[SyncOrchestrator] fullPull failed: $e');
       debugPrint('[SyncOrchestrator] Stack trace:\n$st');
+      _monitoring.captureException(
+        e,
+        stackTrace: st,
+        tags: const {'operation': 'orchestrator_fullPull'},
+      );
     } finally {
       _isSyncing = false;
+    }
+  }
+
+  /// Esegue [SyncService.processQueue] solo se ci sono record pending.
+  /// Pensato per essere chiamato all'interno del mutex `_isSyncing` da
+  /// [_attemptFullPullIfOnline]; non riacquisisce il mutex.
+  Future<void> _flushPendingIfAny() async {
+    final int pending;
+    try {
+      pending = await _syncService.countPendingChanges();
+    } catch (e, st) {
+      debugPrint('[SyncOrchestrator] auto-flush count failed: $e');
+      _monitoring.captureException(
+        e,
+        stackTrace: st,
+        tags: const {'operation': 'orchestrator_autoFlush_count'},
+      );
+      return;
+    }
+    if (pending == 0) return;
+
+    debugPrint('[SyncOrchestrator] Auto-flush: $pending pending record(s)');
+    try {
+      await _syncService.processQueue();
+    } catch (e, st) {
+      debugPrint('[SyncOrchestrator] auto-flush processQueue failed: $e');
+      _monitoring.captureException(
+        e,
+        stackTrace: st,
+        tags: const {'operation': 'orchestrator_autoFlush'},
+      );
+    } finally {
+      // Anche su failure: invalida il counter UI, così la tile riflette
+      // quanti record sono ancora indietro.
+      onProcessQueueComplete?.call();
     }
   }
 
@@ -107,18 +171,31 @@ class SyncOrchestrator with WidgetsBindingObserver {
       return;
     }
     _isSyncing = true;
+    onSyncStarted?.call();
     _monitoring.logBreadcrumb(
       'Avvio sincronizzazione automatica. Trigger: $trigger',
       category: 'sync',
       data: {'trigger': trigger},
     );
     try {
+      // Su trigger "venuti dall'esterno" (connettività tornata, app ripresa)
+      // azzeriamo il retry state: record bloccati oltre soglia hanno una
+      // nuova chance di sincronizzarsi senza richiedere intervento dell'utente.
+      if (trigger == 'connectivity_restored' || trigger == 'app_resume') {
+        await _syncService.resetAllSyncRetries();
+      }
       await _syncService.processQueue();
     } catch (e, st) {
       debugPrint('[SyncOrchestrator] Sync failed: $e');
       debugPrint('[SyncOrchestrator] Stack trace:\n$st');
+      _monitoring.captureException(
+        e,
+        stackTrace: st,
+        tags: {'operation': 'orchestrator_processQueue', 'trigger': trigger},
+      );
     } finally {
       _isSyncing = false;
+      onProcessQueueComplete?.call();
     }
   }
 

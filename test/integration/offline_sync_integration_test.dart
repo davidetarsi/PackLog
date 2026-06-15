@@ -64,6 +64,8 @@ void main() {
     syncService = SyncService(
       housesDao: database.housesDao,
       itemsDao: database.itemsDao,
+      spacesDao: database.spacesDao,
+      luggagesDao: database.luggagesDao,
       tripsDao: database.tripsDao,
       remote: mockRemote,
       monitoring: mockMonitoring,

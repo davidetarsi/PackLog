@@ -3,9 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../features/items/model/item_model.dart';
+import '../../features/luggages/model/luggage_model.dart';
 import '../../shared/model/location_type.dart';
 import '../database/daos/houses_dao.dart';
 import '../database/daos/items_dao.dart';
+import '../database/daos/luggages_dao.dart';
+import '../database/daos/spaces_dao.dart';
 import '../database/daos/trips_dao.dart';
 import '../database/database.dart';
 import '../database/tables/mixins/syncable_table.dart';
@@ -16,6 +19,8 @@ import 'tombstone_config_service.dart';
 class SyncService {
   final HousesDao _housesDao;
   final ItemsDao _itemsDao;
+  final SpacesDao _spacesDao;
+  final LuggagesDao _luggagesDao;
   final TripsDao _tripsDao;
   final SupabaseRepository _remote;
   final AppMonitoringService _monitoring;
@@ -24,16 +29,80 @@ class SyncService {
   SyncService({
     required HousesDao housesDao,
     required ItemsDao itemsDao,
+    required SpacesDao spacesDao,
+    required LuggagesDao luggagesDao,
     required TripsDao tripsDao,
     required SupabaseRepository remote,
     required AppMonitoringService monitoring,
     required TombstoneConfigService tombstoneConfig,
   }) : _housesDao = housesDao,
        _itemsDao = itemsDao,
+       _spacesDao = spacesDao,
+       _luggagesDao = luggagesDao,
        _tripsDao = tripsDao,
        _remote = remote,
        _monitoring = monitoring,
        _tombstoneConfig = tombstoneConfig;
+
+  /// Conta le modifiche pending in tutte le tabelle.
+  ///
+  /// Usato dalla UI di logout per avvertire l'utente se ci sono mutazioni non
+  /// ancora pushate al cloud. Considera "pending" qualsiasi record con
+  /// syncStatus != synced e retry sotto soglia (lo stesso filtro di
+  /// `processQueue`).
+  Future<int> countPendingChanges() async {
+    final results = await Future.wait([
+      _housesDao.getPendingSyncHouses(),
+      _spacesDao.getPendingSyncSpaces(),
+      _luggagesDao.getPendingSyncLuggages(),
+      _itemsDao.getPendingSyncItems(),
+      _tripsDao.getPendingSyncTrips(),
+    ]);
+    return results.fold<int>(0, (sum, list) => sum + list.length);
+  }
+
+  /// Wipe completo dei dati locali. Usato all'avvio quando l'utente loggato
+  /// non corrisponde a quello dei record salvati (cambio account sul device):
+  /// evita che l'utente B veda transitoriamente i dati dell'utente A prima
+  /// che il fullPull li sostituisca.
+  ///
+  /// Ordine: figli prima, padri dopo. La cascade FK sarebbe sufficiente ma
+  /// l'ordine esplicito tiene la semantica chiara e non dipende da PRAGMA.
+  Future<void> wipeAllUserData() async {
+    debugPrint('[SyncService] wipeAllUserData: clearing local DB');
+    await _itemsDao.wipeAll();
+    await _spacesDao.wipeAll();
+    await _luggagesDao.wipeAll();
+    await _tripsDao.wipeAll();
+    await _housesDao.wipeAll();
+    _monitoring.logBreadcrumb(
+      'Local DB wiped (account switch)',
+      category: 'sync',
+    );
+  }
+
+  /// Azzera lo stato di retry su tutte le tabelle sincronizzate.
+  ///
+  /// Chiamato dall'orchestrator quando la connettività torna o l'app viene
+  /// ripresa: dà una nuova chance ai record bloccati oltre la soglia di 5
+  /// retry, che altrimenti `getPendingSync*` continuerebbe a filtrare.
+  Future<int> resetAllSyncRetries() async {
+    final count =
+        await _housesDao.resetSyncRetries() +
+        await _spacesDao.resetSyncRetries() +
+        await _luggagesDao.resetSyncRetries() +
+        await _itemsDao.resetSyncRetries() +
+        await _tripsDao.resetSyncRetries();
+    if (count > 0) {
+      debugPrint('[SyncService] Reset retry state on $count records');
+      _monitoring.logBreadcrumb(
+        'Reset retry state on $count blocked records',
+        category: 'sync',
+        data: {'count': count},
+      );
+    }
+    return count;
+  }
 
   /// One-time recovery: re-marks soft-deleted records that were incorrectly
   /// left as "synced" (due to a prior timezone bug that caused pulls instead
@@ -44,6 +113,8 @@ class SyncService {
     _recoveryDone = true;
     final count =
         await _housesDao.markDeletedAsPendingSync() +
+        await _spacesDao.markDeletedAsPendingSync() +
+        await _luggagesDao.markDeletedAsPendingSync() +
         await _itemsDao.markDeletedAsPendingSync() +
         await _tripsDao.markDeletedAsPendingSync();
     if (count > 0) {
@@ -67,21 +138,31 @@ class SyncService {
     try {
       final results = await Future.wait([
         _remote.fetchAllHousesByUserId(userId),
+        _remote.fetchAllSpacesByUserId(userId),
+        _remote.fetchAllLuggagesByUserId(userId),
         _remote.fetchAllItemsByUserId(userId),
         _remote.fetchAllTripsByUserId(userId),
       ]);
 
       final remoteHouses = results[0];
-      final remoteItems = results[1];
-      final remoteTrips = results[2];
+      final remoteSpaces = results[1];
+      final remoteLuggages = results[2];
+      final remoteItems = results[3];
+      final remoteTrips = results[4];
       final now = DateTime.now();
       int inserted = 0, updated = 0, skipped = 0;
 
       for (final r in remoteHouses) {
         final id = r['id'] as String;
         final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+        final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
         final local = await _housesDao.findHouseById(id);
         if (local == null) {
+          // Tombstone per record mai conosciuto: niente da soft-deletare.
+          if (remoteIsDeleted) {
+            skipped++;
+            continue;
+          }
           await _housesDao.insertHouse(_buildHouseCompanion(r, syncedAt: now));
           inserted++;
         } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
@@ -92,26 +173,106 @@ class SyncService {
         }
       }
 
-      for (final r in remoteItems) {
+      // FK-safe order: houses → spaces → luggages → items → trips.
+      for (final r in remoteSpaces) {
         final id = r['id'] as String;
         final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+        final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
         try {
-          final local = await _itemsDao.findItemById(id);
+          final local = await _spacesDao.findSpaceById(id);
           if (local == null) {
-            await _itemsDao.insertItem(_buildItemCompanion(r, syncedAt: now));
+            if (remoteIsDeleted) {
+              skipped++;
+              continue;
+            }
+            await _spacesDao.insertSpace(_buildSpaceCompanion(r, syncedAt: now));
             inserted++;
           } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
-            await _itemsDao.updateItem(_buildItemCompanion(r, syncedAt: now));
+            await _spacesDao.updateSpace(_buildSpaceCompanion(r, syncedAt: now));
             updated++;
           } else {
             skipped++;
           }
-        } catch (e) {
-          // FK violation: la casa di questo item non è ancora locale (es. is_deleted=true
-          // su Supabase). L'item verrà recuperato al prossimo fullPull una volta che
-          // la casa viene ripristinata, oppure ignorato se la casa è definitivamente cancellata.
+        } catch (e, st) {
+          debugPrint(
+            '[SyncService] fullPull: skip space $id — ${e.runtimeType}',
+          );
+          _monitoring.captureException(
+            e,
+            stackTrace: st,
+            tags: {'operation': 'fullPull_space', 'space_id': id},
+          );
+        }
+      }
+
+      for (final r in remoteLuggages) {
+        final id = r['id'] as String;
+        final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+        final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
+        try {
+          final local = await _luggagesDao.findLuggageById(id);
+          if (local == null) {
+            if (remoteIsDeleted) {
+              skipped++;
+              continue;
+            }
+            await _luggagesDao.insertLuggage(
+              _buildLuggageCompanion(r, syncedAt: now),
+            );
+            inserted++;
+          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            await _luggagesDao.updateLuggage(
+              _buildLuggageCompanion(r, syncedAt: now),
+            );
+            updated++;
+          } else {
+            skipped++;
+          }
+        } catch (e, st) {
+          debugPrint(
+            '[SyncService] fullPull: skip luggage $id — ${e.runtimeType}',
+          );
+          _monitoring.captureException(
+            e,
+            stackTrace: st,
+            tags: {'operation': 'fullPull_luggage', 'luggage_id': id},
+          );
+        }
+      }
+
+      for (final r in remoteItems) {
+        final id = r['id'] as String;
+        final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+        final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
+        try {
+          final local = await _itemsDao.findItemById(id);
+          if (local == null) {
+            if (remoteIsDeleted) {
+              skipped++;
+              continue;
+            }
+            await _persistItemWithFkFallback(r, syncedAt: now, isInsert: true);
+            inserted++;
+          } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
+            await _persistItemWithFkFallback(r, syncedAt: now, isInsert: false);
+            updated++;
+          } else {
+            skipped++;
+          }
+        } catch (e, st) {
+          // FK violation residua: tipicamente la casa di questo item non
+          // esiste ancora localmente. Tracciamo per visibilità — il silent
+          // skip storico nascondeva perdite di dati al primo restore.
           debugPrint(
             '[SyncService] fullPull: skip item $id — ${e.runtimeType}',
+          );
+          _monitoring.captureException(
+            e,
+            stackTrace: st,
+            tags: {
+              'operation': 'fullPull_item',
+              'item_id': id,
+            },
           );
         }
       }
@@ -119,12 +280,21 @@ class SyncService {
       for (final r in remoteTrips) {
         final id = r['id'] as String;
         final remoteTs = DateTime.parse(r['updated_at'] as String).toUtc();
+        final remoteIsDeleted = r['is_deleted'] as bool? ?? false;
         final local = await _tripsDao.findTripById(id);
         if (local == null) {
+          if (remoteIsDeleted) {
+            skipped++;
+            continue;
+          }
           await _tripsDao.insertTrip(_buildTripCompanion(r, syncedAt: now));
+          await _replaceTripItemsFromJson(id, r['items']);
+          await _replaceTripLuggagesFromJson(id, r['luggage_ids']);
           inserted++;
         } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
           await _tripsDao.updateTrip(_buildTripCompanion(r, syncedAt: now));
+          await _replaceTripItemsFromJson(id, r['items']);
+          await _replaceTripLuggagesFromJson(id, r['luggage_ids']);
           updated++;
         } else {
           skipped++;
@@ -148,7 +318,11 @@ class SyncService {
       );
     } catch (e, st) {
       debugPrint('[SyncService] fullPull fallita: $e');
-      Sentry.captureException(e, stackTrace: st);
+      _monitoring.captureException(
+        e,
+        stackTrace: st,
+        tags: const {'operation': 'fullPull'},
+      );
       rethrow;
     }
   }
@@ -177,7 +351,9 @@ class SyncService {
       isPrimary: Value(r['is_primary'] as bool? ?? false),
       createdAt: Value(DateTime.parse(r['created_at'] as String)),
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
-      isDeleted: const Value(false),
+      // Propaga lo stato di tombstone dal remoto: senza questo le delete
+      // fatte su un device non arriverebbero mai agli altri.
+      isDeleted: Value(r['is_deleted'] as bool? ?? false),
       lastSyncedAt: Value(syncedAt),
       syncStatus: const Value(SyncStatus.synced),
       syncRetryCount: const Value(0),
@@ -190,6 +366,7 @@ class SyncService {
   ItemsCompanion _buildItemCompanion(
     Map<String, dynamic> r, {
     required DateTime syncedAt,
+    bool clearSpaceId = false,
   }) {
     return ItemsCompanion(
       id: Value(r['id'] as String),
@@ -199,10 +376,60 @@ class SyncService {
       category: Value(_parseItemCategory(r['category'] as String)),
       description: Value(r['description'] as String?),
       quantity: Value(r['quantity'] as int?),
-      spaceId: Value(r['space_id'] as String?),
+      // [clearSpaceId] forza spaceId=null per il fallback FK: vedi
+      // [_persistItemWithFkFallback].
+      spaceId: clearSpaceId
+          ? const Value(null)
+          : Value(r['space_id'] as String?),
+      aiMetadata: Value(r['ai_metadata'] as String?),
       createdAt: Value(DateTime.parse(r['created_at'] as String)),
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
-      isDeleted: const Value(false),
+      isDeleted: Value(r['is_deleted'] as bool? ?? false),
+      lastSyncedAt: Value(syncedAt),
+      syncStatus: const Value(SyncStatus.synced),
+      syncRetryCount: const Value(0),
+      lastSyncError: const Value(null),
+      nextSyncAttemptAt: const Value(null),
+      sentryTraceId: const Value(null),
+    );
+  }
+
+  SpacesCompanion _buildSpaceCompanion(
+    Map<String, dynamic> r, {
+    required DateTime syncedAt,
+  }) {
+    return SpacesCompanion(
+      id: Value(r['id'] as String),
+      userId: Value(r['user_id'] as String?),
+      houseId: Value(r['house_id'] as String),
+      name: Value(r['name'] as String),
+      iconName: Value(r['icon_name'] as String?),
+      createdAt: Value(DateTime.parse(r['created_at'] as String)),
+      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
+      isDeleted: Value(r['is_deleted'] as bool? ?? false),
+      lastSyncedAt: Value(syncedAt),
+      syncStatus: const Value(SyncStatus.synced),
+      syncRetryCount: const Value(0),
+      lastSyncError: const Value(null),
+      nextSyncAttemptAt: const Value(null),
+      sentryTraceId: const Value(null),
+    );
+  }
+
+  LuggagesCompanion _buildLuggageCompanion(
+    Map<String, dynamic> r, {
+    required DateTime syncedAt,
+  }) {
+    return LuggagesCompanion(
+      id: Value(r['id'] as String),
+      userId: Value(r['user_id'] as String?),
+      houseId: Value(r['house_id'] as String),
+      name: Value(r['name'] as String),
+      sizeType: Value(_parseLuggageSize(r['size_type'])),
+      volumeLiters: Value(r['volume_liters'] as int?),
+      createdAt: Value(DateTime.parse(r['created_at'] as String)),
+      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
+      isDeleted: Value(r['is_deleted'] as bool? ?? false),
       lastSyncedAt: Value(syncedAt),
       syncStatus: const Value(SyncStatus.synced),
       syncRetryCount: const Value(0),
@@ -238,7 +465,7 @@ class SyncService {
       isSaved: Value(r['is_saved'] as bool? ?? false),
       createdAt: Value(DateTime.parse(r['created_at'] as String)),
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
-      isDeleted: const Value(false),
+      isDeleted: Value(r['is_deleted'] as bool? ?? false),
       lastSyncedAt: Value(syncedAt),
       syncStatus: const Value(SyncStatus.synced),
       syncRetryCount: const Value(0),
@@ -248,19 +475,25 @@ class SyncService {
     );
   }
 
-  /// FK-safe order: houses → items → trips (create/update).
-  /// Purge order is reversed: items/trips first, houses last (FK safety).
+  /// FK-safe order: houses → spaces → luggages → items → trips (create/update).
+  /// Purge order is reversed: trips/items/luggages/spaces first, houses last
+  /// (FK safety: items reference spaces; trips reference luggages via junction).
   Future<void> processQueue() async {
     await _recoverStaleSoftDeletes();
     final houses = await _housesDao.getPendingSyncHouses();
+    final spaces = await _spacesDao.getPendingSyncSpaces();
+    final luggages = await _luggagesDao.getPendingSyncLuggages();
     final items = await _itemsDao.getPendingSyncItems();
     final trips = await _tripsDao.getPendingSyncTrips();
 
     _monitoring.logBreadcrumb(
-      'Avvio batch sync: ${houses.length} case, ${items.length} item, ${trips.length} viaggi',
+      'Avvio batch sync: ${houses.length} case, ${spaces.length} spazi, '
+      '${luggages.length} bagagli, ${items.length} item, ${trips.length} viaggi',
       category: 'sync',
       data: {
         'houses_count': houses.length,
+        'spaces_count': spaces.length,
+        'luggages_count': luggages.length,
         'items_count': items.length,
         'trips_count': trips.length,
       },
@@ -289,6 +522,52 @@ class SyncService {
       );
     }
 
+    for (final space in spaces) {
+      await _syncRecord(
+        id: space.id,
+        localUpdatedAt: space.updatedAt,
+        localIsDeleted: space.isDeleted,
+        sentryTraceId: space.sentryTraceId,
+        toJson: () => _spaceToJson(space),
+        fetchRemote: (trace) =>
+            _remote.fetchSpaceById(space.id, sentryTrace: trace),
+        upsert: (data, trace) => _remote.upsertSpace(data, sentryTrace: trace),
+        pullLocal: (remote) => _pullSpace(space.id, remote),
+        markSynced: (ts) => _spacesDao.markSpaceAsSynced(space.id, ts),
+        incrementRetry: (e) => _spacesDao.incrementSyncRetry(space.id, e),
+        onPurge: () =>
+            pendingPurges.add(() => _spacesDao.purgeSpace(space.id)),
+        syncStatus: space.syncStatus,
+        lastSyncedAt: space.lastSyncedAt,
+        createdAt: space.createdAt,
+        entity: 'space',
+      );
+    }
+
+    for (final luggage in luggages) {
+      await _syncRecord(
+        id: luggage.id,
+        localUpdatedAt: luggage.updatedAt,
+        localIsDeleted: luggage.isDeleted,
+        sentryTraceId: luggage.sentryTraceId,
+        toJson: () => _luggageToJson(luggage),
+        fetchRemote: (trace) =>
+            _remote.fetchLuggageById(luggage.id, sentryTrace: trace),
+        upsert: (data, trace) =>
+            _remote.upsertLuggage(data, sentryTrace: trace),
+        pullLocal: (remote) => _pullLuggage(luggage.id, remote),
+        markSynced: (ts) => _luggagesDao.markLuggageAsSynced(luggage.id, ts),
+        incrementRetry: (e) =>
+            _luggagesDao.incrementSyncRetry(luggage.id, e),
+        onPurge: () =>
+            pendingPurges.add(() => _luggagesDao.purgeLuggage(luggage.id)),
+        syncStatus: luggage.syncStatus,
+        lastSyncedAt: luggage.lastSyncedAt,
+        createdAt: luggage.createdAt,
+        entity: 'luggage',
+      );
+    }
+
     for (final item in items) {
       await _syncRecord(
         id: item.id,
@@ -311,12 +590,19 @@ class SyncService {
     }
 
     for (final trip in trips) {
+      // Prefetch della checklist + luggage_ids: vengono serializzati nel
+      // payload del trip su Supabase, così un nuovo device ritrova items
+      // e bagagli associati senza tabelle remote dedicate.
+      final tripItems = await _tripsDao.getTripItemsByTripId(trip.id);
+      final tripLuggages = await _luggagesDao.getLuggagesByTrip(trip.id);
+      final luggageIds = tripLuggages.map((l) => l.id).toList();
       await _syncRecord(
         id: trip.id,
         localUpdatedAt: trip.updatedAt,
         localIsDeleted: trip.isDeleted,
         sentryTraceId: trip.sentryTraceId,
-        toJson: () => _tripToJson(trip),
+        toJson: () =>
+            _tripToJson(trip, items: tripItems, luggageIds: luggageIds),
         fetchRemote: (trace) =>
             _remote.fetchTripById(trip.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertTrip(data, sentryTrace: trace),
@@ -338,7 +624,11 @@ class SyncService {
         await purge();
       } catch (e, st) {
         debugPrint('[SyncService] Purge failed: $e');
-        Sentry.captureException(e, stackTrace: st);
+        _monitoring.captureException(
+          e,
+          stackTrace: st,
+          tags: const {'operation': 'processQueue_purge'},
+        );
       }
     }
   }
@@ -452,7 +742,11 @@ class SyncService {
       }
     } catch (e, st) {
       debugPrint('[SyncService] Failed to sync $entity $id: $e');
-      Sentry.captureException(e, stackTrace: st);
+      _monitoring.captureException(
+        e,
+        stackTrace: st,
+        tags: {'operation': 'syncRecord', 'entity': entity, 'id': id},
+      );
       await incrementRetry(e.toString());
     }
   }
@@ -499,7 +793,43 @@ class SyncService {
     };
   }
 
-  Map<String, dynamic> _tripToJson(Trip trip) {
+  Map<String, dynamic> _spaceToJson(Space space) {
+    return {
+      'id': space.id,
+      'user_id': space.userId,
+      'house_id': space.houseId,
+      'name': space.name,
+      'icon_name': space.iconName,
+      'created_at': space.createdAt.toUtc().toIso8601String(),
+      'updated_at': space.updatedAt.toUtc().toIso8601String(),
+      'is_deleted': space.isDeleted,
+    };
+  }
+
+  Map<String, dynamic> _luggageToJson(Luggage luggage) {
+    return {
+      'id': luggage.id,
+      'user_id': luggage.userId,
+      'house_id': luggage.houseId,
+      'name': luggage.name,
+      'size_type': luggage.sizeType.name,
+      'volume_liters': luggage.volumeLiters,
+      'created_at': luggage.createdAt.toUtc().toIso8601String(),
+      'updated_at': luggage.updatedAt.toUtc().toIso8601String(),
+      'is_deleted': luggage.isDeleted,
+    };
+  }
+
+  /// Serializza il trip, la sua checklist (snapshot immutabile) e gli id dei
+  /// bagagli associati in un unico payload. Items e luggage_ids sono parte
+  /// del trip per Supabase: niente tabelle remote dedicate, niente N+1 sul
+  /// pull. Per i luggages serializziamo solo gli id perché le entità reali
+  /// vivono nella tabella `luggages` (sincronizzata separatamente).
+  Map<String, dynamic> _tripToJson(
+    Trip trip, {
+    required List<TripItemEntry> items,
+    required List<String> luggageIds,
+  }) {
     return {
       'id': trip.id,
       'user_id': trip.userId,
@@ -521,6 +851,17 @@ class SyncService {
       'created_at': trip.createdAt.toUtc().toIso8601String(),
       'updated_at': trip.updatedAt.toUtc().toIso8601String(),
       'is_deleted': trip.isDeleted,
+      'items': items
+          .map((e) => {
+                'id': e.id,
+                'name': e.name,
+                'category': e.category.name,
+                'quantity': e.quantity,
+                'origin_house_id': e.originHouseId,
+                'is_checked': e.isChecked,
+              })
+          .toList(),
+      'luggage_ids': luggageIds,
     };
   }
 
@@ -543,6 +884,35 @@ class SyncService {
         locationLon: Value(remote['location_lon'] as double?),
         iconName: Value(remote['icon_name'] as String? ?? 'home'),
         isPrimary: Value(remote['is_primary'] as bool? ?? false),
+        createdAt: Value(DateTime.parse(remote['created_at'] as String)),
+        updatedAt: Value(DateTime.parse(remote['updated_at'] as String)),
+        isDeleted: Value(remote['is_deleted'] as bool? ?? false),
+      ),
+    );
+  }
+
+  Future<void> _pullSpace(String id, Map<String, dynamic> remote) async {
+    await _spacesDao.updateSpace(
+      SpacesCompanion(
+        id: Value(id),
+        houseId: Value(remote['house_id'] as String),
+        name: Value(remote['name'] as String),
+        iconName: Value(remote['icon_name'] as String?),
+        createdAt: Value(DateTime.parse(remote['created_at'] as String)),
+        updatedAt: Value(DateTime.parse(remote['updated_at'] as String)),
+        isDeleted: Value(remote['is_deleted'] as bool? ?? false),
+      ),
+    );
+  }
+
+  Future<void> _pullLuggage(String id, Map<String, dynamic> remote) async {
+    await _luggagesDao.updateLuggage(
+      LuggagesCompanion(
+        id: Value(id),
+        houseId: Value(remote['house_id'] as String),
+        name: Value(remote['name'] as String),
+        sizeType: Value(_parseLuggageSize(remote['size_type'])),
+        volumeLiters: Value(remote['volume_liters'] as int?),
         createdAt: Value(DateTime.parse(remote['created_at'] as String)),
         updatedAt: Value(DateTime.parse(remote['updated_at'] as String)),
         isDeleted: Value(remote['is_deleted'] as bool? ?? false),
@@ -596,6 +966,99 @@ class SyncService {
         isDeleted: Value(remote['is_deleted'] as bool? ?? false),
       ),
     );
+    await _replaceTripItemsFromJson(id, remote['items']);
+    await _replaceTripLuggagesFromJson(id, remote['luggage_ids']);
+  }
+
+  /// Sostituisce le associazioni trip↔luggage con [luggageIdsJson] se presente.
+  ///
+  /// Backward-compat: se [luggageIdsJson] è null (payload remoto legacy)
+  /// lasciamo le associazioni locali intatte. Altrimenti `replaceTripLuggages`
+  /// è atomico: DELETE + INSERT in transazione.
+  Future<void> _replaceTripLuggagesFromJson(
+    String tripId,
+    dynamic luggageIdsJson,
+  ) async {
+    if (luggageIdsJson == null) return;
+    final ids = (luggageIdsJson as List).cast<String>();
+    await _luggagesDao.replaceTripLuggages(tripId, ids);
+  }
+
+  /// Sostituisce la checklist locale di [tripId] con [itemsJson], se presente.
+  ///
+  /// Se [itemsJson] è null (payload remoto legacy o client più vecchio che
+  /// non includeva ancora il campo) lasciamo gli items locali intatti per
+  /// non azzerare dati validi. Altrimenti `replaceTripItems` è atomico:
+  /// DELETE + INSERT in transazione.
+  Future<void> _replaceTripItemsFromJson(
+    String tripId,
+    dynamic itemsJson,
+  ) async {
+    if (itemsJson == null) return;
+    final list = (itemsJson as List).cast<Map<String, dynamic>>();
+    final companions = list
+        .map(
+          (m) => TripItemEntriesCompanion.insert(
+            id: m['id'] as String,
+            tripId: tripId,
+            name: m['name'] as String,
+            category: _parseItemCategory(m['category'] as String),
+            quantity: Value(m['quantity'] as int? ?? 1),
+            originHouseId: Value(m['origin_house_id'] as String? ?? ''),
+            isChecked: Value(m['is_checked'] as bool? ?? false),
+          ),
+        )
+        .toList();
+    await _tripsDao.replaceTripItems(tripId, companions);
+  }
+
+  /// Inserisce o aggiorna un item proveniente dal remoto, con fallback su
+  /// `spaceId = null` se la FK sullo spazio non è risolvibile localmente.
+  ///
+  /// Contesto: gli spaces non sono ancora sincronizzati. Su un device nuovo
+  /// (o dopo reinstall) può arrivare un item che punta a uno space che
+  /// localmente non esiste → FK violation. In quel caso preferiamo far
+  /// "atterrare" l'item nel pool generale piuttosto che farlo sparire in
+  /// silenzio. L'utente potrà riassegnarlo manualmente. Il primo fallimento
+  /// viene riportato via Sentry per visibilità.
+  Future<void> _persistItemWithFkFallback(
+    Map<String, dynamic> r, {
+    required DateTime syncedAt,
+    required bool isInsert,
+  }) async {
+    Future<void> doOp({bool clearSpaceId = false}) async {
+      final companion = _buildItemCompanion(
+        r,
+        syncedAt: syncedAt,
+        clearSpaceId: clearSpaceId,
+      );
+      if (isInsert) {
+        await _itemsDao.insertItem(companion);
+      } else {
+        await _itemsDao.updateItem(companion);
+      }
+    }
+
+    try {
+      await doOp();
+    } catch (e) {
+      // Non possiamo fallback se l'item non aveva uno spaceId remoto:
+      // il problema è altrove (es. houseId FK) e va rilanciato.
+      if (r['space_id'] == null) rethrow;
+      debugPrint(
+        '[SyncService] item ${r['id']}: FK on spaceId=${r['space_id']}, '
+        'retry with null',
+      );
+      await doOp(clearSpaceId: true);
+      _monitoring.captureException(
+        e,
+        tags: {
+          'reason': 'item_space_fk_fallback',
+          'item_id': r['id'] as String,
+          'remote_space_id': r['space_id'] as String,
+        },
+      );
+    }
   }
 
   // === PARSE HELPERS ===
@@ -612,6 +1075,14 @@ class SyncService {
     return ItemCategory.values.firstWhere(
       (e) => e.name == value,
       orElse: () => ItemCategory.varie,
+    );
+  }
+
+  LuggageSize _parseLuggageSize(dynamic value) {
+    if (value == null) return LuggageSize.cabinBaggage;
+    return LuggageSize.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => LuggageSize.cabinBaggage,
     );
   }
 
