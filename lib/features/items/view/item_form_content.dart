@@ -152,7 +152,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
               },
             ),
           ),
-          const SizedBox(height: 16),
+          AppSpacing.gapMd,
         ],
       ),
     );
@@ -340,7 +340,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
             maxLines: 2,
           ),
           if (widget.showButtons) ...[
-            const SizedBox(height: 32),
+            AppSpacing.gapXl,
             ElevatedButton(
               onPressed: _isLoading ? null : _saveItem,
               style: ElevatedButton.styleFrom(
@@ -484,7 +484,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
   }
 
   Widget _buildSpaceSelector() {
-    final spacesAsync = ref.watch(spacesByHouseProvider(_selectedHouseId!));
+    final spacesAsync = ref.watch(spaceNotifierProvider(_selectedHouseId!));
 
     return spacesAsync.when(
       data: (spaces) {

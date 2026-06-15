@@ -234,7 +234,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                         constraints: const BoxConstraints(),
                         color: colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(width: 8),
+                      AppSpacing.hGapSm,
                     ],
 
                     // TextField espanso al massimo (ora il testo andrà fino in fondo)

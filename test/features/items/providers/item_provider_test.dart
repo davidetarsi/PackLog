@@ -367,13 +367,16 @@ void main() {
         final addException = Exception('Failed to add item: network error');
         when(() => mockRepository.addItem(any())).thenThrow(addException);
 
-        // === ACT ===
+        // === ACT + ASSERT ===
+        // Contract: notifier rethrows so ErrorRetryDialog/forms see the failure;
+        // state still transitions to AsyncError before rethrow so the list UI
+        // can react via state observation.
         final notifier = container.read(provider.notifier);
-        await notifier.addItem(newItem);
+        await expectLater(
+          notifier.addItem(newItem),
+          throwsA(equals(addException)),
+        );
 
-        // === ASSERT ===
-        // CRITICAL: Verify state transitioned to AsyncError
-        // This allows the UI to show a SnackBar or error dialog
         final finalState = container.read(provider);
         expect(finalState, isA<AsyncError<List<ItemModel>>>());
         expect(finalState.error, equals(addException));
@@ -415,11 +418,13 @@ void main() {
         final updateException = Exception('Update failed: database locked');
         when(() => mockRepository.updateItem(any())).thenThrow(updateException);
 
-        // === ACT ===
+        // === ACT + ASSERT ===
         final notifier = container.read(provider.notifier);
-        await notifier.updateItem(updatedItem);
+        await expectLater(
+          notifier.updateItem(updatedItem),
+          throwsA(equals(updateException)),
+        );
 
-        // === ASSERT ===
         final finalState = container.read(provider);
         expect(finalState, isA<AsyncError<List<ItemModel>>>());
         expect(finalState.error, equals(updateException));
@@ -452,11 +457,13 @@ void main() {
         final deleteException = Exception('Delete failed: item is referenced');
         when(() => mockRepository.deleteItem(any())).thenThrow(deleteException);
 
-        // === ACT ===
+        // === ACT + ASSERT ===
         final notifier = container.read(provider.notifier);
-        await notifier.deleteItem(existingItem.id, houseId);
+        await expectLater(
+          notifier.deleteItem(existingItem.id, houseId),
+          throwsA(equals(deleteException)),
+        );
 
-        // === ASSERT ===
         final finalState = container.read(provider);
         expect(finalState, isA<AsyncError<List<ItemModel>>>());
         expect(finalState.error, equals(deleteException));
@@ -890,15 +897,19 @@ void main() {
       when(
         () => mockRepository.getItemsByHouseId(houseId),
       ).thenAnswer((_) async => []);
+      final bulkDeleteException = Exception('DB error');
       when(
         () => mockRepository.deleteItems(['bad']),
-      ).thenThrow(Exception('DB error'));
+      ).thenThrow(bulkDeleteException);
 
       await container.read(itemNotifierProvider(houseId).future);
 
-      await container.read(itemNotifierProvider(houseId).notifier).bulkDelete([
-        'bad',
-      ]);
+      await expectLater(
+        container.read(itemNotifierProvider(houseId).notifier).bulkDelete([
+          'bad',
+        ]),
+        throwsA(equals(bulkDeleteException)),
+      );
 
       final state = container.read(itemNotifierProvider(houseId));
       expect(state, isA<AsyncError<List<ItemModel>>>());
@@ -1000,15 +1011,19 @@ void main() {
       when(
         () => mockRepository.getItemsByHouseId(houseId),
       ).thenAnswer((_) async => []);
+      final bulkMoveException = Exception('move failed');
       when(
         () => mockRepository.moveItemsToHouse(any(), any(), any()),
-      ).thenThrow(Exception('move failed'));
+      ).thenThrow(bulkMoveException);
 
       await container.read(itemNotifierProvider(houseId).future);
 
-      await container.read(itemNotifierProvider(houseId).notifier).bulkMove([
-        'z',
-      ], 'somewhere');
+      await expectLater(
+        container.read(itemNotifierProvider(houseId).notifier).bulkMove([
+          'z',
+        ], 'somewhere'),
+        throwsA(equals(bulkMoveException)),
+      );
 
       final state = container.read(itemNotifierProvider(houseId));
       expect(state, isA<AsyncError<List<ItemModel>>>());

@@ -51,6 +51,7 @@ class ItemNotifier extends _$ItemNotifier {
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -61,9 +62,13 @@ class ItemNotifier extends _$ItemNotifier {
       await repository!.updateItem(model);
       final items = await repository!.getItemsByHouseId(model.houseId);
       state = AsyncData(items);
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackItemUpdated(category: model.category.name);
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -88,6 +93,7 @@ class ItemNotifier extends _$ItemNotifier {
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -98,6 +104,7 @@ class ItemNotifier extends _$ItemNotifier {
       final items = await repository!.getItemsByHouseId(houseId);
       state = AsyncData(items);
     } catch (error, stackTrace) {
+      // No rethrow: refresh() is wired to ErrorState.onRetry (VoidCallback).
       state = AsyncError(error, stackTrace);
     }
   }
@@ -127,6 +134,7 @@ class ItemNotifier extends _$ItemNotifier {
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -169,6 +177,7 @@ class ItemNotifier extends _$ItemNotifier {
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 }

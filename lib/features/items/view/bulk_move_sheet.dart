@@ -58,7 +58,7 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
   String? _selectedSpaceId;
 
   Future<void> _selectHouse(HouseModel house) async {
-    final spaces = await ref.read(spacesByHouseProvider(house.id).future);
+    final spaces = await ref.read(spaceNotifierProvider(house.id).future);
     if (!mounted) return;
     setState(() {
       _selectedHouse = house;
@@ -83,7 +83,7 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
     final cs = Theme.of(context).colorScheme;
     final housesAsync = ref.watch(houseNotifierProvider);
     final spacesAsync = _selectedHouse != null
-        ? ref.watch(spacesByHouseProvider(_selectedHouse!.id))
+        ? ref.watch(spaceNotifierProvider(_selectedHouse!.id))
         : null;
 
     return Container(
@@ -101,7 +101,7 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const BottomSheetHandle(),
+            const DsBottomSheetHandle(),
             Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: context.spacingMd,

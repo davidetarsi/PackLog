@@ -97,7 +97,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         child: SizedBox(
                           height: constraints.maxHeight,
-                          child: EmptyState(
+                          child: DsEmptyState(
                             icon: widget.categoryFilter!.icon,
                             title: 'items.no_items'.tr(),
                             subtitle: widget.selectedSpaceId != null
@@ -157,7 +157,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       child: SizedBox(
                         height: constraints.maxHeight,
-                        child: EmptyState(
+                        child: DsEmptyState(
                           icon: Icons.inventory_2_outlined,
                           title: 'items.no_items'.tr(),
                           subtitle: widget.selectedSpaceId != null
@@ -248,7 +248,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) => ErrorState(
+                error: (error, stack) => DsErrorState(
                   error: error,
                   onRetry: () => ref.invalidate(houseNotifierProvider),
                   message: 'common.error_loading_houses'.tr(
@@ -258,7 +258,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => ErrorState(
+            error: (error, stack) => DsErrorState(
               error: error,
               onRetry: () => ref
                   .read(itemNotifierProvider(widget.houseId).notifier)
