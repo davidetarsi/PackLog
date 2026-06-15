@@ -10,6 +10,7 @@ import '../../../core/analytics/analytics_service.dart';
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../../core/sync/sync_provider.dart';
 import '../../../features/houses/providers/house_provider.dart';
 import '../../../features/tour/providers/post_login_onboarding_provider.dart';
 import '../providers/gpt_usage_provider.dart';
@@ -28,6 +29,7 @@ import '../../../shared/widgets/ds_section_header.dart';
 // import '../providers/last_export_path_provider.dart';
 import '../services/feedback_url_service.dart';
 import '../widgets/language_tile.dart';
+import '../widgets/sync_status_tile.dart';
 import '../widgets/theme_tile.dart';
 
 /// Schermata di profilo: unico punto di accesso a preferenze,
@@ -70,7 +72,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Navigator.of(dialogContext).pop();
               },
             ),
-            const SizedBox(height: 8),
+            AppSpacing.gapSm,
             ThemeTile(
               mode: ThemeMode.dark,
               title: 'settings.theme_dark'.tr(),
@@ -83,7 +85,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Navigator.of(dialogContext).pop();
               },
             ),
-            const SizedBox(height: 8),
+            AppSpacing.gapSm,
             ThemeTile(
               mode: ThemeMode.system,
               title: 'settings.theme_system'.tr(),
@@ -120,7 +122,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 if (dialogContext.mounted) Navigator.of(dialogContext).pop();
               },
             ),
-            const SizedBox(height: 8),
+            AppSpacing.gapSm,
             LanguageTile(
               locale: const Locale('en', 'US'),
               title: 'English',
@@ -154,7 +156,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   //           mainAxisSize: MainAxisSize.min,
   //           children: [
   //             const CircularProgressIndicator(),
-  //             const SizedBox(height: 16),
+  //             AppSpacing.gapMd,
   //             Text('backup.export_database'.tr()),
   //           ],
   //         ),
@@ -234,6 +236,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // -------------------------------------------------------------------------
 
   Future<void> _handleSignOut(BuildContext context) async {
+    // Legge il conteggio pending fresco prima di aprire il dialog: il dialog
+    // deve sempre mostrare dati attuali, non il valore cacheato della tile.
+    final pending = await ref.read(syncServiceProvider).countPendingChanges();
+    if (!context.mounted) return;
+
+    final choice = await _showLogoutDialog(context, pending);
+    if (choice == null || choice == _LogoutChoice.cancel) return;
+
+    if (choice == _LogoutChoice.syncFirst) {
+      // Best-effort flush con timeout, poi logout in ogni caso.
+      try {
+        await ref
+            .read(syncServiceProvider)
+            .processQueue()
+            .timeout(const Duration(seconds: 10));
+      } catch (e) {
+        debugPrint('[ProfileScreen] Pre-logout sync failed: $e');
+      }
+    }
+
     try {
       await ref.read(authRepositoryProvider).signOut();
     } on SignOutFailedException catch (e) {
@@ -242,6 +264,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         AppSnackBar.showError(context, 'login.sign_out_failed'.tr());
       }
     }
+  }
+
+  /// Mostra sempre un dialog di conferma logout.
+  ///
+  /// Se [pending] == 0: dialog semplice (solo conferma / annulla).
+  /// Se [pending] > 0: dialog con avviso modifiche non sincronizzate e
+  /// opzione di flush pre-logout.
+  Future<_LogoutChoice?> _showLogoutDialog(BuildContext context, int pending) {
+    if (pending > 0) {
+      return showDialog<_LogoutChoice>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('profile.logout_warning_title'.tr()),
+          content: Text(
+            'profile.logout_warning_body'.tr(args: [pending.toString()]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, _LogoutChoice.cancel),
+              child: Text('common.cancel'.tr()),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, _LogoutChoice.forceLogout),
+              child: Text('profile.logout_force'.tr()),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, _LogoutChoice.syncFirst),
+              child: Text('profile.logout_sync_first'.tr()),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return showDialog<_LogoutChoice>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('profile.logout_confirm_title'.tr()),
+        content: Text('profile.logout_confirm_body'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, _LogoutChoice.cancel),
+            child: Text('common.cancel'.tr()),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, _LogoutChoice.forceLogout),
+            child: Text('profile.logout_force'.tr()),
+          ),
+        ],
+      ),
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -382,6 +455,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const Divider(),
 
+            // ── Sync status ───────────────────────────────────────────────────
+            const SyncStatusTile(),
+            const Divider(),
+
             // ── Backup & Ripristino [COMMENTATO: non usato con Supabase cloud] ──
             // DsSectionHeader(label: 'backup.title'.tr(), ...),
             // Consumer(builder: (context, ref, _) { ... }),  // export tile
@@ -453,7 +530,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const Divider(),
 
             // ── Account ─────────────────────────────────────────────────
-            const SizedBox(height: 8),
+            AppSpacing.gapSm,
 
             Padding(
               padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
@@ -467,10 +544,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            AppSpacing.gapLg,
           ],
         ),
       ),
     );
   }
 }
+
+enum _LogoutChoice { cancel, syncFirst, forceLogout }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../features/onboarding/providers/onboarding_status_provider.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
@@ -30,7 +31,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        ref.read(analyticsServiceProvider).logEvent('onboarding_started');
+        ref.read(coreAnalyticsServiceProvider).trackOnboardingStarted();
       }
     });
   }
@@ -56,7 +57,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (_isCompleting) return;
     setState(() => _isCompleting = true);
     try {
-      ref.read(analyticsServiceProvider).logEvent('onboarding_completed');
+      ref.read(coreAnalyticsServiceProvider).trackOnboardingCompleted();
       await ref.read(onboardingStatusProvider.notifier).markCompleted();
       if (mounted && ref.read(onboardingStatusProvider) is AsyncError) {
         AppSnackBar.showError(context, 'Errore. Riprova.');
