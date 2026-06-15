@@ -35,6 +35,8 @@ class CoreAnalyticsService {
     );
   }
 
+  void trackHouseUpdated() => _safeLogEvent('house_updated');
+
   void trackHouseDeleted() => _safeLogEvent('house_deleted');
 
   void trackHouseDuplicated() => _safeLogEvent('house_duplicated');
@@ -54,6 +56,10 @@ class CoreAnalyticsService {
         'is_first_item': totalItems == 1,
       },
     );
+  }
+
+  void trackItemUpdated({required String category}) {
+    _safeLogEvent('item_updated', properties: {'item_category': category});
   }
 
   void trackItemDeleted({required String category}) {
@@ -86,6 +92,8 @@ class CoreAnalyticsService {
       properties: {'trip_id': tripId, 'is_first_trip': totalTrips == 1},
     );
   }
+
+  void trackTripUpdated() => _safeLogEvent('trip_updated');
 
   void trackTripDeleted() => _safeLogEvent('trip_deleted');
 
@@ -141,6 +149,37 @@ class CoreAnalyticsService {
 
   void trackAiInputFailed({required String errorType}) {
     _safeLogEvent('ai_input_failed', properties: {'error_type': errorType});
+  }
+
+  void trackAiItemsSaved({
+    required int count,
+    required bool isOnboarding,
+  }) {
+    _safeLogEvent(
+      'ai_items_saved',
+      properties: {'count': count, 'is_onboarding': isOnboarding},
+    );
+  }
+
+  // ── onboarding_ ───────────────────────────────────────────────────────────
+
+  void trackOnboardingStarted() => _safeLogEvent('onboarding_started');
+
+  void trackOnboardingCompleted() => _safeLogEvent('onboarding_completed');
+
+  // ── auth_ ─────────────────────────────────────────────────────────────────
+
+  void trackLoginCompleted() => _safeLogEvent('login_completed');
+
+  void trackLogout() => _safeLogEvent('logout');
+
+  // ── sync_ ─────────────────────────────────────────────────────────────────
+
+  void trackSyncFailed({required String entity, required String errorType}) {
+    _safeLogEvent(
+      'sync_failed',
+      properties: {'entity': entity, 'error_type': errorType},
+    );
   }
 }
 

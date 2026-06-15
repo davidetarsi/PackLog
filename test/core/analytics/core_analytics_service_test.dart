@@ -249,6 +249,95 @@ void main() {
     });
   });
 
+  group('update events (P2 #14)', () {
+    test('trackHouseUpdated emits house_updated with no properties', () async {
+      service.trackHouseUpdated();
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent('house_updated', properties: null),
+      ).called(1);
+    });
+
+    test('trackItemUpdated emits item_updated with category', () async {
+      service.trackItemUpdated(category: 'vestiti');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'item_updated',
+          properties: {'item_category': 'vestiti'},
+        ),
+      ).called(1);
+    });
+
+    test('trackTripUpdated emits trip_updated with no properties', () async {
+      service.trackTripUpdated();
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent('trip_updated', properties: null),
+      ).called(1);
+    });
+  });
+
+  group('auth funnel (P2 #14)', () {
+    test('trackLoginCompleted emits login_completed', () async {
+      service.trackLoginCompleted();
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent('login_completed', properties: null),
+      ).called(1);
+    });
+
+    test('trackLogout emits logout', () async {
+      service.trackLogout();
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent('logout', properties: null),
+      ).called(1);
+    });
+  });
+
+  group('AI & onboarding funnel (P2 #14)', () {
+    test('trackAiItemsSaved logs ai_items_saved with count + is_onboarding', () async {
+      service.trackAiItemsSaved(count: 4, isOnboarding: true);
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_items_saved',
+          properties: {'count': 4, 'is_onboarding': true},
+        ),
+      ).called(1);
+    });
+
+    test('trackOnboardingStarted logs onboarding_started', () async {
+      service.trackOnboardingStarted();
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent('onboarding_started', properties: null),
+      ).called(1);
+    });
+
+    test('trackOnboardingCompleted logs onboarding_completed', () async {
+      service.trackOnboardingCompleted();
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent('onboarding_completed', properties: null),
+      ).called(1);
+    });
+  });
+
+  group('sync observability (P2 #14)', () {
+    test('trackSyncFailed emits sync_failed with entity and error_type', () async {
+      service.trackSyncFailed(entity: 'item', errorType: 'TimeoutException');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'sync_failed',
+          properties: {'entity': 'item', 'error_type': 'TimeoutException'},
+        ),
+      ).called(1);
+    });
+  });
+
   group('resilienza', () {
     test('analytics failure non propaga eccezione al chiamante', () async {
       when(
