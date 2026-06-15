@@ -9,6 +9,7 @@ import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_icon_picker.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
 
 /// Form Content riutilizzabile per space (condiviso tra bottom sheet e full screen)
 class SpaceFormContent extends ConsumerStatefulWidget {
@@ -59,7 +60,7 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
   }
 
   Future<void> _loadSpace() async {
-    final spacesAsync = ref.read(spaceNotifierProvider);
+    final spacesAsync = ref.read(spaceNotifierProvider(widget.houseId));
     spacesAsync.whenData((spaces) {
       final matchingSpaces = spaces.where((s) => s.id == widget.spaceId);
       if (matchingSpaces.isEmpty) return;
@@ -88,7 +89,7 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
 
     final space = widget.spaceId != null
         ? (() {
-            final spacesAsync = ref.read(spaceNotifierProvider);
+            final spacesAsync = ref.read(spaceNotifierProvider(widget.houseId));
             final spaces = spacesAsync.value;
             if (spaces == null) throw StateError('Spazio non trovato');
             return spaces
@@ -113,9 +114,13 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
       context: context,
       operation: () async {
         if (isEditing) {
-          await ref.read(spaceNotifierProvider.notifier).updateSpace(space);
+          await ref
+              .read(spaceNotifierProvider(widget.houseId).notifier)
+              .updateSpace(space);
         } else {
-          await ref.read(spaceNotifierProvider.notifier).addSpace(space);
+          await ref
+              .read(spaceNotifierProvider(widget.houseId).notifier)
+              .addSpace(space);
         }
       },
       errorTitle: 'errors.save_error'.tr(),
@@ -127,7 +132,8 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
     if (mounted) {
       _setLoading(false);
       if (success) {
-        ref.invalidate(spacesByHouseProvider(widget.houseId));
+        // No invalidate: SpaceNotifier(houseId) si è già aggiornato da solo
+        // dopo addSpace/updateSpace.
         widget.onSaved();
       }
     }
@@ -172,7 +178,7 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
           SizedBox(height: context.spacingSm),
           _buildIconSelector(),
           if (widget.showButtons) ...[
-            const SizedBox(height: 32),
+            AppSpacing.gapXl,
             ElevatedButton(
               onPressed: _isLoading ? null : _saveSpace,
               style: ElevatedButton.styleFrom(

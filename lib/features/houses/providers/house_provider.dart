@@ -32,6 +32,7 @@ class HouseNotifier extends _$HouseNotifier {
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -42,9 +43,11 @@ class HouseNotifier extends _$HouseNotifier {
       await repository!.updateHouse(model);
       final houses = await repository!.getAllHouses();
       state = AsyncData(houses);
+      ref.read(coreAnalyticsServiceProvider).trackHouseUpdated();
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -59,6 +62,7 @@ class HouseNotifier extends _$HouseNotifier {
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -69,6 +73,8 @@ class HouseNotifier extends _$HouseNotifier {
       final houses = await repository!.getAllHouses();
       state = AsyncData(houses);
     } catch (error, stackTrace) {
+      // No rethrow: refresh() is wired to ErrorState.onRetry (VoidCallback)
+      // and the UI reacts via state observation.
       state = AsyncError(error, stackTrace);
     }
   }
@@ -123,6 +129,7 @@ class HouseNotifier extends _$HouseNotifier {
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 }

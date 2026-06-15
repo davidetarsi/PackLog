@@ -7,18 +7,19 @@ import '../repositories/luggage_repository.dart';
 
 part 'luggage_provider.g.dart';
 
-/// Notifier globale per tutti i bagagli dell'app.
+/// Notifier family per i bagagli di una specifica casa.
 ///
-/// Gestisce CRUD operations con state caching e invalidation automatica.
+/// Pattern allineato a [ItemNotifier]: una sola sorgente di verità per
+/// casa, le mutazioni ricaricano la lista filtrata e si propagano
+/// automaticamente ai consumer senza bisogno di `ref.invalidate` manuali.
 @Riverpod(keepAlive: true)
 class LuggageNotifier extends _$LuggageNotifier {
   LuggageRepository? repository;
 
   @override
-  Future<List<LuggageModel>> build() async {
+  Future<List<LuggageModel>> build(String houseId) async {
     repository = ref.watch(luggageRepositoryProvider);
-    final luggages = await repository!.getAllLuggages();
-    return luggages;
+    return repository!.getLuggagesByHouseId(houseId);
   }
 
   Future<void> addLuggage(LuggageModel model) async {
@@ -26,7 +27,7 @@ class LuggageNotifier extends _$LuggageNotifier {
     state = const AsyncLoading();
     try {
       await repository!.addLuggage(model);
-      final luggages = await repository!.getAllLuggages();
+      final luggages = await repository!.getLuggagesByHouseId(houseId);
       state = AsyncData(luggages);
       ref
           .read(coreAnalyticsServiceProvider)
@@ -34,6 +35,7 @@ class LuggageNotifier extends _$LuggageNotifier {
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -42,11 +44,12 @@ class LuggageNotifier extends _$LuggageNotifier {
     state = const AsyncLoading();
     try {
       await repository!.updateLuggage(model);
-      final luggages = await repository!.getAllLuggages();
+      final luggages = await repository!.getLuggagesByHouseId(houseId);
       state = AsyncData(luggages);
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -55,11 +58,12 @@ class LuggageNotifier extends _$LuggageNotifier {
     state = const AsyncLoading();
     try {
       await repository!.deleteLuggage(id);
-      final luggages = await repository!.getAllLuggages();
+      final luggages = await repository!.getLuggagesByHouseId(houseId);
       state = AsyncData(luggages);
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -67,21 +71,27 @@ class LuggageNotifier extends _$LuggageNotifier {
     repository ??= ref.read(luggageRepositoryProvider);
     state = const AsyncLoading();
     try {
-      final luggages = await repository!.getAllLuggages();
+      final luggages = await repository!.getLuggagesByHouseId(houseId);
       state = AsyncData(luggages);
     } catch (error, stackTrace) {
+      // No rethrow: refresh() is wired to ErrorState.onRetry (VoidCallback).
       state = AsyncError(error, stackTrace);
     }
   }
 }
 
-/// Family provider per ottenere i bagagli di una casa specifica.
-///
-/// Filtra i bagagli in base all'houseId e li mantiene in cache.
-@riverpod
-Future<List<LuggageModel>> luggagesByHouse(Ref ref, String houseId) async {
+// Nota: l'ex [luggagesByHouseProvider] è stato eliminato — la stessa funzione
+// è ora servita da [luggageNotifierProvider] con la signature family
+// `(String houseId)`. Eliminato anche il bisogno di
+// `ref.invalidate(luggageNotifierProvider(...))` dopo le mutazioni.
+
+/// Lista globale di tutti i bagagli (cross-casa). Usata dal selector
+/// nel form di creazione viaggio, dove l'utente può scegliere bagagli
+/// da qualunque casa.
+@Riverpod(keepAlive: true)
+Future<List<LuggageModel>> allLuggages(Ref ref) async {
   final repository = ref.watch(luggageRepositoryProvider);
-  return repository.getLuggagesByHouseId(houseId);
+  return repository.getAllLuggages();
 }
 
 /// Family provider per ottenere i bagagli di un viaggio.

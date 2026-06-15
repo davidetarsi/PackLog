@@ -55,7 +55,7 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: SizedBox(
                       height: constraints.maxHeight,
-                      child: EmptyState(
+                      child: DsEmptyState(
                         icon: Icons.home_outlined,
                         iconColor: colorScheme.primary,
                         title: 'houses.no_houses_title'.tr(),
@@ -97,7 +97,7 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => ErrorState(
+          error: (error, stack) => DsErrorState(
             error: error,
             onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
           ),
@@ -312,7 +312,7 @@ class _HouseCard extends ConsumerWidget {
                             label: 'houses.badge_in_trip'.tr(),
                           ),
                         if (stats.hasItemsInTrip && stats.hasTemporaryItems)
-                          const SizedBox(width: 8),
+                          AppSpacing.hGapSm,
                         if (stats.hasTemporaryItems)
                           DsStatusBadge(
                             type: DsStatusBadgeType.temporary,

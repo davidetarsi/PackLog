@@ -7,18 +7,19 @@ import '../repositories/space_repository.dart';
 
 part 'space_provider.g.dart';
 
-/// Notifier globale per tutti gli spazi dell'app.
+/// Notifier family per gli spazi di una specifica casa.
 ///
-/// Gestisce CRUD operations con state caching e invalidation automatica.
+/// Pattern allineato a [ItemNotifier]: una sola sorgente di verità per
+/// casa, le mutazioni ricaricano la lista filtrata e si propagano
+/// automaticamente ai consumer senza bisogno di `ref.invalidate` manuali.
 @Riverpod(keepAlive: true)
 class SpaceNotifier extends _$SpaceNotifier {
   SpaceRepository? repository;
 
   @override
-  Future<List<SpaceModel>> build() async {
+  Future<List<SpaceModel>> build(String houseId) async {
     repository = ref.watch(spaceRepositoryProvider);
-    final spaces = await repository!.getAllSpaces();
-    return spaces;
+    return repository!.getSpacesByHouseId(houseId);
   }
 
   Future<void> addSpace(SpaceModel model) async {
@@ -26,12 +27,13 @@ class SpaceNotifier extends _$SpaceNotifier {
     state = const AsyncLoading();
     try {
       await repository!.addSpace(model);
-      final spaces = await repository!.getAllSpaces();
+      final spaces = await repository!.getSpacesByHouseId(houseId);
       state = AsyncData(spaces);
       ref.read(coreAnalyticsServiceProvider).trackSpaceCreated();
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -40,11 +42,12 @@ class SpaceNotifier extends _$SpaceNotifier {
     state = const AsyncLoading();
     try {
       await repository!.updateSpace(model);
-      final spaces = await repository!.getAllSpaces();
+      final spaces = await repository!.getSpacesByHouseId(houseId);
       state = AsyncData(spaces);
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -53,11 +56,12 @@ class SpaceNotifier extends _$SpaceNotifier {
     state = const AsyncLoading();
     try {
       await repository!.deleteSpace(id);
-      final spaces = await repository!.getAllSpaces();
+      final spaces = await repository!.getSpacesByHouseId(houseId);
       state = AsyncData(spaces);
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -65,22 +69,20 @@ class SpaceNotifier extends _$SpaceNotifier {
     repository ??= ref.read(spaceRepositoryProvider);
     state = const AsyncLoading();
     try {
-      final spaces = await repository!.getAllSpaces();
+      final spaces = await repository!.getSpacesByHouseId(houseId);
       state = AsyncData(spaces);
     } catch (error, stackTrace) {
+      // No rethrow: refresh() is wired to ErrorState.onRetry (VoidCallback).
       state = AsyncError(error, stackTrace);
     }
   }
 }
 
-/// Family provider per ottenere gli spazi di una casa specifica.
-///
-/// Filtra gli spazi in base all'houseId e li mantiene in cache.
-@riverpod
-Future<List<SpaceModel>> spacesByHouse(Ref ref, String houseId) async {
-  final repository = ref.watch(spaceRepositoryProvider);
-  return repository.getSpacesByHouseId(houseId);
-}
+// Nota: l'ex [spacesByHouseProvider] (FutureProvider derivato) è stato
+// eliminato — la stessa funzione è ora servita da [spaceNotifierProvider]
+// con la signature family `(String houseId)`. Eliminato anche il bisogno
+// di `ref.invalidate(spaceNotifierProvider(...))` dopo le mutazioni: il
+// notifier family aggiorna il suo state direttamente.
 
 /// Provider per contare gli spazi di una casa.
 @riverpod

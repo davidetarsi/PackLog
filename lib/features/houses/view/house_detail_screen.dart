@@ -192,7 +192,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('houses.cannot_delete_has_items'.tr()),
-                const SizedBox(height: 16),
+                AppSpacing.gapMd,
                 if (permanentItemsCount > 0)
                   Text(
                     '• ${'houses.permanent_items_count'.tr(args: [permanentItemsCount.toString()])}',
@@ -369,7 +369,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(houseIcon, color: colorScheme.primary),
-          const SizedBox(width: 8),
+          AppSpacing.hGapSm,
           Text(houseName),
         ],
       ),
@@ -568,7 +568,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final housesAsync = ref.watch(houseNotifierProvider);
-    final spacesAsync = ref.watch(spacesByHouseProvider(widget.houseId));
+    final spacesAsync = ref.watch(spaceNotifierProvider(widget.houseId));
     final allItems =
         ref.watch(itemNotifierProvider(widget.houseId)).value ?? const [];
 
@@ -595,7 +595,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         if (matchingHouses.isEmpty) {
           return Scaffold(
             appBar: AppBar(title: Text('houses.house_not_found'.tr())),
-            body: EmptyState(
+            body: DsEmptyState(
               icon: Icons.home_outlined,
               title: 'houses.house_not_found_message'.tr(),
               action: ElevatedButton.icon(
@@ -718,7 +718,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, stack) => Scaffold(
         appBar: AppBar(title: Text('common.error'.tr())),
-        body: ErrorState(
+        body: DsErrorState(
           error: error,
           onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
         ),

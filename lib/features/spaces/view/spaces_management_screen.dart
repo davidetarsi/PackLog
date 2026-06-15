@@ -84,15 +84,18 @@ class SpacesManagementSheet extends ConsumerWidget {
       final success = await ErrorRetryDialog.executeWithRetry(
         context: context,
         operation: () async {
-          await ref.read(spaceNotifierProvider.notifier).deleteSpace(space.id);
+          await ref
+              .read(spaceNotifierProvider(houseId).notifier)
+              .deleteSpace(space.id);
         },
         errorTitle: 'common.error'.tr(),
         errorMessage: 'errors.delete_space_failed'.tr(args: [space.name]),
       );
 
       if (success && context.mounted) {
-        // Invalida i provider per aggiornare immediatamente la UI
-        ref.invalidate(spacesByHouseProvider(houseId));
+        // SpaceNotifier(houseId) si auto-aggiorna dopo deleteSpace; serve
+        // invalidare solo gli items, dato che potrebbero referenziare lo
+        // space appena cancellato (FK SET NULL).
         ref.invalidate(itemNotifierProvider(houseId));
 
         AppSnackBar.showSuccess(
@@ -106,7 +109,7 @@ class SpacesManagementSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    final spacesAsync = ref.watch(spacesByHouseProvider(houseId));
+    final spacesAsync = ref.watch(spaceNotifierProvider(houseId));
 
     return Container(
       decoration: BoxDecoration(
@@ -118,7 +121,7 @@ class SpacesManagementSheet extends ConsumerWidget {
       height: MediaQuery.of(context).size.height * 0.7,
       child: Column(
         children: [
-          const BottomSheetHandle(),
+          const DsBottomSheetHandle(),
           Padding(
             padding: context.responsiveScreenPadding,
             child: Row(
@@ -139,7 +142,7 @@ class SpacesManagementSheet extends ConsumerWidget {
             child: spacesAsync.when(
               data: (spaces) {
                 if (spaces.isEmpty) {
-                  return EmptyState(
+                  return DsEmptyState(
                     icon: Icons.meeting_room_outlined,
                     title: 'spaces.no_spaces'.tr(),
                     subtitle: 'spaces.no_spaces_subtitle'.tr(),
@@ -180,7 +183,7 @@ class SpacesManagementSheet extends ConsumerWidget {
                                 );
                                 if (context.mounted) {
                                   ref.invalidate(
-                                    spacesByHouseProvider(houseId),
+                                    spaceNotifierProvider(houseId),
                                   );
                                   ref.invalidate(itemNotifierProvider(houseId));
                                 }
@@ -219,9 +222,10 @@ class SpacesManagementSheet extends ConsumerWidget {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => ErrorState(
+              error: (error, stack) => DsErrorState(
                 error: error,
-                onRetry: () => ref.invalidate(spaceNotifierProvider),
+                onRetry: () =>
+                    ref.invalidate(spaceNotifierProvider(houseId)),
               ),
             ),
           ),
@@ -240,8 +244,9 @@ class SpacesManagementSheet extends ConsumerWidget {
                 primaryIcon: Icons.add,
                 onPrimaryPressed: () async {
                   await showAddEditSpaceSheet(context, houseId: houseId);
+                  // SpaceNotifier(houseId) si auto-aggiorna dopo
+                  // add/updateSpace; invalida solo gli items.
                   if (context.mounted) {
-                    ref.invalidate(spacesByHouseProvider(houseId));
                     ref.invalidate(itemNotifierProvider(houseId));
                   }
                 },

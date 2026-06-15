@@ -74,7 +74,7 @@ class LuggagesManagementSheet extends ConsumerWidget {
         context: context,
         operation: () async {
           await ref
-              .read(luggageNotifierProvider.notifier)
+              .read(luggageNotifierProvider(houseId).notifier)
               .deleteLuggage(luggage.id);
         },
         errorTitle: 'common.error'.tr(),
@@ -93,7 +93,7 @@ class LuggagesManagementSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    final luggagesAsync = ref.watch(luggagesByHouseProvider(houseId));
+    final luggagesAsync = ref.watch(luggageNotifierProvider(houseId));
 
     return Container(
       decoration: BoxDecoration(
@@ -105,7 +105,7 @@ class LuggagesManagementSheet extends ConsumerWidget {
       height: MediaQuery.of(context).size.height * 0.7,
       child: Column(
         children: [
-          const BottomSheetHandle(),
+          const DsBottomSheetHandle(),
           Padding(
             padding: context.responsiveScreenPadding,
             child: Row(
@@ -126,7 +126,7 @@ class LuggagesManagementSheet extends ConsumerWidget {
             child: luggagesAsync.when(
               data: (luggages) {
                 if (luggages.isEmpty) {
-                  return EmptyState(
+                  return DsEmptyState(
                     icon: Icons.luggage_outlined,
                     title: 'luggages.no_luggages'.tr(),
                     subtitle: 'luggages.no_luggages_subtitle'.tr(),
@@ -166,7 +166,7 @@ class LuggagesManagementSheet extends ConsumerWidget {
                                 );
                                 if (context.mounted) {
                                   ref.invalidate(
-                                    luggagesByHouseProvider(houseId),
+                                    luggageNotifierProvider(houseId),
                                   );
                                 }
                                 break;
@@ -204,9 +204,10 @@ class LuggagesManagementSheet extends ConsumerWidget {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => ErrorState(
+              error: (error, stack) => DsErrorState(
                 error: error,
-                onRetry: () => ref.invalidate(luggageNotifierProvider),
+                onRetry: () =>
+                    ref.invalidate(luggageNotifierProvider(houseId)),
               ),
             ),
           ),
@@ -225,9 +226,8 @@ class LuggagesManagementSheet extends ConsumerWidget {
                 primaryIcon: Icons.add,
                 onPrimaryPressed: () async {
                   await showAddEditLuggageSheet(context, houseId: houseId);
-                  if (context.mounted) {
-                    ref.invalidate(luggagesByHouseProvider(houseId));
-                  }
+                  // LuggageNotifier(houseId) si auto-aggiorna dopo
+                  // add/updateLuggage; no invalidate manuale.
                 },
               ),
             ),

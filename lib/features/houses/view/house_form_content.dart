@@ -166,7 +166,7 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
               });
             },
           ),
-          const SizedBox(height: 24),
+          AppSpacing.gapLg,
           TextFormField(
             controller: _nameController,
             decoration: InputDecoration(
@@ -179,7 +179,7 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          AppSpacing.gapLg,
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
@@ -198,7 +198,7 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
             onSelected: (name) => setState(() => _selectedIconName = name),
           ),
           if (widget.showButtons) ...[
-            const SizedBox(height: 32),
+            AppSpacing.gapXl,
             ElevatedButton(
               onPressed: _isLoading ? null : _saveHouse,
               style: ElevatedButton.styleFrom(

@@ -7,6 +7,7 @@ import '../providers/luggage_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
 
 /// Form Content riutilizzabile per luggage (condiviso tra bottom sheet e full screen)
 class LuggageFormContent extends ConsumerStatefulWidget {
@@ -58,7 +59,7 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
   }
 
   Future<void> _loadLuggage() async {
-    final luggagesAsync = ref.read(luggageNotifierProvider);
+    final luggagesAsync = ref.read(luggageNotifierProvider(widget.houseId));
     luggagesAsync.whenData((luggages) {
       final matchingLuggages = luggages.where((l) => l.id == widget.luggageId);
       if (matchingLuggages.isEmpty) return;
@@ -94,7 +95,9 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
 
     final luggage = widget.luggageId != null
         ? (() {
-            final luggagesAsync = ref.read(luggageNotifierProvider);
+            final luggagesAsync = ref.read(
+              luggageNotifierProvider(widget.houseId),
+            );
             final luggages = luggagesAsync.value;
             if (luggages == null) throw StateError('Bagaglio non trovato');
             return luggages
@@ -122,10 +125,12 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
       operation: () async {
         if (isEditing) {
           await ref
-              .read(luggageNotifierProvider.notifier)
+              .read(luggageNotifierProvider(widget.houseId).notifier)
               .updateLuggage(luggage);
         } else {
-          await ref.read(luggageNotifierProvider.notifier).addLuggage(luggage);
+          await ref
+              .read(luggageNotifierProvider(widget.houseId).notifier)
+              .addLuggage(luggage);
         }
       },
       errorTitle: 'errors.save_error'.tr(),
@@ -258,7 +263,7 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
             SizedBox(height: context.spacingMd),
           ],
           if (widget.showButtons) ...[
-            const SizedBox(height: 16),
+            AppSpacing.gapMd,
             ElevatedButton(
               onPressed: _isLoading ? null : _saveLuggage,
               style: ElevatedButton.styleFrom(
