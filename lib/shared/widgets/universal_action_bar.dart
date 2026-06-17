@@ -46,6 +46,10 @@ class UniversalActionBar extends StatelessWidget {
   /// Padding orizzontale esterno (default: spacingMd)
   final double? horizontalPadding;
 
+  /// Usa bordo outline (grigio) invece di primary. Per azioni secondarie/distruttive
+  /// che non devono richiamare l'attenzione come un'azione primaria.
+  final bool isSecondary;
+
   const UniversalActionBar({
     super.key,
     required this.primaryLabel,
@@ -55,6 +59,7 @@ class UniversalActionBar extends StatelessWidget {
     this.rightAction,
     this.isLoading = false,
     this.horizontalPadding,
+    this.isSecondary = false,
   });
 
   @override
@@ -69,6 +74,7 @@ class UniversalActionBar extends StatelessWidget {
       isLoading: isLoading,
       colorScheme: colorScheme,
       isFullWidth: isSingleAction,
+      isSecondary: isSecondary,
     );
 
     return TriSlotBar(
@@ -88,6 +94,7 @@ class _PrimaryPillButton extends StatelessWidget {
   final bool isLoading;
   final ColorScheme colorScheme;
   final bool isFullWidth;
+  final bool isSecondary;
 
   const _PrimaryPillButton({
     required this.label,
@@ -96,6 +103,7 @@ class _PrimaryPillButton extends StatelessWidget {
     required this.isLoading,
     required this.colorScheme,
     this.isFullWidth = false,
+    this.isSecondary = false,
   });
 
   @override
@@ -122,7 +130,9 @@ class _PrimaryPillButton extends StatelessWidget {
             // aggiuntivo sovrapposto a quello di Material.
             borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
             border: Border.all(
-              color: isEnabled ? colorScheme.primary : colorScheme.outline,
+              color: isSecondary || !isEnabled
+                  ? colorScheme.outline
+                  : colorScheme.primary,
               width: 2,
             ),
           ),

@@ -537,6 +537,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               primaryLabel: 'login.sign_out'.tr(),
               primaryIcon: Icons.logout,
               onPrimaryPressed: () => _handleSignOut(context),
+              isSecondary: true,
             ),
 
             AppSpacing.gapLg,
