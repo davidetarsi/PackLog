@@ -80,7 +80,9 @@ class _PostLoginOnboardingListenerState
           keyTarget: cfg.key,
           shape: cfg.isSpotlight ? ShapeLightFocus.RRect : ShapeLightFocus.Circle,
           radius: cfg.isSpotlight ? 8.0 : 1.0,
-          enableTargetTab: false,
+          // Spotlight steps: tapping the highlighted element advances the tour.
+          // Info steps: the tiny dot must not accidentally close the coach mark.
+          enableTargetTab: cfg.isSpotlight,
           contents: [
             TargetContent(
               align: cfg.align ?? (cfg.isSpotlight ? ContentAlign.top : ContentAlign.bottom),
@@ -98,10 +100,14 @@ class _PostLoginOnboardingListenerState
                     );
                     notifier.markDone();
                   },
-                  onNext: () {
-                    controller.next();
-                    notifier.advance();
-                  },
+                  // Spotlight steps have no Avanti button: the tour advances
+                  // by tapping the highlighted element via clickTarget below.
+                  onNext: cfg.isSpotlight
+                      ? null
+                      : () {
+                          controller.next();
+                          notifier.advance();
+                        },
                   isLastStep: true,
                 );
               },
@@ -113,6 +119,8 @@ class _PostLoginOnboardingListenerState
       opacityShadow: 0.8,
       hideSkip: true,
       pulseEnable: cfg.isSpotlight,
+      // Spotlight steps: advance the tour when the element is tapped.
+      onClickTarget: cfg.isSpotlight ? (_) => notifier.advance() : null,
     ).show(context: context);
   }
 
