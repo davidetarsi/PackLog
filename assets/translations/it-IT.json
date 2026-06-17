@@ -581,7 +581,8 @@
     "choose_house": "Scegli una casa",
     "choose_house_title": "In quale casa salvare?",
     "no_house_selected": "Nessuna casa selezionata",
-    "retry_photo": "Scegli un'altra foto"
+    "retry_photo": "Scegli un'altra foto",
+    "item_name_hint": "Nome del capo..."
   },
   "onboarding": {
     "next": "Avanti",

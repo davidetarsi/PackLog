@@ -581,7 +581,8 @@
     "choose_house": "Choose a house",
     "choose_house_title": "Where to save?",
     "no_house_selected": "No house selected",
-    "retry_photo": "Pick another photo"
+    "retry_photo": "Pick another photo",
+    "item_name_hint": "Item name..."
   },
   "onboarding": {
     "next": "Next",
