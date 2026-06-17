@@ -548,7 +548,7 @@
     }
   },
   "ai_import": {
-    "title": "AI Bulk Import",
+    "title": "AI Scan",
     "pick_images": "Scegli immagini",
     "source_gallery": "Galleria",
     "gallery_subtitle": "Max {} foto selezionabili",
