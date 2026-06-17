@@ -580,7 +580,8 @@
     "save_in_house": "Save to {} ({})",
     "choose_house": "Choose a house",
     "choose_house_title": "Where to save?",
-    "no_house_selected": "No house selected"
+    "no_house_selected": "No house selected",
+    "retry_photo": "Pick another photo"
   },
   "onboarding": {
     "next": "Next",

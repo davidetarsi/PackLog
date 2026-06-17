@@ -291,8 +291,16 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     AiImportState state,
     AiImportNotifier notifier,
   ) {
-    final canAddMore = !state.isLoading && notifier.remainingSlots > 0;
     final totalItems = state.photoGroups.expand((g) => g.results).length;
+
+    // AI found nothing: offer to pick another photo instead of a useless save.
+    if (totalItems == 0) {
+      return UniversalActionBar(
+        primaryLabel: 'ai_import.retry_photo'.tr(),
+        primaryIcon: Icons.add_photo_alternate_outlined,
+        onPrimaryPressed: _showPickerSheet,
+      );
+    }
 
     final String primaryLabel;
     final VoidCallback? onPrimaryPressed;
@@ -317,6 +325,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       }
     }
 
+    // rightAction removed: one photo per session.
     return UniversalActionBar(
       primaryLabel: primaryLabel,
       isLoading: state.isLoading,
@@ -328,12 +337,6 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                   state.isLoading
                       ? null
                       : () => _showHousePicker(state, notifier),
-            )
-          : null,
-      rightAction: canAddMore
-          ? CircularActionButton(
-              icon: Icons.add_photo_alternate_outlined,
-              onPressed: _showPickerSheet,
             )
           : null,
     );

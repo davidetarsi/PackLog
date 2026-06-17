@@ -325,8 +325,11 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Text('${'common.error'.tr()}: $e'),
           ),
-          if (_selectedHouseId != null) _buildSpaceSelector(),
-          if (_selectedHouseId != null) SizedBox(height: context.spacingMd),
+          SizedBox(height: context.spacingMd),
+          if (_selectedHouseId != null) ...[
+            _buildSpaceSelector(),
+            SizedBox(height: context.spacingMd),
+          ],
           TextFormField(
             controller: _descriptionController,
             decoration: InputDecoration(
