@@ -80,6 +80,7 @@ class _PostLoginOnboardingListenerState
           keyTarget: cfg.key,
           shape: cfg.isSpotlight ? ShapeLightFocus.RRect : ShapeLightFocus.Circle,
           radius: cfg.isSpotlight ? 8.0 : 1.0,
+          enableTargetTab: false,
           contents: [
             TargetContent(
               align: cfg.align ?? (cfg.isSpotlight ? ContentAlign.top : ContentAlign.bottom),

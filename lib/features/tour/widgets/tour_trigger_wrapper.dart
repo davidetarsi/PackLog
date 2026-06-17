@@ -80,6 +80,7 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
               ? ShapeLightFocus.RRect
               : ShapeLightFocus.Circle,
           radius: widget.isSpotlight ? 8.0 : 1.0,
+          enableTargetTab: false,
           contents: [
             TargetContent(
               align: widget.isSpotlight
@@ -118,5 +119,17 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) {
+    ref.listen<AsyncValue<OnboardingState>>(
+      postLoginOnboardingProvider,
+      (_, next) {
+        if (!_shown) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _maybeShow();
+          });
+        }
+      },
+    );
+    return widget.child;
+  }
 }
