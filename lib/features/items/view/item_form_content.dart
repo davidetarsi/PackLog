@@ -241,6 +241,14 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
   @override
   Widget build(BuildContext context) {
     final housesAsync = ref.watch(houseNotifierProvider);
+    // Only show the space selector when the selected house has user-created
+    // spaces. Houses with only the implicit default space get no selector.
+    final hasSpaces = _selectedHouseId != null &&
+        (ref
+                .watch(spaceNotifierProvider(_selectedHouseId!))
+                .valueOrNull
+                ?.isNotEmpty ??
+            false);
 
     return Form(
       key: _formKey,
@@ -326,7 +334,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
             error: (e, _) => Text('${'common.error'.tr()}: $e'),
           ),
           SizedBox(height: context.spacingMd),
-          if (_selectedHouseId != null) ...[
+          if (hasSpaces) ...[
             _buildSpaceSelector(),
             SizedBox(height: context.spacingMd),
           ],
