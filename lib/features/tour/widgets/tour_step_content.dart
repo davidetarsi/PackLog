@@ -1,7 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/circular_action_button.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 
 class TourStepContent extends StatelessWidget {
   final String title;
@@ -29,10 +32,15 @@ class TourStepContent extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
-      padding: EdgeInsets.all(context.spacingMd),
+      padding: EdgeInsets.only(
+        left: context.spacingMd,
+        right: context.spacingMd,
+        top: context.spacingMd,
+        bottom: context.spacingSm,
+      ),
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -65,20 +73,18 @@ class TourStepContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: context.spacingMd),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton(
+          UniversalActionBar(
+            horizontalPadding: 0,
+            primaryLabel:
+                isLastStep ? 'tour.finish'.tr() : 'tour.next'.tr(),
+            onPrimaryPressed: onNext,
+            leftAction: Tooltip(
+              message: 'tour.skip'.tr(),
+              child: CircularActionButton(
+                icon: Icons.close,
                 onPressed: onSkip,
-                child: Text('tour.skip'.tr()),
               ),
-              FilledButton(
-                onPressed: onNext,
-                child: Text(
-                  isLastStep ? 'tour.finish'.tr() : 'tour.next'.tr(),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),

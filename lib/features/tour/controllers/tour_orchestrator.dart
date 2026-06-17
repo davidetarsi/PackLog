@@ -82,7 +82,7 @@ class _PostLoginOnboardingListenerState
           radius: cfg.isSpotlight ? 8.0 : 1.0,
           contents: [
             TargetContent(
-              align: cfg.isSpotlight ? ContentAlign.top : ContentAlign.bottom,
+              align: cfg.align ?? (cfg.isSpotlight ? ContentAlign.top : ContentAlign.bottom),
               builder: (ctx, controller) {
                 return TourStepContent(
                   title: cfg.title,
@@ -127,6 +127,7 @@ class _PostLoginOnboardingListenerState
           title: 'tour.default_house_tooltip.title'.tr(),
           body: 'tour.default_house_tooltip.body'.tr(),
           isSpotlight: false,
+          align: ContentAlign.top,
         ),
       OnboardingStep.createTripTooltip => _StepConfig(
           key: tourKeys.tripsTab,
@@ -144,11 +145,13 @@ class _StepConfig {
   final String title;
   final String body;
   final bool isSpotlight;
+  final ContentAlign? align;
 
   const _StepConfig({
     required this.key,
     required this.title,
     required this.body,
     required this.isSpotlight,
+    this.align,
   });
 }

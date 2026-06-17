@@ -22,6 +22,8 @@ class TourTriggerWrapper extends ConsumerStatefulWidget {
   final String body;
   final String? houseId;
   final bool advancesOnOk;
+  final GlobalKey? keyTarget;
+  final bool isSpotlight;
 
   const TourTriggerWrapper({
     super.key,
@@ -31,6 +33,8 @@ class TourTriggerWrapper extends ConsumerStatefulWidget {
     required this.body,
     this.houseId,
     this.advancesOnOk = false,
+    this.keyTarget,
+    this.isSpotlight = false,
   });
 
   @override
@@ -71,12 +75,16 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
       targets: [
         TargetFocus(
           identify: widget.triggerStep.name,
-          keyTarget: tourKeys.infoCardTarget,
-          shape: ShapeLightFocus.Circle,
-          radius: 1,
+          keyTarget: widget.keyTarget ?? tourKeys.infoCardTarget,
+          shape: widget.isSpotlight
+              ? ShapeLightFocus.RRect
+              : ShapeLightFocus.Circle,
+          radius: widget.isSpotlight ? 8.0 : 1.0,
           contents: [
             TargetContent(
-              align: ContentAlign.bottom,
+              align: widget.isSpotlight
+                  ? ContentAlign.top
+                  : ContentAlign.bottom,
               builder: (ctx, controller) {
                 return TourStepContent(
                   title: widget.title,
