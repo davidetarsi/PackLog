@@ -53,6 +53,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
           _returnDateTime = trip.returnDateTime;
           _destinationHouseId = trip.destinationHouseId;
           _destinationLocation = trip.destinationLocation;
+          _destinationName = trip.destinationLocation?.displayName;
         });
       }
     });
@@ -108,7 +109,12 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
       destinationHouseId: _destinationHouseId,
       destinationLocation: _destinationHouseId == null
           ? _destinationLocation
-          : null,
+          : (_destinationName?.isNotEmpty == true
+              ? LocationSuggestionModel(
+                  placeId: '',
+                  displayName: _destinationName!,
+                )
+              : null),
       updatedAt: DateTime.now(),
     );
 

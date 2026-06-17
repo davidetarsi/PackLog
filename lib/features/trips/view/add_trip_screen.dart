@@ -130,7 +130,12 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                   destinationHouseId: _destinationHouseId,
                   destinationLocation: _destinationHouseId == null
                       ? _destinationLocation
-                      : null,
+                      : (_destinationName?.isNotEmpty == true
+                          ? LocationSuggestionModel(
+                              placeId: '',
+                              displayName: _destinationName!,
+                            )
+                          : null),
                   updatedAt: now,
                 );
           })()
@@ -145,7 +150,12 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
             destinationHouseId: _destinationHouseId,
             destinationLocation: _destinationHouseId == null
                 ? _destinationLocation
-                : null,
+                : (_destinationName?.isNotEmpty == true
+                    ? LocationSuggestionModel(
+                        placeId: '',
+                        displayName: _destinationName!,
+                      )
+                    : null),
             createdAt: now,
             updatedAt: now,
           );
