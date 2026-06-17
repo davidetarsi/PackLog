@@ -13,6 +13,7 @@ import '../../../core/auth/auth_state.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../features/houses/providers/house_provider.dart';
 import '../../../features/tour/providers/post_login_onboarding_provider.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 import '../providers/gpt_usage_provider.dart';
 // import '../../../core/database/controllers/backup_controller.dart';
 // import 'package:sentry_flutter/sentry_flutter.dart';
@@ -532,16 +533,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // ── Account ─────────────────────────────────────────────────
             AppSpacing.gapSm,
 
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-              child: FilledButton.tonalIcon(
-                onPressed: () => _handleSignOut(context),
-                icon: const Icon(Icons.logout),
-                label: Text('login.sign_out'.tr()),
-                style: FilledButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                ),
-              ),
+            UniversalActionBar(
+              primaryLabel: 'login.sign_out'.tr(),
+              primaryIcon: Icons.logout,
+              onPrimaryPressed: () => _handleSignOut(context),
             ),
 
             AppSpacing.gapLg,

@@ -70,12 +70,12 @@ class _AiOnboardingIntroScreenState
   }
 
   Future<void> _pickFromGallery() async {
-    final pickedFiles = await ImagePicker().pickMultiImage(
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
       imageQuality: 80,
-      limit: 5,
     );
-    if (pickedFiles.isEmpty || !mounted) return;
-    _startProcessing(pickedFiles.map((f) => File(f.path)).toList());
+    if (picked == null || !mounted) return;
+    _startProcessing([File(picked.path)]);
   }
 
   Future<void> _pickFromCamera() async {
