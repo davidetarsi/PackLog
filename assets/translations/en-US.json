@@ -644,7 +644,7 @@
     },
     "create_trip_tooltip": {
       "title": "Create your first trip",
-      "body": "Head to Trips and create your first trip with a packing list."
+      "body": "Tap + to open the create menu and add your first trip."
     },
     "trip_creation_tooltip": {
       "title": "Plan your trip",

@@ -111,6 +111,7 @@ class _PostLoginOnboardingListenerState
       colorShadow: Colors.black,
       opacityShadow: 0.8,
       hideSkip: true,
+      pulseEnable: cfg.isSpotlight,
     ).show(context: context);
   }
 
@@ -130,7 +131,7 @@ class _PostLoginOnboardingListenerState
           align: ContentAlign.top,
         ),
       OnboardingStep.createTripTooltip => _StepConfig(
-          key: tourKeys.tripsTab,
+          key: tourKeys.houseFab,
           title: 'tour.create_trip_tooltip.title'.tr(),
           body: 'tour.create_trip_tooltip.body'.tr(),
           isSpotlight: true,

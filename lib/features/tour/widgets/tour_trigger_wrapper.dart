@@ -113,6 +113,7 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
       colorShadow: Colors.black,
       opacityShadow: 0.8,
       hideSkip: true,
+      pulseEnable: widget.isSpotlight,
     ).show(context: context);
   }
 

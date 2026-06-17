@@ -75,8 +75,7 @@ class TourStepContent extends StatelessWidget {
           SizedBox(height: context.spacingMd),
           UniversalActionBar(
             horizontalPadding: 0,
-            primaryLabel:
-                isLastStep ? 'tour.finish'.tr() : 'tour.next'.tr(),
+            primaryLabel: 'tour.next'.tr(),
             onPrimaryPressed: onNext,
             leftAction: Tooltip(
               message: 'tour.skip'.tr(),

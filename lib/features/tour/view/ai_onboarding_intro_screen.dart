@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../features/ai_input/providers/ai_import_notifier.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../providers/post_login_onboarding_provider.dart';
 
@@ -135,14 +136,12 @@ class _AiOnboardingIntroScreenState
               primaryLabel: 'onboarding_tour.ai_intro.cta'.tr(),
               primaryIcon: Icons.photo_camera_outlined,
               onPrimaryPressed: _showSourceSheet,
-              rightAction: TextButton(
-                onPressed: _handleSkip,
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              rightAction: Tooltip(
+                message: 'onboarding_tour.ai_intro.skip'.tr(),
+                child: CircularActionButton(
+                  icon: Icons.close,
+                  onPressed: _handleSkip,
                 ),
-                child: Text('onboarding_tour.ai_intro.skip'.tr()),
               ),
             ),
             SizedBox(height: context.spacingMd),

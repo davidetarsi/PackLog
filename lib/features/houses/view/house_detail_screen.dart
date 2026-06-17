@@ -338,7 +338,12 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         final onboardingState = ref.read(postLoginOnboardingProvider).valueOrNull;
         if (onboardingState?.step == OnboardingStep.moveItemsTooltip &&
             widget.houseId == onboardingState?.defaultHouseId) {
-          await ref.read(postLoginOnboardingProvider.notifier).advance();
+          // Pop first so MainShell + houseFab are visible before the tooltip fires.
+          context.pop();
+          await Future.delayed(const Duration(milliseconds: 400));
+          if (mounted) {
+            await ref.read(postLoginOnboardingProvider.notifier).advance();
+          }
         }
       }
     } catch (e) {
