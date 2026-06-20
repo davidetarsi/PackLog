@@ -248,7 +248,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                     ),
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const SkeletonSimpleList(),
                 error: (error, stack) => DsErrorState(
                   error: error,
                   onRetry: () => ref.invalidate(houseNotifierProvider),
