@@ -29,6 +29,7 @@ import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/widgets/skeleton/skeleton.dart';
 
 enum _CategoryTab {
   all('trips.filter_all', null),
@@ -690,7 +691,6 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                     /// - Centro: sposta gli item selezionati (disabilitato se nessuno scelto)
                     child: UniversalActionBar(
                       key: const ValueKey('selection-bar'),
-                      horizontalPadding: 0,
                       primaryLabel: 'common.move'.tr(),
                       primaryIcon: Icons.local_shipping_outlined,
                       onPrimaryPressed: hasSelection ? _handleBulkMove : null,
@@ -719,8 +719,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
           ),
         );
       },
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => const SkeletonHouseDetailScreen(),
       error: (error, stack) => Scaffold(
         appBar: AppBar(title: Text('common.error'.tr())),
         body: DsErrorState(

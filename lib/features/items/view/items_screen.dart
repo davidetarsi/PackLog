@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pack_log/features/items/view/item_category_section.dart';
+import 'package:pack_log/shared/widgets/skeleton/skeleton.dart';
 
 import '../providers/item_provider.dart';
 import '../model/item_model.dart';
@@ -257,7 +258,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                 ),
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const SkeletonItemsBody(),
             error: (error, stack) => DsErrorState(
               error: error,
               onRetry: () => ref

@@ -15,6 +15,7 @@ import '../../../shared/widgets/ds_badge.dart';
 import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import 'add_edit_house_screen.dart';
+import '../../../shared/widgets/skeleton/skeleton.dart';
 
 class HousesScreen extends ConsumerStatefulWidget {
   const HousesScreen({super.key});
@@ -96,7 +97,7 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
               ),
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const SkeletonHousesBody(),
           error: (error, stack) => DsErrorState(
             error: error,
             onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),

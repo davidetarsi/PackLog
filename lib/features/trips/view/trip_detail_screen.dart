@@ -16,6 +16,7 @@ import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/widgets/universal_item_tile.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/widgets/skeleton/skeleton.dart';
 
 /// Enum per le tab di filtro delle categorie
 enum TripItemFilterTab {
@@ -130,7 +131,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           ),
           // Action bar unificata in basso
           bottomContent: UniversalActionBar(
-            horizontalPadding: 0,
             primaryLabel: hasItems
                 ? 'trips.edit_items'.tr()
                 : 'trips.add_clothes'.tr(),
@@ -152,8 +152,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           ),
         );
       },
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => const SkeletonTripDetailScreen(),
       error: (error, stack) => _buildErrorScreen(context, error),
     );
   }

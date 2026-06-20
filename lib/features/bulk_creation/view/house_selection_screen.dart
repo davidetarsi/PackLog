@@ -6,6 +6,7 @@ import '../../houses/providers/house_provider.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/skeleton/skeleton.dart';
 
 /// Schermata intermedia per selezionare la casa di destinazione
 /// prima di accedere ai template di creazione massiva.
@@ -54,7 +55,7 @@ class HouseSelectionScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const SkeletonHousesBody(),
         error: (err, stack) => DsErrorState(
           error: err,
           onRetry: () => ref.invalidate(houseNotifierProvider),

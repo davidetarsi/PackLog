@@ -9,6 +9,7 @@ import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'add_edit_luggage_screen.dart';
+import '../../../shared/widgets/skeleton/skeleton.dart';
 
 /// Mostra il bottom sheet per gestire i bagagli di una casa
 Future<void> showLuggagesManagementSheet(
@@ -203,7 +204,7 @@ class LuggagesManagementSheet extends ConsumerWidget {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const SkeletonSimpleList(),
               error: (error, stack) => DsErrorState(
                 error: error,
                 onRetry: () =>
@@ -221,7 +222,6 @@ class LuggagesManagementSheet extends ConsumerWidget {
                 bottom: context.spacingSm,
               ),
               child: UniversalActionBar(
-                horizontalPadding: 0,
                 primaryLabel: 'luggages.add_new'.tr(),
                 primaryIcon: Icons.add,
                 onPrimaryPressed: () async {

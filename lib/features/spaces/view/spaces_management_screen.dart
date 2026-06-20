@@ -12,6 +12,7 @@ import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'add_edit_space_screen.dart';
+import '../../../shared/widgets/skeleton/skeleton.dart';
 
 /// Mostra il bottom sheet per gestire gli spazi di una casa
 Future<void> showSpacesManagementSheet(
@@ -221,7 +222,7 @@ class SpacesManagementSheet extends ConsumerWidget {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const SkeletonSimpleList(),
               error: (error, stack) => DsErrorState(
                 error: error,
                 onRetry: () =>
@@ -239,7 +240,6 @@ class SpacesManagementSheet extends ConsumerWidget {
                 bottom: context.spacingSm,
               ),
               child: UniversalActionBar(
-                horizontalPadding: 0,
                 primaryLabel: 'spaces.add_new'.tr(),
                 primaryIcon: Icons.add,
                 onPrimaryPressed: () async {

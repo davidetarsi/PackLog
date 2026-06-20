@@ -10,6 +10,7 @@ import '../../../shared/widgets/app_pill_tab.dart';
 import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/widgets/skeleton/skeleton.dart';
 
 /// Enum per le tab di filtro
 enum TripFilterTab {
@@ -161,7 +162,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 
     return tripsAsync.when(
       data: (trips) => _buildTripsContent(context, ref, colorScheme, trips),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const SkeletonTripsBody(),
       error: (error, stack) => RefreshIndicator(
         onRefresh: () => ref.refresh(tripNotifierProvider.future),
         color: colorScheme.primary,
