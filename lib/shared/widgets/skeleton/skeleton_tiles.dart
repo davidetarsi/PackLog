@@ -61,7 +61,7 @@ class SkeletonHouseCard extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius + 4),
+          borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius + 4),
           border: Border.all(color: colorScheme.outlineVariant),
         ),
         padding: EdgeInsets.all(context.spacingMd),
@@ -71,8 +71,8 @@ class SkeletonHouseCard extends StatelessWidget {
             Row(
               children: [
                 SkeletonBox(
-                  width: 40,
-                  height: 40,
+                  width: context.iconSizeMd + context.spacingMd,
+                  height: context.iconSizeMd + context.spacingMd,
                   borderRadius: AppConstants.cardBorderRadius,
                 ),
                 SizedBox(width: context.spacingMd),
@@ -118,11 +118,9 @@ class SkeletonTripCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(
-          isHero
-              ? AppConstants.cardBorderRadius + 4
-              : AppConstants.cardBorderRadius,
-        ),
+        borderRadius: isHero
+            ? context.responsiveBorderRadius(AppConstants.cardBorderRadius + 4)
+            : BorderRadius.circular(AppConstants.cardBorderRadius),
         border: Border.all(color: colorScheme.outlineVariant),
       ),
       padding: EdgeInsets.all(context.spacingMd),
