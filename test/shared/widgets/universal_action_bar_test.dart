@@ -202,36 +202,8 @@ void main() {
       expect(find.text('Save'), findsOneWidget);
     });
 
-    testWidgets('applies custom horizontalPadding', (tester) async {
-      // Arrange
-      const customPadding = 32.0;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: UniversalActionBar(
-              primaryLabel: 'Test',
-              onPrimaryPressed: () {},
-              horizontalPadding: customPadding,
-            ),
-          ),
-        ),
-      );
-
-      // Assert
-      final padding = tester.widget<Padding>(
-        find
-            .descendant(
-              of: find.byType(UniversalActionBar),
-              matching: find.byType(Padding),
-            )
-            .first,
-      );
-      expect(
-        padding.padding,
-        equals(const EdgeInsets.symmetric(horizontal: customPadding)),
-      );
-    });
+    // Test rimosso: `horizontalPadding` non è più un parametro pubblico
+    // di UniversalActionBar (hard-coded a 0 internamente, vedi riga 83 del widget).
 
     testWidgets('primary button remains centered with only left action', (
       tester,

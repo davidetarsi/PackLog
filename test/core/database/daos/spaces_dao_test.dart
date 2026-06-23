@@ -548,31 +548,36 @@ void main() {
       );
     });
 
-    test('markSpaceAsSynced does not bump updatedAt (LWW correctness)', () async {
-      final originalUpdatedAt = DateTime(2026, 5, 1, 8, 0);
-      await database.spacesDao.insertSpace(
-        SpacesCompanion.insert(
-          id: 's-no-bump',
-          houseId: houseId,
-          name: 'Armadio',
-          createdAt: DateTime(2026, 5, 1, 7, 0),
-          updatedAt: originalUpdatedAt,
-          syncStatus: const Value(SyncStatus.pendingUpdate),
-        ),
-      );
+    test(
+      'markSpaceAsSynced overwrites updatedAt with server timestamp '
+      '(post fix #6: server-side updated_at)',
+      () async {
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: 's-server-ts',
+            houseId: houseId,
+            name: 'Armadio',
+            createdAt: DateTime(2026, 5, 1, 7, 0),
+            updatedAt: DateTime(2026, 5, 1, 8, 0),
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+          ),
+        );
 
-      final serverTs = DateTime(2026, 5, 1, 12, 0);
-      await database.spacesDao.markSpaceAsSynced('s-no-bump', serverTs);
+        final serverTs = DateTime(2026, 5, 1, 12, 0);
+        await database.spacesDao.markSpaceAsSynced('s-server-ts', serverTs);
 
-      final space = await database.spacesDao.getSpaceById('s-no-bump');
-      expect(
-        space!.updatedAt,
-        equals(originalUpdatedAt),
-        reason: 'updatedAt is the LWW pivot — must not be bumped on sync ack',
-      );
-      expect(space.syncStatus, equals(SyncStatus.synced));
-      expect(space.lastSyncedAt, equals(serverTs));
-    });
+        final space = await database.spacesDao.getSpaceById('s-server-ts');
+        expect(
+          space!.updatedAt,
+          equals(serverTs),
+          reason:
+              'updatedAt deve essere allineato al server timestamp per '
+              'rendere immune la LWW al clock drift del client',
+        );
+        expect(space.syncStatus, equals(SyncStatus.synced));
+        expect(space.lastSyncedAt, equals(serverTs));
+      },
+    );
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await database.spacesDao.insertSpace(

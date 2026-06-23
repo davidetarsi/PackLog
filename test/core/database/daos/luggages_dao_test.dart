@@ -32,32 +32,41 @@ void main() {
       );
     });
 
-    test('markLuggageAsSynced does not bump updatedAt (LWW correctness)', () async {
-      final originalUpdatedAt = DateTime(2026, 5, 1, 8, 0);
-      await database.luggagesDao.insertLuggage(
-        LuggagesCompanion.insert(
-          id: 'l-no-bump',
-          houseId: houseId,
-          name: 'Zaino',
-          sizeType: LuggageSize.cabinBaggage,
-          createdAt: DateTime(2026, 5, 1, 7, 0),
-          updatedAt: originalUpdatedAt,
-          syncStatus: const Value(SyncStatus.pendingUpdate),
-        ),
-      );
+    test(
+      'markLuggageAsSynced overwrites updatedAt with server timestamp '
+      '(post fix #6: server-side updated_at)',
+      () async {
+        await database.luggagesDao.insertLuggage(
+          LuggagesCompanion.insert(
+            id: 'l-server-ts',
+            houseId: houseId,
+            name: 'Zaino',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: DateTime(2026, 5, 1, 7, 0),
+            updatedAt: DateTime(2026, 5, 1, 8, 0),
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+          ),
+        );
 
-      final serverTs = DateTime(2026, 5, 1, 12, 0);
-      await database.luggagesDao.markLuggageAsSynced('l-no-bump', serverTs);
+        final serverTs = DateTime(2026, 5, 1, 12, 0);
+        await database.luggagesDao.markLuggageAsSynced(
+          'l-server-ts',
+          serverTs,
+        );
 
-      final luggage = await database.luggagesDao.getLuggageById('l-no-bump');
-      expect(
-        luggage!.updatedAt,
-        equals(originalUpdatedAt),
-        reason: 'updatedAt is the LWW pivot — must not be bumped on sync ack',
-      );
-      expect(luggage.syncStatus, equals(SyncStatus.synced));
-      expect(luggage.lastSyncedAt, equals(serverTs));
-    });
+        final luggage =
+            await database.luggagesDao.getLuggageById('l-server-ts');
+        expect(
+          luggage!.updatedAt,
+          equals(serverTs),
+          reason:
+              'updatedAt deve essere allineato al server timestamp per '
+              'rendere immune la LWW al clock drift del client',
+        );
+        expect(luggage.syncStatus, equals(SyncStatus.synced));
+        expect(luggage.lastSyncedAt, equals(serverTs));
+      },
+    );
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await database.luggagesDao.insertLuggage(

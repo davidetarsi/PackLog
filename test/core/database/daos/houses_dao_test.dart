@@ -622,32 +622,40 @@ void main() {
       expect(house.userId, equals(null));
     });
 
-    test('markHouseAsSynced does not bump updatedAt (LWW correctness)', () async {
-      final originalUpdatedAt = DateTime(2026, 5, 1, 8, 0);
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: 'h-no-bump',
-          name: 'House',
-          createdAt: DateTime(2026, 5, 1, 7, 0),
-          updatedAt: originalUpdatedAt,
-          syncStatus: const Value(SyncStatus.pendingUpdate),
-        ),
-      );
+    test(
+      'markHouseAsSynced overwrites updatedAt with server timestamp '
+      '(post fix #6: server-side updated_at via Postgres trigger)',
+      () async {
+        final clientUpdatedAt = DateTime(2026, 5, 1, 8, 0);
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'h-server-ts',
+            name: 'House',
+            createdAt: DateTime(2026, 5, 1, 7, 0),
+            updatedAt: clientUpdatedAt,
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+          ),
+        );
 
-      final serverTs = DateTime(2026, 5, 1, 12, 0);
-      await database.housesDao.markHouseAsSynced('h-no-bump', serverTs);
+        // Il server (trigger Postgres `set_updated_at_to_now`) ignora il
+        // valore inviato dal client e ritorna NOW() come updated_at
+        // ufficiale. markHouseAsSynced lo applica al record locale per
+        // mantenere allineato il pivot LWW.
+        final serverTs = DateTime(2026, 5, 1, 12, 0);
+        await database.housesDao.markHouseAsSynced('h-server-ts', serverTs);
 
-      final house = await database.housesDao.getHouseById('h-no-bump');
-      expect(
-        house!.updatedAt,
-        equals(originalUpdatedAt),
-        reason:
-            'updatedAt is the LWW pivot — bumping it on bookkeeping ops loses '
-            'concurrent edits from other devices',
-      );
-      expect(house.syncStatus, equals(SyncStatus.synced));
-      expect(house.lastSyncedAt, equals(serverTs));
-    });
+        final house = await database.housesDao.getHouseById('h-server-ts');
+        expect(
+          house!.updatedAt,
+          equals(serverTs),
+          reason:
+              'updatedAt deve essere allineato al server timestamp per '
+              'rendere immune la LWW al clock drift del client',
+        );
+        expect(house.syncStatus, equals(SyncStatus.synced));
+        expect(house.lastSyncedAt, equals(serverTs));
+      },
+    );
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await database.housesDao.insertHouse(
