@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:meta/meta.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -52,9 +53,14 @@ part 'database.g.dart';
   daos: [HousesDao, ItemsDao, SpacesDao, LuggagesDao, TripsDao],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  /// Costruisce `AppDatabase` con la [passphrase] SQLCipher. La passphrase
+  /// deve essere ottenuta da [DbPassphraseService.getOrCreate] PRIMA di
+  /// chiamare questo costruttore; vedi `bootstrap.dart`.
+  AppDatabase(String passphrase) : super(_openConnection(passphrase));
 
-  /// Costruttore per test con database personalizzato
+  /// Costruttore per test con database personalizzato (in-memory).
+  /// Non passa per SQLCipher.
+  @visibleForTesting
   AppDatabase.forTesting(super.e);
 
   /// Versione dello schema del database.
@@ -332,11 +338,22 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-/// Apre la connessione al database SQLite.
-LazyDatabase _openConnection() {
+/// Apre la connessione al database cifrato via SQLCipher.
+///
+/// La passphrase è applicata nel `setup` callback PRIMA di qualsiasi
+/// query: ogni query precedente fallirebbe perché il file è cifrato
+/// e non leggibile in chiaro. Il prefisso `x'...'` indica a SQLCipher
+/// che è una raw key (32 byte) e non una password da derivare via KDF
+/// — doppia velocità di apertura e nessun overhead di PBKDF2.
+LazyDatabase _openConnection(String passphrase) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'stuff_tracker.db'));
-    return NativeDatabase.createInBackground(file);
+    return NativeDatabase.createInBackground(
+      file,
+      setup: (db) {
+        db.execute("PRAGMA key = \"x'$passphrase'\";");
+      },
+    );
   });
 }
