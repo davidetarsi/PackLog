@@ -163,12 +163,15 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
               ),
             ),
             SizedBox(height: context.spacingMd),
-            UniversalActionBar(
-              primaryLabel: 'common.move'.tr(),
-              primaryIcon: Icons.local_shipping_outlined,
-              onPrimaryPressed: (_selectedHouse != null && _spaceConfirmed)
-                  ? _confirm
-                  : null,
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+              child: UniversalActionBar(
+                primaryLabel: 'common.move'.tr(),
+                primaryIcon: Icons.local_shipping_outlined,
+                onPrimaryPressed: (_selectedHouse != null && _spaceConfirmed)
+                    ? _confirm
+                    : null,
+              ),
             ),
           ],
         ),

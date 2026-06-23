@@ -77,6 +77,14 @@ class SessionExpiredException extends AuthDomainException {
   });
 }
 
+class DeleteAccountFailedException extends AuthDomainException {
+  const DeleteAccountFailedException(
+    super.message, {
+    super.originalError,
+    super.stackTrace,
+  });
+}
+
 /// Mappa un errore generico (tipicamente lanciato dal Supabase SDK durante
 /// signIn) al [AuthFailureReason] semantico più aderente.
 ///

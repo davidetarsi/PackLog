@@ -172,14 +172,28 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
         .get();
   }
 
+  /// Conta tutti i record non sincronizzati (syncStatus != synced),
+  /// indipendentemente dal retry count o dal backoff. Usato per decidere
+  /// se mostrare il pulsante "Sincronizza ora" nel profilo.
+  Future<int> countUnsynced() async {
+    final rows = await (select(houses)
+          ..where((h) => h.syncStatus.equalsValue(SyncStatus.synced).not()))
+        .get();
+    return rows.length;
+  }
+
   /// Marks a house as successfully synced with the remote server.
   ///
-  /// Non aggiorna `updatedAt`: è il pivot del Last-Write-Wins; un bump qui
-  /// renderebbe il timestamp locale posteriore a quello pushato al server
-  /// e farebbe perdere edit concorrenti da altri device.
+  /// [serverUpdatedAt] è l'`updated_at` ufficiale del server (output del
+  /// trigger Postgres `set_updated_at`). Lo applichiamo sia a `updatedAt`
+  /// (pivot LWW per i sync futuri) sia a `lastSyncedAt`. Questo è essenziale
+  /// per la correttezza della LWW in presenza di clock drift tra device:
+  /// il client locale potrebbe avere scritto un client-time arbitrario in
+  /// `updatedAt`, ma il server-time è la sola verità.
   Future<void> markHouseAsSynced(String houseId, DateTime serverUpdatedAt) {
     return (update(houses)..where((h) => h.id.equals(houseId))).write(
       HousesCompanion(
+        updatedAt: Value(serverUpdatedAt),
         syncStatus: const Value(SyncStatus.synced),
         syncRetryCount: const Value(0),
         lastSyncError: const Value(null),

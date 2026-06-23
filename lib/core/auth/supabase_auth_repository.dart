@@ -144,4 +144,47 @@ class SupabaseAuthRepository implements AuthRepository {
       throw SignOutFailedException(e.message, originalError: e, stackTrace: st);
     }
   }
+
+  @override
+  Future<void> deleteAccount() async {
+    try {
+      // Edge function `hard-delete-account` legge user.id dal JWT lato
+      // server. Nessun body necessario.
+      final response = await _client.functions
+          .invoke('hard-delete-account', method: sb.HttpMethod.post)
+          .timeout(const Duration(seconds: 30));
+
+      if (response.status < 200 || response.status >= 300) {
+        final body = response.data;
+        final msg = body is Map<String, dynamic>
+            ? (body['error']?.toString() ?? 'Unknown error')
+            : 'HTTP ${response.status}';
+        throw DeleteAccountFailedException(msg);
+      }
+
+      // Dopo la cancellazione, qualsiasi JWT esistente diventa invalido al
+      // prossimo refresh: il signOut locale serve a liberare subito la
+      // sessione e a far scattare l'auth gate del router.
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {/* best-effort */}
+      try {
+        await _client.auth.signOut();
+      } catch (_) {/* la sessione potrebbe essere già stale */}
+    } on DeleteAccountFailedException {
+      rethrow;
+    } on TimeoutException catch (e, st) {
+      throw DeleteAccountFailedException(
+        'Timeout durante la cancellazione',
+        originalError: e,
+        stackTrace: st,
+      );
+    } catch (e, st) {
+      throw DeleteAccountFailedException(
+        'Errore inatteso',
+        originalError: e,
+        stackTrace: st,
+      );
+    }
+  }
 }

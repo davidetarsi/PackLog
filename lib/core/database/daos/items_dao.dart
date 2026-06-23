@@ -216,10 +216,19 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         .get();
   }
 
-  /// Non aggiorna `updatedAt`: è il pivot LWW; vedi [HousesDao.markHouseAsSynced].
+  Future<int> countUnsynced() async {
+    final rows = await (select(items)
+          ..where((i) => i.syncStatus.equalsValue(SyncStatus.synced).not()))
+        .get();
+    return rows.length;
+  }
+
+  /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
+  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale.
   Future<void> markItemAsSynced(String itemId, DateTime serverUpdatedAt) {
     return (update(items)..where((i) => i.id.equals(itemId))).write(
       ItemsCompanion(
+        updatedAt: Value(serverUpdatedAt),
         syncStatus: const Value(SyncStatus.synced),
         syncRetryCount: const Value(0),
         lastSyncError: const Value(null),

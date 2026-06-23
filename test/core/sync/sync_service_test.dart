@@ -116,7 +116,7 @@ void main() {
           any(),
           sentryTrace: any(named: 'sentryTrace'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
       await syncService.processQueue();
 
@@ -153,7 +153,7 @@ void main() {
           any(),
           sentryTrace: any(named: 'sentryTrace'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
       await syncService.processQueue();
 
@@ -232,7 +232,7 @@ void main() {
           any(),
           sentryTrace: any(named: 'sentryTrace'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
       await syncService.processQueue();
 
@@ -284,7 +284,7 @@ void main() {
           any(),
           sentryTrace: any(named: 'sentryTrace'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
       when(
         () => mockRemote.fetchSpaceById(
@@ -300,7 +300,7 @@ void main() {
           any(),
           sentryTrace: any(named: 'sentryTrace'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
       when(
         () => mockRemote.fetchLuggageById(
@@ -316,7 +316,7 @@ void main() {
           any(),
           sentryTrace: any(named: 'sentryTrace'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
       when(
         () => mockRemote.fetchItemById(
@@ -332,7 +332,7 @@ void main() {
           any(),
           sentryTrace: any(named: 'sentryTrace'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
       when(
         () => mockRemote.fetchTripById(
@@ -348,7 +348,7 @@ void main() {
           any(),
           sentryTrace: any(named: 'sentryTrace'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
       await syncService.processQueue();
 
@@ -953,6 +953,7 @@ void main() {
       ).thenAnswer((invocation) async {
         capturedData =
             invocation.positionalArguments[0] as Map<String, dynamic>;
+        return DateTime.utc(2026, 1, 1);
       });
 
       await syncService.processQueue();
@@ -1153,6 +1154,7 @@ void main() {
       ).thenAnswer((invocation) async {
         capturedData =
             invocation.positionalArguments[0] as Map<String, dynamic>;
+        return DateTime.utc(2026, 1, 1);
       });
 
       await syncService.processQueue();
@@ -1321,6 +1323,7 @@ void main() {
       ).thenAnswer((invocation) async {
         capturedData =
             invocation.positionalArguments[0] as Map<String, dynamic>;
+        return DateTime.utc(2026, 1, 1);
       });
 
       await syncService.processQueue();
@@ -1476,6 +1479,7 @@ void main() {
       ).thenAnswer((invocation) async {
         capturedData =
             invocation.positionalArguments[0] as Map<String, dynamic>;
+        return DateTime.utc(2026, 1, 1);
       });
 
       await syncService.processQueue();

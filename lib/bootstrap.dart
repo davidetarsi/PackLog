@@ -36,23 +36,27 @@ import 'dart:async';
 
 import 'package:amplitude_flutter/amplitude.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/auth/secure_local_storage.dart';
 import 'core/database/database.dart';
 import 'core/database/migration_service.dart';
 import 'core/database/services/backup_service.dart';
 import 'core/monitoring/app_error_observer.dart';
 import 'core/routing/app_router.dart';
 import 'core/sync/sync_provider.dart';
+import 'features/onboarding/providers/onboarding_status_provider.dart';
 import 'shared/config/app_config.dart';
 import 'shared/theme/app_spacing.dart';
 import 'shared/providers/language_locale.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/theme/app_theme.dart';
+import 'shared/widgets/ds_error_state.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // DEFERRED BOOTSTRAP PROVIDER
@@ -79,6 +83,15 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
       () => Supabase.initialize(
         url: AppConfig.supabaseUrl,
         anonKey: AppConfig.supabaseAnonKey,
+        // Sessione persistita in Keychain (iOS) / EncryptedSharedPreferences
+        // (Android, Keystore-backed). Vedi [SecureLocalStorage] — include
+        // anche migrazione one-shot dalle vecchie SharedPreferences.
+        authOptions: FlutterAuthClientOptions(
+          localStorage: SecureLocalStorage(
+            persistSessionKey:
+                'sb-${Uri.parse(AppConfig.supabaseUrl).host.split(".").first}-auth-token',
+          ),
+        ),
       ),
     ),
     _initializePersistence(),
@@ -179,6 +192,20 @@ enum Environment {
 /// Tutta l'inizializzazione pesante (Sentry, Supabase, Amplitude, persistenza)
 /// è gestita da [appBootstrapProvider] e visualizzata con uno splash screen.
 Future<void> bootstrap(Environment env) async {
+  // In release silenziamo `debugPrint` globalmente. Motivi:
+  // 1. Sicurezza/privacy: log come `[Auth] ...`, `[SyncService] ...`,
+  //    `[SupabaseRepo] ...` finiscono in logcat su Android e console su iOS;
+  //    su un device condiviso o tramite ADB sono recuperabili. Niente
+  //    secret veri (token coperto altrove), ma userId, houseId, conteggi e
+  //    messaggi di errore raw sono comunque informazioni di troppo.
+  // 2. Performance: ogni `debugPrint` formatta una stringa e fa I/O — su
+  //    sync loop o pull frequenti, costa.
+  // In dev/profile (`kReleaseMode = false`) lasciamo il comportamento
+  // standard di Flutter per debug confortevole.
+  if (kReleaseMode) {
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
+
   // Usa il binding standard Flutter — idempotente e privo di dipendenze da Sentry.
   // SentryFlutter.init() viene chiamato dopo runApp in [appBootstrapProvider]
   // dove si occupa autonomamente dell'integrazione con FlutterError.onError e
@@ -373,26 +400,59 @@ class MyApp extends ConsumerWidget {
         ),
       ),
       data: (_) {
-        final themeModeAsync = ref.watch(themeModeNotifierProvider);
+        return ref.watch(onboardingStatusProvider).when(
+          loading: () => MaterialApp(
+            debugShowCheckedModeBanner: environment == Environment.dev,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: ThemeMode.dark,
+            localizationsDelegates: context.localizationDelegates,
+            supportedLocales: context.supportedLocales,
+            locale: context.locale,
+            home: const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+          ),
+          error: (error, _) => MaterialApp(
+            debugShowCheckedModeBanner: environment == Environment.dev,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: ThemeMode.dark,
+            localizationsDelegates: context.localizationDelegates,
+            supportedLocales: context.supportedLocales,
+            locale: context.locale,
+            home: Scaffold(
+              body: DsErrorState(
+                error: error,
+                onRetry: () => ref.invalidate(onboardingStatusProvider),
+              ),
+            ),
+          ),
+          data: (_) {
+            final themeModeAsync = ref.watch(themeModeNotifierProvider);
 
-        final localeCode = context.locale.languageCode;
-        final currentProviderLocale = ref.read(languageLocaleProvider);
-        if (currentProviderLocale != localeCode) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            ref.read(languageLocaleProvider.notifier).updateLocale(localeCode);
-          });
-        }
+            final localeCode = context.locale.languageCode;
+            final currentProviderLocale = ref.read(languageLocaleProvider);
+            if (currentProviderLocale != localeCode) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                ref
+                    .read(languageLocaleProvider.notifier)
+                    .updateLocale(localeCode);
+              });
+            }
 
-        return MaterialApp.router(
-          title: 'Pack Log',
-          debugShowCheckedModeBanner: environment == Environment.dev,
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
-          routerConfig: ref.watch(appRouterProvider),
-          localizationsDelegates: context.localizationDelegates,
-          supportedLocales: context.supportedLocales,
-          locale: context.locale,
+            return MaterialApp.router(
+              title: 'Pack Log',
+              debugShowCheckedModeBanner: environment == Environment.dev,
+              theme: AppTheme.light,
+              darkTheme: AppTheme.dark,
+              themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
+              routerConfig: ref.watch(appRouterProvider),
+              localizationsDelegates: context.localizationDelegates,
+              supportedLocales: context.supportedLocales,
+              locale: context.locale,
+            );
+          },
         );
       },
     );

@@ -182,42 +182,20 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     if (totalItemsCount > 0) {
       if (!context.mounted) return;
 
-      await showDialog<void>(
+      await DialogHelpers.showInfo(
         context: context,
-        builder: (dialogContext) {
-          final theme = Theme.of(dialogContext);
-          return AlertDialog(
-            title: Text('common.error'.tr()),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('houses.cannot_delete_has_items'.tr()),
-                AppSpacing.gapMd,
-                if (permanentItemsCount > 0)
-                  Text(
-                    '• ${'houses.permanent_items_count'.tr(args: [permanentItemsCount.toString()])}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                if (temporaryItemsCount > 0)
-                  Text(
-                    '• ${'houses.temporary_items_count'.tr(args: [temporaryItemsCount.toString()])}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-              ],
+        title: 'common.error'.tr(),
+        message: 'houses.cannot_delete_has_items'.tr(),
+        details: [
+          if (permanentItemsCount > 0)
+            'houses.permanent_items_count'.tr(
+              args: [permanentItemsCount.toString()],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text('common.ok'.tr()),
-              ),
-            ],
-          );
-        },
+          if (temporaryItemsCount > 0)
+            'houses.temporary_items_count'.tr(
+              args: [temporaryItemsCount.toString()],
+            ),
+        ],
       );
       return;
     }
@@ -259,27 +237,15 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     if (selectedIds.isEmpty) return;
 
     final count = selectedIds.length;
-    final colorScheme = Theme.of(context).colorScheme;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          'items.bulk_delete_confirm_title'.tr(args: [count.toString()]),
-        ),
-        content: Text('items.bulk_delete_confirm_body'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text('common.cancel'.tr()),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: colorScheme.error),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text('common.delete'.tr()),
-          ),
-        ],
+      itemType: '',
+      itemName: '',
+      customTitle: 'items.bulk_delete_confirm_title'.tr(
+        args: [count.toString()],
       ),
+      customMessage: 'items.bulk_delete_confirm_body'.tr(),
     );
 
     if (confirmed != true || !context.mounted) return;

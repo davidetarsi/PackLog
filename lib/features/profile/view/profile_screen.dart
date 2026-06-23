@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../shared/widgets/shell_tab_scaffold.dart';
 // import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -267,6 +268,88 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Auth — Delete Account (GDPR Art. 17 — Right to Erasure)
+  // -------------------------------------------------------------------------
+
+  Future<void> _handleDeleteAccount(BuildContext context) async {
+    final authState = ref.read(authNotifierProvider);
+    if (authState is! Authenticated) return;
+    final email = authState.email;
+
+    final confirmed = await _showDeleteAccountDialog(context, email);
+    if (confirmed != true || !context.mounted) return;
+
+    // Cattura riferimenti stabili PRIMA degli await: appena `signOut()`
+    // (interno a deleteAccount) fa scattare l'auth gate del router,
+    // ProfileScreen viene disposta e `context.mounted` diventa false →
+    // il pop del loader non scatterebbe più. `rootNavigator` invece punta
+    // al Navigator dentro MaterialApp, che sopravvive alle navigazioni.
+    final rootNav = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    final errorColor = Theme.of(context).colorScheme.error;
+
+    // Loading dialog: l'operazione tocca rete + più DELETE Postgres → può
+    // impiegare qualche secondo. `useRootNavigator: true` mette il dialog
+    // sul root navigator, così la sua chiusura è indipendente dal branch
+    // shell route della tab Profilo.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await ref.read(authRepositoryProvider).deleteAccount();
+      // Wipe del DB locale: senza questo, il prossimo login (anche con
+      // altro utente) vedrebbe transitoriamente i dati di chi è stato
+      // appena cancellato finché il fullPull non sostituisce tutto.
+      await ref.read(syncServiceProvider).wipeAllUserData();
+
+      // Niente check `context.mounted` qui: è già false (l'auth gate ha
+      // rediretto a /login). Il rootNav è ancora valido.
+      if (rootNav.canPop()) rootNav.pop();
+      // Niente snackbar di successo: l'utente sta venendo rediretto a
+      // /login, lo stato "operazione completata" è implicito nel redirect.
+      // Una snackbar mostrata su /login sarebbe out-of-context.
+    } on DeleteAccountFailedException catch (e) {
+      debugPrint('[ProfileScreen] Delete account failed: $e');
+      // Sul path di errore l'utente è ANCORA loggato (deleteAccount
+      // throws prima di signOut) → ProfileScreen ancora mounted →
+      // messenger riferimento valido.
+      if (rootNav.canPop()) rootNav.pop();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('profile.delete_account_failed'.tr()),
+          backgroundColor: errorColor,
+        ),
+      );
+    }
+  }
+
+  /// Conferma protetta dalla digitazione esatta della propria email.
+  ///
+  /// Pattern GitHub/Stripe: l'utente deve scrivere l'email del proprio
+  /// account in un TextField per abilitare il bottone "Elimina". Difficile
+  /// fare l'operazione per errore o se qualcuno passa il telefono per un
+  /// istante.
+  ///
+  /// Il dialog vive in un [StatefulWidget] dedicato: ha bisogno di un
+  /// [TextEditingController] con lifecycle proprio. Una versione precedente
+  /// con `StatefulBuilder + whenComplete(dispose)` causava ANR alla
+  /// chiusura del dialog: l'animazione di pop generava un re-build del
+  /// builder che leggeva il controller già disposto.
+  Future<bool?> _showDeleteAccountDialog(
+    BuildContext context,
+    String requiredEmail,
+  ) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => _DeleteAccountDialog(requiredEmail: requiredEmail),
+    );
+  }
+
   /// Mostra sempre un dialog di conferma logout.
   ///
   /// Se [pending] == 0: dialog semplice (solo conferma / annulla).
@@ -351,8 +434,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       error: (_, _) => 'settings.theme_dark'.tr(),
     );
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+    return ShellTabScaffold(
       appBar: AppBar(
         title: Text('settings.title'.tr()),
         // Nessun leading: questa è una schermata radice del tab bar,
@@ -533,14 +615,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // ── Account ─────────────────────────────────────────────────
             AppSpacing.gapSm,
 
-            UniversalActionBar(
-              primaryLabel: 'login.sign_out'.tr(),
-              primaryIcon: Icons.logout,
-              onPrimaryPressed: () => _handleSignOut(context),
-              isSecondary: true,
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+              child: UniversalActionBar(
+                primaryLabel: 'login.sign_out'.tr(),
+                primaryIcon: Icons.logout,
+                onPrimaryPressed: () => _handleSignOut(context),
+                isSecondary: true,
+              ),
             ),
 
-            AppSpacing.gapLg,
+            AppSpacing.gapSm,
+
+            // Hard-delete account (GDPR Art. 17). Distruttivo e irreversibile,
+            // protetto da dialog con conferma email.
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+              child: UniversalActionBar(
+                primaryLabel: 'profile.delete_account_cta'.tr(),
+                primaryIcon: Icons.delete_forever,
+                onPrimaryPressed: () => _handleDeleteAccount(context),
+                isDestructive: true,
+              ),
+            ),
+
+            AppSpacing.gapMd,
           ],
         ),
       ),
@@ -549,3 +648,80 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 }
 
 enum _LogoutChoice { cancel, syncFirst, forceLogout }
+
+/// Dialog di conferma per il delete account (estratto come [StatefulWidget]
+/// per gestire correttamente il lifecycle del [TextEditingController]).
+class _DeleteAccountDialog extends StatefulWidget {
+  final String requiredEmail;
+
+  const _DeleteAccountDialog({required this.requiredEmail});
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  bool get _matches =>
+      _controller.text.trim().toLowerCase() ==
+      widget.requiredEmail.toLowerCase();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('profile.delete_account_title'.tr()),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('profile.delete_account_warning'.tr()),
+          AppSpacing.gapMd,
+          Text(
+            'profile.delete_account_confirm_prompt'
+                .tr(args: [widget.requiredEmail]),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          AppSpacing.gapSm,
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            decoration: InputDecoration(
+              hintText: widget.requiredEmail,
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text('common.cancel'.tr()),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.error,
+            foregroundColor: Theme.of(context).colorScheme.onError,
+          ),
+          onPressed: _matches ? () => Navigator.pop(context, true) : null,
+          child: Text('profile.delete_account_button'.tr()),
+        ),
+      ],
+    );
+  }
+}

@@ -50,7 +50,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             properties: {
               'method': 'google',
               'reason': e.reason.name,
-              'error': e.toString(),
+              // Niente `e.toString()`: il messaggio Supabase può contenere
+              // l'email (es. "Invalid login credentials for <email>") che
+              // finirebbe in Amplitude. `runtimeType` ci dà la classe
+              // dell'eccezione senza serializzare PII.
+              'error_type': e.runtimeType.toString(),
             },
           );
       // Mostra il messaggio specifico al reason solo se non è stato
@@ -64,7 +68,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .read(analyticsServiceProvider)
           .logEvent(
             'login_failed',
-            properties: {'method': 'google', 'error': e.toString()},
+            properties: {
+              'method': 'google',
+              // Vedi sopra: solo il tipo, mai il messaggio dell'eccezione.
+              'error_type': e.runtimeType.toString(),
+            },
           );
       if (mounted) {
         AppSnackBar.showError(context, exceptionMessage(e));

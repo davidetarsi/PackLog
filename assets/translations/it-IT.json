@@ -387,7 +387,14 @@
     "sync_status_title": "Stato sincronizzazione",
     "sync_status_synced": "Tutto sincronizzato",
     "sync_status_pending": "{} modifiche in attesa",
-    "sync_status_retry": "Riprova ora"
+    "sync_status_retry": "Riprova ora",
+    "delete_account_cta": "Elimina il mio account",
+    "delete_account_title": "Eliminare l'account?",
+    "delete_account_warning": "Questa operazione è irreversibile. Verranno cancellati per sempre il tuo account, le tue case, oggetti, spazi, bagagli e viaggi. Non c'è ripristino.",
+    "delete_account_confirm_prompt": "Per confermare, scrivi qui sotto la tua email ({}):",
+    "delete_account_button": "Elimina definitivamente",
+    "delete_account_success": "Account e dati cancellati.",
+    "delete_account_failed": "Cancellazione fallita. Riprova o contatta l'assistenza."
   },
   "settings": {
     "title": "Profilo",
@@ -661,5 +668,8 @@
       "skip": "Salta"
     },
     "ai_save_tooltip": "Salveremo questi oggetti in una nuova casa 'Casa di prova'. Potrai spostarli quando vuoi."
+  },
+  "location_search": {
+    "rate_limit_reached": "Troppe ricerche di località, riprova tra qualche minuto."
   }
 }

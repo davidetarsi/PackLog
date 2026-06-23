@@ -14,49 +14,18 @@ import '../model/clothing_analysis_result.dart';
 
 /// Orchestrates the AI clothing analysis pipeline:
 /// 1. [TEMPORANEAMENTE DISABILITATO] Background removal via Remove.bg API.
-/// 2. Structured fashion analysis via OpenAI GPT-4o Vision API.
+/// 2. Structured fashion analysis via OpenAI GPT-4o Vision API
+///    (instradata attraverso l'edge function `openai-proxy`).
 ///
 /// Inject an [http.Client] for testability; defaults to `http.Client()`.
+///
+/// **Nota sicurezza**: model, prompt, max_tokens e temperature sono fissati
+/// SERVER-SIDE nel proxy. Questo servizio invia solo `image_base64`; tutto
+/// il resto è ignorato dal proxy by design (vedi
+/// `supabase/functions/openai-proxy/index.ts`). Non aggiungere altri campi
+/// al body: verrebbero scartati e potrebbero falsare i test.
 class AiClothingAnalyzerService {
   // static const _removeBgEndpoint = 'https://api.remove.bg/v1.0/removebg'; // ← REMOVE.BG DISABILITATO
-
-  /* static const _systemPrompt = '''
-You are a precise fashion item parser. Analyze the image and identify ALL distinct clothing items currently WORN by the PRIMARY person in the foreground.
-CRITICAL RULES:
-- IGNORE any clothing items in the background (e.g., clothes on beds, chairs, hangers, or worn by other people passing by).
-- Focus ONLY on the main subject's outfit.
-Respond ONLY with a raw JSON array of objects — no markdown, no code fences.
-Each object in the array must have exactly these keys:
-- "name": string (A short, descriptive name, e.g. "Giacca in pelle", "Jeans strappati". Write this in Italian.)
-- "category": string (e.g. "Upper Body", "Lower Body", "Shoes", "Outerwear", "Accessory")
-- "color": string (e.g. "Nero", "Bianco", "Multicolore")
-- "season": string (e.g. "Summer", "Winter", "Demiseason", "All Season")
-- "styleTags": array of strings (e.g. ["Casual", "Streetwear", "Y2K"])
-'''; */
-
-  static const _systemPrompt = '''
-You are a precise fashion item parser. Analyze the image and identify ALL distinct clothing items currently WORN by the PRIMARY person in the foreground.
-CRITICAL RULES:
-- IGNORE any clothing items in the background (e.g., clothes on beds, chairs, hangers).
-- Focus ONLY on the main subject's outfit.
-Respond ONLY with a raw JSON array of objects — no markdown, no code fences.
-Each object must have EXACTLY these keys:
-- "name": string (Short descriptive name in Italian, e.g. "Giacca in pelle", "Jeans slim")
-- "category": string (ONE OF: "Upper Body", "Lower Body", "Shoes", "Outerwear", "Accessory")
-- "subCategory": string (ONE OF based on category:
-  Upper Body → "T-Shirt", "Shirt", "Polo", "Hoodie", "Sweatshirt", "Sweater", "Tank Top", "Crop Top"
-  Lower Body → "Jeans", "Shorts", "Trousers", "Leggings", "Skirt", "Sweatpants", "Swimwear"
-  Shoes → "Sneakers", "Sandals", "Boots", "Flip-Flops", "Loafers", "Dress Shoes", "Hiking Boots"
-  Outerwear → "Coat", "Rain Jacket", "Down Jacket", "Windbreaker", "Blazer"
-  Accessory → "Cap/Hat", "Belt", "Bag", "Scarf", "Sunglasses", "Jewelry", "Watch")
-- "baseColor": string (Primary color in Italian, e.g. "Nero", "Bianco", "Blu navy")
-- "pattern": string (ONE OF: "Solid", "Striped", "Plaid", "Graphic", "Logo", "Floral", "Other")
-- "coverage": string (ONE OF: "Short-sleeve", "Long-sleeve", "Sleeveless", "Shorts", "Full-length", "Cropped", "N/A")
-- "fit": string (ONE OF: "Skinny", "Regular", "Oversize", "N/A")
-- "warmth": integer (1 to 5: 1=canottiera/sandali, 2=t-shirt/sneakers, 3=felpa/jeans, 4=cappotto/stivali, 5=piumino/scarponi)
-- "formality": string (ONE OF: "Loungewear", "Casual", "Smart Casual", "Business", "Formal")
-- "activityTags": array of 1-3 strings (ONLY from: ["Everyday", "Office", "Beach", "Swimming", "Hiking", "Sport", "Formal", "Lounge"])
-''';
 
   // final String _removeBgApiKey; // ← REMOVE.BG DISABILITATO
   final String _proxyUrl;
@@ -158,26 +127,9 @@ Each object must have EXACTLY these keys:
   Future<List<ClothingItem>> _analyzeImage(Uint8List imageBytes) async {
     final base64Image = base64Encode(imageBytes);
 
-    final body = jsonEncode({
-      'model': 'gpt-4o',
-      'max_tokens': 1000,
-      'temperature': 0.0,
-      'messages': [
-        {
-          'role': 'user',
-          'content': [
-            {'type': 'text', 'text': _systemPrompt},
-            {
-              'type': 'image_url',
-              'image_url': {
-                'url': 'data:image/png;base64,$base64Image',
-                'detail': 'high',
-              },
-            },
-          ],
-        },
-      ],
-    });
+    // Body minimale: il proxy ricostruisce model/prompt/max_tokens server-side
+    // per impedire al client di alterare costi o uso del modello.
+    final body = jsonEncode({'image_base64': base64Image});
 
     final jwt = _jwtProvider();
     if (jwt == null || jwt.isEmpty) {

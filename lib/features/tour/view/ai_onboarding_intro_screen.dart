@@ -132,15 +132,18 @@ class _AiOnboardingIntroScreenState
               ),
             ),
             const Spacer(),
-            UniversalActionBar(
-              primaryLabel: 'onboarding_tour.ai_intro.cta'.tr(),
-              primaryIcon: Icons.photo_camera_outlined,
-              onPrimaryPressed: _showSourceSheet,
-              rightAction: Tooltip(
-                message: 'onboarding_tour.ai_intro.skip'.tr(),
-                child: CircularActionButton(
-                  icon: Icons.close,
-                  onPressed: _handleSkip,
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+              child: UniversalActionBar(
+                primaryLabel: 'onboarding_tour.ai_intro.cta'.tr(),
+                primaryIcon: Icons.photo_camera_outlined,
+                onPrimaryPressed: _showSourceSheet,
+                rightAction: Tooltip(
+                  message: 'onboarding_tour.ai_intro.skip'.tr(),
+                  child: CircularActionButton(
+                    icon: Icons.close,
+                    onPressed: _handleSkip,
+                  ),
                 ),
               ),
             ),

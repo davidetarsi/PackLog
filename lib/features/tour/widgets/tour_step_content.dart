@@ -79,7 +79,6 @@ class TourStepContent extends StatelessWidget {
           if (onNext != null)
             // Normal step: primary Avanti pill + circular skip on the left.
             UniversalActionBar(
-              horizontalPadding: 0,
               primaryLabel: 'tour.next'.tr(),
               onPrimaryPressed: onNext,
               leftAction: Tooltip(

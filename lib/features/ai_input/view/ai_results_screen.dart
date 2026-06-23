@@ -58,6 +58,8 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
   }
 
   void _syncControllers(AiImportState? prev, AiImportState next) {
+    final wasEmpty = _controllers.isEmpty;
+
     while (_controllers.length < next.photoGroups.length) {
       final gi = _controllers.length;
       _controllers.add(
@@ -84,6 +86,21 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
         _controllers[gi].last.dispose();
         _controllers[gi].removeLast();
       }
+    }
+
+    // Select all text in the first field when results first appear so the user
+    // immediately sees the field is editable.
+    if (wasEmpty && _controllers.isNotEmpty && _controllers[0].isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final c = _controllers[0][0];
+        if (c.text.isNotEmpty) {
+          c.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: c.text.length,
+          );
+        }
+      });
     }
   }
 
@@ -351,6 +368,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
 
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -367,29 +385,36 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            for (final house in houses)
-              ListTile(
-                leading: Icon(
-                  state.selectedHouseId == house.id
-                      ? Icons.home
-                      : Icons.home_outlined,
-                  color: state.selectedHouseId == house.id
-                      ? Theme.of(context).colorScheme.primary
-                      : null,
-                ),
-                title: Text(house.name),
-                trailing: state.selectedHouseId == house.id
-                    ? Icon(
-                        Icons.check_circle,
-                        color: Theme.of(context).colorScheme.primary,
-                      )
-                    : null,
-                onTap: () {
-                  notifier.setSelectedHouseId(house.id);
-                  Navigator.pop(sheetContext);
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.only(bottom: context.spacingSm),
+                itemCount: houses.length,
+                itemBuilder: (context, index) {
+                  final house = houses[index];
+                  final isSelected = state.selectedHouseId == house.id;
+                  return ListTile(
+                    leading: Icon(
+                      isSelected ? Icons.home : Icons.home_outlined,
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    title: Text(house.name),
+                    trailing: isSelected
+                        ? Icon(
+                            Icons.check_circle,
+                            color: Theme.of(context).colorScheme.primary,
+                          )
+                        : null,
+                    onTap: () {
+                      notifier.setSelectedHouseId(house.id);
+                      Navigator.pop(sheetContext);
+                    },
+                  );
                 },
               ),
-            SizedBox(height: context.spacingSm),
+            ),
           ],
         ),
       ),
@@ -545,6 +570,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                     item: state.photoGroups[gi].results[ii],
                     index: ii + 1,
                     controller: _controllers[gi][ii],
+                    autofocus: gi == 0 && ii == 0,
                     onNameChanged: (value) {
                       _nameDebounce?.cancel();
                       _nameDebounce = Timer(

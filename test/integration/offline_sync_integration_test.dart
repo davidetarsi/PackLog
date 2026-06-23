@@ -130,7 +130,7 @@ void main() {
           any(),
           sentryTrace: any(named: 'sentryTrace'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
       // Nessun altro record pending (houses/items)
       when(

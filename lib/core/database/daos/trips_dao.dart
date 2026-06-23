@@ -336,15 +336,24 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
         .get();
   }
 
+  Future<int> countUnsynced() async {
+    final rows = await (select(trips)
+          ..where((t) => t.syncStatus.equalsValue(SyncStatus.synced).not()))
+        .get();
+    return rows.length;
+  }
+
   /// Marks a trip as successfully synced with the remote server.
   ///
   /// Resets retry state and records the server-provided timestamp
   /// in [lastSyncedAt] for future delta-sync queries.
   ///
-  /// Non aggiorna `updatedAt`: pivot LWW; vedi [HousesDao.markHouseAsSynced].
+  /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
+  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale.
   Future<void> markTripAsSynced(String tripId, DateTime serverUpdatedAt) {
     return (update(trips)..where((t) => t.id.equals(tripId))).write(
       TripsCompanion(
+        updatedAt: Value(serverUpdatedAt),
         syncStatus: const Value(SyncStatus.synced),
         syncRetryCount: const Value(0),
         lastSyncError: const Value(null),

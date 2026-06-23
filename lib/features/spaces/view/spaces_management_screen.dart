@@ -44,41 +44,12 @@ class SpacesManagementSheet extends ConsumerWidget {
 
     if (!context.mounted) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('spaces.delete'.tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('spaces.delete_confirmation'.tr(args: [space.name])),
-            if (itemCount > 0) ...[
-              SizedBox(height: dialogContext.spacingMd),
-              Text(
-                'spaces.delete_warning'.tr(),
-                style: TextStyle(
-                  fontSize: dialogContext.fontSizeSm,
-                  color: Theme.of(dialogContext).colorScheme.error,
-                ),
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text('common.cancel'.tr()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            child: Text('common.delete'.tr()),
-          ),
-        ],
-      ),
+      itemType: '',
+      itemName: space.name,
+      customTitle: 'spaces.delete'.tr(),
+      warningText: itemCount > 0 ? 'spaces.delete_warning'.tr() : null,
     );
 
     if (confirmed == true && context.mounted) {

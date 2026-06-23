@@ -37,6 +37,20 @@ class AppMonitoringService {
   ///
   /// [tags] aggiunge coppie chiave-valore visibili nel pannello Sentry
   /// per facilitare il filtraggio (es. `{'operation': 'deleteHouse'}`).
+  ///
+  /// ## Convenzione sulle tag e PII
+  /// Le tag finiscono nel pannello Sentry visibile in ricerca/breadcrumb,
+  /// quindi DEVONO restare PII-free. Le chiavi `*_id` (es. `item_id`,
+  /// `house_id`, `trip_id`) sono OK perché sono UUID v4 generati dal client
+  /// → non riconducibili a un utente per ispezione diretta.
+  ///
+  /// **NON** mettere in [tags]: email, displayName, nomi reali, numeri di
+  /// telefono, contenuto di campi di input utente (es. nome casa,
+  /// descrizione item). Il filtraggio per quei campi non vale il rischio
+  /// di leak in caso di breach del progetto Sentry.
+  ///
+  /// L'identità utente è già nello scope Sentry come `user.id` (UUID
+  /// `auth.users`) — vedi [identifyUser]. Non duplicarla in tag.
   void captureException(
     Object exception, {
     StackTrace? stackTrace,

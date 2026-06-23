@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseRepository {
@@ -68,15 +68,22 @@ class SupabaseRepository {
     );
   }
 
-  Future<void> upsertHouse(
+  /// Inserisce/aggiorna e ritorna il `updated_at` ufficiale del server.
+  ///
+  /// Il trigger Postgres `set_updated_at` (vedi
+  /// `supabase/schema_updated_at_trigger.sql`) sovrascrive il campo
+  /// `updated_at` di [data] con `NOW()` server-side. Il chiamante deve
+  /// applicare il valore di ritorno al record locale per mantenere
+  /// allineato il pivot LWW. Vedi `SyncService._syncRecord`.
+  Future<DateTime> upsertHouse(
     Map<String, dynamic> data, {
     String? sentryTrace,
   }) async {
     final result = await _withTrace(
       sentryTrace,
-      () => _client.from('houses').upsert(data).select(),
+      () => _client.from('houses').upsert(data).select('updated_at'),
     );
-    debugPrint('[SupabaseRepo] upsertHouse result: $result');
+    return _parseServerUpdatedAt(result, entity: 'house');
   }
 
   // === ITEMS ===
@@ -108,15 +115,15 @@ class SupabaseRepository {
     );
   }
 
-  Future<void> upsertItem(
+  Future<DateTime> upsertItem(
     Map<String, dynamic> data, {
     String? sentryTrace,
   }) async {
     final result = await _withTrace(
       sentryTrace,
-      () => _client.from('items').upsert(data).select(),
+      () => _client.from('items').upsert(data).select('updated_at'),
     );
-    debugPrint('[SupabaseRepo] upsertItem result: $result');
+    return _parseServerUpdatedAt(result, entity: 'item');
   }
 
   // === SPACES ===
@@ -148,15 +155,15 @@ class SupabaseRepository {
     );
   }
 
-  Future<void> upsertSpace(
+  Future<DateTime> upsertSpace(
     Map<String, dynamic> data, {
     String? sentryTrace,
   }) async {
     final result = await _withTrace(
       sentryTrace,
-      () => _client.from('spaces').upsert(data).select(),
+      () => _client.from('spaces').upsert(data).select('updated_at'),
     );
-    debugPrint('[SupabaseRepo] upsertSpace result: $result');
+    return _parseServerUpdatedAt(result, entity: 'space');
   }
 
   // === LUGGAGES ===
@@ -188,15 +195,15 @@ class SupabaseRepository {
     );
   }
 
-  Future<void> upsertLuggage(
+  Future<DateTime> upsertLuggage(
     Map<String, dynamic> data, {
     String? sentryTrace,
   }) async {
     final result = await _withTrace(
       sentryTrace,
-      () => _client.from('luggages').upsert(data).select(),
+      () => _client.from('luggages').upsert(data).select('updated_at'),
     );
-    debugPrint('[SupabaseRepo] upsertLuggage result: $result');
+    return _parseServerUpdatedAt(result, entity: 'luggage');
   }
 
   // === TRIPS ===
@@ -228,18 +235,41 @@ class SupabaseRepository {
     );
   }
 
-  Future<void> upsertTrip(
+  Future<DateTime> upsertTrip(
     Map<String, dynamic> data, {
     String? sentryTrace,
   }) async {
     final result = await _withTrace(
       sentryTrace,
-      () => _client.from('trips').upsert(data).select(),
+      () => _client.from('trips').upsert(data).select('updated_at'),
     );
-    debugPrint('[SupabaseRepo] upsertTrip result: $result');
+    return _parseServerUpdatedAt(result, entity: 'trip');
   }
 
   // === HELPERS ===
+
+  /// Estrae `updated_at` ufficiale del server dal risultato di un upsert.
+  ///
+  /// PostgREST con `.upsert(...).select('updated_at')` ritorna una lista
+  /// (un elemento per riga inserita/aggiornata). Per i nostri upsert
+  /// single-row la lista ha sempre 1 elemento; in caso anomalo (lista
+  /// vuota, formato inatteso) lanciamo `StateError` per far fallire fast
+  /// l'operazione e permettere all'orchestrator di gestirla via retry.
+  DateTime _parseServerUpdatedAt(dynamic raw, {required String entity}) {
+    if (raw is! List || raw.isEmpty) {
+      throw StateError(
+        'upsert $entity: expected non-empty list with updated_at, got: $raw',
+      );
+    }
+    final first = raw.first as Map<String, dynamic>;
+    final value = first['updated_at'];
+    if (value is! String) {
+      throw StateError(
+        'upsert $entity: missing or non-string updated_at in $first',
+      );
+    }
+    return DateTime.parse(value).toUtc();
+  }
 
   /// Injects sentry-trace header into the REST client for the duration of [fn].
   ///

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
 import '../providers/house_stats_provider.dart';
-import '../../trips/providers/trip_provider.dart';
+import '../../../core/sync/sync_provider.dart';
 import '../model/house_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
@@ -16,6 +16,7 @@ import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import 'add_edit_house_screen.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
+import '../../../shared/widgets/shell_tab_scaffold.dart';
 
 class HousesScreen extends ConsumerStatefulWidget {
   const HousesScreen({super.key});
@@ -26,24 +27,21 @@ class HousesScreen extends ConsumerStatefulWidget {
 
 class _HousesScreenState extends ConsumerState<HousesScreen> {
   @override
-  void initState() {
-    super.initState();
-    // Invalida i viaggi per ricalcolare lo stato (active/completed)
-    // ogni volta che la schermata viene montata
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(tripNotifierProvider);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final housesAsync = ref.watch(houseNotifierProvider);
+    final isSyncing = ref.watch(syncingProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      body: SafeArea(
-        child: housesAsync.when(
+    return ShellTabScaffold(
+      body: housesAsync.when(
+          skipLoadingOnReload: true,
           data: (houses) {
+            // Lista vuota durante un fullPull = DB appena svuotato (account switch
+            // o primo avvio), non "utente senza case". Mostra skeleton finché il
+            // pull non porta i dati reali.
+            if (houses.isEmpty && isSyncing) {
+              return const SkeletonHousesBody();
+            }
             if (houses.isEmpty) {
               // Stato vuoto scrollabile: senza AlwaysScrollableScrollPhysics
               // il gesto pull-to-refresh non verrebbe rilevato.
@@ -87,7 +85,6 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.only(
                   top: context.spacingMd,
-                  bottom: context.navBarReservedHeight,
                 ),
                 itemCount: sortedHouses.length,
                 itemBuilder: (context, index) {
@@ -103,7 +100,6 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
             onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
           ),
         ),
-      ),
     );
   }
 }
@@ -289,6 +285,7 @@ class _HouseCard extends ConsumerWidget {
 
                   // Stats row
                   statsAsync.when(
+                    skipLoadingOnReload: true,
                     data: (stats) => Row(
                       children: [
                         Icon(

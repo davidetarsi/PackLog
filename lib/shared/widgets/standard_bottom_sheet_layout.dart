@@ -147,7 +147,6 @@ class StandardBottomSheetLayout extends StatelessWidget {
                     context.spacingMd + AppConstants.bottomSheetBottomPadding,
               ),
               child: UniversalActionBar(
-                horizontalPadding: 0,
                 primaryLabel: saveLabel ?? 'common.save'.tr(),
                 primaryIcon: Icons.save,
                 onPrimaryPressed: isLoading ? null : onSave,

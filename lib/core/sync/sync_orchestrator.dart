@@ -11,7 +11,12 @@ class SyncOrchestrator with WidgetsBindingObserver {
   final AppMonitoringService _monitoring;
   final Connectivity _connectivity;
   bool _isSyncing = false;
+  String? _currentUserId;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+
+  /// Chiamato da [sync_provider] appena prima di avviare un fullPull.
+  /// Usato per segnalare all'UI che un pull remoto è in corso.
+  void Function()? onFullPullStart;
 
   /// Chiamato da [sync_provider] dopo ogni fullPull riuscito.
   /// Usato per notificare i notifier dei dati di rifetchare.
@@ -57,13 +62,21 @@ class SyncOrchestrator with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _attemptSyncIfOnline('app_resume');
+      final userId = _currentUserId;
+      if (userId != null) {
+        _attemptFullPullIfOnline(userId, resetRetries: true);
+      }
     }
   }
 
   void _onConnectivityChanged(List<ConnectivityResult> results) {
     if (_hasNetwork(results)) {
-      _attemptSync('connectivity_restored');
+      final userId = _currentUserId;
+      if (userId != null) {
+        _attemptFullPullIfOnline(userId, resetRetries: true);
+      } else {
+        _attemptSync('connectivity_restored');
+      }
     }
   }
 
@@ -74,14 +87,32 @@ class SyncOrchestrator with WidgetsBindingObserver {
     _attemptSyncIfOnline('local_mutation');
   }
 
+  /// Called from the manual "Sync now" button in profile.
+  /// Resets retry counters so records stuck in backoff get a fresh attempt,
+  /// then runs processQueue. Fire-and-forget.
+  void requestForcedSync() {
+    debugPrint('[SyncOrchestrator] requestForcedSync called');
+    _attemptForcedSyncIfOnline();
+  }
+
+  Future<void> _attemptForcedSyncIfOnline() async {
+    final results = await _connectivity.checkConnectivity();
+    if (!_hasNetwork(results)) return;
+    await _attemptSync('forced_sync', resetRetries: true);
+  }
+
   /// Scarica tutti i record dell'utente da Supabase al DB locale.
   /// Chiamato ad ogni avvio quando l'utente risulta autenticato.
   /// Fire-and-forget: non blocca il chiamante.
   void requestFullPull(String userId) {
+    _currentUserId = userId;
     _attemptFullPullIfOnline(userId);
   }
 
-  Future<void> _attemptFullPullIfOnline(String userId) async {
+  Future<void> _attemptFullPullIfOnline(
+    String userId, {
+    bool resetRetries = false,
+  }) async {
     final results = await _connectivity.checkConnectivity();
     if (!_hasNetwork(results)) {
       debugPrint('[SyncOrchestrator] fullPull: skipped (no network)');
@@ -92,12 +123,14 @@ class SyncOrchestrator with WidgetsBindingObserver {
       return;
     }
     _isSyncing = true;
+    onFullPullStart?.call();
     _monitoring.logBreadcrumb(
       'Avvio fullPull. userId: $userId',
       category: 'sync',
       data: {'userId': userId},
     );
     try {
+      if (resetRetries) await _syncService.resetAllSyncRetries();
       await _syncService.fullPull(userId);
       onFullPullComplete?.call();
       // Auto-flush: chiude la finestra di skip-by-mutex per le mutazioni
@@ -165,7 +198,10 @@ class SyncOrchestrator with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _attemptSync(String trigger) async {
+  Future<void> _attemptSync(
+    String trigger, {
+    bool resetRetries = false,
+  }) async {
     if (_isSyncing) {
       debugPrint('[SyncOrchestrator] $trigger: skipped (already syncing)');
       return;
@@ -173,17 +209,12 @@ class SyncOrchestrator with WidgetsBindingObserver {
     _isSyncing = true;
     onSyncStarted?.call();
     _monitoring.logBreadcrumb(
-      'Avvio sincronizzazione automatica. Trigger: $trigger',
+      'Avvio sincronizzazione. Trigger: $trigger',
       category: 'sync',
       data: {'trigger': trigger},
     );
     try {
-      // Su trigger "venuti dall'esterno" (connettività tornata, app ripresa)
-      // azzeriamo il retry state: record bloccati oltre soglia hanno una
-      // nuova chance di sincronizzarsi senza richiedere intervento dell'utente.
-      if (trigger == 'connectivity_restored' || trigger == 'app_resume') {
-        await _syncService.resetAllSyncRetries();
-      }
+      if (resetRetries) await _syncService.resetAllSyncRetries();
       await _syncService.processQueue();
     } catch (e, st) {
       debugPrint('[SyncOrchestrator] Sync failed: $e');

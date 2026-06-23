@@ -11,6 +11,7 @@ import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
+import '../../../shared/widgets/shell_tab_scaffold.dart';
 
 /// Enum per le tab di filtro
 enum TripFilterTab {
@@ -160,18 +161,21 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     final tripsAsync = ref.watch(tripNotifierProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return tripsAsync.when(
-      data: (trips) => _buildTripsContent(context, ref, colorScheme, trips),
-      loading: () => const SkeletonTripsBody(),
-      error: (error, stack) => RefreshIndicator(
-        onRefresh: () => ref.refresh(tripNotifierProvider.future),
-        color: colorScheme.primary,
-        child: LayoutBuilder(
-          builder: (_, constraints) => SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: SizedBox(
-              height: constraints.maxHeight,
-              child: _buildErrorState(context, ref, error),
+    return ShellTabScaffold(
+      body: tripsAsync.when(
+        skipLoadingOnReload: true,
+        data: (trips) => _buildTripsContent(context, ref, colorScheme, trips),
+        loading: () => const SkeletonTripsBody(),
+        error: (error, stack) => RefreshIndicator(
+          onRefresh: () => ref.refresh(tripNotifierProvider.future),
+          color: colorScheme.primary,
+          child: LayoutBuilder(
+            builder: (_, constraints) => SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: constraints.maxHeight,
+                child: _buildErrorState(context, ref, error),
+              ),
             ),
           ),
         ),
@@ -240,7 +244,6 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
               left: context.spacingMd,
               right: context.spacingMd,
               top: context.spacingSm,
-              bottom: context.navBarReservedHeight,
             ),
             // Quando la lista è vuota, SizedBox con altezza DELIMITATA permette
             // a Expanded di funzionare per centrare verticalmente l'empty state.

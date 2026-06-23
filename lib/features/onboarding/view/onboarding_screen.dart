@@ -119,12 +119,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               inactiveColor: Theme.of(context).colorScheme.outlineVariant,
             ),
             SizedBox(height: context.spacingMd),
-            UniversalActionBar(
-              primaryLabel: !_isLastPage
-                  ? 'onboarding.next'.tr()
-                  : 'onboarding.start'.tr(),
-              onPrimaryPressed: _handleNext,
-              isLoading: _isLastPage && _isCompleting,
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+              child: UniversalActionBar(
+                primaryLabel: !_isLastPage
+                    ? 'onboarding.next'.tr()
+                    : 'onboarding.start'.tr(),
+                onPrimaryPressed: _handleNext,
+                isLoading: _isLastPage && _isCompleting,
+              ),
             ),
             SizedBox(height: context.spacingMd),
           ],

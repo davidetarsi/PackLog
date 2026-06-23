@@ -44,6 +44,23 @@ class SyncService {
        _monitoring = monitoring,
        _tombstoneConfig = tombstoneConfig;
 
+  /// Conta tutti i record non sincronizzati (syncStatus != synced) su tutte
+  /// le tabelle, indipendentemente dal retry count o dal backoff.
+  ///
+  /// Usato per decidere se mostrare il pulsante "Sincronizza ora" nel profilo:
+  /// anche i record stuck (retry >= 5 o in backoff) contribuiscono al totale,
+  /// così il pulsante rimane visibile finché esistono dati non su Supabase.
+  Future<int> countAllUnsyncedChanges() async {
+    final counts = await Future.wait([
+      _housesDao.countUnsynced(),
+      _spacesDao.countUnsynced(),
+      _luggagesDao.countUnsynced(),
+      _itemsDao.countUnsynced(),
+      _tripsDao.countUnsynced(),
+    ]);
+    return counts.fold<int>(0, (sum, n) => sum + n);
+  }
+
   /// Conta le modifiche pending in tutte le tabelle.
   ///
   /// Usato dalla UI di logout per avvertire l'utente se ci sono mutazioni non
@@ -640,7 +657,7 @@ class SyncService {
     required String? sentryTraceId,
     required Map<String, dynamic> Function() toJson,
     required Future<Map<String, dynamic>?> Function(String? trace) fetchRemote,
-    required Future<void> Function(Map<String, dynamic> data, String? trace)
+    required Future<DateTime> Function(Map<String, dynamic> data, String? trace)
     upsert,
     required Future<void> Function(Map<String, dynamic> remote) pullLocal,
     required Future<void> Function(DateTime serverUpdatedAt) markSynced,
@@ -665,13 +682,19 @@ class SyncService {
       try {
         final remote = await fetchRemote(traceHeader);
 
+        // Sentinella locale: il timestamp server-side dell'`updated_at`.
+        // Viene popolata in TUTTI i path che fanno upsert/pull, e poi
+        // applicata via `markSynced` per allineare il pivot LWW del record
+        // locale al tempo di scrittura del server (immune a clock drift).
+        DateTime? serverUpdatedAt;
+
         if (remote == null) {
           if (syncStatus == SyncStatus.pendingCreate && !localIsDeleted) {
             debugPrint(
               '[SyncService] $entity $id: remote not found, never-synced new record -- pushing',
             );
             final data = toJson();
-            await upsert(data, traceHeader);
+            serverUpdatedAt = await upsert(data, traceHeader);
           } else {
             final retentionDays = await _tombstoneConfig.getRetentionDays();
             final cutoff = DateTime.now().toUtc().subtract(
@@ -684,7 +707,10 @@ class SyncService {
                 '[SyncService] $entity $id: remote not found, older than $retentionDays days -- purging locally',
               );
               onPurge();
-              await markSynced(DateTime.now());
+              // Niente push qui: marchiamo synced col wall clock locale —
+              // il record viene purgato comunque, l'updatedAt non sarà più
+              // letto da nessuno.
+              await markSynced(DateTime.now().toUtc());
               transaction.status = const SpanStatus.ok();
               return;
             }
@@ -694,7 +720,7 @@ class SyncService {
             debugPrint(
               '[SyncService] $entity $id: is_deleted=${data['is_deleted']}',
             );
-            await upsert(data, traceHeader);
+            serverUpdatedAt = await upsert(data, traceHeader);
           }
         } else {
           final remoteUpdatedAt = DateTime.parse(
@@ -716,17 +742,24 @@ class SyncService {
             debugPrint(
               '[SyncService] $entity $id: pushing (is_deleted=${data['is_deleted']})',
             );
-            await upsert(data, traceHeader);
+            serverUpdatedAt = await upsert(data, traceHeader);
           } else {
             debugPrint(
               '[SyncService] $entity $id: pulling (is_deleted=$remoteIsDeleted)',
             );
             await pullLocal(remote);
+            // Pull: `_pullX` ha già scritto `updatedAt = remote.updated_at`
+            // sul record locale, ma vogliamo che `markSynced` usi lo stesso
+            // valore per `lastSyncedAt` e per riscrivere `updatedAt` in
+            // modo coerente (no-op in pratica, ma esplicito è meglio).
+            serverUpdatedAt = remoteUpdatedAt;
           }
         }
 
-        final now = DateTime.now();
-        await markSynced(now);
+        // A questo punto tutti i path che non hanno fatto early-return
+        // hanno popolato serverUpdatedAt (upsert ritorna il timestamp del
+        // trigger; pull lo prende da remote['updated_at']).
+        await markSynced(serverUpdatedAt);
         if (localIsDeleted) {
           onPurge();
           debugPrint('[SyncService] $entity $id: synced, purge deferred');

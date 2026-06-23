@@ -45,6 +45,16 @@ Future<void> handleAuthenticatedUser({
 /// e mostrare i nuovi record scaricati da Supabase senza richiedere un refresh manuale.
 final syncTriggerProvider = StateProvider<int>((ref) => 0);
 
+/// True mentre un fullPull è in corso, false quando completa (o fallisce).
+/// Usato dalla houses screen per mostrare skeleton invece dell'empty state
+/// durante la finestra tra wipe del DB e completamento del pull remoto.
+final syncingProvider = StateProvider<bool>((ref) => false);
+
+/// True mentre un processQueue (push) è in corso, false a riposo.
+/// Usato dalla [SyncStatusTile] per mostrare uno spinner durante il push
+/// invece di lasciare il pulsante "Riprova" senza feedback visivo.
+final syncPushInProgressProvider = StateProvider<bool>((ref) => false);
+
 @Riverpod(keepAlive: true)
 SupabaseRepository supabaseRepository(Ref ref) {
   return SupabaseRepository(Supabase.instance.client);
@@ -78,35 +88,55 @@ SyncOrchestrator syncOrchestrator(Ref ref) {
   );
   orchestrator.init();
 
-  // Quando fullPull completa, incrementa il trigger → i notifier si ricostruiscono.
+  // Segnala all'UI che un fullPull è in corso (usato per mostrare skeleton
+  // invece dell'empty state durante la finestra di pull dopo un account switch).
+  orchestrator.onFullPullStart = () {
+    ref.read(syncingProvider.notifier).state = true;
+  };
+
+  // Quando fullPull completa, riporta il flag a false e incrementa il trigger
+  // così i notifier si ricostruiscono con i dati freschi.
   orchestrator.onFullPullComplete = () {
+    ref.read(syncingProvider.notifier).state = false;
     ref.read(syncTriggerProvider.notifier).state++;
   };
 
-  // Quando un push parte davvero (mutex acquisito), invalida subito il counter
-  // così la `SyncStatusTile` mostra lo stato di caricamento invece di un
-  // valore cacheato stale. Il provider si aggiorna di nuovo a fine push via
-  // onProcessQueueComplete.
+  // Quando un push parte davvero (mutex acquisito): segnala il push in corso
+  // per lo spinner nel tile e invalida il counter pending.
   orchestrator.onSyncStarted = () {
+    ref.read(syncPushInProgressProvider.notifier).state = true;
     ref.invalidate(pendingChangesCountProvider);
   };
 
-  // Quando processQueue (push) termina — successo o errore — invalida il
-  // counter dei record pending così la `SyncStatusTile` in profilo mostra
-  // il dato fresco. Non tocca `syncTriggerProvider` per evitare rebuild a
-  // cascata dei notifier dei dati (che dipendono solo dal fullPull).
+  // Quando processQueue termina (successo o errore): riporta il flag a false
+  // e invalida entrambi i counter così il tile mostra il dato fresco.
   orchestrator.onProcessQueueComplete = () {
+    ref.read(syncPushInProgressProvider.notifier).state = false;
     ref.invalidate(pendingChangesCountProvider);
+    ref.invalidate(totalUnsyncedCountProvider);
   };
 
   Future<void> dispatch(String userId) async {
     final prefs = await SharedPreferences.getInstance();
+    final last = prefs.getString(kLastKnownUserIdKey);
+    final isAccountSwitch = last != null && last != userId;
+
     await handleAuthenticatedUser(
       userId: userId,
       syncService: ref.read(syncServiceProvider),
       requestFullPull: orchestrator.requestFullPull,
       prefs: prefs,
     );
+
+    // Dopo un cambio account il DB locale è stato svuotato da handleAuthenticatedUser.
+    // syncingProvider deve diventare true PRIMA di syncTriggerProvider++:
+    // quando i notifier ricaricano dal DB vuoto (houses = []), la houses screen
+    // vede isSyncing=true e mostra lo skeleton invece della CTA "crea la tua prima casa".
+    // onFullPullStart la setterà di nuovo (no-op), onFullPullComplete la resetterà.
+    if (isAccountSwitch) {
+      ref.read(syncingProvider.notifier).state = true;
+      ref.read(syncTriggerProvider.notifier).state++;
+    }
   }
 
   // Full pull all'avvio: copre sia la sessione persistita (read immediato)
@@ -140,4 +170,17 @@ SyncOrchestrator syncOrchestrator(Ref ref) {
 Future<int> pendingChangesCount(Ref ref) async {
   ref.watch(syncTriggerProvider);
   return ref.read(syncServiceProvider).countPendingChanges();
+}
+
+/// Conta tutti i record locali con syncStatus != synced, inclusi quelli stuck
+/// in retry backoff o con retry count esaurito.
+///
+/// Usato dalla [SyncStatusTile] per decidere se mostrare il pulsante
+/// "Sincronizza ora": rimane visibile finché esistono dati non su Supabase,
+/// anche quando [pendingChangesCountProvider] restituisce 0 per effetto
+/// del filtro di backoff.
+@riverpod
+Future<int> totalUnsyncedCount(Ref ref) async {
+  ref.watch(syncTriggerProvider);
+  return ref.read(syncServiceProvider).countAllUnsyncedChanges();
 }

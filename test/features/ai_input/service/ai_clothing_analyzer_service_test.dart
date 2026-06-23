@@ -174,6 +174,44 @@ void main() {
       });
     });
 
+    group('Body sent to proxy', () {
+      test(
+        'envia SOLO image_base64, niente model/messages/max_tokens/prompt',
+        () async {
+          http.Request? capturedRequest;
+          final service = _makeService(
+            MockClient((req) async {
+              capturedRequest = req;
+              return http.Response(
+                _openAiResponse('[{"name":"T","category":"Upper Body",'
+                    '"subCategory":"T-Shirt","baseColor":"Bianco",'
+                    '"pattern":"Solid","coverage":"Short-sleeve",'
+                    '"fit":"Regular","warmth":2,"formality":"Casual",'
+                    '"activityTags":["Everyday"]}]'),
+                200,
+              );
+            }),
+          );
+
+          await service.processClothingItem(_fakeImageFile());
+
+          expect(capturedRequest, isNotNull);
+          final body = jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
+          // Solo image_base64. Tutto il resto è server-side.
+          expect(body.keys, ['image_base64']);
+          expect(body['image_base64'], isA<String>());
+          expect((body['image_base64'] as String).isNotEmpty, true);
+          // Difese esplicite contro regressioni: se qualcuno reintroduce
+          // questi campi, l'utente potrebbe iniettarli e bypassare il
+          // controllo server-side.
+          expect(body.containsKey('model'), false);
+          expect(body.containsKey('messages'), false);
+          expect(body.containsKey('max_tokens'), false);
+          expect(body.containsKey('temperature'), false);
+        },
+      );
+    });
+
     group('processClothingItem — auth and network', () {
       test('throws VisionAnalysisException on empty JWT string', () async {
         final service = AiClothingAnalyzerService(

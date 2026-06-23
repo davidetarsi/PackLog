@@ -387,7 +387,14 @@
     "sync_status_title": "Sync status",
     "sync_status_synced": "All synced",
     "sync_status_pending": "{} pending changes",
-    "sync_status_retry": "Retry now"
+    "sync_status_retry": "Retry now",
+    "delete_account_cta": "Delete my account",
+    "delete_account_title": "Delete account?",
+    "delete_account_warning": "This action is irreversible. Your account and all your houses, items, spaces, luggages and trips will be permanently deleted. There is no undo.",
+    "delete_account_confirm_prompt": "To confirm, type your email below ({}):",
+    "delete_account_button": "Delete permanently",
+    "delete_account_success": "Account and data deleted.",
+    "delete_account_failed": "Deletion failed. Try again or contact support."
   },
   "settings": {
     "title": "Profile",
@@ -661,5 +668,8 @@
       "skip": "Skip"
     },
     "ai_save_tooltip": "We'll save these items in a new 'Demo House'. You can move them whenever you like."
+  },
+  "location_search": {
+    "rate_limit_reached": "Too many location searches, please try again in a few minutes."
   }
 }

@@ -43,12 +43,13 @@ class UniversalActionBar extends StatelessWidget {
   /// Mostra loading indicator nel bottone primario
   final bool isLoading;
 
-  /// Padding orizzontale esterno (default: spacingMd)
-  final double? horizontalPadding;
-
   /// Usa bordo outline (grigio) invece di primary. Per azioni secondarie/distruttive
   /// che non devono richiamare l'attenzione come un'azione primaria.
   final bool isSecondary;
+
+  /// Usa bordo e testo rosso (colorScheme.error). Per azioni irreversibili
+  /// come l'eliminazione dell'account.
+  final bool isDestructive;
 
   const UniversalActionBar({
     super.key,
@@ -58,8 +59,8 @@ class UniversalActionBar extends StatelessWidget {
     this.leftAction,
     this.rightAction,
     this.isLoading = false,
-    this.horizontalPadding,
     this.isSecondary = false,
+    this.isDestructive = false,
   });
 
   @override
@@ -75,10 +76,11 @@ class UniversalActionBar extends StatelessWidget {
       colorScheme: colorScheme,
       isFullWidth: isSingleAction,
       isSecondary: isSecondary,
+      isDestructive: isDestructive,
     );
 
     return TriSlotBar(
-      horizontalPadding: horizontalPadding,
+      horizontalPadding: 0,
       left: leftAction,
       right: rightAction,
       center: primaryButton,
@@ -95,6 +97,7 @@ class _PrimaryPillButton extends StatelessWidget {
   final ColorScheme colorScheme;
   final bool isFullWidth;
   final bool isSecondary;
+  final bool isDestructive;
 
   const _PrimaryPillButton({
     required this.label,
@@ -104,11 +107,27 @@ class _PrimaryPillButton extends StatelessWidget {
     required this.colorScheme,
     this.isFullWidth = false,
     this.isSecondary = false,
+    this.isDestructive = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isEnabled = onPressed != null && !isLoading;
+
+    final Color accentColor;
+    if (!isEnabled) {
+      accentColor = colorScheme.outline;
+    } else if (isDestructive) {
+      accentColor = colorScheme.error;
+    } else if (isSecondary) {
+      accentColor = colorScheme.outline;
+    } else {
+      accentColor = colorScheme.primary;
+    }
+
+    final Color contentColor = isDestructive && isEnabled
+        ? colorScheme.error
+        : colorScheme.onSurfaceVariant;
 
     return Material(
       color: colorScheme.surface,
@@ -129,12 +148,7 @@ class _PrimaryPillButton extends StatelessWidget {
             // Aggiungere color in BoxDecoration causerebbe un layer di pittura
             // aggiuntivo sovrapposto a quello di Material.
             borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-            border: Border.all(
-              color: isSecondary || !isEnabled
-                  ? colorScheme.outline
-                  : colorScheme.primary,
-              width: 2,
-            ),
+            border: Border.all(color: accentColor, width: 2),
           ),
           child: isLoading
               ? Center(
@@ -155,11 +169,7 @@ class _PrimaryPillButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (icon != null) ...[
-                      Icon(
-                        icon,
-                        color: colorScheme.onSurfaceVariant,
-                        size: context.iconSizeMd,
-                      ),
+                      Icon(icon, color: contentColor, size: context.iconSizeMd),
                       SizedBox(width: context.spacingSm),
                     ],
                     Flexible(
@@ -167,7 +177,7 @@ class _PrimaryPillButton extends StatelessWidget {
                         label,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurfaceVariant,
+                          color: contentColor,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),

@@ -136,10 +136,19 @@ class SpacesDao extends DatabaseAccessor<AppDatabase> with _$SpacesDaoMixin {
         .get();
   }
 
-  /// Non aggiorna `updatedAt`: pivot LWW; vedi [HousesDao.markHouseAsSynced].
+  Future<int> countUnsynced() async {
+    final rows = await (select(spaces)
+          ..where((s) => s.syncStatus.equalsValue(SyncStatus.synced).not()))
+        .get();
+    return rows.length;
+  }
+
+  /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
+  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale.
   Future<void> markSpaceAsSynced(String spaceId, DateTime serverUpdatedAt) {
     return (update(spaces)..where((s) => s.id.equals(spaceId))).write(
       SpacesCompanion(
+        updatedAt: Value(serverUpdatedAt),
         syncStatus: const Value(SyncStatus.synced),
         syncRetryCount: const Value(0),
         lastSyncError: const Value(null),

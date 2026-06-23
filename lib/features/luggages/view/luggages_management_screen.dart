@@ -35,39 +35,12 @@ class LuggagesManagementSheet extends ConsumerWidget {
     WidgetRef ref,
     LuggageModel luggage,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('luggages.delete'.tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('luggages.delete_confirmation'.tr(args: [luggage.name])),
-            SizedBox(height: dialogContext.spacingMd),
-            Text(
-              'luggages.delete_warning'.tr(),
-              style: TextStyle(
-                fontSize: dialogContext.fontSizeSm,
-                color: Theme.of(dialogContext).colorScheme.error,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text('common.cancel'.tr()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            child: Text('common.delete'.tr()),
-          ),
-        ],
-      ),
+      itemType: '',
+      itemName: luggage.name,
+      customTitle: 'luggages.delete'.tr(),
+      warningText: 'luggages.delete_warning'.tr(),
     );
 
     if (confirmed == true && context.mounted) {

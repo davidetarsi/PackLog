@@ -188,13 +188,22 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
-  /// Non aggiorna `updatedAt`: pivot LWW; vedi [HousesDao.markHouseAsSynced].
+  Future<int> countUnsynced() async {
+    final rows = await (select(luggages)
+          ..where((l) => l.syncStatus.equalsValue(SyncStatus.synced).not()))
+        .get();
+    return rows.length;
+  }
+
+  /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
+  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale.
   Future<void> markLuggageAsSynced(
     String luggageId,
     DateTime serverUpdatedAt,
   ) {
     return (update(luggages)..where((l) => l.id.equals(luggageId))).write(
       LuggagesCompanion(
+        updatedAt: Value(serverUpdatedAt),
         syncStatus: const Value(SyncStatus.synced),
         syncRetryCount: const Value(0),
         lastSyncError: const Value(null),

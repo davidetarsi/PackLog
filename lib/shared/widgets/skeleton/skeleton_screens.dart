@@ -18,7 +18,7 @@ class SkeletonHousesBody extends StatelessWidget {
       child: ListView.builder(
         physics: const NeverScrollableScrollPhysics(),
         padding: EdgeInsets.only(top: context.spacingMd),
-        itemCount: 3,
+        itemCount: 5,
         itemBuilder: (_, _) => const SkeletonHouseCard(),
       ),
     );

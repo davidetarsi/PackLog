@@ -4,9 +4,11 @@ import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
 import '../constants/app_constants.dart';
+import '../helpers/snack_bar_helper.dart';
 import '../model/model.dart';
 import '../theme/app_spacing.dart';
 
@@ -157,6 +159,19 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       } else {
         _removeOverlay();
       }
+    } on _GeocodeRateLimitException {
+      if (!mounted) return;
+      setState(() {
+        _suggestions = [];
+        _isLoading = false;
+      });
+      _removeOverlay();
+      // Feedback esplicito all'utente: senza questo vedrebbe "nessun
+      // risultato" e penserebbe che la località non esista.
+      AppSnackBar.showWarning(
+        context,
+        'location_search.rate_limit_reached'.tr(),
+      );
     } catch (e) {
       if (!mounted) return;
 
@@ -181,11 +196,26 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
           },
         );
 
+    // Il proxy esegue `getUser(token)` per il rate-limit per-utente: serve
+    // il JWT dell'utente loggato, non l'anon key. L'auth gate del router
+    // garantisce che chiunque possa raggiungere questo widget sia loggato;
+    // in caso edge di sessione scaduta tra il check e qui, ritorniamo
+    // suggestion vuoti senza errori — l'utente proverà a digitare ancora.
+    final jwt = Supabase.instance.client.auth.currentSession?.accessToken;
+    if (jwt == null) return [];
+
     try {
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}'},
+        headers: {
+          'Authorization': 'Bearer $jwt',
+          'apikey': AppConfig.supabaseAnonKey,
+        },
       );
+
+      if (response.statusCode == 429) {
+        throw const _GeocodeRateLimitException();
+      }
 
       if (response.statusCode != 200) {
         throw Exception('Errore HTTP Geoapify: ${response.statusCode}');
@@ -461,4 +491,10 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       ),
     );
   }
+}
+
+/// Sentinella interna: distingue il 429 del rate-limit dagli altri errori
+/// così da poter mostrare un messaggio specifico in `_searchLocations`.
+class _GeocodeRateLimitException implements Exception {
+  const _GeocodeRateLimitException();
 }

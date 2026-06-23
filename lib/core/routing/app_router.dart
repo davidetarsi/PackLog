@@ -15,7 +15,7 @@ import '../../features/auth/view/login_screen.dart';
 import '../../features/houses/view/houses_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
 import '../../features/profile/view/profile_screen.dart';
-import '../../features/trips/view/trips_page.dart';
+import '../../features/trips/view/trips_screen.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/add_trip_screen.dart';
 import '../../features/trips/view/edit_trip_info_screen.dart';
@@ -162,7 +162,7 @@ GoRouter appRouter(Ref ref) {
               GoRoute(
                 path: '/trips',
                 name: 'trips',
-                builder: (context, state) => const TripsPage(),
+                builder: (context, state) => const TripsScreen(),
               ),
             ],
           ),
