@@ -1,0 +1,130 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meta/meta.dart';
+
+/// Mixin per [AsyncNotifier] che gestiscono una lista di entità persistenti
+/// seguendo il pattern *load → mutate → reload*.
+///
+/// ## Cosa fa
+///
+/// Fornisce [mutate], che incapsula il pattern ricorrente:
+/// 1. (opzionale) mostra `AsyncLoading` intermedio;
+/// 2. esegue l'operazione di scrittura;
+/// 3. ricarica la lista dal repository;
+/// 4. richiama [onSuccess] se passata (può essere async);
+/// 5. invoca l'hook [onMutationSuccess] o [onMutationError];
+/// 6. propaga l'eccezione al chiamante via rethrow (se `rethrowOnError = true`).
+///
+/// ## Cosa NON fa
+///
+/// - Non gestisce optimistic updates: la UI vede la nuova lista solo dopo
+///   il reload completo.
+/// - Non gestisce cancellazione di mutazioni in flight.
+/// - Non gestisce retry automatico.
+/// - Non sa nulla di sync orchestrator, analytics, o altri provider:
+///   la classe finale lo collega via [onMutationSuccess].
+///
+/// ## Come usarlo
+///
+/// La classe finale override [onMutationSuccess] / [onMutationError] per
+/// applicare logica app-specifica (sync, analytics, log).
+///
+/// ```dart
+/// @Riverpod(keepAlive: true)
+/// class HouseNotifier extends _$HouseNotifier
+///     with SyncedCrudNotifier<HouseModel> {
+///
+///   HouseRepository get _repo => ref.read(houseRepositoryProvider);
+///
+///   @override
+///   Future<List<HouseModel>> build() async {
+///     ref.watch(syncTriggerProvider);
+///     return _repo.getAllHouses();
+///   }
+///
+///   @override
+///   void onMutationSuccess(List<HouseModel> updated) {
+///     ref.read(syncOrchestratorProvider).requestSync();
+///   }
+///
+///   Future<void> addHouse(HouseModel model) => mutate(
+///     operation: () => _repo.addHouse(model),
+///     reload: _repo.getAllHouses,
+///     onSuccess: (houses) => ref.read(analyticsProvider)
+///         .trackHouseCreated(houseId: model.id, totalHouses: houses.length),
+///   );
+/// }
+/// ```
+mixin SyncedCrudNotifier<T> on AsyncNotifier<List<T>> {
+  /// Hook invocato dopo ogni mutazione riuscita.
+  ///
+  /// [updated] è la lista appena ricaricata dal repository (post-mutazione).
+  /// È **la stessa lista** che diventerà il nuovo `state`. Leggere `state`
+  /// dentro questo hook restituirebbe ancora i dati pre-mutazione: usa
+  /// sempre l'argomento [updated].
+  ///
+  /// Override per side-effect a livello di entità (es. richiesta sync,
+  /// invalidazione di provider correlati, analytics che dipendono dal
+  /// nuovo conteggio).
+  @protected
+  void onMutationSuccess(List<T> updated) {}
+
+  /// Hook invocato dopo ogni mutazione fallita.
+  ///
+  /// Override per logging custom. Eseguito **dopo** che `state` è stato
+  /// impostato a [AsyncError]. Non rilanciare qui — la propagazione al
+  /// chiamante è gestita dal parametro `rethrowOnError` di [mutate].
+  @protected
+  void onMutationError(Object error, StackTrace stack) {}
+
+  /// Esegue una mutazione persistente seguita da reload della lista.
+  ///
+  /// - [operation]: l'azione di scrittura (insert/update/delete).
+  /// - [reload]: come ricostruire la lista (es. `repo.getAllX`).
+  /// - [showLoading]: se `true`, mostra `AsyncLoading` durante l'operazione.
+  ///   Default `false` per evitare flash UI. Usalo solo per operazioni
+  ///   con attesa percepibile (>500ms tipici).
+  /// - [onSuccess]: callback opzionale eseguita dopo il reload riuscito,
+  ///   prima di [onMutationSuccess]. Riceve la lista AGGIORNATA come
+  ///   argomento. Non leggere `state` dentro questa callback — sarebbe
+  ///   ancora la lista pre-mutazione (lo state viene assegnato solo dopo
+  ///   `AsyncValue.guard`). Usa sempre l'argomento.
+  /// - [rethrowOnError]: se `true` (default), rilancia l'eccezione al
+  ///   chiamante dopo aver settato `state = AsyncError`. Il chiamante può
+  ///   intercettarla con try/catch per UI dedicata (es. dialog di retry).
+  ///   Usa `false` per metodi tipo `refresh()` wired a callback senza
+  ///   gestione errore (es. `onRetry` di un ErrorState).
+  @protected
+  Future<void> mutate({
+    required Future<void> Function() operation,
+    required Future<List<T>> Function() reload,
+    bool showLoading = false,
+    FutureOr<void> Function(List<T> updated)? onSuccess,
+    bool rethrowOnError = true,
+  }) async {
+    if (showLoading) state = const AsyncLoading();
+
+    List<T>? freshList;
+    final result = await AsyncValue.guard<List<T>>(() async {
+      await operation();
+      final fresh = await reload();
+      freshList = fresh;
+      if (onSuccess != null) await onSuccess(fresh);
+      return fresh;
+    });
+
+    state = result;
+
+    if (result.hasError) {
+      onMutationError(result.error!, result.stackTrace!);
+      if (rethrowOnError) {
+        Error.throwWithStackTrace(result.error!, result.stackTrace!);
+      }
+    } else if (result.hasValue) {
+      // freshList è non-null qui: AsyncValue.guard non sarebbe in stato
+      // "hasValue" senza aver completato il blocco senza eccezioni.
+      onMutationSuccess(freshList!);
+    }
+  }
+}
