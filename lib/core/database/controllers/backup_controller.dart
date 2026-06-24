@@ -1,3 +1,11 @@
+// ⚠️ SQLCipher (fix #5b — 2026-06-22): il file `stuff_tracker.db` è ora
+// cifrato AES-256. Qualsiasi feature di export/import che ne legga i byte
+// raw deve includere la passphrase (DbPassphraseService.getOrCreate) o
+// passare via `sqlcipher_export` per decifrare prima dell'export.
+//
+// Backup feature è attualmente deprecata (vedi MEMORY.md
+// "backup_deprecation"); se riattivata, riadattare di conseguenza.
+
 import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
