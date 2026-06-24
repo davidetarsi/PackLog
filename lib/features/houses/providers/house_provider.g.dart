@@ -6,9 +6,15 @@ part of 'house_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$houseNotifierHash() => r'49d3911e31d72233ac69643d15e87cef7a738c7a';
+String _$houseNotifierHash() => r'b28ba7e9cd08512c1a4a4f691a7241e99cd38e1b';
 
-/// See also [HouseNotifier].
+/// Notifier per la lista di case dell'utente.
+///
+/// Usa [SyncedCrudNotifier] per il pattern standard load → mutate → reload.
+/// Ogni mutazione richiede automaticamente un sync push tramite l'hook
+/// [onMutationSuccess].
+///
+/// Copied from [HouseNotifier].
 @ProviderFor(HouseNotifier)
 final houseNotifierProvider =
     AsyncNotifierProvider<HouseNotifier, List<HouseModel>>.internal(
