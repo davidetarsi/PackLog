@@ -45,6 +45,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/auth/secure_local_storage.dart';
 import 'core/database/database.dart';
+import 'core/database/encryption/db_passphrase_service.dart';
+import 'core/database/encryption/encryption_migration_service.dart';
 import 'core/database/migration_service.dart';
 import 'core/database/services/backup_service.dart';
 import 'core/monitoring/app_error_observer.dart';
@@ -293,7 +295,14 @@ Future<void> _initializePersistence() async {
   debugPrint('[Bootstrap] Inizializzazione persistenza...');
 
   try {
-    final AppDatabase database = AppDatabase();
+    // Migrazione SQLCipher: deve avvenire PRIMA di qualsiasi apertura del DB.
+    // La migration è idempotente: in fresh install genera solo la passphrase.
+    final passphraseService = DbPassphraseService();
+    final migrationService =
+        await EncryptionMigrationService.withDefaultPaths(passphraseService);
+    await migrationService.ensureMigrated();
+
+    final AppDatabase database = AppDatabase(passphraseService);
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     await _runMigration(database, prefs);

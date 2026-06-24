@@ -5,6 +5,8 @@ import 'package:meta/meta.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
+import 'encryption/db_passphrase_service.dart';
+
 import 'tables/houses_table.dart';
 import 'tables/items_table.dart';
 import 'tables/trips_table.dart';
@@ -53,10 +55,16 @@ part 'database.g.dart';
   daos: [HousesDao, ItemsDao, SpacesDao, LuggagesDao, TripsDao],
 )
 class AppDatabase extends _$AppDatabase {
-  /// Costruisce `AppDatabase` con la [passphrase] SQLCipher. La passphrase
-  /// deve essere ottenuta da [DbPassphraseService.getOrCreate] PRIMA di
-  /// chiamare questo costruttore; vedi `bootstrap.dart`.
-  AppDatabase(String passphrase) : super(_openConnection(passphrase));
+  /// Costruisce `AppDatabase` con la passphrase letta lazily da
+  /// [passphraseService] nel momento della prima connessione. Il provider
+  /// Riverpod può creare questo oggetto in modo sincrono; la passphrase viene
+  /// risolta in modo asincrono solo quando Drift apre il file per la prima query.
+  ///
+  /// PRECONDIZIONE: [EncryptionMigrationService.ensureMigrated] deve essere
+  /// stato chiamato prima che qualsiasi query raggiunga il DB.
+  /// Vedi `_initializePersistence` in `bootstrap.dart`.
+  AppDatabase(DbPassphraseService passphraseService)
+      : super(_openConnection(passphraseService.getOrCreate));
 
   /// Costruttore per test con database personalizzato (in-memory).
   /// Non passa per SQLCipher.
@@ -340,15 +348,19 @@ class AppDatabase extends _$AppDatabase {
 
 /// Apre la connessione al database cifrato via SQLCipher.
 ///
-/// La passphrase è applicata nel `setup` callback PRIMA di qualsiasi
-/// query: ogni query precedente fallirebbe perché il file è cifrato
-/// e non leggibile in chiaro. Il prefisso `x'...'` indica a SQLCipher
-/// che è una raw key (32 byte) e non una password da derivare via KDF
-/// — doppia velocità di apertura e nessun overhead di PBKDF2.
-LazyDatabase _openConnection(String passphrase) {
+/// [getPassphrase] è chiamato una sola volta in modo asincrono dentro la
+/// factory di [LazyDatabase], prima che il file sia aperto. Questo permette
+/// al costruttore di [AppDatabase] di essere sincrono mantenendo la lettura
+/// della passphrase lazy e asincrona.
+///
+/// Il prefisso `x'...'` nel PRAGMA indica a SQLCipher una raw key (32 byte
+/// hex-encoded), evitando l'overhead di PBKDF2 e raddoppiando la velocità
+/// di apertura.
+LazyDatabase _openConnection(Future<String> Function() getPassphrase) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'stuff_tracker.db'));
+    final passphrase = await getPassphrase();
     return NativeDatabase.createInBackground(
       file,
       setup: (db) {
