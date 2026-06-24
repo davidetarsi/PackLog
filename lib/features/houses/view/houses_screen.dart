@@ -17,6 +17,7 @@ import '../../../shared/widgets/error_retry_dialog.dart';
 import 'add_edit_house_screen.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
+import '../../../shared/widgets/refreshable_empty_state.dart';
 
 class HousesScreen extends ConsumerStatefulWidget {
   const HousesScreen({super.key});
@@ -34,72 +35,58 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
 
     return ShellTabScaffold(
       body: housesAsync.when(
-          skipLoadingOnReload: true,
-          data: (houses) {
-            // Lista vuota durante un fullPull = DB appena svuotato (account switch
-            // o primo avvio), non "utente senza case". Mostra skeleton finché il
-            // pull non porta i dati reali.
-            if (houses.isEmpty && isSyncing) {
-              return const SkeletonHousesBody();
-            }
-            if (houses.isEmpty) {
-              // Stato vuoto scrollabile: senza AlwaysScrollableScrollPhysics
-              // il gesto pull-to-refresh non verrebbe rilevato.
-              return RefreshIndicator(
-                onRefresh: () async =>
-                    ref.refresh(houseNotifierProvider.future),
-                color: colorScheme.primary,
-                child: LayoutBuilder(
-                  builder: (_, constraints) => SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: SizedBox(
-                      height: constraints.maxHeight,
-                      child: DsEmptyState(
-                        icon: Icons.home_outlined,
-                        iconColor: colorScheme.primary,
-                        title: 'houses.no_houses_title'.tr(),
-                        action: FilledButton.icon(
-                          onPressed: () => showAddEditHouseSheet(context),
-                          icon: const Icon(Icons.add),
-                          label: Text('houses.no_houses_subtitle'.tr()),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            // Ordina le case: prima quella principale, poi le altre
-            final sortedHouses = houses.toList()
-              ..sort((a, b) {
-                if (a.isPrimary && !b.isPrimary) return -1;
-                if (!a.isPrimary && b.isPrimary) return 1;
-                return 0;
-              });
-
-            return RefreshIndicator(
-              onRefresh: () async => ref.refresh(houseNotifierProvider.future),
-              color: colorScheme.primary,
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(
-                  top: context.spacingMd,
-                ),
-                itemCount: sortedHouses.length,
-                itemBuilder: (context, index) {
-                  final house = sortedHouses[index];
-                  return _HouseCard(house: house);
-                },
+        skipLoadingOnReload: true,
+        data: (houses) {
+          // Lista vuota durante un fullPull = DB appena svuotato (account switch
+          // o primo avvio), non "utente senza case". Mostra skeleton finché il
+          // pull non porta i dati reali.
+          if (houses.isEmpty && isSyncing) {
+            return const SkeletonHousesBody();
+          }
+          if (houses.isEmpty) {
+            // Stato vuoto scrollabile: senza AlwaysScrollableScrollPhysics
+            // il gesto pull-to-refresh non verrebbe rilevato.
+            return RefreshableEmptyState(
+              onRefresh: () => ref.refresh(houseNotifierProvider.future),
+              icon: Icons.home_outlined,
+              iconColor: colorScheme.primary,
+              title: 'houses.no_houses_title'.tr(),
+              action: FilledButton.icon(
+                onPressed: () => showAddEditHouseSheet(context),
+                icon: const Icon(Icons.add),
+                label: Text('houses.no_houses_subtitle'.tr()),
               ),
             );
-          },
-          loading: () => const SkeletonHousesBody(),
-          error: (error, stack) => DsErrorState(
-            error: error,
-            onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
-          ),
+          }
+
+          // Ordina le case: prima quella principale, poi le altre
+          final sortedHouses = houses.toList()
+            ..sort((a, b) {
+              if (a.isPrimary && !b.isPrimary) return -1;
+              if (!a.isPrimary && b.isPrimary) return 1;
+              return 0;
+            });
+
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(houseNotifierProvider.future),
+            color: colorScheme.primary,
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.only(top: context.spacingMd),
+              itemCount: sortedHouses.length,
+              itemBuilder: (context, index) {
+                final house = sortedHouses[index];
+                return _HouseCard(house: house);
+              },
+            ),
+          );
+        },
+        loading: () => const SkeletonHousesBody(),
+        error: (error, stack) => DsErrorState(
+          error: error,
+          onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
         ),
+      ),
     );
   }
 }

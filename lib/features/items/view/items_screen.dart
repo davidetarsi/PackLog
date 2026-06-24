@@ -13,6 +13,7 @@ import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import 'in_transit_section.dart';
 import 'item_card.dart';
+import '../../../shared/widgets/refreshable_empty_state.dart';
 
 /// Body della house detail: lista item filtrata per spazio e/o categoria.
 ///
@@ -90,24 +91,13 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                     .toList();
 
                 if (categoryItems.isEmpty) {
-                  return RefreshIndicator(
+                  return RefreshableEmptyState(
                     onRefresh: _onRefresh,
-                    color: Theme.of(context).colorScheme.primary,
-                    child: LayoutBuilder(
-                      builder: (_, constraints) => SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        child: SizedBox(
-                          height: constraints.maxHeight,
-                          child: DsEmptyState(
-                            icon: widget.categoryFilter!.icon,
-                            title: 'items.no_items'.tr(),
-                            subtitle: widget.selectedSpaceId != null
-                                ? 'items.no_items_in_space'.tr()
-                                : 'items.no_items_subtitle'.tr(),
-                          ),
-                        ),
-                      ),
-                    ),
+                    icon: widget.categoryFilter!.icon,
+                    title: 'items.no_items'.tr(),
+                    subtitle: widget.selectedSpaceId != null
+                        ? 'items.no_items_in_space'.tr()
+                        : 'items.no_items_subtitle'.tr(),
                   );
                 }
 
@@ -150,24 +140,13 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
               }
 
               if (spaceFiltered.isEmpty && !hasTemporaryItems) {
-                return RefreshIndicator(
+                return RefreshableEmptyState(
                   onRefresh: _onRefresh,
-                  color: Theme.of(context).colorScheme.primary,
-                  child: LayoutBuilder(
-                    builder: (_, constraints) => SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: SizedBox(
-                        height: constraints.maxHeight,
-                        child: DsEmptyState(
-                          icon: Icons.inventory_2_outlined,
-                          title: 'items.no_items'.tr(),
-                          subtitle: widget.selectedSpaceId != null
-                              ? 'items.no_items_in_space'.tr()
-                              : 'items.no_items_subtitle'.tr(),
-                        ),
-                      ),
-                    ),
-                  ),
+                  icon: Icons.inventory_2_outlined,
+                  title: 'items.no_items'.tr(),
+                  subtitle: widget.selectedSpaceId != null
+                      ? 'items.no_items_in_space'.tr()
+                      : 'items.no_items_subtitle'.tr(),
                 );
               }
 
