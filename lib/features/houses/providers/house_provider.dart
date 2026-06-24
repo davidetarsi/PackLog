@@ -63,22 +63,23 @@ class HouseNotifier extends _$HouseNotifier
   );
 
   Future<String> duplicateHouse(String houseId) async {
-    final original = await _repo.getHouseById(houseId);
-    final now = DateTime.now();
-    final newId = const Uuid().v4();
-    final copy = original.copyWith(
-      id: newId,
-      isPrimary: false,
-      createdAt: now,
-      updatedAt: now,
-    );
-
+    late String newId;
     await mutate(
-      operation: () => _repo.addHouse(copy),
+      operation: () async {
+        final original = await _repo.getHouseById(houseId);
+        final now = DateTime.now();
+        newId = const Uuid().v4();
+        final copy = original.copyWith(
+          id: newId,
+          isPrimary: false,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await _repo.addHouse(copy);
+      },
       reload: _repo.getAllHouses,
       onSuccess: (_) => _analytics.trackHouseDuplicated(),
     );
-
     return newId;
   }
 
