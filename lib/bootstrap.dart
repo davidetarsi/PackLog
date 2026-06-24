@@ -33,6 +33,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:amplitude_flutter/amplitude.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -42,6 +43,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:sqlite3/open.dart';
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
 import 'core/auth/secure_local_storage.dart';
 import 'core/database/database.dart';
@@ -295,6 +299,14 @@ Future<void> _initializePersistence() async {
   debugPrint('[Bootstrap] Inizializzazione persistenza...');
 
   try {
+    // Su Android, dice al package sqlite3 di caricare libsqlcipher.so invece
+    // di libsqlite3.so (che non esiste: sqlcipher_flutter_libs shippa solo
+    // libsqlcipher.so). Deve avvenire PRIMA di qualsiasi chiamata a sqlite3
+    // inclusa EncryptionMigrationService.
+    if (Platform.isAndroid) {
+      open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+    }
+
     // Migrazione SQLCipher: deve avvenire PRIMA di qualsiasi apertura del DB.
     // La migration è idempotente: in fresh install genera solo la passphrase.
     final passphraseService = DbPassphraseService();

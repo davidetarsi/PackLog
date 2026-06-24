@@ -4,6 +4,8 @@ import 'package:drift/native.dart';
 import 'package:meta/meta.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:sqlite3/open.dart';
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
 import 'encryption/db_passphrase_service.dart';
 
@@ -363,6 +365,14 @@ LazyDatabase _openConnection(Future<String> Function() getPassphrase) {
     final passphrase = await getPassphrase();
     return NativeDatabase.createInBackground(
       file,
+      // Dice al package sqlite3 di caricare libsqlcipher.so invece di
+      // libsqlite3.so nel background isolate di Drift. L'override è per-isolate:
+      // non si propaga dall'isolate principale e deve essere dichiarato qui.
+      isolateSetup: () {
+        if (Platform.isAndroid) {
+          open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+        }
+      },
       setup: (db) {
         db.execute("PRAGMA key = \"x'$passphrase'\";");
       },
