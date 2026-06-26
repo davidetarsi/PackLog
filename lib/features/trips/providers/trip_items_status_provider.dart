@@ -73,7 +73,11 @@ ItemTripStatus itemTripStatus(Ref ref, String itemId) {
       }
       return ItemTripStatus.notOnTrip;
     },
+    // Loading silenzioso: il badge "in viaggio" sull'item è assente mentre i trip
+    // caricano. Meno fastidioso visivamente di uno skeleton inline nella lista item.
     loading: () => ItemTripStatus.notOnTrip,
+    // Error silenzioso: se i trip falliscono, l'item appare "non in viaggio".
+    // L'errore è visibile altrove (trip list), non serve duplicarlo sui badge.
     error: (e, s) => ItemTripStatus.notOnTrip,
   );
 }
@@ -115,6 +119,9 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
       }
       return itemIds;
     },
+    // Loading silenzioso: zero item "in viaggio" mentre i trip caricano.
+    // I badge della house detail non mostrano skeleton — appaiono direttamente
+    // quando i dati sono pronti.
     loading: () => <String>{},
     error: (e, s) => <String>{},
   );
@@ -169,6 +176,8 @@ Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
       }
       return quantities;
     },
+    // Loading silenzioso: mappa vuota mentre i trip caricano.
+    // Stesso rationale di [itemsOnTripFromHouseProvider].
     loading: () => <String, int>{},
     error: (e, s) => <String, int>{},
   );
@@ -203,6 +212,8 @@ List<TripItem> temporaryItemsInHouse(Ref ref, String houseId) {
       }
       return items;
     },
+    // Loading silenzioso: sezione "item temporanei" assente mentre i trip caricano.
+    // Meno fastidioso di un placeholder vuoto che appare e scompare.
     loading: () => [],
     error: (e, s) => [],
   );
