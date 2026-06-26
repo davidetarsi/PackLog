@@ -33,6 +33,8 @@ import '../services/feedback_url_service.dart';
 import '../widgets/language_tile.dart';
 import '../widgets/sync_status_tile.dart';
 import '../widgets/theme_tile.dart';
+import 'dialogs/profile_delete_account_dialog.dart';
+import 'dialogs/profile_logout_dialog.dart';
 
 /// Schermata di profilo: unico punto di accesso a preferenze,
 /// backup/ripristino dati e informazioni sull'app.
@@ -243,10 +245,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final pending = await ref.read(syncServiceProvider).countPendingChanges();
     if (!context.mounted) return;
 
-    final choice = await _showLogoutDialog(context, pending);
-    if (choice == null || choice == _LogoutChoice.cancel) return;
+    final choice = await showProfileLogoutDialog(context, pending);
+    if (choice == null || choice == ProfileLogoutChoice.cancel) return;
 
-    if (choice == _LogoutChoice.syncFirst) {
+    if (choice == ProfileLogoutChoice.syncFirst) {
       // Best-effort flush con timeout, poi logout in ogni caso.
       try {
         await ref
@@ -277,7 +279,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (authState is! Authenticated) return;
     final email = authState.email;
 
-    final confirmed = await _showDeleteAccountDialog(context, email);
+    final confirmed = await showProfileDeleteAccountDialog(context, email);
     if (confirmed != true || !context.mounted) return;
 
     // Cattura riferimenti stabili PRIMA degli await: appena `signOut()`
@@ -326,79 +328,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       );
     }
-  }
-
-  /// Conferma protetta dalla digitazione esatta della propria email.
-  ///
-  /// Pattern GitHub/Stripe: l'utente deve scrivere l'email del proprio
-  /// account in un TextField per abilitare il bottone "Elimina". Difficile
-  /// fare l'operazione per errore o se qualcuno passa il telefono per un
-  /// istante.
-  ///
-  /// Il dialog vive in un [StatefulWidget] dedicato: ha bisogno di un
-  /// [TextEditingController] con lifecycle proprio. Una versione precedente
-  /// con `StatefulBuilder + whenComplete(dispose)` causava ANR alla
-  /// chiusura del dialog: l'animazione di pop generava un re-build del
-  /// builder che leggeva il controller già disposto.
-  Future<bool?> _showDeleteAccountDialog(
-    BuildContext context,
-    String requiredEmail,
-  ) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => _DeleteAccountDialog(requiredEmail: requiredEmail),
-    );
-  }
-
-  /// Mostra sempre un dialog di conferma logout.
-  ///
-  /// Se [pending] == 0: dialog semplice (solo conferma / annulla).
-  /// Se [pending] > 0: dialog con avviso modifiche non sincronizzate e
-  /// opzione di flush pre-logout.
-  Future<_LogoutChoice?> _showLogoutDialog(BuildContext context, int pending) {
-    if (pending > 0) {
-      return showDialog<_LogoutChoice>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text('profile.logout_warning_title'.tr()),
-          content: Text(
-            'profile.logout_warning_body'.tr(args: [pending.toString()]),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, _LogoutChoice.cancel),
-              child: Text('common.cancel'.tr()),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, _LogoutChoice.forceLogout),
-              child: Text('profile.logout_force'.tr()),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, _LogoutChoice.syncFirst),
-              child: Text('profile.logout_sync_first'.tr()),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return showDialog<_LogoutChoice>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('profile.logout_confirm_title'.tr()),
-        content: Text('profile.logout_confirm_body'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, _LogoutChoice.cancel),
-            child: Text('common.cancel'.tr()),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, _LogoutChoice.forceLogout),
-            child: Text('profile.logout_force'.tr()),
-          ),
-        ],
-      ),
-    );
   }
 
   // -------------------------------------------------------------------------
@@ -556,7 +485,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () async {
                 ref.read(analyticsServiceProvider).logEvent('tour_relaunched');
-                final houses = ref.read(houseNotifierProvider).valueOrNull ?? [];
+                final houses =
+                    ref.read(houseNotifierProvider).valueOrNull ?? [];
                 await ref
                     .read(postLoginOnboardingProvider.notifier)
                     .reset(hasExistingHouses: houses.isNotEmpty);
@@ -643,85 +573,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-enum _LogoutChoice { cancel, syncFirst, forceLogout }
-
-/// Dialog di conferma per il delete account (estratto come [StatefulWidget]
-/// per gestire correttamente il lifecycle del [TextEditingController]).
-class _DeleteAccountDialog extends StatefulWidget {
-  final String requiredEmail;
-
-  const _DeleteAccountDialog({required this.requiredEmail});
-
-  @override
-  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
-}
-
-class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  bool get _matches =>
-      _controller.text.trim().toLowerCase() ==
-      widget.requiredEmail.toLowerCase();
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('profile.delete_account_title'.tr()),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('profile.delete_account_warning'.tr()),
-          AppSpacing.gapMd,
-          Text(
-            'profile.delete_account_confirm_prompt'
-                .tr(args: [widget.requiredEmail]),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          AppSpacing.gapSm,
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            keyboardType: TextInputType.emailAddress,
-            autocorrect: false,
-            decoration: InputDecoration(
-              hintText: widget.requiredEmail,
-              border: const OutlineInputBorder(),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text('common.cancel'.tr()),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.error,
-            foregroundColor: Theme.of(context).colorScheme.onError,
-          ),
-          onPressed: _matches ? () => Navigator.pop(context, true) : null,
-          child: Text('profile.delete_account_button'.tr()),
-        ),
-      ],
     );
   }
 }
