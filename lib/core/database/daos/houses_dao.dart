@@ -126,6 +126,78 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
     });
   }
 
+  /// Imposta una casa come principale in modo atomico.
+  ///
+  /// Usa 4 write in una transazione anziché N update in loop (anti-pattern CLAUDE.md).
+  /// [SyncStatus.pendingCreate] viene preservato: una casa creata offline ma non
+  /// ancora sincronizzata non viene degradata a [pendingUpdate] (che causerebbe un
+  /// PATCH su un record inesistente sul server → sync failure).
+  Future<void> setPrimaryHouse(String newPrimaryId) {
+    return transaction(() async {
+      final now = DateTime.now();
+
+      // 1a. Clear: righe synced/pendingUpdate → rimuovi isPrimary + marca pendingUpdate
+      await (update(houses)..where(
+            (h) =>
+                h.isPrimary.equals(true) &
+                h.id.equals(newPrimaryId).not() &
+                h.isDeleted.equals(false) &
+                h.syncStatus.equalsValue(SyncStatus.pendingCreate).not(),
+          ))
+          .write(
+            HousesCompanion(
+              isPrimary: const Value(false),
+              syncStatus: const Value(SyncStatus.pendingUpdate),
+              updatedAt: Value(now),
+            ),
+          );
+
+      // 1b. Clear: righe pendingCreate → rimuovi solo isPrimary, syncStatus invariato
+      await (update(houses)..where(
+            (h) =>
+                h.isPrimary.equals(true) &
+                h.id.equals(newPrimaryId).not() &
+                h.isDeleted.equals(false) &
+                h.syncStatus.equalsValue(SyncStatus.pendingCreate),
+          ))
+          .write(
+            HousesCompanion(
+              isPrimary: const Value(false),
+              updatedAt: Value(now),
+            ),
+          );
+
+      // 2a. Set: riga target synced/pendingUpdate → imposta isPrimary + marca pendingUpdate
+      await (update(houses)..where(
+            (h) =>
+                h.id.equals(newPrimaryId) &
+                h.isDeleted.equals(false) &
+                h.syncStatus.equalsValue(SyncStatus.pendingCreate).not(),
+          ))
+          .write(
+            HousesCompanion(
+              isPrimary: const Value(true),
+              syncStatus: const Value(SyncStatus.pendingUpdate),
+              updatedAt: Value(now),
+            ),
+          );
+
+      // 2b. Set: riga target pendingCreate → imposta solo isPrimary, syncStatus invariato
+      await (update(houses)..where(
+            (h) =>
+                h.id.equals(newPrimaryId) &
+                h.isDeleted.equals(false) &
+                h.syncStatus.equalsValue(SyncStatus.pendingCreate),
+          ))
+          .write(
+            HousesCompanion(
+              isPrimary: const Value(true),
+              updatedAt: Value(now),
+            ),
+          );
+    });
+  }
+
   /// Inserisce multiple case (per migrazione)
   Future<void> insertMultipleHouses(List<HousesCompanion> housesList) async {
     await batch((batch) {
@@ -176,9 +248,9 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
   /// indipendentemente dal retry count o dal backoff. Usato per decidere
   /// se mostrare il pulsante "Sincronizza ora" nel profilo.
   Future<int> countUnsynced() async {
-    final rows = await (select(houses)
-          ..where((h) => h.syncStatus.equalsValue(SyncStatus.synced).not()))
-        .get();
+    final rows = await (select(
+      houses,
+    )..where((h) => h.syncStatus.equalsValue(SyncStatus.synced).not())).get();
     return rows.length;
   }
 
@@ -210,14 +282,15 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
   ///
   /// Returns: number of rows reset.
   Future<int> resetSyncRetries() {
-    return (update(houses)..where((h) => h.syncRetryCount.isBiggerThanValue(0)))
-        .write(
-          const HousesCompanion(
-            syncRetryCount: Value(0),
-            lastSyncError: Value(null),
-            nextSyncAttemptAt: Value(null),
-          ),
-        );
+    return (update(
+      houses,
+    )..where((h) => h.syncRetryCount.isBiggerThanValue(0))).write(
+      const HousesCompanion(
+        syncRetryCount: Value(0),
+        lastSyncError: Value(null),
+        nextSyncAttemptAt: Value(null),
+      ),
+    );
   }
 
   /// Increments the retry counter and records the error message.

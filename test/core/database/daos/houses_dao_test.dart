@@ -399,9 +399,9 @@ void main() {
         await database.housesDao.deleteHouse(houseId);
 
         // ASSERT: read the rows directly bypassing isDeleted filter.
-        final spaceRow = await (database.select(database.spaces)
-              ..where((s) => s.id.equals('s-cascade')))
-            .getSingle();
+        final spaceRow = await (database.select(
+          database.spaces,
+        )..where((s) => s.id.equals('s-cascade'))).getSingle();
         expect(
           spaceRow.syncStatus,
           equals(SyncStatus.pendingUpdate),
@@ -409,9 +409,9 @@ void main() {
               'cascade must mark the space pending so the tombstone propagates',
         );
 
-        final luggageRow = await (database.select(database.luggages)
-              ..where((l) => l.id.equals('l-cascade')))
-            .getSingle();
+        final luggageRow = await (database.select(
+          database.luggages,
+        )..where((l) => l.id.equals('l-cascade'))).getSingle();
         expect(
           luggageRow.syncStatus,
           equals(SyncStatus.pendingUpdate),
@@ -622,40 +622,37 @@ void main() {
       expect(house.userId, equals(null));
     });
 
-    test(
-      'markHouseAsSynced overwrites updatedAt with server timestamp '
-      '(post fix #6: server-side updated_at via Postgres trigger)',
-      () async {
-        final clientUpdatedAt = DateTime(2026, 5, 1, 8, 0);
-        await database.housesDao.insertHouse(
-          HousesCompanion.insert(
-            id: 'h-server-ts',
-            name: 'House',
-            createdAt: DateTime(2026, 5, 1, 7, 0),
-            updatedAt: clientUpdatedAt,
-            syncStatus: const Value(SyncStatus.pendingUpdate),
-          ),
-        );
+    test('markHouseAsSynced overwrites updatedAt with server timestamp '
+        '(post fix #6: server-side updated_at via Postgres trigger)', () async {
+      final clientUpdatedAt = DateTime(2026, 5, 1, 8, 0);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'h-server-ts',
+          name: 'House',
+          createdAt: DateTime(2026, 5, 1, 7, 0),
+          updatedAt: clientUpdatedAt,
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
 
-        // Il server (trigger Postgres `set_updated_at_to_now`) ignora il
-        // valore inviato dal client e ritorna NOW() come updated_at
-        // ufficiale. markHouseAsSynced lo applica al record locale per
-        // mantenere allineato il pivot LWW.
-        final serverTs = DateTime(2026, 5, 1, 12, 0);
-        await database.housesDao.markHouseAsSynced('h-server-ts', serverTs);
+      // Il server (trigger Postgres `set_updated_at_to_now`) ignora il
+      // valore inviato dal client e ritorna NOW() come updated_at
+      // ufficiale. markHouseAsSynced lo applica al record locale per
+      // mantenere allineato il pivot LWW.
+      final serverTs = DateTime(2026, 5, 1, 12, 0);
+      await database.housesDao.markHouseAsSynced('h-server-ts', serverTs);
 
-        final house = await database.housesDao.getHouseById('h-server-ts');
-        expect(
-          house!.updatedAt,
-          equals(serverTs),
-          reason:
-              'updatedAt deve essere allineato al server timestamp per '
-              'rendere immune la LWW al clock drift del client',
-        );
-        expect(house.syncStatus, equals(SyncStatus.synced));
-        expect(house.lastSyncedAt, equals(serverTs));
-      },
-    );
+      final house = await database.housesDao.getHouseById('h-server-ts');
+      expect(
+        house!.updatedAt,
+        equals(serverTs),
+        reason:
+            'updatedAt deve essere allineato al server timestamp per '
+            'rendere immune la LWW al clock drift del client',
+      );
+      expect(house.syncStatus, equals(SyncStatus.synced));
+      expect(house.lastSyncedAt, equals(serverTs));
+    });
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await database.housesDao.insertHouse(
@@ -704,48 +701,186 @@ void main() {
       );
     });
 
-    test('updateHouse preserves sync metadata when companion omits sync fields', () async {
-      final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
-      await database.housesDao.insertHouse(
+    test(
+      'updateHouse preserves sync metadata when companion omits sync fields',
+      () async {
+        final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'h-keep-sync',
+            name: 'Original',
+            createdAt: DateTime(2026, 5, 1, 7, 0),
+            updatedAt: DateTime(2026, 5, 1, 7, 0),
+            syncStatus: const Value(SyncStatus.synced),
+            syncRetryCount: const Value(3),
+            lastSyncedAt: Value(originalSyncedAt),
+          ),
+        );
+
+        // Caller (repository) updates only the model fields, omitting sync
+        // metadata — the DAO must preserve them and mark the record pending.
+        await database.housesDao.updateHouse(
+          HousesCompanion(
+            id: const Value('h-keep-sync'),
+            name: const Value('Renamed'),
+            createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
+            updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
+          ),
+        );
+
+        final house = await database.housesDao.getHouseById('h-keep-sync');
+        expect(house!.name, equals('Renamed'));
+        expect(
+          house.lastSyncedAt,
+          equals(originalSyncedAt),
+          reason: 'updateHouse must not reset lastSyncedAt',
+        );
+        expect(
+          house.syncRetryCount,
+          equals(3),
+          reason: 'updateHouse must not reset syncRetryCount',
+        );
+        expect(
+          house.syncStatus,
+          equals(SyncStatus.pendingUpdate),
+          reason: 'updateHouse must mark the record pending so it gets pushed',
+        );
+      },
+    );
+  });
+
+  group('HousesDao - setPrimaryHouse', () {
+    Future<void> insertHouseWithStatus(
+      AppDatabase db, {
+      required String id,
+      required String name,
+      bool isPrimary = false,
+      SyncStatus syncStatus = SyncStatus.synced,
+    }) async {
+      await db.housesDao.insertHouse(
         HousesCompanion.insert(
-          id: 'h-keep-sync',
-          name: 'Original',
-          createdAt: DateTime(2026, 5, 1, 7, 0),
-          updatedAt: DateTime(2026, 5, 1, 7, 0),
-          syncStatus: const Value(SyncStatus.synced),
-          syncRetryCount: const Value(3),
-          lastSyncedAt: Value(originalSyncedAt),
+          id: id,
+          name: name,
+          isPrimary: Value(isPrimary),
+          syncStatus: Value(syncStatus),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         ),
       );
+    }
 
-      // Caller (repository) updates only the model fields, omitting sync
-      // metadata — the DAO must preserve them and mark the record pending.
-      await database.housesDao.updateHouse(
-        HousesCompanion(
-          id: const Value('h-keep-sync'),
-          name: const Value('Renamed'),
-          createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
-          updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
-        ),
+    test('sets target as primary and clears others', () async {
+      await insertHouseWithStatus(
+        database,
+        id: 'h1',
+        name: 'H1',
+        isPrimary: true,
       );
+      await insertHouseWithStatus(database, id: 'h2', name: 'H2');
+      await insertHouseWithStatus(database, id: 'h3', name: 'H3');
 
-      final house = await database.housesDao.getHouseById('h-keep-sync');
-      expect(house!.name, equals('Renamed'));
-      expect(
-        house.lastSyncedAt,
-        equals(originalSyncedAt),
-        reason: 'updateHouse must not reset lastSyncedAt',
-      );
-      expect(
-        house.syncRetryCount,
-        equals(3),
-        reason: 'updateHouse must not reset syncRetryCount',
-      );
-      expect(
-        house.syncStatus,
-        equals(SyncStatus.pendingUpdate),
-        reason: 'updateHouse must mark the record pending so it gets pushed',
-      );
+      await database.housesDao.setPrimaryHouse('h2');
+
+      final byId = {
+        for (final h in await database.housesDao.getAllHouses()) h.id: h,
+      };
+      expect(byId['h1']!.isPrimary, isFalse);
+      expect(byId['h2']!.isPrimary, isTrue);
+      expect(byId['h3']!.isPrimary, isFalse);
     });
+
+    test('idempotent when target is already primary', () async {
+      await insertHouseWithStatus(
+        database,
+        id: 'h1',
+        name: 'H1',
+        isPrimary: true,
+      );
+      await insertHouseWithStatus(database, id: 'h2', name: 'H2');
+
+      await database.housesDao.setPrimaryHouse('h1');
+
+      final byId = {
+        for (final h in await database.housesDao.getAllHouses()) h.id: h,
+      };
+      expect(byId['h1']!.isPrimary, isTrue);
+      expect(byId['h2']!.isPrimary, isFalse);
+    });
+
+    test('does not touch soft-deleted houses', () async {
+      await insertHouseWithStatus(
+        database,
+        id: 'h1',
+        name: 'H1',
+        isPrimary: true,
+      );
+      await insertHouseWithStatus(database, id: 'h2', name: 'H2');
+      await (database.update(database.houses)..where((h) => h.id.equals('h1')))
+          .write(const HousesCompanion(isDeleted: Value(true)));
+
+      await database.housesDao.setPrimaryHouse('h2');
+
+      final all = await database.select(database.houses).get();
+      final byId = {for (final h in all) h.id: h};
+      expect(byId['h1']!.isPrimary, isTrue); // untouched — isDeleted
+      expect(byId['h2']!.isPrimary, isTrue);
+    });
+
+    test('marks synced rows as pendingUpdate', () async {
+      await insertHouseWithStatus(
+        database,
+        id: 'h1',
+        name: 'H1',
+        isPrimary: true,
+        syncStatus: SyncStatus.synced,
+      );
+      await insertHouseWithStatus(
+        database,
+        id: 'h2',
+        name: 'H2',
+        syncStatus: SyncStatus.synced,
+      );
+
+      await database.housesDao.setPrimaryHouse('h2');
+
+      final all = await database.select(database.houses).get();
+      final byId = {for (final h in all) h.id: h};
+      expect(byId['h1']!.syncStatus, equals(SyncStatus.pendingUpdate));
+      expect(byId['h2']!.syncStatus, equals(SyncStatus.pendingUpdate));
+    });
+
+    test(
+      'preserves pendingCreate — does not degrade to pendingUpdate',
+      () async {
+        // Scenario: casa creata offline (pendingCreate) e subito impostata come
+        // principale. Se sovrascrivessimo con pendingUpdate, il sync manderebbe
+        // un PATCH per un record inesistente sul server → sync failure.
+        await insertHouseWithStatus(
+          database,
+          id: 'h1',
+          name: 'H1 (synced)',
+          isPrimary: true,
+          syncStatus: SyncStatus.synced,
+        );
+        await insertHouseWithStatus(
+          database,
+          id: 'h2',
+          name: 'H2 (offline)',
+          isPrimary: false,
+          syncStatus: SyncStatus.pendingCreate,
+        );
+
+        await database.housesDao.setPrimaryHouse('h2');
+
+        final all = await database.select(database.houses).get();
+        final byId = {for (final h in all) h.id: h};
+        // h1 era synced → ora pendingUpdate (verrà aggiornato sul server)
+        expect(byId['h1']!.syncStatus, equals(SyncStatus.pendingUpdate));
+        // h2 era pendingCreate → deve rimanere pendingCreate
+        // (verrà inserito sul server con isPrimary=true)
+        expect(byId['h2']!.syncStatus, equals(SyncStatus.pendingCreate));
+        expect(byId['h2']!.isPrimary, isTrue);
+      },
+    );
   });
 }

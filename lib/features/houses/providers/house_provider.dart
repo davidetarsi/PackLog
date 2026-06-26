@@ -18,8 +18,7 @@ part 'house_provider.g.dart';
 class HouseNotifier extends _$HouseNotifier
     with SyncedCrudNotifier<HouseModel> {
   HouseRepository get _repo => ref.read(houseRepositoryProvider);
-  CoreAnalyticsService get _analytics =>
-      ref.read(coreAnalyticsServiceProvider);
+  CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
 
   @override
   Future<List<HouseModel>> build() async {
@@ -85,21 +84,10 @@ class HouseNotifier extends _$HouseNotifier
 
   /// Imposta una casa come principale.
   ///
-  /// NOTA: l'implementazione attuale fa N updates loop sul repository
-  /// (anti-pattern documentato come P2 nell'audit). Sarà sostituita con un
-  /// metodo bulk SQL nel DAO in uno Sprint dedicato. Per ora mantieniamo
-  /// la logica esistente, solo migrata al mixin.
+  /// Delega al DAO: 4 query bulk in transazione anziché N update in loop.
+  /// Vedi [HousesDao.setPrimaryHouse] per la gestione di pendingCreate.
   Future<void> setPrimaryHouse(String houseId) => mutate(
-    operation: () async {
-      final houses = await _repo.getAllHouses();
-      for (final house in houses) {
-        if (house.isPrimary && house.id != houseId) {
-          await _repo.updateHouse(house.copyWith(isPrimary: false));
-        } else if (!house.isPrimary && house.id == houseId) {
-          await _repo.updateHouse(house.copyWith(isPrimary: true));
-        }
-      }
-    },
+    operation: () => _repo.setPrimaryHouse(houseId),
     reload: _repo.getAllHouses,
   );
 }

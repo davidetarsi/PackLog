@@ -28,4 +28,5 @@ abstract class HouseRepository {
   Future<List<HouseModel>> getAllHouses();
   Future<bool> deleteHouse(String id);
   Future<void> updateHouse(HouseModel model);
+  Future<void> setPrimaryHouse(String newPrimaryId);
 }

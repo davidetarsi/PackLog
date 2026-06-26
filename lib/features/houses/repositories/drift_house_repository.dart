@@ -50,19 +50,23 @@ class DriftHouseRepository implements HouseRepository {
     List<ItemModel> initialItems,
   ) async {
     final housesCompanion = _toCompanion(house);
-    final itemCompanions = initialItems.map((item) => ItemsCompanion(
-      id: Value(item.id),
-      houseId: Value(item.houseId),
-      name: Value(item.name),
-      category: Value(item.category),
-      description: Value(item.description),
-      quantity: Value(item.quantity),
-      spaceId: Value(item.spaceId),
-      createdAt: Value(item.createdAt),
-      updatedAt: Value(item.updatedAt),
-      userId: Value(_getCurrentUserId()),
-      aiMetadata: Value(item.aiMetadata),
-    )).toList();
+    final itemCompanions = initialItems
+        .map(
+          (item) => ItemsCompanion(
+            id: Value(item.id),
+            houseId: Value(item.houseId),
+            name: Value(item.name),
+            category: Value(item.category),
+            description: Value(item.description),
+            quantity: Value(item.quantity),
+            spaceId: Value(item.spaceId),
+            createdAt: Value(item.createdAt),
+            updatedAt: Value(item.updatedAt),
+            userId: Value(_getCurrentUserId()),
+            aiMetadata: Value(item.aiMetadata),
+          ),
+        )
+        .toList();
 
     final result = await _dbService.executeWithRetry<void>(
       () => _dao.createHouseWithItems(housesCompanion, itemCompanions),
@@ -145,6 +149,24 @@ class DriftHouseRepository implements HouseRepository {
     }
 
     debugPrint('[HouseRepo] Casa aggiornata: ${model.name}');
+  }
+
+  @override
+  Future<void> setPrimaryHouse(String newPrimaryId) async {
+    final result = await _dbService.executeWithRetry(
+      () => _dao.setPrimaryHouse(newPrimaryId),
+      operationName: 'setPrimaryHouse($newPrimaryId)',
+      config: RetryConfig.criticalConfig,
+    );
+
+    if (!result.success) {
+      throw EntitySaveException(
+        'setPrimaryHouse($newPrimaryId)',
+        cause: result.error,
+      );
+    }
+
+    debugPrint('[HouseRepo] Casa principale impostata: $newPrimaryId');
   }
 
   /// Stream reattivo di tutte le case
