@@ -31,14 +31,16 @@ class AddEditLuggageSheet extends StatefulWidget {
 
 class _AddEditLuggageSheetState extends State<AddEditLuggageSheet> {
   final GlobalKey<LuggageFormContentState> _formKey = GlobalKey();
-  bool _isLoading = false;
+  bool _isSaving = false;
 
-  void _handleSave() {
-    _formKey.currentState?.save();
-  }
-
-  void _handleLoadingChanged(bool loading) {
-    setState(() => _isLoading = loading);
+  Future<void> _handleSave() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    final saved = await _formKey.currentState?.save() ?? false;
+    if (mounted) {
+      setState(() => _isSaving = false);
+      if (saved) Navigator.pop(context);
+    }
   }
 
   @override
@@ -48,8 +50,8 @@ class _AddEditLuggageSheetState extends State<AddEditLuggageSheet> {
           ? 'luggages.edit'.tr()
           : 'luggages.add_new'.tr(),
       onCancel: () => Navigator.pop(context),
-      onSave: _handleSave,
-      isLoading: _isLoading,
+      onSave: () => _handleSave(),
+      isLoading: _isSaving,
       saveLabel: widget.luggageId != null
           ? 'common.save'.tr()
           : 'common.create'.tr(),
@@ -57,9 +59,7 @@ class _AddEditLuggageSheetState extends State<AddEditLuggageSheet> {
         key: _formKey,
         houseId: widget.houseId,
         luggageId: widget.luggageId,
-        onSaved: () => Navigator.pop(context),
         showButtons: false,
-        onLoadingChanged: _handleLoadingChanged,
       ),
     );
   }
