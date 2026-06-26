@@ -18,23 +18,25 @@ class HouseStats {
   });
 }
 
-/// Provider che calcola le statistiche per una casa specifica
+/// Provider che calcola le statistiche per una casa specifica.
+///
+/// Usa `.wait` su record Dart 3 per attendere [itemNotifierProvider] e
+/// [tripNotifierProvider] in parallelo anziché in waterfall sequenziale.
+/// Propaga correttamente il loading: se uno dei due è ancora in caricamento,
+/// [houseStats] rimane pending invece di restituire dati parziali con `value ?? []`.
 @riverpod
 Future<HouseStats> houseStats(Ref ref, String houseId) async {
-  // Ottieni tutti gli oggetti della casa
-  final itemsAsync = ref.watch(itemNotifierProvider(houseId));
-  final items = itemsAsync.value ?? [];
-
-  // Ottieni tutti i viaggi
-  final tripsAsync = await ref.watch(tripNotifierProvider.future);
+  final (items, trips) = await (
+    ref.watch(itemNotifierProvider(houseId).future),
+    ref.watch(tripNotifierProvider.future),
+  ).wait;
 
   // Filtra solo i viaggi effettivamente in corso (non upcoming né completed)
-  final activeTrips = tripsAsync.where((trip) => trip.isActive).toList();
+  final activeTrips = trips.where((trip) => trip.isActive).toList();
 
   // Calcola se ci sono oggetti della casa in viaggio
   bool hasItemsInTrip = false;
   for (final trip in activeTrips) {
-    // Controlla se il viaggio contiene oggetti che originano da questa casa
     final hasItemsFromThisHouse = trip.items.any(
       (item) => item.originHouseId == houseId,
     );
@@ -47,8 +49,6 @@ Future<HouseStats> houseStats(Ref ref, String houseId) async {
   // Calcola se ci sono oggetti temporanei (da altre case)
   bool hasTemporaryItems = false;
   for (final trip in activeTrips) {
-    // Controlla se il viaggio è destinato a questa casa
-    // e contiene oggetti che NON originano da questa casa
     if (trip.destinationHouseId == houseId) {
       final hasItemsFromOtherHouses = trip.items.any(
         (item) => item.originHouseId != houseId,
