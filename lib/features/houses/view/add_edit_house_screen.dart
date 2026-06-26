@@ -28,14 +28,16 @@ class AddEditHouseSheet extends StatefulWidget {
 
 class _AddEditHouseSheetState extends State<AddEditHouseSheet> {
   final GlobalKey<HouseFormContentState> _formKey = GlobalKey();
-  bool _isLoading = false;
+  bool _isSaving = false;
 
-  void _handleSave() {
-    _formKey.currentState?.save();
-  }
-
-  void _handleLoadingChanged(bool loading) {
-    setState(() => _isLoading = loading);
+  Future<void> _handleSave() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    final saved = await _formKey.currentState?.save() ?? false;
+    if (mounted) {
+      setState(() => _isSaving = false);
+      if (saved) Navigator.pop(context);
+    }
   }
 
   @override
@@ -45,17 +47,15 @@ class _AddEditHouseSheetState extends State<AddEditHouseSheet> {
           ? 'houses.edit'.tr()
           : 'houses.add_new'.tr(),
       onCancel: () => Navigator.pop(context),
-      onSave: _handleSave,
-      isLoading: _isLoading,
+      onSave: () => _handleSave(),
+      isLoading: _isSaving,
       saveLabel: widget.houseId != null
           ? 'common.save'.tr()
           : 'common.create'.tr(),
       child: HouseFormContent(
         key: _formKey,
         houseId: widget.houseId,
-        onSaved: () => Navigator.pop(context),
         showButtons: false,
-        onLoadingChanged: _handleLoadingChanged,
       ),
     );
   }
