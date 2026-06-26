@@ -30,14 +30,16 @@ class AddEditSpaceSheet extends StatefulWidget {
 
 class _AddEditSpaceSheetState extends State<AddEditSpaceSheet> {
   final GlobalKey<SpaceFormContentState> _formKey = GlobalKey();
-  bool _isLoading = false;
+  bool _isSaving = false;
 
-  void _handleSave() {
-    _formKey.currentState?.save();
-  }
-
-  void _handleLoadingChanged(bool loading) {
-    setState(() => _isLoading = loading);
+  Future<void> _handleSave() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    final saved = await _formKey.currentState?.save() ?? false;
+    if (mounted) {
+      setState(() => _isSaving = false);
+      if (saved) Navigator.pop(context);
+    }
   }
 
   @override
@@ -47,8 +49,8 @@ class _AddEditSpaceSheetState extends State<AddEditSpaceSheet> {
           ? 'spaces.edit'.tr()
           : 'spaces.add_new'.tr(),
       onCancel: () => Navigator.pop(context),
-      onSave: _handleSave,
-      isLoading: _isLoading,
+      onSave: () => _handleSave(),
+      isLoading: _isSaving,
       saveLabel: widget.spaceId != null
           ? 'common.save'.tr()
           : 'common.create'.tr(),
@@ -56,9 +58,7 @@ class _AddEditSpaceSheetState extends State<AddEditSpaceSheet> {
         key: _formKey,
         houseId: widget.houseId,
         spaceId: widget.spaceId,
-        onSaved: () => Navigator.pop(context),
         showButtons: false,
-        onLoadingChanged: _handleLoadingChanged,
       ),
     );
   }

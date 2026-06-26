@@ -9,23 +9,22 @@ import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_icon_picker.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 
 /// Form Content riutilizzabile per space (condiviso tra bottom sheet e full screen)
 class SpaceFormContent extends ConsumerStatefulWidget {
   final String houseId;
   final String? spaceId;
-  final void Function() onSaved;
+  final void Function()? onSaved;
   final bool showButtons;
-  final ValueChanged<bool>? onLoadingChanged;
 
   const SpaceFormContent({
     super.key,
     required this.houseId,
     this.spaceId,
-    required this.onSaved,
+    this.onSaved,
     this.showButtons = true,
-    this.onLoadingChanged,
   });
 
   @override
@@ -36,18 +35,10 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   String? _selectedIconName;
-  bool _isLoading = false;
+  bool _isSaving = false;
 
-  /// Espone il metodo di salvataggio per uso esterno
-  Future<void> save() => _saveSpace();
-
-  /// Espone lo stato di loading
-  bool get isLoading => _isLoading;
-
-  void _setLoading(bool value) {
-    setState(() => _isLoading = value);
-    widget.onLoadingChanged?.call(value);
-  }
+  /// Chiamato dal parent sheet via GlobalKey. Puro: niente navigazione.
+  Future<bool> save() => _saveSpace();
 
   @override
   void initState() {
@@ -79,10 +70,8 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
     super.dispose();
   }
 
-  Future<void> _saveSpace() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    _setLoading(true);
+  Future<bool> _saveSpace() async {
+    if (!_formKey.currentState!.validate()) return false;
 
     final now = DateTime.now();
     final spaceId = widget.spaceId ?? const Uuid().v4();
@@ -110,7 +99,7 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
           );
 
     final isEditing = widget.spaceId != null;
-    final success = await ErrorRetryDialog.executeWithRetry(
+    return ErrorRetryDialog.executeWithRetry(
       context: context,
       operation: () async {
         if (isEditing) {
@@ -128,15 +117,6 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
           ? 'errors.save_space_failed'.tr()
           : 'errors.create_space_failed'.tr(),
     );
-
-    if (mounted) {
-      _setLoading(false);
-      if (success) {
-        // No invalidate: SpaceNotifier(houseId) si è già aggiornato da solo
-        // dopo addSpace/updateSpace.
-        widget.onSaved();
-      }
-    }
   }
 
   @override
@@ -179,27 +159,21 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
           _buildIconSelector(),
           if (widget.showButtons) ...[
             AppSpacing.gapXl,
-            ElevatedButton(
-              onPressed: _isLoading ? null : _saveSpace,
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-                shape: RoundedRectangleBorder(
-                  borderRadius: context.responsiveBorderRadius(
-                    AppConstants.inputBorderRadius,
-                  ),
-                ),
-              ),
-              child: _isLoading
-                  ? SizedBox(
-                      height: context.responsive(20),
-                      width: context.responsive(20),
-                      child: const CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(
-                      widget.spaceId != null
-                          ? 'common.save'.tr()
-                          : 'common.create'.tr(),
-                    ),
+            UniversalActionBar(
+              primaryLabel: widget.spaceId != null
+                  ? 'common.save'.tr()
+                  : 'common.create'.tr(),
+              isLoading: _isSaving,
+              onPrimaryPressed: _isSaving
+                  ? null
+                  : () async {
+                      setState(() => _isSaving = true);
+                      final saved = await _saveSpace();
+                      if (mounted) {
+                        setState(() => _isSaving = false);
+                        if (saved) widget.onSaved?.call();
+                      }
+                    },
             ),
           ],
         ],
