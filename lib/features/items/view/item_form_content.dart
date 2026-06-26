@@ -12,6 +12,7 @@ import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 
 /// Form Content riutilizzabile per item (condiviso tra bottom sheet e full screen)
 class ItemFormContent extends ConsumerStatefulWidget {
@@ -19,9 +20,8 @@ class ItemFormContent extends ConsumerStatefulWidget {
   final String? itemId;
   final String? initialName;
   final ItemCategory? initialCategory;
-  final void Function(String itemId, String houseId) onSaved;
+  final void Function(String itemId, String houseId)? onSaved;
   final bool showButtons;
-  final ValueChanged<bool>? onLoadingChanged;
 
   const ItemFormContent({
     super.key,
@@ -29,9 +29,8 @@ class ItemFormContent extends ConsumerStatefulWidget {
     this.itemId,
     this.initialName,
     this.initialCategory,
-    required this.onSaved,
+    this.onSaved,
     this.showButtons = true,
-    this.onLoadingChanged,
   });
 
   @override
@@ -44,23 +43,16 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
   final _descriptionController = TextEditingController();
   ItemCategory _selectedCategory = ItemCategory.vestiti;
   int _selectedQuantity = 1;
-  bool _isLoading = false;
+  bool _isSaving = false;
   String? _selectedHouseId;
   String? _selectedSpaceId;
 
-  /// Espone il metodo di salvataggio per uso esterno
-  Future<void> save() => _saveItem();
+  /// Chiamato dal parent sheet via GlobalKey.
+  /// Ritorna il record (itemId, houseId) se salvato, null altrimenti.
+  Future<({String itemId, String houseId})?> save() => _saveItem();
 
-  /// Espone lo stato di loading
-  bool get isLoading => _isLoading;
-
-  /// Espone il nome corrente dell'item (per dialog di conferma)
+  /// Espone il nome corrente dell'item (per dialog conferma elimina)
   String get itemName => _nameController.text.trim();
-
-  void _setLoading(bool value) {
-    setState(() => _isLoading = value);
-    widget.onLoadingChanged?.call(value);
-  }
 
   static const List<int> _quantityOptions = [
     1,
@@ -161,81 +153,72 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
     }
   }
 
-  Future<void> _saveItem() async {
-    if (_formKey.currentState!.validate()) {
-      if (_selectedHouseId == null) {
-        AppSnackBar.showWarning(context, 'common.select_house'.tr());
-        return;
-      }
-
-      _setLoading(true);
-
-      final now = DateTime.now();
-      final quantity = _selectedQuantity;
-      final houseId = _selectedHouseId!;
-      final itemId = widget.itemId ?? const Uuid().v4();
-
-      final item = widget.itemId != null
-          ? (() {
-              final itemsAsync = ref.read(itemNotifierProvider(houseId));
-              final items = itemsAsync.value;
-              if (items == null) {
-                throw StateError('Oggetto non trovato');
-              }
-              return items
-                  .firstWhere((i) => i.id == widget.itemId)
-                  .copyWith(
-                    name: _nameController.text.trim(),
-                    description: _descriptionController.text.trim().isEmpty
-                        ? null
-                        : _descriptionController.text.trim(),
-                    category: _selectedCategory,
-                    quantity: quantity,
-                    spaceId: _selectedSpaceId,
-                    updatedAt: now,
-                  );
-            })()
-          : ItemModel(
-              id: itemId,
-              houseId: houseId,
-              name: _nameController.text.trim(),
-              description: _descriptionController.text.trim().isEmpty
-                  ? null
-                  : _descriptionController.text.trim(),
-              category: _selectedCategory,
-              quantity: quantity,
-              spaceId: _selectedSpaceId,
-              createdAt: now,
-              updatedAt: now,
-            );
-
-      final isEditing = widget.itemId != null;
-      final success = await ErrorRetryDialog.executeWithRetry(
-        context: context,
-        operation: () async {
-          if (isEditing) {
-            await ref
-                .read(itemNotifierProvider(houseId).notifier)
-                .updateItem(item);
-          } else {
-            await ref
-                .read(itemNotifierProvider(houseId).notifier)
-                .addItem(item);
-          }
-        },
-        errorTitle: 'errors.save_error'.tr(),
-        errorMessage: isEditing
-            ? 'errors.save_item_failed'.tr()
-            : 'errors.create_item_failed'.tr(),
-      );
-
-      if (mounted) {
-        _setLoading(false);
-        if (success) {
-          widget.onSaved(item.id, houseId);
-        }
-      }
+  Future<({String itemId, String houseId})?> _saveItem() async {
+    if (!_formKey.currentState!.validate()) return null;
+    if (_selectedHouseId == null) {
+      AppSnackBar.showWarning(context, 'common.select_house'.tr());
+      return null;
     }
+
+    final now = DateTime.now();
+    final quantity = _selectedQuantity;
+    final houseId = _selectedHouseId!;
+    final itemId = widget.itemId ?? const Uuid().v4();
+
+    final item = widget.itemId != null
+        ? (() {
+            final itemsAsync = ref.read(itemNotifierProvider(houseId));
+            final items = itemsAsync.value;
+            if (items == null) {
+              throw StateError('Oggetto non trovato');
+            }
+            return items
+                .firstWhere((i) => i.id == widget.itemId)
+                .copyWith(
+                  name: _nameController.text.trim(),
+                  description: _descriptionController.text.trim().isEmpty
+                      ? null
+                      : _descriptionController.text.trim(),
+                  category: _selectedCategory,
+                  quantity: quantity,
+                  spaceId: _selectedSpaceId,
+                  updatedAt: now,
+                );
+          })()
+        : ItemModel(
+            id: itemId,
+            houseId: houseId,
+            name: _nameController.text.trim(),
+            description: _descriptionController.text.trim().isEmpty
+                ? null
+                : _descriptionController.text.trim(),
+            category: _selectedCategory,
+            quantity: quantity,
+            spaceId: _selectedSpaceId,
+            createdAt: now,
+            updatedAt: now,
+          );
+
+    final isEditing = widget.itemId != null;
+    final success = await ErrorRetryDialog.executeWithRetry(
+      context: context,
+      operation: () async {
+        if (isEditing) {
+          await ref
+              .read(itemNotifierProvider(houseId).notifier)
+              .updateItem(item);
+        } else {
+          await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
+        }
+      },
+      errorTitle: 'errors.save_error'.tr(),
+      errorMessage: isEditing
+          ? 'errors.save_item_failed'.tr()
+          : 'errors.create_item_failed'.tr(),
+    );
+
+    if (!success) return null;
+    return (itemId: item.id, houseId: houseId);
   }
 
   @override
@@ -243,7 +226,8 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
     final housesAsync = ref.watch(houseNotifierProvider);
     // Only show the space selector when the selected house has user-created
     // spaces. Houses with only the implicit default space get no selector.
-    final hasSpaces = _selectedHouseId != null &&
+    final hasSpaces =
+        _selectedHouseId != null &&
         (ref
                 .watch(spaceNotifierProvider(_selectedHouseId!))
                 .valueOrNull
@@ -352,27 +336,23 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
           ),
           if (widget.showButtons) ...[
             AppSpacing.gapXl,
-            ElevatedButton(
-              onPressed: _isLoading ? null : _saveItem,
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-                shape: RoundedRectangleBorder(
-                  borderRadius: context.responsiveBorderRadius(
-                    AppConstants.inputBorderRadius,
-                  ),
-                ),
-              ),
-              child: _isLoading
-                  ? SizedBox(
-                      height: context.responsive(20),
-                      width: context.responsive(20),
-                      child: const CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(
-                      widget.itemId != null
-                          ? 'common.save'.tr()
-                          : 'common.create'.tr(),
-                    ),
+            UniversalActionBar(
+              primaryLabel: widget.itemId != null
+                  ? 'common.save'.tr()
+                  : 'common.create'.tr(),
+              isLoading: _isSaving,
+              onPrimaryPressed: _isSaving
+                  ? null
+                  : () async {
+                      setState(() => _isSaving = true);
+                      final result = await _saveItem();
+                      if (mounted) {
+                        setState(() => _isSaving = false);
+                        if (result != null) {
+                          widget.onSaved?.call(result.itemId, result.houseId);
+                        }
+                      }
+                    },
             ),
           ],
         ],

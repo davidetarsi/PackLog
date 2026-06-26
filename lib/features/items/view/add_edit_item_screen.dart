@@ -54,14 +54,19 @@ class AddEditItemSheet extends ConsumerStatefulWidget {
 
 class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
   final GlobalKey<ItemFormContentState> _formKey = GlobalKey();
-  bool _isLoading = false;
+  bool _isSaving = false;
 
-  void _handleSave() {
-    _formKey.currentState?.save();
-  }
-
-  void _handleLoadingChanged(bool loading) {
-    setState(() => _isLoading = loading);
+  Future<void> _handleSave() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    final result = await _formKey.currentState?.save();
+    if (mounted) {
+      setState(() => _isSaving = false);
+      if (result != null) {
+        widget.onItemSaved?.call(result.itemId, result.houseId);
+        Navigator.pop(context);
+      }
+    }
   }
 
   /// Gestisce l'eliminazione dell'item (stessa logica del kebab menu)
@@ -99,10 +104,10 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
     return StandardBottomSheetLayout(
       title: widget.itemId != null ? 'items.edit'.tr() : 'items.add_new'.tr(),
       onCancel: () => Navigator.pop(context),
-      onSave: _handleSave,
-      showDeleteButton: widget.itemId != null, // Solo in edit mode
+      onSave: () => _handleSave(),
+      showDeleteButton: widget.itemId != null,
       onDelete: widget.itemId != null ? _handleDelete : null,
-      isLoading: _isLoading,
+      isLoading: _isSaving,
       saveLabel: widget.itemId != null
           ? 'common.save'.tr()
           : 'common.create'.tr(),
@@ -112,12 +117,8 @@ class _AddEditItemSheetState extends ConsumerState<AddEditItemSheet> {
         itemId: widget.itemId,
         initialName: widget.initialName,
         initialCategory: widget.initialCategory,
-        onSaved: (itemId, houseId) {
-          widget.onItemSaved?.call(itemId, houseId);
-          Navigator.pop(context);
-        },
         showButtons: false,
-        onLoadingChanged: _handleLoadingChanged,
+        // onSaved non passato — navigazione gestita da _handleSave()
       ),
     );
   }
