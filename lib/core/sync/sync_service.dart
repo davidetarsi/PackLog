@@ -2,9 +2,6 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
-import '../../features/items/model/item_model.dart';
-import '../../features/luggages/model/luggage_model.dart';
-import '../../shared/model/location_type.dart';
 import '../database/daos/houses_dao.dart';
 import '../database/daos/items_dao.dart';
 import '../database/daos/luggages_dao.dart';
@@ -14,6 +11,7 @@ import '../database/database.dart';
 import '../database/tables/mixins/syncable_table.dart';
 import '../monitoring/monitoring_service.dart';
 import 'supabase_repository.dart';
+import 'sync_serializers.dart';
 import 'tombstone_config_service.dart';
 
 class SyncService {
@@ -180,10 +178,14 @@ class SyncService {
             skipped++;
             continue;
           }
-          await _housesDao.insertHouse(_buildHouseCompanion(r, syncedAt: now));
+          await _housesDao.insertHouse(
+            SyncSerializers.buildHouseCompanion(r, syncedAt: now),
+          );
           inserted++;
         } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
-          await _housesDao.updateHouse(_buildHouseCompanion(r, syncedAt: now));
+          await _housesDao.updateHouse(
+            SyncSerializers.buildHouseCompanion(r, syncedAt: now),
+          );
           updated++;
         } else {
           skipped++;
@@ -202,10 +204,14 @@ class SyncService {
               skipped++;
               continue;
             }
-            await _spacesDao.insertSpace(_buildSpaceCompanion(r, syncedAt: now));
+            await _spacesDao.insertSpace(
+              SyncSerializers.buildSpaceCompanion(r, syncedAt: now),
+            );
             inserted++;
           } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
-            await _spacesDao.updateSpace(_buildSpaceCompanion(r, syncedAt: now));
+            await _spacesDao.updateSpace(
+              SyncSerializers.buildSpaceCompanion(r, syncedAt: now),
+            );
             updated++;
           } else {
             skipped++;
@@ -234,12 +240,12 @@ class SyncService {
               continue;
             }
             await _luggagesDao.insertLuggage(
-              _buildLuggageCompanion(r, syncedAt: now),
+              SyncSerializers.buildLuggageCompanion(r, syncedAt: now),
             );
             inserted++;
           } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
             await _luggagesDao.updateLuggage(
-              _buildLuggageCompanion(r, syncedAt: now),
+              SyncSerializers.buildLuggageCompanion(r, syncedAt: now),
             );
             updated++;
           } else {
@@ -286,10 +292,7 @@ class SyncService {
           _monitoring.captureException(
             e,
             stackTrace: st,
-            tags: {
-              'operation': 'fullPull_item',
-              'item_id': id,
-            },
+            tags: {'operation': 'fullPull_item', 'item_id': id},
           );
         }
       }
@@ -304,12 +307,16 @@ class SyncService {
             skipped++;
             continue;
           }
-          await _tripsDao.insertTrip(_buildTripCompanion(r, syncedAt: now));
+          await _tripsDao.insertTrip(
+            SyncSerializers.buildTripCompanion(r, syncedAt: now),
+          );
           await _replaceTripItemsFromJson(id, r['items']);
           await _replaceTripLuggagesFromJson(id, r['luggage_ids']);
           inserted++;
         } else if (remoteTs.isAfter(local.updatedAt.toUtc())) {
-          await _tripsDao.updateTrip(_buildTripCompanion(r, syncedAt: now));
+          await _tripsDao.updateTrip(
+            SyncSerializers.buildTripCompanion(r, syncedAt: now),
+          );
           await _replaceTripItemsFromJson(id, r['items']);
           await _replaceTripLuggagesFromJson(id, r['luggage_ids']);
           updated++;
@@ -344,154 +351,6 @@ class SyncService {
     }
   }
 
-  // === COMPANION BUILDERS (remote JSON → Drift companion) ===
-
-  HousesCompanion _buildHouseCompanion(
-    Map<String, dynamic> r, {
-    required DateTime syncedAt,
-  }) {
-    return HousesCompanion(
-      id: Value(r['id'] as String),
-      userId: Value(r['user_id'] as String?),
-      name: Value(r['name'] as String),
-      description: Value(r['description'] as String?),
-      locationPlaceId: Value(r['location_place_id'] as String?),
-      locationDisplayName: Value(r['location_display_name'] as String?),
-      locationName: Value(r['location_name'] as String?),
-      locationCity: Value(r['location_city'] as String?),
-      locationState: Value(r['location_state'] as String?),
-      locationCountry: Value(r['location_country'] as String?),
-      locationType: Value(_parseLocationType(r['location_type'])),
-      locationLat: Value(r['location_lat'] as double?),
-      locationLon: Value(r['location_lon'] as double?),
-      iconName: Value(r['icon_name'] as String? ?? 'home'),
-      isPrimary: Value(r['is_primary'] as bool? ?? false),
-      createdAt: Value(DateTime.parse(r['created_at'] as String)),
-      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
-      // Propaga lo stato di tombstone dal remoto: senza questo le delete
-      // fatte su un device non arriverebbero mai agli altri.
-      isDeleted: Value(r['is_deleted'] as bool? ?? false),
-      lastSyncedAt: Value(syncedAt),
-      syncStatus: const Value(SyncStatus.synced),
-      syncRetryCount: const Value(0),
-      lastSyncError: const Value(null),
-      nextSyncAttemptAt: const Value(null),
-      sentryTraceId: const Value(null),
-    );
-  }
-
-  ItemsCompanion _buildItemCompanion(
-    Map<String, dynamic> r, {
-    required DateTime syncedAt,
-    bool clearSpaceId = false,
-  }) {
-    return ItemsCompanion(
-      id: Value(r['id'] as String),
-      userId: Value(r['user_id'] as String?),
-      houseId: Value(r['house_id'] as String),
-      name: Value(r['name'] as String),
-      category: Value(_parseItemCategory(r['category'] as String)),
-      description: Value(r['description'] as String?),
-      quantity: Value(r['quantity'] as int?),
-      // [clearSpaceId] forza spaceId=null per il fallback FK: vedi
-      // [_persistItemWithFkFallback].
-      spaceId: clearSpaceId
-          ? const Value(null)
-          : Value(r['space_id'] as String?),
-      aiMetadata: Value(r['ai_metadata'] as String?),
-      createdAt: Value(DateTime.parse(r['created_at'] as String)),
-      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
-      isDeleted: Value(r['is_deleted'] as bool? ?? false),
-      lastSyncedAt: Value(syncedAt),
-      syncStatus: const Value(SyncStatus.synced),
-      syncRetryCount: const Value(0),
-      lastSyncError: const Value(null),
-      nextSyncAttemptAt: const Value(null),
-      sentryTraceId: const Value(null),
-    );
-  }
-
-  SpacesCompanion _buildSpaceCompanion(
-    Map<String, dynamic> r, {
-    required DateTime syncedAt,
-  }) {
-    return SpacesCompanion(
-      id: Value(r['id'] as String),
-      userId: Value(r['user_id'] as String?),
-      houseId: Value(r['house_id'] as String),
-      name: Value(r['name'] as String),
-      iconName: Value(r['icon_name'] as String?),
-      createdAt: Value(DateTime.parse(r['created_at'] as String)),
-      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
-      isDeleted: Value(r['is_deleted'] as bool? ?? false),
-      lastSyncedAt: Value(syncedAt),
-      syncStatus: const Value(SyncStatus.synced),
-      syncRetryCount: const Value(0),
-      lastSyncError: const Value(null),
-      nextSyncAttemptAt: const Value(null),
-      sentryTraceId: const Value(null),
-    );
-  }
-
-  LuggagesCompanion _buildLuggageCompanion(
-    Map<String, dynamic> r, {
-    required DateTime syncedAt,
-  }) {
-    return LuggagesCompanion(
-      id: Value(r['id'] as String),
-      userId: Value(r['user_id'] as String?),
-      houseId: Value(r['house_id'] as String),
-      name: Value(r['name'] as String),
-      sizeType: Value(_parseLuggageSize(r['size_type'])),
-      volumeLiters: Value(r['volume_liters'] as int?),
-      createdAt: Value(DateTime.parse(r['created_at'] as String)),
-      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
-      isDeleted: Value(r['is_deleted'] as bool? ?? false),
-      lastSyncedAt: Value(syncedAt),
-      syncStatus: const Value(SyncStatus.synced),
-      syncRetryCount: const Value(0),
-      lastSyncError: const Value(null),
-      nextSyncAttemptAt: const Value(null),
-      sentryTraceId: const Value(null),
-    );
-  }
-
-  TripsCompanion _buildTripCompanion(
-    Map<String, dynamic> r, {
-    required DateTime syncedAt,
-  }) {
-    return TripsCompanion(
-      id: Value(r['id'] as String),
-      userId: Value(r['user_id'] as String?),
-      name: Value(r['name'] as String),
-      description: Value(r['description'] as String?),
-      departureDateTime: Value(
-        _parseNullableDateTime(r['departure_date_time']),
-      ),
-      returnDateTime: Value(_parseNullableDateTime(r['return_date_time'])),
-      destinationHouseId: Value(r['destination_house_id'] as String?),
-      locationPlaceId: Value(r['location_place_id'] as String?),
-      locationDisplayName: Value(r['location_display_name'] as String?),
-      locationName: Value(r['location_name'] as String?),
-      locationCity: Value(r['location_city'] as String?),
-      locationState: Value(r['location_state'] as String?),
-      locationCountry: Value(r['location_country'] as String?),
-      locationType: Value(_parseLocationType(r['location_type'])),
-      locationLat: Value(r['location_lat'] as double?),
-      locationLon: Value(r['location_lon'] as double?),
-      isSaved: Value(r['is_saved'] as bool? ?? false),
-      createdAt: Value(DateTime.parse(r['created_at'] as String)),
-      updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
-      isDeleted: Value(r['is_deleted'] as bool? ?? false),
-      lastSyncedAt: Value(syncedAt),
-      syncStatus: const Value(SyncStatus.synced),
-      syncRetryCount: const Value(0),
-      lastSyncError: const Value(null),
-      nextSyncAttemptAt: const Value(null),
-      sentryTraceId: const Value(null),
-    );
-  }
-
   /// FK-safe order: houses → spaces → luggages → items → trips (create/update).
   /// Purge order is reversed: trips/items/luggages/spaces first, houses last
   /// (FK safety: items reference spaces; trips reference luggages via junction).
@@ -524,7 +383,7 @@ class SyncService {
         localUpdatedAt: house.updatedAt,
         localIsDeleted: house.isDeleted,
         sentryTraceId: house.sentryTraceId,
-        toJson: () => _houseToJson(house),
+        toJson: () => SyncSerializers.houseToJson(house),
         fetchRemote: (trace) =>
             _remote.fetchHouseById(house.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertHouse(data, sentryTrace: trace),
@@ -545,15 +404,14 @@ class SyncService {
         localUpdatedAt: space.updatedAt,
         localIsDeleted: space.isDeleted,
         sentryTraceId: space.sentryTraceId,
-        toJson: () => _spaceToJson(space),
+        toJson: () => SyncSerializers.spaceToJson(space),
         fetchRemote: (trace) =>
             _remote.fetchSpaceById(space.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertSpace(data, sentryTrace: trace),
         pullLocal: (remote) => _pullSpace(space.id, remote),
         markSynced: (ts) => _spacesDao.markSpaceAsSynced(space.id, ts),
         incrementRetry: (e) => _spacesDao.incrementSyncRetry(space.id, e),
-        onPurge: () =>
-            pendingPurges.add(() => _spacesDao.purgeSpace(space.id)),
+        onPurge: () => pendingPurges.add(() => _spacesDao.purgeSpace(space.id)),
         syncStatus: space.syncStatus,
         lastSyncedAt: space.lastSyncedAt,
         createdAt: space.createdAt,
@@ -567,15 +425,14 @@ class SyncService {
         localUpdatedAt: luggage.updatedAt,
         localIsDeleted: luggage.isDeleted,
         sentryTraceId: luggage.sentryTraceId,
-        toJson: () => _luggageToJson(luggage),
+        toJson: () => SyncSerializers.luggageToJson(luggage),
         fetchRemote: (trace) =>
             _remote.fetchLuggageById(luggage.id, sentryTrace: trace),
         upsert: (data, trace) =>
             _remote.upsertLuggage(data, sentryTrace: trace),
         pullLocal: (remote) => _pullLuggage(luggage.id, remote),
         markSynced: (ts) => _luggagesDao.markLuggageAsSynced(luggage.id, ts),
-        incrementRetry: (e) =>
-            _luggagesDao.incrementSyncRetry(luggage.id, e),
+        incrementRetry: (e) => _luggagesDao.incrementSyncRetry(luggage.id, e),
         onPurge: () =>
             pendingPurges.add(() => _luggagesDao.purgeLuggage(luggage.id)),
         syncStatus: luggage.syncStatus,
@@ -591,7 +448,7 @@ class SyncService {
         localUpdatedAt: item.updatedAt,
         localIsDeleted: item.isDeleted,
         sentryTraceId: item.sentryTraceId,
-        toJson: () => _itemToJson(item),
+        toJson: () => SyncSerializers.itemToJson(item),
         fetchRemote: (trace) =>
             _remote.fetchItemById(item.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertItem(data, sentryTrace: trace),
@@ -618,8 +475,11 @@ class SyncService {
         localUpdatedAt: trip.updatedAt,
         localIsDeleted: trip.isDeleted,
         sentryTraceId: trip.sentryTraceId,
-        toJson: () =>
-            _tripToJson(trip, items: tripItems, luggageIds: luggageIds),
+        toJson: () => SyncSerializers.tripToJson(
+          trip,
+          items: tripItems,
+          luggageIds: luggageIds,
+        ),
         fetchRemote: (trace) =>
             _remote.fetchTripById(trip.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertTrip(data, sentryTrace: trace),
@@ -784,120 +644,6 @@ class SyncService {
     }
   }
 
-  // === SERIALIZATION: Drift → Supabase JSON ===
-
-  Map<String, dynamic> _houseToJson(House house) {
-    return {
-      'id': house.id,
-      'user_id': house.userId,
-      'name': house.name,
-      'description': house.description,
-      'location_place_id': house.locationPlaceId,
-      'location_display_name': house.locationDisplayName,
-      'location_name': house.locationName,
-      'location_city': house.locationCity,
-      'location_state': house.locationState,
-      'location_country': house.locationCountry,
-      'location_type': house.locationType?.name,
-      'location_lat': house.locationLat,
-      'location_lon': house.locationLon,
-      'icon_name': house.iconName,
-      'is_primary': house.isPrimary,
-      'created_at': house.createdAt.toUtc().toIso8601String(),
-      'updated_at': house.updatedAt.toUtc().toIso8601String(),
-      'is_deleted': house.isDeleted,
-    };
-  }
-
-  Map<String, dynamic> _itemToJson(Item item) {
-    return {
-      'id': item.id,
-      'user_id': item.userId,
-      'house_id': item.houseId,
-      'name': item.name,
-      'category': item.category.name,
-      'description': item.description,
-      'quantity': item.quantity,
-      'space_id': item.spaceId,
-      'created_at': item.createdAt.toUtc().toIso8601String(),
-      'updated_at': item.updatedAt.toUtc().toIso8601String(),
-      'is_deleted': item.isDeleted,
-      'ai_metadata': item.aiMetadata,
-    };
-  }
-
-  Map<String, dynamic> _spaceToJson(Space space) {
-    return {
-      'id': space.id,
-      'user_id': space.userId,
-      'house_id': space.houseId,
-      'name': space.name,
-      'icon_name': space.iconName,
-      'created_at': space.createdAt.toUtc().toIso8601String(),
-      'updated_at': space.updatedAt.toUtc().toIso8601String(),
-      'is_deleted': space.isDeleted,
-    };
-  }
-
-  Map<String, dynamic> _luggageToJson(Luggage luggage) {
-    return {
-      'id': luggage.id,
-      'user_id': luggage.userId,
-      'house_id': luggage.houseId,
-      'name': luggage.name,
-      'size_type': luggage.sizeType.name,
-      'volume_liters': luggage.volumeLiters,
-      'created_at': luggage.createdAt.toUtc().toIso8601String(),
-      'updated_at': luggage.updatedAt.toUtc().toIso8601String(),
-      'is_deleted': luggage.isDeleted,
-    };
-  }
-
-  /// Serializza il trip, la sua checklist (snapshot immutabile) e gli id dei
-  /// bagagli associati in un unico payload. Items e luggage_ids sono parte
-  /// del trip per Supabase: niente tabelle remote dedicate, niente N+1 sul
-  /// pull. Per i luggages serializziamo solo gli id perché le entità reali
-  /// vivono nella tabella `luggages` (sincronizzata separatamente).
-  Map<String, dynamic> _tripToJson(
-    Trip trip, {
-    required List<TripItemEntry> items,
-    required List<String> luggageIds,
-  }) {
-    return {
-      'id': trip.id,
-      'user_id': trip.userId,
-      'name': trip.name,
-      'description': trip.description,
-      'departure_date_time': trip.departureDateTime?.toUtc().toIso8601String(),
-      'return_date_time': trip.returnDateTime?.toUtc().toIso8601String(),
-      'destination_house_id': trip.destinationHouseId,
-      'location_place_id': trip.locationPlaceId,
-      'location_display_name': trip.locationDisplayName,
-      'location_name': trip.locationName,
-      'location_city': trip.locationCity,
-      'location_state': trip.locationState,
-      'location_country': trip.locationCountry,
-      'location_type': trip.locationType?.name,
-      'location_lat': trip.locationLat,
-      'location_lon': trip.locationLon,
-      'is_saved': trip.isSaved,
-      'created_at': trip.createdAt.toUtc().toIso8601String(),
-      'updated_at': trip.updatedAt.toUtc().toIso8601String(),
-      'is_deleted': trip.isDeleted,
-      'items': items
-          .map((e) => {
-                'id': e.id,
-                'name': e.name,
-                'category': e.category.name,
-                'quantity': e.quantity,
-                'origin_house_id': e.originHouseId,
-                'is_checked': e.isChecked,
-              })
-          .toList(),
-      'luggage_ids': luggageIds,
-    };
-  }
-
   // === DESERIALIZATION: Supabase JSON → Drift update ===
 
   Future<void> _pullHouse(String id, Map<String, dynamic> remote) async {
@@ -912,7 +658,9 @@ class SyncService {
         locationCity: Value(remote['location_city'] as String?),
         locationState: Value(remote['location_state'] as String?),
         locationCountry: Value(remote['location_country'] as String?),
-        locationType: Value(_parseLocationType(remote['location_type'])),
+        locationType: Value(
+          SyncSerializers.parseLocationType(remote['location_type']),
+        ),
         locationLat: Value(remote['location_lat'] as double?),
         locationLon: Value(remote['location_lon'] as double?),
         iconName: Value(remote['icon_name'] as String? ?? 'home'),
@@ -944,7 +692,7 @@ class SyncService {
         id: Value(id),
         houseId: Value(remote['house_id'] as String),
         name: Value(remote['name'] as String),
-        sizeType: Value(_parseLuggageSize(remote['size_type'])),
+        sizeType: Value(SyncSerializers.parseLuggageSize(remote['size_type'])),
         volumeLiters: Value(remote['volume_liters'] as int?),
         createdAt: Value(DateTime.parse(remote['created_at'] as String)),
         updatedAt: Value(DateTime.parse(remote['updated_at'] as String)),
@@ -959,7 +707,9 @@ class SyncService {
         id: Value(id),
         houseId: Value(remote['house_id'] as String),
         name: Value(remote['name'] as String),
-        category: Value(_parseItemCategory(remote['category'] as String)),
+        category: Value(
+          SyncSerializers.parseItemCategory(remote['category'] as String),
+        ),
         description: Value(remote['description'] as String?),
         quantity: Value(remote['quantity'] as int?),
         spaceId: Value(remote['space_id'] as String?),
@@ -978,10 +728,10 @@ class SyncService {
         name: Value(remote['name'] as String),
         description: Value(remote['description'] as String?),
         departureDateTime: Value(
-          _parseNullableDateTime(remote['departure_date_time']),
+          SyncSerializers.parseNullableDateTime(remote['departure_date_time']),
         ),
         returnDateTime: Value(
-          _parseNullableDateTime(remote['return_date_time']),
+          SyncSerializers.parseNullableDateTime(remote['return_date_time']),
         ),
         destinationHouseId: Value(remote['destination_house_id'] as String?),
         locationPlaceId: Value(remote['location_place_id'] as String?),
@@ -990,7 +740,9 @@ class SyncService {
         locationCity: Value(remote['location_city'] as String?),
         locationState: Value(remote['location_state'] as String?),
         locationCountry: Value(remote['location_country'] as String?),
-        locationType: Value(_parseLocationType(remote['location_type'])),
+        locationType: Value(
+          SyncSerializers.parseLocationType(remote['location_type']),
+        ),
         locationLat: Value(remote['location_lat'] as double?),
         locationLon: Value(remote['location_lon'] as double?),
         isSaved: Value(remote['is_saved'] as bool? ?? false),
@@ -1035,7 +787,9 @@ class SyncService {
             id: m['id'] as String,
             tripId: tripId,
             name: m['name'] as String,
-            category: _parseItemCategory(m['category'] as String),
+            category: SyncSerializers.parseItemCategory(
+              m['category'] as String,
+            ),
             quantity: Value(m['quantity'] as int? ?? 1),
             originHouseId: Value(m['origin_house_id'] as String? ?? ''),
             isChecked: Value(m['is_checked'] as bool? ?? false),
@@ -1060,7 +814,7 @@ class SyncService {
     required bool isInsert,
   }) async {
     Future<void> doOp({bool clearSpaceId = false}) async {
-      final companion = _buildItemCompanion(
+      final companion = SyncSerializers.buildItemCompanion(
         r,
         syncedAt: syncedAt,
         clearSpaceId: clearSpaceId,
@@ -1092,35 +846,5 @@ class SyncService {
         },
       );
     }
-  }
-
-  // === PARSE HELPERS ===
-
-  LocationType? _parseLocationType(dynamic value) {
-    if (value == null) return null;
-    return LocationType.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => LocationType.other,
-    );
-  }
-
-  ItemCategory _parseItemCategory(String value) {
-    return ItemCategory.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => ItemCategory.varie,
-    );
-  }
-
-  LuggageSize _parseLuggageSize(dynamic value) {
-    if (value == null) return LuggageSize.cabinBaggage;
-    return LuggageSize.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => LuggageSize.cabinBaggage,
-    );
-  }
-
-  DateTime? _parseNullableDateTime(dynamic value) {
-    if (value == null) return null;
-    return DateTime.parse(value as String);
   }
 }
