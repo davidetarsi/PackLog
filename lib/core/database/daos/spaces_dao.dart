@@ -137,9 +137,9 @@ class SpacesDao extends DatabaseAccessor<AppDatabase> with _$SpacesDaoMixin {
   }
 
   Future<int> countUnsynced() async {
-    final rows = await (select(spaces)
-          ..where((s) => s.syncStatus.equalsValue(SyncStatus.synced).not()))
-        .get();
+    final rows = await (select(
+      spaces,
+    )..where((s) => s.syncStatus.equalsValue(SyncStatus.synced).not())).get();
     return rows.length;
   }
 
@@ -161,14 +161,15 @@ class SpacesDao extends DatabaseAccessor<AppDatabase> with _$SpacesDaoMixin {
   /// Resets retry state on records bloccati oltre soglia. Vedi
   /// [HousesDao.resetSyncRetries] per il contratto.
   Future<int> resetSyncRetries() {
-    return (update(spaces)..where((s) => s.syncRetryCount.isBiggerThanValue(0)))
-        .write(
-          const SpacesCompanion(
-            syncRetryCount: Value(0),
-            lastSyncError: Value(null),
-            nextSyncAttemptAt: Value(null),
-          ),
-        );
+    return (update(
+      spaces,
+    )..where((s) => s.syncRetryCount.isBiggerThanValue(0))).write(
+      const SpacesCompanion(
+        syncRetryCount: Value(0),
+        lastSyncError: Value(null),
+        nextSyncAttemptAt: Value(null),
+      ),
+    );
   }
 
   Future<void> incrementSyncRetry(String spaceId, String errorMessage) async {

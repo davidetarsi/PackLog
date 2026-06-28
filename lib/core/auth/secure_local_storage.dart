@@ -22,8 +22,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// dell'app), la copiamo in secure storage e la cancelliamo da SP. L'utente
 /// non subisce relogin.
 class SecureLocalStorage extends LocalStorage {
-  SecureLocalStorage({required this.persistSessionKey, FlutterSecureStorage? secure})
-      : _secure = secure ?? _defaultSecureStorage();
+  SecureLocalStorage({
+    required this.persistSessionKey,
+    FlutterSecureStorage? secure,
+  }) : _secure = secure ?? _defaultSecureStorage();
 
   /// Stessa chiave usata da `SharedPreferencesLocalStorage` di default
   /// (`sb-<project-ref>-auth-token`). Manteniamo il nome per riusare la

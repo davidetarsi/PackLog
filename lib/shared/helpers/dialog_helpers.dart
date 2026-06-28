@@ -38,16 +38,15 @@ class DialogHelpers {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                customMessage ??
-                    'dialogs.delete_message'.tr(args: [itemName]),
+                customMessage ?? 'dialogs.delete_message'.tr(args: [itemName]),
               ),
               if (warningText != null) ...[
                 SizedBox(height: 12),
                 Text(
                   warningText,
-                  style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.error,
-                  ),
+                  style: Theme.of(
+                    dialogContext,
+                  ).textTheme.bodySmall?.copyWith(color: colorScheme.error),
                 ),
               ],
             ],
@@ -144,7 +143,8 @@ class DialogHelpers {
                 Center(
                   child: Icon(
                     icon,
-                    color: iconColor ??
+                    color:
+                        iconColor ??
                         theme.extension<AppColorsExtension>()!.warning,
                     size: 48,
                   ),

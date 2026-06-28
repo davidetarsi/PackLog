@@ -189,18 +189,15 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<int> countUnsynced() async {
-    final rows = await (select(luggages)
-          ..where((l) => l.syncStatus.equalsValue(SyncStatus.synced).not()))
-        .get();
+    final rows = await (select(
+      luggages,
+    )..where((l) => l.syncStatus.equalsValue(SyncStatus.synced).not())).get();
     return rows.length;
   }
 
   /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
   /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale.
-  Future<void> markLuggageAsSynced(
-    String luggageId,
-    DateTime serverUpdatedAt,
-  ) {
+  Future<void> markLuggageAsSynced(String luggageId, DateTime serverUpdatedAt) {
     return (update(luggages)..where((l) => l.id.equals(luggageId))).write(
       LuggagesCompanion(
         updatedAt: Value(serverUpdatedAt),
@@ -216,15 +213,15 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase>
   /// Resets retry state on records bloccati oltre soglia. Vedi
   /// [HousesDao.resetSyncRetries] per il contratto.
   Future<int> resetSyncRetries() {
-    return (update(luggages)
-          ..where((l) => l.syncRetryCount.isBiggerThanValue(0)))
-        .write(
-          const LuggagesCompanion(
-            syncRetryCount: Value(0),
-            lastSyncError: Value(null),
-            nextSyncAttemptAt: Value(null),
-          ),
-        );
+    return (update(
+      luggages,
+    )..where((l) => l.syncRetryCount.isBiggerThanValue(0))).write(
+      const LuggagesCompanion(
+        syncRetryCount: Value(0),
+        lastSyncError: Value(null),
+        nextSyncAttemptAt: Value(null),
+      ),
+    );
   }
 
   Future<void> incrementSyncRetry(String luggageId, String errorMessage) async {

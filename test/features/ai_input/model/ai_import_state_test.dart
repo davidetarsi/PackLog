@@ -42,14 +42,23 @@ void main() {
 
     test('instances with different results are not equal', () {
       final file = _fakeFile();
-      final g1 = PhotoGroup(photo: file, results: [_result(name: 'T-Shirt')]);
-      final g2 = PhotoGroup(photo: file, results: [_result(name: 'Jeans')]);
+      final g1 = PhotoGroup(
+        photo: file,
+        results: [_result(name: 'T-Shirt')],
+      );
+      final g2 = PhotoGroup(
+        photo: file,
+        results: [_result(name: 'Jeans')],
+      );
       expect(g1, isNot(g2));
     });
 
     test('copyWith changes results, leaves photo unchanged', () {
       final file = _fakeFile();
-      final g = PhotoGroup(photo: file, results: [_result(name: 'T-Shirt')]);
+      final g = PhotoGroup(
+        photo: file,
+        results: [_result(name: 'T-Shirt')],
+      );
       final newResults = [_result(name: 'Jeans')];
       final copy = g.copyWith(results: newResults);
 

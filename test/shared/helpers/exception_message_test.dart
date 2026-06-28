@@ -25,36 +25,45 @@ void main() {
       );
     });
 
-    test('SignInFailedException (default unknown reason) → login.sign_in_failed', () {
-      expect(
-        exceptionMessageKey(const SignInFailedException('wrong')),
-        equals('login.sign_in_failed'),
-      );
-    });
+    test(
+      'SignInFailedException (default unknown reason) → login.sign_in_failed',
+      () {
+        expect(
+          exceptionMessageKey(const SignInFailedException('wrong')),
+          equals('login.sign_in_failed'),
+        );
+      },
+    );
 
-    test('SignInFailedException (invalidCredentials) → login.invalid_credentials', () {
-      expect(
-        exceptionMessageKey(
-          const SignInFailedException(
-            'bad',
-            reason: AuthFailureReason.invalidCredentials,
+    test(
+      'SignInFailedException (invalidCredentials) → login.invalid_credentials',
+      () {
+        expect(
+          exceptionMessageKey(
+            const SignInFailedException(
+              'bad',
+              reason: AuthFailureReason.invalidCredentials,
+            ),
           ),
-        ),
-        equals('login.invalid_credentials'),
-      );
-    });
+          equals('login.invalid_credentials'),
+        );
+      },
+    );
 
-    test('SignInFailedException (emailNotConfirmed) → login.email_not_confirmed', () {
-      expect(
-        exceptionMessageKey(
-          const SignInFailedException(
-            'check inbox',
-            reason: AuthFailureReason.emailNotConfirmed,
+    test(
+      'SignInFailedException (emailNotConfirmed) → login.email_not_confirmed',
+      () {
+        expect(
+          exceptionMessageKey(
+            const SignInFailedException(
+              'check inbox',
+              reason: AuthFailureReason.emailNotConfirmed,
+            ),
           ),
-        ),
-        equals('login.email_not_confirmed'),
-      );
-    });
+          equals('login.email_not_confirmed'),
+        );
+      },
+    );
 
     test('SignInFailedException (networkError) → login.network_error', () {
       expect(
@@ -104,10 +113,7 @@ void main() {
 
   group('exceptionMessageKey - fallback', () {
     test('Plain Exception → errors.generic', () {
-      expect(
-        exceptionMessageKey(Exception('boom')),
-        equals('errors.generic'),
-      );
+      expect(exceptionMessageKey(Exception('boom')), equals('errors.generic'));
     });
 
     test('Arbitrary Object → errors.generic', () {

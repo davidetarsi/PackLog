@@ -40,14 +40,18 @@ bool get _envConfigured =>
 
 void main() {
   if (!_envConfigured) {
-    test('Geocode proxy integration (SKIPPED — env vars mancanti)', () {
-      // ignore: avoid_print
-      print(
-        '[geocode_test] SKIPPED: configurare RLS_TEST_SUPABASE_URL, '
-        'RLS_TEST_SUPABASE_ANON_KEY, RLS_TEST_USER_A_EMAIL, '
-        'RLS_TEST_USER_A_PASSWORD via --dart-define per eseguirlo.',
-      );
-    }, skip: 'env vars non configurate');
+    test(
+      'Geocode proxy integration (SKIPPED — env vars mancanti)',
+      () {
+        // ignore: avoid_print
+        print(
+          '[geocode_test] SKIPPED: configurare RLS_TEST_SUPABASE_URL, '
+          'RLS_TEST_SUPABASE_ANON_KEY, RLS_TEST_USER_A_EMAIL, '
+          'RLS_TEST_USER_A_PASSWORD via --dart-define per eseguirlo.',
+        );
+      },
+      skip: 'env vars non configurate',
+    );
     return;
   }
 
@@ -92,10 +96,7 @@ void main() {
       final longText = 'a' * 200; // sopra il limite di 100
       final response = await http.get(
         proxyUri.replace(queryParameters: {'text': longText}),
-        headers: {
-          'Authorization': 'Bearer $jwtA',
-          'apikey': _kSupabaseAnonKey,
-        },
+        headers: {'Authorization': 'Bearer $jwtA', 'apikey': _kSupabaseAnonKey},
       );
       expect(response.statusCode, 400);
       final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -104,36 +105,29 @@ void main() {
 
     test('rifiuta limit fuori range (400)', () async {
       final response = await http.get(
-        proxyUri.replace(
-          queryParameters: {'text': 'Milano', 'limit': '999'},
-        ),
-        headers: {
-          'Authorization': 'Bearer $jwtA',
-          'apikey': _kSupabaseAnonKey,
-        },
+        proxyUri.replace(queryParameters: {'text': 'Milano', 'limit': '999'}),
+        headers: {'Authorization': 'Bearer $jwtA', 'apikey': _kSupabaseAnonKey},
       );
       expect(response.statusCode, 400);
     });
 
-    test('happy path: 200 + features array (autenticato, params validi)',
-        () async {
-      final response = await http.get(
-        proxyUri.replace(
-          queryParameters: {
-            'text': 'Milano',
-            'lang': 'it',
-            'limit': '5',
+    test(
+      'happy path: 200 + features array (autenticato, params validi)',
+      () async {
+        final response = await http.get(
+          proxyUri.replace(
+            queryParameters: {'text': 'Milano', 'lang': 'it', 'limit': '5'},
+          ),
+          headers: {
+            'Authorization': 'Bearer $jwtA',
+            'apikey': _kSupabaseAnonKey,
           },
-        ),
-        headers: {
-          'Authorization': 'Bearer $jwtA',
-          'apikey': _kSupabaseAnonKey,
-        },
-      );
-      expect(response.statusCode, 200);
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-      expect(body, contains('features'));
-      expect(body['features'], isA<List<dynamic>>());
-    });
+        );
+        expect(response.statusCode, 200);
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        expect(body, contains('features'));
+        expect(body['features'], isA<List<dynamic>>());
+      },
+    );
   });
 }

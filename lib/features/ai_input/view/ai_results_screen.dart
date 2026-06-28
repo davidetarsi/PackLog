@@ -160,9 +160,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       imageQuality: 80,
     );
     if (picked == null || !mounted) return;
-    await ref
-        .read(aiImportNotifierProvider.notifier)
-        .processFiles([File(picked.path)]);
+    await ref.read(aiImportNotifierProvider.notifier).processFiles([
+      File(picked.path),
+    ]);
   }
 
   // ── Onboarding tooltip ────────────────────────────────────────────────────
@@ -328,8 +328,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     } else {
       final houses = ref.watch(houseNotifierProvider).valueOrNull ?? [];
       final matching = houses.where((h) => h.id == state.selectedHouseId);
-      final HouseModel? selectedHouse =
-          matching.isEmpty ? null : matching.first;
+      final HouseModel? selectedHouse = matching.isEmpty
+          ? null
+          : matching.first;
 
       if (selectedHouse != null) {
         primaryLabel = 'ai_import.save_in_house'.tr(
@@ -350,10 +351,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       leftAction: !widget.isFirstTimeOnboarding
           ? CircularActionButton(
               icon: Icons.other_houses_outlined,
-              onPressed:
-                  state.isLoading
-                      ? null
-                      : () => _showHousePicker(state, notifier),
+              onPressed: state.isLoading
+                  ? null
+                  : () => _showHousePicker(state, notifier),
             )
           : null,
     );
@@ -424,8 +424,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
   // ── Loading state ─────────────────────────────────────────────────────────
 
   Widget _buildLoading(BuildContext context, AiImportState state) {
-    final progress =
-        state.totalImages > 0 ? state.processingIndex / state.totalImages : null;
+    final progress = state.totalImages > 0
+        ? state.processingIndex / state.totalImages
+        : null;
     final colorScheme = Theme.of(context).colorScheme;
     return SizedBox(
       height: context.screenHeight * 0.6,
@@ -455,15 +456,12 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
             Text(
               'ai_import.items_found_so_far'.tr(
                 args: [
-                  state.photoGroups
-                      .expand((g) => g.results)
-                      .length
-                      .toString(),
+                  state.photoGroups.expand((g) => g.results).length.toString(),
                 ],
               ),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.primary,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colorScheme.primary),
             ),
           ],
         ],
@@ -560,9 +558,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
           ),
           SizedBox(height: context.spacingSm),
           if (gi < _controllers.length)
-            for (var ii = 0;
-                ii < state.photoGroups[gi].results.length;
-                ii++)
+            for (var ii = 0; ii < state.photoGroups[gi].results.length; ii++)
               if (ii < _controllers[gi].length)
                 Padding(
                   padding: EdgeInsets.only(bottom: context.spacingMd),
@@ -594,7 +590,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
             padding: EdgeInsets.all(context.spacingMd),
             decoration: BoxDecoration(
               color: colorScheme.errorContainer,
-              borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+              borderRadius: BorderRadius.circular(
+                AppConstants.inputBorderRadius,
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,

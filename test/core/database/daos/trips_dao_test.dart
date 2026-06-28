@@ -1217,35 +1217,32 @@ void main() {
       expect(trip.userId, equals(null));
     });
 
-    test(
-      'markTripAsSynced overwrites updatedAt with server timestamp '
-      '(post fix #6: server-side updated_at)',
-      () async {
-        await database.tripsDao.insertTrip(
-          TripsCompanion.insert(
-            id: 't-server-ts',
-            name: 'Trip',
-            createdAt: DateTime(2026, 5, 1, 7, 0),
-            updatedAt: DateTime(2026, 5, 1, 8, 0),
-            syncStatus: const Value(SyncStatus.pendingUpdate),
-          ),
-        );
+    test('markTripAsSynced overwrites updatedAt with server timestamp '
+        '(post fix #6: server-side updated_at)', () async {
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 't-server-ts',
+          name: 'Trip',
+          createdAt: DateTime(2026, 5, 1, 7, 0),
+          updatedAt: DateTime(2026, 5, 1, 8, 0),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
 
-        final serverTs = DateTime(2026, 5, 1, 12, 0);
-        await database.tripsDao.markTripAsSynced('t-server-ts', serverTs);
+      final serverTs = DateTime(2026, 5, 1, 12, 0);
+      await database.tripsDao.markTripAsSynced('t-server-ts', serverTs);
 
-        final trip = await database.tripsDao.getTripById('t-server-ts');
-        expect(
-          trip!.updatedAt,
-          equals(serverTs),
-          reason:
-              'updatedAt deve essere allineato al server timestamp per '
-              'rendere immune la LWW al clock drift del client',
-        );
-        expect(trip.syncStatus, equals(SyncStatus.synced));
-        expect(trip.lastSyncedAt, equals(serverTs));
-      },
-    );
+      final trip = await database.tripsDao.getTripById('t-server-ts');
+      expect(
+        trip!.updatedAt,
+        equals(serverTs),
+        reason:
+            'updatedAt deve essere allineato al server timestamp per '
+            'rendere immune la LWW al clock drift del client',
+      );
+      expect(trip.syncStatus, equals(SyncStatus.synced));
+      expect(trip.lastSyncedAt, equals(serverTs));
+    });
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await insertTrip('t-blocked');
@@ -1285,7 +1282,9 @@ void main() {
 
         await database.tripsDao.setTripItemChecked('ti-1', 't-toggle', true);
 
-        final entries = await database.tripsDao.getTripItemsByTripId('t-toggle');
+        final entries = await database.tripsDao.getTripItemsByTripId(
+          't-toggle',
+        );
         expect(entries, hasLength(1));
         final entry = entries.first;
         expect(entry.isChecked, isTrue, reason: 'isChecked must be toggled');
@@ -1325,34 +1324,37 @@ void main() {
       expect(entries, isEmpty, reason: 'cascade must clear snapshots too');
     });
 
-    test('updateTrip preserves sync metadata when companion omits sync fields', () async {
-      final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
-      await database.tripsDao.insertTrip(
-        TripsCompanion.insert(
-          id: 't-keep-sync',
-          name: 'Original',
-          createdAt: DateTime(2026, 5, 1, 7, 0),
-          updatedAt: DateTime(2026, 5, 1, 7, 0),
-          syncStatus: const Value(SyncStatus.synced),
-          syncRetryCount: const Value(3),
-          lastSyncedAt: Value(originalSyncedAt),
-        ),
-      );
+    test(
+      'updateTrip preserves sync metadata when companion omits sync fields',
+      () async {
+        final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: 't-keep-sync',
+            name: 'Original',
+            createdAt: DateTime(2026, 5, 1, 7, 0),
+            updatedAt: DateTime(2026, 5, 1, 7, 0),
+            syncStatus: const Value(SyncStatus.synced),
+            syncRetryCount: const Value(3),
+            lastSyncedAt: Value(originalSyncedAt),
+          ),
+        );
 
-      await database.tripsDao.updateTrip(
-        TripsCompanion(
-          id: const Value('t-keep-sync'),
-          name: const Value('Renamed'),
-          createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
-          updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
-        ),
-      );
+        await database.tripsDao.updateTrip(
+          TripsCompanion(
+            id: const Value('t-keep-sync'),
+            name: const Value('Renamed'),
+            createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
+            updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
+          ),
+        );
 
-      final trip = await database.tripsDao.getTripById('t-keep-sync');
-      expect(trip!.name, equals('Renamed'));
-      expect(trip.lastSyncedAt, equals(originalSyncedAt));
-      expect(trip.syncRetryCount, equals(3));
-      expect(trip.syncStatus, equals(SyncStatus.pendingUpdate));
-    });
+        final trip = await database.tripsDao.getTripById('t-keep-sync');
+        expect(trip!.name, equals('Renamed'));
+        expect(trip.lastSyncedAt, equals(originalSyncedAt));
+        expect(trip.syncRetryCount, equals(3));
+        expect(trip.syncStatus, equals(SyncStatus.pendingUpdate));
+      },
+    );
   });
 }

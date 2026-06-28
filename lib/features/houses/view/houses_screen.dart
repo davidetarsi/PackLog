@@ -10,10 +10,9 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/design_system.dart';
-import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/helpers/entity_action_handler.dart';
 import '../../../shared/widgets/ds_badge.dart';
 import '../../../shared/widgets/entity_context_menu.dart';
-import '../../../shared/widgets/error_retry_dialog.dart';
 import 'add_edit_house_screen.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
@@ -105,59 +104,28 @@ class _HouseCard extends ConsumerWidget {
     );
     if (action == null || !context.mounted) return;
 
-    switch (action) {
-      case EntityContextMenuAction.copy:
-        final success = await ErrorRetryDialog.executeWithRetry(
-          context: context,
-          operation: () async {
-            await ref
-                .read(houseNotifierProvider.notifier)
-                .duplicateHouse(house.id);
-          },
-          errorTitle: 'common.error'.tr(),
-          errorMessage: 'errors.save_house_failed'.tr(),
-        );
-        if (success && context.mounted) {
-          AppSnackBar.showSuccess(
-            context,
-            'dialogs.copy_success'.tr(args: [house.displayName]),
-          );
-        }
-      case EntityContextMenuAction.delete:
-        final confirmed = await DialogHelpers.showDeleteConfirmation(
-          context: context,
-          itemType: 'common.house_type'.tr(),
-          itemName: house.displayName,
-        );
-        if (confirmed && context.mounted) {
-          final success = await ErrorRetryDialog.executeWithRetry(
-            context: context,
-            operation: () async {
-              await ref
-                  .read(houseNotifierProvider.notifier)
-                  .deleteHouse(house.id);
-            },
-            errorTitle: 'common.error'.tr(),
-            errorMessage: 'errors.delete_failed'.tr(args: [house.displayName]),
-          );
-          if (success && context.mounted) {
-            AppSnackBar.showSuccess(context, 'houses.delete'.tr());
-          }
-        }
-      case EntityContextMenuAction.save:
-        break; // not used for houses
-      case EntityContextMenuAction.setPrimary:
-        await ErrorRetryDialog.executeWithRetry(
-          context: context,
-          operation: () async {
-            await ref
-                .read(houseNotifierProvider.notifier)
-                .setPrimaryHouse(house.id);
-          },
-          errorTitle: 'common.error'.tr(),
-          errorMessage: 'errors.save_house_failed'.tr(),
-        );
-    }
+    await EntityActionHandler.handleAction(
+      context: context,
+      action: action,
+      entityTypeLabel: 'common.house_type'.tr(),
+      entityName: house.displayName,
+      onCopy: () async {
+        await ref.read(houseNotifierProvider.notifier).duplicateHouse(house.id);
+      },
+      copyErrorMessage: 'errors.save_house_failed'.tr(),
+      copySuccessMessage: 'dialogs.copy_success'.tr(args: [house.displayName]),
+      onDelete: () async {
+        await ref.read(houseNotifierProvider.notifier).deleteHouse(house.id);
+      },
+      deleteErrorMessage: 'errors.delete_failed'.tr(args: [house.displayName]),
+      deleteSuccessMessage: 'houses.delete'.tr(),
+      onSetPrimary: () async {
+        await ref
+            .read(houseNotifierProvider.notifier)
+            .setPrimaryHouse(house.id);
+      },
+      setPrimaryErrorMessage: 'errors.save_house_failed'.tr(),
+    );
   }
 
   @override

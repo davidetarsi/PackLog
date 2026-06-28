@@ -310,8 +310,9 @@ Future<void> _initializePersistence() async {
     // Migrazione SQLCipher: deve avvenire PRIMA di qualsiasi apertura del DB.
     // La migration è idempotente: in fresh install genera solo la passphrase.
     final passphraseService = DbPassphraseService();
-    final migrationService =
-        await EncryptionMigrationService.withDefaultPaths(passphraseService);
+    final migrationService = await EncryptionMigrationService.withDefaultPaths(
+      passphraseService,
+    );
     await migrationService.ensureMigrated();
 
     final AppDatabase database = AppDatabase(passphraseService);
@@ -421,60 +422,62 @@ class MyApp extends ConsumerWidget {
         ),
       ),
       data: (_) {
-        return ref.watch(onboardingStatusProvider).when(
-          loading: () => MaterialApp(
-            debugShowCheckedModeBanner: environment == Environment.dev,
-            theme: AppTheme.light,
-            darkTheme: AppTheme.dark,
-            themeMode: ThemeMode.dark,
-            localizationsDelegates: context.localizationDelegates,
-            supportedLocales: context.supportedLocales,
-            locale: context.locale,
-            home: const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
-          ),
-          error: (error, _) => MaterialApp(
-            debugShowCheckedModeBanner: environment == Environment.dev,
-            theme: AppTheme.light,
-            darkTheme: AppTheme.dark,
-            themeMode: ThemeMode.dark,
-            localizationsDelegates: context.localizationDelegates,
-            supportedLocales: context.supportedLocales,
-            locale: context.locale,
-            home: Scaffold(
-              body: DsErrorState(
-                error: error,
-                onRetry: () => ref.invalidate(onboardingStatusProvider),
+        return ref
+            .watch(onboardingStatusProvider)
+            .when(
+              loading: () => MaterialApp(
+                debugShowCheckedModeBanner: environment == Environment.dev,
+                theme: AppTheme.light,
+                darkTheme: AppTheme.dark,
+                themeMode: ThemeMode.dark,
+                localizationsDelegates: context.localizationDelegates,
+                supportedLocales: context.supportedLocales,
+                locale: context.locale,
+                home: const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                ),
               ),
-            ),
-          ),
-          data: (_) {
-            final themeModeAsync = ref.watch(themeModeNotifierProvider);
+              error: (error, _) => MaterialApp(
+                debugShowCheckedModeBanner: environment == Environment.dev,
+                theme: AppTheme.light,
+                darkTheme: AppTheme.dark,
+                themeMode: ThemeMode.dark,
+                localizationsDelegates: context.localizationDelegates,
+                supportedLocales: context.supportedLocales,
+                locale: context.locale,
+                home: Scaffold(
+                  body: DsErrorState(
+                    error: error,
+                    onRetry: () => ref.invalidate(onboardingStatusProvider),
+                  ),
+                ),
+              ),
+              data: (_) {
+                final themeModeAsync = ref.watch(themeModeNotifierProvider);
 
-            final localeCode = context.locale.languageCode;
-            final currentProviderLocale = ref.read(languageLocaleProvider);
-            if (currentProviderLocale != localeCode) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                ref
-                    .read(languageLocaleProvider.notifier)
-                    .updateLocale(localeCode);
-              });
-            }
+                final localeCode = context.locale.languageCode;
+                final currentProviderLocale = ref.read(languageLocaleProvider);
+                if (currentProviderLocale != localeCode) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    ref
+                        .read(languageLocaleProvider.notifier)
+                        .updateLocale(localeCode);
+                  });
+                }
 
-            return MaterialApp.router(
-              title: 'Pack Log',
-              debugShowCheckedModeBanner: environment == Environment.dev,
-              theme: AppTheme.light,
-              darkTheme: AppTheme.dark,
-              themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
-              routerConfig: ref.watch(appRouterProvider),
-              localizationsDelegates: context.localizationDelegates,
-              supportedLocales: context.supportedLocales,
-              locale: context.locale,
+                return MaterialApp.router(
+                  title: 'Pack Log',
+                  debugShowCheckedModeBanner: environment == Environment.dev,
+                  theme: AppTheme.light,
+                  darkTheme: AppTheme.dark,
+                  themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
+                  routerConfig: ref.watch(appRouterProvider),
+                  localizationsDelegates: context.localizationDelegates,
+                  supportedLocales: context.supportedLocales,
+                  locale: context.locale,
+                );
+              },
             );
-          },
-        );
       },
     );
   }

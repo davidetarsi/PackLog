@@ -106,8 +106,10 @@ class _MainShellState extends ConsumerState<MainShell>
 
   Future<void> _onCreateHouse() async {
     _closeCreateMenu();
-    final onboardingStep =
-        ref.read(postLoginOnboardingProvider).valueOrNull?.step;
+    final onboardingStep = ref
+        .read(postLoginOnboardingProvider)
+        .valueOrNull
+        ?.step;
     final housesBefore =
         ref.read(houseNotifierProvider).valueOrNull?.length ?? 0;
 
@@ -158,7 +160,11 @@ class _MainShellState extends ConsumerState<MainShell>
           children: [
             // Anchor invisibile per gli step info-card del tour (nessun spotlight)
             Center(
-              child: SizedBox(key: tourKeys.infoCardTarget, width: 1, height: 1),
+              child: SizedBox(
+                key: tourKeys.infoCardTarget,
+                width: 1,
+                height: 1,
+              ),
             ),
             // Contenuto principale
             widget.navigationShell,

@@ -81,13 +81,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 onPageChanged: (index) {
                   setState(() => _currentPage = index);
-                  ref.read(analyticsServiceProvider).logEvent(
-                    'onboarding_page_viewed',
-                    properties: {
-                      'page_index': index,
-                      'page_name': _pageNames[index],
-                    },
-                  );
+                  ref
+                      .read(analyticsServiceProvider)
+                      .logEvent(
+                        'onboarding_page_viewed',
+                        properties: {
+                          'page_index': index,
+                          'page_name': _pageNames[index],
+                        },
+                      );
                 },
                 children: const [
                   ContentSlide(

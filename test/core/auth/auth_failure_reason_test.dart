@@ -8,23 +8,29 @@ import 'package:pack_log/core/auth/auth_exceptions.dart';
 void main() {
   group('reasonFromSupabaseError - Supabase AuthException codes', () {
     test('invalid_credentials → AuthFailureReason.invalidCredentials', () {
-      final err = sb.AuthException('Invalid login', code: 'invalid_credentials');
+      final err = sb.AuthException(
+        'Invalid login',
+        code: 'invalid_credentials',
+      );
       expect(
         reasonFromSupabaseError(err),
         equals(AuthFailureReason.invalidCredentials),
       );
     });
 
-    test('invalid_login_credentials → AuthFailureReason.invalidCredentials', () {
-      final err = sb.AuthException(
-        'Invalid login credentials',
-        code: 'invalid_login_credentials',
-      );
-      expect(
-        reasonFromSupabaseError(err),
-        equals(AuthFailureReason.invalidCredentials),
-      );
-    });
+    test(
+      'invalid_login_credentials → AuthFailureReason.invalidCredentials',
+      () {
+        final err = sb.AuthException(
+          'Invalid login credentials',
+          code: 'invalid_login_credentials',
+        );
+        expect(
+          reasonFromSupabaseError(err),
+          equals(AuthFailureReason.invalidCredentials),
+        );
+      },
+    );
 
     test('user_not_found → AuthFailureReason.invalidCredentials', () {
       final err = sb.AuthException('Not found', code: 'user_not_found');
@@ -63,10 +69,7 @@ void main() {
 
     test('AuthException with unknown code falls back to unknown', () {
       final err = sb.AuthException('weird', code: 'some_new_code_supabase');
-      expect(
-        reasonFromSupabaseError(err),
-        equals(AuthFailureReason.unknown),
-      );
+      expect(reasonFromSupabaseError(err), equals(AuthFailureReason.unknown));
     });
   });
 

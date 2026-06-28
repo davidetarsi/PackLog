@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
+import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/luggage_model.dart';
 import '../repositories/luggage_repository.dart';
 
@@ -13,71 +14,43 @@ part 'luggage_provider.g.dart';
 /// casa, le mutazioni ricaricano la lista filtrata e si propagano
 /// automaticamente ai consumer senza bisogno di `ref.invalidate` manuali.
 @Riverpod(keepAlive: true)
-class LuggageNotifier extends _$LuggageNotifier {
-  LuggageRepository? repository;
+class LuggageNotifier extends _$LuggageNotifier
+    with SyncedCrudNotifier<LuggageModel> {
+  LuggageRepository get _repo => ref.read(luggageRepositoryProvider);
+  CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
 
   @override
-  Future<List<LuggageModel>> build(String houseId) async {
-    repository = ref.watch(luggageRepositoryProvider);
-    return repository!.getLuggagesByHouseId(houseId);
+  Future<List<LuggageModel>> build(String houseId) =>
+      _repo.getLuggagesByHouseId(houseId);
+
+  @override
+  void onMutationSuccess(List<LuggageModel> updated) {
+    ref.read(syncOrchestratorProvider).requestSync();
   }
 
-  Future<void> addLuggage(LuggageModel model) async {
-    repository ??= ref.read(luggageRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.addLuggage(model);
-      final luggages = await repository!.getLuggagesByHouseId(houseId);
-      state = AsyncData(luggages);
-      ref
-          .read(coreAnalyticsServiceProvider)
-          .trackLuggageCreated(size: model.sizeType.name);
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
+  Future<void> addLuggage(LuggageModel model) => mutate(
+    operation: () => _repo.addLuggage(model),
+    reload: () => _repo.getLuggagesByHouseId(houseId),
+    onSuccess: (_) => _analytics.trackLuggageCreated(size: model.sizeType.name),
+  );
 
-  Future<void> updateLuggage(LuggageModel model) async {
-    repository ??= ref.read(luggageRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.updateLuggage(model);
-      final luggages = await repository!.getLuggagesByHouseId(houseId);
-      state = AsyncData(luggages);
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
+  Future<void> updateLuggage(LuggageModel model) => mutate(
+    operation: () => _repo.updateLuggage(model),
+    reload: () => _repo.getLuggagesByHouseId(houseId),
+  );
 
-  Future<void> deleteLuggage(String id) async {
-    repository ??= ref.read(luggageRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.deleteLuggage(id);
-      final luggages = await repository!.getLuggagesByHouseId(houseId);
-      state = AsyncData(luggages);
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
+  Future<void> deleteLuggage(String id) => mutate(
+    operation: () => _repo.deleteLuggage(id),
+    reload: () => _repo.getLuggagesByHouseId(houseId),
+  );
 
-  Future<void> refresh() async {
-    repository ??= ref.read(luggageRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      final luggages = await repository!.getLuggagesByHouseId(houseId);
-      state = AsyncData(luggages);
-    } catch (error, stackTrace) {
-      // No rethrow: refresh() is wired to ErrorState.onRetry (VoidCallback).
-      state = AsyncError(error, stackTrace);
-    }
-  }
+  Future<void> refresh() => mutate(
+    operation: () async {},
+    reload: () => _repo.getLuggagesByHouseId(houseId),
+    showLoading: true,
+    // refresh() è wired a ErrorState.onRetry (VoidCallback) — niente rethrow.
+    rethrowOnError: false,
+  );
 }
 
 // Nota: l'ex [luggagesByHouseProvider] è stato eliminato — la stessa funzione

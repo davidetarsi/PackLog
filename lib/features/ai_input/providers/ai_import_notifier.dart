@@ -114,9 +114,7 @@ class AiImportNotifier extends _$AiImportNotifier {
   Future<void> saveItems() async {
     final houseId = state.selectedHouseId;
     if (houseId == null) {
-      state = state.copyWith(
-        errorMessage: 'ai_import.no_house_selected'.tr(),
-      );
+      state = state.copyWith(errorMessage: 'ai_import.no_house_selected'.tr());
       return;
     }
 
@@ -126,21 +124,20 @@ class AiImportNotifier extends _$AiImportNotifier {
     state = state.copyWith(isLoading: true);
     try {
       final now = DateTime.now();
-      final items =
-          results
-              .map(
-                (r) => ItemModel(
-                  id: _uuid.v4(),
-                  houseId: houseId,
-                  name: r.name,
-                  category: _mapCategory(r.category),
-                  quantity: 1,
-                  createdAt: now,
-                  updatedAt: now,
-                  aiMetadata: jsonEncode(r.toJson()),
-                ),
-              )
-              .toList();
+      final items = results
+          .map(
+            (r) => ItemModel(
+              id: _uuid.v4(),
+              houseId: houseId,
+              name: r.name,
+              category: _mapCategory(r.category),
+              quantity: 1,
+              createdAt: now,
+              updatedAt: now,
+              aiMetadata: jsonEncode(r.toJson()),
+            ),
+          )
+          .toList();
 
       await ref.read(itemRepositoryProvider).insertMultipleItems(items);
       ref.invalidate(itemNotifierProvider(houseId));
@@ -173,23 +170,24 @@ class AiImportNotifier extends _$AiImportNotifier {
         createdAt: now,
         updatedAt: now,
       );
-      final items =
-          results
-              .map(
-                (r) => ItemModel(
-                  id: _uuid.v4(),
-                  houseId: houseId,
-                  name: r.name,
-                  category: _mapCategory(r.category),
-                  quantity: 1,
-                  createdAt: now,
-                  updatedAt: now,
-                  aiMetadata: jsonEncode(r.toJson()),
-                ),
-              )
-              .toList();
+      final items = results
+          .map(
+            (r) => ItemModel(
+              id: _uuid.v4(),
+              houseId: houseId,
+              name: r.name,
+              category: _mapCategory(r.category),
+              quantity: 1,
+              createdAt: now,
+              updatedAt: now,
+              aiMetadata: jsonEncode(r.toJson()),
+            ),
+          )
+          .toList();
 
-      await ref.read(houseRepositoryProvider).createHouseWithItems(house, items);
+      await ref
+          .read(houseRepositoryProvider)
+          .createHouseWithItems(house, items);
       ref.invalidate(houseNotifierProvider);
       ref.invalidate(itemNotifierProvider(houseId));
       ref.read(syncOrchestratorProvider).requestSync();

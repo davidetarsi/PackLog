@@ -302,7 +302,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
             args: [count.toString(), destinationName],
           ),
         );
-        final onboardingState = ref.read(postLoginOnboardingProvider).valueOrNull;
+        final onboardingState = ref
+            .read(postLoginOnboardingProvider)
+            .valueOrNull;
         if (onboardingState?.step == OnboardingStep.moveItemsTooltip &&
             widget.houseId == onboardingState?.defaultHouseId) {
           // Pop first so MainShell + houseFab are visible before the tooltip fires.
@@ -562,137 +564,137 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         }
       },
       child: housesAsync.when(
-      data: (houses) {
-        final matchingHouses = houses.where((h) => h.id == widget.houseId);
-        if (matchingHouses.isEmpty) {
-          return Scaffold(
-            appBar: AppBar(title: Text('houses.house_not_found'.tr())),
-            body: DsEmptyState(
-              icon: Icons.home_outlined,
-              title: 'houses.house_not_found_message'.tr(),
-              action: ElevatedButton.icon(
-                onPressed: () => context.go('/'),
-                icon: const Icon(Icons.home),
-                label: Text('houses.back_to_houses'.tr()),
-              ),
-            ),
-          );
-        }
-
-        final house = matchingHouses.first;
-        final colorScheme = Theme.of(context).colorScheme;
-
-        return StickyCtaScaffold(
-          appBar: DsContextualAppBar(
-            isInSelectionMode: isSelectionMode,
-            switchDuration: _kModeSwitchDuration,
-            normalAppBar: _buildNormalAppBar(
-              context,
-              colorScheme,
-              house.displayName,
-              HouseIcons.getIcon(house.iconName),
-            ),
-            selectionAppBar: _buildSelectionAppBar(
-              context,
-              colorScheme,
-              selectedCount,
-              allItemIds,
-            ),
-          ),
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Riga 1: filtro spazi (solo se esistono spazi) ────────────
-              spacesAsync.when(
-                data: (spaces) {
-                  // Spazio selezionato eliminato: reset al "tutti"
-                  if (_spaceFilter != null &&
-                      _spaceFilter != 'default' &&
-                      !spaces.any((s) => s.id == _spaceFilter)) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) setState(() => _spaceFilter = null);
-                    });
-                  }
-                  if (spaces.isEmpty) return const SizedBox.shrink();
-                  return _buildSpacePills(context, spaces, allItems);
-                },
-                loading: () => const SizedBox.shrink(),
-                error: (_, _) => const SizedBox.shrink(),
-              ),
-              // ── Riga 2: filtro categorie ──────────────────────────────────
-              _buildCategoryPills(context),
-              // ── Contenuto ─────────────────────────────────────────────────
-              Expanded(
-                child: ItemsScreen(
-                  houseId: widget.houseId,
-                  houseName: house.displayName,
-                  selectedSpaceId: _spaceFilter,
-                  categoryFilter: _categoryTab.categoryFilter,
+        data: (houses) {
+          final matchingHouses = houses.where((h) => h.id == widget.houseId);
+          if (matchingHouses.isEmpty) {
+            return Scaffold(
+              appBar: AppBar(title: Text('houses.house_not_found'.tr())),
+              body: DsEmptyState(
+                icon: Icons.home_outlined,
+                title: 'houses.house_not_found_message'.tr(),
+                action: ElevatedButton.icon(
+                  onPressed: () => context.go('/'),
+                  icon: const Icon(Icons.home),
+                  label: Text('houses.back_to_houses'.tr()),
                 ),
               ),
-            ],
-          ),
-          // Bottom bar: transizione animata tra barra normale e barra selezione.
-          bottomContent: AnimatedSwitcher(
-            duration: _kModeSwitchDuration,
-            transitionBuilder: (child, animation) =>
-                FadeTransition(opacity: animation, child: child),
-            layoutBuilder: (currentChild, previousChildren) {
-              return Stack(
-                alignment: Alignment.bottomCenter,
-                children: <Widget>[
-                  ...previousChildren,
-                  if (currentChild != null) currentChild,
-                ],
-              );
-            },
-            child: isSelectionMode
-                ? KeyedSubtree(
-                    key: const ValueKey(
-                      'selection_bar',
-                    ), // Aiuta l'AnimatedSwitcher
-                    /// Bottom action bar contestuale (modalità selezione multipla).
-                    ///
-                    /// - Sinistra: elimina gli item selezionati (disabilitato se nessuno scelto)
-                    /// - Centro: sposta gli item selezionati (disabilitato se nessuno scelto)
-                    child: UniversalActionBar(
-                      key: const ValueKey('selection-bar'),
-                      primaryLabel: 'common.move'.tr(),
-                      primaryIcon: Icons.local_shipping_outlined,
-                      onPrimaryPressed: hasSelection ? _handleBulkMove : null,
-                      leftAction: CircularActionButton(
-                        icon: Icons.delete_outline,
-                        onPressed: hasSelection ? _handleBulkDelete : null,
-                        color: hasSelection
-                            ? colorScheme.error
-                            : colorScheme.outline,
-                        showBorder: true,
+            );
+          }
+
+          final house = matchingHouses.first;
+          final colorScheme = Theme.of(context).colorScheme;
+
+          return StickyCtaScaffold(
+            appBar: DsContextualAppBar(
+              isInSelectionMode: isSelectionMode,
+              switchDuration: _kModeSwitchDuration,
+              normalAppBar: _buildNormalAppBar(
+                context,
+                colorScheme,
+                house.displayName,
+                HouseIcons.getIcon(house.iconName),
+              ),
+              selectionAppBar: _buildSelectionAppBar(
+                context,
+                colorScheme,
+                selectedCount,
+                allItemIds,
+              ),
+            ),
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Riga 1: filtro spazi (solo se esistono spazi) ────────────
+                spacesAsync.when(
+                  data: (spaces) {
+                    // Spazio selezionato eliminato: reset al "tutti"
+                    if (_spaceFilter != null &&
+                        _spaceFilter != 'default' &&
+                        !spaces.any((s) => s.id == _spaceFilter)) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) setState(() => _spaceFilter = null);
+                      });
+                    }
+                    if (spaces.isEmpty) return const SizedBox.shrink();
+                    return _buildSpacePills(context, spaces, allItems);
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                ),
+                // ── Riga 2: filtro categorie ──────────────────────────────────
+                _buildCategoryPills(context),
+                // ── Contenuto ─────────────────────────────────────────────────
+                Expanded(
+                  child: ItemsScreen(
+                    houseId: widget.houseId,
+                    houseName: house.displayName,
+                    selectedSpaceId: _spaceFilter,
+                    categoryFilter: _categoryTab.categoryFilter,
+                  ),
+                ),
+              ],
+            ),
+            // Bottom bar: transizione animata tra barra normale e barra selezione.
+            bottomContent: AnimatedSwitcher(
+              duration: _kModeSwitchDuration,
+              transitionBuilder: (child, animation) =>
+                  FadeTransition(opacity: animation, child: child),
+              layoutBuilder: (currentChild, previousChildren) {
+                return Stack(
+                  alignment: Alignment.bottomCenter,
+                  children: <Widget>[
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                );
+              },
+              child: isSelectionMode
+                  ? KeyedSubtree(
+                      key: const ValueKey(
+                        'selection_bar',
+                      ), // Aiuta l'AnimatedSwitcher
+                      /// Bottom action bar contestuale (modalità selezione multipla).
+                      ///
+                      /// - Sinistra: elimina gli item selezionati (disabilitato se nessuno scelto)
+                      /// - Centro: sposta gli item selezionati (disabilitato se nessuno scelto)
+                      child: UniversalActionBar(
+                        key: const ValueKey('selection-bar'),
+                        primaryLabel: 'common.move'.tr(),
+                        primaryIcon: Icons.local_shipping_outlined,
+                        onPrimaryPressed: hasSelection ? _handleBulkMove : null,
+                        leftAction: CircularActionButton(
+                          icon: Icons.delete_outline,
+                          onPressed: hasSelection ? _handleBulkDelete : null,
+                          color: hasSelection
+                              ? colorScheme.error
+                              : colorScheme.outline,
+                          showBorder: true,
+                        ),
+                      ),
+                    )
+                  : KeyedSubtree(
+                      key: const ValueKey(
+                        'normal_bar',
+                      ), // Aiuta l'AnimatedSwitcher
+                      child: _buildNormalActionBar(
+                        context,
+                        colorScheme,
+                        widget.houseId,
+                        house.isPrimary,
+                        house.displayName,
                       ),
                     ),
-                  )
-                : KeyedSubtree(
-                    key: const ValueKey(
-                      'normal_bar',
-                    ), // Aiuta l'AnimatedSwitcher
-                    child: _buildNormalActionBar(
-                      context,
-                      colorScheme,
-                      widget.houseId,
-                      house.isPrimary,
-                      house.displayName,
-                    ),
-                  ),
+            ),
+          );
+        },
+        loading: () => const SkeletonHouseDetailScreen(),
+        error: (error, stack) => Scaffold(
+          appBar: AppBar(title: Text('common.error'.tr())),
+          body: DsErrorState(
+            error: error,
+            onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
           ),
-        );
-      },
-      loading: () => const SkeletonHouseDetailScreen(),
-      error: (error, stack) => Scaffold(
-        appBar: AppBar(title: Text('common.error'.tr())),
-        body: DsErrorState(
-          error: error,
-          onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
         ),
-      ),
       ),
     );
   }

@@ -3,8 +3,13 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meta/meta.dart';
 
-/// Mixin per [AsyncNotifier] che gestiscono una lista di entità persistenti
+/// Mixin per notifier Riverpod che gestiscono una lista di entità persistenti
 /// seguendo il pattern *load → mutate → reload*.
+///
+/// Funziona sia con notifier non-family (`AsyncNotifier<List<T>>`) sia con
+/// family notifier (`build(Arg arg)`) poiché non impone un vincolo `on` su
+/// un tipo specifico: l'accesso a `state` avviene tramite la dichiarazione
+/// astratta soddisfatta dalla superclasse generata da riverpod_generator.
 ///
 /// ## Cosa fa
 ///
@@ -56,7 +61,16 @@ import 'package:meta/meta.dart';
 ///   );
 /// }
 /// ```
-mixin SyncedCrudNotifier<T> on AsyncNotifier<List<T>> {
+mixin SyncedCrudNotifier<T> {
+  /// Accesso a `state` fornito dalla superclasse generata da riverpod_generator
+  /// (`AsyncNotifier<List<T>>` per non-family, `BuildlessAsyncNotifier<List<T>>`
+  /// per family). La dichiarazione astratta qui è soddisfatta via ereditarietà.
+  @protected
+  AsyncValue<List<T>> get state;
+
+  @protected
+  set state(AsyncValue<List<T>> newState);
+
   /// Hook invocato dopo ogni mutazione riuscita.
   ///
   /// [updated] è la lista appena ricaricata dal repository (post-mutazione).

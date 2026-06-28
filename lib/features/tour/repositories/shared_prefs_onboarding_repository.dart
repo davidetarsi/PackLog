@@ -22,8 +22,10 @@ class SharedPrefsOnboardingRepository implements IOnboardingRepository {
   Future<OnboardingStep> loadStep() async {
     final prefs = await SharedPreferences.getInstance();
     final index = prefs.getInt(_stepKey) ?? 0;
-    return OnboardingStep
-        .values[index.clamp(0, OnboardingStep.values.length - 1)];
+    return OnboardingStep.values[index.clamp(
+      0,
+      OnboardingStep.values.length - 1,
+    )];
   }
 
   @override

@@ -61,7 +61,9 @@ class SkeletonHouseCard extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius + 4),
+          borderRadius: context.responsiveBorderRadius(
+            AppConstants.cardBorderRadius + 4,
+          ),
           border: Border.all(color: colorScheme.outlineVariant),
         ),
         padding: EdgeInsets.all(context.spacingMd),
@@ -128,10 +130,7 @@ class SkeletonTripCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Titolo viaggio
-          SkeletonBox(
-            width: isHero ? 200 : 140,
-            height: isHero ? 22 : 16,
-          ),
+          SkeletonBox(width: isHero ? 200 : 140, height: isHero ? 22 : 16),
           SizedBox(height: context.spacingSm),
           // Badge info (date, destinazione)
           Row(

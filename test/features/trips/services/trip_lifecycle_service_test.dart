@@ -61,10 +61,7 @@ void main() {
     );
   }
 
-  TripModel upcomingTrip({
-    required String id,
-    DateTime? departureDateTime,
-  }) {
+  TripModel upcomingTrip({required String id, DateTime? departureDateTime}) {
     return TripModel(
       id: id,
       name: 'Upcoming $id',
@@ -92,10 +89,7 @@ void main() {
     );
   }
 
-  TripItem item({
-    required String id,
-    required String originHouseId,
-  }) {
+  TripItem item({required String id, required String originHouseId}) {
     return TripItem(
       id: id,
       name: 'item-$id',
@@ -126,7 +120,8 @@ void main() {
         // === ASSERT ===
         // Grouped per origin: 1 call per origin house (no N+1)
         verify(
-          () => itemRepo.moveItemsToHouse(['i1', 'i2'], 'house-A', 'house-dest'),
+          () =>
+              itemRepo.moveItemsToHouse(['i1', 'i2'], 'house-A', 'house-dest'),
         ).called(1);
         verify(
           () => itemRepo.moveItemsToHouse(['i3'], 'house-B', 'house-dest'),
@@ -137,10 +132,7 @@ void main() {
     );
 
     test('skips non-completed trips', () async {
-      final trips = [
-        upcomingTrip(id: 'up-1'),
-        activeTrip(id: 'act-1'),
-      ];
+      final trips = [upcomingTrip(id: 'up-1'), activeTrip(id: 'act-1')];
 
       final affected = await service.transferItemsForCompletedTrips(trips);
 
@@ -167,70 +159,69 @@ void main() {
       expect(affected, isEmpty);
     });
 
-    test('skips items with empty originHouseId or origin == destination',
-        () async {
-      final trip = completedTrip(
-        id: 'trip-1',
-        destinationHouseId: 'house-dest',
-        items: [
-          item(id: 'i1', originHouseId: ''), // empty origin
-          item(id: 'i2', originHouseId: 'house-dest'), // origin == dest
-          item(id: 'i3', originHouseId: 'house-A'), // real candidate
-        ],
-      );
-
-      final affected = await service.transferItemsForCompletedTrips([trip]);
-
-      verify(
-        () => itemRepo.moveItemsToHouse(['i3'], 'house-A', 'house-dest'),
-      ).called(1);
-      verifyNoMoreInteractions(itemRepo);
-      expect(affected, {'house-A', 'house-dest'});
-    });
-
     test(
-      'captures exception via monitoring on moveItemsToHouse failure '
-      'and continues with remaining groups',
+      'skips items with empty originHouseId or origin == destination',
       () async {
-        when(
-          () => itemRepo.moveItemsToHouse(any(), 'house-A', any()),
-        ).thenThrow(StateError('boom'));
-
         final trip = completedTrip(
           id: 'trip-1',
           destinationHouseId: 'house-dest',
           items: [
-            item(id: 'i1', originHouseId: 'house-A'), // will fail
-            item(id: 'i2', originHouseId: 'house-B'), // should still process
+            item(id: 'i1', originHouseId: ''), // empty origin
+            item(id: 'i2', originHouseId: 'house-dest'), // origin == dest
+            item(id: 'i3', originHouseId: 'house-A'), // real candidate
           ],
         );
 
         final affected = await service.transferItemsForCompletedTrips([trip]);
 
         verify(
-          () => monitoring.captureException(
-            any(that: isA<StateError>()),
-            stackTrace: any(named: 'stackTrace'),
-            tags: any(
-              named: 'tags',
-              that: predicate<Map<String, String>>(
-                (m) =>
-                    m['operation'] == 'auto_transfer_items' &&
-                    m['trip_id'] == 'trip-1' &&
-                    m['from_house'] == 'house-A' &&
-                    m['to_house'] == 'house-dest',
-              ),
-            ),
-          ),
+          () => itemRepo.moveItemsToHouse(['i3'], 'house-A', 'house-dest'),
         ).called(1);
-        // house-B group must still be processed
-        verify(
-          () => itemRepo.moveItemsToHouse(['i2'], 'house-B', 'house-dest'),
-        ).called(1);
-        // Only the successful group's houses are reported as affected
-        expect(affected, {'house-B', 'house-dest'});
+        verifyNoMoreInteractions(itemRepo);
+        expect(affected, {'house-A', 'house-dest'});
       },
     );
+
+    test('captures exception via monitoring on moveItemsToHouse failure '
+        'and continues with remaining groups', () async {
+      when(
+        () => itemRepo.moveItemsToHouse(any(), 'house-A', any()),
+      ).thenThrow(StateError('boom'));
+
+      final trip = completedTrip(
+        id: 'trip-1',
+        destinationHouseId: 'house-dest',
+        items: [
+          item(id: 'i1', originHouseId: 'house-A'), // will fail
+          item(id: 'i2', originHouseId: 'house-B'), // should still process
+        ],
+      );
+
+      final affected = await service.transferItemsForCompletedTrips([trip]);
+
+      verify(
+        () => monitoring.captureException(
+          any(that: isA<StateError>()),
+          stackTrace: any(named: 'stackTrace'),
+          tags: any(
+            named: 'tags',
+            that: predicate<Map<String, String>>(
+              (m) =>
+                  m['operation'] == 'auto_transfer_items' &&
+                  m['trip_id'] == 'trip-1' &&
+                  m['from_house'] == 'house-A' &&
+                  m['to_house'] == 'house-dest',
+            ),
+          ),
+        ),
+      ).called(1);
+      // house-B group must still be processed
+      verify(
+        () => itemRepo.moveItemsToHouse(['i2'], 'house-B', 'house-dest'),
+      ).called(1);
+      // Only the successful group's houses are reported as affected
+      expect(affected, {'house-B', 'house-dest'});
+    });
   });
 
   group('computeNextStatusChange', () {
@@ -247,10 +238,7 @@ void main() {
 
       final next = service.computeNextStatusChange([t1, t2]);
 
-      expect(
-        next,
-        equals(t2.departureDateTime),
-      );
+      expect(next, equals(t2.departureDateTime));
     });
 
     test('returns earliest future return across active trips', () {

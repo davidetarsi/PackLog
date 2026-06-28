@@ -127,15 +127,11 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
     bool isChecked,
   ) {
     return transaction(() async {
-      await (update(tripItemEntries)..where(
-            (e) => e.id.equals(itemId) & e.tripId.equals(tripId),
-          ))
+      await (update(tripItemEntries)
+            ..where((e) => e.id.equals(itemId) & e.tripId.equals(tripId)))
           .write(TripItemEntriesCompanion(isChecked: Value(isChecked)));
       await updateTrip(
-        TripsCompanion(
-          id: Value(tripId),
-          updatedAt: Value(DateTime.now()),
-        ),
+        TripsCompanion(id: Value(tripId), updatedAt: Value(DateTime.now())),
       );
     });
   }
@@ -337,9 +333,9 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   }
 
   Future<int> countUnsynced() async {
-    final rows = await (select(trips)
-          ..where((t) => t.syncStatus.equalsValue(SyncStatus.synced).not()))
-        .get();
+    final rows = await (select(
+      trips,
+    )..where((t) => t.syncStatus.equalsValue(SyncStatus.synced).not())).get();
     return rows.length;
   }
 
@@ -366,14 +362,15 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   /// Resets retry state on records bloccati oltre soglia. Vedi
   /// [HousesDao.resetSyncRetries] per il contratto.
   Future<int> resetSyncRetries() {
-    return (update(trips)..where((t) => t.syncRetryCount.isBiggerThanValue(0)))
-        .write(
-          const TripsCompanion(
-            syncRetryCount: Value(0),
-            lastSyncError: Value(null),
-            nextSyncAttemptAt: Value(null),
-          ),
-        );
+    return (update(
+      trips,
+    )..where((t) => t.syncRetryCount.isBiggerThanValue(0))).write(
+      const TripsCompanion(
+        syncRetryCount: Value(0),
+        lastSyncError: Value(null),
+        nextSyncAttemptAt: Value(null),
+      ),
+    );
   }
 
   /// Increments the retry counter and records the error message.

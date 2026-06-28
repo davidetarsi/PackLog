@@ -1,18 +1,17 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../model/space_model.dart';
 import '../providers/space_provider.dart';
-import '../../items/repositories/item_repository.dart';
 import '../../items/providers/item_provider.dart';
+import '../../items/repositories/item_repository.dart';
 import '../../../shared/constants/space_icons.dart';
-import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/widgets/entity_management_sheet.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
-import '../../../shared/widgets/universal_action_bar.dart';
 import 'add_edit_space_screen.dart';
-import '../../../shared/widgets/skeleton/skeleton.dart';
 
 /// Mostra il bottom sheet per gestire gli spazi di una casa
 Future<void> showSpacesManagementSheet(
@@ -27,13 +26,29 @@ Future<void> showSpacesManagementSheet(
   );
 }
 
-/// Bottom sheet per gestire gli spazi di una casa
-class SpacesManagementSheet extends ConsumerWidget {
+/// Bottom sheet per gestire gli spazi di una casa.
+///
+/// Delega il layout generico a [EntityManagementSheet]; gestisce qui
+/// le operazioni specifiche degli spazi: edit (invalida anche gli items),
+/// delete con pre-check numero item contenuti, e aggiunta.
+class SpacesManagementSheet extends StatelessWidget {
   final String houseId;
 
   const SpacesManagementSheet({super.key, required this.houseId});
 
-  Future<void> _showDeleteDialog(
+  Future<void> _onEdit(
+    BuildContext context,
+    WidgetRef ref,
+    SpaceModel space,
+  ) async {
+    await showAddEditSpaceSheet(context, houseId: houseId, spaceId: space.id);
+    if (context.mounted) {
+      ref.invalidate(spaceNotifierProvider(houseId));
+      ref.invalidate(itemNotifierProvider(houseId));
+    }
+  }
+
+  Future<void> _onDelete(
     BuildContext context,
     WidgetRef ref,
     SpaceModel space,
@@ -41,7 +56,6 @@ class SpacesManagementSheet extends ConsumerWidget {
     final itemCount = await ref
         .read(itemRepositoryProvider)
         .countItemsBySpace(space.id);
-
     if (!context.mounted) return;
 
     final confirmed = await DialogHelpers.showDeleteConfirmation(
@@ -51,7 +65,6 @@ class SpacesManagementSheet extends ConsumerWidget {
       customTitle: 'spaces.delete'.tr(),
       warningText: itemCount > 0 ? 'spaces.delete_warning'.tr() : null,
     );
-
     if (confirmed == true && context.mounted) {
       final success = await ErrorRetryDialog.executeWithRetry(
         context: context,
@@ -63,13 +76,11 @@ class SpacesManagementSheet extends ConsumerWidget {
         errorTitle: 'common.error'.tr(),
         errorMessage: 'errors.delete_space_failed'.tr(args: [space.name]),
       );
-
       if (success && context.mounted) {
         // SpaceNotifier(houseId) si auto-aggiorna dopo deleteSpace; serve
         // invalidare solo gli items, dato che potrebbero referenziare lo
         // space appena cancellato (FK SET NULL).
         ref.invalidate(itemNotifierProvider(houseId));
-
         AppSnackBar.showSuccess(
           context,
           'spaces.space_deleted'.tr(args: [space.name]),
@@ -79,153 +90,27 @@ class SpacesManagementSheet extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final spacesAsync = ref.watch(spaceNotifierProvider(houseId));
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(context.responsive(20)),
-        ),
-      ),
-      height: MediaQuery.of(context).size.height * 0.7,
-      child: Column(
-        children: [
-          const DsBottomSheetHandle(),
-          Padding(
-            padding: context.responsiveScreenPadding,
-            child: Row(
-              children: [
-                Text(
-                  'spaces.title'.tr(),
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, size: context.iconSizeMd),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: spacesAsync.when(
-              data: (spaces) {
-                if (spaces.isEmpty) {
-                  return DsEmptyState(
-                    icon: Icons.meeting_room_outlined,
-                    title: 'spaces.no_spaces'.tr(),
-                    subtitle: 'spaces.no_spaces_subtitle'.tr(),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-                  itemCount: spaces.length,
-                  itemBuilder: (context, index) {
-                    final space = spaces[index];
-                    return Card(
-                      margin: EdgeInsets.only(bottom: context.spacingSm),
-                      elevation: 0,
-                      color: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: context.responsiveBorderRadius(12),
-                        side: BorderSide(color: colorScheme.outlineVariant),
-                      ),
-                      child: ListTile(
-                        leading: Icon(
-                          space.iconName != null
-                              ? SpaceIcons.getIcon(space.iconName!)
-                              : Icons.meeting_room,
-                          color: colorScheme.primary,
-                          size: context.iconSizeMd,
-                        ),
-                        title: Text(space.name),
-                        trailing: PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert),
-                          onSelected: (value) async {
-                            switch (value) {
-                              case 'edit':
-                                await showAddEditSpaceSheet(
-                                  context,
-                                  houseId: houseId,
-                                  spaceId: space.id,
-                                );
-                                if (context.mounted) {
-                                  ref.invalidate(
-                                    spaceNotifierProvider(houseId),
-                                  );
-                                  ref.invalidate(itemNotifierProvider(houseId));
-                                }
-                                break;
-                              case 'delete':
-                                await _showDeleteDialog(context, ref, space);
-                                break;
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'edit',
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.edit),
-                                  const SizedBox(width: 12),
-                                  Text('common.edit'.tr()),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.delete),
-                                  const SizedBox(width: 12),
-                                  Text('common.delete'.tr()),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-              loading: () => const SkeletonSimpleList(),
-              error: (error, stack) => DsErrorState(
-                error: error,
-                onRetry: () =>
-                    ref.invalidate(spaceNotifierProvider(houseId)),
-              ),
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: context.spacingMd,
-                right: context.spacingMd,
-                top: context.spacingMd,
-                bottom: context.spacingSm,
-              ),
-              child: UniversalActionBar(
-                primaryLabel: 'spaces.add_new'.tr(),
-                primaryIcon: Icons.add,
-                onPrimaryPressed: () async {
-                  await showAddEditSpaceSheet(context, houseId: houseId);
-                  // SpaceNotifier(houseId) si auto-aggiorna dopo
-                  // add/updateSpace; invalida solo gli items.
-                  if (context.mounted) {
-                    ref.invalidate(itemNotifierProvider(houseId));
-                  }
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
+  Widget build(BuildContext context) {
+    return EntityManagementSheet<SpaceModel>(
+      title: 'spaces.title'.tr(),
+      watch: (ref) => ref.watch(spaceNotifierProvider(houseId)),
+      getIcon: (s) => s.iconName != null
+          ? SpaceIcons.getIcon(s.iconName!)
+          : Icons.meeting_room,
+      getName: (s) => s.name,
+      onEdit: _onEdit,
+      onDelete: _onDelete,
+      onRetry: (ref) => ref.invalidate(spaceNotifierProvider(houseId)),
+      addLabel: 'spaces.add_new'.tr(),
+      onAdd: (context, ref) async {
+        await showAddEditSpaceSheet(context, houseId: houseId);
+        if (context.mounted) {
+          ref.invalidate(itemNotifierProvider(houseId));
+        }
+      },
+      emptyIcon: Icons.meeting_room_outlined,
+      emptyTitle: 'spaces.no_spaces'.tr(),
+      emptySubtitle: 'spaces.no_spaces_subtitle'.tr(),
     );
   }
 }

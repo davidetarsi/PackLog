@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
+import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/space_model.dart';
 import '../repositories/space_repository.dart';
 
@@ -13,69 +14,43 @@ part 'space_provider.g.dart';
 /// casa, le mutazioni ricaricano la lista filtrata e si propagano
 /// automaticamente ai consumer senza bisogno di `ref.invalidate` manuali.
 @Riverpod(keepAlive: true)
-class SpaceNotifier extends _$SpaceNotifier {
-  SpaceRepository? repository;
+class SpaceNotifier extends _$SpaceNotifier
+    with SyncedCrudNotifier<SpaceModel> {
+  SpaceRepository get _repo => ref.read(spaceRepositoryProvider);
 
   @override
-  Future<List<SpaceModel>> build(String houseId) async {
-    repository = ref.watch(spaceRepositoryProvider);
-    return repository!.getSpacesByHouseId(houseId);
+  Future<List<SpaceModel>> build(String houseId) =>
+      _repo.getSpacesByHouseId(houseId);
+
+  @override
+  void onMutationSuccess(List<SpaceModel> updated) {
+    ref.read(syncOrchestratorProvider).requestSync();
   }
 
-  Future<void> addSpace(SpaceModel model) async {
-    repository ??= ref.read(spaceRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.addSpace(model);
-      final spaces = await repository!.getSpacesByHouseId(houseId);
-      state = AsyncData(spaces);
-      ref.read(coreAnalyticsServiceProvider).trackSpaceCreated();
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
+  Future<void> addSpace(SpaceModel model) => mutate(
+    operation: () => _repo.addSpace(model),
+    reload: () => _repo.getSpacesByHouseId(houseId),
+    onSuccess: (_) =>
+        ref.read(coreAnalyticsServiceProvider).trackSpaceCreated(),
+  );
 
-  Future<void> updateSpace(SpaceModel model) async {
-    repository ??= ref.read(spaceRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.updateSpace(model);
-      final spaces = await repository!.getSpacesByHouseId(houseId);
-      state = AsyncData(spaces);
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
+  Future<void> updateSpace(SpaceModel model) => mutate(
+    operation: () => _repo.updateSpace(model),
+    reload: () => _repo.getSpacesByHouseId(houseId),
+  );
 
-  Future<void> deleteSpace(String id) async {
-    repository ??= ref.read(spaceRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.deleteSpace(id);
-      final spaces = await repository!.getSpacesByHouseId(houseId);
-      state = AsyncData(spaces);
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
+  Future<void> deleteSpace(String id) => mutate(
+    operation: () => _repo.deleteSpace(id),
+    reload: () => _repo.getSpacesByHouseId(houseId),
+  );
 
-  Future<void> refresh() async {
-    repository ??= ref.read(spaceRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      final spaces = await repository!.getSpacesByHouseId(houseId);
-      state = AsyncData(spaces);
-    } catch (error, stackTrace) {
-      // No rethrow: refresh() is wired to ErrorState.onRetry (VoidCallback).
-      state = AsyncError(error, stackTrace);
-    }
-  }
+  Future<void> refresh() => mutate(
+    operation: () async {},
+    reload: () => _repo.getSpacesByHouseId(houseId),
+    showLoading: true,
+    // refresh() è wired a ErrorState.onRetry (VoidCallback) — niente rethrow.
+    rethrowOnError: false,
+  );
 }
 
 // Nota: l'ex [spacesByHouseProvider] (FutureProvider derivato) è stato

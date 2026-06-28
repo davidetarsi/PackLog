@@ -32,10 +32,12 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     } else {
       await repo.saveStep(OnboardingStep.houseTooltip);
       await repo.saveDefaultHouseId(defaultHouseId);
-      state = AsyncData(current.copyWith(
-        step: OnboardingStep.houseTooltip,
-        defaultHouseId: defaultHouseId,
-      ));
+      state = AsyncData(
+        current.copyWith(
+          step: OnboardingStep.houseTooltip,
+          defaultHouseId: defaultHouseId,
+        ),
+      );
     }
   }
 
@@ -45,10 +47,9 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     final repo = ref.read(onboardingRepositoryProvider);
     await repo.saveStep(OnboardingStep.houseTooltip);
     await repo.saveSkippedAi(true);
-    state = AsyncData(current.copyWith(
-      step: OnboardingStep.houseTooltip,
-      skippedAi: true,
-    ));
+    state = AsyncData(
+      current.copyWith(step: OnboardingStep.houseTooltip, skippedAi: true),
+    );
   }
 
   Future<void> advance() async {
@@ -74,16 +75,15 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     await repo.saveSkippedAi(false);
     await repo.saveHasExistingHouses(hasExistingHouses);
     await repo.saveDefaultHouseId(null);
-    state = AsyncData(
-      OnboardingState(hasExistingHouses: hasExistingHouses),
-    );
+    state = AsyncData(OnboardingState(hasExistingHouses: hasExistingHouses));
   }
 
   static OnboardingStep _nextStep(OnboardingState s) {
     return switch (s.step) {
-      OnboardingStep.houseTooltip => s.skippedAi
-          ? OnboardingStep.createTripTooltip
-          : OnboardingStep.defaultHouseTooltip,
+      OnboardingStep.houseTooltip =>
+        s.skippedAi
+            ? OnboardingStep.createTripTooltip
+            : OnboardingStep.defaultHouseTooltip,
       OnboardingStep.defaultHouseTooltip => OnboardingStep.moveItemsTooltip,
       OnboardingStep.moveItemsTooltip => OnboardingStep.createTripTooltip,
       OnboardingStep.createTripTooltip => OnboardingStep.tripCreationTooltip,

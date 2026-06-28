@@ -36,9 +36,7 @@ class ShellTabScaffold extends StatelessWidget {
         bottom: false,
         child: reserveBottomNavSpace
             ? Padding(
-                padding: EdgeInsets.only(
-                  bottom: context.navBarReservedHeight,
-                ),
+                padding: EdgeInsets.only(bottom: context.navBarReservedHeight),
                 child: body,
               )
             : body,

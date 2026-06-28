@@ -106,9 +106,7 @@ void main() {
       final notifier = container.read(_testProvider.notifier);
       final callOrder = <String>[];
 
-      await notifier.runMutation(
-        onSuccess: (_) => callOrder.add('onSuccess'),
-      );
+      await notifier.runMutation(onSuccess: (_) => callOrder.add('onSuccess'));
 
       expect(callOrder, equals(['onSuccess']));
       expect(notifier.successHookCalls, equals(1));
@@ -130,25 +128,27 @@ void main() {
       expect(notifier.successHookCalls, equals(1));
     });
 
-    test('onSuccess receives the FRESH list (post-reload), not the old state',
-        () async {
-      await container.read(_testProvider.future);
-      final notifier = container.read(_testProvider.notifier);
-      notifier.reloadResult = [100, 200, 300];
+    test(
+      'onSuccess receives the FRESH list (post-reload), not the old state',
+      () async {
+        await container.read(_testProvider.future);
+        final notifier = container.read(_testProvider.notifier);
+        notifier.reloadResult = [100, 200, 300];
 
-      List<int>? receivedInOnSuccess;
-      await notifier.runMutation(
-        onSuccess: (list) {
-          receivedInOnSuccess = list;
-        },
-      );
+        List<int>? receivedInOnSuccess;
+        await notifier.runMutation(
+          onSuccess: (list) {
+            receivedInOnSuccess = list;
+          },
+        );
 
-      // onSuccess deve aver visto la lista fresca passata come argomento,
-      // NON la vecchia lista dello state (che era vuota dal build()).
-      expect(receivedInOnSuccess, equals([100, 200, 300]));
-      // E onMutationSuccess deve aver ricevuto la stessa lista fresca.
-      expect(notifier.lastSuccessHookArgument, equals([100, 200, 300]));
-    });
+        // onSuccess deve aver visto la lista fresca passata come argomento,
+        // NON la vecchia lista dello state (che era vuota dal build()).
+        expect(receivedInOnSuccess, equals([100, 200, 300]));
+        // E onMutationSuccess deve aver ricevuto la stessa lista fresca.
+        expect(notifier.lastSuccessHookArgument, equals([100, 200, 300]));
+      },
+    );
 
     test(
       'onSuccess can read fresh list via argument BEFORE state is updated',
@@ -185,10 +185,7 @@ void main() {
       final notifier = container.read(_testProvider.notifier);
       notifier.failOperation = true;
 
-      await expectLater(
-        notifier.runMutation(),
-        throwsException,
-      );
+      await expectLater(notifier.runMutation(), throwsException);
 
       final state = container.read(_testProvider);
       expect(state, isA<AsyncError<List<int>>>());
@@ -201,10 +198,7 @@ void main() {
       notifier.failOperation = true;
       notifier.operationError = specificError;
 
-      await expectLater(
-        notifier.runMutation(),
-        throwsA(equals(specificError)),
-      );
+      await expectLater(notifier.runMutation(), throwsA(equals(specificError)));
 
       expect(notifier.errorHookCalls, equals(1));
       expect(notifier.lastError, equals(specificError));
@@ -229,10 +223,7 @@ void main() {
       final notifier = container.read(_testProvider.notifier);
       notifier.failReload = true;
 
-      await expectLater(
-        notifier.runMutation(),
-        throwsException,
-      );
+      await expectLater(notifier.runMutation(), throwsException);
 
       final state = container.read(_testProvider);
       expect(state, isA<AsyncError<List<int>>>());
@@ -283,8 +274,7 @@ void main() {
         expect(
           observedStates.any((s) => s is AsyncLoading<List<int>>),
           isFalse,
-          reason:
-              'Nessun AsyncLoading atteso con showLoading=false (default)',
+          reason: 'Nessun AsyncLoading atteso con showLoading=false (default)',
         );
       },
     );

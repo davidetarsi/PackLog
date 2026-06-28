@@ -1,15 +1,14 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../model/luggage_model.dart';
 import '../providers/luggage_provider.dart';
-import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/widgets/entity_management_sheet.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
-import '../../../shared/widgets/universal_action_bar.dart';
 import 'add_edit_luggage_screen.dart';
-import '../../../shared/widgets/skeleton/skeleton.dart';
 
 /// Mostra il bottom sheet per gestire i bagagli di una casa
 Future<void> showLuggagesManagementSheet(
@@ -24,13 +23,32 @@ Future<void> showLuggagesManagementSheet(
   );
 }
 
-/// Bottom sheet per gestire i bagagli di una casa
-class LuggagesManagementSheet extends ConsumerWidget {
+/// Bottom sheet per gestire i bagagli di una casa.
+///
+/// Delega il layout generico a [EntityManagementSheet]; gestisce qui
+/// le operazioni specifiche dei bagagli: edit, delete con conferma,
+/// e aggiunta.
+class LuggagesManagementSheet extends StatelessWidget {
   final String houseId;
 
   const LuggagesManagementSheet({super.key, required this.houseId});
 
-  Future<void> _showDeleteDialog(
+  Future<void> _onEdit(
+    BuildContext context,
+    WidgetRef ref,
+    LuggageModel luggage,
+  ) async {
+    await showAddEditLuggageSheet(
+      context,
+      houseId: houseId,
+      luggageId: luggage.id,
+    );
+    if (context.mounted) {
+      ref.invalidate(luggageNotifierProvider(houseId));
+    }
+  }
+
+  Future<void> _onDelete(
     BuildContext context,
     WidgetRef ref,
     LuggageModel luggage,
@@ -42,7 +60,6 @@ class LuggagesManagementSheet extends ConsumerWidget {
       customTitle: 'luggages.delete'.tr(),
       warningText: 'luggages.delete_warning'.tr(),
     );
-
     if (confirmed == true && context.mounted) {
       final success = await ErrorRetryDialog.executeWithRetry(
         context: context,
@@ -54,7 +71,6 @@ class LuggagesManagementSheet extends ConsumerWidget {
         errorTitle: 'common.error'.tr(),
         errorMessage: 'errors.delete_luggage_failed'.tr(args: [luggage.name]),
       );
-
       if (success && context.mounted) {
         AppSnackBar.showSuccess(
           context,
@@ -65,148 +81,22 @@ class LuggagesManagementSheet extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final luggagesAsync = ref.watch(luggageNotifierProvider(houseId));
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(context.responsive(20)),
-        ),
-      ),
-      height: MediaQuery.of(context).size.height * 0.7,
-      child: Column(
-        children: [
-          const DsBottomSheetHandle(),
-          Padding(
-            padding: context.responsiveScreenPadding,
-            child: Row(
-              children: [
-                Text(
-                  'luggages.title'.tr(),
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, size: context.iconSizeMd),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: luggagesAsync.when(
-              data: (luggages) {
-                if (luggages.isEmpty) {
-                  return DsEmptyState(
-                    icon: Icons.luggage_outlined,
-                    title: 'luggages.no_luggages'.tr(),
-                    subtitle: 'luggages.no_luggages_subtitle'.tr(),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-                  itemCount: luggages.length,
-                  itemBuilder: (context, index) {
-                    final luggage = luggages[index];
-                    return Card(
-                      margin: EdgeInsets.only(bottom: context.spacingSm),
-                      elevation: 0,
-                      color: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: context.responsiveBorderRadius(12),
-                        side: BorderSide(color: colorScheme.outlineVariant),
-                      ),
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.luggage,
-                          color: colorScheme.primary,
-                          size: context.iconSizeMd,
-                        ),
-                        title: Text(luggage.name),
-                        subtitle: Text(luggage.sizeDescription),
-                        trailing: PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert),
-                          onSelected: (value) async {
-                            switch (value) {
-                              case 'edit':
-                                await showAddEditLuggageSheet(
-                                  context,
-                                  houseId: houseId,
-                                  luggageId: luggage.id,
-                                );
-                                if (context.mounted) {
-                                  ref.invalidate(
-                                    luggageNotifierProvider(houseId),
-                                  );
-                                }
-                                break;
-                              case 'delete':
-                                await _showDeleteDialog(context, ref, luggage);
-                                break;
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'edit',
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.edit),
-                                  const SizedBox(width: 12),
-                                  Text('common.edit'.tr()),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.delete),
-                                  const SizedBox(width: 12),
-                                  Text('common.delete'.tr()),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-              loading: () => const SkeletonSimpleList(),
-              error: (error, stack) => DsErrorState(
-                error: error,
-                onRetry: () =>
-                    ref.invalidate(luggageNotifierProvider(houseId)),
-              ),
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: context.spacingMd,
-                right: context.spacingMd,
-                top: context.spacingMd,
-                bottom: context.spacingSm,
-              ),
-              child: UniversalActionBar(
-                primaryLabel: 'luggages.add_new'.tr(),
-                primaryIcon: Icons.add,
-                onPrimaryPressed: () async {
-                  await showAddEditLuggageSheet(context, houseId: houseId);
-                  // LuggageNotifier(houseId) si auto-aggiorna dopo
-                  // add/updateLuggage; no invalidate manuale.
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
+  Widget build(BuildContext context) {
+    return EntityManagementSheet<LuggageModel>(
+      title: 'luggages.title'.tr(),
+      watch: (ref) => ref.watch(luggageNotifierProvider(houseId)),
+      getIcon: (_) => Icons.luggage,
+      getName: (l) => l.name,
+      getSubtitle: (l) => l.sizeDescription,
+      onEdit: _onEdit,
+      onDelete: _onDelete,
+      onRetry: (ref) => ref.invalidate(luggageNotifierProvider(houseId)),
+      addLabel: 'luggages.add_new'.tr(),
+      onAdd: (context, ref) =>
+          showAddEditLuggageSheet(context, houseId: houseId),
+      emptyIcon: Icons.luggage_outlined,
+      emptyTitle: 'luggages.no_luggages'.tr(),
+      emptySubtitle: 'luggages.no_luggages_subtitle'.tr(),
     );
   }
 }

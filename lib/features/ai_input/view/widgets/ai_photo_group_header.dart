@@ -38,9 +38,9 @@ class AiPhotoGroupHeader extends StatelessWidget {
                   args: [photoIndex.toString(), totalPhotos.toString()],
                 )
               : 'ai_import.photo'.tr(),
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
       ],
     );

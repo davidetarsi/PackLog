@@ -548,36 +548,33 @@ void main() {
       );
     });
 
-    test(
-      'markSpaceAsSynced overwrites updatedAt with server timestamp '
-      '(post fix #6: server-side updated_at)',
-      () async {
-        await database.spacesDao.insertSpace(
-          SpacesCompanion.insert(
-            id: 's-server-ts',
-            houseId: houseId,
-            name: 'Armadio',
-            createdAt: DateTime(2026, 5, 1, 7, 0),
-            updatedAt: DateTime(2026, 5, 1, 8, 0),
-            syncStatus: const Value(SyncStatus.pendingUpdate),
-          ),
-        );
+    test('markSpaceAsSynced overwrites updatedAt with server timestamp '
+        '(post fix #6: server-side updated_at)', () async {
+      await database.spacesDao.insertSpace(
+        SpacesCompanion.insert(
+          id: 's-server-ts',
+          houseId: houseId,
+          name: 'Armadio',
+          createdAt: DateTime(2026, 5, 1, 7, 0),
+          updatedAt: DateTime(2026, 5, 1, 8, 0),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
 
-        final serverTs = DateTime(2026, 5, 1, 12, 0);
-        await database.spacesDao.markSpaceAsSynced('s-server-ts', serverTs);
+      final serverTs = DateTime(2026, 5, 1, 12, 0);
+      await database.spacesDao.markSpaceAsSynced('s-server-ts', serverTs);
 
-        final space = await database.spacesDao.getSpaceById('s-server-ts');
-        expect(
-          space!.updatedAt,
-          equals(serverTs),
-          reason:
-              'updatedAt deve essere allineato al server timestamp per '
-              'rendere immune la LWW al clock drift del client',
-        );
-        expect(space.syncStatus, equals(SyncStatus.synced));
-        expect(space.lastSyncedAt, equals(serverTs));
-      },
-    );
+      final space = await database.spacesDao.getSpaceById('s-server-ts');
+      expect(
+        space!.updatedAt,
+        equals(serverTs),
+        reason:
+            'updatedAt deve essere allineato al server timestamp per '
+            'rendere immune la LWW al clock drift del client',
+      );
+      expect(space.syncStatus, equals(SyncStatus.synced));
+      expect(space.lastSyncedAt, equals(serverTs));
+    });
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await database.spacesDao.insertSpace(
@@ -628,36 +625,39 @@ void main() {
       expect(allRows, isEmpty);
     });
 
-    test('updateSpace preserves sync metadata when companion omits sync fields', () async {
-      final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
-      await database.spacesDao.insertSpace(
-        SpacesCompanion.insert(
-          id: 's-keep-sync',
-          houseId: houseId,
-          name: 'Original',
-          createdAt: DateTime(2026, 5, 1, 7, 0),
-          updatedAt: DateTime(2026, 5, 1, 7, 0),
-          syncStatus: const Value(SyncStatus.synced),
-          syncRetryCount: const Value(3),
-          lastSyncedAt: Value(originalSyncedAt),
-        ),
-      );
+    test(
+      'updateSpace preserves sync metadata when companion omits sync fields',
+      () async {
+        final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: 's-keep-sync',
+            houseId: houseId,
+            name: 'Original',
+            createdAt: DateTime(2026, 5, 1, 7, 0),
+            updatedAt: DateTime(2026, 5, 1, 7, 0),
+            syncStatus: const Value(SyncStatus.synced),
+            syncRetryCount: const Value(3),
+            lastSyncedAt: Value(originalSyncedAt),
+          ),
+        );
 
-      await database.spacesDao.updateSpace(
-        SpacesCompanion(
-          id: const Value('s-keep-sync'),
-          houseId: Value(houseId),
-          name: const Value('Renamed'),
-          createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
-          updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
-        ),
-      );
+        await database.spacesDao.updateSpace(
+          SpacesCompanion(
+            id: const Value('s-keep-sync'),
+            houseId: Value(houseId),
+            name: const Value('Renamed'),
+            createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
+            updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
+          ),
+        );
 
-      final space = await database.spacesDao.getSpaceById('s-keep-sync');
-      expect(space!.name, equals('Renamed'));
-      expect(space.lastSyncedAt, equals(originalSyncedAt));
-      expect(space.syncRetryCount, equals(3));
-      expect(space.syncStatus, equals(SyncStatus.pendingUpdate));
-    });
+        final space = await database.spacesDao.getSpaceById('s-keep-sync');
+        expect(space!.name, equals('Renamed'));
+        expect(space.lastSyncedAt, equals(originalSyncedAt));
+        expect(space.syncRetryCount, equals(3));
+        expect(space.syncStatus, equals(SyncStatus.pendingUpdate));
+      },
+    );
   });
 }

@@ -120,16 +120,16 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<OnboardingState>>(
-      postLoginOnboardingProvider,
-      (_, next) {
-        if (!_shown) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _maybeShow();
-          });
-        }
-      },
-    );
+    ref.listen<AsyncValue<OnboardingState>>(postLoginOnboardingProvider, (
+      _,
+      next,
+    ) {
+      if (!_shown) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _maybeShow();
+        });
+      }
+    });
     return widget.child;
   }
 }

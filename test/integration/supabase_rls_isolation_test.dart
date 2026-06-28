@@ -55,15 +55,19 @@ void main() {
   if (!_envConfigured) {
     // Skip pulito senza far fallire la suite: emette UNA volta il messaggio
     // di skip — utile per capire perché il test non sta girando in CI.
-    test('Supabase RLS tenant isolation (SKIPPED — env vars mancanti)', () {
-      // ignore: avoid_print
-      print(
-        '[rls_test] SKIPPED: configurare RLS_TEST_SUPABASE_URL, '
-        'RLS_TEST_SUPABASE_ANON_KEY, RLS_TEST_USER_A_EMAIL, '
-        'RLS_TEST_USER_A_PASSWORD, RLS_TEST_USER_B_EMAIL, '
-        'RLS_TEST_USER_B_PASSWORD via --dart-define per eseguirlo.',
-      );
-    }, skip: 'env vars non configurate');
+    test(
+      'Supabase RLS tenant isolation (SKIPPED — env vars mancanti)',
+      () {
+        // ignore: avoid_print
+        print(
+          '[rls_test] SKIPPED: configurare RLS_TEST_SUPABASE_URL, '
+          'RLS_TEST_SUPABASE_ANON_KEY, RLS_TEST_USER_A_EMAIL, '
+          'RLS_TEST_USER_A_PASSWORD, RLS_TEST_USER_B_EMAIL, '
+          'RLS_TEST_USER_B_PASSWORD via --dart-define per eseguirlo.',
+        );
+      },
+      skip: 'env vars non configurate',
+    );
     return;
   }
 

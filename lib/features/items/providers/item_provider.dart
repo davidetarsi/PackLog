@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
+import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/item_model.dart';
 import '../repositories/item_repository.dart';
 import 'item_selection_provider.dart';
@@ -8,176 +9,105 @@ import 'item_selection_provider.dart';
 part 'item_provider.g.dart';
 
 @Riverpod(keepAlive: true)
-class ItemNotifier extends _$ItemNotifier {
-  ItemRepository? repository;
+class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
+  ItemRepository get _repo => ref.read(itemRepositoryProvider);
+  CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
 
   @override
   Future<List<ItemModel>> build(String houseId) async {
-    repository = ref.watch(itemRepositoryProvider);
     ref.watch(syncTriggerProvider);
-    final items = await repository!.getItemsByHouseId(houseId);
-    return items;
+    return _repo.getItemsByHouseId(houseId);
+  }
+
+  @override
+  void onMutationSuccess(List<ItemModel> updated) {
+    ref.read(syncOrchestratorProvider).requestSync();
   }
 
   /// Filtra gli items per spazio specifico
-  Future<List<ItemModel>> getItemsBySpace(
-    String houseId,
-    String spaceId,
-  ) async {
-    repository ??= ref.read(itemRepositoryProvider);
-    return repository!.getItemsBySpaceId(houseId, spaceId);
-  }
+  Future<List<ItemModel>> getItemsBySpace(String houseId, String spaceId) =>
+      _repo.getItemsBySpaceId(houseId, spaceId);
 
   /// Ottiene gli items nel pool generale (senza spazio assegnato)
-  Future<List<ItemModel>> getItemsInGeneralPool(String houseId) async {
-    repository ??= ref.read(itemRepositoryProvider);
-    return repository!.getItemsInGeneralPool(houseId);
-  }
+  Future<List<ItemModel>> getItemsInGeneralPool(String houseId) =>
+      _repo.getItemsInGeneralPool(houseId);
 
-  Future<void> addItem(ItemModel model) async {
-    repository ??= ref.read(itemRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.addItem(model);
-      final items = await repository!.getItemsByHouseId(model.houseId);
-      state = AsyncData(items);
-      ref
-          .read(coreAnalyticsServiceProvider)
-          .trackItemAdded(
-            itemId: model.id,
-            category: model.category.name,
-            totalItems: items.length,
-          );
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
+  Future<void> addItem(ItemModel model) => mutate(
+    operation: () => _repo.addItem(model),
+    reload: () => _repo.getItemsByHouseId(houseId),
+    onSuccess: (items) => _analytics.trackItemAdded(
+      itemId: model.id,
+      category: model.category.name,
+      totalItems: items.length,
+    ),
+  );
 
-  Future<void> updateItem(ItemModel model) async {
-    repository ??= ref.read(itemRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.updateItem(model);
-      final items = await repository!.getItemsByHouseId(model.houseId);
-      state = AsyncData(items);
-      ref
-          .read(coreAnalyticsServiceProvider)
-          .trackItemUpdated(category: model.category.name);
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
+  Future<void> updateItem(ItemModel model) => mutate(
+    operation: () => _repo.updateItem(model),
+    reload: () => _repo.getItemsByHouseId(houseId),
+    onSuccess: (_) =>
+        _analytics.trackItemUpdated(category: model.category.name),
+  );
 
   Future<void> deleteItem(String id, String houseId) async {
-    repository ??= ref.read(itemRepositoryProvider);
-    // Leggi la category prima di impostare AsyncLoading (lo state è ancora valido)
+    // Leggi la category prima di mutate (state è ancora valido qui)
     final category = state.value
         ?.where((i) => i.id == id)
         .firstOrNull
         ?.category
         .name;
-    state = const AsyncLoading();
-    try {
-      await repository!.deleteItem(id);
-      final items = await repository!.getItemsByHouseId(houseId);
-      state = AsyncData(items);
-      if (category != null) {
-        ref
-            .read(coreAnalyticsServiceProvider)
-            .trackItemDeleted(category: category);
-      }
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
+    await mutate(
+      operation: () => _repo.deleteItem(id),
+      reload: () => _repo.getItemsByHouseId(houseId),
+      onSuccess: (_) {
+        if (category != null) {
+          _analytics.trackItemDeleted(category: category);
+        }
+      },
+    );
   }
 
-  Future<void> refresh(String houseId) async {
-    repository ??= ref.read(itemRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      final items = await repository!.getItemsByHouseId(houseId);
-      state = AsyncData(items);
-    } catch (error, stackTrace) {
-      // No rethrow: refresh() is wired to ErrorState.onRetry (VoidCallback).
-      state = AsyncError(error, stackTrace);
-    }
-  }
+  Future<void> refresh(String houseId) => mutate(
+    operation: () async {},
+    reload: () => _repo.getItemsByHouseId(houseId),
+    showLoading: true,
+    // refresh() è wired a ErrorState.onRetry (VoidCallback) — niente rethrow.
+    rethrowOnError: false,
+  );
 
   /// Elimina [itemIds] in una singola query SQL atomica.
-  ///
-  /// Al termine:
-  /// 1. La lista viene ricaricata dal DB per aggiornare la UI.
-  /// 2. La modalità selezione multipla viene azzerata.
-  ///
-  /// In caso di errore imposta `state = AsyncError` (stesso contratto degli
-  /// altri metodi del notifier) — il chiamante può leggere `state.hasError`
-  /// oppure catturare l'eccezione se ha bisogno di feedback UI dedicato.
   Future<void> bulkDelete(List<String> itemIds) async {
     if (itemIds.isEmpty) return;
-    repository ??= ref.read(itemRepositoryProvider);
-
-    try {
-      await repository!.deleteItems(itemIds);
-
-      final updated = await repository!.getItemsByHouseId(houseId);
-      state = AsyncData(updated);
-      ref
-          .read(coreAnalyticsServiceProvider)
-          .trackItemBulkDeleted(count: itemIds.length);
-      ref.read(itemSelectionNotifierProvider.notifier).clear();
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
+    await mutate(
+      operation: () => _repo.deleteItems(itemIds),
+      reload: () => _repo.getItemsByHouseId(houseId),
+      onSuccess: (_) {
+        _analytics.trackItemBulkDeleted(count: itemIds.length);
+        ref.read(itemSelectionNotifierProvider.notifier).clear();
+      },
+    );
   }
 
-  /// Sposta [itemIds] dalla casa corrente ([houseId]) a [destinationHouseId]
-  /// in una singola query SQL atomica.
-  ///
-  /// Al termine:
-  /// 1. La lista della casa di origine viene ricaricata (gli item spariscono).
-  /// 2. La modalità selezione multipla viene azzerata.
-  /// 3. Il provider della casa di destinazione viene invalidato affinché
-  ///    mostri immediatamente i nuovi item se aperto.
-  ///
-  /// In caso di errore imposta `state = AsyncError` (stesso contratto degli
-  /// altri metodi del notifier) — il chiamante può leggere `state.hasError`
-  /// oppure catturare l'eccezione se ha bisogno di feedback UI dedicato.
+  /// Sposta [itemIds] a [destinationHouseId] in una singola query SQL atomica.
   Future<void> bulkMove(
     List<String> itemIds,
     String destinationHouseId, {
     String? spaceId,
   }) async {
     if (itemIds.isEmpty) return;
-    repository ??= ref.read(itemRepositoryProvider);
-
-    try {
-      // fromHouseId è sempre la casa corrente di questo notifier.
-      await repository!.moveItemsToHouse(
+    await mutate(
+      operation: () => _repo.moveItemsToHouse(
         itemIds,
         houseId,
         destinationHouseId,
         spaceId: spaceId,
-      );
-
-      final updated = await repository!.getItemsByHouseId(houseId);
-      state = AsyncData(updated);
-      ref
-          .read(coreAnalyticsServiceProvider)
-          .trackItemBulkMoved(count: itemIds.length);
-      ref.invalidate(itemNotifierProvider(destinationHouseId));
-      ref.read(itemSelectionNotifierProvider.notifier).clear();
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
+      ),
+      reload: () => _repo.getItemsByHouseId(houseId),
+      onSuccess: (_) {
+        _analytics.trackItemBulkMoved(count: itemIds.length);
+        ref.invalidate(itemNotifierProvider(destinationHouseId));
+        ref.read(itemSelectionNotifierProvider.notifier).clear();
+      },
+    );
   }
 }

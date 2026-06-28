@@ -25,13 +25,13 @@ class DbPassphraseService {
   final FlutterSecureStorage _secure;
 
   DbPassphraseService({FlutterSecureStorage? secure})
-      : _secure = secure ?? _defaultStorage();
+    : _secure = secure ?? _defaultStorage();
 
   static FlutterSecureStorage _defaultStorage() => const FlutterSecureStorage(
-        iOptions: IOSOptions(
-          accessibility: KeychainAccessibility.first_unlock_this_device,
-        ),
-      );
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
 
   Future<String> getOrCreate() async {
     try {

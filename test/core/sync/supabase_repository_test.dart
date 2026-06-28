@@ -42,27 +42,30 @@ void main() {
       expect(result, isEmpty);
     });
 
-    test('handles dataset exactly divisible by pageSize without infinite loop', () async {
-      final pageCalls = <(int, int)>[];
+    test(
+      'handles dataset exactly divisible by pageSize without infinite loop',
+      () async {
+        final pageCalls = <(int, int)>[];
 
-      Future<List<Map<String, dynamic>>> fetchPage(int from, int to) async {
-        pageCalls.add((from, to));
-        // 4 total rows, pageSize=2 → exactly 2 full pages, then 1 empty.
-        const total = 4;
-        if (from >= total) return const [];
-        final last = (to >= total - 1) ? total - 1 : to;
-        return [
-          for (var i = from; i <= last; i++) {'id': '$i'},
-        ];
-      }
+        Future<List<Map<String, dynamic>>> fetchPage(int from, int to) async {
+          pageCalls.add((from, to));
+          // 4 total rows, pageSize=2 → exactly 2 full pages, then 1 empty.
+          const total = 4;
+          if (from >= total) return const [];
+          final last = (to >= total - 1) ? total - 1 : to;
+          return [
+            for (var i = from; i <= last; i++) {'id': '$i'},
+          ];
+        }
 
-      final result = await SupabaseRepository.paginatedFetch(
-        fetchPage: fetchPage,
-        pageSize: 2,
-      );
+        final result = await SupabaseRepository.paginatedFetch(
+          fetchPage: fetchPage,
+          pageSize: 2,
+        );
 
-      expect(result, hasLength(4));
-      expect(pageCalls, equals([(0, 1), (2, 3), (4, 5)]));
-    });
+        expect(result, hasLength(4));
+        expect(pageCalls, equals([(0, 1), (2, 3), (4, 5)]));
+      },
+    );
   });
 }

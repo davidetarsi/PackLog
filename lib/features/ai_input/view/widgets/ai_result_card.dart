@@ -42,9 +42,9 @@ class AiResultCard extends StatelessWidget {
         controller: controller,
         onChanged: onNameChanged,
         autofocus: autofocus,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w500,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: 'ai_import.item_name_hint'.tr(),
           contentPadding: EdgeInsets.symmetric(

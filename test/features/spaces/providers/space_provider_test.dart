@@ -52,33 +52,28 @@ void main() {
   });
 
   group('SpaceNotifier - Family by houseId (P2 #12)', () {
-    test(
-      'build only loads spaces for the requested houseId',
-      () async {
-        when(
-          () => mockRepository.getSpacesByHouseId('h-1'),
-        ).thenAnswer((_) async => [
-              SpaceModel(
-                id: 's-1',
-                houseId: 'h-1',
-                name: 'Armadio',
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              ),
-            ]);
+    test('build only loads spaces for the requested houseId', () async {
+      when(() => mockRepository.getSpacesByHouseId('h-1')).thenAnswer(
+        (_) async => [
+          SpaceModel(
+            id: 's-1',
+            houseId: 'h-1',
+            name: 'Armadio',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ],
+      );
 
-        final result = await container.read(
-          spaceNotifierProvider('h-1').future,
-        );
+      final result = await container.read(spaceNotifierProvider('h-1').future);
 
-        expect(result, hasLength(1));
-        expect(result.first.houseId, equals('h-1'));
-        // Verifica che il provider abbia chiamato la query filtrata, non quella
-        // globale.
-        verify(() => mockRepository.getSpacesByHouseId('h-1')).called(1);
-        verifyNever(() => mockRepository.getAllSpaces());
-      },
-    );
+      expect(result, hasLength(1));
+      expect(result.first.houseId, equals('h-1'));
+      // Verifica che il provider abbia chiamato la query filtrata, non quella
+      // globale.
+      verify(() => mockRepository.getSpacesByHouseId('h-1')).called(1);
+      verifyNever(() => mockRepository.getAllSpaces());
+    });
 
     test(
       'addSpace rethrows when repository fails (and sets AsyncError)',

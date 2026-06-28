@@ -44,9 +44,9 @@ class EncryptionMigrationService {
     required DbPassphraseService passphraseService,
     String? databasePath,
     String? stagingPath,
-  })  : _passphraseService = passphraseService,
-        _databasePath = databasePath ?? '',
-        _stagingPath = stagingPath ?? '';
+  }) : _passphraseService = passphraseService,
+       _databasePath = databasePath ?? '',
+       _stagingPath = stagingPath ?? '';
 
   /// Costruisce un'istanza con path di default. Usato a runtime.
   /// I path-injection-based test usano il costruttore principale.

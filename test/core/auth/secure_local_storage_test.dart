@@ -31,19 +31,20 @@ void main() {
 
   setUp(() {
     mockSecure = _MockSecureStorage();
-    storage = SecureLocalStorage(
-      persistSessionKey: _kKey,
-      secure: mockSecure,
-    );
+    storage = SecureLocalStorage(persistSessionKey: _kKey, secure: mockSecure);
 
-    when(() => mockSecure.read(key: any(named: 'key')))
-        .thenAnswer((_) async => null);
-    when(() => mockSecure.write(
-          key: any(named: 'key'),
-          value: any(named: 'value'),
-        )).thenAnswer((_) async {});
-    when(() => mockSecure.delete(key: any(named: 'key')))
-        .thenAnswer((_) async {});
+    when(
+      () => mockSecure.read(key: any(named: 'key')),
+    ).thenAnswer((_) async => null);
+    when(
+      () => mockSecure.write(
+        key: any(named: 'key'),
+        value: any(named: 'value'),
+      ),
+    ).thenAnswer((_) async {});
+    when(
+      () => mockSecure.delete(key: any(named: 'key')),
+    ).thenAnswer((_) async {});
 
     SharedPreferences.setMockInitialValues({});
   });
@@ -51,20 +52,23 @@ void main() {
   group('basic CRUD', () {
     test('persistSession scrive sul secure storage', () async {
       await storage.persistSession(_kSessionJson);
-      verify(() => mockSecure.write(key: _kKey, value: _kSessionJson))
-          .called(1);
+      verify(
+        () => mockSecure.write(key: _kKey, value: _kSessionJson),
+      ).called(1);
     });
 
     test('accessToken legge dal secure storage', () async {
-      when(() => mockSecure.read(key: _kKey))
-          .thenAnswer((_) async => _kSessionJson);
+      when(
+        () => mockSecure.read(key: _kKey),
+      ).thenAnswer((_) async => _kSessionJson);
       final token = await storage.accessToken();
       expect(token, _kSessionJson);
     });
 
     test('hasAccessToken: true se valore non-null e non-vuoto', () async {
-      when(() => mockSecure.read(key: _kKey))
-          .thenAnswer((_) async => _kSessionJson);
+      when(
+        () => mockSecure.read(key: _kKey),
+      ).thenAnswer((_) async => _kSessionJson);
       expect(await storage.hasAccessToken(), true);
     });
 
@@ -93,8 +97,9 @@ void main() {
         await storage.initialize();
 
         // 1. Scritto su secure storage con il valore originale
-        verify(() => mockSecure.write(key: _kKey, value: _kSessionJson))
-            .called(1);
+        verify(
+          () => mockSecure.write(key: _kKey, value: _kSessionJson),
+        ).called(1);
 
         // 2. Rimosso da SP — la chiave non c'è più
         final prefs = await SharedPreferences.getInstance();
@@ -102,43 +107,54 @@ void main() {
       },
     );
 
-    test('non migra se secure storage ha già la chiave (idempotenza)',
-        () async {
-      when(() => mockSecure.read(key: _kKey))
-          .thenAnswer((_) async => _kSessionJson);
-      SharedPreferences.setMockInitialValues({_kKey: 'STALE_LEGACY'});
+    test(
+      'non migra se secure storage ha già la chiave (idempotenza)',
+      () async {
+        when(
+          () => mockSecure.read(key: _kKey),
+        ).thenAnswer((_) async => _kSessionJson);
+        SharedPreferences.setMockInitialValues({_kKey: 'STALE_LEGACY'});
 
-      await storage.initialize();
+        await storage.initialize();
 
-      // Mai scritto: la migrazione è skip
-      verifyNever(() => mockSecure.write(
+        // Mai scritto: la migrazione è skip
+        verifyNever(
+          () => mockSecure.write(
             key: any(named: 'key'),
             value: any(named: 'value'),
-          ));
-      // E NON ha rimosso da SP (sarebbe ok ma non necessario al test)
-    });
+          ),
+        );
+        // E NON ha rimosso da SP (sarebbe ok ma non necessario al test)
+      },
+    );
 
     test('no-op se nessuna sessione legacy in SP', () async {
       // SP vuoto (default del setUp), secure storage vuoto
       await storage.initialize();
 
-      verifyNever(() => mockSecure.write(
-            key: any(named: 'key'),
-            value: any(named: 'value'),
-          ));
+      verifyNever(
+        () => mockSecure.write(
+          key: any(named: 'key'),
+          value: any(named: 'value'),
+        ),
+      );
     });
 
-    test('errore del secure storage durante la migrazione non rilancia',
-        () async {
-      SharedPreferences.setMockInitialValues({_kKey: _kSessionJson});
-      when(() => mockSecure.write(
+    test(
+      'errore del secure storage durante la migrazione non rilancia',
+      () async {
+        SharedPreferences.setMockInitialValues({_kKey: _kSessionJson});
+        when(
+          () => mockSecure.write(
             key: any(named: 'key'),
             value: any(named: 'value'),
-          )).thenThrow(Exception('keystore broken'));
+          ),
+        ).thenThrow(Exception('keystore broken'));
 
-      // Non deve sollevare: vogliamo che l'app parta comunque (l'utente
-      // farà relogin).
-      await expectLater(storage.initialize(), completes);
-    });
+        // Non deve sollevare: vogliamo che l'app parta comunque (l'utente
+        // farà relogin).
+        await expectLater(storage.initialize(), completes);
+      },
+    );
   });
 }

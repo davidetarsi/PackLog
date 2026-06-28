@@ -60,8 +60,9 @@ void _stubServiceSuccess(
   MockAiClothingAnalyzerService service,
   List<ClothingAnalysisResult> results,
 ) {
-  when(() => service.processClothingItem(any()))
-      .thenAnswer((_) async => results);
+  when(
+    () => service.processClothingItem(any()),
+  ).thenAnswer((_) async => results);
 }
 
 ProviderContainer _makeContainer({
@@ -75,8 +76,7 @@ ProviderContainer _makeContainer({
     overrides: [
       if (service != null)
         aiClothingAnalyzerServiceProvider.overrideWithValue(service),
-      if (itemRepo != null)
-        itemRepositoryProvider.overrideWithValue(itemRepo),
+      if (itemRepo != null) itemRepositoryProvider.overrideWithValue(itemRepo),
       if (houseRepo != null)
         houseRepositoryProvider.overrideWithValue(houseRepo),
       if (syncOrchestrator != null)
@@ -94,8 +94,9 @@ void _setupOnboardingMock(
 }) {
   when(() => repo.loadStep()).thenAnswer((_) async => step);
   when(() => repo.loadSkippedAi()).thenAnswer((_) async => false);
-  when(() => repo.loadHasExistingHouses())
-      .thenAnswer((_) async => hasExistingHouses);
+  when(
+    () => repo.loadHasExistingHouses(),
+  ).thenAnswer((_) async => hasExistingHouses);
   when(() => repo.loadDefaultHouseId()).thenAnswer((_) async => null);
   when(() => repo.saveStep(any())).thenAnswer((_) async {});
   when(() => repo.saveSkippedAi(any())).thenAnswer((_) async {});
@@ -110,9 +111,9 @@ Future<void> _seedOneGroup(
   List<ClothingAnalysisResult>? results,
 }) async {
   _stubServiceSuccess(service, results ?? [_fakeResult()]);
-  await container
-      .read(aiImportNotifierProvider.notifier)
-      .processFiles([_fakeFile()]);
+  await container.read(aiImportNotifierProvider.notifier).processFiles([
+    _fakeFile(),
+  ]);
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -186,147 +187,163 @@ void main() {
     });
 
     test(
-        'GptLimitExceededException: errorMessage is set, isLoading false, no groups added',
-        () async {
-      final service = MockAiClothingAnalyzerService();
-      final container = _makeContainer(service: service);
-      addTearDown(container.dispose);
+      'GptLimitExceededException: errorMessage is set, isLoading false, no groups added',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final container = _makeContainer(service: service);
+        addTearDown(container.dispose);
 
-      when(() => service.processClothingItem(any()))
-          .thenThrow(const GptLimitExceededException('Monthly limit reached'));
+        when(
+          () => service.processClothingItem(any()),
+        ).thenThrow(const GptLimitExceededException('Monthly limit reached'));
 
-      await container
-          .read(aiImportNotifierProvider.notifier)
-          .processFiles([_fakeFile()]);
+        await container.read(aiImportNotifierProvider.notifier).processFiles([
+          _fakeFile(),
+        ]);
 
-      final state = container.read(aiImportNotifierProvider);
-      expect(state.errorMessage, isNotNull);
-      expect(state.errorMessage, contains('Monthly limit reached'));
-      expect(state.isLoading, isFalse);
-      expect(state.photoGroups, isEmpty);
-    });
-
-    test('ClothingAnalysisException: errorMessage is set, isLoading false',
-        () async {
-      final service = MockAiClothingAnalyzerService();
-      final container = _makeContainer(service: service);
-      addTearDown(container.dispose);
-
-      when(() => service.processClothingItem(any()))
-          .thenThrow(const VisionAnalysisException('Vision failed'));
-
-      await container
-          .read(aiImportNotifierProvider.notifier)
-          .processFiles([_fakeFile()]);
-
-      final state = container.read(aiImportNotifierProvider);
-      expect(state.errorMessage, isNotNull);
-      expect(state.errorMessage, contains('Vision failed'));
-      expect(state.isLoading, isFalse);
-    });
+        final state = container.read(aiImportNotifierProvider);
+        expect(state.errorMessage, isNotNull);
+        expect(state.errorMessage, contains('Monthly limit reached'));
+        expect(state.isLoading, isFalse);
+        expect(state.photoGroups, isEmpty);
+      },
+    );
 
     test(
-        'partial failure: first file OK, second throws → 1 group + errorMessage',
-        () async {
-      final service = MockAiClothingAnalyzerService();
-      final container = _makeContainer(service: service);
-      addTearDown(container.dispose);
+      'ClothingAnalysisException: errorMessage is set, isLoading false',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final container = _makeContainer(service: service);
+        addTearDown(container.dispose);
 
-      var callCount = 0;
-      when(() => service.processClothingItem(any())).thenAnswer((_) async {
-        callCount++;
-        if (callCount == 1) return [_fakeResult()];
-        throw const VisionAnalysisException('Second image failed');
-      });
+        when(
+          () => service.processClothingItem(any()),
+        ).thenThrow(const VisionAnalysisException('Vision failed'));
 
-      await container.read(aiImportNotifierProvider.notifier).processFiles([
-        _fakeFile(),
-        _fakeFile(),
-      ]);
+        await container.read(aiImportNotifierProvider.notifier).processFiles([
+          _fakeFile(),
+        ]);
 
-      final state = container.read(aiImportNotifierProvider);
-      expect(state.photoGroups, hasLength(1));
-      expect(state.photoGroups.first.results.first.name, 'T-Shirt');
-      expect(state.errorMessage, contains('Second image failed'));
-      expect(state.isLoading, isFalse);
-    });
+        final state = container.read(aiImportNotifierProvider);
+        expect(state.errorMessage, isNotNull);
+        expect(state.errorMessage, contains('Vision failed'));
+        expect(state.isLoading, isFalse);
+      },
+    );
 
     test(
-        'unexpected (non-ClothingAnalysis) exception sets errorMessage and isLoading=false',
-        () async {
-      final service = MockAiClothingAnalyzerService();
-      final container = _makeContainer(service: service);
-      addTearDown(container.dispose);
+      'partial failure: first file OK, second throws → 1 group + errorMessage',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final container = _makeContainer(service: service);
+        addTearDown(container.dispose);
 
-      when(() => service.processClothingItem(any()))
-          .thenThrow(Exception('Unexpected DB error'));
+        var callCount = 0;
+        when(() => service.processClothingItem(any())).thenAnswer((_) async {
+          callCount++;
+          if (callCount == 1) return [_fakeResult()];
+          throw const VisionAnalysisException('Second image failed');
+        });
 
-      await container
-          .read(aiImportNotifierProvider.notifier)
-          .processFiles([_fakeFile()]);
+        await container.read(aiImportNotifierProvider.notifier).processFiles([
+          _fakeFile(),
+          _fakeFile(),
+        ]);
 
-      final state = container.read(aiImportNotifierProvider);
-      // easy_localization returns the key itself in tests (no real locale loaded).
-      expect(state.errorMessage, contains('ai_import.unexpected_error'));
-      expect(state.isLoading, isFalse);
-      expect(state.photoGroups, isEmpty);
-    });
+        final state = container.read(aiImportNotifierProvider);
+        expect(state.photoGroups, hasLength(1));
+        expect(state.photoGroups.first.results.first.name, 'T-Shirt');
+        expect(state.errorMessage, contains('Second image failed'));
+        expect(state.isLoading, isFalse);
+      },
+    );
 
     test(
-        'concurrent call while isLoading is true: second call is a no-op',
-        () async {
-      final service = MockAiClothingAnalyzerService();
-      final container = _makeContainer(service: service);
-      addTearDown(container.dispose);
+      'unexpected (non-ClothingAnalysis) exception sets errorMessage and isLoading=false',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final container = _makeContainer(service: service);
+        addTearDown(container.dispose);
 
-      // Slow completer that won't resolve until we tell it to
-      final completer = Completer<List<ClothingAnalysisResult>>();
-      when(() => service.processClothingItem(any()))
-          .thenAnswer((_) => completer.future);
+        when(
+          () => service.processClothingItem(any()),
+        ).thenThrow(Exception('Unexpected DB error'));
 
-      // Start first call (don't await — it hangs)
-      final firstCall = container
-          .read(aiImportNotifierProvider.notifier)
-          .processFiles([_fakeFile()]);
+        await container.read(aiImportNotifierProvider.notifier).processFiles([
+          _fakeFile(),
+        ]);
 
-      // isLoading should be true immediately after kick-off
-      expect(container.read(aiImportNotifierProvider).isLoading, isTrue);
+        final state = container.read(aiImportNotifierProvider);
+        // easy_localization returns the key itself in tests (no real locale loaded).
+        expect(state.errorMessage, contains('ai_import.unexpected_error'));
+        expect(state.isLoading, isFalse);
+        expect(state.photoGroups, isEmpty);
+      },
+    );
 
-      // Second call while isLoading = true → should be a no-op
-      await container
-          .read(aiImportNotifierProvider.notifier)
-          .processFiles([_fakeFile()]);
+    test(
+      'concurrent call while isLoading is true: second call is a no-op',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final container = _makeContainer(service: service);
+        addTearDown(container.dispose);
 
-      // Only 1 service call was ever made
-      verify(() => service.processClothingItem(any())).called(1);
+        // Slow completer that won't resolve until we tell it to
+        final completer = Completer<List<ClothingAnalysisResult>>();
+        when(
+          () => service.processClothingItem(any()),
+        ).thenAnswer((_) => completer.future);
 
-      // Resolve the hanging first call so the container can dispose cleanly
-      completer.complete([_fakeResult()]);
-      await firstCall;
-    });
+        // Start first call (don't await — it hangs)
+        final firstCall = container
+            .read(aiImportNotifierProvider.notifier)
+            .processFiles([_fakeFile()]);
+
+        // isLoading should be true immediately after kick-off
+        expect(container.read(aiImportNotifierProvider).isLoading, isTrue);
+
+        // Second call while isLoading = true → should be a no-op
+        await container.read(aiImportNotifierProvider.notifier).processFiles([
+          _fakeFile(),
+        ]);
+
+        // Only 1 service call was ever made
+        verify(() => service.processClothingItem(any())).called(1);
+
+        // Resolve the hanging first call so the container can dispose cleanly
+        completer.complete([_fakeResult()]);
+        await firstCall;
+      },
+    );
   });
 
   // ── deleteItem() ───────────────────────────────────────────────────────────
 
   group('deleteItem()', () {
-    test('removes item from group; group remains with remaining items',
-        () async {
-      final service = MockAiClothingAnalyzerService();
-      final container = _makeContainer(service: service);
-      addTearDown(container.dispose);
+    test(
+      'removes item from group; group remains with remaining items',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final container = _makeContainer(service: service);
+        addTearDown(container.dispose);
 
-      await _seedOneGroup(container, service, results: [
-        _fakeResult(name: 'T-Shirt'),
-        _fakeResult(name: 'Jeans'),
-      ]);
+        await _seedOneGroup(
+          container,
+          service,
+          results: [
+            _fakeResult(name: 'T-Shirt'),
+            _fakeResult(name: 'Jeans'),
+          ],
+        );
 
-      container.read(aiImportNotifierProvider.notifier).deleteItem(0, 0);
+        container.read(aiImportNotifierProvider.notifier).deleteItem(0, 0);
 
-      final state = container.read(aiImportNotifierProvider);
-      expect(state.photoGroups.length, 1);
-      expect(state.photoGroups.first.results.length, 1);
-      expect(state.photoGroups.first.results.first.name, 'Jeans');
-    });
+        final state = container.read(aiImportNotifierProvider);
+        expect(state.photoGroups.length, 1);
+        expect(state.photoGroups.first.results.length, 1);
+        expect(state.photoGroups.first.results.first.name, 'Jeans');
+      },
+    );
 
     test('removes entire group when last item is deleted', () async {
       final service = MockAiClothingAnalyzerService();
@@ -346,25 +363,30 @@ void main() {
 
   group('updateItemName()', () {
     test(
-        'updates name at correct group/item position; other items unchanged',
-        () async {
-      final service = MockAiClothingAnalyzerService();
-      final container = _makeContainer(service: service);
-      addTearDown(container.dispose);
+      'updates name at correct group/item position; other items unchanged',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final container = _makeContainer(service: service);
+        addTearDown(container.dispose);
 
-      await _seedOneGroup(container, service, results: [
-        _fakeResult(name: 'T-Shirt'),
-        _fakeResult(name: 'Jeans'),
-      ]);
+        await _seedOneGroup(
+          container,
+          service,
+          results: [
+            _fakeResult(name: 'T-Shirt'),
+            _fakeResult(name: 'Jeans'),
+          ],
+        );
 
-      container
-          .read(aiImportNotifierProvider.notifier)
-          .updateItemName(0, 0, 'Polo');
+        container
+            .read(aiImportNotifierProvider.notifier)
+            .updateItemName(0, 0, 'Polo');
 
-      final state = container.read(aiImportNotifierProvider);
-      expect(state.photoGroups.first.results[0].name, 'Polo');
-      expect(state.photoGroups.first.results[1].name, 'Jeans');
-    });
+        final state = container.read(aiImportNotifierProvider);
+        expect(state.photoGroups.first.results[0].name, 'Polo');
+        expect(state.photoGroups.first.results[1].name, 'Jeans');
+      },
+    );
 
     test('multi-group: update in group 1 does not affect group 0', () async {
       final service = MockAiClothingAnalyzerService();
@@ -373,13 +395,13 @@ void main() {
 
       // Seed two separate groups (one call each).
       _stubServiceSuccess(service, [_fakeResult(name: 'T-Shirt')]);
-      await container
-          .read(aiImportNotifierProvider.notifier)
-          .processFiles([_fakeFile()]);
+      await container.read(aiImportNotifierProvider.notifier).processFiles([
+        _fakeFile(),
+      ]);
       _stubServiceSuccess(service, [_fakeResult(name: 'Jeans')]);
-      await container
-          .read(aiImportNotifierProvider.notifier)
-          .processFiles([_fakeFile()]);
+      await container.read(aiImportNotifierProvider.notifier).processFiles([
+        _fakeFile(),
+      ]);
 
       container
           .read(aiImportNotifierProvider.notifier)
@@ -431,20 +453,21 @@ void main() {
 
   group('saveItems()', () {
     test(
-        'null selectedHouseId: sets errorMessage, does NOT call repository',
-        () async {
-      final itemRepo = MockItemRepository();
-      final container = _makeContainer(itemRepo: itemRepo);
-      addTearDown(container.dispose);
+      'null selectedHouseId: sets errorMessage, does NOT call repository',
+      () async {
+        final itemRepo = MockItemRepository();
+        final container = _makeContainer(itemRepo: itemRepo);
+        addTearDown(container.dispose);
 
-      await container.read(aiImportNotifierProvider.notifier).saveItems();
+        await container.read(aiImportNotifierProvider.notifier).saveItems();
 
-      final state = container.read(aiImportNotifierProvider);
-      expect(state.errorMessage, isNotNull);
-      // easy_localization returns the key itself in tests
-      expect(state.errorMessage, contains('ai_import.no_house_selected'));
-      verifyNever(() => itemRepo.insertMultipleItems(any()));
-    });
+        final state = container.read(aiImportNotifierProvider);
+        expect(state.errorMessage, isNotNull);
+        // easy_localization returns the key itself in tests
+        expect(state.errorMessage, contains('ai_import.no_house_selected'));
+        verifyNever(() => itemRepo.insertMultipleItems(any()));
+      },
+    );
 
     test('empty results: returns early, state unchanged', () async {
       final itemRepo = MockItemRepository();
@@ -459,15 +482,49 @@ void main() {
       await container.read(aiImportNotifierProvider.notifier).saveItems();
 
       verifyNever(() => itemRepo.insertMultipleItems(any()));
-      expect(
-        container.read(aiImportNotifierProvider).isLoading,
-        isFalse,
-      );
+      expect(container.read(aiImportNotifierProvider).isLoading, isFalse);
     });
 
     test(
-        'success: calls insertMultipleItems with correct houseId, aiMetadata non-null, state resets',
-        () async {
+      'success: calls insertMultipleItems with correct houseId, aiMetadata non-null, state resets',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final itemRepo = MockItemRepository();
+        final syncOrchestrator = MockSyncOrchestrator();
+        final container = _makeContainer(
+          service: service,
+          itemRepo: itemRepo,
+          syncOrchestrator: syncOrchestrator,
+        );
+        addTearDown(container.dispose);
+
+        when(
+          () => itemRepo.insertMultipleItems(any()),
+        ).thenAnswer((_) async {});
+        when(() => syncOrchestrator.requestSync()).thenReturn(null);
+
+        await _seedOneGroup(container, service);
+        container
+            .read(aiImportNotifierProvider.notifier)
+            .setSelectedHouseId('house-99');
+
+        await container.read(aiImportNotifierProvider.notifier).saveItems();
+
+        final captured = verify(
+          () => itemRepo.insertMultipleItems(captureAny()),
+        ).captured;
+        final items = captured.first as List<ItemModel>;
+
+        expect(items.length, 1);
+        expect(items.first.houseId, 'house-99');
+        expect(items.first.aiMetadata, isNotNull);
+
+        // State resets after success
+        expect(container.read(aiImportNotifierProvider), const AiImportState());
+      },
+    );
+
+    test('error from repository: sets errorMessage, isLoading false', () async {
       final service = MockAiClothingAnalyzerService();
       final itemRepo = MockItemRepository();
       final syncOrchestrator = MockSyncOrchestrator();
@@ -478,43 +535,9 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      when(() => itemRepo.insertMultipleItems(any()))
-          .thenAnswer((_) async {});
-      when(() => syncOrchestrator.requestSync()).thenReturn(null);
-
-      await _seedOneGroup(container, service);
-      container
-          .read(aiImportNotifierProvider.notifier)
-          .setSelectedHouseId('house-99');
-
-      await container.read(aiImportNotifierProvider.notifier).saveItems();
-
-      final captured =
-          verify(() => itemRepo.insertMultipleItems(captureAny())).captured;
-      final items = captured.first as List<ItemModel>;
-
-      expect(items.length, 1);
-      expect(items.first.houseId, 'house-99');
-      expect(items.first.aiMetadata, isNotNull);
-
-      // State resets after success
-      expect(container.read(aiImportNotifierProvider), const AiImportState());
-    });
-
-    test('error from repository: sets errorMessage, isLoading false',
-        () async {
-      final service = MockAiClothingAnalyzerService();
-      final itemRepo = MockItemRepository();
-      final syncOrchestrator = MockSyncOrchestrator();
-      final container = _makeContainer(
-        service: service,
-        itemRepo: itemRepo,
-        syncOrchestrator: syncOrchestrator,
-      );
-      addTearDown(container.dispose);
-
-      when(() => itemRepo.insertMultipleItems(any()))
-          .thenThrow(Exception('DB write failed'));
+      when(
+        () => itemRepo.insertMultipleItems(any()),
+      ).thenThrow(Exception('DB write failed'));
       when(() => syncOrchestrator.requestSync()).thenReturn(null);
 
       await _seedOneGroup(container, service);
@@ -534,42 +557,44 @@ void main() {
 
   group('saveItemsOnboarding()', () {
     test(
-        'success: calls createHouseWithItems, calls completeAi (saveStep), state resets',
-        () async {
-      final service = MockAiClothingAnalyzerService();
-      final houseRepo = MockHouseRepository();
-      final itemRepo = MockItemRepository();
-      final syncOrchestrator = MockSyncOrchestrator();
-      final onboardingRepo = MockOnboardingRepository();
+      'success: calls createHouseWithItems, calls completeAi (saveStep), state resets',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final houseRepo = MockHouseRepository();
+        final itemRepo = MockItemRepository();
+        final syncOrchestrator = MockSyncOrchestrator();
+        final onboardingRepo = MockOnboardingRepository();
 
-      final container = _makeContainer(
-        service: service,
-        houseRepo: houseRepo,
-        itemRepo: itemRepo,
-        syncOrchestrator: syncOrchestrator,
-        onboardingRepo: onboardingRepo,
-      );
-      addTearDown(container.dispose);
+        final container = _makeContainer(
+          service: service,
+          houseRepo: houseRepo,
+          itemRepo: itemRepo,
+          syncOrchestrator: syncOrchestrator,
+          onboardingRepo: onboardingRepo,
+        );
+        addTearDown(container.dispose);
 
-      when(() => houseRepo.createHouseWithItems(any(), any()))
-          .thenAnswer((_) async => 'new-house-id');
-      when(() => syncOrchestrator.requestSync()).thenReturn(null);
-      _setupOnboardingMock(onboardingRepo);
+        when(
+          () => houseRepo.createHouseWithItems(any(), any()),
+        ).thenAnswer((_) async => 'new-house-id');
+        when(() => syncOrchestrator.requestSync()).thenReturn(null);
+        _setupOnboardingMock(onboardingRepo);
 
-      // Initialise the onboarding provider so completeAi has state to act on
-      await container.read(postLoginOnboardingProvider.future);
+        // Initialise the onboarding provider so completeAi has state to act on
+        await container.read(postLoginOnboardingProvider.future);
 
-      await _seedOneGroup(container, service);
-      await container
-          .read(aiImportNotifierProvider.notifier)
-          .saveItemsOnboarding();
+        await _seedOneGroup(container, service);
+        await container
+            .read(aiImportNotifierProvider.notifier)
+            .saveItemsOnboarding();
 
-      verify(() => houseRepo.createHouseWithItems(any(), any())).called(1);
-      verify(() => onboardingRepo.saveStep(any())).called(1);
+        verify(() => houseRepo.createHouseWithItems(any(), any())).called(1);
+        verify(() => onboardingRepo.saveStep(any())).called(1);
 
-      // State resets after success
-      expect(container.read(aiImportNotifierProvider), const AiImportState());
-    });
+        // State resets after success
+        expect(container.read(aiImportNotifierProvider), const AiImportState());
+      },
+    );
 
     test('empty results: returns early without calling repository', () async {
       final houseRepo = MockHouseRepository();
@@ -582,10 +607,7 @@ void main() {
           .saveItemsOnboarding();
 
       verifyNever(() => houseRepo.createHouseWithItems(any(), any()));
-      expect(
-        container.read(aiImportNotifierProvider).isLoading,
-        isFalse,
-      );
+      expect(container.read(aiImportNotifierProvider).isLoading, isFalse);
     });
   });
 }

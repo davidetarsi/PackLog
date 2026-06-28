@@ -66,7 +66,7 @@ class AppDatabase extends _$AppDatabase {
   /// stato chiamato prima che qualsiasi query raggiunga il DB.
   /// Vedi `_initializePersistence` in `bootstrap.dart`.
   AppDatabase(DbPassphraseService passphraseService)
-      : super(_openConnection(passphraseService.getOrCreate));
+    : super(_openConnection(passphraseService.getOrCreate));
 
   /// Costruttore per test con database personalizzato (in-memory).
   /// Non passa per SQLCipher.

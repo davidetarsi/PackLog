@@ -14,7 +14,9 @@ import 'package:pack_log/features/ai_input/service/ai_clothing_analyzer_service.
 /// Wraps a content string in the minimal OpenAI response envelope.
 String _openAiResponse(String content) => jsonEncode({
   'choices': [
-    {'message': {'content': content}},
+    {
+      'message': {'content': content},
+    },
   ],
 });
 
@@ -106,33 +108,33 @@ void main() {
           '"pattern":"Solid","coverage":"Short-sleeve","fit":"Regular",'
           '"warmth":2,"formality":"Casual","activityTags":["Everyday"]}]';
 
-      test('returns correct ClothingItem list from valid JSON response',
-          () async {
-        final service = _makeService(
-          MockClient(
-            (_) async =>
-                http.Response(_openAiResponse(_validItemsJson), 200),
-          ),
-        );
+      test(
+        'returns correct ClothingItem list from valid JSON response',
+        () async {
+          final service = _makeService(
+            MockClient(
+              (_) async => http.Response(_openAiResponse(_validItemsJson), 200),
+            ),
+          );
 
-        final items = await service.processClothingItem(_fakeImageFile());
+          final items = await service.processClothingItem(_fakeImageFile());
 
-        expect(items, hasLength(1));
-        expect(items.first.name, 'T-Shirt');
-        expect(items.first.category, 'Upper Body');
-        expect(items.first.subCategory, 'T-Shirt');
-        expect(items.first.baseColor, 'Bianco');
-        expect(items.first.warmth, 2);
-        expect(items.first.activityTags, ['Everyday']);
-      });
+          expect(items, hasLength(1));
+          expect(items.first.name, 'T-Shirt');
+          expect(items.first.category, 'Upper Body');
+          expect(items.first.subCategory, 'T-Shirt');
+          expect(items.first.baseColor, 'Bianco');
+          expect(items.first.warmth, 2);
+          expect(items.first.activityTags, ['Everyday']);
+        },
+      );
 
       test('strips markdown fences from content before parsing', () async {
         // GPT sometimes wraps its JSON output in ```json ... ``` fences.
         const fencedContent = '```json\n$_validItemsJson\n```';
         final service = _makeService(
           MockClient(
-            (_) async =>
-                http.Response(_openAiResponse(fencedContent), 200),
+            (_) async => http.Response(_openAiResponse(fencedContent), 200),
           ),
         );
 
@@ -142,36 +144,38 @@ void main() {
         expect(items.first.name, 'T-Shirt');
       });
 
-      test('throws ResponseParsingException on malformed JSON content',
-          () async {
-        final service = _makeService(
-          MockClient(
-            (_) async =>
-                http.Response(_openAiResponse('not valid json'), 200),
-          ),
-        );
+      test(
+        'throws ResponseParsingException on malformed JSON content',
+        () async {
+          final service = _makeService(
+            MockClient(
+              (_) async =>
+                  http.Response(_openAiResponse('not valid json'), 200),
+            ),
+          );
 
-        await expectLater(
-          service.processClothingItem(_fakeImageFile()),
-          throwsA(isA<ResponseParsingException>()),
-        );
-      });
+          await expectLater(
+            service.processClothingItem(_fakeImageFile()),
+            throwsA(isA<ResponseParsingException>()),
+          );
+        },
+      );
 
       test(
-          'throws ResponseParsingException when choices array is empty',
-          () async {
-        final service = _makeService(
-          MockClient(
-            (_) async =>
-                http.Response(jsonEncode({'choices': []}), 200),
-          ),
-        );
+        'throws ResponseParsingException when choices array is empty',
+        () async {
+          final service = _makeService(
+            MockClient(
+              (_) async => http.Response(jsonEncode({'choices': []}), 200),
+            ),
+          );
 
-        await expectLater(
-          service.processClothingItem(_fakeImageFile()),
-          throwsA(isA<ResponseParsingException>()),
-        );
-      });
+          await expectLater(
+            service.processClothingItem(_fakeImageFile()),
+            throwsA(isA<ResponseParsingException>()),
+          );
+        },
+      );
     });
 
     group('Body sent to proxy', () {
@@ -183,11 +187,13 @@ void main() {
             MockClient((req) async {
               capturedRequest = req;
               return http.Response(
-                _openAiResponse('[{"name":"T","category":"Upper Body",'
-                    '"subCategory":"T-Shirt","baseColor":"Bianco",'
-                    '"pattern":"Solid","coverage":"Short-sleeve",'
-                    '"fit":"Regular","warmth":2,"formality":"Casual",'
-                    '"activityTags":["Everyday"]}]'),
+                _openAiResponse(
+                  '[{"name":"T","category":"Upper Body",'
+                  '"subCategory":"T-Shirt","baseColor":"Bianco",'
+                  '"pattern":"Solid","coverage":"Short-sleeve",'
+                  '"fit":"Regular","warmth":2,"formality":"Casual",'
+                  '"activityTags":["Everyday"]}]',
+                ),
                 200,
               );
             }),
@@ -196,7 +202,8 @@ void main() {
           await service.processClothingItem(_fakeImageFile());
 
           expect(capturedRequest, isNotNull);
-          final body = jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
+          final body =
+              jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
           // Solo image_base64. Tutto il resto è server-side.
           expect(body.keys, ['image_base64']);
           expect(body['image_base64'], isA<String>());

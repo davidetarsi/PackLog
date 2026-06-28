@@ -32,41 +32,34 @@ void main() {
       );
     });
 
-    test(
-      'markLuggageAsSynced overwrites updatedAt with server timestamp '
-      '(post fix #6: server-side updated_at)',
-      () async {
-        await database.luggagesDao.insertLuggage(
-          LuggagesCompanion.insert(
-            id: 'l-server-ts',
-            houseId: houseId,
-            name: 'Zaino',
-            sizeType: LuggageSize.cabinBaggage,
-            createdAt: DateTime(2026, 5, 1, 7, 0),
-            updatedAt: DateTime(2026, 5, 1, 8, 0),
-            syncStatus: const Value(SyncStatus.pendingUpdate),
-          ),
-        );
+    test('markLuggageAsSynced overwrites updatedAt with server timestamp '
+        '(post fix #6: server-side updated_at)', () async {
+      await database.luggagesDao.insertLuggage(
+        LuggagesCompanion.insert(
+          id: 'l-server-ts',
+          houseId: houseId,
+          name: 'Zaino',
+          sizeType: LuggageSize.cabinBaggage,
+          createdAt: DateTime(2026, 5, 1, 7, 0),
+          updatedAt: DateTime(2026, 5, 1, 8, 0),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
 
-        final serverTs = DateTime(2026, 5, 1, 12, 0);
-        await database.luggagesDao.markLuggageAsSynced(
-          'l-server-ts',
-          serverTs,
-        );
+      final serverTs = DateTime(2026, 5, 1, 12, 0);
+      await database.luggagesDao.markLuggageAsSynced('l-server-ts', serverTs);
 
-        final luggage =
-            await database.luggagesDao.getLuggageById('l-server-ts');
-        expect(
-          luggage!.updatedAt,
-          equals(serverTs),
-          reason:
-              'updatedAt deve essere allineato al server timestamp per '
-              'rendere immune la LWW al clock drift del client',
-        );
-        expect(luggage.syncStatus, equals(SyncStatus.synced));
-        expect(luggage.lastSyncedAt, equals(serverTs));
-      },
-    );
+      final luggage = await database.luggagesDao.getLuggageById('l-server-ts');
+      expect(
+        luggage!.updatedAt,
+        equals(serverTs),
+        reason:
+            'updatedAt deve essere allineato al server timestamp per '
+            'rendere immune la LWW al clock drift del client',
+      );
+      expect(luggage.syncStatus, equals(SyncStatus.synced));
+      expect(luggage.lastSyncedAt, equals(serverTs));
+    });
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await database.luggagesDao.insertLuggage(
@@ -120,38 +113,43 @@ void main() {
       expect(allRows, isEmpty);
     });
 
-    test('updateLuggage preserves sync metadata when companion omits sync fields', () async {
-      final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
-      await database.luggagesDao.insertLuggage(
-        LuggagesCompanion.insert(
-          id: 'l-keep-sync',
-          houseId: houseId,
-          name: 'Original',
-          sizeType: LuggageSize.cabinBaggage,
-          createdAt: DateTime(2026, 5, 1, 7, 0),
-          updatedAt: DateTime(2026, 5, 1, 7, 0),
-          syncStatus: const Value(SyncStatus.synced),
-          syncRetryCount: const Value(3),
-          lastSyncedAt: Value(originalSyncedAt),
-        ),
-      );
+    test(
+      'updateLuggage preserves sync metadata when companion omits sync fields',
+      () async {
+        final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
+        await database.luggagesDao.insertLuggage(
+          LuggagesCompanion.insert(
+            id: 'l-keep-sync',
+            houseId: houseId,
+            name: 'Original',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: DateTime(2026, 5, 1, 7, 0),
+            updatedAt: DateTime(2026, 5, 1, 7, 0),
+            syncStatus: const Value(SyncStatus.synced),
+            syncRetryCount: const Value(3),
+            lastSyncedAt: Value(originalSyncedAt),
+          ),
+        );
 
-      await database.luggagesDao.updateLuggage(
-        LuggagesCompanion(
-          id: const Value('l-keep-sync'),
-          houseId: Value(houseId),
-          name: const Value('Renamed'),
-          sizeType: const Value(LuggageSize.cabinBaggage),
-          createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
-          updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
-        ),
-      );
+        await database.luggagesDao.updateLuggage(
+          LuggagesCompanion(
+            id: const Value('l-keep-sync'),
+            houseId: Value(houseId),
+            name: const Value('Renamed'),
+            sizeType: const Value(LuggageSize.cabinBaggage),
+            createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
+            updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
+          ),
+        );
 
-      final luggage = await database.luggagesDao.getLuggageById('l-keep-sync');
-      expect(luggage!.name, equals('Renamed'));
-      expect(luggage.lastSyncedAt, equals(originalSyncedAt));
-      expect(luggage.syncRetryCount, equals(3));
-      expect(luggage.syncStatus, equals(SyncStatus.pendingUpdate));
-    });
+        final luggage = await database.luggagesDao.getLuggageById(
+          'l-keep-sync',
+        );
+        expect(luggage!.name, equals('Renamed'));
+        expect(luggage.lastSyncedAt, equals(originalSyncedAt));
+        expect(luggage.syncRetryCount, equals(3));
+        expect(luggage.syncStatus, equals(SyncStatus.pendingUpdate));
+      },
+    );
   });
 }

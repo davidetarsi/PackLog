@@ -15,40 +15,45 @@ void main() {
   setUp(() {
     mock = _MockSecureStorage();
     service = DbPassphraseService(secure: mock);
-    when(() => mock.read(key: any(named: 'key')))
-        .thenAnswer((_) async => null);
-    when(() => mock.write(
-          key: any(named: 'key'),
-          value: any(named: 'value'),
-        )).thenAnswer((_) async {});
+    when(() => mock.read(key: any(named: 'key'))).thenAnswer((_) async => null);
+    when(
+      () => mock.write(
+        key: any(named: 'key'),
+        value: any(named: 'value'),
+      ),
+    ).thenAnswer((_) async {});
   });
 
-  test('first call generates a new 64-hex-char passphrase and writes it',
-      () async {
-    final pass = await service.getOrCreate();
+  test(
+    'first call generates a new 64-hex-char passphrase and writes it',
+    () async {
+      final pass = await service.getOrCreate();
 
-    expect(pass, isA<String>());
-    expect(pass.length, 64, reason: '32 bytes hex-encoded → 64 char');
-    expect(RegExp(r'^[0-9a-f]+$').hasMatch(pass), true);
-    verify(() => mock.write(
-          key: DbPassphraseService.kStorageKey,
-          value: pass,
-        )).called(1);
-  });
+      expect(pass, isA<String>());
+      expect(pass.length, 64, reason: '32 bytes hex-encoded → 64 char');
+      expect(RegExp(r'^[0-9a-f]+$').hasMatch(pass), true);
+      verify(
+        () => mock.write(key: DbPassphraseService.kStorageKey, value: pass),
+      ).called(1);
+    },
+  );
 
   test('subsequent calls return the existing passphrase, no write', () async {
     const existing =
         'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-    when(() => mock.read(key: DbPassphraseService.kStorageKey))
-        .thenAnswer((_) async => existing);
+    when(
+      () => mock.read(key: DbPassphraseService.kStorageKey),
+    ).thenAnswer((_) async => existing);
 
     final pass = await service.getOrCreate();
 
     expect(pass, existing);
-    verifyNever(() => mock.write(
-          key: any(named: 'key'),
-          value: any(named: 'value'),
-        ));
+    verifyNever(
+      () => mock.write(
+        key: any(named: 'key'),
+        value: any(named: 'value'),
+      ),
+    );
   });
 
   test('two different services generate different passphrases', () async {
@@ -56,22 +61,28 @@ void main() {
     final m2 = _MockSecureStorage();
     for (final m in [m1, m2]) {
       when(() => m.read(key: any(named: 'key'))).thenAnswer((_) async => null);
-      when(() => m.write(
-            key: any(named: 'key'),
-            value: any(named: 'value'),
-          )).thenAnswer((_) async {});
+      when(
+        () => m.write(
+          key: any(named: 'key'),
+          value: any(named: 'value'),
+        ),
+      ).thenAnswer((_) async {});
     }
     final s1 = DbPassphraseService(secure: m1);
     final s2 = DbPassphraseService(secure: m2);
     final p1 = await s1.getOrCreate();
     final p2 = await s2.getOrCreate();
-    expect(p1, isNot(equals(p2)),
-        reason: 'Random generator must produce different values');
+    expect(
+      p1,
+      isNot(equals(p2)),
+      reason: 'Random generator must produce different values',
+    );
   });
 
   test('throws PassphraseUnavailableException on read failure', () async {
-    when(() => mock.read(key: any(named: 'key')))
-        .thenThrow(Exception('keystore broken'));
+    when(
+      () => mock.read(key: any(named: 'key')),
+    ).thenThrow(Exception('keystore broken'));
 
     expect(
       () => service.getOrCreate(),
@@ -80,10 +91,12 @@ void main() {
   });
 
   test('throws PassphraseUnavailableException on write failure', () async {
-    when(() => mock.write(
-          key: any(named: 'key'),
-          value: any(named: 'value'),
-        )).thenThrow(Exception('write denied'));
+    when(
+      () => mock.write(
+        key: any(named: 'key'),
+        value: any(named: 'value'),
+      ),
+    ).thenThrow(Exception('write denied'));
 
     expect(
       () => service.getOrCreate(),
@@ -98,8 +111,9 @@ void main() {
   test('exists() returns true after getOrCreate', () async {
     const existing =
         'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
-    when(() => mock.read(key: DbPassphraseService.kStorageKey))
-        .thenAnswer((_) async => existing);
+    when(
+      () => mock.read(key: DbPassphraseService.kStorageKey),
+    ).thenAnswer((_) async => existing);
     expect(await service.exists(), true);
   });
 }

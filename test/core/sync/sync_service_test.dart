@@ -244,116 +244,122 @@ void main() {
       expect(okHouse!.syncStatus, equals(SyncStatus.synced));
     });
 
-    test('processes in FK-safe order: houses → spaces → luggages → items → trips', () async {
-      final callOrder = <String>[];
+    test(
+      'processes in FK-safe order: houses → spaces → luggages → items → trips',
+      () async {
+        final callOrder = <String>[];
 
-      await insertHouse('fk-house');
-      await database.spacesDao.insertSpace(
-        SpacesCompanion.insert(
-          id: 'fk-space',
-          houseId: 'fk-house',
-          name: 'Armadio',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      await database.luggagesDao.insertLuggage(
-        LuggagesCompanion.insert(
-          id: 'fk-luggage',
-          houseId: 'fk-house',
-          name: 'Zaino',
-          sizeType: LuggageSize.cabinBaggage,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      await insertItem('fk-item', 'fk-house');
-      await insertTrip('fk-trip');
+        await insertHouse('fk-house');
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: 'fk-space',
+            houseId: 'fk-house',
+            name: 'Armadio',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        await database.luggagesDao.insertLuggage(
+          LuggagesCompanion.insert(
+            id: 'fk-luggage',
+            houseId: 'fk-house',
+            name: 'Zaino',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        await insertItem('fk-item', 'fk-house');
+        await insertTrip('fk-trip');
 
-      when(
-        () => mockRemote.fetchHouseById(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async {
-        callOrder.add('house');
-        return null;
-      });
-      when(
-        () => mockRemote.upsertHouse(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
+        when(
+          () => mockRemote.fetchHouseById(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async {
+          callOrder.add('house');
+          return null;
+        });
+        when(
+          () => mockRemote.upsertHouse(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
-      when(
-        () => mockRemote.fetchSpaceById(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async {
-        callOrder.add('space');
-        return null;
-      });
-      when(
-        () => mockRemote.upsertSpace(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
+        when(
+          () => mockRemote.fetchSpaceById(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async {
+          callOrder.add('space');
+          return null;
+        });
+        when(
+          () => mockRemote.upsertSpace(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
-      when(
-        () => mockRemote.fetchLuggageById(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async {
-        callOrder.add('luggage');
-        return null;
-      });
-      when(
-        () => mockRemote.upsertLuggage(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
+        when(
+          () => mockRemote.fetchLuggageById(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async {
+          callOrder.add('luggage');
+          return null;
+        });
+        when(
+          () => mockRemote.upsertLuggage(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
-      when(
-        () => mockRemote.fetchItemById(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async {
-        callOrder.add('item');
-        return null;
-      });
-      when(
-        () => mockRemote.upsertItem(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
+        when(
+          () => mockRemote.fetchItemById(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async {
+          callOrder.add('item');
+          return null;
+        });
+        when(
+          () => mockRemote.upsertItem(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
-      when(
-        () => mockRemote.fetchTripById(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async {
-        callOrder.add('trip');
-        return null;
-      });
-      when(
-        () => mockRemote.upsertTrip(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
+        when(
+          () => mockRemote.fetchTripById(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async {
+          callOrder.add('trip');
+          return null;
+        });
+        when(
+          () => mockRemote.upsertTrip(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async => DateTime.utc(2026, 1, 1));
 
-      await syncService.processQueue();
+        await syncService.processQueue();
 
-      expect(callOrder, equals(['house', 'space', 'luggage', 'item', 'trip']));
-    });
+        expect(
+          callOrder,
+          equals(['house', 'space', 'luggage', 'item', 'trip']),
+        );
+      },
+    );
   });
 
   group('SyncService - fullPull tombstone propagation', () {
@@ -480,7 +486,9 @@ void main() {
       );
 
       stubFetchAll(
-        houses: [houseJson('h-1', updatedAt: t2, createdAt: t1, isDeleted: true)],
+        houses: [
+          houseJson('h-1', updatedAt: t2, createdAt: t1, isDeleted: true),
+        ],
       );
 
       await syncService.fullPull('user-1');
@@ -516,7 +524,15 @@ void main() {
       );
 
       stubFetchAll(
-        items: [itemJson('i-1', 'h-parent', updatedAt: t2, createdAt: t1, isDeleted: true)],
+        items: [
+          itemJson(
+            'i-1',
+            'h-parent',
+            updatedAt: t2,
+            createdAt: t1,
+            isDeleted: true,
+          ),
+        ],
       );
 
       await syncService.fullPull('user-1');
@@ -564,30 +580,33 @@ void main() {
       expect(house, isNull);
     });
 
-    test('keeps local alive when local is newer than remote tombstone', () async {
-      final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
-      final t2 = DateTime(2026, 5, 1, 14, 0).toUtc();
+    test(
+      'keeps local alive when local is newer than remote tombstone',
+      () async {
+        final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
+        final t2 = DateTime(2026, 5, 1, 14, 0).toUtc();
 
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: 'h-1',
-          name: 'House 1',
-          createdAt: t1,
-          updatedAt: t2,
-          syncStatus: const Value(SyncStatus.pendingUpdate),
-        ),
-      );
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'h-1',
+            name: 'House 1',
+            createdAt: t1,
+            updatedAt: t2,
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+          ),
+        );
 
-      stubFetchAll(
-        houses: [houseJson('h-1', updatedAt: t1, isDeleted: true)],
-      );
+        stubFetchAll(
+          houses: [houseJson('h-1', updatedAt: t1, isDeleted: true)],
+        );
 
-      await syncService.fullPull('user-1');
+        await syncService.fullPull('user-1');
 
-      final house = await database.housesDao.findHouseById('h-1');
-      expect(house, isNotNull);
-      expect(house!.isDeleted, isFalse);
-    });
+        final house = await database.housesDao.findHouseById('h-1');
+        expect(house, isNotNull);
+        expect(house!.isDeleted, isFalse);
+      },
+    );
 
     test('saves item with null spaceId when remote space_id is unknown', () async {
       final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
@@ -605,12 +624,7 @@ void main() {
 
       stubFetchAll(
         items: [
-          itemJson(
-            'i-1',
-            'h-parent',
-            updatedAt: t1,
-            spaceId: 'unknown-space',
-          ),
+          itemJson('i-1', 'h-parent', updatedAt: t1, spaceId: 'unknown-space'),
         ],
       );
 
@@ -649,14 +663,7 @@ void main() {
       );
 
       stubFetchAll(
-        items: [
-          itemJson(
-            'i-1',
-            'h-parent',
-            updatedAt: t1,
-            spaceId: 'space-1',
-          ),
-        ],
+        items: [itemJson('i-1', 'h-parent', updatedAt: t1, spaceId: 'space-1')],
       );
 
       await syncService.fullPull('user-1');
@@ -704,67 +711,70 @@ void main() {
       );
     });
 
-    test('updates local item with null spaceId when remote points to unknown space', () async {
-      final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
-      final t2 = DateTime(2026, 5, 1, 14, 0).toUtc();
+    test(
+      'updates local item with null spaceId when remote points to unknown space',
+      () async {
+        final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
+        final t2 = DateTime(2026, 5, 1, 14, 0).toUtc();
 
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: 'h-parent',
-          name: 'House',
-          createdAt: t1,
-          updatedAt: t1,
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
-      // Local has a space, and the item starts assigned to it.
-      await database.spacesDao.insertSpace(
-        SpacesCompanion.insert(
-          id: 'space-local',
-          houseId: 'h-parent',
-          name: 'Armadio',
-          createdAt: t1,
-          updatedAt: t1,
-        ),
-      );
-      await database.itemsDao.insertItem(
-        ItemsCompanion.insert(
-          id: 'i-1',
-          houseId: 'h-parent',
-          name: 'Item',
-          category: ItemCategory.varie,
-          createdAt: t1,
-          updatedAt: t1,
-          spaceId: const Value('space-local'),
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
-
-      // Remote update is newer and points to a space we don't know locally.
-      stubFetchAll(
-        items: [
-          itemJson(
-            'i-1',
-            'h-parent',
-            updatedAt: t2,
-            spaceId: 'unknown-space',
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'h-parent',
+            name: 'House',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
           ),
-        ],
-      );
+        );
+        // Local has a space, and the item starts assigned to it.
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: 'space-local',
+            houseId: 'h-parent',
+            name: 'Armadio',
+            createdAt: t1,
+            updatedAt: t1,
+          ),
+        );
+        await database.itemsDao.insertItem(
+          ItemsCompanion.insert(
+            id: 'i-1',
+            houseId: 'h-parent',
+            name: 'Item',
+            category: ItemCategory.varie,
+            createdAt: t1,
+            updatedAt: t1,
+            spaceId: const Value('space-local'),
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
 
-      await syncService.fullPull('user-1');
+        // Remote update is newer and points to a space we don't know locally.
+        stubFetchAll(
+          items: [
+            itemJson(
+              'i-1',
+              'h-parent',
+              updatedAt: t2,
+              spaceId: 'unknown-space',
+            ),
+          ],
+        );
 
-      final item = await database.itemsDao.findItemById('i-1');
-      expect(item, isNotNull);
-      expect(
-        item!.spaceId,
-        isNull,
-        reason:
-            'unknown remote space must land the item in the general pool, not block the update entirely',
-      );
-      // Sanity: the update went through (updatedAt reflects remote ts).
-      expect(item.updatedAt.toUtc(), equals(t2));
-    });
+        await syncService.fullPull('user-1');
+
+        final item = await database.itemsDao.findItemById('i-1');
+        expect(item, isNotNull);
+        expect(
+          item!.spaceId,
+          isNull,
+          reason:
+              'unknown remote space must land the item in the general pool, not block the update entirely',
+        );
+        // Sanity: the update went through (updatedAt reflects remote ts).
+        expect(item.updatedAt.toUtc(), equals(t2));
+      },
+    );
   });
 
   group('SyncService - trip items checklist sync', () {
@@ -839,14 +849,18 @@ void main() {
       final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
 
       stubEmptyFetches();
-      when(
-        () => mockRemote.fetchAllTripsByUserId('user-1'),
-      ).thenAnswer((_) async => [
-            tripJsonWithItems('t-1', updatedAt: t1, items: [
+      when(() => mockRemote.fetchAllTripsByUserId('user-1')).thenAnswer(
+        (_) async => [
+          tripJsonWithItems(
+            't-1',
+            updatedAt: t1,
+            items: [
               tripItemPayload('ti-1', name: 'T-shirt', isChecked: true),
               tripItemPayload('ti-2', name: 'Pants', quantity: 2),
-            ]),
-          ]);
+            ],
+          ),
+        ],
+      );
 
       await syncService.fullPull('user-1');
 
@@ -861,222 +875,243 @@ void main() {
       expect(pants.isChecked, isFalse);
     });
 
-    test('fullPull replaces local trip items when remote update arrives', () async {
-      final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
-      final t2 = DateTime(2026, 5, 1, 14, 0).toUtc();
+    test(
+      'fullPull replaces local trip items when remote update arrives',
+      () async {
+        final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
+        final t2 = DateTime(2026, 5, 1, 14, 0).toUtc();
 
-      // Local trip already has an item (snapshot of an earlier session).
-      await database.tripsDao.insertTrip(
-        TripsCompanion.insert(
-          id: 't-1',
-          name: 'Trip',
-          createdAt: t1,
-          updatedAt: t1,
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
-      await database.tripsDao.insertTripItem(
-        TripItemEntriesCompanion.insert(
-          id: 'ti-old',
-          tripId: 't-1',
-          name: 'Old Item',
-          category: ItemCategory.vestiti,
-        ),
-      );
+        // Local trip already has an item (snapshot of an earlier session).
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: 't-1',
+            name: 'Trip',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.tripsDao.insertTripItem(
+          TripItemEntriesCompanion.insert(
+            id: 'ti-old',
+            tripId: 't-1',
+            name: 'Old Item',
+            category: ItemCategory.vestiti,
+          ),
+        );
 
-      // Remote update brings a completely different set of items.
-      stubEmptyFetches();
-      when(
-        () => mockRemote.fetchAllTripsByUserId('user-1'),
-      ).thenAnswer((_) async => [
-            tripJsonWithItems('t-1', updatedAt: t2, items: [
-              tripItemPayload('ti-new-1', name: 'New A', isChecked: true),
-              tripItemPayload('ti-new-2', name: 'New B'),
-            ]),
-          ]);
+        // Remote update brings a completely different set of items.
+        stubEmptyFetches();
+        when(() => mockRemote.fetchAllTripsByUserId('user-1')).thenAnswer(
+          (_) async => [
+            tripJsonWithItems(
+              't-1',
+              updatedAt: t2,
+              items: [
+                tripItemPayload('ti-new-1', name: 'New A', isChecked: true),
+                tripItemPayload('ti-new-2', name: 'New B'),
+              ],
+            ),
+          ],
+        );
 
-      await syncService.fullPull('user-1');
+        await syncService.fullPull('user-1');
 
-      final entries = await database.tripsDao.getTripItemsByTripId('t-1');
-      final ids = entries.map((e) => e.id).toSet();
-      expect(
-        ids,
-        equals({'ti-new-1', 'ti-new-2'}),
-        reason: 'old local snapshot must be replaced by the remote items',
-      );
-      expect(entries.firstWhere((e) => e.id == 'ti-new-1').isChecked, isTrue);
-    });
+        final entries = await database.tripsDao.getTripItemsByTripId('t-1');
+        final ids = entries.map((e) => e.id).toSet();
+        expect(
+          ids,
+          equals({'ti-new-1', 'ti-new-2'}),
+          reason: 'old local snapshot must be replaced by the remote items',
+        );
+        expect(entries.firstWhere((e) => e.id == 'ti-new-1').isChecked, isTrue);
+      },
+    );
 
-    test('processQueue serializes trip items into the pushed payload', () async {
-      final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
+    test(
+      'processQueue serializes trip items into the pushed payload',
+      () async {
+        final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
 
-      await database.tripsDao.insertTrip(
-        TripsCompanion.insert(
-          id: 'trip-push',
-          name: 'Trip',
-          createdAt: t1,
-          updatedAt: t1,
-        ),
-      );
-      await database.tripsDao.insertTripItem(
-        TripItemEntriesCompanion.insert(
-          id: 'ti-a',
-          tripId: 'trip-push',
-          name: 'Item A',
-          category: ItemCategory.vestiti,
-          quantity: const Value(2),
-          isChecked: const Value(true),
-        ),
-      );
-      await database.tripsDao.insertTripItem(
-        TripItemEntriesCompanion.insert(
-          id: 'ti-b',
-          tripId: 'trip-push',
-          name: 'Item B',
-          category: ItemCategory.elettronica,
-          originHouseId: const Value('h-origin'),
-        ),
-      );
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: 'trip-push',
+            name: 'Trip',
+            createdAt: t1,
+            updatedAt: t1,
+          ),
+        );
+        await database.tripsDao.insertTripItem(
+          TripItemEntriesCompanion.insert(
+            id: 'ti-a',
+            tripId: 'trip-push',
+            name: 'Item A',
+            category: ItemCategory.vestiti,
+            quantity: const Value(2),
+            isChecked: const Value(true),
+          ),
+        );
+        await database.tripsDao.insertTripItem(
+          TripItemEntriesCompanion.insert(
+            id: 'ti-b',
+            tripId: 'trip-push',
+            name: 'Item B',
+            category: ItemCategory.elettronica,
+            originHouseId: const Value('h-origin'),
+          ),
+        );
 
-      Map<String, dynamic>? capturedData;
-      when(
-        () => mockRemote.fetchTripById(
-          'trip-push',
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async => null);
-      when(
-        () => mockRemote.upsertTrip(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((invocation) async {
-        capturedData =
-            invocation.positionalArguments[0] as Map<String, dynamic>;
-        return DateTime.utc(2026, 1, 1);
-      });
+        Map<String, dynamic>? capturedData;
+        when(
+          () => mockRemote.fetchTripById(
+            'trip-push',
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async => null);
+        when(
+          () => mockRemote.upsertTrip(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((invocation) async {
+          capturedData =
+              invocation.positionalArguments[0] as Map<String, dynamic>;
+          return DateTime.utc(2026, 1, 1);
+        });
 
-      await syncService.processQueue();
+        await syncService.processQueue();
 
-      expect(capturedData, isNotNull, reason: 'upsertTrip must be called');
-      final items = capturedData!['items'] as List<dynamic>?;
-      expect(items, isNotNull, reason: 'trip payload must include items array');
-      expect(items, hasLength(2));
-      final byId = <String, Map<dynamic, dynamic>>{
-        for (final m in items!) (m as Map)['id'] as String: m,
-      };
-      expect(byId['ti-a']!['name'], equals('Item A'));
-      expect(byId['ti-a']!['is_checked'], isTrue);
-      expect(byId['ti-a']!['quantity'], equals(2));
-      expect(byId['ti-a']!['category'], equals('vestiti'));
-      expect(byId['ti-b']!['origin_house_id'], equals('h-origin'));
-      expect(byId['ti-b']!['is_checked'], isFalse);
-    });
+        expect(capturedData, isNotNull, reason: 'upsertTrip must be called');
+        final items = capturedData!['items'] as List<dynamic>?;
+        expect(
+          items,
+          isNotNull,
+          reason: 'trip payload must include items array',
+        );
+        expect(items, hasLength(2));
+        final byId = <String, Map<dynamic, dynamic>>{
+          for (final m in items!) (m as Map)['id'] as String: m,
+        };
+        expect(byId['ti-a']!['name'], equals('Item A'));
+        expect(byId['ti-a']!['is_checked'], isTrue);
+        expect(byId['ti-a']!['quantity'], equals(2));
+        expect(byId['ti-a']!['category'], equals('vestiti'));
+        expect(byId['ti-b']!['origin_house_id'], equals('h-origin'));
+        expect(byId['ti-b']!['is_checked'], isFalse);
+      },
+    );
   });
 
   group('SyncService - account lifecycle', () {
-    test('wipeAllUserData clears all local entities (houses → trip entries)', () async {
-      final now = DateTime.now();
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: 'h-wipe',
-          name: 'House',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      await database.spacesDao.insertSpace(
-        SpacesCompanion.insert(
-          id: 's-wipe',
-          houseId: 'h-wipe',
-          name: 'Armadio',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      await database.luggagesDao.insertLuggage(
-        LuggagesCompanion.insert(
-          id: 'l-wipe',
-          houseId: 'h-wipe',
-          name: 'Zaino',
-          sizeType: LuggageSize.cabinBaggage,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      await database.itemsDao.insertItem(
-        ItemsCompanion.insert(
-          id: 'i-wipe',
-          houseId: 'h-wipe',
-          name: 'Item',
-          category: ItemCategory.varie,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      await database.tripsDao.insertTrip(
-        TripsCompanion.insert(
-          id: 't-wipe',
-          name: 'Trip',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
+    test(
+      'wipeAllUserData clears all local entities (houses → trip entries)',
+      () async {
+        final now = DateTime.now();
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'h-wipe',
+            name: 'House',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: 's-wipe',
+            houseId: 'h-wipe',
+            name: 'Armadio',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        await database.luggagesDao.insertLuggage(
+          LuggagesCompanion.insert(
+            id: 'l-wipe',
+            houseId: 'h-wipe',
+            name: 'Zaino',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        await database.itemsDao.insertItem(
+          ItemsCompanion.insert(
+            id: 'i-wipe',
+            houseId: 'h-wipe',
+            name: 'Item',
+            category: ItemCategory.varie,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: 't-wipe',
+            name: 'Trip',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
 
-      await syncService.wipeAllUserData();
+        await syncService.wipeAllUserData();
 
-      expect(await database.select(database.houses).get(), isEmpty);
-      expect(await database.select(database.spaces).get(), isEmpty);
-      expect(await database.select(database.luggages).get(), isEmpty);
-      expect(await database.select(database.items).get(), isEmpty);
-      expect(await database.select(database.trips).get(), isEmpty);
-      expect(
-        await database.select(database.tripItemEntries).get(),
-        isEmpty,
-        reason: 'cascade must purge snapshots too',
-      );
-    });
+        expect(await database.select(database.houses).get(), isEmpty);
+        expect(await database.select(database.spaces).get(), isEmpty);
+        expect(await database.select(database.luggages).get(), isEmpty);
+        expect(await database.select(database.items).get(), isEmpty);
+        expect(await database.select(database.trips).get(), isEmpty);
+        expect(
+          await database.select(database.tripItemEntries).get(),
+          isEmpty,
+          reason: 'cascade must purge snapshots too',
+        );
+      },
+    );
 
-    test('countPendingChanges sums pending records across all entities', () async {
-      final now = DateTime.now();
-      // 1 house pendingCreate (default)
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: 'h-pending',
-          name: 'House',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      // 1 trip pendingCreate (default)
-      await database.tripsDao.insertTrip(
-        TripsCompanion.insert(
-          id: 't-pending',
-          name: 'Trip',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      // 1 item synced → NOT pending
-      await database.itemsDao.insertItem(
-        ItemsCompanion.insert(
-          id: 'i-synced',
-          houseId: 'h-pending',
-          name: 'Item',
-          category: ItemCategory.varie,
-          createdAt: now,
-          updatedAt: now,
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
+    test(
+      'countPendingChanges sums pending records across all entities',
+      () async {
+        final now = DateTime.now();
+        // 1 house pendingCreate (default)
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'h-pending',
+            name: 'House',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        // 1 trip pendingCreate (default)
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: 't-pending',
+            name: 'Trip',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        // 1 item synced → NOT pending
+        await database.itemsDao.insertItem(
+          ItemsCompanion.insert(
+            id: 'i-synced',
+            houseId: 'h-pending',
+            name: 'Item',
+            category: ItemCategory.varie,
+            createdAt: now,
+            updatedAt: now,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
 
-      final count = await syncService.countPendingChanges();
-      expect(
-        count,
-        equals(2),
-        reason: 'should count house + trip (pendingCreate), not the synced item',
-      );
-    });
+        final count = await syncService.countPendingChanges();
+        expect(
+          count,
+          equals(2),
+          reason:
+              'should count house + trip (pendingCreate), not the synced item',
+        );
+      },
+    );
   });
 
   group('SyncService - spaces sync', () {
@@ -1182,17 +1217,17 @@ void main() {
       );
 
       stubEmptyFetches();
-      when(
-        () => mockRemote.fetchAllSpacesByUserId('user-1'),
-      ).thenAnswer((_) async => [
-            spaceJson(
-              's-1',
-              'h-parent',
-              updatedAt: t1,
-              name: 'Garage',
-              iconName: 'garage',
-            ),
-          ]);
+      when(() => mockRemote.fetchAllSpacesByUserId('user-1')).thenAnswer(
+        (_) async => [
+          spaceJson(
+            's-1',
+            'h-parent',
+            updatedAt: t1,
+            name: 'Garage',
+            iconName: 'garage',
+          ),
+        ],
+      );
 
       await syncService.fullPull('user-1');
 
@@ -1203,46 +1238,49 @@ void main() {
       expect(space.houseId, equals('h-parent'));
     });
 
-    test('fullPull soft-deletes local space when remote returns a tombstone', () async {
-      final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
-      final t2 = DateTime(2026, 5, 1, 14, 0).toUtc();
+    test(
+      'fullPull soft-deletes local space when remote returns a tombstone',
+      () async {
+        final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
+        final t2 = DateTime(2026, 5, 1, 14, 0).toUtc();
 
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: 'h-parent',
-          name: 'House',
-          createdAt: t1,
-          updatedAt: t1,
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
-      await database.spacesDao.insertSpace(
-        SpacesCompanion.insert(
-          id: 's-1',
-          houseId: 'h-parent',
-          name: 'Armadio',
-          createdAt: t1,
-          updatedAt: t1,
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'h-parent',
+            name: 'House',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: 's-1',
+            houseId: 'h-parent',
+            name: 'Armadio',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
 
-      stubEmptyFetches();
-      when(
-        () => mockRemote.fetchAllSpacesByUserId('user-1'),
-      ).thenAnswer((_) async => [
+        stubEmptyFetches();
+        when(() => mockRemote.fetchAllSpacesByUserId('user-1')).thenAnswer(
+          (_) async => [
             spaceJson('s-1', 'h-parent', updatedAt: t2, isDeleted: true),
-          ]);
+          ],
+        );
 
-      await syncService.fullPull('user-1');
+        await syncService.fullPull('user-1');
 
-      // Soft-deleted: invisible to getSpaceById but still present in DB.
-      final visible = await database.spacesDao.getSpaceById('s-1');
-      expect(visible, isNull);
-      final all = await database.select(database.spaces).get();
-      expect(all, hasLength(1));
-      expect(all.first.isDeleted, isTrue);
-    });
+        // Soft-deleted: invisible to getSpaceById but still present in DB.
+        final visible = await database.spacesDao.getSpaceById('s-1');
+        expect(visible, isNull);
+        final all = await database.select(database.spaces).get();
+        expect(all, hasLength(1));
+        expect(all.first.isDeleted, isTrue);
+      },
+    );
   });
 
   group('SyncService - luggages sync', () {
@@ -1349,68 +1387,75 @@ void main() {
       );
 
       stubEmptyFetches();
-      when(
-        () => mockRemote.fetchAllLuggagesByUserId('user-1'),
-      ).thenAnswer((_) async => [
-            luggageJson(
-              'l-1',
-              'h-parent',
-              updatedAt: t1,
-              name: 'Trolley',
-              sizeType: 'holdBaggage',
-              volumeLiters: 80,
-            ),
-          ]);
+      when(() => mockRemote.fetchAllLuggagesByUserId('user-1')).thenAnswer(
+        (_) async => [
+          luggageJson(
+            'l-1',
+            'h-parent',
+            updatedAt: t1,
+            name: 'Trolley',
+            sizeType: 'holdBaggage',
+            volumeLiters: 80,
+          ),
+        ],
+      );
 
       await syncService.fullPull('user-1');
 
       final luggage = await database.luggagesDao.getLuggageById('l-1');
-      expect(luggage, isNotNull, reason: 'remote luggage must be inserted locally');
+      expect(
+        luggage,
+        isNotNull,
+        reason: 'remote luggage must be inserted locally',
+      );
       expect(luggage!.name, equals('Trolley'));
       expect(luggage.sizeType, equals(LuggageSize.holdBaggage));
       expect(luggage.volumeLiters, equals(80));
     });
 
-    test('fullPull soft-deletes local luggage when remote returns a tombstone', () async {
-      final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
-      final t2 = DateTime(2026, 5, 1, 14, 0).toUtc();
+    test(
+      'fullPull soft-deletes local luggage when remote returns a tombstone',
+      () async {
+        final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
+        final t2 = DateTime(2026, 5, 1, 14, 0).toUtc();
 
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: 'h-parent',
-          name: 'House',
-          createdAt: t1,
-          updatedAt: t1,
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
-      await database.luggagesDao.insertLuggage(
-        LuggagesCompanion.insert(
-          id: 'l-1',
-          houseId: 'h-parent',
-          name: 'Zaino',
-          sizeType: LuggageSize.cabinBaggage,
-          createdAt: t1,
-          updatedAt: t1,
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'h-parent',
+            name: 'House',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.luggagesDao.insertLuggage(
+          LuggagesCompanion.insert(
+            id: 'l-1',
+            houseId: 'h-parent',
+            name: 'Zaino',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
 
-      stubEmptyFetches();
-      when(
-        () => mockRemote.fetchAllLuggagesByUserId('user-1'),
-      ).thenAnswer((_) async => [
+        stubEmptyFetches();
+        when(() => mockRemote.fetchAllLuggagesByUserId('user-1')).thenAnswer(
+          (_) async => [
             luggageJson('l-1', 'h-parent', updatedAt: t2, isDeleted: true),
-          ]);
+          ],
+        );
 
-      await syncService.fullPull('user-1');
+        await syncService.fullPull('user-1');
 
-      final visible = await database.luggagesDao.getLuggageById('l-1');
-      expect(visible, isNull);
-      final all = await database.select(database.luggages).get();
-      expect(all, hasLength(1));
-      expect(all.first.isDeleted, isTrue);
-    });
+        final visible = await database.luggagesDao.getLuggageById('l-1');
+        expect(visible, isNull);
+        final all = await database.select(database.luggages).get();
+        expect(all, hasLength(1));
+        expect(all.first.isDeleted, isTrue);
+      },
+    );
   });
 
   group('SyncService - trip luggages sync', () {
@@ -1432,93 +1477,101 @@ void main() {
       ).thenAnswer((_) async => []);
     }
 
-    test('processQueue serializes luggage_ids in the pushed trip payload', () async {
-      // Setup: trip linked to one luggage via junction.
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: 'h-parent',
-          name: 'House',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
-      await database.luggagesDao.insertLuggage(
-        LuggagesCompanion.insert(
-          id: 'l-a',
-          houseId: 'h-parent',
-          name: 'Zaino',
-          sizeType: LuggageSize.cabinBaggage,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
-      await database.tripsDao.insertTrip(
-        TripsCompanion.insert(
-          id: 'trip-push',
-          name: 'Trip',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      await database.luggagesDao.linkLuggageToTrip('trip-push', 'l-a');
+    test(
+      'processQueue serializes luggage_ids in the pushed trip payload',
+      () async {
+        // Setup: trip linked to one luggage via junction.
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'h-parent',
+            name: 'House',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.luggagesDao.insertLuggage(
+          LuggagesCompanion.insert(
+            id: 'l-a',
+            houseId: 'h-parent',
+            name: 'Zaino',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: 'trip-push',
+            name: 'Trip',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        await database.luggagesDao.linkLuggageToTrip('trip-push', 'l-a');
 
-      Map<String, dynamic>? capturedData;
-      when(
-        () => mockRemote.fetchTripById(
-          'trip-push',
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((_) async => null);
-      when(
-        () => mockRemote.upsertTrip(
-          any(),
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenAnswer((invocation) async {
-        capturedData =
-            invocation.positionalArguments[0] as Map<String, dynamic>;
-        return DateTime.utc(2026, 1, 1);
-      });
+        Map<String, dynamic>? capturedData;
+        when(
+          () => mockRemote.fetchTripById(
+            'trip-push',
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((_) async => null);
+        when(
+          () => mockRemote.upsertTrip(
+            any(),
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenAnswer((invocation) async {
+          capturedData =
+              invocation.positionalArguments[0] as Map<String, dynamic>;
+          return DateTime.utc(2026, 1, 1);
+        });
 
-      await syncService.processQueue();
+        await syncService.processQueue();
 
-      expect(capturedData, isNotNull, reason: 'upsertTrip must be called');
-      final luggageIds = capturedData!['luggage_ids'] as List<dynamic>?;
-      expect(luggageIds, isNotNull, reason: 'trip payload must include luggage_ids');
-      expect(luggageIds, contains('l-a'));
-    });
+        expect(capturedData, isNotNull, reason: 'upsertTrip must be called');
+        final luggageIds = capturedData!['luggage_ids'] as List<dynamic>?;
+        expect(
+          luggageIds,
+          isNotNull,
+          reason: 'trip payload must include luggage_ids',
+        );
+        expect(luggageIds, contains('l-a'));
+      },
+    );
 
-    test('fullPull restores trip↔luggage junction from remote luggage_ids', () async {
-      final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
+    test(
+      'fullPull restores trip↔luggage junction from remote luggage_ids',
+      () async {
+        final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
 
-      // Local has the house and the luggage that will be referenced.
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: 'h-parent',
-          name: 'House',
-          createdAt: t1,
-          updatedAt: t1,
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
-      await database.luggagesDao.insertLuggage(
-        LuggagesCompanion.insert(
-          id: 'l-a',
-          houseId: 'h-parent',
-          name: 'Zaino',
-          sizeType: LuggageSize.cabinBaggage,
-          createdAt: t1,
-          updatedAt: t1,
-          syncStatus: const Value(SyncStatus.synced),
-        ),
-      );
+        // Local has the house and the luggage that will be referenced.
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'h-parent',
+            name: 'House',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.luggagesDao.insertLuggage(
+          LuggagesCompanion.insert(
+            id: 'l-a',
+            houseId: 'h-parent',
+            name: 'Zaino',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
 
-      stubEmptyFetches();
-      when(
-        () => mockRemote.fetchAllTripsByUserId('user-1'),
-      ).thenAnswer((_) async => [
+        stubEmptyFetches();
+        when(() => mockRemote.fetchAllTripsByUserId('user-1')).thenAnswer(
+          (_) async => [
             {
               'id': 't-1',
               'user_id': null,
@@ -1542,16 +1595,19 @@ void main() {
               'is_deleted': false,
               'luggage_ids': ['l-a'],
             },
-          ]);
+          ],
+        );
 
-      await syncService.fullPull('user-1');
+        await syncService.fullPull('user-1');
 
-      // The junction should be populated and querying luggages by trip
-      // should return the linked luggage.
-      final luggagesForTrip =
-          await database.luggagesDao.getLuggagesByTrip('t-1');
-      expect(luggagesForTrip, hasLength(1));
-      expect(luggagesForTrip.first.id, equals('l-a'));
-    });
+        // The junction should be populated and querying luggages by trip
+        // should return the linked luggage.
+        final luggagesForTrip = await database.luggagesDao.getLuggagesByTrip(
+          't-1',
+        );
+        expect(luggagesForTrip, hasLength(1));
+        expect(luggagesForTrip.first.id, equals('l-a'));
+      },
+    );
   });
 }

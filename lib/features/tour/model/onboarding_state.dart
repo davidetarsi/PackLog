@@ -24,8 +24,9 @@ class OnboardingState {
       step: step ?? this.step,
       skippedAi: skippedAi ?? this.skippedAi,
       hasExistingHouses: hasExistingHouses ?? this.hasExistingHouses,
-      defaultHouseId:
-          clearDefaultHouseId ? null : (defaultHouseId ?? this.defaultHouseId),
+      defaultHouseId: clearDefaultHouseId
+          ? null
+          : (defaultHouseId ?? this.defaultHouseId),
     );
   }
 }

@@ -55,32 +55,29 @@ void main() {
   });
 
   group('LuggageNotifier - Family by houseId (P2 #12)', () {
-    test(
-      'build only loads luggages for the requested houseId',
-      () async {
-        when(
-          () => mockRepository.getLuggagesByHouseId('h-1'),
-        ).thenAnswer((_) async => [
-              LuggageModel(
-                id: 'l-1',
-                houseId: 'h-1',
-                name: 'Zaino',
-                sizeType: LuggageSize.cabinBaggage,
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              ),
-            ]);
+    test('build only loads luggages for the requested houseId', () async {
+      when(() => mockRepository.getLuggagesByHouseId('h-1')).thenAnswer(
+        (_) async => [
+          LuggageModel(
+            id: 'l-1',
+            houseId: 'h-1',
+            name: 'Zaino',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ],
+      );
 
-        final result = await container.read(
-          luggageNotifierProvider('h-1').future,
-        );
+      final result = await container.read(
+        luggageNotifierProvider('h-1').future,
+      );
 
-        expect(result, hasLength(1));
-        expect(result.first.houseId, equals('h-1'));
-        verify(() => mockRepository.getLuggagesByHouseId('h-1')).called(1);
-        verifyNever(() => mockRepository.getAllLuggages());
-      },
-    );
+      expect(result, hasLength(1));
+      expect(result.first.houseId, equals('h-1'));
+      verify(() => mockRepository.getLuggagesByHouseId('h-1')).called(1);
+      verifyNever(() => mockRepository.getAllLuggages());
+    });
 
     test(
       'addLuggage rethrows when repository fails (and sets AsyncError)',

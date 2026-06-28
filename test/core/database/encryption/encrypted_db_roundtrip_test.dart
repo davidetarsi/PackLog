@@ -84,8 +84,11 @@ void main() {
 
       final bytes = await File(dbPath).readAsBytes();
       final header = String.fromCharCodes(bytes.sublist(0, 15));
-      expect(header, isNot('SQLite format 3'),
-          reason: 'Encrypted file must not start with the plaintext header');
+      expect(
+        header,
+        isNot('SQLite format 3'),
+        reason: 'Encrypted file must not start with the plaintext header',
+      );
     },
     skip: _sqlcipherAvailable() ? null : _skipNoSqlcipher,
   );

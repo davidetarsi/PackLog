@@ -198,10 +198,7 @@ class SyncOrchestrator with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _attemptSync(
-    String trigger, {
-    bool resetRetries = false,
-  }) async {
+  Future<void> _attemptSync(String trigger, {bool resetRetries = false}) async {
     if (_isSyncing) {
       debugPrint('[SyncOrchestrator] $trigger: skipped (already syncing)');
       return;

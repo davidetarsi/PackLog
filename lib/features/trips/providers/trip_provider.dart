@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
+import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/trip_model.dart';
 import '../repositories/trip_repository.dart';
 import '../services/trip_lifecycle_service.dart';
@@ -12,21 +13,19 @@ import '../services/trip_lifecycle_service.dart';
 part 'trip_provider.g.dart';
 
 @Riverpod(keepAlive: true)
-class TripNotifier extends _$TripNotifier {
-  TripRepository? repository;
+class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
+  TripRepository get _repo => ref.read(tripRepositoryProvider);
+  CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
 
   @override
   Future<List<TripModel>> build() async {
-    repository = ref.watch(tripRepositoryProvider);
-    ref.watch(syncTriggerProvider);
-    final List<TripModel> trips = await repository!.getAllTrips();
-
     final TripLifecycleService lifecycle = ref.read(
       tripLifecycleServiceProvider,
     );
 
     // Trasferisce gli item alla casa di destinazione per i viaggi completati.
     // Idempotente: il filtro SQL in moveItemsToHouse esclude item già spostati.
+    final List<TripModel> trips = await _repo.getAllTrips();
     final Set<String> affectedHouseIds = await lifecycle
         .transferItemsForCompletedTrips(trips);
     if (affectedHouseIds.isNotEmpty) {
@@ -42,6 +41,11 @@ class TripNotifier extends _$TripNotifier {
     _scheduleRefreshAt(lifecycle.computeNextStatusChange(trips));
 
     return trips;
+  }
+
+  @override
+  void onMutationSuccess(List<TripModel> updated) {
+    ref.read(syncOrchestratorProvider).requestSync();
   }
 
   void _scheduleRefreshAt(DateTime? at) {
@@ -60,55 +64,26 @@ class TripNotifier extends _$TripNotifier {
   // CRUD
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Future<void> addTrip(TripModel model) async {
-    repository ??= ref.read(tripRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.addTrip(model);
-      final List<TripModel> trips = await repository!.getAllTrips();
-      state = AsyncData(trips);
-      ref
-          .read(coreAnalyticsServiceProvider)
-          .trackTripCreated(tripId: model.id, totalTrips: trips.length);
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
+  Future<void> addTrip(TripModel model) => mutate(
+    operation: () => _repo.addTrip(model),
+    reload: _repo.getAllTrips,
+    onSuccess: (trips) =>
+        _analytics.trackTripCreated(tripId: model.id, totalTrips: trips.length),
+  );
 
-  Future<void> updateTrip(TripModel model) async {
-    repository ??= ref.read(tripRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.updateTrip(model);
-      final List<TripModel> trips = await repository!.getAllTrips();
-      state = AsyncData(trips);
-      ref.read(coreAnalyticsServiceProvider).trackTripUpdated();
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
+  Future<void> updateTrip(TripModel model) => mutate(
+    operation: () => _repo.updateTrip(model),
+    reload: _repo.getAllTrips,
+    onSuccess: (_) => _analytics.trackTripUpdated(),
+  );
 
-  Future<void> deleteTrip(String id) async {
-    repository ??= ref.read(tripRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.deleteTrip(id);
-      final List<TripModel> trips = await repository!.getAllTrips();
-      state = AsyncData(trips);
-      ref.read(coreAnalyticsServiceProvider).trackTripDeleted();
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
-  }
+  Future<void> deleteTrip(String id) => mutate(
+    operation: () => _repo.deleteTrip(id),
+    reload: _repo.getAllTrips,
+    onSuccess: (_) => _analytics.trackTripDeleted(),
+  );
 
   Future<void> toggleItemCheck(String tripId, String itemId) async {
-    repository ??= ref.read(tripRepositoryProvider);
     try {
       final List<TripModel>? trips = state.value;
       if (trips == null) return;
@@ -139,7 +114,7 @@ class TripNotifier extends _$TripNotifier {
       // Fast-path persistenza: una sola colonna toccata invece di
       // `replaceTripItems` (DELETE all + INSERT all) seguito da
       // `getAllTrips()`. Path caldo durante il packing.
-      await repository!.setTripItemChecked(tripId, itemId, newChecked);
+      await _repo.setTripItemChecked(tripId, itemId, newChecked);
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -151,62 +126,45 @@ class TripNotifier extends _$TripNotifier {
   ///
   /// Returns: ID del nuovo viaggio creato.
   Future<String> duplicateTrip(String tripId, {String? nameSuffix}) async {
-    repository ??= ref.read(tripRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      final String newTripId = await repository!.duplicateTrip(
-        tripId,
-        nameSuffix: nameSuffix ?? ' (Copia)',
-      );
-      final List<TripModel> trips = await repository!.getAllTrips();
-      state = AsyncData(trips);
-      ref.read(coreAnalyticsServiceProvider).trackTripDuplicated();
-      ref.read(syncOrchestratorProvider).requestSync();
-      return newTripId;
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
+    late String newTripId;
+    await mutate(
+      operation: () async {
+        newTripId = await _repo.duplicateTrip(
+          tripId,
+          nameSuffix: nameSuffix ?? ' (Copia)',
+        );
+      },
+      reload: _repo.getAllTrips,
+      onSuccess: (_) => _analytics.trackTripDuplicated(),
+    );
+    return newTripId;
   }
 
-  Future<void> refresh() async {
-    repository ??= ref.read(tripRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      final List<TripModel> trips = await repository!.getAllTrips();
-      state = AsyncData(trips);
-    } catch (error, stackTrace) {
-      // No rethrow: refresh() is wired to ErrorState.onRetry (VoidCallback).
-      state = AsyncError(error, stackTrace);
-    }
-  }
+  Future<void> refresh() => mutate(
+    operation: () async {},
+    reload: _repo.getAllTrips,
+    showLoading: true,
+    // refresh() è wired a ErrorState.onRetry (VoidCallback) — niente rethrow.
+    rethrowOnError: false,
+  );
 
   /// Toggle dello stato salvato/preferito di un viaggio.
   Future<void> toggleSaved(String tripId) async {
-    repository ??= ref.read(tripRepositoryProvider);
-    try {
-      final List<TripModel>? trips = state.value;
-      if (trips == null) return;
+    final List<TripModel>? trips = state.valueOrNull;
+    if (trips == null) return;
 
-      final int tripIndex = trips.indexWhere((t) => t.id == tripId);
-      if (tripIndex == -1) return;
+    final int tripIndex = trips.indexWhere((t) => t.id == tripId);
+    if (tripIndex == -1) return;
 
-      final TripModel trip = trips[tripIndex];
-      final TripModel updatedTrip = trip.copyWith(
-        isSaved: !trip.isSaved,
-        updatedAt: DateTime.now(),
-      );
-
-      await repository!.updateTrip(updatedTrip);
-      final List<TripModel> newTrips = await repository!.getAllTrips();
-      state = AsyncData(newTrips);
-      ref
-          .read(coreAnalyticsServiceProvider)
-          .trackTripSavedToggled(isSaved: updatedTrip.isSaved);
-      ref.read(syncOrchestratorProvider).requestSync();
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
+    final TripModel updatedTrip = trips[tripIndex].copyWith(
+      isSaved: !trips[tripIndex].isSaved,
+      updatedAt: DateTime.now(),
+    );
+    await mutate(
+      operation: () => _repo.updateTrip(updatedTrip),
+      reload: _repo.getAllTrips,
+      onSuccess: (_) =>
+          _analytics.trackTripSavedToggled(isSaved: updatedTrip.isSaved),
+    );
   }
 }

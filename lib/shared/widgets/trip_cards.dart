@@ -6,11 +6,10 @@ import '../../features/houses/providers/house_provider.dart';
 import '../../features/trips/model/trip_model.dart';
 import '../../features/trips/providers/trip_provider.dart';
 import '../constants/app_constants.dart';
-import '../helpers/design_system.dart';
+import '../helpers/entity_action_handler.dart';
 import '../theme/theme.dart';
 import '../widgets/ds_badge.dart';
 import '../widgets/entity_context_menu.dart';
-import '../widgets/error_retry_dialog.dart';
 import '../widgets/trip_info_badges.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,46 +135,26 @@ class TripCardCompact extends ConsumerWidget {
     );
     if (action == null || !context.mounted) return;
 
-    switch (action) {
-      case EntityContextMenuAction.copy:
-        await ErrorRetryDialog.executeWithRetry(
-          context: context,
-          operation: () async {
-            await ref
-                .read(tripNotifierProvider.notifier)
-                .duplicateTrip(
-                  trip.id,
-                  nameSuffix: 'trips.duplicate_suffix'.tr(),
-                );
-          },
-          errorTitle: 'common.error'.tr(),
-          errorMessage: 'errors.duplicate_trip_failed'.tr(
-            args: [displayDestination],
-          ),
-        );
-      case EntityContextMenuAction.delete:
-        final confirmed = await DialogHelpers.showDeleteConfirmation(
-          context: context,
-          itemType: 'common.trip_type'.tr(),
-          itemName: displayDestination,
-        );
-        if (confirmed && context.mounted) {
-          await ErrorRetryDialog.executeWithRetry(
-            context: context,
-            operation: () async {
-              await ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id);
-            },
-            errorTitle: 'common.error'.tr(),
-            errorMessage: 'errors.delete_trip_failed'.tr(
-              args: [displayDestination],
-            ),
-          );
-        }
-      case EntityContextMenuAction.save:
-        break; // not used here
-      case EntityContextMenuAction.setPrimary:
-        break; // not used here
-    }
+    await EntityActionHandler.handleAction(
+      context: context,
+      action: action,
+      entityTypeLabel: 'common.trip_type'.tr(),
+      entityName: displayDestination,
+      onCopy: () async {
+        await ref
+            .read(tripNotifierProvider.notifier)
+            .duplicateTrip(trip.id, nameSuffix: 'trips.duplicate_suffix'.tr());
+      },
+      copyErrorMessage: 'errors.duplicate_trip_failed'.tr(
+        args: [displayDestination],
+      ),
+      onDelete: () async {
+        await ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id);
+      },
+      deleteErrorMessage: 'errors.delete_trip_failed'.tr(
+        args: [displayDestination],
+      ),
+    );
   }
 
   @override

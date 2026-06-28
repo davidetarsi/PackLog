@@ -151,10 +151,7 @@ class CoreAnalyticsService {
     _safeLogEvent('ai_input_failed', properties: {'error_type': errorType});
   }
 
-  void trackAiItemsSaved({
-    required int count,
-    required bool isOnboarding,
-  }) {
+  void trackAiItemsSaved({required int count, required bool isOnboarding}) {
     _safeLogEvent(
       'ai_items_saved',
       properties: {'count': count, 'is_onboarding': isOnboarding},

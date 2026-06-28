@@ -34,14 +34,14 @@ class _PostLoginOnboardingListenerState
   Widget build(BuildContext context) {
     final onboardingAsync = ref.watch(postLoginOnboardingProvider);
 
-    ref.listen<AsyncValue<OnboardingState>>(
-      postLoginOnboardingProvider,
-      (_, next) {
-        if (next.valueOrNull?.step == OnboardingStep.aiIntro) {
-          setState(() => _lastShownStep = null);
-        }
-      },
-    );
+    ref.listen<AsyncValue<OnboardingState>>(postLoginOnboardingProvider, (
+      _,
+      next,
+    ) {
+      if (next.valueOrNull?.step == OnboardingStep.aiIntro) {
+        setState(() => _lastShownStep = null);
+      }
+    });
 
     onboardingAsync.whenData((onboarding) {
       final step = onboarding.step;
@@ -78,14 +78,18 @@ class _PostLoginOnboardingListenerState
         TargetFocus(
           identify: onboarding.step.name,
           keyTarget: cfg.key,
-          shape: cfg.isSpotlight ? ShapeLightFocus.RRect : ShapeLightFocus.Circle,
+          shape: cfg.isSpotlight
+              ? ShapeLightFocus.RRect
+              : ShapeLightFocus.Circle,
           radius: cfg.isSpotlight ? 8.0 : 1.0,
           // Spotlight steps: tapping the highlighted element advances the tour.
           // Info steps: the tiny dot must not accidentally close the coach mark.
           enableTargetTab: cfg.isSpotlight,
           contents: [
             TargetContent(
-              align: cfg.align ?? (cfg.isSpotlight ? ContentAlign.top : ContentAlign.bottom),
+              align:
+                  cfg.align ??
+                  (cfg.isSpotlight ? ContentAlign.top : ContentAlign.bottom),
               builder: (ctx, controller) {
                 return TourStepContent(
                   title: cfg.title,
@@ -127,24 +131,24 @@ class _PostLoginOnboardingListenerState
   _StepConfig _stepConfig(OnboardingStep step) {
     return switch (step) {
       OnboardingStep.houseTooltip => _StepConfig(
-          key: tourKeys.houseFab,
-          title: 'tour.house_tooltip.title'.tr(),
-          body: 'tour.house_tooltip.body'.tr(),
-          isSpotlight: true,
-        ),
+        key: tourKeys.houseFab,
+        title: 'tour.house_tooltip.title'.tr(),
+        body: 'tour.house_tooltip.body'.tr(),
+        isSpotlight: true,
+      ),
       OnboardingStep.defaultHouseTooltip => _StepConfig(
-          key: tourKeys.infoCardTarget,
-          title: 'tour.default_house_tooltip.title'.tr(),
-          body: 'tour.default_house_tooltip.body'.tr(),
-          isSpotlight: false,
-          align: ContentAlign.top,
-        ),
+        key: tourKeys.infoCardTarget,
+        title: 'tour.default_house_tooltip.title'.tr(),
+        body: 'tour.default_house_tooltip.body'.tr(),
+        isSpotlight: false,
+        align: ContentAlign.top,
+      ),
       OnboardingStep.createTripTooltip => _StepConfig(
-          key: tourKeys.houseFab,
-          title: 'tour.create_trip_tooltip.title'.tr(),
-          body: 'tour.create_trip_tooltip.body'.tr(),
-          isSpotlight: true,
-        ),
+        key: tourKeys.houseFab,
+        title: 'tour.create_trip_tooltip.title'.tr(),
+        body: 'tour.create_trip_tooltip.body'.tr(),
+        isSpotlight: true,
+      ),
       _ => throw StateError('_isListenerStep returned true for $step'),
     };
   }

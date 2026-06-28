@@ -17,26 +17,27 @@ void main() {
   });
 
   group('handleAuthenticatedUser - account switch detection', () {
-    test('first login (no prior userId) only triggers fullPull, no wipe', () async {
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
+    test(
+      'first login (no prior userId) only triggers fullPull, no wipe',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
 
-      await handleAuthenticatedUser(
-        userId: 'user-A',
-        syncService: mockSyncService,
-        requestFullPull: fullPullCalls.add,
-        prefs: prefs,
-      );
+        await handleAuthenticatedUser(
+          userId: 'user-A',
+          syncService: mockSyncService,
+          requestFullPull: fullPullCalls.add,
+          prefs: prefs,
+        );
 
-      verifyNever(() => mockSyncService.wipeAllUserData());
-      expect(fullPullCalls, equals(['user-A']));
-      expect(prefs.getString(kLastKnownUserIdKey), equals('user-A'));
-    });
+        verifyNever(() => mockSyncService.wipeAllUserData());
+        expect(fullPullCalls, equals(['user-A']));
+        expect(prefs.getString(kLastKnownUserIdKey), equals('user-A'));
+      },
+    );
 
     test('same user re-logging in does not trigger wipe', () async {
-      SharedPreferences.setMockInitialValues({
-        kLastKnownUserIdKey: 'user-A',
-      });
+      SharedPreferences.setMockInitialValues({kLastKnownUserIdKey: 'user-A'});
       final prefs = await SharedPreferences.getInstance();
 
       await handleAuthenticatedUser(
@@ -51,9 +52,7 @@ void main() {
     });
 
     test('different user triggers wipe before fullPull', () async {
-      SharedPreferences.setMockInitialValues({
-        kLastKnownUserIdKey: 'user-A',
-      });
+      SharedPreferences.setMockInitialValues({kLastKnownUserIdKey: 'user-A'});
       final prefs = await SharedPreferences.getInstance();
 
       await handleAuthenticatedUser(

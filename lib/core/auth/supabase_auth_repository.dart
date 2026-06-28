@@ -167,10 +167,14 @@ class SupabaseAuthRepository implements AuthRepository {
       // sessione e a far scattare l'auth gate del router.
       try {
         await _googleSignIn.signOut();
-      } catch (_) {/* best-effort */}
+      } catch (_) {
+        /* best-effort */
+      }
       try {
         await _client.auth.signOut();
-      } catch (_) {/* la sessione potrebbe essere già stale */}
+      } catch (_) {
+        /* la sessione potrebbe essere già stale */
+      }
     } on DeleteAccountFailedException {
       rethrow;
     } on TimeoutException catch (e, st) {

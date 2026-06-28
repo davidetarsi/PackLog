@@ -54,10 +54,12 @@ class TourStepContent extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              'tour.step_counter'.tr(namedArgs: {
-                'current': '${stepIndex + 1}',
-                'total': '$totalSteps',
-              }),
+              'tour.step_counter'.tr(
+                namedArgs: {
+                  'current': '${stepIndex + 1}',
+                  'total': '$totalSteps',
+                },
+              ),
               style: textTheme.labelSmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -122,7 +124,9 @@ class _SecondarySkipPill extends StatelessWidget {
           onTap: onTap,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+              borderRadius: BorderRadius.circular(
+                AppConstants.pillBorderRadius,
+              ),
               border: Border.all(color: colorScheme.outline, width: 2),
             ),
             child: Center(

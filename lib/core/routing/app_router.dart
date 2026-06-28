@@ -48,7 +48,10 @@ class _AuthChangeNotifier extends ChangeNotifier {
     ref.listen<AsyncValue<bool>>(onboardingStatusProvider, (_, _) {
       notifyListeners();
     });
-    ref.listen<AsyncValue<OnboardingState>>(postLoginOnboardingProvider, (_, _) {
+    ref.listen<AsyncValue<OnboardingState>>(postLoginOnboardingProvider, (
+      _,
+      _,
+    ) {
       notifyListeners();
     });
   }
@@ -96,7 +99,9 @@ GoRouter appRouter(Ref ref) {
       if (isAuthenticated) {
         final postLoginAsync = ref.read(postLoginOnboardingProvider);
         final postLoginStep = postLoginAsync.valueOrNull?.step;
-        final isOnAiIntro = state.matchedLocation.startsWith('/onboarding-ai-intro');
+        final isOnAiIntro = state.matchedLocation.startsWith(
+          '/onboarding-ai-intro',
+        );
 
         if (postLoginStep == OnboardingStep.aiIntro && !isOnAiIntro) {
           return '/onboarding-ai-intro';

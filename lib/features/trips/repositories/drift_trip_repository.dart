@@ -174,7 +174,8 @@ class DriftTripRepository implements TripRepository {
 
     // Usa transazione atomica per copiare viaggio + tutti gli items
     final result = await _dbService.executeAtomicWithRetry(
-      () => _dao.duplicateTrip(originalTripId, newTripId, nameSuffix: nameSuffix),
+      () =>
+          _dao.duplicateTrip(originalTripId, newTripId, nameSuffix: nameSuffix),
       operationName: 'duplicateTrip($originalTripId)',
       config: RetryConfig.criticalConfig,
     );

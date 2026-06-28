@@ -92,12 +92,14 @@ void main() {
     return c;
   }
 
-  test('fresh install: no plain, no encrypted → no-op + passphrase created',
-      () async {
-    await service.ensureMigrated();
-    expect(File(plainPath).existsSync(), false);
-    expect(await passService.exists(), true);
-  });
+  test(
+    'fresh install: no plain, no encrypted → no-op + passphrase created',
+    () async {
+      await service.ensureMigrated();
+      expect(File(plainPath).existsSync(), false);
+      expect(await passService.exists(), true);
+    },
+  );
 
   test('already migrated: plain absent → no-op', () async {
     // Simula uno stato già migrato creando solo la passphrase e nessun file.

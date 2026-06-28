@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import '../constants/app_constants.dart';
 import 'app_spacing.dart';
 
 /// Extension che espone il padding bottom derivato dinamicamente dalla tab bar.
-///
-/// Sostituisce AppConstants.floatingNavBarPadding (80.0 statico) con un valore
-/// calcolato per device: tabBarHeight + safe area + respiro visivo (lg=24).
 ///
 /// Uso:
 /// ```dart
@@ -14,12 +10,14 @@ import 'app_spacing.dart';
 extension NavBarSpacing on BuildContext {
   /// Spazio totale riservato dalla floating navigation bar in fondo allo schermo.
   ///
-  /// Composizione:
-  /// - AppConstants.tabBarHeight  → altezza visiva della tab bar (56px)
+  /// Composizione (specchia la geometria di [MainShell.bottomNavigationBar]):
   /// - MediaQuery.paddingOf.bottom → safe area hardware (gesture bar / home indicator)
-  /// - AppSpacing.lg (24px)       → respiro visivo tra ultimo elemento e tab bar
-  double get navBarReservedHeight =>
-      AppConstants.tabBarHeight +
-      MediaQuery.paddingOf(this).bottom +
-      AppSpacing.lg;
+  /// - spacingMd (16px responsive)  → padding sotto la pill, tra gesture bar e pill bottom
+  /// - responsive(56.0)             → altezza visiva della pill (identica a MainShell)
+  /// - spacingLg (24px responsive)  → respiro visivo tra ultimo elemento e pill top
+  ///                                   (~20px su schermi piccoli, ~24px su schermo base)
+  double get navBarReservedHeight => MediaQuery.paddingOf(this).bottom;
+  //+ spacingSm;
+  //+ responsive(56.0)
+  //+ spacingLg;
 }

@@ -26,8 +26,9 @@ import 'package:uuid/uuid.dart';
 
 const _kSupabaseUrl = String.fromEnvironment('RLS_TEST_SUPABASE_URL');
 const _kSupabaseAnonKey = String.fromEnvironment('RLS_TEST_SUPABASE_ANON_KEY');
-const _kServiceRoleKey =
-    String.fromEnvironment('RLS_TEST_SUPABASE_SERVICE_ROLE_KEY');
+const _kServiceRoleKey = String.fromEnvironment(
+  'RLS_TEST_SUPABASE_SERVICE_ROLE_KEY',
+);
 
 bool get _envConfigured =>
     _kSupabaseUrl.isNotEmpty &&
@@ -36,18 +37,22 @@ bool get _envConfigured =>
 
 void main() {
   if (!_envConfigured) {
-    test('Hard-delete account integration (SKIPPED — env vars mancanti)', () {
-      // ignore: avoid_print
-      print(
-        '[hard_delete_test] SKIPPED: serve anche '
-        'RLS_TEST_SUPABASE_SERVICE_ROLE_KEY (oltre alle altre RLS_TEST_*).',
-      );
-    }, skip: 'env vars non configurate');
+    test(
+      'Hard-delete account integration (SKIPPED — env vars mancanti)',
+      () {
+        // ignore: avoid_print
+        print(
+          '[hard_delete_test] SKIPPED: serve anche '
+          'RLS_TEST_SUPABASE_SERVICE_ROLE_KEY (oltre alle altre RLS_TEST_*).',
+        );
+      },
+      skip: 'env vars non configurate',
+    );
     return;
   }
 
-  late SupabaseClient adminClient;     // service_role: bypassa RLS
-  late SupabaseClient userClient;      // session dell'utente burner
+  late SupabaseClient adminClient; // service_role: bypassa RLS
+  late SupabaseClient userClient; // session dell'utente burner
   late String burnerEmail;
   late String burnerPassword;
   late String burnerUserId;
@@ -83,7 +88,9 @@ void main() {
     // burner per non lasciare account orfani su Supabase.
     try {
       await adminClient.auth.admin.deleteUser(burnerUserId);
-    } catch (_) {/* potrebbe essere già stato cancellato dal test */}
+    } catch (_) {
+      /* potrebbe essere già stato cancellato dal test */
+    }
   });
 
   test('crea dati, hard-delete, verifica wipe completo', () async {
@@ -176,11 +183,7 @@ void main() {
     try {
       final lookup = await adminClient.auth.admin.getUserById(burnerUserId);
       // L'API può ritornare un GoTrueAdminResponse vuoto invece di lanciare.
-      expect(
-        lookup.user,
-        isNull,
-        reason: 'auth.users row should be deleted',
-      );
+      expect(lookup.user, isNull, reason: 'auth.users row should be deleted');
     } on AuthException {
       // OK — l'utente non esiste più, l'API ha tirato l'eccezione attesa.
     }

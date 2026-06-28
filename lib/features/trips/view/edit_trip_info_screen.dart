@@ -110,11 +110,11 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
       destinationLocation: _destinationHouseId == null
           ? _destinationLocation
           : (_destinationName?.isNotEmpty == true
-              ? LocationSuggestionModel(
-                  placeId: '',
-                  displayName: _destinationName!,
-                )
-              : null),
+                ? LocationSuggestionModel(
+                    placeId: '',
+                    displayName: _destinationName!,
+                  )
+                : null),
       updatedAt: DateTime.now(),
     );
 

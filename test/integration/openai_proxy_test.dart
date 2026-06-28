@@ -35,14 +35,18 @@ bool get _envConfigured =>
 
 void main() {
   if (!_envConfigured) {
-    test('OpenAI proxy integration (SKIPPED — env vars mancanti)', () {
-      // ignore: avoid_print
-      print(
-        '[openai_test] SKIPPED: configurare RLS_TEST_SUPABASE_URL, '
-        'RLS_TEST_SUPABASE_ANON_KEY, RLS_TEST_USER_A_EMAIL, '
-        'RLS_TEST_USER_A_PASSWORD via --dart-define per eseguirlo.',
-      );
-    }, skip: 'env vars non configurate');
+    test(
+      'OpenAI proxy integration (SKIPPED — env vars mancanti)',
+      () {
+        // ignore: avoid_print
+        print(
+          '[openai_test] SKIPPED: configurare RLS_TEST_SUPABASE_URL, '
+          'RLS_TEST_SUPABASE_ANON_KEY, RLS_TEST_USER_A_EMAIL, '
+          'RLS_TEST_USER_A_PASSWORD via --dart-define per eseguirlo.',
+        );
+      },
+      skip: 'env vars non configurate',
+    );
     return;
   }
 
@@ -68,10 +72,10 @@ void main() {
   });
 
   Map<String, String> authHeaders() => {
-        'Authorization': 'Bearer $jwtA',
-        'apikey': _kSupabaseAnonKey,
-        'Content-Type': 'application/json',
-      };
+    'Authorization': 'Bearer $jwtA',
+    'apikey': _kSupabaseAnonKey,
+    'Content-Type': 'application/json',
+  };
 
   group('openai-proxy', () {
     test('rifiuta chiamate senza Authorization header (401)', () async {

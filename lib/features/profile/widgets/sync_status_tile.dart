@@ -42,15 +42,15 @@ class SyncStatusTile extends ConsumerWidget {
         final Widget? trailing = switch ((synced, isPushInProgress)) {
           (true, _) => null,
           (false, true) => const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
           (false, false) => TextButton(
-              onPressed: () =>
-                  ref.read(syncOrchestratorProvider).requestForcedSync(),
-              child: Text('profile.sync_status_retry'.tr()),
-            ),
+            onPressed: () =>
+                ref.read(syncOrchestratorProvider).requestForcedSync(),
+            child: Text('profile.sync_status_retry'.tr()),
+          ),
         };
 
         return ListTile(

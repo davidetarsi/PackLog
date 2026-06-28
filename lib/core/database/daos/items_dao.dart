@@ -217,9 +217,9 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   }
 
   Future<int> countUnsynced() async {
-    final rows = await (select(items)
-          ..where((i) => i.syncStatus.equalsValue(SyncStatus.synced).not()))
-        .get();
+    final rows = await (select(
+      items,
+    )..where((i) => i.syncStatus.equalsValue(SyncStatus.synced).not())).get();
     return rows.length;
   }
 
@@ -241,14 +241,15 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   /// Resets retry state on records bloccati oltre soglia. Vedi
   /// [HousesDao.resetSyncRetries] per il contratto.
   Future<int> resetSyncRetries() {
-    return (update(items)..where((i) => i.syncRetryCount.isBiggerThanValue(0)))
-        .write(
-          const ItemsCompanion(
-            syncRetryCount: Value(0),
-            lastSyncError: Value(null),
-            nextSyncAttemptAt: Value(null),
-          ),
-        );
+    return (update(
+      items,
+    )..where((i) => i.syncRetryCount.isBiggerThanValue(0))).write(
+      const ItemsCompanion(
+        syncRetryCount: Value(0),
+        lastSyncError: Value(null),
+        nextSyncAttemptAt: Value(null),
+      ),
+    );
   }
 
   Future<void> incrementSyncRetry(String itemId, String errorMessage) async {

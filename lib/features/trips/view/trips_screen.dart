@@ -8,8 +8,8 @@ import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/trip_cards.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
 import '../../../shared/widgets/entity_context_menu.dart';
-import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/entity_action_handler.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
 
@@ -111,49 +111,26 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     );
     if (action == null || !mounted) return;
 
-    switch (action) {
-      case EntityContextMenuAction.copy:
-        await ErrorRetryDialog.executeWithRetry(
-          context: context,
-          operation: () async {
-            await ref
-                .read(tripNotifierProvider.notifier)
-                .duplicateTrip(
-                  trip.id,
-                  nameSuffix: 'trips.duplicate_suffix'.tr(),
-                );
-          },
-          errorTitle: 'common.error'.tr(),
-          errorMessage: 'errors.duplicate_trip_failed'.tr(args: [trip.name]),
-        );
-      case EntityContextMenuAction.save:
-        await ErrorRetryDialog.executeWithRetry(
-          context: context,
-          operation: () async {
-            await ref.read(tripNotifierProvider.notifier).toggleSaved(trip.id);
-          },
-          errorTitle: 'common.error'.tr(),
-          errorMessage: 'errors.save_trip_failed'.tr(args: [trip.name]),
-        );
-      case EntityContextMenuAction.delete:
-        final confirmed = await DialogHelpers.showDeleteConfirmation(
-          context: context,
-          itemType: 'common.trip_type'.tr(),
-          itemName: trip.name,
-        );
-        if (confirmed && mounted) {
-          await ErrorRetryDialog.executeWithRetry(
-            context: context,
-            operation: () async {
-              await ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id);
-            },
-            errorTitle: 'common.error'.tr(),
-            errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
-          );
-        }
-      case EntityContextMenuAction.setPrimary:
-        break; // not used for trips
-    }
+    await EntityActionHandler.handleAction(
+      context: context,
+      action: action,
+      entityTypeLabel: 'common.trip_type'.tr(),
+      entityName: trip.name,
+      onCopy: () async {
+        await ref
+            .read(tripNotifierProvider.notifier)
+            .duplicateTrip(trip.id, nameSuffix: 'trips.duplicate_suffix'.tr());
+      },
+      copyErrorMessage: 'errors.duplicate_trip_failed'.tr(args: [trip.name]),
+      onDelete: () async {
+        await ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id);
+      },
+      deleteErrorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
+      onSave: () async {
+        await ref.read(tripNotifierProvider.notifier).toggleSaved(trip.id);
+      },
+      saveErrorMessage: 'errors.save_trip_failed'.tr(args: [trip.name]),
+    );
   }
 
   @override
