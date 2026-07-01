@@ -86,9 +86,10 @@ mixin SyncedCrudNotifier<T> {
 
   /// Hook invocato dopo ogni mutazione fallita.
   ///
-  /// Override per logging custom. Eseguito **dopo** che `state` è stato
-  /// impostato a [AsyncError]. Non rilanciare qui — la propagazione al
-  /// chiamante è gestita dal parametro `rethrowOnError` di [mutate].
+  /// Override per logging custom. Eseguito **prima** che `state` venga
+  /// modificato — il chiamante non deve leggere `state` qui per osservare
+  /// l'errore. La propagazione al chiamante è gestita dai parametri
+  /// `rethrowOnError` e `rethrowOnly` di [mutate].
   @protected
   void onMutationError(Object error, StackTrace stack) {}
 
