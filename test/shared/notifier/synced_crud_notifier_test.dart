@@ -43,6 +43,7 @@ class _TestNotifier extends AsyncNotifier<List<int>>
     bool showLoading = false,
     FutureOr<void> Function(List<int> updated)? onSuccess,
     bool rethrowOnError = true,
+    bool rethrowOnly = false,
   }) {
     return mutate(
       operation: () async {
@@ -59,6 +60,7 @@ class _TestNotifier extends AsyncNotifier<List<int>>
       showLoading: showLoading,
       onSuccess: onSuccess,
       rethrowOnError: rethrowOnError,
+      rethrowOnly: rethrowOnly,
     );
   }
 }
@@ -276,6 +278,112 @@ void main() {
           isFalse,
           reason: 'Nessun AsyncLoading atteso con showLoading=false (default)',
         );
+      },
+    );
+  });
+
+  group('SyncedCrudNotifier - rethrowOnly parameter', () {
+    test(
+      'does not set AsyncError state but still rethrows when rethrowOnly=true',
+      () async {
+        await container.read(_testProvider.future);
+        final notifier = container.read(_testProvider.notifier);
+        notifier.reloadResult = [1, 2, 3];
+        notifier.failOperation = true;
+
+        // Prima impostiamo uno stato dati valido tramite una mutazione riuscita.
+        notifier.failOperation = false;
+        await notifier.runMutation();
+        expect(container.read(_testProvider).value, equals([1, 2, 3]));
+
+        // Ora falliamo con rethrowOnly=true.
+        notifier.failOperation = true;
+        Object? caught;
+        try {
+          await notifier.runMutation(rethrowOnly: true);
+        } catch (e) {
+          caught = e;
+        }
+
+        // L'eccezione deve essere stata rilanciata al chiamante.
+        expect(caught, isA<Exception>());
+
+        // Lo state deve rimanere AsyncData (non AsyncError).
+        final stateAfter = container.read(_testProvider);
+        expect(
+          stateAfter,
+          isA<AsyncData<List<int>>>(),
+          reason: 'rethrowOnly=true non deve settare AsyncError',
+        );
+        expect(stateAfter.value, equals([1, 2, 3]));
+
+        // L'hook onMutationError deve essere stato chiamato.
+        expect(notifier.errorHookCalls, equals(1));
+        expect(notifier.successHookCalls, equals(1)); // solo dalla prima mutazione
+      },
+    );
+
+    test(
+      'restores previousState (removes AsyncLoading) when showLoading=true and rethrowOnly=true',
+      () async {
+        await container.read(_testProvider.future);
+        final notifier = container.read(_testProvider.notifier);
+        notifier.reloadResult = [7, 8, 9];
+        notifier.failOperation = false;
+
+        // Imposta uno stato dati valido.
+        await notifier.runMutation();
+        final dataStateBefore = container.read(_testProvider);
+        expect(dataStateBefore.value, equals([7, 8, 9]));
+
+        // Ora fallisce con showLoading=true + rethrowOnly=true.
+        notifier.failOperation = true;
+        final observedStates = <AsyncValue<List<int>>>[];
+        container.listen<AsyncValue<List<int>>>(
+          _testProvider,
+          (_, next) => observedStates.add(next),
+          fireImmediately: false,
+        );
+
+        Object? caught;
+        try {
+          await notifier.runMutation(showLoading: true, rethrowOnly: true);
+        } catch (e) {
+          caught = e;
+        }
+
+        expect(caught, isA<Exception>());
+
+        // Deve aver visto AsyncLoading durante l'operazione.
+        expect(
+          observedStates.any((s) => s is AsyncLoading<List<int>>),
+          isTrue,
+          reason: 'AsyncLoading atteso con showLoading=true',
+        );
+
+        // Stato finale: ripristinato a AsyncData (non AsyncError, non AsyncLoading).
+        expect(
+          container.read(_testProvider),
+          isA<AsyncData<List<int>>>(),
+          reason: 'Lo stato deve essere ripristinato a AsyncData dopo rethrowOnly',
+        );
+        expect(container.read(_testProvider).value, equals([7, 8, 9]));
+      },
+    );
+
+    test(
+      'rethrowOnly=false still sets AsyncError (regression guard)',
+      () async {
+        await container.read(_testProvider.future);
+        final notifier = container.read(_testProvider.notifier);
+        notifier.failOperation = true;
+
+        await expectLater(
+          notifier.runMutation(rethrowOnly: false, rethrowOnError: true),
+          throwsException,
+        );
+
+        expect(container.read(_testProvider), isA<AsyncError<List<int>>>());
       },
     );
   });

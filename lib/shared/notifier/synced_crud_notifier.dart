@@ -109,6 +109,12 @@ mixin SyncedCrudNotifier<T> {
   ///   intercettarla con try/catch per UI dedicata (es. dialog di retry).
   ///   Usa `false` per metodi tipo `refresh()` wired a callback senza
   ///   gestione errore (es. `onRetry` di un ErrorState).
+  /// - [rethrowOnly]: se `true`, in caso di errore rilancia l'eccezione
+  ///   senza settare `state = AsyncError`. Utile quando il feedback errore
+  ///   è gestito dal chiamante (es. `ErrorRetryDialog.executeWithRetry`):
+  ///   la lista rimane visibile intatta e non appare il flash di errore.
+  ///   Ripristina anche l'eventuale `AsyncLoading` intermedio allo stato
+  ///   precedente. Quando `true`, `rethrowOnError` è ignorato.
   @protected
   Future<void> mutate({
     required Future<void> Function() operation,
@@ -116,7 +122,11 @@ mixin SyncedCrudNotifier<T> {
     bool showLoading = false,
     FutureOr<void> Function(List<T> updated)? onSuccess,
     bool rethrowOnError = true,
+    bool rethrowOnly = false,
   }) async {
+    // Memorizza lo stato valido attuale prima di qualsiasi modifica
+    final previousState = state;
+
     if (showLoading) state = const AsyncLoading();
 
     List<T>? freshList;
@@ -128,17 +138,27 @@ mixin SyncedCrudNotifier<T> {
       return fresh;
     });
 
-    state = result;
-
     if (result.hasError) {
       onMutationError(result.error!, result.stackTrace!);
-      if (rethrowOnError) {
+      if (rethrowOnly) {
+        // Dialog-driven error handling: ripristina lo stato precedente (rimuove
+        // l'eventuale AsyncLoading), poi rilancia senza settare AsyncError.
+        // La lista torna a mostrare i dati intatti; il feedback errore vive nel dialog.
+        state = previousState;
         Error.throwWithStackTrace(result.error!, result.stackTrace!);
+      } else {
+        state = result; // setta AsyncError — path B (state-driven)
+        if (rethrowOnError) {
+          Error.throwWithStackTrace(result.error!, result.stackTrace!);
+        }
       }
-    } else if (result.hasValue) {
-      // freshList è non-null qui: AsyncValue.guard non sarebbe in stato
-      // "hasValue" senza aver completato il blocco senza eccezioni.
-      onMutationSuccess(freshList!);
+    } else {
+      state = result;
+      if (result.hasValue) {
+        // freshList è non-null qui: AsyncValue.guard non sarebbe in stato
+        // "hasValue" senza aver completato il blocco senza eccezioni.
+        onMutationSuccess(freshList!);
+      }
     }
   }
 }
