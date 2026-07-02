@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/core/monitoring/monitoring_service.dart';
@@ -17,6 +18,8 @@ class MockMonitoringService extends Mock implements AppMonitoringService {}
 
 class MockTombstoneConfigService extends Mock
     implements TombstoneConfigService {}
+
+class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
 void main() {
   late AppDatabase database;
@@ -1529,6 +1532,40 @@ void main() {
         expect(all.first.isDeleted, isTrue);
       },
     );
+  });
+
+  group('SyncService - analytics sui fallimenti', () {
+    test('trackSyncFailed emesso quando il push di un record fallisce', () async {
+      final mockAnalytics = MockCoreAnalyticsService();
+      final serviceWithAnalytics = SyncService(
+        housesDao: database.housesDao,
+        itemsDao: database.itemsDao,
+        spacesDao: database.spacesDao,
+        luggagesDao: database.luggagesDao,
+        tripsDao: database.tripsDao,
+        remote: mockRemote,
+        monitoring: mockMonitoring,
+        tombstoneConfig: mockTombstoneConfig,
+        analytics: mockAnalytics,
+      );
+
+      await insertHouse('h-fail');
+      when(
+        () => mockRemote.fetchHouseById(
+          'h-fail',
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenThrow(Exception('network down'));
+
+      await serviceWithAnalytics.processQueue();
+
+      verify(
+        () => mockAnalytics.trackSyncFailed(
+          entity: 'house',
+          errorType: any(named: 'errorType'),
+        ),
+      ).called(1);
+    });
   });
 
   group('SyncService - trip luggages sync', () {

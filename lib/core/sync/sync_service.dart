@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+import '../analytics/core_analytics_service.dart';
 import '../database/daos/houses_dao.dart';
 import '../database/daos/items_dao.dart';
 import '../database/daos/luggages_dao.dart';
@@ -23,6 +24,7 @@ class SyncService {
   final SupabaseRepository _remote;
   final AppMonitoringService _monitoring;
   final TombstoneConfigService _tombstoneConfig;
+  final CoreAnalyticsService? _analytics;
 
   SyncService({
     required HousesDao housesDao,
@@ -33,6 +35,7 @@ class SyncService {
     required SupabaseRepository remote,
     required AppMonitoringService monitoring,
     required TombstoneConfigService tombstoneConfig,
+    CoreAnalyticsService? analytics,
   }) : _housesDao = housesDao,
        _itemsDao = itemsDao,
        _spacesDao = spacesDao,
@@ -40,7 +43,8 @@ class SyncService {
        _tripsDao = tripsDao,
        _remote = remote,
        _monitoring = monitoring,
-       _tombstoneConfig = tombstoneConfig;
+       _tombstoneConfig = tombstoneConfig,
+       _analytics = analytics;
 
   /// Conta tutti i record non sincronizzati (syncStatus != synced) su tutte
   /// le tabelle, indipendentemente dal retry count o dal backoff.
@@ -674,6 +678,10 @@ class SyncService {
         e,
         stackTrace: st,
         tags: {'operation': 'syncRecord', 'entity': entity, 'id': id},
+      );
+      _analytics?.trackSyncFailed(
+        entity: entity,
+        errorType: e.runtimeType.toString(),
       );
       await incrementRetry(e.toString());
     }

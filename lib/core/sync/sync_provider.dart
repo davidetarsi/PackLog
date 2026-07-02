@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
+import '../analytics/core_analytics_service.dart';
 import '../auth/auth_provider.dart';
 import '../auth/auth_state.dart';
 import '../database/database_provider.dart';
@@ -77,6 +78,7 @@ SyncService syncService(Ref ref) {
     remote: ref.read(supabaseRepositoryProvider),
     monitoring: ref.read(monitoringServiceProvider),
     tombstoneConfig: ref.read(tombstoneConfigServiceProvider),
+    analytics: ref.read(coreAnalyticsServiceProvider),
   );
 }
 
