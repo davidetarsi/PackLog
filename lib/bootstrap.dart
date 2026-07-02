@@ -54,6 +54,8 @@ import 'core/database/encryption/encryption_migration_service.dart';
 import 'core/database/migration_service.dart';
 import 'core/database/services/backup_service.dart';
 import 'core/monitoring/app_error_observer.dart';
+import 'core/monitoring/bootstrap_error_buffer.dart';
+import 'core/monitoring/monitoring_service.dart';
 import 'core/routing/app_router.dart';
 import 'core/sync/sync_provider.dart';
 import 'features/onboarding/providers/onboarding_status_provider.dart';
@@ -70,6 +72,11 @@ import 'shared/widgets/ds_error_state.dart';
 
 /// Impostato da [bootstrap] prima di [runApp], letto da [appBootstrapProvider].
 late Environment _currentEnvironment;
+
+/// Buffer per eccezioni di bootstrap avvenute prima dell'init di Sentry.
+///
+/// Viene svuotato in [_initNonCriticalServices] appena Sentry è pronto.
+final BootstrapErrorBuffer _bootstrapErrorBuffer = BootstrapErrorBuffer();
 
 /// Inizializzazione pesante deferita dopo il primo frame.
 ///
@@ -137,7 +144,7 @@ void _initNonCriticalServices() {
         options.environment = _currentEnvironment.name;
         options.tracesSampleRate = tracesSampleRate;
       }),
-    );
+    ).then((_) => _bootstrapErrorBuffer.flush(AppMonitoringService()));
   }
   if (amplitudeEnabled) {
     _guardedInit(
@@ -331,6 +338,7 @@ Future<void> _initializePersistence() async {
 
     debugPrint('[Bootstrap] ✅ Persistenza inizializzata con successo');
   } catch (e, stackTrace) {
+    _bootstrapErrorBuffer.record('persistence', e, stackTrace);
     // Non blocchiamo l'avvio: l'app può funzionare (parzialmente) anche
     // senza persistenza inizializzata, e l'utente vedrà comunque i dati
     // già presenti nel database non corrotto.
@@ -354,7 +362,8 @@ Future<void> _runMigration(
     if (!success) {
       debugPrint('[Bootstrap] ⚠️  Migrazione non completata');
     }
-  } catch (e) {
+  } catch (e, st) {
+    _bootstrapErrorBuffer.record('migration', e, st);
     debugPrint('[Bootstrap] Errore durante la migrazione: $e');
   }
 }
@@ -367,7 +376,8 @@ Future<void> _createAutoBackup() async {
   try {
     final BackupService backupService = BackupService();
     await backupService.createAutoBackupIfNeeded();
-  } catch (e) {
+  } catch (e, st) {
+    _bootstrapErrorBuffer.record('auto_backup', e, st);
     debugPrint('[Bootstrap] Errore nel backup automatico: $e');
   }
 }
