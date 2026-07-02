@@ -319,7 +319,10 @@ void main() {
 
         // L'hook onMutationError deve essere stato chiamato.
         expect(notifier.errorHookCalls, equals(1));
-        expect(notifier.successHookCalls, equals(1)); // solo dalla prima mutazione
+        expect(
+          notifier.successHookCalls,
+          equals(1),
+        ); // solo dalla prima mutazione
       },
     );
 
@@ -365,7 +368,8 @@ void main() {
         expect(
           container.read(_testProvider),
           isA<AsyncData<List<int>>>(),
-          reason: 'Lo stato deve essere ripristinato a AsyncData dopo rethrowOnly',
+          reason:
+              'Lo stato deve essere ripristinato a AsyncData dopo rethrowOnly',
         );
         expect(container.read(_testProvider).value, equals([7, 8, 9]));
       },
