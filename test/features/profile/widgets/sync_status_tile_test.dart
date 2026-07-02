@@ -30,7 +30,7 @@ void main() {
     await tester.pumpWidget(
       wrap(
         const SyncStatusTile(),
-        overrides: [pendingChangesCountProvider.overrideWith((ref) async => 0)],
+        overrides: [totalUnsyncedCountProvider.overrideWith((ref) async => 0)],
       ),
     );
     await tester.pumpAndSettle();
@@ -46,7 +46,7 @@ void main() {
     await tester.pumpWidget(
       wrap(
         const SyncStatusTile(),
-        overrides: [pendingChangesCountProvider.overrideWith((ref) async => 3)],
+        overrides: [totalUnsyncedCountProvider.overrideWith((ref) async => 3)],
       ),
     );
     await tester.pumpAndSettle();
