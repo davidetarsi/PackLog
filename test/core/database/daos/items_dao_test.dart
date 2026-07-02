@@ -444,6 +444,37 @@ void main() {
     });
   });
 
+  group('ItemsDao - incrementSyncRetry', () {
+    test('non modifica updatedAt (pivot LWW)', () async {
+      final t0 = DateTime(2026, 5, 1, 8, 0);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'h-retry-item',
+          name: 'Casa',
+          createdAt: t0,
+          updatedAt: t0,
+        ),
+      );
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'i-retry',
+          houseId: 'h-retry-item',
+          name: 'Oggetto',
+          category: ItemCategory.varie,
+          createdAt: t0,
+          updatedAt: t0,
+        ),
+      );
+
+      await database.itemsDao.incrementSyncRetry('i-retry', 'boom');
+
+      final item = await database.itemsDao.findItemById('i-retry');
+      expect(item!.updatedAt, equals(t0),
+          reason: 'il retry bookkeeping non deve toccare il pivot LWW');
+      expect(item.syncRetryCount, equals(1));
+    });
+  });
+
   group('ItemsDao - Sync Operations', () {
     late String houseId;
 

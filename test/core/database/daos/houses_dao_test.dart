@@ -749,6 +749,29 @@ void main() {
     );
   });
 
+  group('HousesDao - incrementSyncRetry', () {
+    test('non modifica updatedAt (pivot LWW)', () async {
+      final t0 = DateTime(2026, 5, 1, 8, 0);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'h-retry',
+          name: 'Casa',
+          createdAt: t0,
+          updatedAt: t0,
+        ),
+      );
+
+      await database.housesDao.incrementSyncRetry('h-retry', 'boom');
+
+      final house = await database.housesDao.findHouseById('h-retry');
+      expect(house!.updatedAt, equals(t0),
+          reason: 'il retry bookkeeping non deve toccare il pivot LWW');
+      expect(house.syncRetryCount, equals(1));
+      expect(house.lastSyncError, equals('boom'));
+      expect(house.nextSyncAttemptAt, isNotNull);
+    });
+  });
+
   group('HousesDao - setPrimaryHouse', () {
     Future<void> insertHouseWithStatus(
       AppDatabase db, {

@@ -267,7 +267,8 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         syncRetryCount: Value(newRetryCount),
         lastSyncError: Value(errorMessage),
         nextSyncAttemptAt: Value(nextAttempt),
-        updatedAt: Value(DateTime.now()),
+        // NB: niente updatedAt — è il pivot LWW, il retry bookkeeping
+        // non deve renderlo artificialmente "più nuovo" di edit remoti.
       ),
     );
   }

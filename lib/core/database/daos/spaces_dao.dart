@@ -187,7 +187,8 @@ class SpacesDao extends DatabaseAccessor<AppDatabase> with _$SpacesDaoMixin {
         syncRetryCount: Value(newRetryCount),
         lastSyncError: Value(errorMessage),
         nextSyncAttemptAt: Value(nextAttempt),
-        updatedAt: Value(DateTime.now()),
+        // NB: niente updatedAt — è il pivot LWW, il retry bookkeeping
+        // non deve renderlo artificialmente "più nuovo" di edit remoti.
       ),
     );
   }
