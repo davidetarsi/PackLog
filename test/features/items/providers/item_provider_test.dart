@@ -290,7 +290,7 @@ void main() {
     });
   });
 
-  group('ItemNotifier - Failure Path (AsyncError)', () {
+  group('ItemNotifier - Failure Path', () {
     test(
       'should transition to AsyncError when repository throws during initial fetch',
       () async {
@@ -331,7 +331,7 @@ void main() {
     );
 
     test(
-      'should transition to AsyncError when addItem throws an exception',
+      'should rethrow and preserve AsyncData when addItem throws an exception',
       () async {
         // === ARRANGE ===
         final houseId = 'test-house-add-error';
@@ -368,9 +368,9 @@ void main() {
         when(() => mockRepository.addItem(any())).thenThrow(addException);
 
         // === ACT + ASSERT ===
-        // Contract: notifier rethrows so ErrorRetryDialog/forms see the failure;
-        // state still transitions to AsyncError before rethrow so the list UI
-        // can react via state observation.
+        // Contract: rethrowOnly=true — notifier rethrows so ErrorRetryDialog
+        // sees the failure; state is restored to previous AsyncData
+        // (no AsyncError flash — list remains visible and intact).
         final notifier = container.read(provider.notifier);
         await expectLater(
           notifier.addItem(newItem),
@@ -378,9 +378,8 @@ void main() {
         );
 
         final finalState = container.read(provider);
-        expect(finalState, isA<AsyncError<List<ItemModel>>>());
-        expect(finalState.error, equals(addException));
-        expect(finalState.hasError, isTrue);
+        expect(finalState, isA<AsyncData<List<ItemModel>>>());
+        expect(finalState.value, equals(initialItems));
 
         // Verify addItem was called exactly once (no automatic retry)
         verify(() => mockRepository.addItem(newItem)).called(1);
@@ -394,7 +393,7 @@ void main() {
     );
 
     test(
-      'should transition to AsyncError when updateItem throws an exception',
+      'should rethrow and preserve AsyncData when updateItem throws an exception',
       () async {
         // === ARRANGE ===
         final houseId = 'test-house-update-error';
@@ -419,6 +418,7 @@ void main() {
         when(() => mockRepository.updateItem(any())).thenThrow(updateException);
 
         // === ACT + ASSERT ===
+        // Contract: rethrowOnly=true — state preserved as AsyncData.
         final notifier = container.read(provider.notifier);
         await expectLater(
           notifier.updateItem(updatedItem),
@@ -426,15 +426,14 @@ void main() {
         );
 
         final finalState = container.read(provider);
-        expect(finalState, isA<AsyncError<List<ItemModel>>>());
-        expect(finalState.error, equals(updateException));
+        expect(finalState, isA<AsyncData<List<ItemModel>>>());
 
         verify(() => mockRepository.updateItem(updatedItem)).called(1);
       },
     );
 
     test(
-      'should transition to AsyncError when deleteItem throws an exception',
+      'should rethrow and preserve AsyncData when deleteItem throws an exception',
       () async {
         // === ARRANGE ===
         final houseId = 'test-house-delete-error';
@@ -458,6 +457,7 @@ void main() {
         when(() => mockRepository.deleteItem(any())).thenThrow(deleteException);
 
         // === ACT + ASSERT ===
+        // Contract: rethrowOnly=true — state preserved as AsyncData.
         final notifier = container.read(provider.notifier);
         await expectLater(
           notifier.deleteItem(existingItem.id, houseId),
@@ -465,8 +465,7 @@ void main() {
         );
 
         final finalState = container.read(provider);
-        expect(finalState, isA<AsyncError<List<ItemModel>>>());
-        expect(finalState.error, equals(deleteException));
+        expect(finalState, isA<AsyncData<List<ItemModel>>>());
 
         verify(() => mockRepository.deleteItem(existingItem.id)).called(1);
       },
@@ -892,29 +891,32 @@ void main() {
       expect(sel.selectedIds, isEmpty);
     });
 
-    test('propagates repository exception to AsyncError state', () async {
-      const houseId = 'house-bulk-delete-error';
-      when(
-        () => mockRepository.getItemsByHouseId(houseId),
-      ).thenAnswer((_) async => []);
-      final bulkDeleteException = Exception('DB error');
-      when(
-        () => mockRepository.deleteItems(['bad']),
-      ).thenThrow(bulkDeleteException);
+    test(
+      'rethrows and preserves previous AsyncData on repository exception',
+      () async {
+        const houseId = 'house-bulk-delete-error';
+        when(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).thenAnswer((_) async => []);
+        final bulkDeleteException = Exception('DB error');
+        when(
+          () => mockRepository.deleteItems(['bad']),
+        ).thenThrow(bulkDeleteException);
 
-      await container.read(itemNotifierProvider(houseId).future);
+        await container.read(itemNotifierProvider(houseId).future);
 
-      await expectLater(
-        container.read(itemNotifierProvider(houseId).notifier).bulkDelete([
-          'bad',
-        ]),
-        throwsA(equals(bulkDeleteException)),
-      );
+        await expectLater(
+          container.read(itemNotifierProvider(houseId).notifier).bulkDelete([
+            'bad',
+          ]),
+          throwsA(equals(bulkDeleteException)),
+        );
 
-      final state = container.read(itemNotifierProvider(houseId));
-      expect(state, isA<AsyncError<List<ItemModel>>>());
-      expect(state.hasError, isTrue);
-    });
+        // Contract: rethrowOnly=true — state restored to previous AsyncData.
+        final state = container.read(itemNotifierProvider(houseId));
+        expect(state, isA<AsyncData<List<ItemModel>>>());
+      },
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -1006,29 +1008,32 @@ void main() {
       expect(sel.selectedIds, isEmpty);
     });
 
-    test('propagates repository exception to AsyncError state', () async {
-      const houseId = 'house-bulk-move-error';
-      when(
-        () => mockRepository.getItemsByHouseId(houseId),
-      ).thenAnswer((_) async => []);
-      final bulkMoveException = Exception('move failed');
-      when(
-        () => mockRepository.moveItemsToHouse(any(), any(), any()),
-      ).thenThrow(bulkMoveException);
+    test(
+      'rethrows and preserves previous AsyncData on repository exception',
+      () async {
+        const houseId = 'house-bulk-move-error';
+        when(
+          () => mockRepository.getItemsByHouseId(houseId),
+        ).thenAnswer((_) async => []);
+        final bulkMoveException = Exception('move failed');
+        when(
+          () => mockRepository.moveItemsToHouse(any(), any(), any()),
+        ).thenThrow(bulkMoveException);
 
-      await container.read(itemNotifierProvider(houseId).future);
+        await container.read(itemNotifierProvider(houseId).future);
 
-      await expectLater(
-        container.read(itemNotifierProvider(houseId).notifier).bulkMove([
-          'z',
-        ], 'somewhere'),
-        throwsA(equals(bulkMoveException)),
-      );
+        await expectLater(
+          container.read(itemNotifierProvider(houseId).notifier).bulkMove([
+            'z',
+          ], 'somewhere'),
+          throwsA(equals(bulkMoveException)),
+        );
 
-      final state = container.read(itemNotifierProvider(houseId));
-      expect(state, isA<AsyncError<List<ItemModel>>>());
-      expect(state.hasError, isTrue);
-    });
+        // Contract: rethrowOnly=true — state restored to previous AsyncData.
+        final state = container.read(itemNotifierProvider(houseId));
+        expect(state, isA<AsyncData<List<ItemModel>>>());
+      },
+    );
 
     test('bulkMove passes spaceId to repository when provided', () async {
       const houseId = 'bulk-move-spaceid-source';

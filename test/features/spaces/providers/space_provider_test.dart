@@ -76,7 +76,7 @@ void main() {
     });
 
     test(
-      'addSpace rethrows when repository fails (and sets AsyncError)',
+      'addSpace rethrows when repository fails (and preserves previous AsyncData)',
       () async {
         when(
           () => mockRepository.getSpacesByHouseId('h-1'),
@@ -97,14 +97,15 @@ void main() {
 
         final notifier = container.read(provider.notifier);
 
+        // Contract: rethrowOnly=true — rethrow lets ErrorRetryDialog see the
+        // failure; state is restored to previous AsyncData (no AsyncError flash).
         await expectLater(
           notifier.addSpace(newSpace),
           throwsA(equals(addException)),
         );
 
         final finalState = container.read(provider);
-        expect(finalState, isA<AsyncError<List<SpaceModel>>>());
-        expect(finalState.error, equals(addException));
+        expect(finalState, isA<AsyncData<List<SpaceModel>>>());
       },
     );
   });

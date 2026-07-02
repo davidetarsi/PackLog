@@ -34,6 +34,7 @@ class HouseNotifier extends _$HouseNotifier
   Future<void> addHouse(HouseModel model) => mutate(
     operation: () => _repo.addHouse(model),
     reload: _repo.getAllHouses,
+    rethrowOnly: true,
     onSuccess: (houses) => _analytics.trackHouseCreated(
       houseId: model.id,
       totalHouses: houses.length,
@@ -43,12 +44,14 @@ class HouseNotifier extends _$HouseNotifier
   Future<void> updateHouse(HouseModel model) => mutate(
     operation: () => _repo.updateHouse(model),
     reload: _repo.getAllHouses,
+    rethrowOnly: true,
     onSuccess: (_) => _analytics.trackHouseUpdated(),
   );
 
   Future<void> deleteHouse(String id) => mutate(
     operation: () => _repo.deleteHouse(id),
     reload: _repo.getAllHouses,
+    rethrowOnly: true,
     onSuccess: (_) => _analytics.trackHouseDeleted(),
   );
 
@@ -77,6 +80,7 @@ class HouseNotifier extends _$HouseNotifier
         await _repo.addHouse(copy);
       },
       reload: _repo.getAllHouses,
+      rethrowOnly: true,
       onSuccess: (_) => _analytics.trackHouseDuplicated(),
     );
     return newId;
@@ -89,5 +93,6 @@ class HouseNotifier extends _$HouseNotifier
   Future<void> setPrimaryHouse(String houseId) => mutate(
     operation: () => _repo.setPrimaryHouse(houseId),
     reload: _repo.getAllHouses,
+    rethrowOnly: true,
   );
 }

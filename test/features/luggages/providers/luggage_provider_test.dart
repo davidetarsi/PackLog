@@ -80,7 +80,7 @@ void main() {
     });
 
     test(
-      'addLuggage rethrows when repository fails (and sets AsyncError)',
+      'addLuggage rethrows when repository fails (and preserves previous AsyncData)',
       () async {
         when(
           () => mockRepository.getLuggagesByHouseId('h-1'),
@@ -102,14 +102,15 @@ void main() {
 
         final notifier = container.read(provider.notifier);
 
+        // Contract: rethrowOnly=true — rethrow lets ErrorRetryDialog see the
+        // failure; state is restored to previous AsyncData (no AsyncError flash).
         await expectLater(
           notifier.addLuggage(newLuggage),
           throwsA(equals(addException)),
         );
 
         final finalState = container.read(provider);
-        expect(finalState, isA<AsyncError<List<LuggageModel>>>());
-        expect(finalState.error, equals(addException));
+        expect(finalState, isA<AsyncData<List<LuggageModel>>>());
       },
     );
   });

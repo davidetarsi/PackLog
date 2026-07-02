@@ -30,6 +30,7 @@ class SpaceNotifier extends _$SpaceNotifier
   Future<void> addSpace(SpaceModel model) => mutate(
     operation: () => _repo.addSpace(model),
     reload: () => _repo.getSpacesByHouseId(houseId),
+    rethrowOnly: true,
     onSuccess: (_) =>
         ref.read(coreAnalyticsServiceProvider).trackSpaceCreated(),
   );
@@ -37,11 +38,13 @@ class SpaceNotifier extends _$SpaceNotifier
   Future<void> updateSpace(SpaceModel model) => mutate(
     operation: () => _repo.updateSpace(model),
     reload: () => _repo.getSpacesByHouseId(houseId),
+    rethrowOnly: true,
   );
 
   Future<void> deleteSpace(String id) => mutate(
     operation: () => _repo.deleteSpace(id),
     reload: () => _repo.getSpacesByHouseId(houseId),
+    rethrowOnly: true,
   );
 
   Future<void> refresh() => mutate(

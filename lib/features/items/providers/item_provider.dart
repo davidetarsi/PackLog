@@ -35,6 +35,7 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
   Future<void> addItem(ItemModel model) => mutate(
     operation: () => _repo.addItem(model),
     reload: () => _repo.getItemsByHouseId(houseId),
+    rethrowOnly: true,
     onSuccess: (items) => _analytics.trackItemAdded(
       itemId: model.id,
       category: model.category.name,
@@ -45,6 +46,7 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
   Future<void> updateItem(ItemModel model) => mutate(
     operation: () => _repo.updateItem(model),
     reload: () => _repo.getItemsByHouseId(houseId),
+    rethrowOnly: true,
     onSuccess: (_) =>
         _analytics.trackItemUpdated(category: model.category.name),
   );
@@ -59,6 +61,7 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
     await mutate(
       operation: () => _repo.deleteItem(id),
       reload: () => _repo.getItemsByHouseId(houseId),
+      rethrowOnly: true,
       onSuccess: (_) {
         if (category != null) {
           _analytics.trackItemDeleted(category: category);
@@ -81,6 +84,7 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
     await mutate(
       operation: () => _repo.deleteItems(itemIds),
       reload: () => _repo.getItemsByHouseId(houseId),
+      rethrowOnly: true,
       onSuccess: (_) {
         _analytics.trackItemBulkDeleted(count: itemIds.length);
         ref.read(itemSelectionNotifierProvider.notifier).clear();
@@ -103,6 +107,7 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
         spaceId: spaceId,
       ),
       reload: () => _repo.getItemsByHouseId(houseId),
+      rethrowOnly: true,
       onSuccess: (_) {
         _analytics.trackItemBulkMoved(count: itemIds.length);
         ref.invalidate(itemNotifierProvider(destinationHouseId));

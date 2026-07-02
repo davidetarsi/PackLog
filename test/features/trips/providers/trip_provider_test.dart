@@ -348,7 +348,7 @@ void main() {
     });
   });
 
-  group('TripNotifier - Failure Path (AsyncError)', () {
+  group('TripNotifier - Failure Path', () {
     test(
       'should transition to AsyncError when repository throws during initial fetch',
       () async {
@@ -378,7 +378,7 @@ void main() {
     );
 
     test(
-      'should transition to AsyncError when addTrip throws an exception',
+      'should rethrow and preserve AsyncData when addTrip throws an exception',
       () async {
         // === ARRANGE ===
         final initialTrips = <TripModel>[];
@@ -403,8 +403,9 @@ void main() {
         when(() => mockRepository.addTrip(any())).thenThrow(addException);
 
         // === ACT + ASSERT ===
-        // Contract: notifier rethrows so ErrorRetryDialog/forms see the failure;
-        // state still becomes AsyncError before rethrow.
+        // Contract: rethrowOnly=true — notifier rethrows so ErrorRetryDialog
+        // sees the failure; state is restored to previous AsyncData
+        // (no AsyncError flash — list remains visible and intact).
         final notifier = container.read(provider.notifier);
         await expectLater(
           notifier.addTrip(newTrip),
@@ -412,8 +413,7 @@ void main() {
         );
 
         final finalState = container.read(provider);
-        expect(finalState, isA<AsyncError<List<TripModel>>>());
-        expect(finalState.error, equals(addException));
+        expect(finalState, isA<AsyncData<List<TripModel>>>());
 
         verify(() => mockRepository.addTrip(newTrip)).called(1);
         verify(
@@ -423,7 +423,7 @@ void main() {
     );
 
     test(
-      'should transition to AsyncError when updateTrip throws an exception',
+      'should rethrow and preserve AsyncData when updateTrip throws an exception',
       () async {
         // === ARRANGE ===
         final existingTrip = TripModel(
@@ -447,6 +447,7 @@ void main() {
         when(() => mockRepository.updateTrip(any())).thenThrow(updateException);
 
         // === ACT + ASSERT ===
+        // Contract: rethrowOnly=true — state preserved as AsyncData.
         final notifier = container.read(provider.notifier);
         await expectLater(
           notifier.updateTrip(updatedTrip),
@@ -454,15 +455,14 @@ void main() {
         );
 
         final finalState = container.read(provider);
-        expect(finalState, isA<AsyncError<List<TripModel>>>());
-        expect(finalState.error, equals(updateException));
+        expect(finalState, isA<AsyncData<List<TripModel>>>());
 
         verify(() => mockRepository.updateTrip(updatedTrip)).called(1);
       },
     );
 
     test(
-      'should transition to AsyncError when deleteTrip throws an exception',
+      'should rethrow and preserve AsyncData when deleteTrip throws an exception',
       () async {
         // === ARRANGE ===
         final existingTrip = TripModel(
@@ -485,6 +485,7 @@ void main() {
         when(() => mockRepository.deleteTrip(any())).thenThrow(deleteException);
 
         // === ACT + ASSERT ===
+        // Contract: rethrowOnly=true — state preserved as AsyncData.
         final notifier = container.read(provider.notifier);
         await expectLater(
           notifier.deleteTrip(existingTrip.id),
@@ -492,8 +493,7 @@ void main() {
         );
 
         final finalState = container.read(provider);
-        expect(finalState, isA<AsyncError<List<TripModel>>>());
-        expect(finalState.error, equals(deleteException));
+        expect(finalState, isA<AsyncData<List<TripModel>>>());
 
         verify(() => mockRepository.deleteTrip(existingTrip.id)).called(1);
       },

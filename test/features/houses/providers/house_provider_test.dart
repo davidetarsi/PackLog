@@ -57,7 +57,7 @@ void main() {
 
   group('HouseNotifier - Error Handling Contract', () {
     test(
-      'addHouse rethrows when repository fails (and sets AsyncError)',
+      'addHouse rethrows when repository fails (and preserves previous AsyncData)',
       () async {
         // Initial load returns empty list so the provider settles.
         when(
@@ -78,16 +78,15 @@ void main() {
 
         final notifier = container.read(provider.notifier);
 
-        // Contract: rethrow lets ErrorRetryDialog see the failure;
-        // state still becomes AsyncError before the rethrow.
+        // Contract: rethrowOnly=true — rethrow lets ErrorRetryDialog see the
+        // failure; state is restored to previous AsyncData (no AsyncError flash).
         await expectLater(
           notifier.addHouse(newHouse),
           throwsA(equals(addException)),
         );
 
         final finalState = container.read(provider);
-        expect(finalState, isA<AsyncError<List<HouseModel>>>());
-        expect(finalState.error, equals(addException));
+        expect(finalState, isA<AsyncData<List<HouseModel>>>());
       },
     );
   });

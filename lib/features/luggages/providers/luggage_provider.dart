@@ -31,17 +31,20 @@ class LuggageNotifier extends _$LuggageNotifier
   Future<void> addLuggage(LuggageModel model) => mutate(
     operation: () => _repo.addLuggage(model),
     reload: () => _repo.getLuggagesByHouseId(houseId),
+    rethrowOnly: true,
     onSuccess: (_) => _analytics.trackLuggageCreated(size: model.sizeType.name),
   );
 
   Future<void> updateLuggage(LuggageModel model) => mutate(
     operation: () => _repo.updateLuggage(model),
     reload: () => _repo.getLuggagesByHouseId(houseId),
+    rethrowOnly: true,
   );
 
   Future<void> deleteLuggage(String id) => mutate(
     operation: () => _repo.deleteLuggage(id),
     reload: () => _repo.getLuggagesByHouseId(houseId),
+    rethrowOnly: true,
   );
 
   Future<void> refresh() => mutate(

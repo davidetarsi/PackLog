@@ -67,6 +67,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   Future<void> addTrip(TripModel model) => mutate(
     operation: () => _repo.addTrip(model),
     reload: _repo.getAllTrips,
+    rethrowOnly: true,
     onSuccess: (trips) =>
         _analytics.trackTripCreated(tripId: model.id, totalTrips: trips.length),
   );
@@ -74,12 +75,14 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   Future<void> updateTrip(TripModel model) => mutate(
     operation: () => _repo.updateTrip(model),
     reload: _repo.getAllTrips,
+    rethrowOnly: true,
     onSuccess: (_) => _analytics.trackTripUpdated(),
   );
 
   Future<void> deleteTrip(String id) => mutate(
     operation: () => _repo.deleteTrip(id),
     reload: _repo.getAllTrips,
+    rethrowOnly: true,
     onSuccess: (_) => _analytics.trackTripDeleted(),
   );
 
@@ -135,6 +138,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
         );
       },
       reload: _repo.getAllTrips,
+      rethrowOnly: true,
       onSuccess: (_) => _analytics.trackTripDuplicated(),
     );
     return newTripId;
@@ -163,6 +167,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
     await mutate(
       operation: () => _repo.updateTrip(updatedTrip),
       reload: _repo.getAllTrips,
+      rethrowOnly: true,
       onSuccess: (_) =>
           _analytics.trackTripSavedToggled(isSaved: updatedTrip.isSaved),
     );
