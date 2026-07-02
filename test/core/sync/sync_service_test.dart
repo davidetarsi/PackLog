@@ -775,6 +775,52 @@ void main() {
         expect(item.updatedAt.toUtc(), equals(t2));
       },
     );
+
+    test(
+      'delete-wins: fullPull non risuscita una house locale soft-deleted '
+      'anche se il remoto vivo è più recente',
+      () async {
+        await insertHouse('h-dw');
+        await database.housesDao.deleteHouse('h-dw'); // soft-delete → pendingUpdate
+
+        // Remoto VIVO con updated_at nel futuro (batte qualsiasi timestamp locale).
+        final remoteNewer =
+            DateTime.now().toUtc().add(const Duration(hours: 1));
+        stubFetchAll(houses: [houseJson('h-dw', updatedAt: remoteNewer)]);
+
+        await syncService.fullPull('user-1');
+
+        final local = await database.housesDao.findHouseById('h-dw');
+        expect(local!.isDeleted, isTrue,
+            reason: 'delete-wins: il tombstone locale non va sovrascritto');
+        expect(local.syncStatus, isNot(equals(SyncStatus.synced)),
+            reason: 'la cancellazione deve restare in coda per il push');
+      },
+    );
+
+    test(
+      'delete-wins: fullPull non risuscita un item locale soft-deleted',
+      () async {
+        await insertHouse('h-dw2');
+        await insertItem('i-dw', 'h-dw2');
+        await database.itemsDao.deleteItem('i-dw'); // soft-delete → pendingUpdate
+
+        final remoteNewer =
+            DateTime.now().toUtc().add(const Duration(hours: 1));
+        stubFetchAll(
+          houses: [
+            houseJson('h-dw2', updatedAt: DateTime(2026, 5, 1).toUtc()),
+          ],
+          items: [itemJson('i-dw', 'h-dw2', updatedAt: remoteNewer)],
+        );
+
+        await syncService.fullPull('user-1');
+
+        final local = await database.itemsDao.findItemById('i-dw');
+        expect(local!.isDeleted, isTrue);
+        expect(local.syncStatus, isNot(equals(SyncStatus.synced)));
+      },
+    );
   });
 
   group('SyncService - trip items checklist sync', () {
