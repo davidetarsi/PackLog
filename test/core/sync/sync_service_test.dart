@@ -821,6 +821,33 @@ void main() {
         expect(local.syncStatus, isNot(equals(SyncStatus.synced)));
       },
     );
+
+    test('un record house malformato non abortisce il fullPull', () async {
+      final good = houseJson('h-good', updatedAt: DateTime(2026, 5, 1).toUtc());
+      final bad = houseJson('h-bad', updatedAt: DateTime(2026, 5, 1).toUtc());
+      bad['updated_at'] = 'not-a-date'; // parse failure
+
+      // Il record corrotto arriva PRIMA di quello valido.
+      stubFetchAll(houses: [bad, good]);
+
+      await syncService.fullPull('user-1'); // non deve lanciare
+
+      final goodLocal = await database.housesDao.findHouseById('h-good');
+      expect(
+        goodLocal,
+        isNotNull,
+        reason:
+            'il record valido deve essere inserito nonostante il precedente corrotto',
+      );
+
+      verify(
+        () => mockMonitoring.captureException(
+          any(),
+          stackTrace: any(named: 'stackTrace'),
+          tags: any(named: 'tags'),
+        ),
+      ).called(greaterThanOrEqualTo(1));
+    });
   });
 
   group('SyncService - trip items checklist sync', () {
