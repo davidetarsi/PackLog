@@ -472,6 +472,8 @@ void main() {
       expect(item!.updatedAt, equals(t0),
           reason: 'il retry bookkeeping non deve toccare il pivot LWW');
       expect(item.syncRetryCount, equals(1));
+      expect(item.lastSyncError, equals('boom'));
+      expect(item.nextSyncAttemptAt, isNotNull);
     });
   });
 
