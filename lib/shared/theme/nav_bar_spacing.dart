@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'app_spacing.dart';
 
 /// Extension che espone il padding bottom derivato dinamicamente dalla tab bar.
 ///

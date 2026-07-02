@@ -103,7 +103,7 @@ void main() {
     );
 
     group('processClothingItem — success and parsing', () {
-      const _validItemsJson =
+      const validItemsJson =
           '[{"name":"T-Shirt","category":"Upper Body","subCategory":"T-Shirt","baseColor":"Bianco",'
           '"pattern":"Solid","coverage":"Short-sleeve","fit":"Regular",'
           '"warmth":2,"formality":"Casual","activityTags":["Everyday"]}]';
@@ -113,7 +113,7 @@ void main() {
         () async {
           final service = _makeService(
             MockClient(
-              (_) async => http.Response(_openAiResponse(_validItemsJson), 200),
+              (_) async => http.Response(_openAiResponse(validItemsJson), 200),
             ),
           );
 
@@ -131,7 +131,7 @@ void main() {
 
       test('strips markdown fences from content before parsing', () async {
         // GPT sometimes wraps its JSON output in ```json ... ``` fences.
-        const fencedContent = '```json\n$_validItemsJson\n```';
+        const fencedContent = '```json\n$validItemsJson\n```';
         final service = _makeService(
           MockClient(
             (_) async => http.Response(_openAiResponse(fencedContent), 200),

@@ -845,12 +845,11 @@ class SyncService {
   /// Inserisce o aggiorna un item proveniente dal remoto, con fallback su
   /// `spaceId = null` se la FK sullo spazio non è risolvibile localmente.
   ///
-  /// Contesto: gli spaces non sono ancora sincronizzati. Su un device nuovo
-  /// (o dopo reinstall) può arrivare un item che punta a uno space che
-  /// localmente non esiste → FK violation. In quel caso preferiamo far
-  /// "atterrare" l'item nel pool generale piuttosto che farlo sparire in
-  /// silenzio. L'utente potrà riassegnarlo manualmente. Il primo fallimento
-  /// viene riportato via Sentry per visibilità.
+  /// Contesto: su un device nuovo (o dopo reinstall) un item può arrivare
+  /// prima che il suo space sia stato applicato localmente → FK violation.
+  /// In quel caso preferiamo far "atterrare" l'item nel pool generale
+  /// piuttosto che farlo sparire in silenzio. L'utente potrà riassegnarlo
+  /// manualmente. Il primo fallimento viene riportato via Sentry per visibilità.
   Future<void> _persistItemWithFkFallback(
     Map<String, dynamic> r, {
     required DateTime syncedAt,
