@@ -189,6 +189,11 @@ class AiClothingAnalyzerService {
           .replaceAll('```', '')
           .trim();
 
+      // GPT può rispondere con testo libero invece di JSON (es. rifiuto
+      // per policy, "no clothing found", ecc.). Se il contenuto non è un
+      // array JSON, trattiamo come lista vuota (nessun capo trovato).
+      if (!cleaned.startsWith('[')) return [];
+
       final List<dynamic> parsedList = jsonDecode(cleaned) as List<dynamic>;
 
       return parsedList

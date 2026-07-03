@@ -145,12 +145,32 @@ void main() {
       });
 
       test(
-        'throws ResponseParsingException on malformed JSON content',
+        'returns empty list when GPT responds with text refusal instead of JSON',
         () async {
+          // GPT può rifiutare con testo libero (content policy, nessun vestito, ecc.)
+          // invece di restituire un array JSON. La risposta corretta è lista vuota.
+          final service = _makeService(
+            MockClient(
+              (_) async => http.Response(
+                _openAiResponse("I'm sorry, I can't assist with that."),
+                200,
+              ),
+            ),
+          );
+
+          final items = await service.processClothingItem(_fakeImageFile());
+          expect(items, isEmpty);
+        },
+      );
+
+      test(
+        'throws ResponseParsingException on broken JSON array content',
+        () async {
+          // Se il content INIZIA con '[' ma è JSON non valido → parse error reale
           final service = _makeService(
             MockClient(
               (_) async =>
-                  http.Response(_openAiResponse('not valid json'), 200),
+                  http.Response(_openAiResponse('[broken json'), 200),
             ),
           );
 
