@@ -145,7 +145,10 @@ class AiClothingAnalyzerService {
           'apikey': _anonKey,
           'Content-Type': 'application/json',
         },
-        body: body,
+        // utf8.encode (List<int>) preserva Content-Type: application/json.
+        // Passare body come String farebbe sovrascrivere il Content-Type a
+        // text/plain dal setter Request.body del pacchetto http.
+        body: utf8.encode(body),
       );
     } on Exception catch (e) {
       throw VisionAnalysisException('Network error during vision analysis: $e');
