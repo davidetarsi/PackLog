@@ -577,6 +577,18 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                     onDelete: () => notifier.deleteItem(gi, ii),
                   ),
                 ),
+          if (state.photoGroups[gi].results.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: context.spacingMd),
+              child: Text(
+                'ai_import.no_items_found_in_photo'.tr(),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
           if (gi < state.photoGroups.length - 1)
             Padding(
               padding: EdgeInsets.symmetric(vertical: context.spacingSm),

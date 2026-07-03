@@ -589,6 +589,7 @@
     "choose_house_title": "In quale casa salvare?",
     "no_house_selected": "Nessuna casa selezionata",
     "retry_photo": "Scegli un'altra foto",
+    "no_items_found_in_photo": "In questa foto non è stato possibile riconoscere alcun oggetto",
     "item_name_hint": "Nome del capo..."
   },
   "onboarding": {
