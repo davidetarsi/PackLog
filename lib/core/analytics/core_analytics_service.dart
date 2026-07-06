@@ -170,6 +170,12 @@ class CoreAnalyticsService {
 
   void trackLogout() => _safeLogEvent('logout');
 
+  // ── screen_ ───────────────────────────────────────────────────────────────
+
+  void trackScreenView(String screenName) {
+    _safeLogEvent('screen_view', properties: {'screen_name': screenName});
+  }
+
   // ── sync_ ─────────────────────────────────────────────────────────────────
 
   void trackSyncFailed({required String entity, required String errorType}) {

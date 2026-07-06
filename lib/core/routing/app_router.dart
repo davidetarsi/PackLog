@@ -8,6 +8,8 @@ import '../../shared/theme/app_spacing.dart';
 
 import '../../bootstrap.dart';
 import '../../features/onboarding/providers/onboarding_status_provider.dart';
+import '../analytics/core_analytics_service.dart';
+import 'analytics_navigator_observer.dart';
 import '../../features/onboarding/view/onboarding_screen.dart';
 import '../auth/auth_provider.dart';
 import '../auth/auth_state.dart';
@@ -61,9 +63,12 @@ class _AuthChangeNotifier extends ChangeNotifier {
 GoRouter appRouter(Ref ref) {
   final authChangeNotifier = _AuthChangeNotifier(ref);
 
+  final analytics = ref.read(coreAnalyticsServiceProvider);
+
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
+    observers: [AnalyticsNavigatorObserver(analytics)],
     refreshListenable: authChangeNotifier,
     redirect: (context, state) {
       // 1. Wait for bootstrap
