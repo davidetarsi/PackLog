@@ -376,29 +376,54 @@ class MyApp extends ConsumerWidget {
 
   const MyApp({required this.environment, super.key});
 
+  // Builds a MaterialApp (splash/error) or MaterialApp.router (main) sharing
+  // all common props. Pass exactly one of [home] or [routerConfig].
+  Widget _app(
+    BuildContext context, {
+    Widget? home,
+    RouterConfig<Object>? routerConfig,
+    ThemeMode themeMode = ThemeMode.dark,
+  }) {
+    assert(
+      (home == null) != (routerConfig == null),
+      'Pass exactly one of home or routerConfig',
+    );
+    if (routerConfig != null) {
+      return MaterialApp.router(
+        title: 'Pack Log',
+        debugShowCheckedModeBanner: environment == Environment.dev,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: themeMode,
+        routerConfig: routerConfig,
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
+      );
+    }
+    return MaterialApp(
+      debugShowCheckedModeBanner: environment == Environment.dev,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
+      locale: context.locale,
+      home: home!,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bootstrapState = ref.watch(appBootstrapProvider);
 
     return bootstrapState.when(
-      loading: () => MaterialApp(
-        debugShowCheckedModeBanner: environment == Environment.dev,
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
-        themeMode: ThemeMode.dark,
-        localizationsDelegates: context.localizationDelegates,
-        supportedLocales: context.supportedLocales,
-        locale: context.locale,
+      loading: () => _app(
+        context,
         home: const Scaffold(body: Center(child: CircularProgressIndicator())),
       ),
-      error: (error, _) => MaterialApp(
-        debugShowCheckedModeBanner: environment == Environment.dev,
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
-        themeMode: ThemeMode.dark,
-        localizationsDelegates: context.localizationDelegates,
-        supportedLocales: context.supportedLocales,
-        locale: context.locale,
+      error: (error, _) => _app(
+        context,
         home: Scaffold(
           body: Center(
             child: Padding(
@@ -415,26 +440,14 @@ class MyApp extends ConsumerWidget {
         return ref
             .watch(onboardingStatusProvider)
             .when(
-              loading: () => MaterialApp(
-                debugShowCheckedModeBanner: environment == Environment.dev,
-                theme: AppTheme.light,
-                darkTheme: AppTheme.dark,
-                themeMode: ThemeMode.dark,
-                localizationsDelegates: context.localizationDelegates,
-                supportedLocales: context.supportedLocales,
-                locale: context.locale,
+              loading: () => _app(
+                context,
                 home: const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 ),
               ),
-              error: (error, _) => MaterialApp(
-                debugShowCheckedModeBanner: environment == Environment.dev,
-                theme: AppTheme.light,
-                darkTheme: AppTheme.dark,
-                themeMode: ThemeMode.dark,
-                localizationsDelegates: context.localizationDelegates,
-                supportedLocales: context.supportedLocales,
-                locale: context.locale,
+              error: (error, _) => _app(
+                context,
                 home: Scaffold(
                   body: DsErrorState(
                     error: error,
@@ -455,16 +468,10 @@ class MyApp extends ConsumerWidget {
                   });
                 }
 
-                return MaterialApp.router(
-                  title: 'Pack Log',
-                  debugShowCheckedModeBanner: environment == Environment.dev,
-                  theme: AppTheme.light,
-                  darkTheme: AppTheme.dark,
-                  themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
+                return _app(
+                  context,
                   routerConfig: ref.watch(appRouterProvider),
-                  localizationsDelegates: context.localizationDelegates,
-                  supportedLocales: context.supportedLocales,
-                  locale: context.locale,
+                  themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
                 );
               },
             );
