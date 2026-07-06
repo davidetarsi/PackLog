@@ -581,7 +581,12 @@ void main() {
         await database.housesDao.incrementSyncRetry('to-sync', 'timeout');
 
         final serverTime = DateTime(2026, 4, 28, 12, 0);
-        await database.housesDao.markHouseAsSynced('to-sync', serverTime);
+        final toSync = await database.housesDao.getHouseById('to-sync');
+        await database.housesDao.markHouseAsSynced(
+          'to-sync',
+          serverTime,
+          localUpdatedAt: toSync!.updatedAt,
+        );
 
         final house = await database.housesDao.getHouseById('to-sync');
         expect(house, isA<House>());
@@ -640,7 +645,11 @@ void main() {
       // ufficiale. markHouseAsSynced lo applica al record locale per
       // mantenere allineato il pivot LWW.
       final serverTs = DateTime(2026, 5, 1, 12, 0);
-      await database.housesDao.markHouseAsSynced('h-server-ts', serverTs);
+      await database.housesDao.markHouseAsSynced(
+        'h-server-ts',
+        serverTs,
+        localUpdatedAt: clientUpdatedAt,
+      );
 
       final house = await database.housesDao.getHouseById('h-server-ts');
       expect(
@@ -653,6 +662,54 @@ void main() {
       expect(house.syncStatus, equals(SyncStatus.synced));
       expect(house.lastSyncedAt, equals(serverTs));
     });
+
+    test(
+      'markHouseAsSynced is no-op when updatedAt changed during push '
+      '(race condition guard)',
+      () async {
+        final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'h-race',
+            name: 'Race House',
+            createdAt: DateTime(2026, 6, 1, 7, 0),
+            updatedAt: originalUpdatedAt,
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+          ),
+        );
+
+        // Simula edit utente mentre il push era in volo: updatedAt cambia.
+        final userEditedAt = DateTime(2026, 6, 1, 9, 0);
+        await (database.update(database.houses)
+              ..where((h) => h.id.equals('h-race')))
+            .write(
+          HousesCompanion(
+            updatedAt: Value(userEditedAt),
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+          ),
+        );
+
+        // Push completa: markHouseAsSynced usa il vecchio localUpdatedAt.
+        final serverTs = DateTime(2026, 6, 1, 12, 0);
+        await database.housesDao.markHouseAsSynced(
+          'h-race',
+          serverTs,
+          localUpdatedAt: originalUpdatedAt,
+        );
+
+        final house = await database.housesDao.getHouseById('h-race');
+        expect(
+          house!.syncStatus,
+          equals(SyncStatus.pendingUpdate),
+          reason: 'record modificato durante il push deve restare pendingUpdate',
+        );
+        expect(
+          house.updatedAt,
+          equals(userEditedAt),
+          reason: "l'edit dell'utente non deve essere sovrascritto",
+        );
+      },
+    );
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await database.housesDao.insertHouse(

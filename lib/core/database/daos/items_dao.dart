@@ -224,9 +224,19 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   }
 
   /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
-  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale.
-  Future<void> markItemAsSynced(String itemId, DateTime serverUpdatedAt) {
-    return (update(items)..where((i) => i.id.equals(itemId))).write(
+  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale e
+  /// la semantica di [localUpdatedAt] (race condition guard).
+  Future<void> markItemAsSynced(
+    String itemId,
+    DateTime serverUpdatedAt, {
+    required DateTime localUpdatedAt,
+  }) {
+    return (update(items)
+          ..where(
+            (i) =>
+                i.id.equals(itemId) & i.updatedAt.equals(localUpdatedAt),
+          ))
+        .write(
       ItemsCompanion(
         updatedAt: Value(serverUpdatedAt),
         syncStatus: const Value(SyncStatus.synced),

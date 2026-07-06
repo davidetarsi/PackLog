@@ -262,8 +262,22 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
   /// per la correttezza della LWW in presenza di clock drift tra device:
   /// il client locale potrebbe avere scritto un client-time arbitrario in
   /// `updatedAt`, ma il server-time è la sola verità.
-  Future<void> markHouseAsSynced(String houseId, DateTime serverUpdatedAt) {
-    return (update(houses)..where((h) => h.id.equals(houseId))).write(
+  ///
+  /// [localUpdatedAt] è il valore di `updatedAt` letto PRIMA del push. Se
+  /// l'utente ha modificato il record mentre il push era in volo, `updatedAt`
+  /// sarà cambiato e la WHERE non matcherà → il write è no-op, il record
+  /// rimane `pendingUpdate` e verrà pushato al ciclo successivo.
+  Future<void> markHouseAsSynced(
+    String houseId,
+    DateTime serverUpdatedAt, {
+    required DateTime localUpdatedAt,
+  }) {
+    return (update(houses)
+          ..where(
+            (h) =>
+                h.id.equals(houseId) & h.updatedAt.equals(localUpdatedAt),
+          ))
+        .write(
       HousesCompanion(
         updatedAt: Value(serverUpdatedAt),
         syncStatus: const Value(SyncStatus.synced),

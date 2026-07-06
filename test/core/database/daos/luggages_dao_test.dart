@@ -46,8 +46,13 @@ void main() {
         ),
       );
 
+      final clientUpdatedAt = DateTime(2026, 5, 1, 8, 0);
       final serverTs = DateTime(2026, 5, 1, 12, 0);
-      await database.luggagesDao.markLuggageAsSynced('l-server-ts', serverTs);
+      await database.luggagesDao.markLuggageAsSynced(
+        'l-server-ts',
+        serverTs,
+        localUpdatedAt: clientUpdatedAt,
+      );
 
       final luggage = await database.luggagesDao.getLuggageById('l-server-ts');
       expect(
@@ -60,6 +65,54 @@ void main() {
       expect(luggage.syncStatus, equals(SyncStatus.synced));
       expect(luggage.lastSyncedAt, equals(serverTs));
     });
+
+    test(
+      'markLuggageAsSynced is no-op when updatedAt changed during push '
+      '(race condition guard)',
+      () async {
+        final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
+        await database.luggagesDao.insertLuggage(
+          LuggagesCompanion.insert(
+            id: 'l-race',
+            houseId: houseId,
+            name: 'Zaino Race',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: DateTime(2026, 6, 1, 7, 0),
+            updatedAt: originalUpdatedAt,
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+          ),
+        );
+
+        final userEditedAt = DateTime(2026, 6, 1, 9, 0);
+        await (database.update(database.luggages)
+              ..where((l) => l.id.equals('l-race')))
+            .write(
+          LuggagesCompanion(
+            updatedAt: Value(userEditedAt),
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+          ),
+        );
+
+        final serverTs = DateTime(2026, 6, 1, 12, 0);
+        await database.luggagesDao.markLuggageAsSynced(
+          'l-race',
+          serverTs,
+          localUpdatedAt: originalUpdatedAt,
+        );
+
+        final luggage = await database.luggagesDao.getLuggageById('l-race');
+        expect(
+          luggage!.syncStatus,
+          equals(SyncStatus.pendingUpdate),
+          reason: 'record modificato durante il push deve restare pendingUpdate',
+        );
+        expect(
+          luggage.updatedAt,
+          equals(userEditedAt),
+          reason: "l'edit dell'utente non deve essere sovrascritto",
+        );
+      },
+    );
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await database.luggagesDao.insertLuggage(

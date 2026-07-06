@@ -196,9 +196,19 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
-  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale.
-  Future<void> markLuggageAsSynced(String luggageId, DateTime serverUpdatedAt) {
-    return (update(luggages)..where((l) => l.id.equals(luggageId))).write(
+  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale e
+  /// la semantica di [localUpdatedAt] (race condition guard).
+  Future<void> markLuggageAsSynced(
+    String luggageId,
+    DateTime serverUpdatedAt, {
+    required DateTime localUpdatedAt,
+  }) {
+    return (update(luggages)
+          ..where(
+            (l) =>
+                l.id.equals(luggageId) & l.updatedAt.equals(localUpdatedAt),
+          ))
+        .write(
       LuggagesCompanion(
         updatedAt: Value(serverUpdatedAt),
         syncStatus: const Value(SyncStatus.synced),

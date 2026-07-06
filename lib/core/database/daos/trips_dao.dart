@@ -345,9 +345,19 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   /// in [lastSyncedAt] for future delta-sync queries.
   ///
   /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
-  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale.
-  Future<void> markTripAsSynced(String tripId, DateTime serverUpdatedAt) {
-    return (update(trips)..where((t) => t.id.equals(tripId))).write(
+  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale e
+  /// la semantica di [localUpdatedAt] (race condition guard).
+  Future<void> markTripAsSynced(
+    String tripId,
+    DateTime serverUpdatedAt, {
+    required DateTime localUpdatedAt,
+  }) {
+    return (update(trips)
+          ..where(
+            (t) =>
+                t.id.equals(tripId) & t.updatedAt.equals(localUpdatedAt),
+          ))
+        .write(
       TripsCompanion(
         updatedAt: Value(serverUpdatedAt),
         syncStatus: const Value(SyncStatus.synced),

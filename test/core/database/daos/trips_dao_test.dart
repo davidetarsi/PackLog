@@ -1179,7 +1179,12 @@ void main() {
       await database.tripsDao.incrementSyncRetry('to-sync', 'timeout');
 
       final serverTime = DateTime(2026, 4, 28, 12, 0);
-      await database.tripsDao.markTripAsSynced('to-sync', serverTime);
+      final toSync = await database.tripsDao.getTripById('to-sync');
+      await database.tripsDao.markTripAsSynced(
+        'to-sync',
+        serverTime,
+        localUpdatedAt: toSync!.updatedAt,
+      );
 
       final trip = await database.tripsDao.getTripById('to-sync');
       expect(trip, isA<Trip>());
@@ -1229,8 +1234,13 @@ void main() {
         ),
       );
 
+      final clientUpdatedAt = DateTime(2026, 5, 1, 8, 0);
       final serverTs = DateTime(2026, 5, 1, 12, 0);
-      await database.tripsDao.markTripAsSynced('t-server-ts', serverTs);
+      await database.tripsDao.markTripAsSynced(
+        't-server-ts',
+        serverTs,
+        localUpdatedAt: clientUpdatedAt,
+      );
 
       final trip = await database.tripsDao.getTripById('t-server-ts');
       expect(
@@ -1243,6 +1253,52 @@ void main() {
       expect(trip.syncStatus, equals(SyncStatus.synced));
       expect(trip.lastSyncedAt, equals(serverTs));
     });
+
+    test(
+      'markTripAsSynced is no-op when updatedAt changed during push '
+      '(race condition guard)',
+      () async {
+        final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: 't-race',
+            name: 'Trip Race',
+            createdAt: DateTime(2026, 6, 1, 7, 0),
+            updatedAt: originalUpdatedAt,
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+          ),
+        );
+
+        final userEditedAt = DateTime(2026, 6, 1, 9, 0);
+        await (database.update(database.trips)
+              ..where((t) => t.id.equals('t-race')))
+            .write(
+          TripsCompanion(
+            updatedAt: Value(userEditedAt),
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+          ),
+        );
+
+        final serverTs = DateTime(2026, 6, 1, 12, 0);
+        await database.tripsDao.markTripAsSynced(
+          't-race',
+          serverTs,
+          localUpdatedAt: originalUpdatedAt,
+        );
+
+        final trip = await database.tripsDao.getTripById('t-race');
+        expect(
+          trip!.syncStatus,
+          equals(SyncStatus.pendingUpdate),
+          reason: 'record modificato durante il push deve restare pendingUpdate',
+        );
+        expect(
+          trip.updatedAt,
+          equals(userEditedAt),
+          reason: "l'edit dell'utente non deve essere sovrascritto",
+        );
+      },
+    );
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await insertTrip('t-blocked');

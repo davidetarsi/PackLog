@@ -427,7 +427,7 @@ class SyncService {
             _remote.fetchHouseById(house.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertHouse(data, sentryTrace: trace),
         pullLocal: (remote) => _pullHouse(house.id, remote),
-        markSynced: (ts) => _housesDao.markHouseAsSynced(house.id, ts),
+        markSynced: (ts, localAt) => _housesDao.markHouseAsSynced(house.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _housesDao.incrementSyncRetry(house.id, e),
         onPurge: () => pendingPurges.add(() => _housesDao.purgeHouse(house.id)),
         syncStatus: house.syncStatus,
@@ -448,7 +448,7 @@ class SyncService {
             _remote.fetchSpaceById(space.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertSpace(data, sentryTrace: trace),
         pullLocal: (remote) => _pullSpace(space.id, remote),
-        markSynced: (ts) => _spacesDao.markSpaceAsSynced(space.id, ts),
+        markSynced: (ts, localAt) => _spacesDao.markSpaceAsSynced(space.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _spacesDao.incrementSyncRetry(space.id, e),
         onPurge: () => pendingPurges.add(() => _spacesDao.purgeSpace(space.id)),
         syncStatus: space.syncStatus,
@@ -470,7 +470,7 @@ class SyncService {
         upsert: (data, trace) =>
             _remote.upsertLuggage(data, sentryTrace: trace),
         pullLocal: (remote) => _pullLuggage(luggage.id, remote),
-        markSynced: (ts) => _luggagesDao.markLuggageAsSynced(luggage.id, ts),
+        markSynced: (ts, localAt) => _luggagesDao.markLuggageAsSynced(luggage.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _luggagesDao.incrementSyncRetry(luggage.id, e),
         onPurge: () =>
             pendingPurges.add(() => _luggagesDao.purgeLuggage(luggage.id)),
@@ -492,7 +492,7 @@ class SyncService {
             _remote.fetchItemById(item.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertItem(data, sentryTrace: trace),
         pullLocal: (remote) => _pullItem(item.id, remote),
-        markSynced: (ts) => _itemsDao.markItemAsSynced(item.id, ts),
+        markSynced: (ts, localAt) => _itemsDao.markItemAsSynced(item.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _itemsDao.incrementSyncRetry(item.id, e),
         onPurge: () => pendingPurges.add(() => _itemsDao.purgeItem(item.id)),
         syncStatus: item.syncStatus,
@@ -523,7 +523,7 @@ class SyncService {
             _remote.fetchTripById(trip.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertTrip(data, sentryTrace: trace),
         pullLocal: (remote) => _pullTrip(trip.id, remote),
-        markSynced: (ts) => _tripsDao.markTripAsSynced(trip.id, ts),
+        markSynced: (ts, localAt) => _tripsDao.markTripAsSynced(trip.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _tripsDao.incrementSyncRetry(trip.id, e),
         onPurge: () => pendingPurges.add(() => _tripsDao.purgeTrip(trip.id)),
         syncStatus: trip.syncStatus,
@@ -559,7 +559,15 @@ class SyncService {
     required Future<DateTime> Function(Map<String, dynamic> data, String? trace)
     upsert,
     required Future<void> Function(Map<String, dynamic> remote) pullLocal,
-    required Future<void> Function(DateTime serverUpdatedAt) markSynced,
+    // [localUpdatedAtForWhere] è il valore di `updatedAt` presente nel DB al
+    // momento in cui `markSynced` viene eseguito:
+    //   - push path: invariato → usa il [localUpdatedAt] originale
+    //   - pull path: `pullLocal` ha già scritto `remoteUpdatedAt` nel DB
+    //     → usa quel valore come WHERE condition, altrimenti il write è no-op
+    required Future<void> Function(
+      DateTime serverUpdatedAt,
+      DateTime localUpdatedAtForWhere,
+    ) markSynced,
     required Future<void> Function(String errorMessage) incrementRetry,
     required void Function() onPurge,
     required SyncStatus syncStatus,
@@ -586,6 +594,11 @@ class SyncService {
         // applicata via `markSynced` per allineare il pivot LWW del record
         // locale al tempo di scrittura del server (immune a clock drift).
         DateTime? serverUpdatedAt;
+        // Valore di `updatedAt` nel DB al momento in cui `markSynced` viene
+        // eseguito. Nei push path coincide con il `localUpdatedAt` originale
+        // (il DB non è stato toccato). Nel pull path `pullLocal` ha già
+        // scritto `remoteUpdatedAt` → va usato quel valore come WHERE.
+        DateTime localUpdatedAtForWhere = localUpdatedAt;
 
         if (remote == null) {
           if (syncStatus == SyncStatus.pendingCreate && !localIsDeleted) {
@@ -609,7 +622,7 @@ class SyncService {
               // Niente push qui: marchiamo synced col wall clock locale —
               // il record viene purgato comunque, l'updatedAt non sarà più
               // letto da nessuno.
-              await markSynced(DateTime.now().toUtc());
+              await markSynced(DateTime.now().toUtc(), localUpdatedAt);
               transaction.status = const SpanStatus.ok();
               return;
             }
@@ -647,18 +660,18 @@ class SyncService {
               '[SyncService] $entity $id: pulling (is_deleted=$remoteIsDeleted)',
             );
             await pullLocal(remote);
-            // Pull: `_pullX` ha già scritto `updatedAt = remote.updated_at`
-            // sul record locale, ma vogliamo che `markSynced` usi lo stesso
-            // valore per `lastSyncedAt` e per riscrivere `updatedAt` in
-            // modo coerente (no-op in pratica, ma esplicito è meglio).
+            // `pullLocal` ha già scritto `updatedAt = remoteUpdatedAt` nel
+            // DB locale. Per la WHERE condition di `markSynced` dobbiamo
+            // usare quel valore, non il localUpdatedAt originale.
             serverUpdatedAt = remoteUpdatedAt;
+            localUpdatedAtForWhere = remoteUpdatedAt;
           }
         }
 
         // A questo punto tutti i path che non hanno fatto early-return
         // hanno popolato serverUpdatedAt (upsert ritorna il timestamp del
         // trigger; pull lo prende da remote['updated_at']).
-        await markSynced(serverUpdatedAt);
+        await markSynced(serverUpdatedAt, localUpdatedAtForWhere);
         if (localIsDeleted) {
           onPurge();
           debugPrint('[SyncService] $entity $id: synced, purge deferred');

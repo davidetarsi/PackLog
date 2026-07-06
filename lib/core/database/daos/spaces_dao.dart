@@ -144,9 +144,19 @@ class SpacesDao extends DatabaseAccessor<AppDatabase> with _$SpacesDaoMixin {
   }
 
   /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
-  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale.
-  Future<void> markSpaceAsSynced(String spaceId, DateTime serverUpdatedAt) {
-    return (update(spaces)..where((s) => s.id.equals(spaceId))).write(
+  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale e
+  /// la semantica di [localUpdatedAt] (race condition guard).
+  Future<void> markSpaceAsSynced(
+    String spaceId,
+    DateTime serverUpdatedAt, {
+    required DateTime localUpdatedAt,
+  }) {
+    return (update(spaces)
+          ..where(
+            (s) =>
+                s.id.equals(spaceId) & s.updatedAt.equals(localUpdatedAt),
+          ))
+        .write(
       SpacesCompanion(
         updatedAt: Value(serverUpdatedAt),
         syncStatus: const Value(SyncStatus.synced),
