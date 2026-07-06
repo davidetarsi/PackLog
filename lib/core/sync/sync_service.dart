@@ -71,11 +71,11 @@ class SyncService {
   /// `processQueue`).
   Future<int> countPendingChanges() async {
     final results = await Future.wait([
-      _housesDao.getPendingSyncHouses(),
-      _spacesDao.getPendingSyncSpaces(),
-      _luggagesDao.getPendingSyncLuggages(),
-      _itemsDao.getPendingSyncItems(),
-      _tripsDao.getPendingSyncTrips(),
+      _housesDao.getPendingSyncRecords(),
+      _spacesDao.getPendingSyncRecords(),
+      _luggagesDao.getPendingSyncRecords(),
+      _itemsDao.getPendingSyncRecords(),
+      _tripsDao.getPendingSyncRecords(),
     ]);
     return results.fold<int>(0, (sum, list) => sum + list.length);
   }
@@ -395,11 +395,11 @@ class SyncService {
   /// (FK safety: items reference spaces; trips reference luggages via junction).
   Future<void> processQueue() async {
     await _recoverStaleSoftDeletes();
-    final houses = await _housesDao.getPendingSyncHouses();
-    final spaces = await _spacesDao.getPendingSyncSpaces();
-    final luggages = await _luggagesDao.getPendingSyncLuggages();
-    final items = await _itemsDao.getPendingSyncItems();
-    final trips = await _tripsDao.getPendingSyncTrips();
+    final houses = await _housesDao.getPendingSyncRecords();
+    final spaces = await _spacesDao.getPendingSyncRecords();
+    final luggages = await _luggagesDao.getPendingSyncRecords();
+    final items = await _itemsDao.getPendingSyncRecords();
+    final trips = await _tripsDao.getPendingSyncRecords();
 
     _monitoring.logBreadcrumb(
       'Avvio batch sync: ${houses.length} case, ${spaces.length} spazi, '
@@ -429,9 +429,9 @@ class SyncService {
         pullLocal: (remote) => _housesDao.updateHouse(
           SyncSerializers.buildHouseCompanion(remote, includeSyncFields: false),
         ),
-        markSynced: (ts, localAt) => _housesDao.markHouseAsSynced(house.id, ts, localUpdatedAt: localAt),
+        markSynced: (ts, localAt) => _housesDao.markAsSynced(house.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _housesDao.incrementSyncRetry(house.id, e),
-        onPurge: () => pendingPurges.add(() => _housesDao.purgeHouse(house.id)),
+        onPurge: () => pendingPurges.add(() => _housesDao.purgeRecord(house.id)),
         syncStatus: house.syncStatus,
         lastSyncedAt: house.lastSyncedAt,
         createdAt: house.createdAt,
@@ -452,9 +452,9 @@ class SyncService {
         pullLocal: (remote) => _spacesDao.updateSpace(
           SyncSerializers.buildSpaceCompanion(remote, includeSyncFields: false),
         ),
-        markSynced: (ts, localAt) => _spacesDao.markSpaceAsSynced(space.id, ts, localUpdatedAt: localAt),
+        markSynced: (ts, localAt) => _spacesDao.markAsSynced(space.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _spacesDao.incrementSyncRetry(space.id, e),
-        onPurge: () => pendingPurges.add(() => _spacesDao.purgeSpace(space.id)),
+        onPurge: () => pendingPurges.add(() => _spacesDao.purgeRecord(space.id)),
         syncStatus: space.syncStatus,
         lastSyncedAt: space.lastSyncedAt,
         createdAt: space.createdAt,
@@ -476,10 +476,10 @@ class SyncService {
         pullLocal: (remote) => _luggagesDao.updateLuggage(
           SyncSerializers.buildLuggageCompanion(remote, includeSyncFields: false),
         ),
-        markSynced: (ts, localAt) => _luggagesDao.markLuggageAsSynced(luggage.id, ts, localUpdatedAt: localAt),
+        markSynced: (ts, localAt) => _luggagesDao.markAsSynced(luggage.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _luggagesDao.incrementSyncRetry(luggage.id, e),
         onPurge: () =>
-            pendingPurges.add(() => _luggagesDao.purgeLuggage(luggage.id)),
+            pendingPurges.add(() => _luggagesDao.purgeRecord(luggage.id)),
         syncStatus: luggage.syncStatus,
         lastSyncedAt: luggage.lastSyncedAt,
         createdAt: luggage.createdAt,
@@ -500,9 +500,9 @@ class SyncService {
         pullLocal: (remote) => _itemsDao.updateItem(
           SyncSerializers.buildItemCompanion(remote, includeSyncFields: false),
         ),
-        markSynced: (ts, localAt) => _itemsDao.markItemAsSynced(item.id, ts, localUpdatedAt: localAt),
+        markSynced: (ts, localAt) => _itemsDao.markAsSynced(item.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _itemsDao.incrementSyncRetry(item.id, e),
-        onPurge: () => pendingPurges.add(() => _itemsDao.purgeItem(item.id)),
+        onPurge: () => pendingPurges.add(() => _itemsDao.purgeRecord(item.id)),
         syncStatus: item.syncStatus,
         lastSyncedAt: item.lastSyncedAt,
         createdAt: item.createdAt,
@@ -531,9 +531,9 @@ class SyncService {
             _remote.fetchTripById(trip.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertTrip(data, sentryTrace: trace),
         pullLocal: (remote) => _pullTrip(trip.id, remote),
-        markSynced: (ts, localAt) => _tripsDao.markTripAsSynced(trip.id, ts, localUpdatedAt: localAt),
+        markSynced: (ts, localAt) => _tripsDao.markAsSynced(trip.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _tripsDao.incrementSyncRetry(trip.id, e),
-        onPurge: () => pendingPurges.add(() => _tripsDao.purgeTrip(trip.id)),
+        onPurge: () => pendingPurges.add(() => _tripsDao.purgeRecord(trip.id)),
         syncStatus: trip.syncStatus,
         lastSyncedAt: trip.lastSyncedAt,
         createdAt: trip.createdAt,

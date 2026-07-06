@@ -534,13 +534,13 @@ void main() {
     }
 
     test(
-      'getPendingSyncHouses returns only non-synced houses below retry limit',
+      'getPendingSyncRecords returns only non-synced houses below retry limit',
       () async {
         await insertHouse('pending-1');
         await insertHouse('pending-2', status: SyncStatus.pendingUpdate);
         await insertHouse('synced-1', status: SyncStatus.synced);
 
-        final pending = await database.housesDao.getPendingSyncHouses();
+        final pending = await database.housesDao.getPendingSyncRecords();
 
         expect(pending, hasLength(2));
         final ids = pending.map((h) => h.id).toSet();
@@ -549,25 +549,25 @@ void main() {
       },
     );
 
-    test('getPendingSyncHouses excludes houses exceeding maxRetries', () async {
+    test('getPendingSyncRecords excludes houses exceeding maxRetries', () async {
       await insertHouse('retry-exhausted');
       await (database.update(database.houses)
             ..where((h) => h.id.equals('retry-exhausted')))
           .write(const HousesCompanion(syncRetryCount: Value(5)));
 
-      final pending = await database.housesDao.getPendingSyncHouses(
+      final pending = await database.housesDao.getPendingSyncRecords(
         maxRetries: 5,
       );
       expect(pending, isEmpty);
     });
 
     test(
-      'getPendingSyncHouses includes soft-deleted houses (to propagate deletion to server)',
+      'getPendingSyncRecords includes soft-deleted houses (to propagate deletion to server)',
       () async {
         await insertHouse('deleted-pending');
         await database.housesDao.deleteHouse('deleted-pending');
 
-        final pending = await database.housesDao.getPendingSyncHouses();
+        final pending = await database.housesDao.getPendingSyncRecords();
         expect(pending, hasLength(1));
         expect(pending.first.id, equals('deleted-pending'));
         expect(pending.first.isDeleted, isTrue);
@@ -575,14 +575,14 @@ void main() {
     );
 
     test(
-      'markHouseAsSynced resets retry state and sets lastSyncedAt',
+      'markAsSynced resets retry state and sets lastSyncedAt',
       () async {
         await insertHouse('to-sync');
         await database.housesDao.incrementSyncRetry('to-sync', 'timeout');
 
         final serverTime = DateTime(2026, 4, 28, 12, 0);
         final toSync = await database.housesDao.getHouseById('to-sync');
-        await database.housesDao.markHouseAsSynced(
+        await database.housesDao.markAsSynced(
           'to-sync',
           serverTime,
           localUpdatedAt: toSync!.updatedAt,
@@ -627,7 +627,7 @@ void main() {
       expect(house.userId, equals(null));
     });
 
-    test('markHouseAsSynced overwrites updatedAt with server timestamp '
+    test('markAsSynced overwrites updatedAt with server timestamp '
         '(post fix #6: server-side updated_at via Postgres trigger)', () async {
       final clientUpdatedAt = DateTime(2026, 5, 1, 8, 0);
       await database.housesDao.insertHouse(
@@ -642,10 +642,10 @@ void main() {
 
       // Il server (trigger Postgres `set_updated_at_to_now`) ignora il
       // valore inviato dal client e ritorna NOW() come updated_at
-      // ufficiale. markHouseAsSynced lo applica al record locale per
+      // ufficiale. markAsSynced lo applica al record locale per
       // mantenere allineato il pivot LWW.
       final serverTs = DateTime(2026, 5, 1, 12, 0);
-      await database.housesDao.markHouseAsSynced(
+      await database.housesDao.markAsSynced(
         'h-server-ts',
         serverTs,
         localUpdatedAt: clientUpdatedAt,
@@ -664,7 +664,7 @@ void main() {
     });
 
     test(
-      'markHouseAsSynced is no-op when updatedAt changed during push '
+      'markAsSynced is no-op when updatedAt changed during push '
       '(race condition guard)',
       () async {
         final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
@@ -689,9 +689,9 @@ void main() {
           ),
         );
 
-        // Push completa: markHouseAsSynced usa il vecchio localUpdatedAt.
+        // Push completa: markAsSynced usa il vecchio localUpdatedAt.
         final serverTs = DateTime(2026, 6, 1, 12, 0);
-        await database.housesDao.markHouseAsSynced(
+        await database.housesDao.markAsSynced(
           'h-race',
           serverTs,
           localUpdatedAt: originalUpdatedAt,

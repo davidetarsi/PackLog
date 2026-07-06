@@ -3,13 +3,35 @@ import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import '../database.dart';
 import '../tables/spaces_table.dart';
 import '../tables/items_table.dart';
+import 'sync_dao_mixin.dart';
 
 part 'spaces_dao.g.dart';
 
 /// DAO per le operazioni CRUD sugli spazi/armadi.
 @DriftAccessor(tables: [Spaces, Items])
-class SpacesDao extends DatabaseAccessor<AppDatabase> with _$SpacesDaoMixin {
+class SpacesDao extends DatabaseAccessor<AppDatabase>
+    with _$SpacesDaoMixin, SyncDaoMixin<$SpacesTable, Space> {
   SpacesDao(super.db);
+
+  // ─── SyncDaoMixin column bindings ──────────────────────────────────────────
+  @override
+  TableInfo<$SpacesTable, Space> get $table => spaces;
+  @override
+  GeneratedColumn<String> get $idCol => spaces.id;
+  @override
+  GeneratedColumn<DateTime> get $updatedAtCol => spaces.updatedAt;
+  @override
+  GeneratedColumn<int> get $syncStatusCol => spaces.syncStatus;
+  @override
+  GeneratedColumn<int> get $retryCountCol => spaces.syncRetryCount;
+  @override
+  GeneratedColumn<String> get $lastErrorCol => spaces.lastSyncError;
+  @override
+  GeneratedColumn<DateTime> get $lastSyncedAtCol => spaces.lastSyncedAt;
+  @override
+  GeneratedColumn<DateTime> get $nextAttemptAtCol => spaces.nextSyncAttemptAt;
+  @override
+  GeneratedColumn<bool> get $isDeletedCol => spaces.isDeleted;
 
   /// Ottiene tutti gli spazi non eliminati
   Future<List<Space>> getAllSpaces() =>
@@ -103,103 +125,7 @@ class SpacesDao extends DatabaseAccessor<AppDatabase> with _$SpacesDaoMixin {
     return (select(spaces)..where((s) => s.id.equals(id))).getSingleOrNull();
   }
 
-  /// Physical DELETE after successful sync of a soft-deleted record.
-  Future<void> purgeSpace(String id) {
-    return (delete(spaces)..where((s) => s.id.equals(id))).go();
-  }
-
-  /// Wipes ALL rows. Vedi [HousesDao.wipeAll].
-  Future<void> wipeAll() => delete(spaces).go();
-
-  /// Recovery: re-queues soft-deleted records stuck as "synced".
-  Future<int> markDeletedAsPendingSync() {
-    return (update(spaces)..where(
-          (s) =>
-              s.isDeleted.equals(true) &
-              s.syncStatus.equalsValue(SyncStatus.synced),
-        ))
-        .write(
-          const SpacesCompanion(syncStatus: Value(SyncStatus.pendingUpdate)),
-        );
-  }
-
-  /// Returns spaces pending sync: syncStatus != synced AND retries below limit.
-  Future<List<Space>> getPendingSyncSpaces({int maxRetries = 5}) {
-    final now = DateTime.now();
-    return (select(spaces)..where(
-          (s) =>
-              s.syncStatus.equalsValue(SyncStatus.synced).not() &
-              s.syncRetryCount.isSmallerThanValue(maxRetries) &
-              (s.nextSyncAttemptAt.isNull() |
-                  s.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
-        ))
-        .get();
-  }
-
-  Future<int> countUnsynced() async {
-    final rows = await (select(
-      spaces,
-    )..where((s) => s.syncStatus.equalsValue(SyncStatus.synced).not())).get();
-    return rows.length;
-  }
-
-  /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
-  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale e
-  /// la semantica di [localUpdatedAt] (race condition guard).
-  Future<void> markSpaceAsSynced(
-    String spaceId,
-    DateTime serverUpdatedAt, {
-    required DateTime localUpdatedAt,
-  }) {
-    return (update(spaces)
-          ..where(
-            (s) =>
-                s.id.equals(spaceId) & s.updatedAt.equals(localUpdatedAt),
-          ))
-        .write(
-      SpacesCompanion(
-        updatedAt: Value(serverUpdatedAt),
-        syncStatus: const Value(SyncStatus.synced),
-        syncRetryCount: const Value(0),
-        lastSyncError: const Value(null),
-        lastSyncedAt: Value(serverUpdatedAt),
-        nextSyncAttemptAt: const Value(null),
-      ),
-    );
-  }
-
-  /// Resets retry state on records bloccati oltre soglia. Vedi
-  /// [HousesDao.resetSyncRetries] per il contratto.
-  Future<int> resetSyncRetries() {
-    return (update(
-      spaces,
-    )..where((s) => s.syncRetryCount.isBiggerThanValue(0))).write(
-      const SpacesCompanion(
-        syncRetryCount: Value(0),
-        lastSyncError: Value(null),
-        nextSyncAttemptAt: Value(null),
-      ),
-    );
-  }
-
-  Future<void> incrementSyncRetry(String spaceId, String errorMessage) async {
-    final space = await (select(
-      spaces,
-    )..where((s) => s.id.equals(spaceId))).getSingleOrNull();
-    if (space == null) return;
-
-    final newRetryCount = space.syncRetryCount + 1;
-    final backoffSeconds = 2 << (newRetryCount - 1);
-    final nextAttempt = DateTime.now().add(Duration(seconds: backoffSeconds));
-
-    await (update(spaces)..where((s) => s.id.equals(spaceId))).write(
-      SpacesCompanion(
-        syncRetryCount: Value(newRetryCount),
-        lastSyncError: Value(errorMessage),
-        nextSyncAttemptAt: Value(nextAttempt),
-        // NB: niente updatedAt — è il pivot LWW, il retry bookkeeping
-        // non deve renderlo artificialmente "più nuovo" di edit remoti.
-      ),
-    );
-  }
+  // purgeRecord, wipeAll, markDeletedAsPendingSync, getPendingSyncRecords,
+  // countUnsynced, markAsSynced, resetSyncRetries, incrementSyncRetry
+  // → delegated to SyncDaoMixin
 }

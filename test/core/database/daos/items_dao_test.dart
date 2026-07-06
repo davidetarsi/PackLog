@@ -513,13 +513,13 @@ void main() {
     }
 
     test(
-      'getPendingSyncItems returns only non-synced items below retry limit',
+      'getPendingSyncRecords returns only non-synced items below retry limit',
       () async {
         await insertItem('pending-1');
         await insertItem('pending-2', status: SyncStatus.pendingUpdate);
         await insertItem('synced-1', status: SyncStatus.synced);
 
-        final pending = await database.itemsDao.getPendingSyncItems();
+        final pending = await database.itemsDao.getPendingSyncRecords();
 
         expect(pending, hasLength(2));
         final ids = pending.map((i) => i.id).toSet();
@@ -528,49 +528,49 @@ void main() {
       },
     );
 
-    test('getPendingSyncItems excludes items exceeding maxRetries', () async {
+    test('getPendingSyncRecords excludes items exceeding maxRetries', () async {
       await insertItem('retry-exhausted');
       await (database.update(database.items)
             ..where((i) => i.id.equals('retry-exhausted')))
           .write(const ItemsCompanion(syncRetryCount: Value(5)));
 
-      final pending = await database.itemsDao.getPendingSyncItems(
+      final pending = await database.itemsDao.getPendingSyncRecords(
         maxRetries: 5,
       );
       expect(pending, isEmpty);
     });
 
     test(
-      'getPendingSyncItems includes soft-deleted items (to propagate deletion to server)',
+      'getPendingSyncRecords includes soft-deleted items (to propagate deletion to server)',
       () async {
         await insertItem('deleted-pending');
         await database.itemsDao.deleteItem('deleted-pending');
 
-        final pending = await database.itemsDao.getPendingSyncItems();
+        final pending = await database.itemsDao.getPendingSyncRecords();
         expect(pending, hasLength(1));
         expect(pending.first.id, equals('deleted-pending'));
         expect(pending.first.isDeleted, isTrue);
       },
     );
 
-    test('getPendingSyncItems respects nextSyncAttemptAt cooldown', () async {
+    test('getPendingSyncRecords respects nextSyncAttemptAt cooldown', () async {
       await insertItem('cooldown-item');
       final future = DateTime.now().add(const Duration(hours: 1));
       await (database.update(database.items)
             ..where((i) => i.id.equals('cooldown-item')))
           .write(ItemsCompanion(nextSyncAttemptAt: Value(future)));
 
-      final pending = await database.itemsDao.getPendingSyncItems();
+      final pending = await database.itemsDao.getPendingSyncRecords();
       expect(pending, isEmpty);
     });
 
-    test('markItemAsSynced resets retry state and sets lastSyncedAt', () async {
+    test('markAsSynced resets retry state and sets lastSyncedAt', () async {
       await insertItem('to-sync');
       await database.itemsDao.incrementSyncRetry('to-sync', 'timeout');
 
       final serverTime = DateTime(2026, 4, 28, 12, 0);
       final toSync = await database.itemsDao.getItemById('to-sync');
-      await database.itemsDao.markItemAsSynced(
+      await database.itemsDao.markAsSynced(
         'to-sync',
         serverTime,
         localUpdatedAt: toSync!.updatedAt,
@@ -612,7 +612,7 @@ void main() {
       expect(item.lastSyncError, isNull);
     });
 
-    test('markItemAsSynced overwrites updatedAt with server timestamp '
+    test('markAsSynced overwrites updatedAt with server timestamp '
         '(post fix #6: server-side updated_at)', () async {
       await database.itemsDao.insertItem(
         ItemsCompanion.insert(
@@ -628,7 +628,7 @@ void main() {
 
       final clientUpdatedAt = DateTime(2026, 5, 1, 8, 0);
       final serverTs = DateTime(2026, 5, 1, 12, 0);
-      await database.itemsDao.markItemAsSynced(
+      await database.itemsDao.markAsSynced(
         'i-server-ts',
         serverTs,
         localUpdatedAt: clientUpdatedAt,
@@ -647,7 +647,7 @@ void main() {
     });
 
     test(
-      'markItemAsSynced is no-op when updatedAt changed during push '
+      'markAsSynced is no-op when updatedAt changed during push '
       '(race condition guard)',
       () async {
         final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
@@ -674,7 +674,7 @@ void main() {
         );
 
         final serverTs = DateTime(2026, 6, 1, 12, 0);
-        await database.itemsDao.markItemAsSynced(
+        await database.itemsDao.markAsSynced(
           'i-race',
           serverTs,
           localUpdatedAt: originalUpdatedAt,

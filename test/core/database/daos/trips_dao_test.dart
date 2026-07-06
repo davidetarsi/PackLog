@@ -1132,13 +1132,13 @@ void main() {
     }
 
     test(
-      'getPendingSyncTrips returns only non-synced trips below retry limit',
+      'getPendingSyncRecords returns only non-synced trips below retry limit',
       () async {
         await insertTrip('pending-1');
         await insertTrip('pending-2', status: SyncStatus.pendingUpdate);
         await insertTrip('synced-1', status: SyncStatus.synced);
 
-        final pending = await database.tripsDao.getPendingSyncTrips();
+        final pending = await database.tripsDao.getPendingSyncRecords();
 
         expect(pending, hasLength(2));
         final ids = pending.map((t) => t.id).toSet();
@@ -1147,13 +1147,13 @@ void main() {
       },
     );
 
-    test('getPendingSyncTrips excludes trips exceeding maxRetries', () async {
+    test('getPendingSyncRecords excludes trips exceeding maxRetries', () async {
       await insertTrip('retry-exhausted');
       await (database.update(database.trips)
             ..where((t) => t.id.equals('retry-exhausted')))
           .write(const TripsCompanion(syncRetryCount: Value(5)));
 
-      final pending = await database.tripsDao.getPendingSyncTrips(
+      final pending = await database.tripsDao.getPendingSyncRecords(
         maxRetries: 5,
       );
 
@@ -1161,26 +1161,26 @@ void main() {
     });
 
     test(
-      'getPendingSyncTrips includes soft-deleted trips (to propagate deletion to server)',
+      'getPendingSyncRecords includes soft-deleted trips (to propagate deletion to server)',
       () async {
         await insertTrip('deleted-pending');
         await database.tripsDao.deleteTrip('deleted-pending');
 
-        final pending = await database.tripsDao.getPendingSyncTrips();
+        final pending = await database.tripsDao.getPendingSyncRecords();
         expect(pending, hasLength(1));
         expect(pending.first.id, equals('deleted-pending'));
         expect(pending.first.isDeleted, isTrue);
       },
     );
 
-    test('markTripAsSynced resets retry state and sets lastSyncedAt', () async {
+    test('markAsSynced resets retry state and sets lastSyncedAt', () async {
       await insertTrip('to-sync');
       // Simulate a prior failed attempt
       await database.tripsDao.incrementSyncRetry('to-sync', 'timeout');
 
       final serverTime = DateTime(2026, 4, 28, 12, 0);
       final toSync = await database.tripsDao.getTripById('to-sync');
-      await database.tripsDao.markTripAsSynced(
+      await database.tripsDao.markAsSynced(
         'to-sync',
         serverTime,
         localUpdatedAt: toSync!.updatedAt,
@@ -1222,7 +1222,7 @@ void main() {
       expect(trip.userId, equals(null));
     });
 
-    test('markTripAsSynced overwrites updatedAt with server timestamp '
+    test('markAsSynced overwrites updatedAt with server timestamp '
         '(post fix #6: server-side updated_at)', () async {
       await database.tripsDao.insertTrip(
         TripsCompanion.insert(
@@ -1236,7 +1236,7 @@ void main() {
 
       final clientUpdatedAt = DateTime(2026, 5, 1, 8, 0);
       final serverTs = DateTime(2026, 5, 1, 12, 0);
-      await database.tripsDao.markTripAsSynced(
+      await database.tripsDao.markAsSynced(
         't-server-ts',
         serverTs,
         localUpdatedAt: clientUpdatedAt,
@@ -1255,7 +1255,7 @@ void main() {
     });
 
     test(
-      'markTripAsSynced is no-op when updatedAt changed during push '
+      'markAsSynced is no-op when updatedAt changed during push '
       '(race condition guard)',
       () async {
         final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
@@ -1280,7 +1280,7 @@ void main() {
         );
 
         final serverTs = DateTime(2026, 6, 1, 12, 0);
-        await database.tripsDao.markTripAsSynced(
+        await database.tripsDao.markAsSynced(
           't-race',
           serverTs,
           localUpdatedAt: originalUpdatedAt,

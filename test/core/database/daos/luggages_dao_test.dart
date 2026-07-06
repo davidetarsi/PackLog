@@ -32,7 +32,7 @@ void main() {
       );
     });
 
-    test('markLuggageAsSynced overwrites updatedAt with server timestamp '
+    test('markAsSynced overwrites updatedAt with server timestamp '
         '(post fix #6: server-side updated_at)', () async {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
@@ -48,7 +48,7 @@ void main() {
 
       final clientUpdatedAt = DateTime(2026, 5, 1, 8, 0);
       final serverTs = DateTime(2026, 5, 1, 12, 0);
-      await database.luggagesDao.markLuggageAsSynced(
+      await database.luggagesDao.markAsSynced(
         'l-server-ts',
         serverTs,
         localUpdatedAt: clientUpdatedAt,
@@ -67,7 +67,7 @@ void main() {
     });
 
     test(
-      'markLuggageAsSynced is no-op when updatedAt changed during push '
+      'markAsSynced is no-op when updatedAt changed during push '
       '(race condition guard)',
       () async {
         final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
@@ -94,7 +94,7 @@ void main() {
         );
 
         final serverTs = DateTime(2026, 6, 1, 12, 0);
-        await database.luggagesDao.markLuggageAsSynced(
+        await database.luggagesDao.markAsSynced(
           'l-race',
           serverTs,
           localUpdatedAt: originalUpdatedAt,

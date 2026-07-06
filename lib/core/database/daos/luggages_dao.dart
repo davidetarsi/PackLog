@@ -3,14 +3,36 @@ import '../database.dart';
 import '../tables/luggages_table.dart';
 import '../tables/mixins/syncable_table.dart';
 import '../tables/trip_luggage_entries_table.dart';
+import 'sync_dao_mixin.dart';
 
 part 'luggages_dao.g.dart';
 
 /// DAO per le operazioni CRUD sui bagagli.
 @DriftAccessor(tables: [Luggages, TripLuggageEntries])
 class LuggagesDao extends DatabaseAccessor<AppDatabase>
-    with _$LuggagesDaoMixin {
+    with _$LuggagesDaoMixin, SyncDaoMixin<$LuggagesTable, Luggage> {
   LuggagesDao(super.db);
+
+  // ─── SyncDaoMixin column bindings ──────────────────────────────────────────
+  @override
+  TableInfo<$LuggagesTable, Luggage> get $table => luggages;
+  @override
+  GeneratedColumn<String> get $idCol => luggages.id;
+  @override
+  GeneratedColumn<DateTime> get $updatedAtCol => luggages.updatedAt;
+  @override
+  GeneratedColumn<int> get $syncStatusCol => luggages.syncStatus;
+  @override
+  GeneratedColumn<int> get $retryCountCol => luggages.syncRetryCount;
+  @override
+  GeneratedColumn<String> get $lastErrorCol => luggages.lastSyncError;
+  @override
+  GeneratedColumn<DateTime> get $lastSyncedAtCol => luggages.lastSyncedAt;
+  @override
+  GeneratedColumn<DateTime> get $nextAttemptAtCol =>
+      luggages.nextSyncAttemptAt;
+  @override
+  GeneratedColumn<bool> get $isDeletedCol => luggages.isDeleted;
 
   /// Ottiene tutti i bagagli non eliminati
   Future<List<Luggage>> getAllLuggages() =>
@@ -155,103 +177,7 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase>
     return (select(luggages)..where((l) => l.id.equals(id))).getSingleOrNull();
   }
 
-  /// Physical DELETE after successful sync of a soft-deleted record.
-  Future<void> purgeLuggage(String id) {
-    return (delete(luggages)..where((l) => l.id.equals(id))).go();
-  }
-
-  /// Wipes ALL rows. Vedi [HousesDao.wipeAll].
-  Future<void> wipeAll() => delete(luggages).go();
-
-  /// Recovery: re-queues soft-deleted records stuck as "synced".
-  Future<int> markDeletedAsPendingSync() {
-    return (update(luggages)..where(
-          (l) =>
-              l.isDeleted.equals(true) &
-              l.syncStatus.equalsValue(SyncStatus.synced),
-        ))
-        .write(
-          const LuggagesCompanion(syncStatus: Value(SyncStatus.pendingUpdate)),
-        );
-  }
-
-  /// Returns luggages pending sync: syncStatus != synced AND retries below limit.
-  Future<List<Luggage>> getPendingSyncLuggages({int maxRetries = 5}) {
-    final now = DateTime.now();
-    return (select(luggages)..where(
-          (l) =>
-              l.syncStatus.equalsValue(SyncStatus.synced).not() &
-              l.syncRetryCount.isSmallerThanValue(maxRetries) &
-              (l.nextSyncAttemptAt.isNull() |
-                  l.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
-        ))
-        .get();
-  }
-
-  Future<int> countUnsynced() async {
-    final rows = await (select(
-      luggages,
-    )..where((l) => l.syncStatus.equalsValue(SyncStatus.synced).not())).get();
-    return rows.length;
-  }
-
-  /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
-  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale e
-  /// la semantica di [localUpdatedAt] (race condition guard).
-  Future<void> markLuggageAsSynced(
-    String luggageId,
-    DateTime serverUpdatedAt, {
-    required DateTime localUpdatedAt,
-  }) {
-    return (update(luggages)
-          ..where(
-            (l) =>
-                l.id.equals(luggageId) & l.updatedAt.equals(localUpdatedAt),
-          ))
-        .write(
-      LuggagesCompanion(
-        updatedAt: Value(serverUpdatedAt),
-        syncStatus: const Value(SyncStatus.synced),
-        syncRetryCount: const Value(0),
-        lastSyncError: const Value(null),
-        lastSyncedAt: Value(serverUpdatedAt),
-        nextSyncAttemptAt: const Value(null),
-      ),
-    );
-  }
-
-  /// Resets retry state on records bloccati oltre soglia. Vedi
-  /// [HousesDao.resetSyncRetries] per il contratto.
-  Future<int> resetSyncRetries() {
-    return (update(
-      luggages,
-    )..where((l) => l.syncRetryCount.isBiggerThanValue(0))).write(
-      const LuggagesCompanion(
-        syncRetryCount: Value(0),
-        lastSyncError: Value(null),
-        nextSyncAttemptAt: Value(null),
-      ),
-    );
-  }
-
-  Future<void> incrementSyncRetry(String luggageId, String errorMessage) async {
-    final luggage = await (select(
-      luggages,
-    )..where((l) => l.id.equals(luggageId))).getSingleOrNull();
-    if (luggage == null) return;
-
-    final newRetryCount = luggage.syncRetryCount + 1;
-    final backoffSeconds = 2 << (newRetryCount - 1);
-    final nextAttempt = DateTime.now().add(Duration(seconds: backoffSeconds));
-
-    await (update(luggages)..where((l) => l.id.equals(luggageId))).write(
-      LuggagesCompanion(
-        syncRetryCount: Value(newRetryCount),
-        lastSyncError: Value(errorMessage),
-        nextSyncAttemptAt: Value(nextAttempt),
-        // NB: niente updatedAt — è il pivot LWW, il retry bookkeeping
-        // non deve renderlo artificialmente "più nuovo" di edit remoti.
-      ),
-    );
-  }
+  // purgeRecord, wipeAll, markDeletedAsPendingSync, getPendingSyncRecords,
+  // countUnsynced, markAsSynced, resetSyncRetries, incrementSyncRetry
+  // → delegated to SyncDaoMixin
 }

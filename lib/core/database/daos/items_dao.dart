@@ -2,13 +2,35 @@ import 'package:drift/drift.dart';
 import '../database.dart';
 import '../tables/items_table.dart';
 import '../tables/mixins/syncable_table.dart';
+import 'sync_dao_mixin.dart';
 
 part 'items_dao.g.dart';
 
 /// DAO per le operazioni CRUD sugli oggetti.
 @DriftAccessor(tables: [Items])
-class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
+class ItemsDao extends DatabaseAccessor<AppDatabase>
+    with _$ItemsDaoMixin, SyncDaoMixin<$ItemsTable, Item> {
   ItemsDao(super.db);
+
+  // ─── SyncDaoMixin column bindings ──────────────────────────────────────────
+  @override
+  TableInfo<$ItemsTable, Item> get $table => items;
+  @override
+  GeneratedColumn<String> get $idCol => items.id;
+  @override
+  GeneratedColumn<DateTime> get $updatedAtCol => items.updatedAt;
+  @override
+  GeneratedColumn<int> get $syncStatusCol => items.syncStatus;
+  @override
+  GeneratedColumn<int> get $retryCountCol => items.syncRetryCount;
+  @override
+  GeneratedColumn<String> get $lastErrorCol => items.lastSyncError;
+  @override
+  GeneratedColumn<DateTime> get $lastSyncedAtCol => items.lastSyncedAt;
+  @override
+  GeneratedColumn<DateTime> get $nextAttemptAtCol => items.nextSyncAttemptAt;
+  @override
+  GeneratedColumn<bool> get $isDeletedCol => items.isDeleted;
 
   /// Ottiene tutti gli oggetti non eliminati
   Future<List<Item>> getAllItems() =>
@@ -184,104 +206,9 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     );
   }
 
-  // === SYNC OPERATIONS ===
-
-  Future<void> purgeItem(String id) {
-    return (delete(items)..where((i) => i.id.equals(id))).go();
-  }
-
-  /// Wipes ALL rows. Vedi [HousesDao.wipeAll].
-  Future<void> wipeAll() => delete(items).go();
-
-  Future<int> markDeletedAsPendingSync() {
-    return (update(items)..where(
-          (i) =>
-              i.isDeleted.equals(true) &
-              i.syncStatus.equalsValue(SyncStatus.synced),
-        ))
-        .write(
-          const ItemsCompanion(syncStatus: Value(SyncStatus.pendingUpdate)),
-        );
-  }
-
-  Future<List<Item>> getPendingSyncItems({int maxRetries = 5}) {
-    final now = DateTime.now();
-    return (select(items)..where(
-          (i) =>
-              i.syncStatus.equalsValue(SyncStatus.synced).not() &
-              i.syncRetryCount.isSmallerThanValue(maxRetries) &
-              (i.nextSyncAttemptAt.isNull() |
-                  i.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
-        ))
-        .get();
-  }
-
-  Future<int> countUnsynced() async {
-    final rows = await (select(
-      items,
-    )..where((i) => i.syncStatus.equalsValue(SyncStatus.synced).not())).get();
-    return rows.length;
-  }
-
-  /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
-  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale e
-  /// la semantica di [localUpdatedAt] (race condition guard).
-  Future<void> markItemAsSynced(
-    String itemId,
-    DateTime serverUpdatedAt, {
-    required DateTime localUpdatedAt,
-  }) {
-    return (update(items)
-          ..where(
-            (i) =>
-                i.id.equals(itemId) & i.updatedAt.equals(localUpdatedAt),
-          ))
-        .write(
-      ItemsCompanion(
-        updatedAt: Value(serverUpdatedAt),
-        syncStatus: const Value(SyncStatus.synced),
-        syncRetryCount: const Value(0),
-        lastSyncError: const Value(null),
-        lastSyncedAt: Value(serverUpdatedAt),
-        nextSyncAttemptAt: const Value(null),
-      ),
-    );
-  }
-
-  /// Resets retry state on records bloccati oltre soglia. Vedi
-  /// [HousesDao.resetSyncRetries] per il contratto.
-  Future<int> resetSyncRetries() {
-    return (update(
-      items,
-    )..where((i) => i.syncRetryCount.isBiggerThanValue(0))).write(
-      const ItemsCompanion(
-        syncRetryCount: Value(0),
-        lastSyncError: Value(null),
-        nextSyncAttemptAt: Value(null),
-      ),
-    );
-  }
-
-  Future<void> incrementSyncRetry(String itemId, String errorMessage) async {
-    final item = await (select(
-      items,
-    )..where((i) => i.id.equals(itemId))).getSingleOrNull();
-    if (item == null) return;
-
-    final newRetryCount = item.syncRetryCount + 1;
-    final backoffSeconds = 2 << (newRetryCount - 1);
-    final nextAttempt = DateTime.now().add(Duration(seconds: backoffSeconds));
-
-    await (update(items)..where((i) => i.id.equals(itemId))).write(
-      ItemsCompanion(
-        syncRetryCount: Value(newRetryCount),
-        lastSyncError: Value(errorMessage),
-        nextSyncAttemptAt: Value(nextAttempt),
-        // NB: niente updatedAt — è il pivot LWW, il retry bookkeeping
-        // non deve renderlo artificialmente "più nuovo" di edit remoti.
-      ),
-    );
-  }
+  // === SYNC OPERATIONS (delegated to SyncDaoMixin) ===
+  // purgeRecord, wipeAll, markDeletedAsPendingSync, getPendingSyncRecords,
+  // countUnsynced, markAsSynced, resetSyncRetries, incrementSyncRetry
 
   // === BULK OPERATIONS ===
 

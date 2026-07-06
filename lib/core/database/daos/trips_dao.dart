@@ -5,13 +5,35 @@ import '../tables/trips_table.dart';
 import '../tables/trip_items_table.dart';
 import '../tables/luggages_table.dart';
 import '../tables/trip_luggage_entries_table.dart';
+import 'sync_dao_mixin.dart';
 
 part 'trips_dao.g.dart';
 
 /// DAO per le operazioni CRUD sui viaggi e i loro oggetti.
 @DriftAccessor(tables: [Trips, TripItemEntries, Luggages, TripLuggageEntries])
-class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
+class TripsDao extends DatabaseAccessor<AppDatabase>
+    with _$TripsDaoMixin, SyncDaoMixin<$TripsTable, Trip> {
   TripsDao(super.db);
+
+  // ─── SyncDaoMixin column bindings ──────────────────────────────────────────
+  @override
+  TableInfo<$TripsTable, Trip> get $table => trips;
+  @override
+  GeneratedColumn<String> get $idCol => trips.id;
+  @override
+  GeneratedColumn<DateTime> get $updatedAtCol => trips.updatedAt;
+  @override
+  GeneratedColumn<int> get $syncStatusCol => trips.syncStatus;
+  @override
+  GeneratedColumn<int> get $retryCountCol => trips.syncRetryCount;
+  @override
+  GeneratedColumn<String> get $lastErrorCol => trips.lastSyncError;
+  @override
+  GeneratedColumn<DateTime> get $lastSyncedAtCol => trips.lastSyncedAt;
+  @override
+  GeneratedColumn<DateTime> get $nextAttemptAtCol => trips.nextSyncAttemptAt;
+  @override
+  GeneratedColumn<bool> get $isDeletedCol => trips.isDeleted;
 
   // === TRIPS ===
 
@@ -297,116 +319,9 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
       luggages: results[1] as List<Luggage>,
     );
   }
-  // === SYNC OPERATIONS ===
-
-  Future<void> purgeTrip(String id) {
-    return (delete(trips)..where((t) => t.id.equals(id))).go();
-  }
-
-  /// Wipes ALL rows. La cascade FK su `trip_item_entries` e
-  /// `trip_luggage_entries` ripulisce snapshot e junction in automatico.
-  Future<void> wipeAll() => delete(trips).go();
-
-  Future<int> markDeletedAsPendingSync() {
-    return (update(trips)..where(
-          (t) =>
-              t.isDeleted.equals(true) &
-              t.syncStatus.equalsValue(SyncStatus.synced),
-        ))
-        .write(
-          const TripsCompanion(syncStatus: Value(SyncStatus.pendingUpdate)),
-        );
-  }
-
-  /// Returns trips pending sync: syncStatus != synced AND retries below limit.
-  /// Includes soft-deleted trips so deletions propagate to Supabase.
-  Future<List<Trip>> getPendingSyncTrips({int maxRetries = 5}) {
-    final now = DateTime.now();
-    return (select(trips)..where(
-          (t) =>
-              t.syncStatus.equalsValue(SyncStatus.synced).not() &
-              t.syncRetryCount.isSmallerThanValue(maxRetries) &
-              (t.nextSyncAttemptAt.isNull() |
-                  t.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
-        ))
-        .get();
-  }
-
-  Future<int> countUnsynced() async {
-    final rows = await (select(
-      trips,
-    )..where((t) => t.syncStatus.equalsValue(SyncStatus.synced).not())).get();
-    return rows.length;
-  }
-
-  /// Marks a trip as successfully synced with the remote server.
-  ///
-  /// Resets retry state and records the server-provided timestamp
-  /// in [lastSyncedAt] for future delta-sync queries.
-  ///
-  /// Applica `serverUpdatedAt` sia a `updatedAt` (pivot LWW) sia a
-  /// `lastSyncedAt`. Vedi [HousesDao.markHouseAsSynced] per il rationale e
-  /// la semantica di [localUpdatedAt] (race condition guard).
-  Future<void> markTripAsSynced(
-    String tripId,
-    DateTime serverUpdatedAt, {
-    required DateTime localUpdatedAt,
-  }) {
-    return (update(trips)
-          ..where(
-            (t) =>
-                t.id.equals(tripId) & t.updatedAt.equals(localUpdatedAt),
-          ))
-        .write(
-      TripsCompanion(
-        updatedAt: Value(serverUpdatedAt),
-        syncStatus: const Value(SyncStatus.synced),
-        syncRetryCount: const Value(0),
-        lastSyncError: const Value(null),
-        lastSyncedAt: Value(serverUpdatedAt),
-        nextSyncAttemptAt: const Value(null),
-      ),
-    );
-  }
-
-  /// Resets retry state on records bloccati oltre soglia. Vedi
-  /// [HousesDao.resetSyncRetries] per il contratto.
-  Future<int> resetSyncRetries() {
-    return (update(
-      trips,
-    )..where((t) => t.syncRetryCount.isBiggerThanValue(0))).write(
-      const TripsCompanion(
-        syncRetryCount: Value(0),
-        lastSyncError: Value(null),
-        nextSyncAttemptAt: Value(null),
-      ),
-    );
-  }
-
-  /// Increments the retry counter and records the error message.
-  ///
-  /// Uses a read-then-write to increment atomically via Drift's
-  /// type-safe API (avoids raw SQL DateTime serialization issues).
-  Future<void> incrementSyncRetry(String tripId, String errorMessage) async {
-    final trip = await (select(
-      trips,
-    )..where((t) => t.id.equals(tripId))).getSingleOrNull();
-    if (trip == null) return;
-
-    final newRetryCount = trip.syncRetryCount + 1;
-    final backoffSeconds = 2 << (newRetryCount - 1);
-    final nextAttempt = DateTime.now().add(Duration(seconds: backoffSeconds));
-
-    await (update(trips)..where((t) => t.id.equals(tripId))).write(
-      TripsCompanion(
-        syncRetryCount: Value(newRetryCount),
-        lastSyncError: Value(errorMessage),
-        nextSyncAttemptAt: Value(nextAttempt),
-        // NB: niente updatedAt — è il pivot LWW, il retry bookkeeping
-        // non deve renderlo artificialmente "più nuovo" di edit remoti.
-      ),
-    );
-  }
+  // === SYNC OPERATIONS (delegated to SyncDaoMixin) ===
+  // purgeRecord, wipeAll, markDeletedAsPendingSync, getPendingSyncRecords,
+  // countUnsynced, markAsSynced, resetSyncRetries, incrementSyncRetry
 }
 
 /// Classe di supporto per raggruppare dati relazionali di un trip.

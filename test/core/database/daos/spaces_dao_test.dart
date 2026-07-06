@@ -548,7 +548,7 @@ void main() {
       );
     });
 
-    test('markSpaceAsSynced overwrites updatedAt with server timestamp '
+    test('markAsSynced overwrites updatedAt with server timestamp '
         '(post fix #6: server-side updated_at)', () async {
       await database.spacesDao.insertSpace(
         SpacesCompanion.insert(
@@ -563,7 +563,7 @@ void main() {
 
       final clientUpdatedAt = DateTime(2026, 5, 1, 8, 0);
       final serverTs = DateTime(2026, 5, 1, 12, 0);
-      await database.spacesDao.markSpaceAsSynced(
+      await database.spacesDao.markAsSynced(
         's-server-ts',
         serverTs,
         localUpdatedAt: clientUpdatedAt,
@@ -582,7 +582,7 @@ void main() {
     });
 
     test(
-      'markSpaceAsSynced is no-op when updatedAt changed during push '
+      'markAsSynced is no-op when updatedAt changed during push '
       '(race condition guard)',
       () async {
         final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
@@ -608,7 +608,7 @@ void main() {
         );
 
         final serverTs = DateTime(2026, 6, 1, 12, 0);
-        await database.spacesDao.markSpaceAsSynced(
+        await database.spacesDao.markAsSynced(
           's-race',
           serverTs,
           localUpdatedAt: originalUpdatedAt,

@@ -5,13 +5,35 @@ import '../tables/houses_table.dart';
 import '../tables/items_table.dart';
 import '../tables/spaces_table.dart';
 import '../tables/luggages_table.dart';
+import 'sync_dao_mixin.dart';
 
 part 'houses_dao.g.dart';
 
 /// DAO per le operazioni CRUD sulle case.
 @DriftAccessor(tables: [Houses, Items, Spaces, Luggages])
-class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
+class HousesDao extends DatabaseAccessor<AppDatabase>
+    with _$HousesDaoMixin, SyncDaoMixin<$HousesTable, House> {
   HousesDao(super.db);
+
+  // ─── SyncDaoMixin column bindings ──────────────────────────────────────────
+  @override
+  TableInfo<$HousesTable, House> get $table => houses;
+  @override
+  GeneratedColumn<String> get $idCol => houses.id;
+  @override
+  GeneratedColumn<DateTime> get $updatedAtCol => houses.updatedAt;
+  @override
+  GeneratedColumn<int> get $syncStatusCol => houses.syncStatus;
+  @override
+  GeneratedColumn<int> get $retryCountCol => houses.syncRetryCount;
+  @override
+  GeneratedColumn<String> get $lastErrorCol => houses.lastSyncError;
+  @override
+  GeneratedColumn<DateTime> get $lastSyncedAtCol => houses.lastSyncedAt;
+  @override
+  GeneratedColumn<DateTime> get $nextAttemptAtCol => houses.nextSyncAttemptAt;
+  @override
+  GeneratedColumn<bool> get $isDeletedCol => houses.isDeleted;
 
   /// Ottiene tutte le case non eliminate
   Future<List<House>> getAllHouses() =>
@@ -205,127 +227,7 @@ class HousesDao extends DatabaseAccessor<AppDatabase> with _$HousesDaoMixin {
     });
   }
 
-  // === SYNC OPERATIONS ===
-
-  /// Physical DELETE after successful sync of a soft-deleted record.
-  Future<void> purgeHouse(String id) {
-    return (delete(houses)..where((h) => h.id.equals(id))).go();
-  }
-
-  /// Wipes ALL rows. Used at account switch to clear the previous user's
-  /// data before pulling the new one. `ON DELETE CASCADE` su items/spaces/
-  /// luggages e su trip_*_entries propaga la cancellazione, ma per coerenza
-  /// gli altri DAO espongono anch'essi `wipeAll()` e il chiamante (SyncService)
-  /// li orchestra in ordine.
-  Future<void> wipeAll() => delete(houses).go();
-
-  /// Recovery: re-queues soft-deleted records stuck as "synced".
-  Future<int> markDeletedAsPendingSync() {
-    return (update(houses)..where(
-          (h) =>
-              h.isDeleted.equals(true) &
-              h.syncStatus.equalsValue(SyncStatus.synced),
-        ))
-        .write(
-          const HousesCompanion(syncStatus: Value(SyncStatus.pendingUpdate)),
-        );
-  }
-
-  /// Returns houses pending sync: syncStatus != synced AND retries below limit.
-  Future<List<House>> getPendingSyncHouses({int maxRetries = 5}) {
-    final now = DateTime.now();
-    return (select(houses)..where(
-          (h) =>
-              h.syncStatus.equalsValue(SyncStatus.synced).not() &
-              h.syncRetryCount.isSmallerThanValue(maxRetries) &
-              (h.nextSyncAttemptAt.isNull() |
-                  h.nextSyncAttemptAt.isSmallerOrEqualValue(now)),
-        ))
-        .get();
-  }
-
-  /// Conta tutti i record non sincronizzati (syncStatus != synced),
-  /// indipendentemente dal retry count o dal backoff. Usato per decidere
-  /// se mostrare il pulsante "Sincronizza ora" nel profilo.
-  Future<int> countUnsynced() async {
-    final rows = await (select(
-      houses,
-    )..where((h) => h.syncStatus.equalsValue(SyncStatus.synced).not())).get();
-    return rows.length;
-  }
-
-  /// Marks a house as successfully synced with the remote server.
-  ///
-  /// [serverUpdatedAt] è l'`updated_at` ufficiale del server (output del
-  /// trigger Postgres `set_updated_at`). Lo applichiamo sia a `updatedAt`
-  /// (pivot LWW per i sync futuri) sia a `lastSyncedAt`. Questo è essenziale
-  /// per la correttezza della LWW in presenza di clock drift tra device:
-  /// il client locale potrebbe avere scritto un client-time arbitrario in
-  /// `updatedAt`, ma il server-time è la sola verità.
-  ///
-  /// [localUpdatedAt] è il valore di `updatedAt` letto PRIMA del push. Se
-  /// l'utente ha modificato il record mentre il push era in volo, `updatedAt`
-  /// sarà cambiato e la WHERE non matcherà → il write è no-op, il record
-  /// rimane `pendingUpdate` e verrà pushato al ciclo successivo.
-  Future<void> markHouseAsSynced(
-    String houseId,
-    DateTime serverUpdatedAt, {
-    required DateTime localUpdatedAt,
-  }) {
-    return (update(houses)
-          ..where(
-            (h) =>
-                h.id.equals(houseId) & h.updatedAt.equals(localUpdatedAt),
-          ))
-        .write(
-      HousesCompanion(
-        updatedAt: Value(serverUpdatedAt),
-        syncStatus: const Value(SyncStatus.synced),
-        syncRetryCount: const Value(0),
-        lastSyncError: const Value(null),
-        lastSyncedAt: Value(serverUpdatedAt),
-        nextSyncAttemptAt: const Value(null),
-      ),
-    );
-  }
-
-  /// Resets retry state on records that were giving up: dopo 5 fallimenti
-  /// consecutivi `getPendingSyncHouses` li nasconde finché `syncRetryCount`
-  /// non torna sotto soglia. Tipicamente chiamato su `connectivity_restored`
-  /// o all'avvio dell'app per dare una nuova chance ai record bloccati.
-  ///
-  /// Returns: number of rows reset.
-  Future<int> resetSyncRetries() {
-    return (update(
-      houses,
-    )..where((h) => h.syncRetryCount.isBiggerThanValue(0))).write(
-      const HousesCompanion(
-        syncRetryCount: Value(0),
-        lastSyncError: Value(null),
-        nextSyncAttemptAt: Value(null),
-      ),
-    );
-  }
-
-  /// Increments the retry counter and records the error message.
-  Future<void> incrementSyncRetry(String houseId, String errorMessage) async {
-    final house = await (select(
-      houses,
-    )..where((h) => h.id.equals(houseId))).getSingleOrNull();
-    if (house == null) return;
-
-    final newRetryCount = house.syncRetryCount + 1;
-    final backoffSeconds = 2 << (newRetryCount - 1); // 2, 4, 8, 16, ...
-    final nextAttempt = DateTime.now().add(Duration(seconds: backoffSeconds));
-
-    await (update(houses)..where((h) => h.id.equals(houseId))).write(
-      HousesCompanion(
-        syncRetryCount: Value(newRetryCount),
-        lastSyncError: Value(errorMessage),
-        nextSyncAttemptAt: Value(nextAttempt),
-        // NB: niente updatedAt — è il pivot LWW, il retry bookkeeping
-        // non deve renderlo artificialmente "più nuovo" di edit remoti.
-      ),
-    );
-  }
+  // === SYNC OPERATIONS delegated to SyncDaoMixin ============================
+  // purgeRecord, wipeAll, markDeletedAsPendingSync, getPendingSyncRecords,
+  // countUnsynced, markAsSynced, resetSyncRetries, incrementSyncRetry
 }
