@@ -44,17 +44,35 @@ Future<void> handleAuthenticatedUser({
 /// Incrementato ogni volta che un fullPull completa con successo.
 /// I notifier dei dati (Houses, Items, Trips) lo watchano per ricostruirsi
 /// e mostrare i nuovi record scaricati da Supabase senza richiedere un refresh manuale.
-final syncTriggerProvider = StateProvider<int>((ref) => 0);
+@Riverpod(keepAlive: true)
+class SyncTrigger extends _$SyncTrigger {
+  @override
+  int build() => 0;
+
+  void increment() => state++;
+}
 
 /// True mentre un fullPull è in corso, false quando completa (o fallisce).
 /// Usato dalla houses screen per mostrare skeleton invece dell'empty state
 /// durante la finestra tra wipe del DB e completamento del pull remoto.
-final syncingProvider = StateProvider<bool>((ref) => false);
+@Riverpod(keepAlive: true)
+class Syncing extends _$Syncing {
+  @override
+  bool build() => false;
+
+  void setSyncing(bool value) => state = value;
+}
 
 /// True mentre un processQueue (push) è in corso, false a riposo.
 /// Usato dalla [SyncStatusTile] per mostrare uno spinner durante il push
 /// invece di lasciare il pulsante "Riprova" senza feedback visivo.
-final syncPushInProgressProvider = StateProvider<bool>((ref) => false);
+@Riverpod(keepAlive: true)
+class SyncPushInProgress extends _$SyncPushInProgress {
+  @override
+  bool build() => false;
+
+  void setInProgress(bool value) => state = value;
+}
 
 @Riverpod(keepAlive: true)
 SupabaseRepository supabaseRepository(Ref ref) {
@@ -93,27 +111,27 @@ SyncOrchestrator syncOrchestrator(Ref ref) {
   // Segnala all'UI che un fullPull è in corso (usato per mostrare skeleton
   // invece dell'empty state durante la finestra di pull dopo un account switch).
   orchestrator.onFullPullStart = () {
-    ref.read(syncingProvider.notifier).state = true;
+    ref.read(syncingProvider.notifier).setSyncing(true);
   };
 
   // Quando fullPull completa, riporta il flag a false e incrementa il trigger
   // così i notifier si ricostruiscono con i dati freschi.
   orchestrator.onFullPullComplete = () {
-    ref.read(syncingProvider.notifier).state = false;
-    ref.read(syncTriggerProvider.notifier).state++;
+    ref.read(syncingProvider.notifier).setSyncing(false);
+    ref.read(syncTriggerProvider.notifier).increment();
   };
 
   // Quando un push parte davvero (mutex acquisito): segnala il push in corso
   // per lo spinner nel tile e invalida il counter pending.
   orchestrator.onSyncStarted = () {
-    ref.read(syncPushInProgressProvider.notifier).state = true;
+    ref.read(syncPushInProgressProvider.notifier).setInProgress(true);
     ref.invalidate(pendingChangesCountProvider);
   };
 
   // Quando processQueue termina (successo o errore): riporta il flag a false
   // e invalida entrambi i counter così il tile mostra il dato fresco.
   orchestrator.onProcessQueueComplete = () {
-    ref.read(syncPushInProgressProvider.notifier).state = false;
+    ref.read(syncPushInProgressProvider.notifier).setInProgress(false);
     ref.invalidate(pendingChangesCountProvider);
     ref.invalidate(totalUnsyncedCountProvider);
   };
@@ -136,8 +154,8 @@ SyncOrchestrator syncOrchestrator(Ref ref) {
     // vede isSyncing=true e mostra lo skeleton invece della CTA "crea la tua prima casa".
     // onFullPullStart la setterà di nuovo (no-op), onFullPullComplete la resetterà.
     if (isAccountSwitch) {
-      ref.read(syncingProvider.notifier).state = true;
-      ref.read(syncTriggerProvider.notifier).state++;
+      ref.read(syncingProvider.notifier).setSyncing(true);
+      ref.read(syncTriggerProvider.notifier).increment();
     }
   }
 
