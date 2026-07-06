@@ -20,7 +20,7 @@ import '../theme/app_spacing.dart';
 ///   leading: Icon(Icons.category),
 ///   title: Text('Item Name'),
 ///   subtitle: Text('Description'),
-///   trailing: QuantityBadge(quantity: 3),
+///   trailing: DsQuantityBadge(current: 3),
 ///   onTap: () => showDetails(),
 /// )
 /// ```

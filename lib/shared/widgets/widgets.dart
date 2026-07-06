@@ -16,7 +16,6 @@ export 'ds_picker_sheet.dart';
 export 'ds_section_header.dart';
 export 'location_autocomplete_field.dart';
 export 'main_shell.dart';
-export 'quantity_badge.dart';
 export 'quantity_stepper.dart';
 export 'standard_bottom_sheet_layout.dart';
 export 'status_icon_overlay.dart';
