@@ -1,13 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pack_log/core/auth/auth_exceptions.dart';
-import 'package:pack_log/core/database/exceptions/backup_exceptions.dart';
 import 'package:pack_log/core/database/exceptions/database_exceptions.dart';
 import 'package:pack_log/shared/helpers/exception_message.dart';
-
-class _FakeBackup extends BackupException {
-  const _FakeBackup() : super('test');
-}
 
 void main() {
   group('exceptionMessageKey - typed AppExceptions', () {
@@ -103,12 +98,6 @@ void main() {
       );
     });
 
-    test('BackupException → errors.operation_failed', () {
-      expect(
-        exceptionMessageKey(const _FakeBackup()),
-        equals('errors.operation_failed'),
-      );
-    });
   });
 
   group('exceptionMessageKey - fallback', () {

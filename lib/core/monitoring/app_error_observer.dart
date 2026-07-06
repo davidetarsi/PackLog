@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
-import '../database/exceptions/backup_exceptions.dart';
 import '../database/exceptions/database_exceptions.dart';
 
 class AppErrorObserver extends ProviderObserver {
@@ -16,9 +15,7 @@ class AppErrorObserver extends ProviderObserver {
 
     final error = newValue.error;
     final providerName = provider.name ?? provider.runtimeType.toString();
-    final level = error is BackupRollbackException
-        ? SentryLevel.fatal
-        : SentryLevel.error;
+    const level = SentryLevel.error;
 
     Sentry.captureException(
       error,

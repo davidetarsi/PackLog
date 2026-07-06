@@ -2,7 +2,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../core/auth/auth_exceptions.dart';
-import '../../core/database/exceptions/backup_exceptions.dart';
 import '../../core/database/exceptions/database_exceptions.dart';
 
 /// Mappa un'eccezione applicativa nota in una chiave i18n user-friendly.
@@ -32,7 +31,6 @@ String exceptionMessageKey(Object error) {
   if (error is SignUpFailedException) return 'login.sign_in_failed';
   if (error is SignOutFailedException) return 'login.sign_out_failed';
   if (error is SessionExpiredException) return 'login.sign_in_failed';
-  if (error is BackupException) return 'errors.operation_failed';
   return 'errors.generic';
 }
 

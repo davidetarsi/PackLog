@@ -13,13 +13,6 @@ DatabaseService databaseService(Ref ref) {
   return DatabaseService(database);
 }
 
-// Nota: `backupService` è dichiarato esclusivamente in
-// [backup_controller.dart]. Una precedente versione duplicava il provider
-// qui causando due istanze separate dello stesso service a seconda
-// dell'import. Rimosso per ripristinare "un solo provider per service"
-// (CLAUDE.md). Il backup locale è in deprecazione: quando il flow verrà
-// dismesso del tutto, anche [backup_controller] potrà sparire.
-
 /// Provider per il DataIntegrityService.
 @Riverpod(keepAlive: true)
 DataIntegrityService dataIntegrityService(Ref ref) {

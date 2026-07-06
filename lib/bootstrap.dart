@@ -52,7 +52,6 @@ import 'core/database/database.dart';
 import 'core/database/encryption/db_passphrase_service.dart';
 import 'core/database/encryption/encryption_migration_service.dart';
 import 'core/database/migration_service.dart';
-import 'core/database/services/backup_service.dart';
 import 'core/monitoring/app_error_observer.dart';
 import 'core/monitoring/bootstrap_error_buffer.dart';
 import 'core/monitoring/monitoring_service.dart';
@@ -327,14 +326,9 @@ Future<void> _initializePersistence() async {
 
     await _runMigration(database, prefs);
 
-    // CRITICO: chiudi il DB PRIMA del backup automatico.
-    // BackupService copia il file raw: in WAL mode il file .db principale
-    // non contiene le transazioni più recenti finché la connessione è aperta.
-    // Chiudere qui fa flushed il WAL nel file principale e rilascia i lock,
-    // garantendo che la copia sia completa e non corrotta.
+    // Chiudi la connessione usata per la migrazione: i provider Riverpod
+    // aprono la propria connessione lazy al primo utilizzo.
     await database.close();
-
-    await _createAutoBackup();
 
     debugPrint('[Bootstrap] ✅ Persistenza inizializzata con successo');
   } catch (e, stackTrace) {
@@ -365,20 +359,6 @@ Future<void> _runMigration(
   } catch (e, st) {
     _bootstrapErrorBuffer.record('migration', e, st);
     debugPrint('[Bootstrap] Errore durante la migrazione: $e');
-  }
-}
-
-/// Crea un backup automatico del database se l'ultimo è troppo vecchio.
-///
-/// La logica di throttling (es. "non prima di X ore dall'ultimo backup")
-/// è delegata al [BackupService] per mantenere questa funzione coesa.
-Future<void> _createAutoBackup() async {
-  try {
-    final BackupService backupService = BackupService();
-    await backupService.createAutoBackupIfNeeded();
-  } catch (e, st) {
-    _bootstrapErrorBuffer.record('auto_backup', e, st);
-    debugPrint('[Bootstrap] Errore nel backup automatico: $e');
   }
 }
 

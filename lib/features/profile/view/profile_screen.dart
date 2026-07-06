@@ -1,10 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
-// import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
-// import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/analytics/analytics_service.dart';
@@ -16,19 +14,12 @@ import '../../../features/houses/providers/house_provider.dart';
 import '../../../features/tour/providers/post_login_onboarding_provider.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../providers/gpt_usage_provider.dart';
-// import '../../../core/database/controllers/backup_controller.dart';
-// import 'package:sentry_flutter/sentry_flutter.dart';
-
-// import '../../../core/database/exceptions/backup_exceptions.dart';
-// import '../../../core/monitoring/monitoring_service.dart';
 import '../../../shared/config/app_config.dart';
-// import '../../../shared/constants/app_constants.dart'; // used by backup dialog
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/providers/package_info_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/widgets/ds_section_header.dart';
-// import '../providers/last_export_path_provider.dart';
 import '../services/feedback_url_service.dart';
 import '../widgets/language_tile.dart';
 import '../widgets/sync_status_tile.dart';
@@ -37,7 +28,7 @@ import 'dialogs/profile_delete_account_dialog.dart';
 import 'dialogs/profile_logout_dialog.dart';
 
 /// Schermata di profilo: unico punto di accesso a preferenze,
-/// backup/ripristino dati e informazioni sull'app.
+/// sync e informazioni sull'app.
 ///
 /// È una schermata autonoma con proprio [Scaffold] e [AppBar], esposta
 /// come branch nella [StatefulShellRoute] del router (tab "Profilo").
@@ -142,51 +133,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
-
-  // -------------------------------------------------------------------------
-  // Backup — Export [COMMENTATO: non usato con Supabase cloud]
-  // -------------------------------------------------------------------------
-
-  // Future<void> _handleExportDatabase(BuildContext context) async {
-  //   ExportResult? exportResult;
-  //   try {
-  //     debugPrint('[ProfileScreen] 📤 Utente ha richiesto export database');
-  //     if (!context.mounted) return;
-  //     showDialog<void>(
-  //       context: context,
-  //       barrierDismissible: false,
-  //       builder: (ctx) => AlertDialog(
-  //         content: Column(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: [
-  //             const CircularProgressIndicator(),
-  //             AppSpacing.gapMd,
-  //             Text('backup.export_database'.tr()),
-  //           ],
-  //         ),
-  //       ),
-  //     );
-  //     final controller = ref.read(backupControllerProvider.notifier);
-  //     exportResult = await controller.exportToTemporaryFile();
-  //     debugPrint('[ProfileScreen] ✅ Export: ${exportResult.path}');
-  //     await ref.read(lastExportPathProvider.notifier).updateLastExportPath(exportResult.path);
-  //     if (!context.mounted) return;
-  //     Navigator.of(context, rootNavigator: true).pop();
-  //     AppSnackBar.showSuccess(context, 'backup.export_saved_to'.tr(args: [p.basename(exportResult.path)]));
-  //   } catch (e, stack) {
-  //     debugPrint('[ProfileScreen] ❌ Export fallito: $e\n$stack');
-  //     if (context.mounted) { try { Navigator.of(context, rootNavigator: true).pop(); } catch (_) {} }
-  //     if (exportResult == null && context.mounted) { AppSnackBar.showError(context, 'backup.export_failed'.tr()); }
-  //   }
-  // }
-
-  // -------------------------------------------------------------------------
-  // Backup — Import [COMMENTATO: non usato con Supabase cloud]
-  // -------------------------------------------------------------------------
-
-  // Future<void> _handleImportDatabase(BuildContext context) async { ... }
-  // Future<void> _showRollbackErrorDialog(BuildContext context) async { ... }
-  // Future<bool> _showImportWarningDialog(BuildContext context, {required String backupDirPath}) async { ... }
 
   // -------------------------------------------------------------------------
   // URL helpers
@@ -470,12 +416,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // ── Sync status ───────────────────────────────────────────────────
             const SyncStatusTile(),
             const Divider(),
-
-            // ── Backup & Ripristino [COMMENTATO: non usato con Supabase cloud] ──
-            // DsSectionHeader(label: 'backup.title'.tr(), ...),
-            // Consumer(builder: (context, ref, _) { ... }),  // export tile
-            // ListTile(...),  // import tile
-            // const Divider(),
 
             // ── Tour ──────────────────────────────────────────────────────────────────
             ListTile(
