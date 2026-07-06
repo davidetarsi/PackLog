@@ -426,7 +426,9 @@ class SyncService {
         fetchRemote: (trace) =>
             _remote.fetchHouseById(house.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertHouse(data, sentryTrace: trace),
-        pullLocal: (remote) => _pullHouse(house.id, remote),
+        pullLocal: (remote) => _housesDao.updateHouse(
+          SyncSerializers.buildHouseCompanion(remote, includeSyncFields: false),
+        ),
         markSynced: (ts, localAt) => _housesDao.markHouseAsSynced(house.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _housesDao.incrementSyncRetry(house.id, e),
         onPurge: () => pendingPurges.add(() => _housesDao.purgeHouse(house.id)),
@@ -447,7 +449,9 @@ class SyncService {
         fetchRemote: (trace) =>
             _remote.fetchSpaceById(space.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertSpace(data, sentryTrace: trace),
-        pullLocal: (remote) => _pullSpace(space.id, remote),
+        pullLocal: (remote) => _spacesDao.updateSpace(
+          SyncSerializers.buildSpaceCompanion(remote, includeSyncFields: false),
+        ),
         markSynced: (ts, localAt) => _spacesDao.markSpaceAsSynced(space.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _spacesDao.incrementSyncRetry(space.id, e),
         onPurge: () => pendingPurges.add(() => _spacesDao.purgeSpace(space.id)),
@@ -469,7 +473,9 @@ class SyncService {
             _remote.fetchLuggageById(luggage.id, sentryTrace: trace),
         upsert: (data, trace) =>
             _remote.upsertLuggage(data, sentryTrace: trace),
-        pullLocal: (remote) => _pullLuggage(luggage.id, remote),
+        pullLocal: (remote) => _luggagesDao.updateLuggage(
+          SyncSerializers.buildLuggageCompanion(remote, includeSyncFields: false),
+        ),
         markSynced: (ts, localAt) => _luggagesDao.markLuggageAsSynced(luggage.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _luggagesDao.incrementSyncRetry(luggage.id, e),
         onPurge: () =>
@@ -491,7 +497,9 @@ class SyncService {
         fetchRemote: (trace) =>
             _remote.fetchItemById(item.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertItem(data, sentryTrace: trace),
-        pullLocal: (remote) => _pullItem(item.id, remote),
+        pullLocal: (remote) => _itemsDao.updateItem(
+          SyncSerializers.buildItemCompanion(remote, includeSyncFields: false),
+        ),
         markSynced: (ts, localAt) => _itemsDao.markItemAsSynced(item.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _itemsDao.incrementSyncRetry(item.id, e),
         onPurge: () => pendingPurges.add(() => _itemsDao.purgeItem(item.id)),
@@ -702,110 +710,9 @@ class SyncService {
 
   // === DESERIALIZATION: Supabase JSON → Drift update ===
 
-  Future<void> _pullHouse(String id, Map<String, dynamic> remote) async {
-    await _housesDao.updateHouse(
-      HousesCompanion(
-        id: Value(id),
-        name: Value(remote['name'] as String),
-        description: Value(remote['description'] as String?),
-        locationPlaceId: Value(remote['location_place_id'] as String?),
-        locationDisplayName: Value(remote['location_display_name'] as String?),
-        locationName: Value(remote['location_name'] as String?),
-        locationCity: Value(remote['location_city'] as String?),
-        locationState: Value(remote['location_state'] as String?),
-        locationCountry: Value(remote['location_country'] as String?),
-        locationType: Value(
-          SyncSerializers.parseLocationType(remote['location_type']),
-        ),
-        locationLat: Value(remote['location_lat'] as double?),
-        locationLon: Value(remote['location_lon'] as double?),
-        iconName: Value(remote['icon_name'] as String? ?? 'home'),
-        isPrimary: Value(remote['is_primary'] as bool? ?? false),
-        createdAt: Value(DateTime.parse(remote['created_at'] as String)),
-        updatedAt: Value(DateTime.parse(remote['updated_at'] as String)),
-        isDeleted: Value(remote['is_deleted'] as bool? ?? false),
-      ),
-    );
-  }
-
-  Future<void> _pullSpace(String id, Map<String, dynamic> remote) async {
-    await _spacesDao.updateSpace(
-      SpacesCompanion(
-        id: Value(id),
-        houseId: Value(remote['house_id'] as String),
-        name: Value(remote['name'] as String),
-        iconName: Value(remote['icon_name'] as String?),
-        createdAt: Value(DateTime.parse(remote['created_at'] as String)),
-        updatedAt: Value(DateTime.parse(remote['updated_at'] as String)),
-        isDeleted: Value(remote['is_deleted'] as bool? ?? false),
-      ),
-    );
-  }
-
-  Future<void> _pullLuggage(String id, Map<String, dynamic> remote) async {
-    await _luggagesDao.updateLuggage(
-      LuggagesCompanion(
-        id: Value(id),
-        houseId: Value(remote['house_id'] as String),
-        name: Value(remote['name'] as String),
-        sizeType: Value(SyncSerializers.parseLuggageSize(remote['size_type'])),
-        volumeLiters: Value(remote['volume_liters'] as int?),
-        createdAt: Value(DateTime.parse(remote['created_at'] as String)),
-        updatedAt: Value(DateTime.parse(remote['updated_at'] as String)),
-        isDeleted: Value(remote['is_deleted'] as bool? ?? false),
-      ),
-    );
-  }
-
-  Future<void> _pullItem(String id, Map<String, dynamic> remote) async {
-    await _itemsDao.updateItem(
-      ItemsCompanion(
-        id: Value(id),
-        houseId: Value(remote['house_id'] as String),
-        name: Value(remote['name'] as String),
-        category: Value(
-          SyncSerializers.parseItemCategory(remote['category'] as String),
-        ),
-        description: Value(remote['description'] as String?),
-        quantity: Value(remote['quantity'] as int?),
-        spaceId: Value(remote['space_id'] as String?),
-        createdAt: Value(DateTime.parse(remote['created_at'] as String)),
-        updatedAt: Value(DateTime.parse(remote['updated_at'] as String)),
-        isDeleted: Value(remote['is_deleted'] as bool? ?? false),
-        aiMetadata: Value(remote['ai_metadata'] as String?),
-      ),
-    );
-  }
-
   Future<void> _pullTrip(String id, Map<String, dynamic> remote) async {
     await _tripsDao.updateTrip(
-      TripsCompanion(
-        id: Value(id),
-        name: Value(remote['name'] as String),
-        description: Value(remote['description'] as String?),
-        departureDateTime: Value(
-          SyncSerializers.parseNullableDateTime(remote['departure_date_time']),
-        ),
-        returnDateTime: Value(
-          SyncSerializers.parseNullableDateTime(remote['return_date_time']),
-        ),
-        destinationHouseId: Value(remote['destination_house_id'] as String?),
-        locationPlaceId: Value(remote['location_place_id'] as String?),
-        locationDisplayName: Value(remote['location_display_name'] as String?),
-        locationName: Value(remote['location_name'] as String?),
-        locationCity: Value(remote['location_city'] as String?),
-        locationState: Value(remote['location_state'] as String?),
-        locationCountry: Value(remote['location_country'] as String?),
-        locationType: Value(
-          SyncSerializers.parseLocationType(remote['location_type']),
-        ),
-        locationLat: Value(remote['location_lat'] as double?),
-        locationLon: Value(remote['location_lon'] as double?),
-        isSaved: Value(remote['is_saved'] as bool? ?? false),
-        createdAt: Value(DateTime.parse(remote['created_at'] as String)),
-        updatedAt: Value(DateTime.parse(remote['updated_at'] as String)),
-        isDeleted: Value(remote['is_deleted'] as bool? ?? false),
-      ),
+      SyncSerializers.buildTripCompanion(remote, includeSyncFields: false),
     );
     await _replaceTripItemsFromJson(id, remote['items']);
     await _replaceTripLuggagesFromJson(id, remote['luggage_ids']);

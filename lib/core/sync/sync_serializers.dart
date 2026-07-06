@@ -44,10 +44,17 @@ abstract final class SyncSerializers {
 
   // ─── COMPANION BUILDERS (remote JSON → Drift companion) ───────────────────
 
+  /// Costruisce un [HousesCompanion] da un payload JSON remoto.
+  ///
+  /// [syncedAt] è richiesto solo quando [includeSyncFields] è true (default).
+  /// Con [includeSyncFields] false i campi sync vengono omessi (Value.absent):
+  /// usato nel pull path di processQueue dove [markXAsSynced] li scrive dopo.
   static HousesCompanion buildHouseCompanion(
     Map<String, dynamic> r, {
-    required DateTime syncedAt,
+    DateTime? syncedAt,
+    bool includeSyncFields = true,
   }) {
+    assert(!includeSyncFields || syncedAt != null, 'syncedAt è richiesto quando includeSyncFields=true');
     return HousesCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
@@ -67,20 +74,22 @@ abstract final class SyncSerializers {
       createdAt: Value(DateTime.parse(r['created_at'] as String)),
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
-      lastSyncedAt: Value(syncedAt),
-      syncStatus: const Value(SyncStatus.synced),
-      syncRetryCount: const Value(0),
-      lastSyncError: const Value(null),
-      nextSyncAttemptAt: const Value(null),
-      sentryTraceId: const Value(null),
+      lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
+      syncStatus: includeSyncFields ? const Value(SyncStatus.synced) : const Value.absent(),
+      syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
+      lastSyncError: includeSyncFields ? const Value(null) : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields ? const Value(null) : const Value.absent(),
+      sentryTraceId: includeSyncFields ? const Value(null) : const Value.absent(),
     );
   }
 
   static ItemsCompanion buildItemCompanion(
     Map<String, dynamic> r, {
-    required DateTime syncedAt,
+    DateTime? syncedAt,
     bool clearSpaceId = false,
+    bool includeSyncFields = true,
   }) {
+    assert(!includeSyncFields || syncedAt != null, 'syncedAt è richiesto quando includeSyncFields=true');
     return ItemsCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
@@ -96,19 +105,21 @@ abstract final class SyncSerializers {
       createdAt: Value(DateTime.parse(r['created_at'] as String)),
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
-      lastSyncedAt: Value(syncedAt),
-      syncStatus: const Value(SyncStatus.synced),
-      syncRetryCount: const Value(0),
-      lastSyncError: const Value(null),
-      nextSyncAttemptAt: const Value(null),
-      sentryTraceId: const Value(null),
+      lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
+      syncStatus: includeSyncFields ? const Value(SyncStatus.synced) : const Value.absent(),
+      syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
+      lastSyncError: includeSyncFields ? const Value(null) : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields ? const Value(null) : const Value.absent(),
+      sentryTraceId: includeSyncFields ? const Value(null) : const Value.absent(),
     );
   }
 
   static SpacesCompanion buildSpaceCompanion(
     Map<String, dynamic> r, {
-    required DateTime syncedAt,
+    DateTime? syncedAt,
+    bool includeSyncFields = true,
   }) {
+    assert(!includeSyncFields || syncedAt != null, 'syncedAt è richiesto quando includeSyncFields=true');
     return SpacesCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
@@ -118,19 +129,21 @@ abstract final class SyncSerializers {
       createdAt: Value(DateTime.parse(r['created_at'] as String)),
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
-      lastSyncedAt: Value(syncedAt),
-      syncStatus: const Value(SyncStatus.synced),
-      syncRetryCount: const Value(0),
-      lastSyncError: const Value(null),
-      nextSyncAttemptAt: const Value(null),
-      sentryTraceId: const Value(null),
+      lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
+      syncStatus: includeSyncFields ? const Value(SyncStatus.synced) : const Value.absent(),
+      syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
+      lastSyncError: includeSyncFields ? const Value(null) : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields ? const Value(null) : const Value.absent(),
+      sentryTraceId: includeSyncFields ? const Value(null) : const Value.absent(),
     );
   }
 
   static LuggagesCompanion buildLuggageCompanion(
     Map<String, dynamic> r, {
-    required DateTime syncedAt,
+    DateTime? syncedAt,
+    bool includeSyncFields = true,
   }) {
+    assert(!includeSyncFields || syncedAt != null, 'syncedAt è richiesto quando includeSyncFields=true');
     return LuggagesCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
@@ -141,19 +154,21 @@ abstract final class SyncSerializers {
       createdAt: Value(DateTime.parse(r['created_at'] as String)),
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
-      lastSyncedAt: Value(syncedAt),
-      syncStatus: const Value(SyncStatus.synced),
-      syncRetryCount: const Value(0),
-      lastSyncError: const Value(null),
-      nextSyncAttemptAt: const Value(null),
-      sentryTraceId: const Value(null),
+      lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
+      syncStatus: includeSyncFields ? const Value(SyncStatus.synced) : const Value.absent(),
+      syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
+      lastSyncError: includeSyncFields ? const Value(null) : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields ? const Value(null) : const Value.absent(),
+      sentryTraceId: includeSyncFields ? const Value(null) : const Value.absent(),
     );
   }
 
   static TripsCompanion buildTripCompanion(
     Map<String, dynamic> r, {
-    required DateTime syncedAt,
+    DateTime? syncedAt,
+    bool includeSyncFields = true,
   }) {
+    assert(!includeSyncFields || syncedAt != null, 'syncedAt è richiesto quando includeSyncFields=true');
     return TripsCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
@@ -175,12 +190,12 @@ abstract final class SyncSerializers {
       createdAt: Value(DateTime.parse(r['created_at'] as String)),
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
-      lastSyncedAt: Value(syncedAt),
-      syncStatus: const Value(SyncStatus.synced),
-      syncRetryCount: const Value(0),
-      lastSyncError: const Value(null),
-      nextSyncAttemptAt: const Value(null),
-      sentryTraceId: const Value(null),
+      lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
+      syncStatus: includeSyncFields ? const Value(SyncStatus.synced) : const Value.absent(),
+      syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
+      lastSyncError: includeSyncFields ? const Value(null) : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields ? const Value(null) : const Value.absent(),
+      sentryTraceId: includeSyncFields ? const Value(null) : const Value.absent(),
     );
   }
 
