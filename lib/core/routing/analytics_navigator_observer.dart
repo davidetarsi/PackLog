@@ -27,6 +27,16 @@ class AnalyticsNavigatorObserver extends NavigatorObserver {
   void _track(Route<dynamic> route) {
     final name = route.settings.name;
     if (name == null || name.isEmpty) return;
-    _analytics.trackScreenView(name);
+    // Replace UUID path segments with :id so Amplitude can aggregate by screen
+    // type (e.g. /houses/abc-123 → /houses/:id) instead of tracking each
+    // entity as a distinct screen.
+    final normalized = name.replaceAll(
+      RegExp(
+        r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+        caseSensitive: false,
+      ),
+      ':id',
+    );
+    _analytics.trackScreenView(normalized);
   }
 }
