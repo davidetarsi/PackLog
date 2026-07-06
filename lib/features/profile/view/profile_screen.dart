@@ -21,11 +21,11 @@ import '../../../shared/providers/package_info_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/widgets/ds_section_header.dart';
 import '../services/feedback_url_service.dart';
-import '../widgets/language_tile.dart';
 import '../widgets/sync_status_tile.dart';
-import '../widgets/theme_tile.dart';
 import 'dialogs/profile_delete_account_dialog.dart';
+import 'dialogs/profile_language_dialog.dart';
 import 'dialogs/profile_logout_dialog.dart';
+import 'dialogs/profile_theme_dialog.dart';
 
 /// Schermata di profilo: unico punto di accesso a preferenze,
 /// sync e informazioni sull'app.
@@ -40,100 +40,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  // -------------------------------------------------------------------------
-  // Dialogs — Tema e Lingua
-  // -------------------------------------------------------------------------
-
-  void _showThemeDialog(BuildContext context) {
-    final currentThemeMode =
-        ref.read(themeModeNotifierProvider).valueOrNull ?? ThemeMode.dark;
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('settings.theme'.tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ThemeTile(
-              mode: ThemeMode.light,
-              title: 'settings.theme_light'.tr(),
-              icon: Icons.light_mode,
-              isSelected: currentThemeMode == ThemeMode.light,
-              onTap: () {
-                ref
-                    .read(themeModeNotifierProvider.notifier)
-                    .setThemeMode(ThemeMode.light);
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            AppSpacing.gapSm,
-            ThemeTile(
-              mode: ThemeMode.dark,
-              title: 'settings.theme_dark'.tr(),
-              icon: Icons.dark_mode,
-              isSelected: currentThemeMode == ThemeMode.dark,
-              onTap: () {
-                ref
-                    .read(themeModeNotifierProvider.notifier)
-                    .setThemeMode(ThemeMode.dark);
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            AppSpacing.gapSm,
-            ThemeTile(
-              mode: ThemeMode.system,
-              title: 'settings.theme_system'.tr(),
-              icon: Icons.brightness_auto,
-              isSelected: currentThemeMode == ThemeMode.system,
-              onTap: () {
-                ref
-                    .read(themeModeNotifierProvider.notifier)
-                    .setThemeMode(ThemeMode.system);
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showLanguageDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('settings.language'.tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            LanguageTile(
-              locale: const Locale('it', 'IT'),
-              title: 'Italiano',
-              flag: '🇮🇹',
-              isSelected: context.locale == const Locale('it', 'IT'),
-              onTap: () async {
-                await context.setLocale(const Locale('it', 'IT'));
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-            ),
-            AppSpacing.gapSm,
-            LanguageTile(
-              locale: const Locale('en', 'US'),
-              title: 'English',
-              flag: '🇺🇸',
-              isSelected: context.locale == const Locale('en', 'US'),
-              onTap: () async {
-                await context.setLocale(const Locale('en', 'US'));
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // -------------------------------------------------------------------------
   // URL helpers
   // -------------------------------------------------------------------------
@@ -283,9 +189,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final currentLocale = context.locale;
-    final languageName = currentLocale.languageCode == 'it'
-        ? 'Italiano'
-        : 'English';
+    final languageName =
+        currentLocale.languageCode == 'it' ? 'Italiano' : 'English';
 
     final authState = ref.watch(authNotifierProvider);
     final displayName = switch (authState) {
@@ -296,7 +201,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       Authenticated(:final email) => email,
       Unauthenticated() => '',
     };
-    final gptUsageAsync = ref.watch(gptUsageProvider);
 
     final themeModeAsync = ref.watch(themeModeNotifierProvider);
     final themeModeName = themeModeAsync.when(
@@ -312,8 +216,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return ShellTabScaffold(
       appBar: AppBar(
         title: Text('settings.title'.tr()),
-        // Nessun leading: questa è una schermata radice del tab bar,
-        // non si può fare pop verso un livello superiore.
+        // Nessun leading: schermata radice del tab bar, nessun pop a livello superiore.
         automaticallyImplyLeading: false,
       ),
       body: RefreshIndicator(
@@ -338,7 +241,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               title: Text('settings.language'.tr()),
               subtitle: Text(languageName),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showLanguageDialog(context),
+              onTap: () => showProfileLanguageDialog(context),
             ),
             const Divider(),
 
@@ -353,64 +256,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               title: Text('settings.theme'.tr()),
               subtitle: Text(themeModeName),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showThemeDialog(context),
+              onTap: () => showProfileThemeDialog(
+                context,
+                currentThemeMode:
+                    ref.read(themeModeNotifierProvider).valueOrNull ??
+                    ThemeMode.dark,
+                onSetThemeMode: (mode) =>
+                    ref.read(themeModeNotifierProvider.notifier).setThemeMode(mode),
+              ),
             ),
             const Divider(),
 
             // ── AI usage ────────────────────────────────────────────────────
-            gptUsageAsync.when(
-              data: (usage) => ListTile(
-                leading: const Icon(Icons.auto_awesome_outlined),
-                title: Text('profile.ai_usage_title'.tr()),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(height: context.spacingXs),
-                    LinearProgressIndicator(
-                      value: usage.progress,
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                      color: Theme.of(context).colorScheme.primary,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    SizedBox(height: context.spacingXs),
-                    Text(
-                      'profile.ai_usage_subtitle'.tr(
-                        args: [
-                          usage.monthlyCount.toString(),
-                          usage.monthlyCap.toString(),
-                        ],
-                      ),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              loading: () => ListTile(
-                leading: const Icon(Icons.auto_awesome_outlined),
-                title: Text('profile.ai_usage_title'.tr()),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(height: context.spacingXs),
-                    const LinearProgressIndicator(),
-                  ],
-                ),
-              ),
-              error: (error, _) => ListTile(
-                leading: const Icon(Icons.auto_awesome_outlined),
-                title: Text('profile.ai_usage_title'.tr()),
-                subtitle: Text(
-                  'errors.load_failed'.tr(),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                ),
-              ),
-            ),
+            const _GptUsageTile(),
             const Divider(),
 
             // ── Sync status ───────────────────────────────────────────────────
@@ -511,6 +369,72 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             AppSpacing.gapMd,
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Private widget components
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GptUsageTile extends ConsumerWidget {
+  const _GptUsageTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gptUsageAsync = ref.watch(gptUsageProvider);
+
+    return gptUsageAsync.when(
+      data: (usage) => ListTile(
+        leading: const Icon(Icons.auto_awesome_outlined),
+        title: Text('profile.ai_usage_title'.tr()),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: context.spacingXs),
+            LinearProgressIndicator(
+              value: usage.progress,
+              backgroundColor:
+                  Theme.of(context).colorScheme.surfaceContainerHighest,
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            SizedBox(height: context.spacingXs),
+            Text(
+              'profile.ai_usage_subtitle'.tr(
+                args: [
+                  usage.monthlyCount.toString(),
+                  usage.monthlyCap.toString(),
+                ],
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+      loading: () => ListTile(
+        leading: const Icon(Icons.auto_awesome_outlined),
+        title: Text('profile.ai_usage_title'.tr()),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: context.spacingXs),
+            const LinearProgressIndicator(),
+          ],
+        ),
+      ),
+      error: (_, _) => ListTile(
+        leading: const Icon(Icons.auto_awesome_outlined),
+        title: Text('profile.ai_usage_title'.tr()),
+        subtitle: Text(
+          'errors.load_failed'.tr(),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.error,
+          ),
         ),
       ),
     );
