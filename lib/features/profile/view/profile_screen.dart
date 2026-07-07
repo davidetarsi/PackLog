@@ -406,8 +406,8 @@ class _GptUsageTile extends ConsumerWidget {
             Text(
               'profile.ai_usage_subtitle'.tr(
                 args: [
-                  usage.monthlyCount.toString(),
-                  usage.monthlyCap.toString(),
+                  usage.usageCount.toString(),
+                  usage.usageCap.toString(),
                 ],
               ),
               style: Theme.of(context).textTheme.bodySmall,

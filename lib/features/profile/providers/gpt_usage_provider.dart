@@ -7,13 +7,15 @@ import '../../../core/auth/auth_provider.dart';
 part 'gpt_usage_provider.g.dart';
 
 class GptUsageModel {
-  const GptUsageModel({required this.monthlyCount, required this.monthlyCap});
+  const GptUsageModel({required this.usageCount, required this.usageCap});
 
-  final int monthlyCount;
-  final int monthlyCap;
+  final int usageCount;
+  final int usageCap;
 
   double get progress =>
-      monthlyCap > 0 ? (monthlyCount / monthlyCap).clamp(0.0, 1.0) : 0.0;
+      usageCap > 0 ? (usageCount / usageCap).clamp(0.0, 1.0) : 0.0;
+
+  bool get isExhausted => usageCount >= usageCap;
 }
 
 @Riverpod(keepAlive: true)
@@ -23,12 +25,12 @@ Future<GptUsageModel> gptUsage(Ref ref) async {
 
   final data = await Supabase.instance.client
       .from('users')
-      .select('gpt_monthly_count, gpt_monthly_cap')
+      .select('gpt_usage_count, gpt_usage_cap')
       .eq('id', userId)
       .single();
 
   return GptUsageModel(
-    monthlyCount: (data['gpt_monthly_count'] as int?) ?? 0,
-    monthlyCap: (data['gpt_monthly_cap'] as int?) ?? 0,
+    usageCount: (data['gpt_usage_count'] as int?) ?? 0,
+    usageCap: (data['gpt_usage_cap'] as int?) ?? 15,
   );
 }

@@ -377,7 +377,7 @@
   },
   "profile": {
     "ai_usage_title": "AI Analysis",
-    "ai_usage_subtitle": "{} / {} analyses this month",
+    "ai_usage_subtitle": "{} / {} scans available",
     "logout_confirm_title": "Sign out?",
     "logout_confirm_body": "Are you sure you want to sign out?",
     "logout_warning_title": "Unsynced changes",
