@@ -22,7 +22,7 @@ final class ResponseParsingException extends ClothingAnalysisException {
   const ResponseParsingException(super.message);
 }
 
-/// Thrown when the user has reached their monthly GPT usage cap (HTTP 429).
+/// Thrown when the user has exhausted their lifetime GPT usage cap (HTTP 429).
 final class GptLimitExceededException extends ClothingAnalysisException {
   const GptLimitExceededException(super.message);
 }

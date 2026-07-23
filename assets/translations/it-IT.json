@@ -543,6 +543,7 @@
     "save_success": "{} oggetti salvati con successo!",
     "save_error": "Errore durante il salvataggio: {}",
     "unexpected_error": "Errore imprevisto: {}",
+    "limit_reached": "Hai esaurito le scansioni AI disponibili.",
     "field_category": "Categoria",
     "field_color": "Colore",
     "field_coverage": "Copertura",

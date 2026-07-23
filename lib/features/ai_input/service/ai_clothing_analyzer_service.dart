@@ -156,7 +156,7 @@ class AiClothingAnalyzerService {
 
     if (response.statusCode == 429) {
       throw const GptLimitExceededException(
-        'Hai raggiunto il limite mensile di analisi AI.',
+        'GPT usage limit reached (HTTP 429)',
       );
     }
 

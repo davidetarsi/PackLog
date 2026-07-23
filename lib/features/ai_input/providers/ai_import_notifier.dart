@@ -61,8 +61,8 @@ class AiImportNotifier extends _$AiImportNotifier {
           ],
         );
       }
-    } on GptLimitExceededException catch (e) {
-      state = state.copyWith(errorMessage: e.message);
+    } on GptLimitExceededException {
+      state = state.copyWith(errorMessage: 'ai_import.limit_reached'.tr());
     } on ClothingAnalysisException catch (e) {
       state = state.copyWith(errorMessage: e.message);
     } catch (e) {

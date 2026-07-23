@@ -543,6 +543,7 @@
     "save_success": "{} items saved successfully!",
     "save_error": "Error saving: {}",
     "unexpected_error": "Unexpected error: {}",
+    "limit_reached": "You've used all your available AI scans.",
     "field_category": "Category",
     "field_color": "Color",
     "field_coverage": "Coverage",

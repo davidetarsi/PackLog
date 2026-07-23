@@ -203,7 +203,8 @@ void main() {
 
         final state = container.read(aiImportNotifierProvider);
         expect(state.errorMessage, isNotNull);
-        expect(state.errorMessage, contains('Monthly limit reached'));
+        // Senza EasyLocalization inizializzato, .tr() ritorna la chiave stessa.
+        expect(state.errorMessage, contains('ai_import.limit_reached'));
         expect(state.isLoading, isFalse);
         expect(state.photoGroups, isEmpty);
       },
