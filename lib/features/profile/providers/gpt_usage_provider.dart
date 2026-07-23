@@ -31,6 +31,6 @@ Future<GptUsageModel> gptUsage(Ref ref) async {
 
   return GptUsageModel(
     usageCount: (data['gpt_usage_count'] as int?) ?? 0,
-    usageCap: (data['gpt_usage_cap'] as int?) ?? 15,
+    usageCap: (data['gpt_usage_cap'] as int?) ?? 30,
   );
 }
