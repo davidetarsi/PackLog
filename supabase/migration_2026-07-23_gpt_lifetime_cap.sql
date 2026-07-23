@@ -43,7 +43,8 @@ BEGIN
 
   RETURN true;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
 
 -- 6. Rollback compensativo (chiamato dalla Edge Function su errore OpenAI)
 CREATE OR REPLACE FUNCTION public.decrement_gpt_usage(p_user_id uuid)
@@ -53,6 +54,7 @@ BEGIN
   SET gpt_usage_count = GREATEST(gpt_usage_count - 1, 0)
   WHERE id = p_user_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
 
 COMMIT;
