@@ -25,7 +25,7 @@
 -- Tabelle senza policy ALL: SCELTA INTENZIONALE
 --   - `users` ha solo policy SELECT perché INSERT/UPDATE sono fatte solo
 --     dalle funzioni SECURITY DEFINER `handle_new_user`,
---     `increment_gpt_count`, `decrement_gpt_count`. DELETE è gestita via
+--     `increment_gpt_usage`, `decrement_gpt_usage`. DELETE è gestita via
 --     `ON DELETE CASCADE` da `auth.users`. Nessun path client può scrivere.
 --   - `app_config` espone configurazione globale (es. tombstone_retention_days)
 --     a tutti gli autenticati; nessun client deve poter scrivere.
