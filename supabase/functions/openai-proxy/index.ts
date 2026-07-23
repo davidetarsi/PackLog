@@ -13,7 +13,7 @@ const CORS_HEADERS = {
 // costo / modello / output deve vivere QUI, non nel body. Il proxy accetta dal
 // client SOLO l'immagine; tutto il resto è fisso.
 
-const OPENAI_MODEL = "gpt-4o";
+const OPENAI_MODEL = "gpt-4o-mini";
 const OPENAI_MAX_TOKENS = 1500;
 const OPENAI_TEMPERATURE = 0.0;
 const OPENAI_IMAGE_DETAIL = "high";
@@ -108,22 +108,21 @@ Deno.serve(async (req) => {
   }
 
   // 3. Atomic cap check + increment (TOCTOU-safe via SQL function)
-  const p_now = new Date().toISOString();
-  console.log("[proxy] calling increment_gpt_count, p_now:", p_now);
+  console.log("[proxy] calling increment_gpt_usage");
   const { data: allowed, error: rpcError } = await supabaseAdmin.rpc(
-    "increment_gpt_count",
-    { p_user_id: user.id, p_now },
+    "increment_gpt_usage",
+    { p_user_id: user.id },
   );
   if (rpcError) {
     console.error(
-      "[proxy] increment_gpt_count RPC error:",
+      "[proxy] increment_gpt_usage RPC error:",
       rpcError.message,
       rpcError.code,
     );
     return errorResponse(500, "Usage check failed");
   }
-  console.log("[proxy] increment_gpt_count returned:", allowed);
-  if (!allowed) return errorResponse(429, "Monthly GPT limit reached");
+  console.log("[proxy] increment_gpt_usage returned:", allowed);
+  if (!allowed) return errorResponse(429, "GPT usage limit reached");
 
   // 4. Build the OpenAI payload server-side. Il body al client non è mai
   //    inoltrato — solo l'immagine viene riusata.
@@ -131,7 +130,7 @@ Deno.serve(async (req) => {
   if (!apiKey) {
     console.error("[proxy] DECREMENT reason: OPENAI_KEY not configured");
     const { error: decrementError } = await supabaseAdmin.rpc(
-      "decrement_gpt_count",
+      "decrement_gpt_usage",
       { p_user_id: user.id },
     );
     if (decrementError) {
@@ -187,7 +186,7 @@ Deno.serve(async (req) => {
         errorText.slice(0, 200),
       );
       const { error: decrementError } = await supabaseAdmin.rpc(
-        "decrement_gpt_count",
+        "decrement_gpt_usage",
         { p_user_id: user.id },
       );
       if (decrementError) {
@@ -197,7 +196,7 @@ Deno.serve(async (req) => {
         );
       }
       // Map OpenAI 429 (API rate limit) to 503 to avoid confusion with the
-      // user's monthly cap (our 429)
+      // user's usage cap (our 429)
       const mappedStatus = response.status === 429 ? 503 : response.status;
       return errorResponse(mappedStatus, `OpenAI error: ${errorText}`);
     }
@@ -211,7 +210,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("[proxy] DECREMENT reason: fetch exception:", error);
     const { error: decrementError } = await supabaseAdmin.rpc(
-      "decrement_gpt_count",
+      "decrement_gpt_usage",
       { p_user_id: user.id },
     );
     if (decrementError) {
