@@ -323,6 +323,81 @@ void main() {
     );
   });
 
+  group('TripsDao - Append Items (idempotent)', () {
+    test(
+      'insertTripItemsIgnoringDuplicates adds new items and ignores duplicates',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'append-house-1';
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: houseId,
+            name: 'Test House',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        final tripId = 'append-trip-1';
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: tripId,
+            name: 'Weekend Trip',
+            locationDisplayName: const Value('Mountains'),
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        // Trip already has one item.
+        await database.tripsDao.insertTripItem(
+          TripItemEntriesCompanion.insert(
+            id: 'item-1',
+            tripId: tripId,
+            name: 'Jacket',
+            category: ItemCategory.vestiti,
+            quantity: Value(1),
+            originHouseId: Value(houseId),
+          ),
+        );
+
+        // === ACT ===
+        // Re-adding item-1 (duplicate) plus a genuinely new item-2.
+        await database.tripsDao.insertTripItemsIgnoringDuplicates([
+          TripItemEntriesCompanion.insert(
+            id: 'item-1',
+            tripId: tripId,
+            name: 'Jacket',
+            category: ItemCategory.vestiti,
+            quantity: Value(1),
+            originHouseId: Value(houseId),
+          ),
+          TripItemEntriesCompanion.insert(
+            id: 'item-2',
+            tripId: tripId,
+            name: 'Boots',
+            category: ItemCategory.vestiti,
+            quantity: Value(1),
+            originHouseId: Value(houseId),
+          ),
+        ]);
+
+        // === ASSERT ===
+        final items = await database.tripsDao.getTripItemsByTripId(tripId);
+        expect(items.length, 2);
+        expect(items.map((i) => i.id).toSet(), {'item-1', 'item-2'});
+      },
+    );
+
+    test(
+      'insertTripItemsIgnoringDuplicates is a no-op for an empty list',
+      () async {
+        // Should simply not throw.
+        await database.tripsDao.insertTripItemsIgnoringDuplicates([]);
+      },
+    );
+  });
+
   group('TripsDao - CRUD Operations', () {
     test('should insert and retrieve a trip', () async {
       // === ARRANGE ===

@@ -196,6 +196,28 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Aggiunge oggetti a un viaggio esistente in una singola query batch,
+  /// ignorando i duplicati.
+  ///
+  /// A differenza di [replaceTripItems] (che sostituisce l'intera lista),
+  /// questo metodo è **additivo**: non tocca gli item già presenti nel
+  /// viaggio. L'idempotenza è garantita dalla PK composta `(id, tripId)` di
+  /// [TripItemEntries] + `InsertMode.insertOrIgnore` — se un item è già nel
+  /// viaggio, l'insert per quella riga viene silenziosamente ignorato invece
+  /// di lanciare un vincolo di unicità violato.
+  Future<void> insertTripItemsIgnoringDuplicates(
+    List<TripItemEntriesCompanion> items,
+  ) async {
+    if (items.isEmpty) return;
+    await batch((batch) {
+      batch.insertAll(
+        tripItemEntries,
+        items,
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
+  }
+
   /// Duplica un viaggio con tutti i suoi oggetti (Deep Copy con transazione atomica)
   ///
   /// Crea un nuovo viaggio con:
