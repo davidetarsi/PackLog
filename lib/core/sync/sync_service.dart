@@ -101,20 +101,23 @@ class SyncService {
   /// Breakdown per-entità delle modifiche non ancora sincronizzate, per la
   /// UI di dettaglio (dialog "Stato sincronizzazione" nel profilo).
   ///
-  /// Riusa [getPendingSyncRecords] — stessa semantica (retry sotto soglia +
-  /// backoff rispettato) già usata da [countPendingChanges] per il warning
-  /// di logout. Nessuna nuova query SQL.
+  /// Usa [getAllUnsyncedRecords] — stessa forma tabella/colonna di
+  /// [countUnsynced] (nessun filtro su retry o backoff), non
+  /// [getPendingSyncRecords]: deve sempre corrispondere a ciò che la tile
+  /// "N modifiche in attesa" conta, altrimenti il dialog può mostrare
+  /// "Tutto sincronizzato" mentre la tile dice il contrario (vedi doc di
+  /// [getAllUnsyncedRecords] per il rationale completo).
   ///
   /// Il "reason" mostrato è quello del primo record con `lastSyncError` non
   /// nullo trovato nel gruppo — un singolo rappresentante per tipo di
   /// entità, non un elenco per-record.
   Future<List<SyncEntityStatus>> getUnsyncedBreakdown() async {
     final results = await Future.wait([
-      _housesDao.getPendingSyncRecords(),
-      _spacesDao.getPendingSyncRecords(),
-      _luggagesDao.getPendingSyncRecords(),
-      _itemsDao.getPendingSyncRecords(),
-      _tripsDao.getPendingSyncRecords(),
+      _housesDao.getAllUnsyncedRecords(),
+      _spacesDao.getAllUnsyncedRecords(),
+      _luggagesDao.getAllUnsyncedRecords(),
+      _itemsDao.getAllUnsyncedRecords(),
+      _tripsDao.getAllUnsyncedRecords(),
     ]);
 
     const labels = [

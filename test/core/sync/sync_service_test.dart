@@ -1761,21 +1761,54 @@ void main() {
         'house-1',
         'SocketException: Failed host lookup: api.supabase.co',
       );
-      // incrementSyncRetry schedules a real exponential-backoff window
-      // (nextSyncAttemptAt = now + 2s for the first failure), which
-      // getPendingSyncRecords() — reused as-is by getUnsyncedBreakdown() —
-      // filters out until it elapses. Clear it directly here to simulate
-      // "the backoff window has already elapsed": this test is about the
-      // reason-mapping surfaced in the breakdown, not backoff timing
-      // (already covered by houses_dao_test.dart).
-      await (database.update(database.houses)
-            ..where((h) => h.id.equals('house-1')))
-          .write(const HousesCompanion(nextSyncAttemptAt: Value(null)));
 
       final breakdown = await syncService.getUnsyncedBreakdown();
 
       expect(breakdown.single.reasonKey, 'profile.sync_reason_network');
     });
+
+    test(
+      'includes records still inside their backoff window (matches what the tile counts)',
+      () async {
+        await insertHouse('house-1');
+        await database.housesDao.incrementSyncRetry(
+          'house-1',
+          'SocketException: Failed host lookup: api.supabase.co',
+        );
+        // Do NOT clear nextSyncAttemptAt — it's still in the future backoff
+        // window right now. The whole point of this test is confirming the
+        // record is NOT silently hidden during that window.
+
+        final breakdown = await syncService.getUnsyncedBreakdown();
+
+        expect(breakdown.length, 1);
+        expect(breakdown.single.entityLabelKey, 'houses.title');
+        expect(breakdown.single.count, 1);
+        expect(breakdown.single.reasonKey, 'profile.sync_reason_network');
+      },
+    );
+
+    test(
+      'includes records stuck past the retry limit (matches what the tile counts)',
+      () async {
+        await insertHouse('house-1');
+        for (var i = 0; i < 6; i++) {
+          await database.housesDao.incrementSyncRetry(
+            'house-1',
+            'PostgrestException(message: internal error, code: 500)',
+          );
+        }
+        // retryCount is now 6, past the maxRetries=5 default that
+        // getPendingSyncRecords applies — this record would be invisible to
+        // the retry queue, but must still show up here.
+
+        final breakdown = await syncService.getUnsyncedBreakdown();
+
+        expect(breakdown.length, 1);
+        expect(breakdown.single.count, 1);
+        expect(breakdown.single.reasonKey, 'profile.sync_reason_server');
+      },
+    );
 
     test(
       'only includes entity types that actually have pending records',

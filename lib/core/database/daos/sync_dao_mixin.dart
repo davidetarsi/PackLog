@@ -83,6 +83,24 @@ mixin SyncDaoMixin<T extends Table, D> on DatabaseAccessor<AppDatabase> {
         .get();
   }
 
+  /// Returns ALL records where syncStatus != synced, regardless of retry
+  /// count or backoff window — the same population [countUnsynced] counts.
+  ///
+  /// Unlike [getPendingSyncRecords] (scoped to "eligible for a retry attempt
+  /// right now" — used by the actual push/retry logic in [SyncService]),
+  /// this includes records currently inside their backoff window and
+  /// records stuck past the retry limit. Used by
+  /// [SyncService.getUnsyncedBreakdown] so the sync-detail dialog always
+  /// accounts for every record the "N modifiche in attesa" tile counts:
+  /// using [getPendingSyncRecords] there would silently omit backed-off or
+  /// stuck records, making the dialog contradict the tile in exactly the
+  /// failure states this feature exists to explain.
+  Future<List<D>> getAllUnsyncedRecords() {
+    return (select($table)
+          ..where((_) => $syncStatusCol.equals(SyncStatus.synced.index).not()))
+        .get();
+  }
+
   /// Counts all records where syncStatus != synced, regardless of retry count
   /// or backoff. Used to decide whether to show the "Sync now" button.
   Future<int> countUnsynced() async {
