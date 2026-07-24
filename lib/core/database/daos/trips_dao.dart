@@ -210,11 +210,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
   ) async {
     if (items.isEmpty) return;
     await batch((batch) {
-      batch.insertAll(
-        tripItemEntries,
-        items,
-        mode: InsertMode.insertOrIgnore,
-      );
+      batch.insertAll(tripItemEntries, items, mode: InsertMode.insertOrIgnore);
     });
   }
 
@@ -345,6 +341,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
       luggages: results[1] as List<Luggage>,
     );
   }
+
   // === SYNC OPERATIONS (delegated to SyncDaoMixin) ===
   // purgeRecord, wipeAll, markDeletedAsPendingSync, getPendingSyncRecords,
   // countUnsynced, markAsSynced, resetSyncRetries, incrementSyncRetry

@@ -595,18 +595,16 @@ void main() {
         // Prime the notifier's initial state.
         await container.read(tripNotifierProvider.future);
 
-        await container
-            .read(tripNotifierProvider.notifier)
-            .addItemsToTrip('trip-1', [newItem]);
+        await container.read(tripNotifierProvider.notifier).addItemsToTrip(
+          'trip-1',
+          [newItem],
+        );
 
         verify(
           () => mockRepository.addItemsToTrip('trip-1', [newItem]),
         ).called(1);
         verify(
-          () => mockAnalytics.trackItemsAddedToTrip(
-            tripId: 'trip-1',
-            count: 1,
-          ),
+          () => mockAnalytics.trackItemsAddedToTrip(tripId: 'trip-1', count: 1),
         ).called(1);
       },
     );

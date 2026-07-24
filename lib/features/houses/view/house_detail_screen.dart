@@ -459,8 +459,8 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                         isPrimary: house.isPrimary,
                         houseName: house.displayName,
                         isExpanded: _isRapidFireExpanded,
-                        currentSpaceId: (_spaceFilter != null &&
-                                _spaceFilter != 'default')
+                        currentSpaceId:
+                            (_spaceFilter != null && _spaceFilter != 'default')
                             ? _spaceFilter
                             : null,
                         onManage: () => _showManageSheet(
@@ -493,7 +493,8 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
 // Private widget components
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _HouseNormalAppBar extends StatelessWidget implements PreferredSizeWidget {
+class _HouseNormalAppBar extends StatelessWidget
+    implements PreferredSizeWidget {
   final ColorScheme colorScheme;
   final String houseName;
   final IconData houseIcon;
