@@ -74,6 +74,13 @@ class CoreAnalyticsService {
     _safeLogEvent('item_bulk_moved', properties: {'count': count});
   }
 
+  void trackItemsAddedToTrip({required String tripId, required int count}) {
+    _safeLogEvent(
+      'items_added_to_trip',
+      properties: {'trip_id': tripId, 'count': count},
+    );
+  }
+
   // ── space_ ────────────────────────────────────────────────────────────────
 
   void trackSpaceCreated() => _safeLogEvent('space_created');
