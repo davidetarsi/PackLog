@@ -1,10 +1,17 @@
 import 'package:drift/drift.dart';
 
+import '../../features/houses/model/house_model.dart';
 import '../../features/items/model/item_model.dart';
 import '../../features/luggages/model/luggage_model.dart';
 import '../../shared/model/location_type.dart';
 import '../database/database.dart';
 import '../database/tables/mixins/syncable_table.dart';
+
+/// Fallback non localizzato per il push di una casa senza nome, città né
+/// località — solo per soddisfare `houses_name_check` (`char_length(name) >= 1`)
+/// su Supabase. Mai mostrato in UI: lì [HouseModel.displayName] ricalcola
+/// sempre un fallback localizzato fresco, indipendentemente da questo valore.
+const String _unnamedHouseSyncFallback = 'Unnamed house';
 
 /// Namespace statico per le funzioni pure di serializzazione e deserializzazione
 /// tra i JSON di Supabase e i Companion di Drift.
@@ -205,7 +212,16 @@ abstract final class SyncSerializers {
     return {
       'id': house.id,
       'user_id': house.userId,
-      'name': house.name,
+      // Il push non manda mai una stringa vuota: `houses_name_check` su
+      // Supabase richiede char_length(name) >= 1, ma localmente il nome è
+      // opzionale (city/location come fallback in UI, vedi HouseModel.
+      // displayName). Stessa priorità, stessa funzione condivisa.
+      'name': resolveHouseDisplayName(
+        name: house.name,
+        cityName: house.locationCity,
+        locationDisplayName: house.locationDisplayName,
+        fallback: _unnamedHouseSyncFallback,
+      ),
       'description': house.description,
       'location_place_id': house.locationPlaceId,
       'location_display_name': house.locationDisplayName,
