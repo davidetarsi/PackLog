@@ -40,17 +40,21 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Item>> watchAllItems() =>
       (select(items)..where((i) => i.isDeleted.equals(false))).watch();
 
-  /// Ottiene gli oggetti non eliminati di una casa specifica
+  /// Ottiene gli oggetti non eliminati di una casa specifica, ordinati
+  /// alfabeticamente per nome (case-insensitive).
   Future<List<Item>> getItemsByHouseId(String houseId) {
     return (select(items)
-          ..where((i) => i.houseId.equals(houseId) & i.isDeleted.equals(false)))
+          ..where((i) => i.houseId.equals(houseId) & i.isDeleted.equals(false))
+          ..orderBy([(i) => OrderingTerm(expression: i.name.lower())]))
         .get();
   }
 
-  /// Ottiene gli oggetti non eliminati di una casa come stream
+  /// Ottiene gli oggetti non eliminati di una casa come stream, ordinati
+  /// alfabeticamente per nome (case-insensitive).
   Stream<List<Item>> watchItemsByHouseId(String houseId) {
     return (select(items)
-          ..where((i) => i.houseId.equals(houseId) & i.isDeleted.equals(false)))
+          ..where((i) => i.houseId.equals(houseId) & i.isDeleted.equals(false))
+          ..orderBy([(i) => OrderingTerm(expression: i.name.lower())]))
         .watch();
   }
 

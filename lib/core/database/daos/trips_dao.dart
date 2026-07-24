@@ -110,18 +110,22 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
 
   // === TRIP ITEMS ===
 
-  /// Ottiene tutti gli oggetti di un viaggio
+  /// Ottiene tutti gli oggetti di un viaggio, ordinati alfabeticamente per
+  /// nome (case-insensitive).
   Future<List<TripItemEntry>> getTripItemsByTripId(String tripId) {
-    return (select(
-      tripItemEntries,
-    )..where((ti) => ti.tripId.equals(tripId))).get();
+    return (select(tripItemEntries)
+          ..where((ti) => ti.tripId.equals(tripId))
+          ..orderBy([(ti) => OrderingTerm(expression: ti.name.lower())]))
+        .get();
   }
 
-  /// Ottiene gli oggetti di un viaggio come stream
+  /// Ottiene gli oggetti di un viaggio come stream, ordinati alfabeticamente
+  /// per nome (case-insensitive).
   Stream<List<TripItemEntry>> watchTripItemsByTripId(String tripId) {
-    return (select(
-      tripItemEntries,
-    )..where((ti) => ti.tripId.equals(tripId))).watch();
+    return (select(tripItemEntries)
+          ..where((ti) => ti.tripId.equals(tripId))
+          ..orderBy([(ti) => OrderingTerm(expression: ti.name.lower())]))
+        .watch();
   }
 
   /// Inserisce un oggetto nel viaggio
