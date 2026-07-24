@@ -690,6 +690,118 @@ void main() {
     });
   });
 
+  group('DriftTripRepository - addItemsToTrip', () {
+    test(
+      'appends new items to an existing trip without touching existing ones',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'house-append-1';
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: houseId,
+            name: 'Test House',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        final trip = model.TripModel(
+          id: 'trip-append-1',
+          name: 'Ski Trip',
+          items: [
+            model.TripItem(
+              id: 'existing-item',
+              name: 'Gloves',
+              category: ItemCategory.vestiti,
+              quantity: 1,
+              originHouseId: houseId,
+            ),
+          ],
+          luggages: const [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        await repository.addTrip(trip);
+
+        final beforeUpdatedAt = (await repository.getTripById(
+          trip.id,
+        )).updatedAt;
+
+        // Drift stores DateTime with whole-second precision by default (no
+        // storeDateTimeAsText option configured on this DB) — two
+        // DateTime.now() calls milliseconds apart truncate to the same
+        // second and would make isAfter() below deterministically false.
+        // Force a second boundary crossing so the LWW pivot check is
+        // meaningful.
+        await Future.delayed(const Duration(seconds: 1));
+
+        // === ACT ===
+        await repository.addItemsToTrip(trip.id, [
+          model.TripItem(
+            id: 'new-item-1',
+            name: 'Ski Goggles',
+            category: ItemCategory.varie,
+            quantity: 1,
+            originHouseId: houseId,
+          ),
+        ]);
+
+        // === ASSERT ===
+        final updated = await repository.getTripById(trip.id);
+        expect(updated.items.length, 2);
+        expect(updated.items.map((i) => i.id).toSet(), {
+          'existing-item',
+          'new-item-1',
+        });
+        // LWW pivot must move forward.
+        expect(updated.updatedAt.isAfter(beforeUpdatedAt), isTrue);
+      },
+    );
+
+    test('adding an already-present item is a no-op (idempotent)', () async {
+      final houseId = 'house-append-2';
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: houseId,
+          name: 'Test House',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      final trip = model.TripModel(
+        id: 'trip-append-2',
+        name: 'Beach Trip',
+        items: [
+          model.TripItem(
+            id: 'dup-item',
+            name: 'Sunscreen',
+            category: ItemCategory.toiletries,
+            quantity: 1,
+            originHouseId: houseId,
+          ),
+        ],
+        luggages: const [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await repository.addTrip(trip);
+
+      await repository.addItemsToTrip(trip.id, [
+        model.TripItem(
+          id: 'dup-item',
+          name: 'Sunscreen',
+          category: ItemCategory.toiletries,
+          quantity: 1,
+          originHouseId: houseId,
+        ),
+      ]);
+
+      final updated = await repository.getTripById(trip.id);
+      expect(updated.items.length, 1);
+    });
+  });
+
   group('DriftTripRepository - Empty Items and Luggages', () {
     test(
       'should correctly handle trip with no items and no luggages',

@@ -243,6 +243,33 @@ class DriftTripRepository implements TripRepository {
     );
   }
 
+  @override
+  Future<void> addItemsToTrip(String tripId, List<model.TripItem> items) async {
+    if (items.isEmpty) return;
+
+    final result = await _dbService.executeAtomicWithRetry(
+      () async {
+        final companions = items
+            .map((item) => _toTripItemCompanion(tripId, item))
+            .toList();
+        await _dao.insertTripItemsIgnoringDuplicates(companions);
+        await _dao.updateTrip(
+          TripsCompanion(id: Value(tripId), updatedAt: Value(DateTime.now())),
+        );
+      },
+      operationName: 'addItemsToTrip($tripId)',
+      config: RetryConfig.criticalConfig,
+    );
+
+    if (!result.success) {
+      throw EntitySaveException('addItemsToTrip($tripId)', cause: result.error);
+    }
+
+    debugPrint(
+      '[TripRepo] ${items.length} item(s) aggiunti al viaggio $tripId',
+    );
+  }
+
   /// Stream reattivo di tutti i viaggi.
   ///
   /// Usa batch loading ottimizzato per evitare N+1 queries.
