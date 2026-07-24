@@ -779,41 +779,46 @@ void main() {
       },
     );
 
-    test(
-      'delete-wins: fullPull non risuscita una house locale soft-deleted '
-      'anche se il remoto vivo è più recente',
-      () async {
-        await insertHouse('h-dw');
-        await database.housesDao.deleteHouse('h-dw'); // soft-delete → pendingUpdate
+    test('delete-wins: fullPull non risuscita una house locale soft-deleted '
+        'anche se il remoto vivo è più recente', () async {
+      await insertHouse('h-dw');
+      await database.housesDao.deleteHouse(
+        'h-dw',
+      ); // soft-delete → pendingUpdate
 
-        // Remoto VIVO con updated_at nel futuro (batte qualsiasi timestamp locale).
-        final remoteNewer =
-            DateTime.now().toUtc().add(const Duration(hours: 1));
-        stubFetchAll(houses: [houseJson('h-dw', updatedAt: remoteNewer)]);
+      // Remoto VIVO con updated_at nel futuro (batte qualsiasi timestamp locale).
+      final remoteNewer = DateTime.now().toUtc().add(const Duration(hours: 1));
+      stubFetchAll(houses: [houseJson('h-dw', updatedAt: remoteNewer)]);
 
-        await syncService.fullPull('user-1');
+      await syncService.fullPull('user-1');
 
-        final local = await database.housesDao.findHouseById('h-dw');
-        expect(local!.isDeleted, isTrue,
-            reason: 'delete-wins: il tombstone locale non va sovrascritto');
-        expect(local.syncStatus, isNot(equals(SyncStatus.synced)),
-            reason: 'la cancellazione deve restare in coda per il push');
-      },
-    );
+      final local = await database.housesDao.findHouseById('h-dw');
+      expect(
+        local!.isDeleted,
+        isTrue,
+        reason: 'delete-wins: il tombstone locale non va sovrascritto',
+      );
+      expect(
+        local.syncStatus,
+        isNot(equals(SyncStatus.synced)),
+        reason: 'la cancellazione deve restare in coda per il push',
+      );
+    });
 
     test(
       'delete-wins: fullPull non risuscita un item locale soft-deleted',
       () async {
         await insertHouse('h-dw2');
         await insertItem('i-dw', 'h-dw2');
-        await database.itemsDao.deleteItem('i-dw'); // soft-delete → pendingUpdate
+        await database.itemsDao.deleteItem(
+          'i-dw',
+        ); // soft-delete → pendingUpdate
 
-        final remoteNewer =
-            DateTime.now().toUtc().add(const Duration(hours: 1));
+        final remoteNewer = DateTime.now().toUtc().add(
+          const Duration(hours: 1),
+        );
         stubFetchAll(
-          houses: [
-            houseJson('h-dw2', updatedAt: DateTime(2026, 5, 1).toUtc()),
-          ],
+          houses: [houseJson('h-dw2', updatedAt: DateTime(2026, 5, 1).toUtc())],
           items: [itemJson('i-dw', 'h-dw2', updatedAt: remoteNewer)],
         );
 
@@ -1535,37 +1540,40 @@ void main() {
   });
 
   group('SyncService - analytics sui fallimenti', () {
-    test('trackSyncFailed emesso quando il push di un record fallisce', () async {
-      final mockAnalytics = MockCoreAnalyticsService();
-      final serviceWithAnalytics = SyncService(
-        housesDao: database.housesDao,
-        itemsDao: database.itemsDao,
-        spacesDao: database.spacesDao,
-        luggagesDao: database.luggagesDao,
-        tripsDao: database.tripsDao,
-        remote: mockRemote,
-        monitoring: mockMonitoring,
-        tombstoneConfig: mockTombstoneConfig,
-        analytics: mockAnalytics,
-      );
+    test(
+      'trackSyncFailed emesso quando il push di un record fallisce',
+      () async {
+        final mockAnalytics = MockCoreAnalyticsService();
+        final serviceWithAnalytics = SyncService(
+          housesDao: database.housesDao,
+          itemsDao: database.itemsDao,
+          spacesDao: database.spacesDao,
+          luggagesDao: database.luggagesDao,
+          tripsDao: database.tripsDao,
+          remote: mockRemote,
+          monitoring: mockMonitoring,
+          tombstoneConfig: mockTombstoneConfig,
+          analytics: mockAnalytics,
+        );
 
-      await insertHouse('h-fail');
-      when(
-        () => mockRemote.fetchHouseById(
-          'h-fail',
-          sentryTrace: any(named: 'sentryTrace'),
-        ),
-      ).thenThrow(Exception('network down'));
+        await insertHouse('h-fail');
+        when(
+          () => mockRemote.fetchHouseById(
+            'h-fail',
+            sentryTrace: any(named: 'sentryTrace'),
+          ),
+        ).thenThrow(Exception('network down'));
 
-      await serviceWithAnalytics.processQueue();
+        await serviceWithAnalytics.processQueue();
 
-      verify(
-        () => mockAnalytics.trackSyncFailed(
-          entity: 'house',
-          errorType: any(named: 'errorType'),
-        ),
-      ).called(1);
-    });
+        verify(
+          () => mockAnalytics.trackSyncFailed(
+            entity: 'house',
+            errorType: any(named: 'errorType'),
+          ),
+        ).called(1);
+      },
+    );
   });
 
   group('SyncService - trip luggages sync', () {
@@ -1717,6 +1725,68 @@ void main() {
         );
         expect(luggagesForTrip, hasLength(1));
         expect(luggagesForTrip.first.id, equals('l-a'));
+      },
+    );
+  });
+
+  group('SyncService.getUnsyncedBreakdown', () {
+    test('returns empty list when nothing is pending', () async {
+      final breakdown = await syncService.getUnsyncedBreakdown();
+      expect(breakdown, isEmpty);
+    });
+
+    test(
+      'groups pending records by entity type with count and reason',
+      () async {
+        await insertHouse('house-1');
+        // A second house is pendingCreate by default (see insertHouse helper) —
+        // insert one more record to exercise a count > 1 for one entity type.
+        await insertHouse('house-2');
+
+        // insertHouse leaves syncStatus at its default (pendingCreate) with no
+        // lastSyncError yet (never attempted) — exercise the "unknown/generic"
+        // reason path first.
+        final breakdown = await syncService.getUnsyncedBreakdown();
+
+        expect(breakdown.length, 1);
+        expect(breakdown.single.entityLabelKey, 'houses.title');
+        expect(breakdown.single.count, 2);
+        expect(breakdown.single.reasonKey, 'profile.sync_reason_unknown');
+      },
+    );
+
+    test('reflects a friendly reason once a sync attempt has failed', () async {
+      await insertHouse('house-1');
+      await database.housesDao.incrementSyncRetry(
+        'house-1',
+        'SocketException: Failed host lookup: api.supabase.co',
+      );
+      // incrementSyncRetry schedules a real exponential-backoff window
+      // (nextSyncAttemptAt = now + 2s for the first failure), which
+      // getPendingSyncRecords() — reused as-is by getUnsyncedBreakdown() —
+      // filters out until it elapses. Clear it directly here to simulate
+      // "the backoff window has already elapsed": this test is about the
+      // reason-mapping surfaced in the breakdown, not backoff timing
+      // (already covered by houses_dao_test.dart).
+      await (database.update(database.houses)
+            ..where((h) => h.id.equals('house-1')))
+          .write(const HousesCompanion(nextSyncAttemptAt: Value(null)));
+
+      final breakdown = await syncService.getUnsyncedBreakdown();
+
+      expect(breakdown.single.reasonKey, 'profile.sync_reason_network');
+    });
+
+    test(
+      'only includes entity types that actually have pending records',
+      () async {
+        await insertHouse('house-1');
+        // No items/spaces/luggages/trips inserted — they must not appear.
+
+        final breakdown = await syncService.getUnsyncedBreakdown();
+
+        expect(breakdown.length, 1);
+        expect(breakdown.single.entityLabelKey, 'houses.title');
       },
     );
   });

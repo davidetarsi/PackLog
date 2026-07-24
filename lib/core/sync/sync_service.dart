@@ -11,9 +11,27 @@ import '../database/daos/trips_dao.dart';
 import '../database/database.dart';
 import '../database/tables/mixins/syncable_table.dart';
 import '../monitoring/monitoring_service.dart';
+import '../../shared/helpers/sync_error_reason.dart';
 import 'supabase_repository.dart';
 import 'sync_serializers.dart';
 import 'tombstone_config_service.dart';
+
+/// Snapshot leggibile dall'utente dello stato "non sincronizzato" per un
+/// singolo tipo di entità (casa, spazio, bagaglio, oggetto, viaggio).
+///
+/// [entityLabelKey] e [reasonKey] sono chiavi i18n grezze (non tradotte) —
+/// il caller decide dove e come tradurle con `.tr()`.
+class SyncEntityStatus {
+  const SyncEntityStatus({
+    required this.entityLabelKey,
+    required this.count,
+    required this.reasonKey,
+  });
+
+  final String entityLabelKey;
+  final int count;
+  final String reasonKey;
+}
 
 class SyncService {
   final HousesDao _housesDao;
@@ -78,6 +96,53 @@ class SyncService {
       _tripsDao.getPendingSyncRecords(),
     ]);
     return results.fold<int>(0, (sum, list) => sum + list.length);
+  }
+
+  /// Breakdown per-entità delle modifiche non ancora sincronizzate, per la
+  /// UI di dettaglio (dialog "Stato sincronizzazione" nel profilo).
+  ///
+  /// Riusa [getPendingSyncRecords] — stessa semantica (retry sotto soglia +
+  /// backoff rispettato) già usata da [countPendingChanges] per il warning
+  /// di logout. Nessuna nuova query SQL.
+  ///
+  /// Il "reason" mostrato è quello dell'ultimo errore trovato nel gruppo
+  /// (primo record con `lastSyncError` non nullo) — un singolo rappresentante
+  /// per tipo di entità, non un elenco per-record.
+  Future<List<SyncEntityStatus>> getUnsyncedBreakdown() async {
+    final results = await Future.wait([
+      _housesDao.getPendingSyncRecords(),
+      _spacesDao.getPendingSyncRecords(),
+      _luggagesDao.getPendingSyncRecords(),
+      _itemsDao.getPendingSyncRecords(),
+      _tripsDao.getPendingSyncRecords(),
+    ]);
+
+    const labels = [
+      'houses.title',
+      'spaces.title',
+      'luggages.title',
+      'profile.sync_entity_items',
+      'trips.title',
+    ];
+
+    final breakdown = <SyncEntityStatus>[];
+    for (var i = 0; i < results.length; i++) {
+      final records = results[i];
+      if (records.isEmpty) continue;
+
+      final lastError = records
+          .map((r) => (r as dynamic).lastSyncError as String?)
+          .firstWhere((e) => e != null, orElse: () => null);
+
+      breakdown.add(
+        SyncEntityStatus(
+          entityLabelKey: labels[i],
+          count: records.length,
+          reasonKey: syncErrorReasonKey(lastError),
+        ),
+      );
+    }
+    return breakdown;
   }
 
   /// Wipe completo dei dati locali. Usato all'avvio quando l'utente loggato
@@ -429,9 +494,11 @@ class SyncService {
         pullLocal: (remote) => _housesDao.updateHouse(
           SyncSerializers.buildHouseCompanion(remote, includeSyncFields: false),
         ),
-        markSynced: (ts, localAt) => _housesDao.markAsSynced(house.id, ts, localUpdatedAt: localAt),
+        markSynced: (ts, localAt) =>
+            _housesDao.markAsSynced(house.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _housesDao.incrementSyncRetry(house.id, e),
-        onPurge: () => pendingPurges.add(() => _housesDao.purgeRecord(house.id)),
+        onPurge: () =>
+            pendingPurges.add(() => _housesDao.purgeRecord(house.id)),
         syncStatus: house.syncStatus,
         lastSyncedAt: house.lastSyncedAt,
         createdAt: house.createdAt,
@@ -452,9 +519,11 @@ class SyncService {
         pullLocal: (remote) => _spacesDao.updateSpace(
           SyncSerializers.buildSpaceCompanion(remote, includeSyncFields: false),
         ),
-        markSynced: (ts, localAt) => _spacesDao.markAsSynced(space.id, ts, localUpdatedAt: localAt),
+        markSynced: (ts, localAt) =>
+            _spacesDao.markAsSynced(space.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _spacesDao.incrementSyncRetry(space.id, e),
-        onPurge: () => pendingPurges.add(() => _spacesDao.purgeRecord(space.id)),
+        onPurge: () =>
+            pendingPurges.add(() => _spacesDao.purgeRecord(space.id)),
         syncStatus: space.syncStatus,
         lastSyncedAt: space.lastSyncedAt,
         createdAt: space.createdAt,
@@ -474,9 +543,13 @@ class SyncService {
         upsert: (data, trace) =>
             _remote.upsertLuggage(data, sentryTrace: trace),
         pullLocal: (remote) => _luggagesDao.updateLuggage(
-          SyncSerializers.buildLuggageCompanion(remote, includeSyncFields: false),
+          SyncSerializers.buildLuggageCompanion(
+            remote,
+            includeSyncFields: false,
+          ),
         ),
-        markSynced: (ts, localAt) => _luggagesDao.markAsSynced(luggage.id, ts, localUpdatedAt: localAt),
+        markSynced: (ts, localAt) =>
+            _luggagesDao.markAsSynced(luggage.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _luggagesDao.incrementSyncRetry(luggage.id, e),
         onPurge: () =>
             pendingPurges.add(() => _luggagesDao.purgeRecord(luggage.id)),
@@ -500,7 +573,8 @@ class SyncService {
         pullLocal: (remote) => _itemsDao.updateItem(
           SyncSerializers.buildItemCompanion(remote, includeSyncFields: false),
         ),
-        markSynced: (ts, localAt) => _itemsDao.markAsSynced(item.id, ts, localUpdatedAt: localAt),
+        markSynced: (ts, localAt) =>
+            _itemsDao.markAsSynced(item.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _itemsDao.incrementSyncRetry(item.id, e),
         onPurge: () => pendingPurges.add(() => _itemsDao.purgeRecord(item.id)),
         syncStatus: item.syncStatus,
@@ -531,7 +605,8 @@ class SyncService {
             _remote.fetchTripById(trip.id, sentryTrace: trace),
         upsert: (data, trace) => _remote.upsertTrip(data, sentryTrace: trace),
         pullLocal: (remote) => _pullTrip(trip.id, remote),
-        markSynced: (ts, localAt) => _tripsDao.markAsSynced(trip.id, ts, localUpdatedAt: localAt),
+        markSynced: (ts, localAt) =>
+            _tripsDao.markAsSynced(trip.id, ts, localUpdatedAt: localAt),
         incrementRetry: (e) => _tripsDao.incrementSyncRetry(trip.id, e),
         onPurge: () => pendingPurges.add(() => _tripsDao.purgeRecord(trip.id)),
         syncStatus: trip.syncStatus,
@@ -575,7 +650,8 @@ class SyncService {
     required Future<void> Function(
       DateTime serverUpdatedAt,
       DateTime localUpdatedAtForWhere,
-    ) markSynced,
+    )
+    markSynced,
     required Future<void> Function(String errorMessage) incrementRetry,
     required void Function() onPurge,
     required SyncStatus syncStatus,

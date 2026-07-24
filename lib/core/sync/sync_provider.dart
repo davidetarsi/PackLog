@@ -204,3 +204,12 @@ Future<int> totalUnsyncedCount(Ref ref) async {
   ref.watch(syncTriggerProvider);
   return ref.read(syncServiceProvider).countAllUnsyncedChanges();
 }
+
+/// Breakdown per-entità delle modifiche pending, per il dialog di dettaglio
+/// aperto dal tap sulla [SyncStatusTile]. Dato transitorio, scope del dialog:
+/// **non** keepAlive (a differenza dei data provider di dominio come
+/// `itemNotifierProvider`) — nessun altro screen dipende da questo stato.
+@riverpod
+Future<List<SyncEntityStatus>> syncUnsyncedBreakdown(Ref ref) {
+  return ref.read(syncServiceProvider).getUnsyncedBreakdown();
+}
