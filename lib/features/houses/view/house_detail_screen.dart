@@ -14,6 +14,9 @@ import '../../items/providers/item_provider.dart';
 import '../../items/providers/item_selection_provider.dart';
 import '../../items/widgets/rapid_fire_input.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
+import '../../trips/model/trip_model.dart';
+import '../../trips/providers/trip_provider.dart';
+import '../../trips/view/trip_picker_sheet.dart';
 import '../../spaces/model/space_model.dart';
 import '../../spaces/providers/space_provider.dart';
 import '../../tour/model/onboarding_state.dart';
@@ -259,6 +262,58 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     }
   }
 
+  /// Mostra il picker "scegli un viaggio" e aggiunge gli item selezionati
+  /// al viaggio scelto (operazione additiva, idempotente — vedi
+  /// [TripRepository.addItemsToTrip]).
+  Future<void> _handleAddToTrip() async {
+    final selectionState = ref.read(itemSelectionNotifierProvider);
+    final selectedIds = selectionState.selectedIds.toList();
+    if (selectedIds.isEmpty) return;
+
+    if (!context.mounted) return;
+
+    final trip = await TripPickerSheet.show(context);
+    if (trip == null || !mounted) return;
+
+    final allItems =
+        ref.read(itemNotifierProvider(widget.houseId)).value ?? const [];
+    final selectedItems = allItems
+        .where((item) => selectedIds.contains(item.id))
+        .toList();
+
+    final tripItems = selectedItems
+        .map(
+          (item) => TripItem(
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            quantity: item.quantity ?? 1,
+            originHouseId: item.houseId,
+          ),
+        )
+        .toList();
+
+    final count = tripItems.length;
+
+    try {
+      await ref
+          .read(tripNotifierProvider.notifier)
+          .addItemsToTrip(trip.id, tripItems);
+
+      if (mounted) {
+        AppSnackBar.showSuccess(
+          context,
+          'items.add_to_trip_success'.tr(args: [count.toString(), trip.name]),
+        );
+        ref.read(itemSelectionNotifierProvider.notifier).clear();
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'errors.save_error'.tr());
+      }
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Build
   // -------------------------------------------------------------------------
@@ -384,6 +439,14 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                           onPressed: hasSelection ? _handleBulkDelete : null,
                           color: hasSelection
                               ? colorScheme.error
+                              : colorScheme.outline,
+                          showBorder: true,
+                        ),
+                        rightAction: CircularActionButton(
+                          icon: Icons.luggage_outlined,
+                          onPressed: hasSelection ? _handleAddToTrip : null,
+                          color: hasSelection
+                              ? colorScheme.primary
                               : colorScheme.outline,
                           showBorder: true,
                         ),

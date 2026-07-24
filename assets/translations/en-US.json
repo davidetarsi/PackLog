@@ -108,6 +108,7 @@
     "bulk_move_success": "{} items moved to {}",
     "bulk_move_no_houses": "No other houses available",
     "bulk_move_sheet_title": "Move {} items",
+    "add_to_trip_success": "{} items added to {}",
     "rapid_fire_hint": "Add item..."
   },
   "categories": {
@@ -188,6 +189,8 @@
   },
   "trips": {
     "title": "Trips",
+    "trip_picker_sheet_title": "Add to a trip",
+    "trip_picker_no_trips": "No active or upcoming trips",
     "duplicate_suffix": " (Copy)",
     "add": "Trip",
     "add_new": "New Trip",

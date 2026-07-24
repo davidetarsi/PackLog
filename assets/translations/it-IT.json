@@ -108,6 +108,7 @@
     "bulk_move_success": "{} oggetti spostati in {}",
     "bulk_move_no_houses": "Nessun'altra casa disponibile",
     "bulk_move_sheet_title": "Sposta {} oggetti",
+    "add_to_trip_success": "{} oggetti aggiunti a {}",
     "rapid_fire_hint": "Aggiungi oggetto..."
   },
   "categories": {
@@ -188,6 +189,8 @@
   },
   "trips": {
     "title": "Viaggi",
+    "trip_picker_sheet_title": "Aggiungi a un viaggio",
+    "trip_picker_no_trips": "Nessun viaggio attivo o in programma",
     "manage": "Gestisci viaggi",
     "duplicate_suffix": " (Copia)",
     "add": "Viaggio",
