@@ -79,6 +79,14 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
     onSuccess: (_) => _analytics.trackTripUpdated(),
   );
 
+  Future<void> addItemsToTrip(String tripId, List<TripItem> items) => mutate(
+    operation: () => _repo.addItemsToTrip(tripId, items),
+    reload: _repo.getAllTrips,
+    rethrowOnly: true,
+    onSuccess: (_) =>
+        _analytics.trackItemsAddedToTrip(tripId: tripId, count: items.length),
+  );
+
   Future<void> deleteTrip(String id) => mutate(
     operation: () => _repo.deleteTrip(id),
     reload: _repo.getAllTrips,

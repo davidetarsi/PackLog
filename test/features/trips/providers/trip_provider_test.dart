@@ -28,6 +28,7 @@ class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 /// - Repository methods are called with correct parameters
 void main() {
   late MockTripRepository mockRepository;
+  late MockCoreAnalyticsService mockAnalytics;
   late ProviderContainer container;
 
   setUp(() {
@@ -46,11 +47,17 @@ void main() {
       ),
     );
 
-    final mockAnalytics = MockCoreAnalyticsService();
+    mockAnalytics = MockCoreAnalyticsService();
     when(
       () => mockAnalytics.trackTripCreated(
         tripId: any(named: 'tripId'),
         totalTrips: any(named: 'totalTrips'),
+      ),
+    ).thenAnswer((_) async {});
+    when(
+      () => mockAnalytics.trackItemsAddedToTrip(
+        tripId: any(named: 'tripId'),
+        count: any(named: 'count'),
       ),
     ).thenAnswer((_) async {});
 
@@ -555,5 +562,53 @@ void main() {
 
       verify(() => mockRepository.getAllTrips()).called(2); // Initial + refresh
     });
+  });
+
+  group('TripNotifier - addItemsToTrip', () {
+    test(
+      'calls repository.addItemsToTrip and refreshes state, tracking analytics',
+      () async {
+        final existingTrip = TripModel(
+          id: 'trip-1',
+          name: 'Existing Trip',
+          items: const [],
+          luggages: const [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        final newItem = TripItem(
+          id: 'item-1',
+          name: 'Sunglasses',
+          category: ItemCategory.varie,
+          quantity: 1,
+          originHouseId: 'house-1',
+        );
+
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [existingTrip]);
+        when(
+          () => mockRepository.addItemsToTrip('trip-1', [newItem]),
+        ).thenAnswer((_) async {});
+
+        // Prime the notifier's initial state.
+        await container.read(tripNotifierProvider.future);
+
+        await container
+            .read(tripNotifierProvider.notifier)
+            .addItemsToTrip('trip-1', [newItem]);
+
+        verify(
+          () => mockRepository.addItemsToTrip('trip-1', [newItem]),
+        ).called(1);
+        verify(
+          () => mockAnalytics.trackItemsAddedToTrip(
+            tripId: 'trip-1',
+            count: 1,
+          ),
+        ).called(1);
+      },
+    );
   });
 }
