@@ -79,4 +79,47 @@ void main() {
     // Localization di easy_localization è inizializzata.
     expect(find.text(exceptionMessage(err)), findsOneWidget);
   });
+
+  testWidgets('tapping the tile opens SyncDetailsDialog when there are pending changes', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        const SyncStatusTile(),
+        overrides: [
+          totalUnsyncedCountProvider.overrideWith((ref) async => 2),
+          syncUnsyncedBreakdownProvider.overrideWith((ref) async => const []),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Tapped via the leading icon rather than the ListTile's bounding-box
+    // center: with an unresolved (raw-key) translation the trailing retry
+    // TextButton renders wide enough to visually cover the ListTile's
+    // geometric center in this test harness, which would make a
+    // center-point tap land on the retry button's onPressed instead of the
+    // tile's own onTap.
+    await tester.tap(find.byIcon(Icons.cloud_upload_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsOneWidget);
+  });
+
+  testWidgets('tile is not tappable when fully synced (no dialog opens)', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        const SyncStatusTile(),
+        overrides: [totalUnsyncedCountProvider.overrideWith((ref) async => 0)],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(ListTile));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsNothing);
+  });
 }

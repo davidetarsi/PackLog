@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/helpers/exception_message.dart';
+import 'sync_details_dialog.dart';
 
 /// Tile in Profilo che mostra quante modifiche locali sono ancora in attesa
 /// di essere pushate al cloud e offre un pulsante "Riprova" per forzare un
@@ -70,6 +71,7 @@ class SyncStatusTile extends ConsumerWidget {
                   ),
           ),
           trailing: trailing,
+          onTap: synced ? null : () => SyncDetailsDialog.show(context),
         );
       },
     );
