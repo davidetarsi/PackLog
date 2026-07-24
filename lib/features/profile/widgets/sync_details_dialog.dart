@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/sync/sync_provider.dart';
 
-/// Dialog di dettaglio aperto dal tap sulla [SyncStatusTile] quando ci sono
+/// Dialog di dettaglio aperto dal tap sulla SyncStatusTile quando ci sono
 /// modifiche non ancora sincronizzate. Mostra, per tipo di entità, quante
 /// modifiche sono in attesa e un motivo in linguaggio semplice — mai il
-/// testo tecnico grezzo dell'eccezione (vedi [syncErrorReasonKey]).
+/// testo tecnico grezzo dell'eccezione (vedi `syncErrorReasonKey` in
+/// `shared/helpers/sync_error_reason.dart`).
 class SyncDetailsDialog extends ConsumerWidget {
   const SyncDetailsDialog({super.key});
 
