@@ -27,7 +27,12 @@ String syncErrorReasonKey(String? rawError) {
     return 'profile.sync_reason_network';
   }
 
-  const serverMarkers = ['postgrestexception', 'code: 500', 'code: 502', 'code: 503'];
+  const serverMarkers = [
+    'postgrestexception',
+    'code: 500',
+    'code: 502',
+    'code: 503',
+  ];
   if (serverMarkers.any(lower.contains)) {
     return 'profile.sync_reason_server';
   }
