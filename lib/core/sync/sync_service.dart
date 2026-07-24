@@ -105,9 +105,9 @@ class SyncService {
   /// backoff rispettato) già usata da [countPendingChanges] per il warning
   /// di logout. Nessuna nuova query SQL.
   ///
-  /// Il "reason" mostrato è quello dell'ultimo errore trovato nel gruppo
-  /// (primo record con `lastSyncError` non nullo) — un singolo rappresentante
-  /// per tipo di entità, non un elenco per-record.
+  /// Il "reason" mostrato è quello del primo record con `lastSyncError` non
+  /// nullo trovato nel gruppo — un singolo rappresentante per tipo di
+  /// entità, non un elenco per-record.
   Future<List<SyncEntityStatus>> getUnsyncedBreakdown() async {
     final results = await Future.wait([
       _housesDao.getPendingSyncRecords(),
