@@ -35,6 +35,17 @@ class AppConfig {
   /// URL della repository GitHub del progetto.
   static const String githubUrl = 'https://github.com/davidetarsi/PackLog';
 
+  /// URL pubblico della Privacy Policy. Mostrato come link nel checkbox di
+  /// consenso in [LoginScreen] e obbligatorio per la scheda Play Store.
+  /// Placeholder finché la pagina non è hostata (vedi docs/legal-hosting-checklist.md).
+  static const String privacyPolicyUrl =
+      'https://packlog.app/privacy';
+
+  /// URL pubblico dei Termini di Servizio. Mostrato come link nel checkbox di
+  /// consenso in [LoginScreen]. Placeholder finché la pagina non è hostata.
+  static const String termsOfServiceUrl =
+      'https://packlog.app/terms';
+
   static void validate() {
     final missing = <String>[];
     if (supabaseUrl.isEmpty || supabaseUrl == 'MISSING_SUPABASE_URL') {
