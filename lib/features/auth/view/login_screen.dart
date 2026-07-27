@@ -3,10 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/gestures.dart';
 
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../shared/config/app_config.dart';
 import '../../../shared/helpers/exception_message.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
@@ -20,6 +23,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
+  bool _consentGiven = false;
 
   @override
   void initState() {
@@ -148,6 +152,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _openLegalDoc(String url) async {
+    try {
+      final launched = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.inAppBrowserView,
+      );
+      if (!launched && mounted) {
+        AppSnackBar.showError(context, 'settings.open_link_error'.tr());
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'settings.open_link_error'.tr());
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -198,7 +218,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: _isLoading ? null : _signInWithGoogle,
+                    onPressed: (_isLoading || !_consentGiven)
+                        ? null
+                        : _signInWithGoogle,
                     icon: _isLoading
                         ? SizedBox(
                             width: 20,
@@ -221,6 +243,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
 
+                AppSpacing.gapMd,
+                _ConsentRow(
+                  value: _consentGiven,
+                  onChanged: (v) => setState(() => _consentGiven = v ?? false),
+                  onPrivacyTap: () => _openLegalDoc(AppConfig.privacyPolicyUrl),
+                  onTermsTap: () => _openLegalDoc(AppConfig.termsOfServiceUrl),
+                ),
+
                 if (kDebugMode) ...[
                   AppSpacing.gapSm,
                   TextButton(
@@ -238,6 +268,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Checkbox di consenso con testo che contiene due link tappabili
+/// (Privacy Policy e Termini di Servizio). Gating obbligatorio del login.
+class _ConsentRow extends StatelessWidget {
+  const _ConsentRow({
+    required this.value,
+    required this.onChanged,
+    required this.onPrivacyTap,
+    required this.onTermsTap,
+  });
+
+  final bool value;
+  final ValueChanged<bool?> onChanged;
+  final VoidCallback onPrivacyTap;
+  final VoidCallback onTermsTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final linkStyle = TextStyle(
+      color: cs.primary,
+      decoration: TextDecoration.underline,
+      fontWeight: FontWeight.w600,
+    );
+    final baseStyle = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Checkbox(value: value, onChanged: onChanged),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              style: baseStyle,
+              children: [
+                TextSpan(text: 'login.consent_prefix'.tr()),
+                TextSpan(
+                  text: 'login.consent_privacy'.tr(),
+                  style: linkStyle,
+                  recognizer: TapGestureRecognizer()..onTap = onPrivacyTap,
+                ),
+                TextSpan(text: 'login.consent_separator'.tr()),
+                TextSpan(
+                  text: 'login.consent_terms'.tr(),
+                  style: linkStyle,
+                  recognizer: TapGestureRecognizer()..onTap = onTermsTap,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
