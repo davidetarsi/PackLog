@@ -9,7 +9,12 @@
     "network_error": "Connessione assente o lenta. Verifica la rete e riprova.",
     "cancelled": "Accesso annullato.",
     "sign_out": "Esci",
-    "sign_out_failed": "Errore durante la disconnessione"
+    "sign_out_failed": "Errore durante la disconnessione",
+    "consent_prefix": "Continuando accetto la ",
+    "consent_privacy": "Privacy Policy",
+    "consent_separator": " e i ",
+    "consent_terms": "Termini di Servizio",
+    "consent_required": "Devi accettare Privacy Policy e Termini di Servizio per continuare"
   },
   "navigation": {
     "home": "Home",
