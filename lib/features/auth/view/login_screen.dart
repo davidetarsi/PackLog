@@ -1,10 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/gestures.dart';
 
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/auth/auth_exceptions.dart';
@@ -274,7 +274,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
 /// Checkbox di consenso con testo che contiene due link tappabili
 /// (Privacy Policy e Termini di Servizio). Gating obbligatorio del login.
-class _ConsentRow extends StatelessWidget {
+class _ConsentRow extends StatefulWidget {
   const _ConsentRow({
     required this.value,
     required this.onChanged,
@@ -288,6 +288,28 @@ class _ConsentRow extends StatelessWidget {
   final VoidCallback onTermsTap;
 
   @override
+  State<_ConsentRow> createState() => _ConsentRowState();
+}
+
+class _ConsentRowState extends State<_ConsentRow> {
+  late final TapGestureRecognizer _privacyRecognizer;
+  late final TapGestureRecognizer _termsRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _privacyRecognizer = TapGestureRecognizer();
+    _termsRecognizer = TapGestureRecognizer();
+  }
+
+  @override
+  void dispose() {
+    _privacyRecognizer.dispose();
+    _termsRecognizer.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final linkStyle = TextStyle(
@@ -299,31 +321,53 @@ class _ConsentRow extends StatelessWidget {
       context,
     ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant);
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    _privacyRecognizer.onTap = widget.onPrivacyTap;
+    _termsRecognizer.onTap = widget.onTermsTap;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Checkbox(value: value, onChanged: onChanged),
-        Expanded(
-          child: Text.rich(
-            TextSpan(
-              style: baseStyle,
-              children: [
-                TextSpan(text: 'login.consent_prefix'.tr()),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Checkbox(value: widget.value, onChanged: widget.onChanged),
+            Expanded(
+              child: Text.rich(
                 TextSpan(
-                  text: 'login.consent_privacy'.tr(),
-                  style: linkStyle,
-                  recognizer: TapGestureRecognizer()..onTap = onPrivacyTap,
+                  style: baseStyle,
+                  children: [
+                    TextSpan(text: 'login.consent_prefix'.tr()),
+                    TextSpan(
+                      text: 'login.consent_privacy'.tr(),
+                      style: linkStyle,
+                      recognizer: _privacyRecognizer,
+                    ),
+                    TextSpan(text: 'login.consent_separator'.tr()),
+                    TextSpan(
+                      text: 'login.consent_terms'.tr(),
+                      style: linkStyle,
+                      recognizer: _termsRecognizer,
+                    ),
+                  ],
                 ),
-                TextSpan(text: 'login.consent_separator'.tr()),
-                TextSpan(
-                  text: 'login.consent_terms'.tr(),
-                  style: linkStyle,
-                  recognizer: TapGestureRecognizer()..onTap = onTermsTap,
-                ),
-              ],
+              ),
+            ),
+          ],
+        ),
+        if (!widget.value) ...[
+          Padding(
+            padding: EdgeInsets.only(
+              left: context.spacingSm,
+              top: context.spacingXs,
+            ),
+            child: Text(
+              'login.consent_required'.tr(),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
