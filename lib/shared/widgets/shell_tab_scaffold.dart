@@ -35,9 +35,23 @@ class ShellTabScaffold extends StatelessWidget {
         // gesture bar / home indicator) — non doppio-contiamo con SafeArea.
         bottom: false,
         child: reserveBottomNavSpace
-            ? Padding(
-                padding: EdgeInsets.only(bottom: context.navBarReservedHeight),
-                child: body,
+            // `MediaQuery.removePadding(removeBottom: true)` è **critico**: senza,
+            // uno scrollable con `padding: null` (ListView, CustomScrollView…)
+            // dentro `body` ri-applica automaticamente `MediaQuery.padding.bottom`
+            // come proprio padding inferiore. Sommato al [Padding] esplicito qui
+            // sotto (anch'esso = navBarReservedHeight) si otterrebbe un reserve
+            // DOPPIO in fondo alla pagina — un grande spazio vuoto sopra la nav
+            // bar. Rimuovendo il bottom dal MediaQuery per i discendenti, il
+            // reserve resta uno solo (quello del [Padding]).
+            ? MediaQuery.removePadding(
+                context: context,
+                removeBottom: true,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: context.navBarReservedHeight,
+                  ),
+                  child: body,
+                ),
               )
             : body,
       ),

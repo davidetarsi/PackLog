@@ -189,8 +189,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final currentLocale = context.locale;
-    final languageName =
-        currentLocale.languageCode == 'it' ? 'Italiano' : 'English';
+    final languageName = currentLocale.languageCode == 'it'
+        ? 'Italiano'
+        : 'English';
 
     final authState = ref.watch(authNotifierProvider);
     final displayName = switch (authState) {
@@ -261,8 +262,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 currentThemeMode:
                     ref.read(themeModeNotifierProvider).valueOrNull ??
                     ThemeMode.dark,
-                onSetThemeMode: (mode) =>
-                    ref.read(themeModeNotifierProvider.notifier).setThemeMode(mode),
+                onSetThemeMode: (mode) => ref
+                    .read(themeModeNotifierProvider.notifier)
+                    .setThemeMode(mode),
               ),
             ),
             const Divider(),
@@ -367,7 +369,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
 
-            AppSpacing.gapMd,
+            // Gap sotto l'ultimo bottone = gap tra i due bottoni, per coerenza.
+            AppSpacing.gapSm,
           ],
         ),
       ),
@@ -397,18 +400,16 @@ class _GptUsageTile extends ConsumerWidget {
             SizedBox(height: context.spacingXs),
             LinearProgressIndicator(
               value: usage.progress,
-              backgroundColor:
-                  Theme.of(context).colorScheme.surfaceContainerHighest,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
               color: Theme.of(context).colorScheme.primary,
               borderRadius: BorderRadius.circular(4),
             ),
             SizedBox(height: context.spacingXs),
             Text(
               'profile.ai_usage_subtitle'.tr(
-                args: [
-                  usage.usageCount.toString(),
-                  usage.usageCap.toString(),
-                ],
+                args: [usage.usageCount.toString(), usage.usageCap.toString()],
               ),
               style: Theme.of(context).textTheme.bodySmall,
             ),
