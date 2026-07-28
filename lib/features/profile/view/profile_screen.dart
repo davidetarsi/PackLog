@@ -189,8 +189,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final currentLocale = context.locale;
-    final languageName =
-        currentLocale.languageCode == 'it' ? 'Italiano' : 'English';
+    final languageName = currentLocale.languageCode == 'it'
+        ? 'Italiano'
+        : 'English';
 
     final authState = ref.watch(authNotifierProvider);
     final displayName = switch (authState) {
@@ -219,157 +220,169 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         // Nessun leading: schermata radice del tab bar, nessun pop a livello superiore.
         automaticallyImplyLeading: false,
       ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(gptUsageProvider),
-        child: ListView(
-          children: [
-            // ── Account identity ────────────────────────────────────────────
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: Text(
-                (displayName != null && displayName.isNotEmpty)
-                    ? displayName
-                    : userEmail,
-              ),
-              subtitle: userEmail.isNotEmpty ? Text(userEmail) : null,
-            ),
-            const Divider(),
-
-            // ── Preferenze ──────────────────────────────────────────────────
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: Text('settings.language'.tr()),
-              subtitle: Text(languageName),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => showProfileLanguageDialog(context),
-            ),
-            const Divider(),
-
-            ListTile(
-              leading: Icon(
-                themeModeAsync.valueOrNull == ThemeMode.light
-                    ? Icons.light_mode
-                    : themeModeAsync.valueOrNull == ThemeMode.dark
-                    ? Icons.dark_mode
-                    : Icons.brightness_auto,
-              ),
-              title: Text('settings.theme'.tr()),
-              subtitle: Text(themeModeName),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => showProfileThemeDialog(
-                context,
-                currentThemeMode:
-                    ref.read(themeModeNotifierProvider).valueOrNull ??
-                    ThemeMode.dark,
-                onSetThemeMode: (mode) =>
-                    ref.read(themeModeNotifierProvider.notifier).setThemeMode(mode),
-              ),
-            ),
-            const Divider(),
-
-            // ── AI usage ────────────────────────────────────────────────────
-            const _GptUsageTile(),
-            const Divider(),
-
-            // ── Sync status ───────────────────────────────────────────────────
-            const SyncStatusTile(),
-            const Divider(),
-
-            // ── Tour ──────────────────────────────────────────────────────────────────
-            ListTile(
-              leading: const Icon(Icons.tour_outlined),
-              title: Text('tour.relaunch_title'.tr()),
-              subtitle: Text('tour.relaunch_subtitle'.tr()),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () async {
-                ref.read(analyticsServiceProvider).logEvent('tour_relaunched');
-                final houses =
-                    ref.read(houseNotifierProvider).valueOrNull ?? [];
-                await ref
-                    .read(postLoginOnboardingProvider.notifier)
-                    .reset(hasExistingHouses: houses.isNotEmpty);
-                if (context.mounted) context.go('/');
-              },
-            ),
-            const Divider(),
-
-            // ── About ────────────────────────────────────────────────────────
-            DsSectionHeader(
-              label: 'settings.about_section_title'.tr(),
-              padding: EdgeInsets.fromLTRB(
-                context.spacingMd,
-                context.spacingLg,
-                context.spacingMd,
-                context.spacingSm,
-              ),
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.feedback_outlined),
-              title: Text('settings.feedback'.tr()),
-              subtitle: Text('settings.feedback_subtitle'.tr()),
-              trailing: const Icon(Icons.open_in_new, size: 18),
-              onTap: () => _openFeedbackForm(context),
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.code),
-              title: Text('settings.view_project'.tr()),
-              subtitle: Text('settings.view_project_subtitle'.tr()),
-              trailing: const Icon(Icons.open_in_new, size: 18),
-              onTap: () => _launchUrl(context, AppConfig.githubUrl),
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: Text('settings.about'.tr()),
-              subtitle: ref
-                  .watch(packageInfoProvider)
-                  .when(
-                    data: (info) =>
-                        Text('${'common.version'.tr()} ${info.version}'),
-                    loading: () => Text('${'common.version'.tr()} …'),
-                    error: (_, _) => Text('${'common.version'.tr()} —'),
+      body: Column(
+        children: [
+          // Le impostazioni scrollano; la sezione account è un footer ancorato
+          // in fondo (sotto). Così, anche quando il contenuto è più corto dello
+          // schermo, i due bottoni restano appena sopra la nav bar invece di
+          // top-allinearsi lasciando un grande vuoto sotto.
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => ref.invalidate(gptUsageProvider),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  // ── Account identity ──────────────────────────────────────
+                  ListTile(
+                    leading: const Icon(Icons.person_outline),
+                    title: Text(
+                      (displayName != null && displayName.isNotEmpty)
+                          ? displayName
+                          : userEmail,
+                    ),
+                    subtitle: userEmail.isNotEmpty ? Text(userEmail) : null,
                   ),
-            ),
+                  const Divider(),
 
-            /* ListTile(
+                  // ── Preferenze ──────────────────────────────────────────────────
+                  ListTile(
+                    leading: const Icon(Icons.language),
+                    title: Text('settings.language'.tr()),
+                    subtitle: Text(languageName),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => showProfileLanguageDialog(context),
+                  ),
+                  const Divider(),
+
+                  ListTile(
+                    leading: Icon(
+                      themeModeAsync.valueOrNull == ThemeMode.light
+                          ? Icons.light_mode
+                          : themeModeAsync.valueOrNull == ThemeMode.dark
+                          ? Icons.dark_mode
+                          : Icons.brightness_auto,
+                    ),
+                    title: Text('settings.theme'.tr()),
+                    subtitle: Text(themeModeName),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => showProfileThemeDialog(
+                      context,
+                      currentThemeMode:
+                          ref.read(themeModeNotifierProvider).valueOrNull ??
+                          ThemeMode.dark,
+                      onSetThemeMode: (mode) => ref
+                          .read(themeModeNotifierProvider.notifier)
+                          .setThemeMode(mode),
+                    ),
+                  ),
+                  const Divider(),
+
+                  // ── AI usage ────────────────────────────────────────────────────
+                  const _GptUsageTile(),
+                  const Divider(),
+
+                  // ── Sync status ───────────────────────────────────────────────────
+                  const SyncStatusTile(),
+                  const Divider(),
+
+                  // ── Tour ──────────────────────────────────────────────────────────────────
+                  ListTile(
+                    leading: const Icon(Icons.tour_outlined),
+                    title: Text('tour.relaunch_title'.tr()),
+                    subtitle: Text('tour.relaunch_subtitle'.tr()),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      ref
+                          .read(analyticsServiceProvider)
+                          .logEvent('tour_relaunched');
+                      final houses =
+                          ref.read(houseNotifierProvider).valueOrNull ?? [];
+                      await ref
+                          .read(postLoginOnboardingProvider.notifier)
+                          .reset(hasExistingHouses: houses.isNotEmpty);
+                      if (context.mounted) context.go('/');
+                    },
+                  ),
+                  const Divider(),
+
+                  // ── About ────────────────────────────────────────────────────────
+                  DsSectionHeader(
+                    label: 'settings.about_section_title'.tr(),
+                    padding: EdgeInsets.fromLTRB(
+                      context.spacingMd,
+                      context.spacingLg,
+                      context.spacingMd,
+                      context.spacingSm,
+                    ),
+                  ),
+
+                  ListTile(
+                    leading: const Icon(Icons.feedback_outlined),
+                    title: Text('settings.feedback'.tr()),
+                    subtitle: Text('settings.feedback_subtitle'.tr()),
+                    trailing: const Icon(Icons.open_in_new, size: 18),
+                    onTap: () => _openFeedbackForm(context),
+                  ),
+
+                  ListTile(
+                    leading: const Icon(Icons.code),
+                    title: Text('settings.view_project'.tr()),
+                    subtitle: Text('settings.view_project_subtitle'.tr()),
+                    trailing: const Icon(Icons.open_in_new, size: 18),
+                    onTap: () => _launchUrl(context, AppConfig.githubUrl),
+                  ),
+
+                  ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: Text('settings.about'.tr()),
+                    subtitle: ref
+                        .watch(packageInfoProvider)
+                        .when(
+                          data: (info) =>
+                              Text('${'common.version'.tr()} ${info.version}'),
+                          loading: () => Text('${'common.version'.tr()} …'),
+                          error: (_, _) => Text('${'common.version'.tr()} —'),
+                        ),
+                  ),
+
+                  /* ListTile(
             leading: const Icon(Icons.storage),
             title: Text('common.storage'.tr()),
             subtitle: Text('common.data_saved_locally'.tr()),
           ), */
-            const Divider(),
-
-            // ── Account ─────────────────────────────────────────────────
-            AppSpacing.gapSm,
-
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-              child: UniversalActionBar(
-                primaryLabel: 'login.sign_out'.tr(),
-                primaryIcon: Icons.logout,
-                onPrimaryPressed: () => _handleSignOut(context),
-                isSecondary: true,
+                  const Divider(),
+                ],
               ),
             ),
+          ),
 
-            AppSpacing.gapSm,
-
-            // Hard-delete account (GDPR Art. 17). Distruttivo e irreversibile,
-            // protetto da dialog con conferma email.
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-              child: UniversalActionBar(
-                primaryLabel: 'profile.delete_account_cta'.tr(),
-                primaryIcon: Icons.delete_forever,
-                onPrimaryPressed: () => _handleDeleteAccount(context),
-                isDestructive: true,
-              ),
+          // ── Account (footer ancorato in fondo, fuori dallo scroll) ────────
+          AppSpacing.gapSm,
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+            child: UniversalActionBar(
+              primaryLabel: 'login.sign_out'.tr(),
+              primaryIcon: Icons.logout,
+              onPrimaryPressed: () => _handleSignOut(context),
+              isSecondary: true,
             ),
-
-            AppSpacing.gapMd,
-          ],
-        ),
+          ),
+          AppSpacing.gapSm,
+          // Hard-delete account (GDPR Art. 17). Distruttivo e irreversibile,
+          // protetto da dialog con conferma email.
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+            child: UniversalActionBar(
+              primaryLabel: 'profile.delete_account_cta'.tr(),
+              primaryIcon: Icons.delete_forever,
+              onPrimaryPressed: () => _handleDeleteAccount(context),
+              isDestructive: true,
+            ),
+          ),
+          // Gap piccolo sotto l'ultimo bottone verso il reserve della nav bar,
+          // uguale al gap tra i due bottoni → distanza coerente.
+          AppSpacing.gapSm,
+        ],
       ),
     );
   }
@@ -397,18 +410,16 @@ class _GptUsageTile extends ConsumerWidget {
             SizedBox(height: context.spacingXs),
             LinearProgressIndicator(
               value: usage.progress,
-              backgroundColor:
-                  Theme.of(context).colorScheme.surfaceContainerHighest,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
               color: Theme.of(context).colorScheme.primary,
               borderRadius: BorderRadius.circular(4),
             ),
             SizedBox(height: context.spacingXs),
             Text(
               'profile.ai_usage_subtitle'.tr(
-                args: [
-                  usage.usageCount.toString(),
-                  usage.usageCap.toString(),
-                ],
+                args: [usage.usageCount.toString(), usage.usageCap.toString()],
               ),
               style: Theme.of(context).textTheme.bodySmall,
             ),
