@@ -53,14 +53,6 @@ class SignInFailedException extends AuthDomainException {
   });
 }
 
-class SignUpFailedException extends AuthDomainException {
-  const SignUpFailedException(
-    super.message, {
-    super.originalError,
-    super.stackTrace,
-  });
-}
-
 class SignOutFailedException extends AuthDomainException {
   const SignOutFailedException(
     super.message, {

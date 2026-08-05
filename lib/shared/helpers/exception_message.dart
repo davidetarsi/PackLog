@@ -28,7 +28,6 @@ String exceptionMessageKey(Object error) {
         return 'login.sign_in_failed';
     }
   }
-  if (error is SignUpFailedException) return 'login.sign_in_failed';
   if (error is SignOutFailedException) return 'login.sign_out_failed';
   if (error is SessionExpiredException) return 'login.sign_in_failed';
   return 'errors.generic';

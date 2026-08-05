@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+// `show Supabase`: il package esporta un proprio `AuthState` che collide con
+// quello di dominio in `auth_state.dart`.
+import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
 import '../../core/analytics/analytics_service.dart';
 import '../../core/analytics/core_analytics_service.dart';
+import '../../core/consent/consent_provider.dart';
 import '../../core/monitoring/monitoring_service.dart';
 import 'auth_repository.dart';
 import 'auth_state.dart';
@@ -46,11 +52,49 @@ class AuthNotifier extends _$AuthNotifier {
       case Authenticated(:final userId):
         ref.read(monitoringServiceProvider).identifyUser(userId);
         ref.read(analyticsServiceProvider).identifyUser(userId);
+        unawaited(_flushConsentToRemote());
       case Unauthenticated():
         ref.read(monitoringServiceProvider).clearUser();
         ref.read(analyticsServiceProvider).clearUser();
     }
     debugPrint('[Auth] _resolveIdentity completato');
+  }
+
+  /// Riversa su Supabase il consenso registrato in locale.
+  ///
+  /// Non può avvenire quando il consenso viene prestato: in quel momento non
+  /// esiste ancora una sessione autenticata né la riga in `public.users`
+  /// (creata dal trigger `on_auth_user_created`), e la RPC richiede
+  /// `auth.uid()`. Il primo login utile è quindi la prima occasione possibile.
+  ///
+  /// Viene trasmesso il timestamp **originale** della spunta, non quello di
+  /// adesso: il registro deve dire quando il consenso è stato prestato.
+  ///
+  /// Errori assorbiti: se la RPC fallisce (rete assente, riga non ancora
+  /// creata) il flag locale resta non sincronizzato e si riprova al login
+  /// successivo. La RPC è idempotente, quindi ripetere non fa danno.
+  Future<void> _flushConsentToRemote() async {
+    final consent = ref.read(consentServiceProvider);
+    if (!consent.needsRemoteFlush) return;
+
+    final givenAt = consent.givenAt;
+    if (givenAt == null) return;
+
+    try {
+      await Supabase.instance.client.rpc(
+        'record_consent',
+        params: {
+          'p_given_at': givenAt.toIso8601String(),
+          'p_policy_version': consent.policyVersion,
+        },
+      );
+      await consent.markSyncedRemote();
+      debugPrint('[Auth] consenso registrato su Supabase');
+    } catch (e) {
+      debugPrint(
+        '[Auth] flush consenso fallito (riprovo al prossimo login): $e',
+      );
+    }
   }
 
   /// Traccia il funnel di attivazione: emette `login_completed` alla prima

@@ -1,14 +1,14 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../bootstrap.dart' show initConsentedAnalytics;
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/consent/consent_provider.dart';
 import '../../../shared/config/app_config.dart';
 import '../../../shared/helpers/exception_message.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
@@ -33,6 +33,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ref.read(analyticsServiceProvider).logEvent('login_screen_viewed');
       }
     });
+  }
+
+  /// Registra o revoca il consenso al variare della casella.
+  ///
+  /// È il primo trattamento lecito del ciclo di vita dell'app: tutto ciò che
+  /// precede (le tre schermate di onboarding, la vista della schermata di
+  /// login) viene scartato dal gate in `AppAnalyticsService`.
+  Future<void> _onConsentChanged(bool? value) async {
+    final given = value ?? false;
+    setState(() => _consentGiven = given);
+
+    final consent = ref.read(consentServiceProvider);
+
+    if (!given) {
+      // Despuntare ritira il consenso. Non emettiamo nessun evento per
+      // segnalarlo: registrare la revoca richiederebbe a sua volta un
+      // consenso che l'utente ha appena tolto.
+      await consent.revokeLocal();
+      return;
+    }
+
+    // Registrare PRIMA di emettere: il gate legge `hasConsent` in modo
+    // sincrono, quindi deve già trovarlo attivo o scarterebbe proprio
+    // l'evento che documenta il consenso.
+    await consent.record(policyVersion: AppConfig.policyVersion);
+
+    // Solo ORA gli SDK di analytics possono partire. Al bootstrap non erano
+    // stati inizializzati perché il consenso non c'era ancora: senza questa
+    // chiamata resterebbero spenti fino al riavvio successivo dell'app.
+    // Idempotente, quindi ri-spuntare la casella non li reinizializza.
+    await initConsentedAnalytics();
+
+    if (!mounted) return;
+    ref
+        .read(analyticsServiceProvider)
+        .logEvent(
+          'consent_given',
+          properties: {'policy_version': AppConfig.policyVersion},
+        );
   }
 
   Future<void> _signInWithGoogle() async {
@@ -81,71 +120,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         AppSnackBar.showError(context, exceptionMessage(e));
         debugPrint('[LoginScreen] Unexpected error: $e');
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _showDevLoginDialog() async {
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('[DEV] Email login'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [AutofillHints.email],
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-            AppSpacing.gapSm,
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annulla'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final email = emailController.text.trim();
-              final password = passwordController.text;
-              Navigator.of(context).pop();
-              await _devSignIn(email, password);
-            },
-            child: const Text('Login'),
-          ),
-        ],
-      ),
-    );
-
-    emailController.dispose();
-    passwordController.dispose();
-  }
-
-  Future<void> _devSignIn(String email, String password) async {
-    if (email.isEmpty || password.isEmpty) return;
-    setState(() => _isLoading = true);
-    try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-    } catch (e) {
-      if (mounted) {
-        AppSnackBar.showError(context, 'Dev login fallito: $e');
-        debugPrint('[DevLogin] $e');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -246,21 +220,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 AppSpacing.gapMd,
                 _ConsentRow(
                   value: _consentGiven,
-                  onChanged: (v) => setState(() => _consentGiven = v ?? false),
+                  onChanged: _onConsentChanged,
                   onPrivacyTap: () => _openLegalDoc(AppConfig.privacyPolicyUrl),
                   onTermsTap: () => _openLegalDoc(AppConfig.termsOfServiceUrl),
                 ),
-
-                if (kDebugMode) ...[
-                  AppSpacing.gapSm,
-                  TextButton(
-                    onPressed: _isLoading ? null : _showDevLoginDialog,
-                    child: const Text(
-                      '[DEV] Email login',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ],
 
                 const Spacer(flex: 1),
               ],
@@ -354,20 +317,6 @@ class _ConsentRowState extends State<_ConsentRow> {
             ),
           ],
         ),
-        if (!widget.value) ...[
-          Padding(
-            padding: EdgeInsets.only(
-              left: context.spacingSm,
-              top: context.spacingXs,
-            ),
-            child: Text(
-              'login.consent_required'.tr(),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }

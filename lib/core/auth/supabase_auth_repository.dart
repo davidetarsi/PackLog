@@ -107,35 +107,6 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signInWithEmail({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      await _client.auth.signInWithPassword(email: email, password: password);
-    } on sb.AuthException catch (e, st) {
-      throw SignInFailedException(
-        e.message,
-        reason: reasonFromSupabaseError(e),
-        originalError: e,
-        stackTrace: st,
-      );
-    }
-  }
-
-  @override
-  Future<void> signUpWithEmail({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      await _client.auth.signUp(email: email, password: password);
-    } on sb.AuthException catch (e, st) {
-      throw SignUpFailedException(e.message, originalError: e, stackTrace: st);
-    }
-  }
-
-  @override
   Future<void> signOut() async {
     try {
       await _googleSignIn.signOut();

@@ -97,7 +97,6 @@ void main() {
         equals('login.sign_in_failed'),
       );
     });
-
   });
 
   group('exceptionMessageKey - fallback', () {

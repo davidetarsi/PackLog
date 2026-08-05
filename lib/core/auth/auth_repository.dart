@@ -5,17 +5,14 @@ abstract class AuthRepository {
 
   Stream<AuthState> get authStateChanges;
 
+  /// Unico metodo di accesso dell'app.
+  ///
+  /// Un login email/password è stato implementato e poi rimosso (2026-08-01):
+  /// per la revisione Play si è scelto di fornire un **account Google di
+  /// test** invece di un secondo provider. Vedi `ROADMAP_RILASCIO.md` §2.3 per
+  /// la decisione e per il rischio che comporta (il risk engine di Google può
+  /// sfidare l'accesso del revisore da IP datacenter).
   Future<void> signInWithGoogle();
-
-  Future<void> signInWithEmail({
-    required String email,
-    required String password,
-  });
-
-  Future<void> signUpWithEmail({
-    required String email,
-    required String password,
-  });
 
   Future<void> signOut();
 

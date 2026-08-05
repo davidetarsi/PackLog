@@ -65,4 +65,20 @@ void main() {
       reason: 'button must be enabled after consent',
     );
   });
+
+  // Google Sign-In is the only way into the app: a second email/password
+  // provider was implemented and then removed on 2026-08-01 in favour of
+  // supplying the Play reviewer with a Google test account (see
+  // ROADMAP_RILASCIO.md §2.3). If a second entry point ever comes back, it
+  // must be consent-gated like the one above.
+  testWidgets('Google is the only sign-in method offered', (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byWidgetPredicate((widget) => widget is FilledButton),
+      findsOneWidget,
+    );
+    expect(find.byType(TextButton), findsNothing);
+  });
 }
