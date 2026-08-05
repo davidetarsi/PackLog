@@ -86,48 +86,61 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
             ),
             title: Text(displayDestination),
           ),
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Badge informativi: date, destinazione, bagagli
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacingMd,
-                  vertical: context.spacingMd,
+          // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
+          // StickyCtaScaffold inserisce come discendente di `body` — serve un
+          // context interno a questo subtree, non quello del metodo build
+          // esterno (che sta sopra lo scope e non lo vedrebbe mai).
+          body: Builder(
+            builder: (context) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Badge informativi: date, destinazione, bagagli
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacingMd,
+                    vertical: context.spacingMd,
+                  ),
+                  child: TripInfoBadges(trip: trip, direction: Axis.vertical),
                 ),
-                child: TripInfoBadges(trip: trip, direction: Axis.vertical),
-              ),
 
-              // Pill tabs per filtrare per categoria
-              AppPillTab<TripItemFilterTab>(
-                items: TripItemFilterTab.values,
-                selectedItem: _selectedTab,
-                getLabel: (tab) => tab.label,
-                onSelected: (tab) => setState(() => _selectedTab = tab),
-                height: 40,
-                scrollPadding: EdgeInsets.symmetric(
-                  horizontal: context.spacingSm,
+                // Pill tabs per filtrare per categoria
+                AppPillTab<TripItemFilterTab>(
+                  items: TripItemFilterTab.values,
+                  selectedItem: _selectedTab,
+                  getLabel: (tab) => tab.label,
+                  onSelected: (tab) => setState(() => _selectedTab = tab),
+                  height: 40,
+                  scrollPadding: EdgeInsets.symmetric(
+                    horizontal: context.spacingSm,
+                  ),
                 ),
-              ),
-              SizedBox(height: context.spacingMd),
+                SizedBox(height: context.spacingMd),
 
-              // Lista items
-              Expanded(
-                child: filteredItems.isEmpty
-                    ? _buildEmptyItemsState(context, colorScheme)
-                    : ListView.builder(
-                        padding: EdgeInsets.all(context.spacingSm),
-                        itemCount: filteredItems.length,
-                        itemBuilder: (context, index) {
-                          final item = filteredItems[index];
-                          return _TripItemCard(
-                            item: item,
-                            tripId: widget.tripId,
-                          );
-                        },
-                      ),
-              ),
-            ],
+                // Lista items
+                Expanded(
+                  child: filteredItems.isEmpty
+                      ? _buildEmptyItemsState(context, colorScheme)
+                      : ListView.builder(
+                          padding: EdgeInsets.all(context.spacingSm).copyWith(
+                            // spacingMd (non spacingSm) per coerenza con la stessa
+                            // gap finale usata in items_screen.dart (house detail):
+                            // stesso respiro visivo sotto l'ultimo item in entrambe
+                            // le schermate che condividono lo stesso pattern.
+                            bottom:
+                                context.spacingMd + context.ctaReservedHeight,
+                          ),
+                          itemCount: filteredItems.length,
+                          itemBuilder: (context, index) {
+                            final item = filteredItems[index];
+                            return _TripItemCard(
+                              item: item,
+                              tripId: widget.tripId,
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
           ),
           // Action bar unificata in basso
           bottomContent: UniversalActionBar(

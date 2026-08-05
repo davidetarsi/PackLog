@@ -7,6 +7,7 @@ import '../data/templates_data.dart';
 import '../model/user_gender.dart';
 import '../providers/bulk_creation_provider.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
@@ -61,42 +62,50 @@ class _TemplateSelectionScreenState
         ),
         title: Text('bulk_creation.select_templates'.tr()),
       ),
-      body: Column(
-        children: [
-          // Gender Picker (Segmented Control)
-          _GenderPicker(
-            selectedGender: state.gender,
-            onGenderChanged: (gender) => notifier.setGender(gender),
-          ),
-
-          // Template Grid
-          Expanded(
-            child: GridView.builder(
-              padding: EdgeInsets.all(context.spacingMd),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.8,
-                mainAxisSpacing: context.spacingMd,
-                crossAxisSpacing: context.spacingMd,
-              ),
-              itemCount: kTravelTemplates.length,
-              itemBuilder: (context, index) {
-                final template = kTravelTemplates[index];
-                final isSelected = state.selectedTemplateKeys.contains(
-                  template.key,
-                );
-
-                return _TemplateCard(
-                  template: template,
-                  isSelected: isSelected,
-                  onTap: () => notifier.toggleTemplate(template.key),
-                  colorScheme: colorScheme,
-                  selectedGender: state.gender,
-                );
-              },
+      // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
+      // StickyCtaScaffold inserisce come discendente di `body` — serve un
+      // context interno a questo subtree, non quello del metodo build
+      // esterno (che sta sopra lo scope e non lo vedrebbe mai).
+      body: Builder(
+        builder: (context) => Column(
+          children: [
+            // Gender Picker (Segmented Control)
+            _GenderPicker(
+              selectedGender: state.gender,
+              onGenderChanged: (gender) => notifier.setGender(gender),
             ),
-          ),
-        ],
+
+            // Template Grid
+            Expanded(
+              child: GridView.builder(
+                padding: EdgeInsets.all(context.spacingMd).copyWith(
+                  bottom: context.spacingMd + context.ctaReservedHeight,
+                ),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.8,
+                  mainAxisSpacing: context.spacingMd,
+                  crossAxisSpacing: context.spacingMd,
+                ),
+                itemCount: kTravelTemplates.length,
+                itemBuilder: (context, index) {
+                  final template = kTravelTemplates[index];
+                  final isSelected = state.selectedTemplateKeys.contains(
+                    template.key,
+                  );
+
+                  return _TemplateCard(
+                    template: template,
+                    isSelected: isSelected,
+                    onTap: () => notifier.toggleTemplate(template.key),
+                    colorScheme: colorScheme,
+                    selectedGender: state.gender,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
       bottomContent: UniversalActionBar(
         primaryLabel: selectedTemplatesCount > 0

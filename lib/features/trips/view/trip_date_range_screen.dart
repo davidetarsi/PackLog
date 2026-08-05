@@ -6,6 +6,7 @@ import '../model/trip_date_range.dart';
 import '../providers/date_range_selection_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 
@@ -204,7 +205,7 @@ class _CalendarScrollViewState extends State<_CalendarScrollView> {
         context.spacingMd,
         context.spacingMd,
         context.spacingMd,
-        context.spacingXl,
+        context.spacingXl + context.ctaReservedHeight,
       ),
       itemCount: _itemCount,
       itemBuilder: (_, index) {

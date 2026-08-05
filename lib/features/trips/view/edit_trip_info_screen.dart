@@ -145,35 +145,43 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
 
     return StickyCtaScaffold(
       appBar: AppBar(title: Text('trips.edit_info'.tr())),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.all(context.spacingMd),
-          child: TripInfoForm(
-            initialDescription: _description,
-            initialDepartureDateTime: _departureDateTime,
-            initialReturnDateTime: _returnDateTime,
-            initialDestinationHouseId: _destinationHouseId,
-            initialDestinationLocation: _destinationLocation,
-            onChanged:
-                ({
-                  description,
-                  departureDateTime,
-                  returnDateTime,
-                  destinationHouseId,
-                  destinationLocation,
-                  destinationName,
-                }) {
-                  setState(() {
-                    _description = description;
-                    _departureDateTime = departureDateTime;
-                    _returnDateTime = returnDateTime;
-                    _destinationHouseId = destinationHouseId;
-                    _destinationLocation = destinationLocation;
-                    _destinationName = destinationName;
-                  });
-                },
+      // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
+      // StickyCtaScaffold inserisce come discendente di `body` — serve un
+      // context interno a questo subtree, non quello del metodo build
+      // esterno (che sta sopra lo scope e non lo vedrebbe mai).
+      body: Builder(
+        builder: (context) => Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.all(
+              context.spacingMd,
+            ).copyWith(bottom: context.spacingMd + context.ctaReservedHeight),
+            child: TripInfoForm(
+              initialDescription: _description,
+              initialDepartureDateTime: _departureDateTime,
+              initialReturnDateTime: _returnDateTime,
+              initialDestinationHouseId: _destinationHouseId,
+              initialDestinationLocation: _destinationLocation,
+              onChanged:
+                  ({
+                    description,
+                    departureDateTime,
+                    returnDateTime,
+                    destinationHouseId,
+                    destinationLocation,
+                    destinationName,
+                  }) {
+                    setState(() {
+                      _description = description;
+                      _departureDateTime = departureDateTime;
+                      _returnDateTime = returnDateTime;
+                      _destinationHouseId = destinationHouseId;
+                      _destinationLocation = destinationLocation;
+                      _destinationName = destinationName;
+                    });
+                  },
+            ),
           ),
         ),
       ),

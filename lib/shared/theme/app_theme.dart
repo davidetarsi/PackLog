@@ -196,6 +196,12 @@ class AppTheme {
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 1,
+        // Material 3 di default usa colorScheme.primary come surfaceTintColor:
+        // scrollando contenuto sotto l'AppBar, applica un overlay tinto con
+        // quel colore (qui arancione) proporzionale a scrolledUnderElevation,
+        // percepito come un cambio di colore dell'AppBar. Disattivato per
+        // mantenere l'AppBar sempre dello stesso colore.
+        surfaceTintColor: Colors.transparent,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
         // ≥ 24px → w600 (regola DS size→weight Fase 3)

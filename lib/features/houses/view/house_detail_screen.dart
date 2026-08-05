@@ -13,6 +13,7 @@ import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/providers/item_selection_provider.dart';
 import '../../items/widgets/rapid_fire_input.dart';
+import '../../tour/tour_keys.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
 import '../../trips/model/trip_model.dart';
 import '../../trips/providers/trip_provider.dart';
@@ -400,6 +401,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                 ),
                 // ── Riga 2: filtro categorie ──────────────────────────────────
                 _CategoryFilterPills(
+                  key: tourKeys.houseItemsAnchor,
                   selected: _categoryTab,
                   onSelected: (tab) => setState(() => _categoryTab = tab),
                 ),
@@ -713,6 +715,7 @@ class _CategoryFilterPills extends StatelessWidget {
   final void Function(_CategoryTab) onSelected;
 
   const _CategoryFilterPills({
+    super.key,
     required this.selected,
     required this.onSelected,
   });

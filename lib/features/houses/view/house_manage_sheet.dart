@@ -72,9 +72,7 @@ Future<void> showHouseManageSheet(
             ),
             title: Text(
               'common.delete'.tr(),
-              style: TextStyle(
-                color: Theme.of(sheetContext).colorScheme.error,
-              ),
+              style: TextStyle(color: Theme.of(sheetContext).colorScheme.error),
             ),
             onTap: () {
               Navigator.pop(sheetContext);

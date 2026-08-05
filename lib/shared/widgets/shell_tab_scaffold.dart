@@ -34,6 +34,16 @@ class ShellTabScaffold extends StatelessWidget {
         // Il bottom è gestito da navBarReservedHeight (che include già la
         // gesture bar / home indicator) — non doppio-contiamo con SafeArea.
         bottom: false,
+        // Se c'è un AppBar, lo status bar è già liberato da lui (la sua
+        // altezza include quello spazio): SafeArea(top: true) aggiungerebbe
+        // un secondo padding superiore identico sopra quello già riservato
+        // dall'AppBar — lo stesso doppio conteggio del bottom, ma in cima.
+        // Misurato su device: senza questo fix il primo elemento della lista
+        // profilo partiva a 187dp invece di ~122dp attesi (AppBar + status
+        // bar), un surplus che coincideva esattamente con lo status bar
+        // stesso. Le schermate senza AppBar (Case, Viaggi) restano protette:
+        // lì nessun altro widget libera lo status bar, quindi serve davvero.
+        top: appBar == null,
         child: reserveBottomNavSpace
             // `MediaQuery.removePadding(removeBottom: true)` è **critico**: senza,
             // uno scrollable con `padding: null` (ListView, CustomScrollView…)

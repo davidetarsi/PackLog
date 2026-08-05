@@ -10,6 +10,7 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
@@ -269,10 +270,18 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
 
     return StickyCtaScaffold(
       appBar: AppBar(title: Text('ai_import.title'.tr())),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(context.spacingMd),
-          child: _buildBody(context, aiState, notifier),
+      // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
+      // StickyCtaScaffold inserisce come discendente di `body` — serve un
+      // context interno a questo subtree, non quello del metodo build
+      // esterno (che sta sopra lo scope e non lo vedrebbe mai).
+      body: Builder(
+        builder: (context) => SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(
+              context.spacingMd,
+            ).copyWith(bottom: context.spacingMd + context.ctaReservedHeight),
+            child: _buildBody(context, aiState, notifier),
+          ),
         ),
       ),
       bottomContent: _buildBottomContent(context, aiState, notifier),

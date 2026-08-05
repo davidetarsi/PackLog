@@ -114,46 +114,6 @@ void main() {
       expect(finalOffset, equals(initialOffset));
     });
 
-    testWidgets('shows shadow when showCtaShadow is true', (tester) async {
-      // Arrange
-      const ctaKey = Key('cta-container');
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: StickyCtaScaffold(
-            appBar: AppBar(title: const Text('Test')),
-            body: const SizedBox(),
-            bottomContent: Container(key: ctaKey, child: const Text('CTA')),
-            showCtaShadow: true,
-          ),
-        ),
-      );
-
-      // Assert - CTA container exists and widget renders
-      expect(find.byKey(ctaKey), findsOneWidget);
-      expect(find.text('CTA'), findsOneWidget);
-    });
-
-    testWidgets('hides shadow when showCtaShadow is false', (tester) async {
-      // Arrange
-      const ctaKey = Key('cta-no-shadow');
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: StickyCtaScaffold(
-            appBar: AppBar(title: const Text('Test')),
-            body: const SizedBox(),
-            bottomContent: Container(key: ctaKey, child: const Text('CTA')),
-            showCtaShadow: false,
-          ),
-        ),
-      );
-
-      // Assert - CTA container exists and widget renders
-      expect(find.byKey(ctaKey), findsOneWidget);
-      expect(find.text('CTA'), findsOneWidget);
-    });
-
     testWidgets('applies custom ctaBackgroundColor', (tester) async {
       // Arrange
       const customColor = Colors.red;

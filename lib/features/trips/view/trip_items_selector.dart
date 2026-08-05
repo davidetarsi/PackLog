@@ -259,7 +259,9 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         }
 
         return ListView(
-          padding: const EdgeInsets.only(bottom: 120),
+          padding: EdgeInsets.only(
+            bottom: context.spacingMd + context.ctaReservedHeight,
+          ),
           physics: const AlwaysScrollableScrollPhysics(),
           children: rows,
         );
@@ -385,7 +387,9 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     final colorScheme = Theme.of(context).colorScheme;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 120),
+      padding: EdgeInsets.only(
+        bottom: context.spacingMd + context.ctaReservedHeight,
+      ),
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: context.spacingLg),
         child: Center(
@@ -418,7 +422,9 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     final colorScheme = Theme.of(context).colorScheme;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 120),
+      padding: EdgeInsets.only(
+        bottom: context.spacingMd + context.ctaReservedHeight,
+      ),
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: context.spacingLg),
         child: Center(

@@ -126,7 +126,9 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                         ),
                       ),
                       SliverToBoxAdapter(
-                        child: SizedBox(height: context.spacingMd),
+                        child: SizedBox(
+                          height: context.spacingMd + context.ctaReservedHeight,
+                        ),
                       ),
                     ],
                   ),
@@ -221,7 +223,10 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                           ),
 
                         SliverToBoxAdapter(
-                          child: SizedBox(height: context.spacingMd),
+                          child: SizedBox(
+                            height:
+                                context.spacingMd + context.ctaReservedHeight,
+                          ),
                         ),
                       ],
                     ),

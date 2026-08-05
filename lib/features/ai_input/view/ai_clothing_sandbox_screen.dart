@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../providers/ai_import_notifier.dart';
@@ -109,36 +110,44 @@ class _AiClothingSandboxScreenState
 
     return StickyCtaScaffold(
       appBar: AppBar(title: Text('ai_import.title'.tr())),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(context.spacingMd),
-          child: SizedBox(
-            height: context.screenHeight * 0.6,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.auto_awesome_outlined,
-                  size: context.iconSizeHero,
-                  color: colorScheme.outlineVariant,
-                ),
-                SizedBox(height: context.spacingMd),
-                Text(
-                  'ai_import.empty_title'.tr(),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: context.spacingSm),
-                Text(
-                  'ai_import.empty_subtitle'.tr(),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+      // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
+      // StickyCtaScaffold inserisce come discendente di `body` — serve un
+      // context interno a questo subtree, non quello del metodo build
+      // esterno (che sta sopra lo scope e non lo vedrebbe mai).
+      body: Builder(
+        builder: (context) => SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(
+              context.spacingMd,
+            ).copyWith(bottom: context.spacingMd + context.ctaReservedHeight),
+            child: SizedBox(
+              height: context.screenHeight * 0.6,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.auto_awesome_outlined,
+                    size: context.iconSizeHero,
                     color: colorScheme.outlineVariant,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                  SizedBox(height: context.spacingMd),
+                  Text(
+                    'ai_import.empty_title'.tr(),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: context.spacingSm),
+                  Text(
+                    'ai_import.empty_subtitle'.tr(),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.outlineVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

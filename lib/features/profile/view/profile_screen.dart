@@ -223,6 +223,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(gptUsageProvider),
         child: ListView(
+          // Padding esplicito: senza, ListView (padding null) auto-inietta
+          // MediaQuery.padding.top come proprio sliver padding. Scaffold NON
+          // azzera quel padding per il body quando extendBodyBehindAppBar è
+          // false (default) — l'AppBar occupa già visivamente quello spazio,
+          // ma il valore di MediaQuery resta quello dell'intero schermo.
+          // Risultato senza questo fix: un secondo "status bar" di spazio
+          // vuoto sopra il primo ListTile, sommato a quello già coperto
+          // dall'AppBar.
+          padding: EdgeInsets.only(top: context.spacingSm),
           children: [
             // ── Account identity ────────────────────────────────────────────
             ListTile(

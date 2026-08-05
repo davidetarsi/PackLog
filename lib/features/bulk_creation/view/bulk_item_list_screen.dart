@@ -13,6 +13,7 @@ import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_item_tile.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/cta_reserved_space.dart';
 
 /// Schermata di editing massivo degli item aggregati dai template.
 ///
@@ -188,7 +189,16 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
       _focusNodes.putIfAbsent(item.id, () => FocusNode());
     }
 
+    // CTA più alta dello standard: sopra la UniversalActionBar c'è anche
+    // _CategoryButtonBar (label + riga di bottoni categoria) + il gap che le
+    // separa — quindi non basta l'altezza standard di StickyCtaScaffold.
+    final ctaHeightOverride =
+        StickyCtaScaffold.standardHeight(context) +
+        context.spacingMd +
+        context.responsive(96);
+
     return StickyCtaScaffold(
+      ctaHeightOverride: ctaHeightOverride,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -196,47 +206,55 @@ class _BulkItemListScreenState extends ConsumerState<BulkItemListScreen> {
         ),
         title: Text('bulk_creation.edit_items'.tr()),
       ),
-      body: state.allItems.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: context.responsive(64),
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  SizedBox(height: context.spacingMd),
-                  Text(
-                    'bulk_creation.no_items'.tr(),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
+      // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
+      // StickyCtaScaffold inserisce come discendente di `body` — serve un
+      // context interno a questo subtree, non quello del metodo build
+      // esterno (che sta sopra lo scope e non lo vedrebbe mai).
+      body: Builder(
+        builder: (context) => state.allItems.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: context.responsive(64),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    SizedBox(height: context.spacingMd),
+                    Text(
+                      'bulk_creation.no_items'.tr(),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
+                ),
+              )
+            // SingleChildScrollView + Column invece di ListView.builder:
+            // tutti i widget sono renderizzati subito (eager), garantendo che
+            // i GlobalKey context siano disponibili nel frame successivo a
+            // setState. ListView.builder non renderizza gli item fuori schermo,
+            // causando fallimenti dei lookup di GlobalKey e retry inutili.
+            // Il numero di categorie è piccolo (≤ 4), quindi non ci sono
+            // problemi di performance con il rendering eager.
+            : SingleChildScrollView(
+                controller: _scrollController,
+                padding: EdgeInsets.all(context.spacingMd).copyWith(
+                  bottom: context.spacingMd + context.ctaReservedHeight,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: itemsByCategory.entries.map((entry) {
+                    return _CategorySection(
+                      category: entry.key,
+                      items: entry.value,
+                      itemKeys: _itemKeys,
+                      focusNodes: _focusNodes,
+                      colorScheme: colorScheme,
+                    );
+                  }).toList(),
+                ),
               ),
-            )
-          // SingleChildScrollView + Column invece di ListView.builder:
-          // tutti i widget sono renderizzati subito (eager), garantendo che
-          // i GlobalKey context siano disponibili nel frame successivo a
-          // setState. ListView.builder non renderizza gli item fuori schermo,
-          // causando fallimenti dei lookup di GlobalKey e retry inutili.
-          // Il numero di categorie è piccolo (≤ 4), quindi non ci sono
-          // problemi di performance con il rendering eager.
-          : SingleChildScrollView(
-              controller: _scrollController,
-              padding: EdgeInsets.all(context.spacingMd),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: itemsByCategory.entries.map((entry) {
-                  return _CategorySection(
-                    category: entry.key,
-                    items: entry.value,
-                    itemKeys: _itemKeys,
-                    focusNodes: _focusNodes,
-                    colorScheme: colorScheme,
-                  );
-                }).toList(),
-              ),
-            ),
+      ),
       bottomContent: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
