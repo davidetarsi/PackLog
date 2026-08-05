@@ -30,9 +30,26 @@ class _PostLoginOnboardingListenerState
     extends ConsumerState<PostLoginOnboardingListener> {
   OnboardingStep? _lastShownStep;
 
+  /// Vedi commento nel `build()`: copre la transizione di route verso
+  /// MainShell alla primissima apparizione post-login.
+  static const _routeTransitionSettleDelay = Duration(milliseconds: 350);
+
   @override
   Widget build(BuildContext context) {
     final onboardingAsync = ref.watch(postLoginOnboardingProvider);
+
+    // Le route di dettaglio (`/houses/:id`, `/new-trip`) sono dichiarate con
+    // `parentNavigatorKey: _rootNavigatorKey`: vengono spinte SOPRA la shell,
+    // che però resta montata sotto (le route non in cima mantengono lo stato)
+    // e continua quindi a ricostruirsi. Senza questo gate, un avanzamento di
+    // step fatto da un `TourTriggerWrapper` su quelle route farebbe scattare
+    // qui il tip successivo sopra la schermata sbagliata, per giunta puntando
+    // a una GlobalKey (`tourKeys.houseFab`) in quel momento coperta.
+    //
+    // `ModalRoute.of` registra una dipendenza da `_ModalScopeStatus`, che
+    // notifica i dipendenti quando `isCurrent` cambia: al ritorno sulla shell
+    // questo build rigira da solo e il tip rimasto in sospeso parte allora.
+    final isShellCurrent = ModalRoute.of(context)?.isCurrent ?? true;
 
     ref.listen<AsyncValue<OnboardingState>>(postLoginOnboardingProvider, (
       _,
@@ -45,9 +62,27 @@ class _PostLoginOnboardingListenerState
 
     onboardingAsync.whenData((onboarding) {
       final step = onboarding.step;
-      if (_isListenerStep(step) && _lastShownStep != step) {
+      if (isShellCurrent && _isListenerStep(step) && _lastShownStep != step) {
+        // Marcato SUBITO, non dentro `_showTooltip`: fra lo scheduling e
+        // l'esecuzione differita passano altri build (ora anche a ogni
+        // cambio di `isCurrent`), che altrimenti schedulerebbero un secondo
+        // tooltip identico sopra il primo.
+        _lastShownStep = step;
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _showTooltip(context, onboarding);
+          if (!mounted) return;
+          // `houseTooltip` è il primo step di questo listener a poter
+          // scattare sul frame stesso in cui MainShell viene montato per la
+          // prima volta in sessione (subito dopo il redirect da
+          // /onboarding-ai-intro): la posizione della GlobalKey può essere
+          // catturata mentre la transizione di route è ancora in corso,
+          // producendo un highlight visivamente spostato. Gli altri step di
+          // questo listener arrivano dopo interazione dell'utente, quindi
+          // MainShell è già stabile — il ritardo qui è innocuo per loro.
+          Future.delayed(_routeTransitionSettleDelay, () {
+            // `this.context`, non il parametro di `build`: quest'ultimo
+            // resterebbe catturato oltre il gap asincrono del delay.
+            if (mounted) _showTooltip(this.context, onboarding);
+          });
         });
       }
     });
@@ -62,14 +97,27 @@ class _PostLoginOnboardingListenerState
   }
 
   void _showTooltip(BuildContext context, OnboardingState onboarding) {
-    setState(() => _lastShownStep = onboarding.step);
-
+    // `_lastShownStep` è già stato marcato nel `build` che ha schedulato
+    // questa chiamata — vedi il commento lì.
     final notifier = ref.read(postLoginOnboardingProvider.notifier);
     final analytics = ref.read(analyticsServiceProvider);
-    analytics.logEvent(
-      'onboarding_step_viewed',
-      properties: {'step_name': onboarding.step.name},
-    );
+    // step_index: numero d'ordine 1-based del tip nel tour (vedi
+    // OnboardingStepTourIndex), per costruire il funnel per posizione senza
+    // dover riordinare a mano i nomi degli step.
+    final stepProps = {
+      'step_name': onboarding.step.name,
+      'step_index': onboarding.step.tourStepIndex,
+    };
+    analytics.logEvent('onboarding_step_viewed', properties: stepProps);
+
+    // Collo di bottiglia unico per l'evento di avanzamento: sia il bottone
+    // Avanti sia — negli step spotlight — il tap sull'elemento evidenziato
+    // portano qui, così il funnel conta un solo evento per avanzamento reale
+    // indipendentemente da quale delle due vie l'utente ha usato.
+    void advance() {
+      analytics.logEvent('onboarding_step_advanced', properties: stepProps);
+      notifier.advance();
+    }
 
     final cfg = _stepConfig(onboarding.step);
 
@@ -82,8 +130,8 @@ class _PostLoginOnboardingListenerState
               ? ShapeLightFocus.RRect
               : ShapeLightFocus.Circle,
           radius: cfg.isSpotlight ? 8.0 : 1.0,
-          // Spotlight steps: tapping the highlighted element advances the tour.
-          // Info steps: the tiny dot must not accidentally close the coach mark.
+          // Scorciatoia in più per gli step spotlight: toccare l'elemento
+          // evidenziato avanza anche senza passare dal bottone Avanti.
           enableTargetTab: cfg.isSpotlight,
           contents: [
             TargetContent(
@@ -98,20 +146,18 @@ class _PostLoginOnboardingListenerState
                   totalSteps: 1,
                   onSkip: () {
                     controller.skip();
+                    // Chiude l'intero tour, non solo lo step corrente — vedi
+                    // `PostLoginOnboarding.markDone`.
                     analytics.logEvent(
-                      'onboarding_step_skipped',
-                      properties: {'step_name': onboarding.step.name},
+                      'onboarding_closed',
+                      properties: stepProps,
                     );
                     notifier.markDone();
                   },
-                  // Spotlight steps have no Avanti button: the tour advances
-                  // by tapping the highlighted element via clickTarget below.
-                  onNext: cfg.isSpotlight
-                      ? null
-                      : () {
-                          controller.next();
-                          notifier.advance();
-                        },
+                  onNext: () {
+                    controller.next();
+                    advance();
+                  },
                   isLastStep: true,
                 );
               },
@@ -123,8 +169,8 @@ class _PostLoginOnboardingListenerState
       opacityShadow: 0.8,
       hideSkip: true,
       pulseEnable: cfg.isSpotlight,
-      // Spotlight steps: advance the tour when the element is tapped.
-      onClickTarget: cfg.isSpotlight ? (_) => notifier.advance() : null,
+      // Scorciatoia in più per gli step spotlight: vedi enableTargetTab sopra.
+      onClickTarget: cfg.isSpotlight ? (_) => advance() : null,
     ).show(context: context);
   }
 

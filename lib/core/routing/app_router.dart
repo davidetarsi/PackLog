@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../../shared/theme/app_spacing.dart';
 
 import '../../bootstrap.dart';
@@ -30,6 +31,7 @@ import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
 import '../../features/tour/controllers/tour_orchestrator.dart';
 import '../../features/tour/model/onboarding_state.dart';
 import '../../features/tour/providers/post_login_onboarding_provider.dart';
+import '../../features/tour/tour_keys.dart';
 import '../../features/tour/view/ai_onboarding_intro_screen.dart';
 import '../../features/tour/widgets/tour_trigger_wrapper.dart';
 import '../../shared/dev/ds_theme_showcase_screen.dart';
@@ -192,6 +194,14 @@ GoRouter appRouter(Ref ref) {
             houseId: id,
             title: 'tour.move_items_tooltip.title'.tr(),
             body: 'tour.move_items_tooltip.body'.tr(),
+            keyTarget: tourKeys.houseItemsAnchor,
+            isSpotlight: true,
+            // Target vicino alla cima dello schermo: la card deve stare
+            // sotto, non sopra (il default per gli step spotlight la
+            // metterebbe fuori vista, sopra l'AppBar).
+            align: ContentAlign.bottom,
+            advancesOnOk: true,
+            requiresMultipleHouses: true,
             child: HouseDetailScreen(houseId: id),
           );
         },

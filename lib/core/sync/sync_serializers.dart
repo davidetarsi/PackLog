@@ -61,7 +61,10 @@ abstract final class SyncSerializers {
     DateTime? syncedAt,
     bool includeSyncFields = true,
   }) {
-    assert(!includeSyncFields || syncedAt != null, 'syncedAt è richiesto quando includeSyncFields=true');
+    assert(
+      !includeSyncFields || syncedAt != null,
+      'syncedAt è richiesto quando includeSyncFields=true',
+    );
     return HousesCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
@@ -82,11 +85,19 @@ abstract final class SyncSerializers {
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
       lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
-      syncStatus: includeSyncFields ? const Value(SyncStatus.synced) : const Value.absent(),
+      syncStatus: includeSyncFields
+          ? const Value(SyncStatus.synced)
+          : const Value.absent(),
       syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
-      lastSyncError: includeSyncFields ? const Value(null) : const Value.absent(),
-      nextSyncAttemptAt: includeSyncFields ? const Value(null) : const Value.absent(),
-      sentryTraceId: includeSyncFields ? const Value(null) : const Value.absent(),
+      lastSyncError: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      sentryTraceId: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
     );
   }
 
@@ -96,7 +107,10 @@ abstract final class SyncSerializers {
     bool clearSpaceId = false,
     bool includeSyncFields = true,
   }) {
-    assert(!includeSyncFields || syncedAt != null, 'syncedAt è richiesto quando includeSyncFields=true');
+    assert(
+      !includeSyncFields || syncedAt != null,
+      'syncedAt è richiesto quando includeSyncFields=true',
+    );
     return ItemsCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
@@ -113,11 +127,19 @@ abstract final class SyncSerializers {
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
       lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
-      syncStatus: includeSyncFields ? const Value(SyncStatus.synced) : const Value.absent(),
+      syncStatus: includeSyncFields
+          ? const Value(SyncStatus.synced)
+          : const Value.absent(),
       syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
-      lastSyncError: includeSyncFields ? const Value(null) : const Value.absent(),
-      nextSyncAttemptAt: includeSyncFields ? const Value(null) : const Value.absent(),
-      sentryTraceId: includeSyncFields ? const Value(null) : const Value.absent(),
+      lastSyncError: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      sentryTraceId: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
     );
   }
 
@@ -126,7 +148,10 @@ abstract final class SyncSerializers {
     DateTime? syncedAt,
     bool includeSyncFields = true,
   }) {
-    assert(!includeSyncFields || syncedAt != null, 'syncedAt è richiesto quando includeSyncFields=true');
+    assert(
+      !includeSyncFields || syncedAt != null,
+      'syncedAt è richiesto quando includeSyncFields=true',
+    );
     return SpacesCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
@@ -137,11 +162,19 @@ abstract final class SyncSerializers {
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
       lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
-      syncStatus: includeSyncFields ? const Value(SyncStatus.synced) : const Value.absent(),
+      syncStatus: includeSyncFields
+          ? const Value(SyncStatus.synced)
+          : const Value.absent(),
       syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
-      lastSyncError: includeSyncFields ? const Value(null) : const Value.absent(),
-      nextSyncAttemptAt: includeSyncFields ? const Value(null) : const Value.absent(),
-      sentryTraceId: includeSyncFields ? const Value(null) : const Value.absent(),
+      lastSyncError: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      sentryTraceId: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
     );
   }
 
@@ -150,7 +183,10 @@ abstract final class SyncSerializers {
     DateTime? syncedAt,
     bool includeSyncFields = true,
   }) {
-    assert(!includeSyncFields || syncedAt != null, 'syncedAt è richiesto quando includeSyncFields=true');
+    assert(
+      !includeSyncFields || syncedAt != null,
+      'syncedAt è richiesto quando includeSyncFields=true',
+    );
     return LuggagesCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
@@ -162,11 +198,19 @@ abstract final class SyncSerializers {
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
       lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
-      syncStatus: includeSyncFields ? const Value(SyncStatus.synced) : const Value.absent(),
+      syncStatus: includeSyncFields
+          ? const Value(SyncStatus.synced)
+          : const Value.absent(),
       syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
-      lastSyncError: includeSyncFields ? const Value(null) : const Value.absent(),
-      nextSyncAttemptAt: includeSyncFields ? const Value(null) : const Value.absent(),
-      sentryTraceId: includeSyncFields ? const Value(null) : const Value.absent(),
+      lastSyncError: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      sentryTraceId: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
     );
   }
 
@@ -175,7 +219,10 @@ abstract final class SyncSerializers {
     DateTime? syncedAt,
     bool includeSyncFields = true,
   }) {
-    assert(!includeSyncFields || syncedAt != null, 'syncedAt è richiesto quando includeSyncFields=true');
+    assert(
+      !includeSyncFields || syncedAt != null,
+      'syncedAt è richiesto quando includeSyncFields=true',
+    );
     return TripsCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
@@ -198,11 +245,19 @@ abstract final class SyncSerializers {
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
       lastSyncedAt: includeSyncFields ? Value(syncedAt!) : const Value.absent(),
-      syncStatus: includeSyncFields ? const Value(SyncStatus.synced) : const Value.absent(),
+      syncStatus: includeSyncFields
+          ? const Value(SyncStatus.synced)
+          : const Value.absent(),
       syncRetryCount: includeSyncFields ? const Value(0) : const Value.absent(),
-      lastSyncError: includeSyncFields ? const Value(null) : const Value.absent(),
-      nextSyncAttemptAt: includeSyncFields ? const Value(null) : const Value.absent(),
-      sentryTraceId: includeSyncFields ? const Value(null) : const Value.absent(),
+      lastSyncError: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      nextSyncAttemptAt: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
+      sentryTraceId: includeSyncFields
+          ? const Value(null)
+          : const Value.absent(),
     );
   }
 

@@ -581,52 +581,49 @@ void main() {
       expect(space.lastSyncedAt, equals(serverTs));
     });
 
-    test(
-      'markAsSynced is no-op when updatedAt changed during push '
-      '(race condition guard)',
-      () async {
-        final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
-        await database.spacesDao.insertSpace(
-          SpacesCompanion.insert(
-            id: 's-race',
-            houseId: houseId,
-            name: 'Armadio Race',
-            createdAt: DateTime(2026, 6, 1, 7, 0),
-            updatedAt: originalUpdatedAt,
-            syncStatus: const Value(SyncStatus.pendingUpdate),
-          ),
-        );
+    test('markAsSynced is no-op when updatedAt changed during push '
+        '(race condition guard)', () async {
+      final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
+      await database.spacesDao.insertSpace(
+        SpacesCompanion.insert(
+          id: 's-race',
+          houseId: houseId,
+          name: 'Armadio Race',
+          createdAt: DateTime(2026, 6, 1, 7, 0),
+          updatedAt: originalUpdatedAt,
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
 
-        final userEditedAt = DateTime(2026, 6, 1, 9, 0);
-        await (database.update(database.spaces)
-              ..where((s) => s.id.equals('s-race')))
-            .write(
-          SpacesCompanion(
-            updatedAt: Value(userEditedAt),
-            syncStatus: const Value(SyncStatus.pendingUpdate),
-          ),
-        );
+      final userEditedAt = DateTime(2026, 6, 1, 9, 0);
+      await (database.update(
+        database.spaces,
+      )..where((s) => s.id.equals('s-race'))).write(
+        SpacesCompanion(
+          updatedAt: Value(userEditedAt),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
 
-        final serverTs = DateTime(2026, 6, 1, 12, 0);
-        await database.spacesDao.markAsSynced(
-          's-race',
-          serverTs,
-          localUpdatedAt: originalUpdatedAt,
-        );
+      final serverTs = DateTime(2026, 6, 1, 12, 0);
+      await database.spacesDao.markAsSynced(
+        's-race',
+        serverTs,
+        localUpdatedAt: originalUpdatedAt,
+      );
 
-        final space = await database.spacesDao.getSpaceById('s-race');
-        expect(
-          space!.syncStatus,
-          equals(SyncStatus.pendingUpdate),
-          reason: 'record modificato durante il push deve restare pendingUpdate',
-        );
-        expect(
-          space.updatedAt,
-          equals(userEditedAt),
-          reason: "l'edit dell'utente non deve essere sovrascritto",
-        );
-      },
-    );
+      final space = await database.spacesDao.getSpaceById('s-race');
+      expect(
+        space!.syncStatus,
+        equals(SyncStatus.pendingUpdate),
+        reason: 'record modificato durante il push deve restare pendingUpdate',
+      );
+      expect(
+        space.updatedAt,
+        equals(userEditedAt),
+        reason: "l'edit dell'utente non deve essere sovrascritto",
+      );
+    });
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await database.spacesDao.insertSpace(

@@ -549,17 +549,20 @@ void main() {
       },
     );
 
-    test('getPendingSyncRecords excludes houses exceeding maxRetries', () async {
-      await insertHouse('retry-exhausted');
-      await (database.update(database.houses)
-            ..where((h) => h.id.equals('retry-exhausted')))
-          .write(const HousesCompanion(syncRetryCount: Value(5)));
+    test(
+      'getPendingSyncRecords excludes houses exceeding maxRetries',
+      () async {
+        await insertHouse('retry-exhausted');
+        await (database.update(database.houses)
+              ..where((h) => h.id.equals('retry-exhausted')))
+            .write(const HousesCompanion(syncRetryCount: Value(5)));
 
-      final pending = await database.housesDao.getPendingSyncRecords(
-        maxRetries: 5,
-      );
-      expect(pending, isEmpty);
-    });
+        final pending = await database.housesDao.getPendingSyncRecords(
+          maxRetries: 5,
+        );
+        expect(pending, isEmpty);
+      },
+    );
 
     test(
       'getPendingSyncRecords includes soft-deleted houses (to propagate deletion to server)',
@@ -574,28 +577,25 @@ void main() {
       },
     );
 
-    test(
-      'markAsSynced resets retry state and sets lastSyncedAt',
-      () async {
-        await insertHouse('to-sync');
-        await database.housesDao.incrementSyncRetry('to-sync', 'timeout');
+    test('markAsSynced resets retry state and sets lastSyncedAt', () async {
+      await insertHouse('to-sync');
+      await database.housesDao.incrementSyncRetry('to-sync', 'timeout');
 
-        final serverTime = DateTime(2026, 4, 28, 12, 0);
-        final toSync = await database.housesDao.getHouseById('to-sync');
-        await database.housesDao.markAsSynced(
-          'to-sync',
-          serverTime,
-          localUpdatedAt: toSync!.updatedAt,
-        );
+      final serverTime = DateTime(2026, 4, 28, 12, 0);
+      final toSync = await database.housesDao.getHouseById('to-sync');
+      await database.housesDao.markAsSynced(
+        'to-sync',
+        serverTime,
+        localUpdatedAt: toSync!.updatedAt,
+      );
 
-        final house = await database.housesDao.getHouseById('to-sync');
-        expect(house, isA<House>());
-        expect(house!.syncStatus, equals(SyncStatus.synced));
-        expect(house.syncRetryCount, equals(0));
-        expect(house.lastSyncError, equals(null));
-        expect(house.lastSyncedAt, equals(serverTime));
-      },
-    );
+      final house = await database.housesDao.getHouseById('to-sync');
+      expect(house, isA<House>());
+      expect(house!.syncStatus, equals(SyncStatus.synced));
+      expect(house.syncRetryCount, equals(0));
+      expect(house.lastSyncError, equals(null));
+      expect(house.lastSyncedAt, equals(serverTime));
+    });
 
     test('incrementSyncRetry increments count and records error', () async {
       await insertHouse('retry-me');
@@ -663,53 +663,50 @@ void main() {
       expect(house.lastSyncedAt, equals(serverTs));
     });
 
-    test(
-      'markAsSynced is no-op when updatedAt changed during push '
-      '(race condition guard)',
-      () async {
-        final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
-        await database.housesDao.insertHouse(
-          HousesCompanion.insert(
-            id: 'h-race',
-            name: 'Race House',
-            createdAt: DateTime(2026, 6, 1, 7, 0),
-            updatedAt: originalUpdatedAt,
-            syncStatus: const Value(SyncStatus.pendingUpdate),
-          ),
-        );
+    test('markAsSynced is no-op when updatedAt changed during push '
+        '(race condition guard)', () async {
+      final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'h-race',
+          name: 'Race House',
+          createdAt: DateTime(2026, 6, 1, 7, 0),
+          updatedAt: originalUpdatedAt,
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
 
-        // Simula edit utente mentre il push era in volo: updatedAt cambia.
-        final userEditedAt = DateTime(2026, 6, 1, 9, 0);
-        await (database.update(database.houses)
-              ..where((h) => h.id.equals('h-race')))
-            .write(
-          HousesCompanion(
-            updatedAt: Value(userEditedAt),
-            syncStatus: const Value(SyncStatus.pendingUpdate),
-          ),
-        );
+      // Simula edit utente mentre il push era in volo: updatedAt cambia.
+      final userEditedAt = DateTime(2026, 6, 1, 9, 0);
+      await (database.update(
+        database.houses,
+      )..where((h) => h.id.equals('h-race'))).write(
+        HousesCompanion(
+          updatedAt: Value(userEditedAt),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
 
-        // Push completa: markAsSynced usa il vecchio localUpdatedAt.
-        final serverTs = DateTime(2026, 6, 1, 12, 0);
-        await database.housesDao.markAsSynced(
-          'h-race',
-          serverTs,
-          localUpdatedAt: originalUpdatedAt,
-        );
+      // Push completa: markAsSynced usa il vecchio localUpdatedAt.
+      final serverTs = DateTime(2026, 6, 1, 12, 0);
+      await database.housesDao.markAsSynced(
+        'h-race',
+        serverTs,
+        localUpdatedAt: originalUpdatedAt,
+      );
 
-        final house = await database.housesDao.getHouseById('h-race');
-        expect(
-          house!.syncStatus,
-          equals(SyncStatus.pendingUpdate),
-          reason: 'record modificato durante il push deve restare pendingUpdate',
-        );
-        expect(
-          house.updatedAt,
-          equals(userEditedAt),
-          reason: "l'edit dell'utente non deve essere sovrascritto",
-        );
-      },
-    );
+      final house = await database.housesDao.getHouseById('h-race');
+      expect(
+        house!.syncStatus,
+        equals(SyncStatus.pendingUpdate),
+        reason: 'record modificato durante il push deve restare pendingUpdate',
+      );
+      expect(
+        house.updatedAt,
+        equals(userEditedAt),
+        reason: "l'edit dell'utente non deve essere sovrascritto",
+      );
+    });
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await database.housesDao.insertHouse(
@@ -821,8 +818,11 @@ void main() {
       await database.housesDao.incrementSyncRetry('h-retry', 'boom');
 
       final house = await database.housesDao.findHouseById('h-retry');
-      expect(house!.updatedAt, equals(t0),
-          reason: 'il retry bookkeeping non deve toccare il pivot LWW');
+      expect(
+        house!.updatedAt,
+        equals(t0),
+        reason: 'il retry bookkeeping non deve toccare il pivot LWW',
+      );
       expect(house.syncRetryCount, equals(1));
       expect(house.lastSyncError, equals('boom'));
       expect(house.nextSyncAttemptAt, isNotNull);

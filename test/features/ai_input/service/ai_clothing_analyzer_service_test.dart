@@ -169,8 +169,7 @@ void main() {
           // Se il content INIZIA con '[' ma è JSON non valido → parse error reale
           final service = _makeService(
             MockClient(
-              (_) async =>
-                  http.Response(_openAiResponse('[broken json'), 200),
+              (_) async => http.Response(_openAiResponse('[broken json'), 200),
             ),
           );
 

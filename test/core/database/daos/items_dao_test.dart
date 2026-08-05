@@ -469,8 +469,11 @@ void main() {
       await database.itemsDao.incrementSyncRetry('i-retry', 'boom');
 
       final item = await database.itemsDao.findItemById('i-retry');
-      expect(item!.updatedAt, equals(t0),
-          reason: 'il retry bookkeeping non deve toccare il pivot LWW');
+      expect(
+        item!.updatedAt,
+        equals(t0),
+        reason: 'il retry bookkeeping non deve toccare il pivot LWW',
+      );
       expect(item.syncRetryCount, equals(1));
       expect(item.lastSyncError, equals('boom'));
       expect(item.nextSyncAttemptAt, isNotNull);
@@ -646,53 +649,50 @@ void main() {
       expect(item.lastSyncedAt, equals(serverTs));
     });
 
-    test(
-      'markAsSynced is no-op when updatedAt changed during push '
-      '(race condition guard)',
-      () async {
-        final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
-        await database.itemsDao.insertItem(
-          ItemsCompanion.insert(
-            id: 'i-race',
-            houseId: houseId,
-            name: 'Race Item',
-            category: ItemCategory.varie,
-            createdAt: DateTime(2026, 6, 1, 7, 0),
-            updatedAt: originalUpdatedAt,
-            syncStatus: const Value(SyncStatus.pendingUpdate),
-          ),
-        );
+    test('markAsSynced is no-op when updatedAt changed during push '
+        '(race condition guard)', () async {
+      final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'i-race',
+          houseId: houseId,
+          name: 'Race Item',
+          category: ItemCategory.varie,
+          createdAt: DateTime(2026, 6, 1, 7, 0),
+          updatedAt: originalUpdatedAt,
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
 
-        final userEditedAt = DateTime(2026, 6, 1, 9, 0);
-        await (database.update(database.items)
-              ..where((i) => i.id.equals('i-race')))
-            .write(
-          ItemsCompanion(
-            updatedAt: Value(userEditedAt),
-            syncStatus: const Value(SyncStatus.pendingUpdate),
-          ),
-        );
+      final userEditedAt = DateTime(2026, 6, 1, 9, 0);
+      await (database.update(
+        database.items,
+      )..where((i) => i.id.equals('i-race'))).write(
+        ItemsCompanion(
+          updatedAt: Value(userEditedAt),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
 
-        final serverTs = DateTime(2026, 6, 1, 12, 0);
-        await database.itemsDao.markAsSynced(
-          'i-race',
-          serverTs,
-          localUpdatedAt: originalUpdatedAt,
-        );
+      final serverTs = DateTime(2026, 6, 1, 12, 0);
+      await database.itemsDao.markAsSynced(
+        'i-race',
+        serverTs,
+        localUpdatedAt: originalUpdatedAt,
+      );
 
-        final item = await database.itemsDao.getItemById('i-race');
-        expect(
-          item!.syncStatus,
-          equals(SyncStatus.pendingUpdate),
-          reason: 'record modificato durante il push deve restare pendingUpdate',
-        );
-        expect(
-          item.updatedAt,
-          equals(userEditedAt),
-          reason: "l'edit dell'utente non deve essere sovrascritto",
-        );
-      },
-    );
+      final item = await database.itemsDao.getItemById('i-race');
+      expect(
+        item!.syncStatus,
+        equals(SyncStatus.pendingUpdate),
+        reason: 'record modificato durante il push deve restare pendingUpdate',
+      );
+      expect(
+        item.updatedAt,
+        equals(userEditedAt),
+        reason: "l'edit dell'utente non deve essere sovrascritto",
+      );
+    });
 
     test('resetSyncRetries clears retry counter, error and backoff', () async {
       await database.itemsDao.insertItem(

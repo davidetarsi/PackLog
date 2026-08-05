@@ -55,12 +55,11 @@ mixin SyncDaoMixin<T extends Table, D> on DatabaseAccessor<AppDatabase> {
   /// Recovery: re-queues soft-deleted records that are stuck as "synced"
   /// (e.g. after a failed purge). Called from SyncService.recoverSyncState().
   Future<int> markDeletedAsPendingSync() {
-    return (update($table)
-          ..where(
-            (_) =>
-                $isDeletedCol.equals(true) &
-                $syncStatusCol.equals(SyncStatus.synced.index),
-          ))
+    return (update($table)..where(
+          (_) =>
+              $isDeletedCol.equals(true) &
+              $syncStatusCol.equals(SyncStatus.synced.index),
+        ))
         .write(
           _SyncInsertable({
             $syncStatusCol.name: Variable<int>(SyncStatus.pendingUpdate.index),
@@ -72,14 +71,13 @@ mixin SyncDaoMixin<T extends Table, D> on DatabaseAccessor<AppDatabase> {
   /// AND past the backoff deadline (or no backoff set).
   Future<List<D>> getPendingSyncRecords({int maxRetries = 5}) {
     final now = DateTime.now();
-    return (select($table)
-          ..where(
-            (_) =>
-                $syncStatusCol.equals(SyncStatus.synced.index).not() &
-                $retryCountCol.isSmallerThanValue(maxRetries) &
-                ($nextAttemptAtCol.isNull() |
-                    $nextAttemptAtCol.isSmallerOrEqualValue(now)),
-          ))
+    return (select($table)..where(
+          (_) =>
+              $syncStatusCol.equals(SyncStatus.synced.index).not() &
+              $retryCountCol.isSmallerThanValue(maxRetries) &
+              ($nextAttemptAtCol.isNull() |
+                  $nextAttemptAtCol.isSmallerOrEqualValue(now)),
+        ))
         .get();
   }
 
@@ -125,11 +123,9 @@ mixin SyncDaoMixin<T extends Table, D> on DatabaseAccessor<AppDatabase> {
     DateTime serverUpdatedAt, {
     required DateTime localUpdatedAt,
   }) {
-    return (update($table)
-          ..where(
-            (_) =>
-                $idCol.equals(id) & $updatedAtCol.equals(localUpdatedAt),
-          ))
+    return (update($table)..where(
+          (_) => $idCol.equals(id) & $updatedAtCol.equals(localUpdatedAt),
+        ))
         .write(
           _SyncInsertable({
             $updatedAtCol.name: Variable<DateTime>(serverUpdatedAt),
@@ -145,15 +141,15 @@ mixin SyncDaoMixin<T extends Table, D> on DatabaseAccessor<AppDatabase> {
   /// Resets retry state on records blocked past the retry limit. Typically
   /// called on `connectivity_restored` or app resume to give them a new chance.
   Future<int> resetSyncRetries() {
-    return (update($table)
-          ..where((_) => $retryCountCol.isBiggerThanValue(0)))
-        .write(
-          _SyncInsertable({
-            $retryCountCol.name: Variable<int>(0),
-            $lastErrorCol.name: Variable<String>(null),
-            $nextAttemptAtCol.name: Variable<DateTime>(null),
-          }),
-        );
+    return (update(
+      $table,
+    )..where((_) => $retryCountCol.isBiggerThanValue(0))).write(
+      _SyncInsertable({
+        $retryCountCol.name: Variable<int>(0),
+        $lastErrorCol.name: Variable<String>(null),
+        $nextAttemptAtCol.name: Variable<DateTime>(null),
+      }),
+    );
   }
 
   /// Increments the retry counter, records the error, and schedules the next

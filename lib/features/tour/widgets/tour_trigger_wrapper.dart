@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/analytics/analytics_service.dart';
+import '../../houses/providers/house_provider.dart';
 import '../model/onboarding_state.dart';
 import '../providers/post_login_onboarding_provider.dart';
 import '../tour_keys.dart';
@@ -25,6 +26,19 @@ class TourTriggerWrapper extends ConsumerStatefulWidget {
   final GlobalKey? keyTarget;
   final bool isSpotlight;
 
+  /// Override esplicito della posizione della card rispetto al target.
+  /// Se null, usa il default legato a [isSpotlight] (top per spotlight,
+  /// bottom altrimenti) — non adatto quando il target reale sta vicino
+  /// alla cima dello schermo, perché "top" spingerebbe la card fuori vista.
+  final ContentAlign? align;
+
+  /// Se true, il tip non scatta finché non esistono almeno 2 case.
+  ///
+  /// Usato da [OnboardingStep.moveItemsTooltip]: insegna a spostare oggetti
+  /// verso un'altra casa, ma se esiste solo la casa di prova creata
+  /// dall'onboarding AI non c'è ancora una destinazione valida.
+  final bool requiresMultipleHouses;
+
   const TourTriggerWrapper({
     super.key,
     required this.child,
@@ -35,6 +49,8 @@ class TourTriggerWrapper extends ConsumerStatefulWidget {
     this.advancesOnOk = false,
     this.keyTarget,
     this.isSpotlight = false,
+    this.align,
+    this.requiresMultipleHouses = false,
   });
 
   @override
@@ -43,6 +59,11 @@ class TourTriggerWrapper extends ConsumerStatefulWidget {
 
 class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
   bool _shown = false;
+
+  /// Vedi il commento gemello in `PostLoginOnboardingListener`: questo
+  /// widget scatta anch'esso su una route appena montata (house-detail,
+  /// new-trip), quindi è esposto alla stessa finestra di transizione.
+  static const _routeTransitionSettleDelay = Duration(milliseconds: 350);
 
   @override
   void initState() {
@@ -59,17 +80,25 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
     if (widget.houseId != null && widget.houseId != onboarding.defaultHouseId) {
       return;
     }
+    if (widget.requiresMultipleHouses) {
+      final houses = ref.read(houseNotifierProvider).valueOrNull;
+      if (houses == null || houses.length < 2) return;
+    }
     _shown = true;
-    _showCoachMark(onboarding);
+    Future.delayed(_routeTransitionSettleDelay, () {
+      if (mounted) _showCoachMark(onboarding);
+    });
   }
 
   void _showCoachMark(OnboardingState onboarding) {
     final notifier = ref.read(postLoginOnboardingProvider.notifier);
     final analytics = ref.read(analyticsServiceProvider);
-    analytics.logEvent(
-      'onboarding_step_viewed',
-      properties: {'step_name': onboarding.step.name},
-    );
+    // step_index: vedi il commento gemello in tour_orchestrator.dart.
+    final stepProps = {
+      'step_name': onboarding.step.name,
+      'step_index': onboarding.step.tourStepIndex,
+    };
+    analytics.logEvent('onboarding_step_viewed', properties: stepProps);
 
     TutorialCoachMark(
       targets: [
@@ -83,9 +112,9 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
           enableTargetTab: false,
           contents: [
             TargetContent(
-              align: widget.isSpotlight
-                  ? ContentAlign.top
-                  : ContentAlign.bottom,
+              align:
+                  widget.align ??
+                  (widget.isSpotlight ? ContentAlign.top : ContentAlign.bottom),
               builder: (ctx, controller) {
                 return TourStepContent(
                   title: widget.title,
@@ -94,15 +123,23 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
                   totalSteps: 1,
                   onSkip: () {
                     controller.skip();
+                    // Chiude l'intero tour, non solo lo step corrente — vedi
+                    // `PostLoginOnboarding.markDone`.
                     analytics.logEvent(
-                      'onboarding_step_skipped',
-                      properties: {'step_name': onboarding.step.name},
+                      'onboarding_closed',
+                      properties: stepProps,
                     );
                     notifier.markDone();
                   },
                   onNext: () {
                     controller.next();
-                    if (widget.advancesOnOk) notifier.advance();
+                    if (widget.advancesOnOk) {
+                      analytics.logEvent(
+                        'onboarding_step_advanced',
+                        properties: stepProps,
+                      );
+                      notifier.advance();
+                    }
                   },
                   isLastStep: true,
                 );

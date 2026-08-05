@@ -7,9 +7,9 @@
 //   - Chiamata con JWT e parametri validi → 200 + body JSON con `features`
 //
 // Cosa NON copre (rinviato per pragmatismo):
-//   - Il cap del rate-limit (100/h) non viene saturato: richiederebbe 100
-//     chiamate reali a Geoapify e attesa di 1 ora prima del test successivo.
-//     Resta da verificare manualmente con uno script bash che fa 101 GET
+//   - Il cap del rate-limit (200/24h) non viene saturato: richiederebbe 200
+//     chiamate reali a Geoapify e attesa di 24 ore prima del test successivo.
+//     Resta da verificare manualmente con uno script bash che fa 201 GET
 //     in rapida sequenza e si aspetta un 429 sull'ultima.
 //
 // Setup: stesso del test RLS (riusa lo user A pre-creato).

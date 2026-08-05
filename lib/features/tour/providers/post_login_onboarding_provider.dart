@@ -41,14 +41,23 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     }
   }
 
+  /// "Salta" sulla AI intro chiude l'INTERO tour, non solo la demo AI.
+  ///
+  /// Chi preme Salta sta dicendo "non voglio essere guidato", non "saltiamo
+  /// solo questa prova": proseguire con i tip su casa e viaggio veniva
+  /// percepito come un tour che non si lascia chiudere. Resta comunque
+  /// disponibile "Ripeti il tour" dal Profilo.
+  ///
+  /// `skippedAi` continua a essere persistito per distinguere questa uscita
+  /// dal completamento naturale (analytics) — vedi anche [_nextStep].
   Future<void> skipAi() async {
     final current = state.valueOrNull;
     if (current == null) return;
     final repo = ref.read(onboardingRepositoryProvider);
-    await repo.saveStep(OnboardingStep.houseTooltip);
+    await repo.saveStep(OnboardingStep.done);
     await repo.saveSkippedAi(true);
     state = AsyncData(
-      current.copyWith(step: OnboardingStep.houseTooltip, skippedAi: true),
+      current.copyWith(step: OnboardingStep.done, skippedAi: true),
     );
   }
 
@@ -80,6 +89,12 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
 
   static OnboardingStep _nextStep(OnboardingState s) {
     return switch (s.step) {
+      // Il ramo `skippedAi` non è più raggiungibile dal flusso corrente
+      // ([skipAi] va dritto a `done`), ma va tenuto per lo stato LEGACY: un
+      // utente che ha premuto Salta con una build precedente ha in
+      // SharedPreferences `step=houseTooltip` + `skippedAi=true`. Senza questo
+      // ramo finirebbe su `defaultHouseTooltip` ("Apri la Casa di prova"), un
+      // tip che punta a una casa che nel suo caso non esiste.
       OnboardingStep.houseTooltip =>
         s.skippedAi
             ? OnboardingStep.createTripTooltip

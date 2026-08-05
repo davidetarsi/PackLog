@@ -57,7 +57,11 @@ void main() {
       expect(result.defaultHouseId, 'house-1');
     });
 
-    test('skipAi() advances to houseTooltip with skippedAi=true', () async {
+    // "Salta" sulla AI intro chiude l'INTERO tour, non solo la demo AI:
+    // l'utente che preme Salta non vuole essere guidato oltre. Il flag
+    // skippedAi resta salvato per distinguere questa uscita dal completamento
+    // naturale (analytics) e per lo stato legacy — vedi il test su _nextStep.
+    test('skipAi() ends the whole tour (step=done)', () async {
       final repo = MockOnboardingRepository();
       _setupDefaultMock(repo);
       final container = makeContainer(repo: repo);
@@ -67,9 +71,9 @@ void main() {
       await container.read(postLoginOnboardingProvider.notifier).skipAi();
 
       final state = container.read(postLoginOnboardingProvider).valueOrNull!;
-      expect(state.step, OnboardingStep.houseTooltip);
+      expect(state.step, OnboardingStep.done);
       expect(state.skippedAi, isTrue);
-      verify(() => repo.saveStep(OnboardingStep.houseTooltip)).called(1);
+      verify(() => repo.saveStep(OnboardingStep.done)).called(1);
       verify(() => repo.saveSkippedAi(true)).called(1);
     });
 

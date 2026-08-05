@@ -62,14 +62,16 @@ jobs:
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
             --dart-define=AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }} \
-            --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+            --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }} \
+            --dart-define=TGRAM_API_KEY=${{ secrets.TGRAM_API_KEY }}
           flutter build apk --flavor prod --target lib/main_prod.dart --release \
             --target-platform android-arm64 \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
             --dart-define=AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }} \
-            --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+            --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }} \
+            --dart-define=TGRAM_API_KEY=${{ secrets.TGRAM_API_KEY }}
 
       - name: 🏷️ Rename Artifacts
         run: |

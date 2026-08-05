@@ -13,10 +13,10 @@ class TourStepContent extends StatelessWidget {
   final int totalSteps;
   final VoidCallback onSkip;
 
-  /// Null in spotlight steps: the tour advances by tapping the highlighted
-  /// element, so no primary "Avanti" button is shown. When non-null, shows
-  /// UniversalActionBar with Avanti + circular skip.
-  final VoidCallback? onNext;
+  /// Avanza il tour. Ogni tip mostra sempre Avanti(grande) + X(piccola),
+  /// anche negli step "spotlight" dove toccare l'elemento evidenziato è una
+  /// scorciatoia aggiuntiva per lo stesso avanzamento, non un sostituto.
+  final VoidCallback onNext;
 
   final bool isLastStep;
 
@@ -27,7 +27,7 @@ class TourStepContent extends StatelessWidget {
     required this.stepIndex,
     required this.totalSteps,
     required this.onSkip,
-    this.onNext,
+    required this.onNext,
     this.isLastStep = false,
   });
 
@@ -78,68 +78,15 @@ class TourStepContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: context.spacingMd),
-          if (onNext != null)
-            // Normal step: primary Avanti pill + circular skip on the left.
-            UniversalActionBar(
-              primaryLabel: 'tour.next'.tr(),
-              onPrimaryPressed: onNext,
-              leftAction: Tooltip(
-                message: 'tour.skip'.tr(),
-                child: CircularActionButton(
-                  icon: Icons.close,
-                  onPressed: onSkip,
-                ),
-              ),
-            )
-          else
-            // Spotlight step: single secondary pill "Salta" — tour advances
-            // by tapping the highlighted element, not via a primary button.
-            _SecondarySkipPill(label: 'tour.skip'.tr(), onTap: onSkip),
-        ],
-      ),
-    );
-  }
-}
-
-class _SecondarySkipPill extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _SecondarySkipPill({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return SizedBox(
-      width: double.infinity,
-      height: context.responsive(56),
-      child: Material(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-        elevation: 0,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-          onTap: onTap,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(
-                AppConstants.pillBorderRadius,
-              ),
-              border: Border.all(color: colorScheme.outline, width: 2),
-            ),
-            child: Center(
-              child: Text(
-                label,
-                style: textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
+          UniversalActionBar(
+            primaryLabel: 'tour.next'.tr(),
+            onPrimaryPressed: onNext,
+            leftAction: Tooltip(
+              message: 'tour.skip'.tr(),
+              child: CircularActionButton(icon: Icons.close, onPressed: onSkip),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

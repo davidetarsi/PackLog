@@ -43,11 +43,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tgram_analytics/tgram_analytics.dart';
 
 import 'package:sqlite3/open.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
 import 'core/auth/secure_local_storage.dart';
+import 'core/consent/consent_provider.dart';
 import 'core/database/database.dart';
 import 'core/database/encryption/db_passphrase_service.dart';
 import 'core/database/encryption/encryption_migration_service.dart';
@@ -89,6 +91,12 @@ final BootstrapErrorBuffer _bootstrapErrorBuffer = BootstrapErrorBuffer();
 final appBootstrapProvider = FutureProvider<void>((ref) async {
   // Solo servizi critici per il funzionamento dell'app (local-first).
   // Supabase serve al sync orchestrator, persistence al DB.
+  // Il consenso va idratato prima di qualunque altra cosa: `AppAnalyticsService`
+  // è fail-closed e scarta ogni evento finché `hasConsent` non è leggibile.
+  // Anticiparlo riduce a zero la finestra in cui un utente che ha già
+  // acconsentito perderebbe eventi.
+  await ref.read(consentServiceProvider).load();
+
   await Future.wait([
     _guardedInit(
       'Supabase',
@@ -117,17 +125,85 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
   // SentryFlutter.init() (native bindings, integrations) blocca il main
   // thread. Schedulandoli con Future.delayed il provider completa prima,
   // l'UI renderizza, e solo dopo parte l'init pesante.
-  Future.delayed(Duration.zero, _initNonCriticalServices);
+  // `hasConsent` è già leggibile: `consentServiceProvider.load()` è stato
+  // atteso sopra.
+  final bool hasConsent = ref.read(consentServiceProvider).hasConsent;
+  Future.delayed(Duration.zero, () => _initNonCriticalServices(hasConsent));
   debugPrint('[Bootstrap] ✅ appBootstrapProvider completato');
 });
 
-void _initNonCriticalServices() {
-  final bool sentryEnabled =
-      AppConfig.sentryDsn.isNotEmpty &&
-      AppConfig.sentryDsn != 'MISSING_SENTRY_DSN';
+/// Inizializza gli SDK di analytics che richiedono il consenso.
+///
+/// Separata da [_initNonCriticalServices] perché va invocata **anche** nel
+/// momento in cui l'utente presta il consenso, non solo all'avvio: chi apre
+/// l'app per la prima volta non ha consenso al bootstrap, e senza questa
+/// chiamata resterebbe senza analytics fino al riavvio successivo.
+///
+/// Idempotente: le chiamate successive alla prima sono no-op.
+///
+/// **Perché non basta il gate in `AppAnalyticsService`.** Quel gate impedisce
+/// di *trasmettere* eventi, ed è già fail-closed. Ma `Amplitude.init()` apre
+/// per conto proprio una sessione e raccoglie proprietà del dispositivo: è
+/// esso stesso un trattamento, e va quindi posticipato al consenso. Senza
+/// questa separazione la dichiarazione "analytics opzionali" nel Data safety
+/// di Play sarebbe falsa, e Google rileva Amplitude scansionando l'AAB.
+Future<void> initConsentedAnalytics() async {
+  if (_consentedAnalyticsStarted) return;
+  _consentedAnalyticsStarted = true;
+
   final bool amplitudeEnabled =
       AppConfig.amplitudeApiKey.isNotEmpty &&
       AppConfig.amplitudeApiKey != 'MISSING_AMPLITUDE_API_KEY';
+
+  if (amplitudeEnabled) {
+    await _guardedInit(
+      'Amplitude',
+      () => Amplitude.getInstance().init(AppConfig.amplitudeApiKey),
+    );
+  }
+
+  // tgram-analytics: di norma inizializzato SOLO in prod. Il piano free ha
+  // quota 1 progetto, quindi lo stream è riservato agli eventi reali — le
+  // build dev non devono inquinarlo. Finché `init()` non viene chiamato, il
+  // sink tgram in [AppAnalyticsService] è un no-op (non bufferizza), quindi
+  // in dev non accumula nulla in memoria.
+  //
+  // [AppConfig.tgramForceEnable] è la sola deroga: senza di essa le analytics
+  // sarebbero verificabili solo dopo una release firmata dalla CI, perché il
+  // login Google in prod richiede il keystore di release. Il flag va passato
+  // esplicitamente da riga di comando, mai impostato di default.
+  final bool tgramEnabled =
+      (_currentEnvironment == Environment.prod || AppConfig.tgramForceEnable) &&
+      AppConfig.tgramApiKey.isNotEmpty &&
+      AppConfig.tgramApiKey != 'MISSING_TGRAM_API_KEY';
+
+  if (tgramEnabled) {
+    // Sincrono e non fallibile a runtime (l'unica eccezione possibile è sulla
+    // validazione del formato della chiave), ma passa comunque da
+    // _guardedInit per uniformità di logging con gli altri servizi.
+    await _guardedInit(
+      'tgram-analytics',
+      () async => TGA.init(AppConfig.tgramApiKey, AppConfig.tgramServerUrl),
+    );
+  }
+}
+
+/// Guardia di idempotenza per [initConsentedAnalytics].
+bool _consentedAnalyticsStarted = false;
+
+/// `true` se [initConsentedAnalytics] è già stata eseguita in questa
+/// esecuzione dell'app.
+@visibleForTesting
+bool get consentedAnalyticsStarted => _consentedAnalyticsStarted;
+
+/// Azzera la guardia di [initConsentedAnalytics]. Solo per i test.
+@visibleForTesting
+void resetConsentedAnalyticsForTest() => _consentedAnalyticsStarted = false;
+
+void _initNonCriticalServices(bool hasConsent) {
+  final bool sentryEnabled =
+      AppConfig.sentryDsn.isNotEmpty &&
+      AppConfig.sentryDsn != 'MISSING_SENTRY_DSN';
 
   if (sentryEnabled) {
     // Sample rate per env: in dev catturiamo tutto per facilitare il debug,
@@ -145,11 +221,18 @@ void _initNonCriticalServices() {
       }),
     ).then((_) => _bootstrapErrorBuffer.flush(AppMonitoringService()));
   }
-  if (amplitudeEnabled) {
-    _guardedInit(
-      'Amplitude',
-      () => Amplitude.getInstance().init(AppConfig.amplitudeApiKey),
-    );
+
+  // Sentry resta **fuori** dal gate del consenso, deliberatamente: il crash
+  // reporting è diagnostico, non profilazione, gira con `sendDefaultPii`
+  // disattivato (default) e serve a intercettare i crash che avvengono prima
+  // che l'utente possa esprimere qualunque preferenza — cioè proprio quelli
+  // che non si riesce a diagnosticare altrimenti.
+  //
+  // Amplitude e tgram invece sì: vedi [initConsentedAnalytics].
+  if (hasConsent) {
+    initConsentedAnalytics();
+  } else {
+    debugPrint('[Bootstrap] analytics in attesa del consenso');
   }
 }
 
@@ -288,8 +371,13 @@ void _validateConfig(Environment env) {
 /// Inizializza tutti i servizi di persistenza in modo robusto.
 ///
 /// Esegue in ordine sequenziale:
-/// 1. **Migrazione**: trasferisce i dati legacy da SharedPreferences a Drift.
-/// 2. **Backup**: crea un backup automatico se l'ultimo è troppo vecchio.
+/// 1. **Migrazione SQLCipher**: cifra il DB in chiaro, se necessario.
+/// 2. **Migrazione dati**: trasferisce i dati legacy da SharedPreferences a Drift.
+///
+/// Non esiste più alcun backup automatico su file: la copia di sicurezza è
+/// il sync su Supabase. L'unico `.pre-encrypt-backup` che viene creato è
+/// temporaneo, interno a [EncryptionMigrationService], e vive nella
+/// directory privata dell'app.
 ///
 /// Il [DataIntegrityService] **non viene eseguito automaticamente** all'avvio:
 /// SQLite garantisce già l'integrità referenziale tramite FK con `ON DELETE

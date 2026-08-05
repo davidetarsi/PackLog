@@ -29,8 +29,7 @@ class LuggagesDao extends DatabaseAccessor<AppDatabase>
   @override
   GeneratedColumn<DateTime> get $lastSyncedAtCol => luggages.lastSyncedAt;
   @override
-  GeneratedColumn<DateTime> get $nextAttemptAtCol =>
-      luggages.nextSyncAttemptAt;
+  GeneratedColumn<DateTime> get $nextAttemptAtCol => luggages.nextSyncAttemptAt;
   @override
   GeneratedColumn<bool> get $isDeletedCol => luggages.isDeleted;
 

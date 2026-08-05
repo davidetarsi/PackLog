@@ -6,7 +6,7 @@ part of 'house_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$houseNotifierHash() => r'b28ba7e9cd08512c1a4a4f691a7241e99cd38e1b';
+String _$houseNotifierHash() => r'f0a5b3ae1c2a8c8ae72013c5f10fdc54a3d6e79b';
 
 /// Notifier per la lista di case dell'utente.
 ///
