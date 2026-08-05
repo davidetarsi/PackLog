@@ -46,7 +46,7 @@ function errorResponse(status: number, message: string): Response {
  *     anche al ruolo `authenticated` via RLS, ma usiamo service_role per
  *     uniformità e per registrare un audit chiaro.
  *
- * Returns: { deleted: { houses, items, spaces, luggages, trips, geocode_usage, users } }
+ * Returns: { deleted: { houses, items, spaces, luggages, trips, users } }
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -100,23 +100,13 @@ Deno.serve(async (req) => {
     }
   }
 
-  // geocode_usage e users hanno PRIMARY KEY uguale a user_id, quindi
-  // tecnicamente verrebbero cancellate da CASCADE ON DELETE quando
-  // cancelliamo auth.users. Le cancelliamo prima esplicitamente per
-  // l'audit (vogliamo sapere quante righe c'erano).
-  try {
-    const { count, error } = await supabaseAdmin
-      .from("geocode_usage")
-      .delete({ count: "exact" })
-      .eq("user_id", userId);
-    if (error) {
-      console.error("[hard-delete] DELETE geocode_usage failed:", error.message);
-    }
-    deleted["geocode_usage"] = count ?? 0;
-  } catch (e) {
-    console.error("[hard-delete] DELETE geocode_usage exception:", e);
-  }
-
+  // `users` ha PRIMARY KEY uguale a user_id, quindi tecnicamente verrebbe
+  // cancellata da CASCADE ON DELETE quando cancelliamo auth.users. La
+  // cancelliamo prima esplicitamente per l'audit (vogliamo sapere quante
+  // righe c'erano). Cancellare questa riga porta via anche i contatori di
+  // usage GPT e geocode, che vivono come colonne su public.users (la vecchia
+  // tabella dedicata public.geocode_usage non esiste più — vedi
+  // migration_2026-07-30_geocode_users.sql).
   try {
     const { count, error } = await supabaseAdmin
       .from("users")

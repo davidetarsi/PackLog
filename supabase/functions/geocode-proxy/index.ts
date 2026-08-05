@@ -85,11 +85,20 @@ Deno.serve(async (req) => {
   }
 
   // 3. Atomic rate-limit check (TOCTOU-safe via SQL function).
-  //    Default: 100 richieste / 60 minuti — vedi increment_geocode_count.
+  //    200 richieste / 24 ore per utente — allineato al reset a credito
+  //    giornaliero di Geoapify (non ha senso una finestra più corta della
+  //    loro). Vedi increment_geocode_count in schema_users.sql.
+  const GEOCODE_CAP = 200;
+  const GEOCODE_WINDOW_MINUTES = 60 * 24;
   const p_now = new Date().toISOString();
   const { data: allowed, error: rpcError } = await supabaseAdmin.rpc(
     "increment_geocode_count",
-    { p_user_id: user.id, p_now },
+    {
+      p_user_id: user.id,
+      p_now,
+      p_cap: GEOCODE_CAP,
+      p_window_minutes: GEOCODE_WINDOW_MINUTES,
+    },
   );
   if (rpcError) {
     console.error(

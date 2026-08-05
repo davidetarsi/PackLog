@@ -418,6 +418,12 @@ entrypoint = "./functions/geocode-proxy/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/geocode-proxy/*.html" ]
 
+[functions.hard-delete-account]
+enabled = true
+verify_jwt = true
+import_map = "./functions/hard-delete-account/deno.json"
+entrypoint = "./functions/hard-delete-account/index.ts"
+
 [functions.openai-proxy]
 enabled = true
 verify_jwt = true
