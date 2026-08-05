@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.packlog"
+    namespace = "com.davidetarsi.packlog"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -33,8 +33,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.packlog"
+        // Reverse-DNS del dominio davidetarsi.com. IMMUTABILE dopo il primo
+        // upload su Play Store: il flavor dev vi appende ".dev" (vedi sotto).
+        applicationId = "com.davidetarsi.packlog"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

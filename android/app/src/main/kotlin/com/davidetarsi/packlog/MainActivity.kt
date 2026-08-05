@@ -1,4 +1,4 @@
-package com.example.packlog
+package com.davidetarsi.packlog
 
 import io.flutter.embedding.android.FlutterActivity
 
