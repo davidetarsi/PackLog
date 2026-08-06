@@ -20,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # sia unico e crescente a OGNI upload. Senza di esso Flutter usa 1 fisso, e
 # dal secondo caricamento in poi Play rifiuta l'AAB
 # ("Version code 1 has already been used"). Bumpalo a ogni upload.
-version: 1.0.2+1
+version: 1.0.2+2
 
 
 environment:
