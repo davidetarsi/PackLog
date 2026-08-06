@@ -45,8 +45,17 @@ class AppAnalyticsService {
 
   /// `true` se è lecito trasmettere. Fail-closed: un [ConsentService] che non
   /// ha ancora completato `load()` risponde `false`.
+  ///
+  /// Due condizioni, non una:
+  ///
+  /// - `hasConsent` — l'utente ha accettato privacy policy e termini. È il
+  ///   prerequisito legale, e senza non si trasmette nulla.
+  /// - `analyticsEnabled` — la preferenza modificabile da Profilo. Le
+  ///   statistiche d'uso non sono strettamente necessarie, quindi devono
+  ///   restare disattivabili **mantenendo l'account**.
   @visibleForTesting
-  bool get mayTransmit => _consent == null || _consent.hasConsent;
+  bool get mayTransmit =>
+      _consent == null || (_consent.hasConsent && _consent.analyticsEnabled);
 
   /// Esegue [action] sul sink tgram, se attivo, assorbendo ogni errore.
   ///

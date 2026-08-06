@@ -422,7 +422,9 @@
     "feedback_subtitle": "Apri il questionario Google",
     "view_project": "Visualizza progetto",
     "view_project_subtitle": "Repository GitHub",
-    "open_link_error": "Impossibile aprire il link"
+    "open_link_error": "Impossibile aprire il link",
+    "analytics_title": "Statistiche d'uso",
+    "analytics_subtitle": "Aiutaci a migliorare l'app con dati anonimi sull'utilizzo. Puoi disattivarle in qualsiasi momento."
   },
   "bulk_creation": {
     "add_from_template": "Template",

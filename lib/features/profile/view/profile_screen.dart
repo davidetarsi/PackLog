@@ -6,6 +6,7 @@ import '../../../shared/widgets/shell_tab_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/analytics/analytics_service.dart';
+import '../../../core/consent/consent_provider.dart';
 import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/auth/auth_state.dart';
@@ -304,6 +305,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const Divider(),
 
+            // ── Privacy ───────────────────────────────────────────────────────
+            const _AnalyticsToggleTile(),
+            const Divider(),
+
             // ── About ────────────────────────────────────────────────────────
             DsSectionHeader(
               label: 'settings.about_section_title'.tr(),
@@ -390,6 +395,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Private widget components
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Interruttore delle statistiche d'uso.
+///
+/// Le statistiche non sono un trattamento strettamente necessario: devono
+/// poter essere disattivate **mantenendo l'account**. È anche ciò che rende
+/// veritiera la dichiarazione "raccolta opzionale" nel Data safety di Play.
+///
+/// Non tocca il consenso a privacy policy e termini, che è un registro legale
+/// separato e resta condizione per usare l'app.
+class _AnalyticsToggleTile extends ConsumerStatefulWidget {
+  const _AnalyticsToggleTile();
+
+  @override
+  ConsumerState<_AnalyticsToggleTile> createState() =>
+      _AnalyticsToggleTileState();
+}
+
+class _AnalyticsToggleTileState extends ConsumerState<_AnalyticsToggleTile> {
+  @override
+  Widget build(BuildContext context) {
+    final consent = ref.watch(consentServiceProvider);
+
+    return SwitchListTile(
+      secondary: const Icon(Icons.insights_outlined),
+      title: Text('settings.analytics_title'.tr()),
+      subtitle: Text('settings.analytics_subtitle'.tr()),
+      value: consent.analyticsEnabled,
+      onChanged: (value) async {
+        final analytics = ref.read(analyticsServiceProvider);
+
+        // Disattivando: prima si emette l'evento che documenta la scelta,
+        // poi si chiude il gate. Nell'ordine inverso l'evento verrebbe
+        // scartato dal gate stesso, e non resterebbe traccia dell'opt-out.
+        if (!value) {
+          analytics.logEvent(
+            'analytics_opt_out',
+            properties: {'enabled': false},
+          );
+        }
+
+        await consent.setAnalyticsEnabled(value);
+
+        if (value) {
+          // Riattivando, l'evento va emesso DOPO: prima il gate era chiuso.
+          analytics.logEvent('analytics_opt_in', properties: {'enabled': true});
+        } else {
+          // Dissocia l'identità già inviata ai backend. `clearUser` è
+          // deliberatamente fuori dal gate proprio per questo caso: riduce i
+          // dati, non li trasmette.
+          analytics.clearUser();
+        }
+
+        if (mounted) setState(() {});
+      },
+    );
+  }
+}
 
 class _GptUsageTile extends ConsumerWidget {
   const _GptUsageTile();

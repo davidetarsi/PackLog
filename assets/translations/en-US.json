@@ -422,7 +422,9 @@
     "feedback_subtitle": "Open the Google Form",
     "view_project": "View project",
     "view_project_subtitle": "GitHub repository",
-    "open_link_error": "Cannot open the link"
+    "open_link_error": "Cannot open the link",
+    "analytics_title": "Usage statistics",
+    "analytics_subtitle": "Help us improve the app with anonymous usage data. You can turn this off at any time."
   },
   "bulk_creation": {
     "add_from_template": "Template",

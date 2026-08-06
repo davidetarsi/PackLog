@@ -68,4 +68,81 @@ void main() {
     // Percorso caldo: deve uscire in silenzio, non rompere il chiamante.
     await expectLater(service.logEvent('house_created'), completes);
   });
+
+  group('preferenza statistiche (toggle in Profilo)', () {
+    // Le statistiche d'uso non sono un trattamento strettamente necessario:
+    // devono restare disattivabili MANTENENDO l'account. È anche ciò che rende
+    // veritiera la dichiarazione "raccolta opzionale" nel Data safety di Play.
+    //
+    // La preferenza è distinta dal consenso: `hasConsent` è un registro legale
+    // (GDPR art. 7) e resta condizione per usare l'app; `analyticsEnabled` è
+    // una scelta reversibile dell'utente.
+
+    test('di default è attiva, per non disattivare a sorpresa', () async {
+      final consent = ConsentService();
+      await consent.load();
+      expect(consent.analyticsEnabled, isTrue);
+    });
+
+    test('disattivarla chiude il gate pur restando il consenso', () async {
+      final consent = ConsentService();
+      await consent.load();
+      await consent.record(policyVersion: '2026-07-30');
+      final service = AppAnalyticsService(null, consent: consent);
+      expect(service.mayTransmit, isTrue);
+
+      await consent.setAnalyticsEnabled(false);
+
+      expect(service.mayTransmit, isFalse);
+      expect(
+        consent.hasConsent,
+        isTrue,
+        reason:
+            'disattivare le statistiche non deve cancellare il registro del '
+            'consenso: sono due cose distinte',
+      );
+    });
+
+    test('riattivarla riapre il gate', () async {
+      final consent = ConsentService();
+      await consent.load();
+      await consent.record(policyVersion: '2026-07-30');
+      final service = AppAnalyticsService(null, consent: consent);
+
+      await consent.setAnalyticsEnabled(false);
+      await consent.setAnalyticsEnabled(true);
+
+      expect(service.mayTransmit, isTrue);
+    });
+
+    test(
+      'senza consenso resta chiuso anche con la preferenza attiva',
+      () async {
+        final consent = ConsentService();
+        await consent.load();
+        await consent.setAnalyticsEnabled(true);
+
+        expect(
+          AppAnalyticsService(null, consent: consent).mayTransmit,
+          isFalse,
+          reason:
+              'il consenso è il prerequisito, la preferenza non lo sostituisce',
+        );
+      },
+    );
+
+    test('la scelta sopravvive al riavvio dell\'app', () async {
+      final first = ConsentService();
+      await first.load();
+      await first.record(policyVersion: '2026-07-30');
+      await first.setAnalyticsEnabled(false);
+
+      // Nuova istanza = nuova esecuzione dell'app, stesse SharedPreferences.
+      final second = ConsentService();
+      await second.load();
+
+      expect(second.analyticsEnabled, isFalse);
+      expect(AppAnalyticsService(null, consent: second).mayTransmit, isFalse);
+    });
+  });
 }

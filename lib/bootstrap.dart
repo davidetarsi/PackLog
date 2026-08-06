@@ -72,7 +72,20 @@ import 'shared/widgets/ds_error_state.dart';
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// Impostato da [bootstrap] prima di [runApp], letto da [appBootstrapProvider].
-late Environment _currentEnvironment;
+///
+/// Nullable e non `late`: [initConsentedAnalytics] è pubblica e viene chiamata
+/// anche dalla schermata di login. In produzione a quel punto il bootstrap è
+/// già passato di qui, ma un `late` non inizializzato farebbe esplodere la
+/// funzione in qualunque contesto che non abbia eseguito [bootstrap] — i test
+/// per primi. Meglio un default esplicito che un `LateInitializationError`.
+Environment? _environment;
+
+/// Environment corrente, con fallback su [Environment.dev].
+///
+/// Il fallback è deliberatamente il più conservativo: in dev tgram non parte
+/// e Sentry campiona tutto, quindi sbagliare in questa direzione non produce
+/// traffico indesiderato verso i backend di produzione.
+Environment get _currentEnvironment => _environment ?? Environment.dev;
 
 /// Buffer per eccezioni di bootstrap avvenute prima dell'init di Sentry.
 ///
@@ -310,7 +323,7 @@ Future<void> bootstrap(Environment env) async {
   // altri package (es. connectivity_plus, sync orchestrator) accedono a
   // WidgetsBinding.instance prima che Sentry abbia completato la propria init.
   WidgetsFlutterBinding.ensureInitialized();
-  _currentEnvironment = env;
+  _environment = env;
 
   try {
     _validateConfig(env);
