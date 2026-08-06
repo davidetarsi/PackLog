@@ -66,3 +66,7 @@ docs/
 
 ios/Runner/GoogleService-Info.plist
 
+
+# Stato locale della CLI Supabase: cambia a ogni `supabase link`,
+# non è configurazione di progetto.
+supabase/.temp/
