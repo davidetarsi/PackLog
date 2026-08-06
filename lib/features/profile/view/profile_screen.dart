@@ -18,6 +18,7 @@ import '../providers/gpt_usage_provider.dart';
 import '../../../shared/config/app_config.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/nav_bar_spacing.dart';
 import '../../../shared/providers/package_info_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/widgets/ds_section_header.dart';
@@ -232,7 +233,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           // Risultato senza questo fix: un secondo "status bar" di spazio
           // vuoto sopra il primo ListTile, sommato a quello già coperto
           // dall'AppBar.
-          padding: EdgeInsets.only(top: context.spacingSm),
+          // `bottom`: riserva l'altezza della nav bar flottante dentro lo
+          // scrollable, così il contenuto le scorre DIETRO ma l'ultimo
+          // elemento resta comunque raggiungibile. Vedi [ShellTabScaffold].
+          padding: EdgeInsets.only(
+            top: context.spacingSm,
+            bottom: context.navBarReservedHeight,
+          ),
           children: [
             // ── Account identity ────────────────────────────────────────────
             ListTile(

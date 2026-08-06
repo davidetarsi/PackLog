@@ -217,10 +217,14 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
 
           return SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
+            // `bottom`: vedi [ShellTabScaffold] — il contenuto scorre dietro
+            // la nav bar flottante, questo padding tiene l'ultimo viaggio
+            // raggiungibile.
             padding: EdgeInsets.only(
               left: context.spacingMd,
               right: context.spacingMd,
               top: context.spacingSm,
+              bottom: context.navBarReservedHeight,
             ),
             // Quando la lista è vuota, SizedBox con altezza DELIMITATA permette
             // a Expanded di funzionare per centrare verticalmente l'empty state.

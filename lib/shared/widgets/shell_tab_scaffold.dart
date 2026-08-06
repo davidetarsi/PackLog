@@ -1,30 +1,28 @@
 import 'package:flutter/material.dart';
-import '../theme/nav_bar_spacing.dart';
 
 /// Scaffold standard per le schermate principali (tab) dell'app.
 ///
-/// Gestisce SafeArea e, opzionalmente, riserva lo spazio occupato dalla
-/// floating navigation bar in basso così che il contenuto della pagina
-/// non finisca sotto di essa.
+/// Il body occupa **tutta** l'altezza disponibile, area della nav bar inclusa:
+/// il contenuto scorre quindi dietro la pill flottante di `MainShell`, che è
+/// l'effetto voluto (stesso pattern di `StickyCtaScaffold` per la CTA).
 ///
-/// Usa [reserveBottomNavSpace] = true (default) quando il body non gestisce
-/// autonomamente il padding inferiore. Impostalo a false solo se il body
-/// contiene già un layout che applica [navBarReservedHeight] (es. una lista
-/// con padding bottom esplicito).
+/// Prima questo scaffold avvolgeva il body in un `Padding` inferiore pari a
+/// `context.navBarReservedHeight`. Sembrava innocuo, ma sotto `extendBody:
+/// true` quel valore **non** è la sola gesture bar: Flutter gonfia
+/// `MediaQuery.padding.bottom` fino all'altezza dell'intera
+/// `bottomNavigationBar` (vedi `_BodyBuilder` in scaffold.dart, che fa
+/// `max(padding.bottom, bottomWidgetsHeight)`). Il body veniva quindi
+/// rimpicciolito esattamente dell'altezza della nav bar e il contenuto si
+/// fermava al bordo superiore della pill — mai dietro di essa.
+///
+/// **Ogni schermata deve quindi sommare `context.navBarReservedHeight` al
+/// padding inferiore della propria scrollable**, così l'ultimo elemento può
+/// essere portato sopra la nav bar invece di restarci sotto per sempre.
 class ShellTabScaffold extends StatelessWidget {
   final PreferredSizeWidget? appBar;
   final Widget body;
 
-  /// Se true (default), aggiunge un padding inferiore pari a [navBarReservedHeight]
-  /// attorno al body così il contenuto non scorre sotto la nav bar floating.
-  final bool reserveBottomNavSpace;
-
-  const ShellTabScaffold({
-    super.key,
-    this.appBar,
-    required this.body,
-    this.reserveBottomNavSpace = true,
-  });
+  const ShellTabScaffold({super.key, this.appBar, required this.body});
 
   @override
   Widget build(BuildContext context) {
@@ -44,26 +42,13 @@ class ShellTabScaffold extends StatelessWidget {
         // stesso. Le schermate senza AppBar (Case, Viaggi) restano protette:
         // lì nessun altro widget libera lo status bar, quindi serve davvero.
         top: appBar == null,
-        child: reserveBottomNavSpace
-            // `MediaQuery.removePadding(removeBottom: true)` è **critico**: senza,
-            // uno scrollable con `padding: null` (ListView, CustomScrollView…)
-            // dentro `body` ri-applica automaticamente `MediaQuery.padding.bottom`
-            // come proprio padding inferiore. Sommato al [Padding] esplicito qui
-            // sotto (anch'esso = navBarReservedHeight) si otterrebbe un reserve
-            // DOPPIO in fondo alla pagina — un grande spazio vuoto sopra la nav
-            // bar. Rimuovendo il bottom dal MediaQuery per i discendenti, il
-            // reserve resta uno solo (quello del [Padding]).
-            ? MediaQuery.removePadding(
-                context: context,
-                removeBottom: true,
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    bottom: context.navBarReservedHeight,
-                  ),
-                  child: body,
-                ),
-              )
-            : body,
+        // Nessun `Padding` inferiore e nessun `MediaQuery.removePadding`: il
+        // body arriva fino in fondo. Uno scrollable con `padding: null` si
+        // riserva da sé `MediaQuery.padding.bottom` (già pari all'altezza
+        // della nav bar, vedi sopra); quelli con padding esplicito devono
+        // sommarci `context.navBarReservedHeight`. In entrambi i casi il
+        // reserve resta uno solo.
+        child: body,
       ),
     );
   }

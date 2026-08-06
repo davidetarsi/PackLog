@@ -71,7 +71,13 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
             color: colorScheme.primary,
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.only(top: context.spacingMd),
+              // `bottom`: vedi [ShellTabScaffold] — il contenuto scorre dietro
+              // la nav bar flottante, questo padding tiene l'ultima card
+              // raggiungibile.
+              padding: EdgeInsets.only(
+                top: context.spacingMd,
+                bottom: context.navBarReservedHeight,
+              ),
               itemCount: sortedHouses.length,
               itemBuilder: (context, index) {
                 final house = sortedHouses[index];
