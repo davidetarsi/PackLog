@@ -476,7 +476,9 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
       contentPadding: EdgeInsets.all(context.spacingSm),
       // L'icona è già colorata in primary: il box grigio dietro era
       // decorazione attorno a un elemento che si legge da solo.
-      leading: Icon(item.category.icon, color: colorScheme.primary),
+      // Grigio come l'etichetta delle pill non selezionate: la categoria
+      // classifica, non è un'azione né uno stato scelto.
+      leading: Icon(item.category.icon, color: colorScheme.onSurfaceVariant),
       // Stesso stile del nome oggetto in ItemCard e in TripDetailScreen: era
       // 18/w700 contro il loro 14/w500, cioè lo stesso dato con due pesi
       // diversi a seconda della schermata.

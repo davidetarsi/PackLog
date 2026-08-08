@@ -32,7 +32,7 @@ class CategorySectionHeader extends StatelessWidget {
   /// Dimensione dell'icona (se null, usa la dimensione responsive)
   final double? iconSize;
 
-  /// Colore dell'icona e del testo (se null, usa primary del tema)
+  /// Colore dell'icona e del testo (se null, usa `onSurfaceVariant`)
   final Color? color;
 
   /// Padding orizzontale della sezione
@@ -54,7 +54,10 @@ class CategorySectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final effectiveColor = color ?? colorScheme.primary;
+    // La categoria è un'etichetta di raggruppamento, non un'azione: prende lo
+    // stesso grigio del testo delle pill non selezionate. L'arancione resta
+    // riservato a ciò su cui si può agire o che è stato scelto.
+    final effectiveColor = color ?? colorScheme.onSurfaceVariant;
     final effectiveIconSize = iconSize ?? context.responsive(20);
 
     return Padding(
