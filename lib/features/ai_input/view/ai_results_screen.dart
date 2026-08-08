@@ -59,8 +59,6 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
   }
 
   void _syncControllers(AiImportState? prev, AiImportState next) {
-    final wasEmpty = _controllers.isEmpty;
-
     while (_controllers.length < next.photoGroups.length) {
       final gi = _controllers.length;
       _controllers.add(
@@ -89,20 +87,12 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       }
     }
 
-    // Select all text in the first field when results first appear so the user
-    // immediately sees the field is editable.
-    if (wasEmpty && _controllers.isNotEmpty && _controllers[0].isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final c = _controllers[0][0];
-        if (c.text.isNotEmpty) {
-          c.selection = TextSelection(
-            baseOffset: 0,
-            extentOffset: c.text.length,
-          );
-        }
-      });
-    }
+    // Niente selezione automatica del primo campo. Selezionare tutto il testo
+    // segnalava che il campo è editabile, ma su una schermata di *revisione*
+    // costava più di quanto rendesse: il primo suggerimento appariva
+    // evidenziato (sembrava un artefatto grafico) e il primo tasto premuto lo
+    // cancellava per intero. Che i campi siano editabili lo dicono già il
+    // bordo a pill e l'icona di eliminazione accanto.
   }
 
   // ── Picker (add more photos) ──────────────────────────────────────────────
@@ -575,7 +565,10 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                     item: state.photoGroups[gi].results[ii],
                     index: ii + 1,
                     controller: _controllers[gi][ii],
-                    autofocus: gi == 0 && ii == 0,
+                    // Nessun autofocus: aprire la tastiera all'ingresso copre
+                    // metà dei capi da rivedere, che è il compito principale
+                    // di questa schermata.
+                    autofocus: false,
                     onNameChanged: (value) {
                       _nameDebounce?.cancel();
                       _nameDebounce = Timer(

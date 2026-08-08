@@ -27,7 +27,7 @@ class DsSectionHeader extends StatelessWidget {
   /// Widget opzionale a destra (es. badge, count, action button).
   final Widget? trailing;
 
-  /// Colore dell'icona e del testo. Default: `colorScheme.primary`.
+  /// Colore dell'icona e del testo. Default: `colorScheme.onSurface`.
   final Color? color;
 
   /// Padding personalizzato. Se null, usa `horizontal=spacingMd, vertical=spacingSm`.
@@ -54,7 +54,11 @@ class DsSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = color ?? Theme.of(context).colorScheme.primary;
+    final theme = Theme.of(context);
+    // Un titolo di sezione non è né un'azione né uno stato scelto: niente
+    // arancione. Resta però il livello che ancora la gerarchia del form,
+    // quindi onSurface e non il grigio muto delle etichette annidate.
+    final effectiveColor = color ?? theme.colorScheme.onSurface;
 
     return Padding(
       padding:
@@ -72,10 +76,9 @@ class DsSectionHeader extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
-                fontSize:
-                    context.fontSizeXs, // 14px → w500 (regola DS size→weight)
-                fontWeight: FontWeight.w500,
+              // Dal textTheme, non da token grezzi: è la fonte di verità
+              // tipografica e questo è il livello "sezione".
+              style: theme.textTheme.titleMedium?.copyWith(
                 color: effectiveColor,
               ),
             ),

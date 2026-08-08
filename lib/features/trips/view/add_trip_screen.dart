@@ -10,6 +10,7 @@ import '../../luggages/model/luggage_model.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/widgets/ds_section_header.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
@@ -186,8 +187,6 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return StickyCtaScaffold(
       appBar: AppBar(
         title: Text(
@@ -239,38 +238,14 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                 SizedBox(height: context.spacingLg),
 
                 // Sezione Oggetti
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'trips.items_to_bring'.tr(),
-                      style: TextStyle(
-                        fontSize: context.fontSizeMd,
-                        fontWeight: FontWeight.w700, // 18px → w700
-                        color: colorScheme.onSurface,
-                      ),
+                DsSectionHeader(
+                  label: 'trips.items_to_bring'.tr(),
+                  padding: EdgeInsets.zero,
+                  trailing: _SectionCount(
+                    label: 'common.items_selected'.tr(
+                      args: [_selectedItems.length.toString()],
                     ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: context.spacingSm,
-                        vertical: context.spacingXs,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: context.responsiveBorderRadius(12),
-                      ),
-                      child: Text(
-                        'common.items_selected'.tr(
-                          args: [_selectedItems.length.toString()],
-                        ),
-                        style: TextStyle(
-                          fontSize: context.fontSizeXs,
-                          fontWeight: FontWeight.w500, // 14px → w500
-                          color: colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
                 SizedBox(height: context.spacingMd),
 
@@ -288,38 +263,14 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                 SizedBox(height: context.spacingLg),
 
                 // Sezione Bagagli
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'luggages.title'.tr(),
-                      style: TextStyle(
-                        fontSize: context.fontSizeMd,
-                        fontWeight: FontWeight.w700, // 18px → w700
-                        color: colorScheme.onSurface,
-                      ),
+                DsSectionHeader(
+                  label: 'luggages.title'.tr(),
+                  padding: EdgeInsets.zero,
+                  trailing: _SectionCount(
+                    label: 'common.luggages_selected'.tr(
+                      args: [_selectedLuggages.length.toString()],
                     ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: context.spacingSm,
-                        vertical: context.spacingXs,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: context.responsiveBorderRadius(12),
-                      ),
-                      child: Text(
-                        'common.luggages_selected'.tr(
-                          args: [_selectedLuggages.length.toString()],
-                        ),
-                        style: TextStyle(
-                          fontSize: context.fontSizeXs,
-                          fontWeight: FontWeight.w500, // 14px → w500
-                          color: colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
                 SizedBox(height: context.spacingMd),
 
@@ -405,6 +356,38 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Conteggio a fianco del titolo di sezione ("3 selezionati").
+///
+/// È un dato di stato, non un'azione: niente fill arancione. Resta un badge
+/// per distinguerlo dal titolo, ma su superficie neutra.
+class _SectionCount extends StatelessWidget {
+  final String label;
+
+  const _SectionCount({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacingSm,
+        vertical: context.spacingXs,
+      ),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: context.responsiveBorderRadius(12),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.labelMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+      ),
     );
   }
 }

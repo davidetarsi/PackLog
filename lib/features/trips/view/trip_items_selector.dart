@@ -155,12 +155,13 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Filtro casa
+        // labelMedium (12) contro il titleMedium (16) del titolo di sezione:
+        // queste sono etichette di controllo annidate, non sezioni. Prima
+        // erano a 16, cioè quasi indistinguibili dal livello sopra.
         Text(
           'common.select_house'.tr(),
-          style: TextStyle(
-            fontSize: context.fontSizeSm,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
             color: colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w500,
           ),
         ),
         SizedBox(height: context.spacingSm),
@@ -200,10 +201,8 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         // Filtro categoria
         Text(
           'common.category'.tr(),
-          style: TextStyle(
-            fontSize: context.fontSizeSm,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
             color: colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w500,
           ),
         ),
         SizedBox(height: context.spacingSm),

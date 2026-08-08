@@ -244,9 +244,10 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
               padding: context.cardPaddingHero,
               child: Row(
                 children: [
+                  // Icona-etichetta, non azione: grigia come le altre.
                   Icon(
                     Icons.calendar_month_outlined,
-                    color: colorScheme.primary,
+                    color: colorScheme.onSurfaceVariant,
                     size: 22,
                   ),
                   SizedBox(width: context.spacingMd),
@@ -282,7 +283,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                                 ),
                                 child: Icon(
                                   Icons.arrow_forward,
-                                  color: colorScheme.primary,
+                                  color: colorScheme.onSurfaceVariant,
                                   size: 16,
                                 ),
                               ),
@@ -362,7 +363,11 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
         ),
         child: Row(
           children: [
-            Icon(Icons.home_outlined, color: colorScheme.primary, size: 22),
+            Icon(
+              Icons.home_outlined,
+              color: colorScheme.onSurfaceVariant,
+              size: 22,
+            ),
             SizedBox(width: context.spacingMd),
             Expanded(
               child: Column(
@@ -416,7 +421,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       ),
       child: Row(
         children: [
-          Icon(Icons.search, color: colorScheme.primary, size: 22),
+          Icon(Icons.search, color: colorScheme.onSurfaceVariant, size: 22),
           Expanded(
             child: LocationAutocompleteField(
               initialValue: _destinationLocation?.displayName,
