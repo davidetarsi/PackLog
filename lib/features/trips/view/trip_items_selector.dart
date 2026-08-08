@@ -468,25 +468,23 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
 
     return UniversalItemTile(
       useListTile: false,
+      // Riquadro e sfondo solo sulla riga scelta. Prima il bordo c'era su
+      // tutte: su quelle non selezionate era outlineVariant, cioè decorazione
+      // che non segnalava nulla — e impediva a UniversalItemTile di rendere la
+      // riga piatta. Passando null, le righe non scelte diventano piatte come
+      // in casa e viaggio, e la selezione resta l'unica cosa che spicca.
       backgroundColor: isSelected
           ? colorScheme.primary.withValues(alpha: 0.08) // state layer hover
-          : colorScheme.surface,
-      borderColor: isSelected
-          ? colorScheme.primary.withValues(alpha: 0.5)
-          : colorScheme.outlineVariant,
-      borderWidth: isSelected ? 2 : 1,
+          : null,
+      borderColor: isSelected ? colorScheme.primary : null,
+      borderWidth: 2,
+      // Margine esplicito a zero: senza, selezionare una riga le aggiungerebbe
+      // il margine di default della Card e la lista scatterebbe.
+      margin: EdgeInsets.zero,
       contentPadding: EdgeInsets.all(context.spacingSm),
-      // 36 e non 44: l'icona resta a 24 (standard M3 per il leading di lista),
-      // si stringe solo la decorazione intorno.
-      leading: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest,
-          borderRadius: context.responsiveBorderRadius(12),
-        ),
-        child: Icon(item.category.icon, color: colorScheme.primary),
-      ),
+      // L'icona è già colorata in primary: il box grigio dietro era
+      // decorazione attorno a un elemento che si legge da solo.
+      leading: Icon(item.category.icon, color: colorScheme.primary),
       // Stesso stile del nome oggetto in ItemCard e in TripDetailScreen: era
       // 18/w700 contro il loro 14/w500, cioè lo stesso dato con due pesi
       // diversi a seconda della schermata.
