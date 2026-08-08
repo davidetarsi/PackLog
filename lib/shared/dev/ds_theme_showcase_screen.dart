@@ -120,10 +120,8 @@ class DsThemeShowcaseScreen extends StatelessWidget {
             child: Chip(
               label: const Text('DEV ONLY'),
               backgroundColor: Theme.of(context).colorScheme.errorContainer,
-              labelStyle: TextStyle(
+              labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: Theme.of(context).colorScheme.onErrorContainer,
-                fontSize: AppSpacing.fontXxs,
-                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -177,9 +175,7 @@ class _SectionDivider extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: AppSpacing.fontXxs,
-                fontWeight: FontWeight.w600,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 letterSpacing: 0.8,
               ),
@@ -214,9 +210,7 @@ class _DualThemeColumn extends StatelessWidget {
                 child: Center(
                   child: Text(
                     '☀️  LIGHT',
-                    style: TextStyle(
-                      fontSize: AppSpacing.fontXxs,
-                      fontWeight: FontWeight.w600,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -226,9 +220,7 @@ class _DualThemeColumn extends StatelessWidget {
                 child: Center(
                   child: Text(
                     '🌙  DARK',
-                    style: TextStyle(
-                      fontSize: AppSpacing.fontXxs,
-                      fontWeight: FontWeight.w600,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -379,11 +371,7 @@ class _ColorRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: AppSpacing.fontXxs,
-          color: onColor,
-          fontWeight: FontWeight.w600,
-        ),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: onColor),
       ),
     );
   }
@@ -433,15 +421,13 @@ class _TypographySection extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 'onSurfaceVariant · secondary text',
-                style: TextStyle(
-                  fontSize: AppSpacing.fontSm,
-                  color: cs.onSurfaceVariant,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
               ),
               Text(
                 'disabled · alpha 0.38',
-                style: TextStyle(
-                  fontSize: AppSpacing.fontSm,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: cs.onSurface.withValues(alpha: 0.38),
                 ),
               ),
@@ -517,8 +503,7 @@ class _TripCardsSection extends StatelessWidget {
           ),
           child: Text(
             'TripCardHero',
-            style: TextStyle(
-              fontSize: AppSpacing.fontXxs,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
@@ -539,8 +524,7 @@ class _TripCardsSection extends StatelessWidget {
           ),
           child: Text(
             'TripCardCompact',
-            style: TextStyle(
-              fontSize: AppSpacing.fontXxs,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
@@ -650,11 +634,9 @@ class _HouseCardMock extends StatelessWidget {
                     children: [
                       Text(
                         name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: context.fontSizeLg,
-                          color: cs.onSurface,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleLarge?.copyWith(color: cs.onSurface),
                       ),
                       SizedBox(height: context.spacingXs),
                       Row(
@@ -667,10 +649,8 @@ class _HouseCardMock extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             location,
-                            style: TextStyle(
-                              fontSize: context.fontSizeXs,
-                              color: cs.onSurfaceVariant,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: cs.onSurfaceVariant),
                           ),
                         ],
                       ),
@@ -686,10 +666,9 @@ class _HouseCardMock extends StatelessWidget {
               children: [
                 Text(
                   '$itemCount oggetti',
-                  style: TextStyle(
-                    fontSize: context.fontSizeXs,
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                 ),
                 const Spacer(),
                 DsStatusBadge(

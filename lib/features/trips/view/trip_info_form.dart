@@ -262,17 +262,19 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                                   children: [
                                     Text(
                                       'common.departure'.tr(),
-                                      style: TextStyle(
-                                        fontSize: context.fontSizeXs,
-                                        color: colorScheme.onSurfaceVariant,
-                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       _formatDate(_departureDateTime),
-                                      style: TextStyle(
-                                        fontSize: context.fontSizeSm,
-                                      ),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyLarge,
                                     ),
                                   ],
                                 ),
@@ -293,17 +295,19 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                                   children: [
                                     Text(
                                       'common.return'.tr(),
-                                      style: TextStyle(
-                                        fontSize: context.fontSizeXs,
-                                        color: colorScheme.onSurfaceVariant,
-                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       _formatDate(_returnDateTime),
-                                      style: TextStyle(
-                                        fontSize: context.fontSizeSm,
-                                      ),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyLarge,
                                     ),
                                   ],
                                 ),
@@ -312,12 +316,12 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                           )
                         : Text(
                             'common.tap_to_set_dates'.tr(),
-                            style: TextStyle(
-                              fontSize: context.fontSizeMd,
-                              color: colorScheme.onSurface.withValues(
-                                alpha: 0.38,
-                              ),
-                            ),
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.38,
+                                  ),
+                                ),
                           ),
                   ),
                   if (_departureDateTime != null || _returnDateTime != null)
@@ -375,17 +379,14 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                 children: [
                   Text(
                     'common.arrival_house'.tr(),
-                    style: TextStyle(
-                      fontSize: context.fontSizeXxs,
-                      fontWeight: FontWeight.w600,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     _getSelectedHouseName(houses),
-                    style: TextStyle(
-                      fontSize: context.fontSizeSm,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: _destinationHouseId != null
                           ? colorScheme.onSurface
                           : colorScheme.onSurface.withValues(alpha: 0.38),

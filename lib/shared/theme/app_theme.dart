@@ -299,10 +299,12 @@ class AppTheme {
         // ErrorEmptyThemeExtension calcolata dal ColorScheme attivo
         // (no dipendenza da AppColors statici).
         ErrorEmptyThemeExtension(
+          // Token grezzi e non textTheme: ThemeData si costruisce senza
+          // BuildContext, quindi qui gli slot non sono raggiungibili. I valori
+          // coincidono comunque con titleLarge e bodyLarge.
           emptyStateTitle: TextStyle(
-            fontSize: AppSpacing
-                .fontLg, // 20px → w700 se titolo hero, w400 per stato vuoto
-            fontWeight: FontWeight.w400,
+            fontSize: AppSpacing.fontLg, // 20, come titleLarge
+            fontWeight: FontWeight.w400, // più leggero: è uno stato vuoto
             color: colorScheme.onSurfaceVariant,
           ),
           emptyStateSubtitle: TextStyle(

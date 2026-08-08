@@ -150,8 +150,7 @@ class SpaceFormContentState extends ConsumerState<SpaceFormContent> {
           SizedBox(height: context.spacingMd),
           Text(
             'spaces.select_icon'.tr(),
-            style: TextStyle(
-              fontSize: context.fontSizeSm,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
           ),

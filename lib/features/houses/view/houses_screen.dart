@@ -195,10 +195,7 @@ class _HouseCard extends ConsumerWidget {
                           children: [
                             Text(
                               house.displayName,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700, // 20px → w700
-                                fontSize: context.fontSizeLg,
-                              ),
+                              style: Theme.of(context).textTheme.titleLarge,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -218,10 +215,12 @@ class _HouseCard extends ConsumerWidget {
                                     child: Text(
                                       house.locationDisplayName ??
                                           house.description!,
-                                      style: TextStyle(
-                                        fontSize: context.fontSizeSm + 1,
-                                        color: colorScheme.onSurfaceVariant,
-                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -259,10 +258,8 @@ class _HouseCard extends ConsumerWidget {
                           'houses.total_items'.tr(
                             args: [stats.totalItems.toString()],
                           ),
-                          style: TextStyle(
-                            fontSize: context.fontSizeSm,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
                         ),
                         const Spacer(),
                         if (stats.hasItemsInTrip)

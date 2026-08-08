@@ -55,11 +55,8 @@ class ThemeTile extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: TextStyle(
-                  fontSize: context.fontSizeSm,
-                  fontWeight: isSelected
-                      ? FontWeight.w600
-                      : FontWeight.w500, // 16px selected +1 = w600
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  // 16px selected +1 = w600
                   color: isSelected ? colorScheme.primary : null,
                 ),
               ),

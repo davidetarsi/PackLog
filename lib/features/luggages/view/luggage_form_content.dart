@@ -233,8 +233,7 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
                           _selectedSize.approximateVolumeLiters.toString(),
                         ],
                       ),
-                      style: TextStyle(
-                        fontSize: context.fontSizeSm,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),

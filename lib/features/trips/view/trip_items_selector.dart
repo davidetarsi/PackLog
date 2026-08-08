@@ -336,9 +336,8 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             SizedBox(height: context.spacingMd),
             Text(
               'trips.select_house_to_view_items'.tr(),
-              style: TextStyle(
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: colorScheme.onSurface.withValues(alpha: 0.38),
-                fontSize: context.fontSizeMd,
               ),
               textAlign: TextAlign.center,
             ),
@@ -370,9 +369,8 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
                   : 'common.no_items_in_category'.tr(
                       namedArgs: {'category': _selectedCategory!.displayName},
                     ),
-              style: TextStyle(
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: colorScheme.onSurface.withValues(alpha: 0.38),
-                fontSize: context.fontSizeMd,
               ),
               textAlign: TextAlign.center,
             ),
@@ -404,9 +402,8 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               SizedBox(height: context.spacingMd),
               Text(
                 'trips.select_house_to_view_items'.tr(),
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurface.withValues(alpha: 0.38),
-                  fontSize: context.fontSizeMd,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -443,9 +440,8 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
                     : 'common.no_items_in_category'.tr(
                         namedArgs: {'category': _selectedCategory!.displayName},
                       ),
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurface.withValues(alpha: 0.38),
-                  fontSize: context.fontSizeMd,
                 ),
                 textAlign: TextAlign.center,
               ),

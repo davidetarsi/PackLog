@@ -47,9 +47,7 @@ class LanguageTile extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: TextStyle(
-                  fontSize: context.fontSizeSm,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: isSelected ? colorScheme.primary : null,
                 ),
               ),

@@ -329,8 +329,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                   SizedBox(width: context.spacingXs),
                   Text(
                     '(${luggage.effectiveVolumeLiters ?? 0}L)',
-                    style: TextStyle(
-                      fontSize: context.fontSizeXs,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: isSelected
                           ? colorScheme.onPrimaryContainer
                           : colorScheme.onSurfaceVariant,

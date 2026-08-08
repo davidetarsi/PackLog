@@ -253,11 +253,9 @@ class _MonthView extends StatelessWidget {
             padding: EdgeInsets.only(bottom: context.spacingMd),
             child: Text(
               DateFormat.yMMMM(locale).format(month),
-              style: TextStyle(
-                fontSize: context.fontSizeLg,
-                fontWeight: FontWeight.w700,
-                color: cs.onSurface,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(color: cs.onSurface),
             ),
           ),
 
@@ -308,11 +306,9 @@ class _WeekdayHeader extends StatelessWidget {
               child: Center(
                 child: Text(
                   label,
-                  style: TextStyle(
-                    fontSize: context.fontSizeXxs,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ),
             ),
@@ -502,8 +498,8 @@ class _DayCell extends StatelessWidget {
             // ── Numero del giorno ──────────────────────────────────────
             Text(
               '${date.day}',
-              style: TextStyle(
-                fontSize: context.fontSizeXs,
+              // Il peso condizionale resta: distingue il giorno scelto.
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
                 color: textColor,
               ),

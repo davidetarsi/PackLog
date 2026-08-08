@@ -92,17 +92,13 @@ class _ContentSlideState extends State<ContentSlide> {
           SizedBox(height: context.spacingLg),
           Text(
             widget.titleKey.tr(),
-            style: TextStyle(
-              fontSize: context.fontSizeLg,
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(context).textTheme.titleLarge,
             textAlign: TextAlign.center,
           ),
           SizedBox(height: context.spacingMd),
           Text(
             widget.descriptionKey.tr(),
-            style: TextStyle(
-              fontSize: context.fontSizeSm,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,

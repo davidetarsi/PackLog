@@ -376,9 +376,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
                   if (subtitle != null)
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        fontSize: context.fontSizeXxs,
-                        fontWeight: FontWeight.w600,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),

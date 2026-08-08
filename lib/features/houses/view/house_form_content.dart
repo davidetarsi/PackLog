@@ -163,10 +163,9 @@ class HouseFormContentState extends ConsumerState<HouseFormContent> {
             alignment: Alignment.centerLeft,
             child: Text(
               'common.icon'.tr(),
-              style: TextStyle(
-                fontSize: context.fontSizeSm,
-                fontWeight: FontWeight.w500,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),

@@ -209,8 +209,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _isLoading
                           ? 'common.loading'.tr()
                           : 'login.sign_in_google'.tr(),
-                      style: TextStyle(
-                        fontSize: context.fontSizeSm,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
                     ),

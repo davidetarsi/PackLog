@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../model/item_model.dart';
 import '../../../shared/constants/app_constants.dart';
-import '../../../shared/theme/app_spacing.dart';
 
 enum CategoryPillState { inactive, inferred, forced }
 
@@ -58,12 +57,9 @@ class CategoryPill extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               _labelForCategory(category),
-              style: TextStyle(
-                fontSize: context.fontSizeXs,
-                fontWeight: FontWeight
-                    .w600, // 14px selected → w500 base + 1 livello selezionato
-                color: foregroundColor,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(color: foregroundColor),
             ),
           ],
         ),

@@ -364,10 +364,7 @@ class _ErrorScreen extends StatelessWidget {
             AppSpacing.gapMd,
             Text(
               message,
-              style: TextStyle(
-                fontSize: context.fontSizeMd,
-                fontWeight: FontWeight.w700,
-              ),
+              style: Theme.of(context).textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
             AppSpacing.gapMd,

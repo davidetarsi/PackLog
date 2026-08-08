@@ -200,10 +200,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                             sliver: SliverToBoxAdapter(
                               child: Text(
                                 'common.at_house'.tr(),
-                                style: TextStyle(
-                                  fontSize: context.fontSizeLg,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                                style: Theme.of(context).textTheme.titleLarge,
                               ),
                             ),
                           ),

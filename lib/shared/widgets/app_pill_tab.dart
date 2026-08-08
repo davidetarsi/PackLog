@@ -272,11 +272,7 @@ class _RawPillTabState extends State<_RawPillTab>
                 ],
                 Text(
                   widget.label,
-                  style: TextStyle(
-                    fontSize: context.fontSizeXs,
-                    fontWeight: widget.isSelected
-                        ? FontWeight.w600
-                        : FontWeight.normal,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: textColor,
                     height: 1.0,
                   ),

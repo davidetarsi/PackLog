@@ -2,7 +2,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DsQuantityBadge
@@ -56,9 +55,7 @@ class DsQuantityBadge extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(
-          fontSize: AppSpacing.fontXxs,
-          fontWeight: FontWeight.w600, // 12px badge → w600
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
         ),
       ),
@@ -165,11 +162,7 @@ class DsStatusBadge extends StatelessWidget {
           ],
           Text(
             label,
-            style: TextStyle(
-              fontSize: AppSpacing.fontXxs,
-              fontWeight: FontWeight.w600, // 12px badge → w600
-              color: fg,
-            ),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: fg),
           ),
         ],
       ),
@@ -208,10 +201,9 @@ class DsInfoBadge extends StatelessWidget {
         Flexible(
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: AppSpacing.fontSm,
-              fontWeight: FontWeight.w500,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

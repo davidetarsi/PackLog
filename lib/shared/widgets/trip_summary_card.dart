@@ -53,10 +53,7 @@ class TripSummaryCard extends ConsumerWidget {
               Expanded(
                 child: Text(
                   trip.name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600, // ~24px → w600
-                    fontSize: context.fontSizeTitle,
-                  ),
+                  style: Theme.of(context).textTheme.headlineSmall,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -89,8 +86,7 @@ class TripSummaryCard extends ConsumerWidget {
                     //percentageInt.toString(),
                   ],
                 ),
-                style: TextStyle(
-                  fontSize: context.fontSizeSm,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),

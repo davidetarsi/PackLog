@@ -58,10 +58,7 @@ class TripCardHero extends ConsumerWidget {
               Expanded(
                 child: Text(
                   displayDestination,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600, // ≥24px → w600
-                    fontSize: context.fontSizeTitle,
-                  ),
+                  style: Theme.of(context).textTheme.headlineSmall,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -197,10 +194,7 @@ class TripCardCompact extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       displayDestination,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700, // 18px → w700
-                        fontSize: context.fontSizeMd,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -220,10 +214,9 @@ class TripCardCompact extends ConsumerWidget {
                 SizedBox(height: context.spacingXs),
                 Text(
                   trip.description!,
-                  style: TextStyle(
-                    fontSize: context.fontSizeXs,
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -265,10 +258,9 @@ class _TripProgress extends StatelessWidget {
       children: [
         Text(
           '${trip.completedCount}/${trip.totalCount}',
-          style: TextStyle(
-            fontSize: context.fontSizeXs,
-            color: context.textTertiary,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: context.textTertiary),
         ),
         SizedBox(height: context.spacingXs),
         LinearProgressIndicator(
@@ -324,8 +316,7 @@ class _TripItemPreview extends StatelessWidget {
                 Expanded(
                   child: Text(
                     item.name,
-                    style: TextStyle(
-                      fontSize: context.fontSizeXs,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       decoration: item.isChecked
                           ? TextDecoration.lineThrough
                           : null,
@@ -349,8 +340,7 @@ class _TripItemPreview extends StatelessWidget {
               'trips.more_items'.tr(
                 args: [(trip.items.length - maxPreviewItems).toString()],
               ),
-              style: TextStyle(
-                fontSize: context.fontSizeXs,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: context.textTertiary,
                 fontStyle: FontStyle.italic,
               ),

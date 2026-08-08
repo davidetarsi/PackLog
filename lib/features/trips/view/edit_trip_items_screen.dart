@@ -125,9 +125,7 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
                 'common.items_count'.tr(
                   args: [_selectedItems.length.toString()],
                 ),
-                style: TextStyle(
-                  fontSize: context.fontSizeXs,
-                  fontWeight: FontWeight.w600,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: colorScheme.onPrimaryContainer,
                 ),
               ),
