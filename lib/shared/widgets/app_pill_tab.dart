@@ -219,16 +219,26 @@ class _RawPillTabState extends State<_RawPillTab>
     final effectiveVerticalPadding =
         widget.verticalPadding ?? context.spacingSm;
 
+    // Pill selezionata: fill tenue dell'accento, bordo e testo pieni.
+    // Prima era fill pieno + testo onPrimary, cioè un blocco arancione solido
+    // ripetuto in cima a ogni schermata.
+    final accent = widget.selectedColor ?? colorScheme.primary;
+
     final backgroundColor = widget.isSelected
-        ? (widget.selectedColor ?? colorScheme.primary)
+        ? accent.withValues(alpha: 0.14)
         : (widget.unselectedColor ?? Colors.transparent);
 
-    final borderColor = widget.isSelected
-        ? (widget.selectedColor ?? colorScheme.primary)
-        : colorScheme.outlineVariant;
+    final borderColor = widget.isSelected ? accent : colorScheme.outlineVariant;
 
+    // In dark l'accento su un suo fill al 14% dà ~6.2:1, sopra AA.
+    // In light lo stesso accostamento scende a ~2.9:1 (l'arancione brand è
+    // troppo chiaro per fare testo su fondo chiaro), quindi il testo passa
+    // alla tinta scura della stessa famiglia: stessa idea, direzione tonale
+    // che il tema chiaro impone.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = widget.isSelected
-        ? (widget.selectedTextColor ?? colorScheme.onPrimary)
+        ? (widget.selectedTextColor ??
+              (isDark ? accent : colorScheme.onPrimaryContainer))
         : (widget.unselectedTextColor ?? colorScheme.onSurfaceVariant);
 
     return ScaleTransition(

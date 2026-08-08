@@ -468,18 +468,10 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
 
     return UniversalItemTile(
       useListTile: false,
-      // Riquadro e sfondo solo sulla riga scelta. Prima il bordo c'era su
-      // tutte: su quelle non selezionate era outlineVariant, cioè decorazione
-      // che non segnalava nulla — e impediva a UniversalItemTile di rendere la
-      // riga piatta. Passando null, le righe non scelte diventano piatte come
-      // in casa e viaggio, e la selezione resta l'unica cosa che spicca.
-      backgroundColor: isSelected
-          ? colorScheme.primary.withValues(alpha: 0.08) // state layer hover
-          : null,
-      borderColor: isSelected ? colorScheme.primary : null,
-      borderWidth: 2,
-      // Margine esplicito a zero: senza, selezionare una riga le aggiungerebbe
-      // il margine di default della Card e la lista scatterebbe.
+      // Nessun riquadro né sfondo, nemmeno da selezionata: lo stato lo porta
+      // solo il controllo a destra — checkbox piena per gli oggetti singoli,
+      // stepper con accento per quelli a quantità multipla. Tutte le righe
+      // restano quindi piatte come in casa e viaggio.
       margin: EdgeInsets.zero,
       contentPadding: EdgeInsets.all(context.spacingSm),
       // L'icona è già colorata in primary: il box grigio dietro era
