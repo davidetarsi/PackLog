@@ -64,6 +64,18 @@ class UniversalItemTile extends StatelessWidget {
   /// Margin esterno (default: bottom spacingSm)
   final EdgeInsets? margin;
 
+  /// Se true (default) la tile è una **riga piatta con divisore inferiore**
+  /// invece di una Card con sfondo e margine.
+  ///
+  /// In una lista fitta la Card ripetuta produce venti rettangoli staccati per
+  /// schermata: peso visivo senza informazione. La riga piatta lascia al nome
+  /// dell'oggetto l'unico accento.
+  ///
+  /// **Non si applica** quando il chiamante passa [borderColor]: in quel caso
+  /// il bordo è semantico (selezione in `TripItemsSelector`, riquadro in
+  /// `BulkItemRow`) e la tile resta un contenitore riquadrato.
+  final bool dense;
+
   const UniversalItemTile({
     super.key,
     this.leading,
@@ -79,7 +91,12 @@ class UniversalItemTile extends StatelessWidget {
     this.useListTile = true,
     this.contentPadding,
     this.margin,
+    this.dense = true,
   });
+
+  /// La riga piatta vale solo senza bordo esplicito: con [borderColor] il
+  /// riquadro porta significato e va preservato.
+  bool get _isFlatRow => dense && borderColor == null;
 
   @override
   Widget build(BuildContext context) {
@@ -89,25 +106,49 @@ class UniversalItemTile extends StatelessWidget {
         ? _buildListTileLayout(context)
         : _buildCustomRowLayout(context);
 
-    Widget tile = Card(
-      elevation: 0,
-      shadowColor: Colors.transparent,
-      margin: margin ?? EdgeInsets.only(bottom: context.spacingSm),
-      color: backgroundColor,
-      shape: borderColor != null
-          ? RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                AppConstants.cardBorderRadius,
-              ),
-              side: BorderSide(color: borderColor!, width: borderWidth ?? 1.0),
-            )
-          : RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                AppConstants.cardBorderRadius,
-              ),
+    Widget tile;
+
+    if (_isFlatRow) {
+      // Il divisore sta fuori dal Material perché l'ink dell'InkWell non lo
+      // copra durante il tap.
+      tile = Padding(
+        padding: margin ?? EdgeInsets.zero,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: colorScheme.outlineVariant),
             ),
-      child: cardChild,
-    );
+          ),
+          child: Material(
+            color: backgroundColor ?? Colors.transparent,
+            child: cardChild,
+          ),
+        ),
+      );
+    } else {
+      tile = Card(
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        margin: margin ?? EdgeInsets.only(bottom: context.spacingSm),
+        color: backgroundColor,
+        shape: borderColor != null
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  AppConstants.cardBorderRadius,
+                ),
+                side: BorderSide(
+                  color: borderColor!,
+                  width: borderWidth ?? 1.0,
+                ),
+              )
+            : RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  AppConstants.cardBorderRadius,
+                ),
+              ),
+        child: cardChild,
+      );
+    }
 
     // Aggiungi overlay se richiesto
     if (showInTransitOverlay) {
@@ -130,6 +171,10 @@ class UniversalItemTile extends StatelessWidget {
     return tile;
   }
 
+  /// Altezza minima di una riga piatta. Sotto i 48 si scende sotto il target
+  /// di tocco raccomandato; sopra, la lista torna a respirare troppo.
+  static const double _flatRowMinHeight = 48;
+
   /// Layout standard usando ListTile (ItemCard, InTransitItemCard)
   Widget _buildListTileLayout(BuildContext context) {
     return ListTile(
@@ -139,6 +184,10 @@ class UniversalItemTile extends StatelessWidget {
       title: title,
       subtitle: subtitle,
       trailing: trailing,
+      // Un minimo esplicito tiene uniformi le righe con e senza subtitle:
+      // senza, la lista prende un ritmo irregolare quando il sottotitolo
+      // compare solo su alcuni item.
+      minTileHeight: _isFlatRow ? _flatRowMinHeight : null,
       contentPadding:
           contentPadding ??
           EdgeInsets.symmetric(horizontal: context.spacingMd, vertical: 0),
@@ -147,7 +196,7 @@ class UniversalItemTile extends StatelessWidget {
 
   /// Layout personalizzato usando Row (BulkItemRow, TripItemSelector)
   Widget _buildCustomRowLayout(BuildContext context) {
-    return Padding(
+    final row = Padding(
       padding:
           contentPadding ??
           EdgeInsets.symmetric(
@@ -179,6 +228,14 @@ class UniversalItemTile extends StatelessWidget {
           ],
         ],
       ),
+    );
+
+    // Stessa ragione del minTileHeight: righe con e senza subtitle devono
+    // partire dalla stessa altezza. Vale anche col bordo esplicito, dove il
+    // subtitle condizionale del selettore oggetti è la fonte dell'irregolarità.
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _flatRowMinHeight),
+      child: Align(alignment: Alignment.centerLeft, child: row),
     );
   }
 }

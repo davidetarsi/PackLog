@@ -38,6 +38,13 @@ class DsQuantityBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
+    // "x1" su un oggetto singolo non informa: è il caso implicito, e ripetuto
+    // su ogni riga diventa la voce più frequente della schermata. Il badge
+    // compare solo quando la quantità dice qualcosa — più di uno, oppure una
+    // frazione rispetto a un massimo.
+    if (current == 1 && max == null) return const SizedBox.shrink();
+
     final showPartial = max != null && current > 0 && current < max!;
     final text = showPartial ? 'x$current/$max' : 'x$current';
 

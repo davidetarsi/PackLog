@@ -101,7 +101,9 @@ void main() {
       expect(longPressed, true);
     });
 
-    testWidgets('applies custom backgroundColor', (tester) async {
+    testWidgets('applies custom backgroundColor in flat row mode', (
+      tester,
+    ) async {
       // Arrange
       const customColor = Colors.red;
 
@@ -116,9 +118,79 @@ void main() {
         ),
       );
 
+      // Assert: in modalità dense il colore vive sul Material, non su una Card
+      expect(find.byType(Card), findsNothing);
+      final material = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byType(UniversalItemTile),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(material.color, equals(customColor));
+    });
+
+    testWidgets('applies custom backgroundColor in card mode', (tester) async {
+      // Arrange
+      const customColor = Colors.red;
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: UniversalItemTile(
+              title: Text('Colored Item'),
+              backgroundColor: customColor,
+              dense: false,
+            ),
+          ),
+        ),
+      );
+
       // Assert
       final card = tester.widget<Card>(find.byType(Card));
       expect(card.color, equals(customColor));
+    });
+
+    testWidgets('dense row has no Card but a bottom divider', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: UniversalItemTile(title: Text('Flat Item'))),
+        ),
+      );
+
+      expect(find.byType(Card), findsNothing);
+
+      final decorated = tester.widget<DecoratedBox>(
+        find
+            .descendant(
+              of: find.byType(UniversalItemTile),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      final border = (decorated.decoration as BoxDecoration).border as Border;
+      expect(border.bottom.style, BorderStyle.solid);
+      expect(border.top, BorderSide.none);
+    });
+
+    testWidgets('borderColor forces the boxed layout even when dense', (
+      tester,
+    ) async {
+      // Il bordo è semantico (selezione, riquadro bulk): dense non deve
+      // mangiarselo.
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: UniversalItemTile(
+              title: Text('Bordered Item'),
+              borderColor: Colors.blue,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(Card), findsOneWidget);
     });
 
     testWidgets('shows border when borderColor is provided', (tester) async {
@@ -250,7 +322,28 @@ void main() {
       expect(listTile.contentPadding, equals(customPadding));
     });
 
-    testWidgets('applies custom margin', (tester) async {
+    testWidgets('applies custom margin in card mode', (tester) async {
+      // Arrange
+      const customMargin = EdgeInsets.all(16);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: UniversalItemTile(
+              title: Text('Margined Item'),
+              margin: customMargin,
+              dense: false,
+            ),
+          ),
+        ),
+      );
+
+      // Assert
+      final card = tester.widget<Card>(find.byType(Card));
+      expect(card.margin, equals(customMargin));
+    });
+
+    testWidgets('applies custom margin in flat row mode', (tester) async {
       // Arrange
       const customMargin = EdgeInsets.all(16);
 
@@ -265,9 +358,16 @@ void main() {
         ),
       );
 
-      // Assert
-      final card = tester.widget<Card>(find.byType(Card));
-      expect(card.margin, equals(customMargin));
+      // Assert: senza Card il margine diventa il padding esterno della riga
+      final padding = tester.widget<Padding>(
+        find
+            .descendant(
+              of: find.byType(UniversalItemTile),
+              matching: find.byType(Padding),
+            )
+            .first,
+      );
+      expect(padding.padding, equals(customMargin));
     });
 
     testWidgets('handles TextField as title in Row mode', (tester) async {

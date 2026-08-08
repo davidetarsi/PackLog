@@ -119,13 +119,7 @@ class ItemCard extends ConsumerWidget {
       subtitle: subtitle,
       trailing: isSelectionActive
           ? null
-          : Text(
-              'x$totalQuantity',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
+          : DsQuantityBadge(current: totalQuantity),
       // In selection mode: tap tutta la card per selezionare/deselezionare.
       // In normal mode: tap apre l'edit sheet.
       onTap: isSelectionActive

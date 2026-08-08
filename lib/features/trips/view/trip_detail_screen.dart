@@ -8,7 +8,7 @@ import '../model/trip_model.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../items/model/item_model.dart';
 import '../../../shared/theme/theme.dart';
-import '../../../shared/constants/app_constants.dart';
+import '../../../shared/widgets/ds_badge.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/trip_info_badges.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
@@ -269,23 +269,7 @@ class _TripItemCard extends ConsumerWidget {
           color: colorScheme.onSurfaceVariant,
         ),
       ), */
-      trailing: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.spacingSm,
-          vertical: context.spacingXs,
-        ),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppConstants.badgeBorderRadius),
-        ),
-        child: Text(
-          'x${item.quantity}',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.w600, // bodySmall ≈ 12px → w600
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ),
+      trailing: DsQuantityBadge(current: item.quantity),
     );
   }
 }
