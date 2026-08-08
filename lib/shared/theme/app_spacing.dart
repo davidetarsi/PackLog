@@ -100,14 +100,23 @@ extension ResponsiveSpacing on BuildContext {
     return scale.clamp(minScale, maxScale);
   }
 
-  /// Fattore di scala per font (più conservativo)
-  double get fontScaleFactor {
-    const baseWidth = 375.0;
-    const minScale = 0.9;
-    const maxScale = 1.15;
-    final scale = screenWidth / baseWidth;
-    return scale.clamp(minScale, maxScale);
-  }
+  /// Fattore di scala per font. Costante 1.0: i token font NON scalano con la
+  /// larghezza dello schermo.
+  ///
+  /// Perché è stato disattivato (era `clamp(0.9, 1.15)` su `screenWidth/375`):
+  /// 1. **Accessibilità**: il floor a 0.9 *rimpiccioliva* il testo sui telefoni
+  ///    stretti (≤ 337dp), cioè proprio dove leggere è più difficile. La scala
+  ///    per larghezza può al più ingrandire, mai ridurre.
+  /// 2. **Coerenza con il textTheme**: `ThemeData` si costruisce senza
+  ///    `BuildContext`, quindi `textTheme` non può essere scalato. Tenere i
+  ///    getter `fontSize*` scalati avrebbe fatto divergere i due binari fino
+  ///    all'8% a seconda del device — lo stesso doppio binario che il
+  ///    textTheme esplicito serve a eliminare.
+  /// 3. La dimensione del testo è una preferenza dell'utente, non del device:
+  ///    ci pensa già `MediaQuery.textScaler` (mai sovrascritto in questa app).
+  ///
+  /// I token in [AppSpacing] valgono quindi esattamente il numero che dichiarano.
+  double get fontScaleFactor => 1.0;
 
   // === Spaziature responsive ===
 
