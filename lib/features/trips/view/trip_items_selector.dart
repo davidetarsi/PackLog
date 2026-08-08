@@ -476,29 +476,36 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
           : colorScheme.outlineVariant,
       borderWidth: isSelected ? 2 : 1,
       contentPadding: EdgeInsets.all(context.spacingSm),
+      // 36 e non 44: l'icona resta a 24 (standard M3 per il leading di lista),
+      // si stringe solo la decorazione intorno.
       leading: Container(
-        width: 44,
-        height: 44,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest,
           borderRadius: context.responsiveBorderRadius(12),
         ),
         child: Icon(item.category.icon, color: colorScheme.primary),
       ),
+      // Stesso stile del nome oggetto in ItemCard e in TripDetailScreen: era
+      // 18/w700 contro il loro 14/w500, cioè lo stesso dato con due pesi
+      // diversi a seconda della schermata.
       title: Text(
         item.name,
-        style: TextStyle(
-          fontSize: context.fontSizeMd,
-          fontWeight: FontWeight.w700, // 18px → w700
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
       ),
-      subtitle: Text(
-        'common.available_quantity'.tr(args: [maxQuantity.toString()]),
-        style: TextStyle(
-          fontSize: context.fontSizeSm,
-          color: colorScheme.onSurfaceVariant,
-        ),
-      ),
+      // "Disponibili: 1" sotto ogni riga non informa: la disponibilità si
+      // mostra solo quando è diversa dal caso implicito.
+      subtitle: maxQuantity == 1
+          ? null
+          : Text(
+              'common.available_quantity'.tr(args: [maxQuantity.toString()]),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
       trailing: maxQuantity == 1
           // Checkbox per quantità singola
           ? Checkbox(
