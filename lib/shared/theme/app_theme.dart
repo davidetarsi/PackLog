@@ -114,6 +114,71 @@ class AppTheme {
       colorScheme: colorScheme,
       fontFamily: fontFamily,
 
+      // === Text Theme ===
+      // Fonte di verità unica per la tipografia. Prima era assente: i ~66 usi
+      // di Theme.of(context).textTheme cadevano sui default Material 2021,
+      // mentre i token AppSpacing.font* viaggiavano su un binario separato —
+      // due testi con lo stesso ruolo potevano differire di 5px fra schermate.
+      //
+      // Qui si dichiarano solo fontSize e fontWeight: ThemeData fa il merge di
+      // questi stili sopra la baseline Material 2021, quindi letterSpacing,
+      // height e i colori per brightness restano quelli nativi di M3.
+      textTheme: const TextTheme(
+        // ── Headline ────────────────────────────────────────────────────────
+        headlineLarge: TextStyle(
+          fontSize: AppSpacing.fontHeading, // 28
+          fontWeight: FontWeight.w600,
+        ),
+        headlineSmall: TextStyle(
+          fontSize: AppSpacing.fontTitle, // 24
+          fontWeight: FontWeight.w600,
+        ),
+        // ── Title ───────────────────────────────────────────────────────────
+        // titleLarge 22 → 20: leva principale dello snellimento, allineata
+        // all'appBarTheme qui sotto.
+        titleLarge: TextStyle(
+          fontSize: AppSpacing.fontLg, // 20
+          fontWeight: FontWeight.w600,
+        ),
+        titleMedium: TextStyle(
+          fontSize: AppSpacing.fontSm, // 16
+          fontWeight: FontWeight.w600,
+        ),
+        titleSmall: TextStyle(
+          fontSize: AppSpacing.fontXs, // 14
+          fontWeight: FontWeight.w600,
+        ),
+        // ── Body ────────────────────────────────────────────────────────────
+        bodyLarge: TextStyle(
+          fontSize: AppSpacing.fontSm, // 16
+          fontWeight: FontWeight.w400,
+        ),
+        // bodyMedium è il nome dell'oggetto: contenuto primario, resta a 14.
+        bodyMedium: TextStyle(
+          fontSize: AppSpacing.fontXs, // 14
+          fontWeight: FontWeight.w400,
+        ),
+        bodySmall: TextStyle(
+          fontSize: AppSpacing.fontXxs, // 12
+          fontWeight: FontWeight.w400,
+        ),
+        // ── Label ───────────────────────────────────────────────────────────
+        labelLarge: TextStyle(
+          fontSize: AppSpacing.fontXs, // 14
+          fontWeight: FontWeight.w500,
+        ),
+        labelMedium: TextStyle(
+          fontSize: AppSpacing.fontXxs, // 12
+          fontWeight: FontWeight.w500,
+        ),
+        // M3 mette labelSmall a 11: sotto il floor dichiarato da AppSpacing.
+        // Portato a 12 per non avere testo sotto il minimo dell'app.
+        labelSmall: TextStyle(
+          fontSize: AppSpacing.fontXxs, // 12
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+
       // === Card Theme ===
       cardTheme: CardThemeData(
         elevation: 2,
@@ -204,11 +269,12 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
-        // ≥ 24px → w600 (regola DS size→weight Fase 3)
+        // Allineato a textTheme.titleLarge: il titolo dell'AppBar e i titoli
+        // di sezione devono pesare uguale.
         titleTextStyle: TextStyle(
           fontWeight: FontWeight.w600,
           color: colorScheme.onSurface,
-          fontSize: AppSpacing.fontTitle,
+          fontSize: AppSpacing.fontLg, // 20
         ),
       ),
 

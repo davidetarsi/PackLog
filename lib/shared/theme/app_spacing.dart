@@ -19,8 +19,16 @@ class AppSpacing {
 
   // === Font size base ===
   // Floor: fontXxs = 12px. Mai scendere sotto.
-  // Regola size → weight (DS Fase 3):
-  //   ≥ 24px → w600 | 18–22px → w700 | 14–16px → w500 | 12–13px → w600 | body → w400
+  //
+  // La fonte di verità per la tipografia è il `textTheme` in app_theme.dart:
+  // preferisci `Theme.of(context).textTheme.<slot>` a questi token grezzi.
+  // I token restano per i casi che nessuno slot copre (icone, emoji hero) e
+  // sono i valori su cui il textTheme è costruito.
+  //
+  // Regola size → weight allineata al textTheme:
+  //   headline/title → w600 | label → w500 (w600 sui badge a 12px) | body → w400
+  // Sostituisce la regola "DS Fase 3" (18–22px → w700, 14–16px → w500): il w700
+  // sui titoli a 20px era una delle cause del peso visivo che stiamo togliendo.
   static const double fontXxs =
       12; // Floor assoluto: badge, micro-label, timestamp
   static const double fontXs = 14;
