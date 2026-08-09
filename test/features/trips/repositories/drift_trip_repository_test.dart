@@ -5,6 +5,7 @@ import 'package:pack_log/core/database/exceptions/database_exceptions.dart';
 import 'package:pack_log/core/database/services/database_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
+import 'package:pack_log/features/trips/model/trip_leg.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart' as model;
 import 'package:pack_log/features/trips/repositories/drift_trip_repository.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
@@ -828,5 +829,46 @@ void main() {
         expect(fetchedTrip.name, equals('Empty Trip'));
       },
     );
+  });
+
+  group('DriftTripRepository — tappe', () {
+    test('le tappe sopravvivono al salvataggio e alla rilettura', () async {
+      final trip = model.TripModel(
+        id: 'trip-legs-1',
+        name: 'Toscana',
+        legs: [
+          TripLeg(
+            id: 'leg-1',
+            locationDisplayName: 'Firenze',
+            from: DateTime(2026, 9, 13),
+          ),
+        ],
+        createdAt: DateTime(2026, 9, 1),
+        updatedAt: DateTime(2026, 9, 1),
+      );
+
+      await repository.addTrip(trip);
+      final loaded = await repository.getTripById('trip-legs-1');
+
+      expect(loaded.legs, hasLength(1));
+      expect(loaded.legs.first.locationDisplayName, 'Firenze');
+      expect(loaded.legs.first.from, DateTime(2026, 9, 13));
+    });
+
+    test('un viaggio senza tappe scrive [], non null', () async {
+      // Se scrivessimo null, il push manderebbe "nessuna informazione" e la
+      // rimozione delle tappe non arriverebbe mai agli altri device.
+      final trip = model.TripModel(
+        id: 'trip-legs-2',
+        name: 'Weekend',
+        createdAt: DateTime(2026, 9, 1),
+        updatedAt: DateTime(2026, 9, 1),
+      );
+
+      await repository.addTrip(trip);
+      final row = await database.tripsDao.findTripById('trip-legs-2');
+
+      expect(row!.legs, '[]');
+    });
   });
 }

@@ -325,6 +325,9 @@ mixin _$TripModel {
   /// Bagagli associati al viaggio (relazione M:N via junction table)
   List<LuggageModel> get luggages => throw _privateConstructorUsedError;
 
+  /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
+  List<TripLeg> get legs => throw _privateConstructorUsedError;
+
   /// Viaggio salvato/preferito
   bool get isSaved => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -355,6 +358,7 @@ abstract class $TripModelCopyWith<$Res> {
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
     List<LuggageModel> luggages,
+    List<TripLeg> legs,
     bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
@@ -387,6 +391,7 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
     Object? destinationHouseId = freezed,
     Object? destinationLocation = freezed,
     Object? luggages = null,
+    Object? legs = null,
     Object? isSaved = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -429,6 +434,10 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
                 ? _value.luggages
                 : luggages // ignore: cast_nullable_to_non_nullable
                       as List<LuggageModel>,
+            legs: null == legs
+                ? _value.legs
+                : legs // ignore: cast_nullable_to_non_nullable
+                      as List<TripLeg>,
             isSaved: null == isSaved
                 ? _value.isSaved
                 : isSaved // ignore: cast_nullable_to_non_nullable
@@ -482,6 +491,7 @@ abstract class _$$TripModelImplCopyWith<$Res>
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
     List<LuggageModel> luggages,
+    List<TripLeg> legs,
     bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
@@ -514,6 +524,7 @@ class __$$TripModelImplCopyWithImpl<$Res>
     Object? destinationHouseId = freezed,
     Object? destinationLocation = freezed,
     Object? luggages = null,
+    Object? legs = null,
     Object? isSaved = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -556,6 +567,10 @@ class __$$TripModelImplCopyWithImpl<$Res>
             ? _value._luggages
             : luggages // ignore: cast_nullable_to_non_nullable
                   as List<LuggageModel>,
+        legs: null == legs
+            ? _value._legs
+            : legs // ignore: cast_nullable_to_non_nullable
+                  as List<TripLeg>,
         isSaved: null == isSaved
             ? _value.isSaved
             : isSaved // ignore: cast_nullable_to_non_nullable
@@ -586,11 +601,13 @@ class _$TripModelImpl extends _TripModel {
     this.destinationHouseId,
     this.destinationLocation,
     final List<LuggageModel> luggages = const [],
+    final List<TripLeg> legs = const [],
     this.isSaved = false,
     required this.createdAt,
     required this.updatedAt,
   }) : _items = items,
        _luggages = luggages,
+       _legs = legs,
        super._();
 
   factory _$TripModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -640,6 +657,18 @@ class _$TripModelImpl extends _TripModel {
     return EqualUnmodifiableListView(_luggages);
   }
 
+  /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
+  final List<TripLeg> _legs;
+
+  /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
+  @override
+  @JsonKey()
+  List<TripLeg> get legs {
+    if (_legs is EqualUnmodifiableListView) return _legs;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_legs);
+  }
+
   /// Viaggio salvato/preferito
   @override
   @JsonKey()
@@ -651,7 +680,7 @@ class _$TripModelImpl extends _TripModel {
 
   @override
   String toString() {
-    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocation: $destinationLocation, luggages: $luggages, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocation: $destinationLocation, luggages: $luggages, legs: $legs, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -673,6 +702,7 @@ class _$TripModelImpl extends _TripModel {
             (identical(other.destinationLocation, destinationLocation) ||
                 other.destinationLocation == destinationLocation) &&
             const DeepCollectionEquality().equals(other._luggages, _luggages) &&
+            const DeepCollectionEquality().equals(other._legs, _legs) &&
             (identical(other.isSaved, isSaved) || other.isSaved == isSaved) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
@@ -693,6 +723,7 @@ class _$TripModelImpl extends _TripModel {
     destinationHouseId,
     destinationLocation,
     const DeepCollectionEquality().hash(_luggages),
+    const DeepCollectionEquality().hash(_legs),
     isSaved,
     createdAt,
     updatedAt,
@@ -723,6 +754,7 @@ abstract class _TripModel extends TripModel {
     final String? destinationHouseId,
     final LocationSuggestionModel? destinationLocation,
     final List<LuggageModel> luggages,
+    final List<TripLeg> legs,
     final bool isSaved,
     required final DateTime createdAt,
     required final DateTime updatedAt,
@@ -761,6 +793,10 @@ abstract class _TripModel extends TripModel {
   /// Bagagli associati al viaggio (relazione M:N via junction table)
   @override
   List<LuggageModel> get luggages;
+
+  /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
+  @override
+  List<TripLeg> get legs;
 
   /// Viaggio salvato/preferito
   @override

@@ -4,6 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../items/model/item_model.dart';
 import '../../luggages/model/luggage_model.dart';
+import 'trip_leg.dart';
 
 part 'trip_model.freezed.dart';
 part 'trip_model.g.dart';
@@ -66,6 +67,9 @@ class TripModel with _$TripModel {
 
     /// Bagagli associati al viaggio (relazione M:N via junction table)
     @Default([]) List<LuggageModel> luggages,
+
+    /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
+    @Default([]) List<TripLeg> legs,
 
     /// Viaggio salvato/preferito
     @Default(false) bool isSaved,

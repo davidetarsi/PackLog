@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import '../model/trip_leg.dart' as model;
 import '../model/trip_model.dart' as model;
 import 'trip_repository.dart';
 import '../../../shared/model/location_suggestion_model.dart';
@@ -331,6 +334,7 @@ class DriftTripRepository implements TripRepository {
       destinationHouseId: trip.destinationHouseId,
       destinationLocation: destinationLocation,
       luggages: luggages.map(_luggageToModel).toList(),
+      legs: _decodeLegs(trip.legs),
       isSaved: trip.isSaved,
       createdAt: trip.createdAt,
       updatedAt: trip.updatedAt,
@@ -362,6 +366,16 @@ class DriftTripRepository implements TripRepository {
     );
   }
 
+  /// `null` e `'[]'` collassano entrambi sulla lista vuota: la differenza fra
+  /// "nessuna informazione" e "nessuna tappa" serve al sync, non alla UI.
+  List<model.TripLeg> _decodeLegs(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    final decoded = jsonDecode(raw) as List<dynamic>;
+    return decoded
+        .map((e) => model.TripLeg.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   TripsCompanion _toTripCompanion(model.TripModel trip) {
     final location = trip.destinationLocation;
 
@@ -382,6 +396,9 @@ class DriftTripRepository implements TripRepository {
       locationType: Value(location?.locationType),
       locationLat: Value(location?.lat),
       locationLon: Value(location?.lon),
+      // Sempre una lista, mai null: vedi il commento sulla colonna in
+      // trips_table.dart.
+      legs: Value(jsonEncode(trip.legs.map((l) => l.toJson()).toList())),
       isSaved: Value(trip.isSaved),
       createdAt: Value(trip.createdAt),
       updatedAt: Value(trip.updatedAt),
