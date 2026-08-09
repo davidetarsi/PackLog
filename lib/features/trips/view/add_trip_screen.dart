@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../model/trip_form_validation.dart';
+import '../model/trip_leg.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import '../../luggages/providers/luggage_provider.dart';
@@ -18,6 +19,7 @@ import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import 'trip_info_form.dart';
 import 'trip_items_selector.dart';
+import 'widgets/trip_legs_section.dart';
 
 class AddTripScreen extends ConsumerStatefulWidget {
   final String? tripId;
@@ -32,6 +34,14 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
+  /// Passo del wizard. Vale solo in creazione: in modifica la schermata resta
+  /// singola, perché gli oggetti di un viaggio esistente si cambiano da
+  /// /trips/:id/edit-items.
+  int _step = 0;
+
+  /// Il wizard vale solo in creazione.
+  bool get _isWizard => widget.tripId == null;
+
   // Dati del viaggio
   String? _name;
   String? _description;
@@ -42,6 +52,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
   String? _destinationName;
   List<TripItem> _selectedItems = [];
   List<LuggageModel> _selectedLuggages = [];
+  List<TripLeg> _legs = [];
 
   @override
   void initState() {
@@ -67,12 +78,16 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
         _destinationLocation = trip.destinationLocation;
         _selectedItems = List.from(trip.items);
         _selectedLuggages = List.from(trip.luggages);
+        _legs = List.from(trip.legs);
       });
     });
   }
 
   Future<void> _saveTrip() async {
-    if (!_formKey.currentState!.validate()) return;
+    // Al passo 2 del wizard il `Form` del passo 1 non è più montato, quindi
+    // `currentState` è null: in quel caso non c'è nulla da validare qui (i
+    // campi del passo 1 sono già stati controllati prima di avanzare).
+    if (!(_formKey.currentState?.validate() ?? true)) return;
 
     // Bottone sempre attivo: un bottone spento senza spiegazione non fa
     // distinguere "manca qualcosa" da "l'app è rotta".
@@ -100,6 +115,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                   description: _description,
                   items: _selectedItems,
                   luggages: _selectedLuggages,
+                  legs: _legs,
                   departureDateTime: _departureDateTime,
                   returnDateTime: _returnDateTime,
                   destinationHouseId: _destinationHouseId,
@@ -120,6 +136,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
             description: _description,
             items: _selectedItems,
             luggages: _selectedLuggages,
+            legs: _legs,
             departureDateTime: _departureDateTime,
             returnDateTime: _returnDateTime,
             destinationHouseId: _destinationHouseId,
@@ -159,111 +176,263 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
     }
   }
 
+  /// Etichetta della CTA.
+  ///
+  /// Il conteggio compare da 1 in su: "(0)" su un bottone si legge come un
+  /// avviso, proprio dove vogliamo dire il contrario.
+  String _ctaLabel() {
+    if (!_isWizard) return 'common.save_changes'.tr();
+    if (_step == 0) return 'common.next'.tr();
+    return _selectedItems.isEmpty
+        ? 'trips.create_trip'.tr()
+        : 'trips.create_trip_with_count'.tr(
+            args: [_selectedItems.length.toString()],
+          );
+  }
+
+  Future<void> _onPrimaryPressed() async {
+    if (_isWizard && _step == 0) {
+      if (!(_formKey.currentState?.validate() ?? true)) return;
+
+      // Bottone sempre attivo: l'errore si spiega qui, non spegnendo la CTA.
+      final error = tripFormError(
+        departureDateTime: _departureDateTime,
+        returnDateTime: _returnDateTime,
+      );
+      if (error != null) {
+        AppSnackBar.showError(context, error.tr());
+        return;
+      }
+      setState(() => _step = 1);
+      return;
+    }
+    await _saveTrip();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return StickyCtaScaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.tripId != null ? 'trips.edit'.tr() : 'trips.add_new'.tr(),
+    return PopScope(
+      // Dal passo 2 il tasto indietro di sistema torna al passo 1 invece di
+      // abbandonare la creazione a metà.
+      canPop: !(_isWizard && _step == 1),
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        setState(() => _step = 0);
+      },
+      child: StickyCtaScaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.tripId != null ? 'trips.edit'.tr() : 'trips.add_new'.tr(),
+          ),
+          bottom: _isWizard
+              ? PreferredSize(
+                  // 28 e non 20: il testo bodySmall (12) più il padding basso
+                  // non ci starebbe, e la riga andrebbe in overflow.
+                  preferredSize: const Size.fromHeight(28),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: context.spacingMd,
+                      right: context.spacingMd,
+                      bottom: context.spacingSm,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: LinearProgressIndicator(
+                            value: _step == 0 ? 0.5 : 1,
+                            minHeight: 3,
+                          ),
+                        ),
+                        SizedBox(width: context.spacingSm),
+                        Text(
+                          'trips.step_of'.tr(args: ['${_step + 1}', '2']),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : null,
+        ),
+        // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
+        // StickyCtaScaffold inserisce come discendente di `body` — serve un
+        // context interno a questo subtree, non quello del metodo build
+        // esterno (che sta sopra lo scope e non lo vedrebbe mai).
+        body: Builder(
+          builder: (context) => _isWizard && _step == 1
+              ? _buildItemsStep(context)
+              : _buildInfoStep(context),
+        ),
+        bottomContent: UniversalActionBar(
+          primaryLabel: _ctaLabel(),
+          primaryIcon: _isWizard && _step == 0
+              ? Icons.arrow_forward
+              : Icons.save,
+          onPrimaryPressed: _isLoading ? null : _onPrimaryPressed,
+          isLoading: _isLoading,
         ),
       ),
-      // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
-      // StickyCtaScaffold inserisce come discendente di `body` — serve un
-      // context interno a questo subtree, non quello del metodo build
-      // esterno (che sta sopra lo scope e non lo vedrebbe mai).
-      body: Builder(
-        builder: (context) => Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.symmetric(
-              horizontal: context.spacingMd,
-              vertical: context.spacingSm,
-            ).copyWith(bottom: context.spacingSm + context.ctaReservedHeight),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TripInfoForm(
-                  initialName: _name,
-                  initialDescription: _description,
-                  initialDepartureDateTime: _departureDateTime,
-                  initialReturnDateTime: _returnDateTime,
-                  initialDestinationHouseId: _destinationHouseId,
-                  initialDestinationLocation: _destinationLocation,
-                  onChanged:
-                      ({
-                        description,
-                        departureDateTime,
-                        returnDateTime,
-                        destinationHouseId,
-                        destinationLocation,
-                        destinationName,
-                        name,
-                      }) {
-                        setState(() {
-                          _description = description;
-                          _departureDateTime = departureDateTime;
-                          _returnDateTime = returnDateTime;
-                          _destinationHouseId = destinationHouseId;
-                          _destinationLocation = destinationLocation;
-                          _destinationName = destinationName;
-                          _name = name;
-                        });
-                      },
-                ),
+    );
+  }
 
-                SizedBox(height: context.spacingLg),
-
-                // Sezione Oggetti
-                DsSectionHeader(
-                  label: 'trips.items_to_bring'.tr(),
-                  padding: EdgeInsets.zero,
-                  trailing: _SectionCount(
-                    label: 'common.items_selected'.tr(
-                      args: [_selectedItems.length.toString()],
-                    ),
-                  ),
-                ),
-                SizedBox(height: context.spacingMd),
-
-                // Lista oggetti (shrinkWrap per scroll globale)
-                TripItemsSelector(
-                  selectedItems: _selectedItems,
-                  shrinkWrap: true,
-                  onSelectionChanged: (items) {
+  /// Passo 1 (e pagina unica in modifica): dati del viaggio e tappe.
+  ///
+  /// In modifica include anche oggetti e bagagli, perché lì la schermata resta
+  /// a pagina singola.
+  Widget _buildInfoStep(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacingMd,
+          vertical: context.spacingSm,
+        ).copyWith(bottom: context.spacingSm + context.ctaReservedHeight),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TripInfoForm(
+              initialName: _name,
+              initialDescription: _description,
+              initialDepartureDateTime: _departureDateTime,
+              initialReturnDateTime: _returnDateTime,
+              initialDestinationHouseId: _destinationHouseId,
+              initialDestinationLocation: _destinationLocation,
+              onChanged:
+                  ({
+                    description,
+                    departureDateTime,
+                    returnDateTime,
+                    destinationHouseId,
+                    destinationLocation,
+                    destinationName,
+                    name,
+                  }) {
                     setState(() {
-                      _selectedItems = items;
+                      _description = description;
+                      _departureDateTime = departureDateTime;
+                      _returnDateTime = returnDateTime;
+                      _destinationHouseId = destinationHouseId;
+                      _destinationLocation = destinationLocation;
+                      _destinationName = destinationName;
+                      _name = name;
                     });
                   },
-                ),
+            ),
 
-                SizedBox(height: context.spacingLg),
+            SizedBox(height: context.spacingLg),
 
-                // Sezione Bagagli
-                DsSectionHeader(
-                  label: 'luggages.title'.tr(),
-                  padding: EdgeInsets.zero,
-                  trailing: _SectionCount(
-                    label: 'common.luggages_selected'.tr(
-                      args: [_selectedLuggages.length.toString()],
-                    ),
-                  ),
-                ),
-                SizedBox(height: context.spacingMd),
+            TripLegsSection(
+              legs: _legs,
+              onChanged: (legs) => setState(() => _legs = legs),
+            ),
 
-                _buildLuggageSelector(),
-              ],
+            if (!_isWizard) ...[
+              SizedBox(height: context.spacingLg),
+              _buildItemsAndLuggages(context),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Oggetti e bagagli dentro lo scroll della pagina singola (solo modifica).
+  Widget _buildItemsAndLuggages(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Sezione Oggetti
+        DsSectionHeader(
+          label: 'trips.items_to_bring'.tr(),
+          padding: EdgeInsets.zero,
+          trailing: _SectionCount(
+            label: 'common.items_selected'.tr(
+              args: [_selectedItems.length.toString()],
             ),
           ),
         ),
-      ),
-      bottomContent: UniversalActionBar(
-        primaryLabel: widget.tripId != null
-            ? 'common.save_changes'.tr()
-            : 'trips.create_trip'.tr(),
-        primaryIcon: Icons.save,
-        onPrimaryPressed: _isLoading ? null : _saveTrip,
-        isLoading: _isLoading,
+        SizedBox(height: context.spacingMd),
+
+        // Lista oggetti (shrinkWrap per scroll globale)
+        TripItemsSelector(
+          selectedItems: _selectedItems,
+          shrinkWrap: true,
+          onSelectionChanged: (items) {
+            setState(() {
+              _selectedItems = items;
+            });
+          },
+        ),
+
+        SizedBox(height: context.spacingLg),
+
+        // Sezione Bagagli
+        DsSectionHeader(
+          label: 'luggages.title'.tr(),
+          padding: EdgeInsets.zero,
+          trailing: _SectionCount(
+            label: 'common.luggages_selected'.tr(
+              args: [_selectedLuggages.length.toString()],
+            ),
+          ),
+        ),
+        SizedBox(height: context.spacingMd),
+
+        _buildLuggageSelector(),
+      ],
+    );
+  }
+
+  /// Passo 2 del wizard: il selettore oggetti prende tutta l'altezza libera,
+  /// così scorre per conto suo invece di allungare la pagina.
+  Widget _buildItemsStep(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacingMd,
+        vertical: context.spacingSm,
+      ).copyWith(bottom: context.ctaReservedHeight),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DsSectionHeader(
+            label: 'trips.items_to_bring'.tr(),
+            padding: EdgeInsets.zero,
+            trailing: _SectionCount(
+              label: 'common.items_selected'.tr(
+                args: [_selectedItems.length.toString()],
+              ),
+            ),
+          ),
+          SizedBox(height: context.spacingMd),
+          Expanded(
+            child: TripItemsSelector(
+              selectedItems: _selectedItems,
+              onSelectionChanged: (items) =>
+                  setState(() => _selectedItems = items),
+            ),
+          ),
+          SizedBox(height: context.spacingMd),
+          DsSectionHeader(
+            label: 'luggages.title'.tr(),
+            padding: EdgeInsets.zero,
+            trailing: _SectionCount(
+              label: 'common.luggages_selected'.tr(
+                args: [_selectedLuggages.length.toString()],
+              ),
+            ),
+          ),
+          SizedBox(height: context.spacingMd),
+          // Tetto d'altezza (non un Flexible): la Wrap dei bagagli cresce con
+          // il numero di bagagli e senza limite manderebbe la Column in
+          // overflow. Un Flexible si spartirebbe invece lo spazio con
+          // l'Expanded qui sopra, dimezzando la lista oggetti anche quando i
+          // bagagli sono due.
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: context.responsive(140)),
+            child: SingleChildScrollView(child: _buildLuggageSelector()),
+          ),
+        ],
       ),
     );
   }
