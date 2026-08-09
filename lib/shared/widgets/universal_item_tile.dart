@@ -186,15 +186,26 @@ class UniversalItemTile extends StatelessWidget {
       onLongPress: onLongPress,
       leading: leading,
       title: title,
-      subtitle: subtitle,
+      // Qualche pixel fra titolo e sottotitolo: senza, il dato primario e lo
+      // stato si leggono come un blocco unico invece che come due livelli.
+      subtitle: subtitle == null
+          ? null
+          : Padding(padding: const EdgeInsets.only(top: 2), child: subtitle),
       trailing: trailing,
       // Un minimo esplicito tiene uniformi le righe con e senza subtitle:
       // senza, la lista prende un ritmo irregolare quando il sottotitolo
       // compare solo su alcuni item.
       minTileHeight: _isFlatRow ? _flatRowMinHeight : null,
+      // Il padding verticale non può essere 0: con le card era il loro margine
+      // a dare respiro, ma su una riga piatta uno zero qui significa che una
+      // riga a due linee non ha alcuno spazio interno — e finisce per essere
+      // più stretta di una a una linea, che il minimo spinge comunque a 56.
       contentPadding:
           contentPadding ??
-          EdgeInsets.symmetric(horizontal: context.spacingMd, vertical: 0),
+          EdgeInsets.symmetric(
+            horizontal: context.spacingMd,
+            vertical: context.spacingSm,
+          ),
     );
   }
 

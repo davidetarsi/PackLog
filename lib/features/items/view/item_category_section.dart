@@ -52,7 +52,10 @@ class _ItemCategorySectionState extends State<ItemCategorySection> {
               category: widget.category,
               iconSize: context.iconSizeLg,
               horizontalPadding: context.spacingSm,
-              verticalPadding: context.spacingXs,
+              // Raddoppiato: senza stacco il titolo di gruppo si incollava
+              // alla prima riga, mentre tutte le altre sono separate da un
+              // divisore. Si somma al padding verticale della riga sotto.
+              verticalPadding: context.spacingSm,
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
