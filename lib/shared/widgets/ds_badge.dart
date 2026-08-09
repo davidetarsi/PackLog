@@ -201,7 +201,10 @@ class DsInfoBadge extends StatelessWidget {
         Flexible(
           child: Text(
             label,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            // bodyMedium e non bodyLarge: sono metadati (date, destinazione,
+            // bagagli), non testo di contenuto. A 16 occupavano la stessa
+            // taglia del corpo e mandavano a capo il Wrap della card viaggio.
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: cs.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
