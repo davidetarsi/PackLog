@@ -32,6 +32,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
   bool _isLoading = false;
 
   // Dati del viaggio
+  String? _name;
   String? _description;
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
@@ -57,6 +58,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
         orElse: () => throw StateError('Lista non trovata'),
       );
       setState(() {
+        _name = trip.name;
         _description = trip.description;
         _departureDateTime = trip.departureDateTime;
         _returnDateTime = trip.returnDateTime;
@@ -66,22 +68,6 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
         _selectedLuggages = List.from(trip.luggages);
       });
     });
-  }
-
-  String _buildTripName() {
-    final dest = (_destinationName?.trim().isNotEmpty == true)
-        ? _destinationName!
-        : 'trips.unnamed_destination'.tr();
-
-    final dep = _departureDateTime != null
-        ? DateFormat.yMd(context.locale.toString()).format(_departureDateTime!)
-        : '';
-    final ret = _returnDateTime != null
-        ? DateFormat.yMd(context.locale.toString()).format(_returnDateTime!)
-        : '';
-
-    if (dep.isEmpty) return dest;
-    return ret.isEmpty ? '$dest, $dep' : '$dest, $dep – $ret';
   }
 
   bool get _canSave =>
@@ -122,7 +108,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
             return trips
                 .firstWhere((t) => t.id == widget.tripId)
                 .copyWith(
-                  name: _buildTripName(),
+                  name: _name ?? 'trips.unnamed_destination'.tr(),
                   description: _description,
                   items: _selectedItems,
                   luggages: _selectedLuggages,
@@ -142,7 +128,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
           })()
         : TripModel(
             id: const Uuid().v4(),
-            name: _buildTripName(),
+            name: _name ?? 'trips.unnamed_destination'.tr(),
             description: _description,
             items: _selectedItems,
             luggages: _selectedLuggages,
@@ -210,6 +196,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 TripInfoForm(
+                  initialName: _name,
                   initialDescription: _description,
                   initialDepartureDateTime: _departureDateTime,
                   initialReturnDateTime: _returnDateTime,
@@ -223,6 +210,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                         destinationHouseId,
                         destinationLocation,
                         destinationName,
+                        name,
                       }) {
                         setState(() {
                           _description = description;
@@ -231,6 +219,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
                           _destinationHouseId = destinationHouseId;
                           _destinationLocation = destinationLocation;
                           _destinationName = destinationName;
+                          _name = name;
                         });
                       },
                 ),

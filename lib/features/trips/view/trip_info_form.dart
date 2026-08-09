@@ -14,6 +14,7 @@ import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 
 class TripInfoForm extends ConsumerStatefulWidget {
+  final String? initialName;
   final String? initialDescription;
   final DateTime? initialDepartureDateTime;
   final DateTime? initialReturnDateTime;
@@ -27,11 +28,13 @@ class TripInfoForm extends ConsumerStatefulWidget {
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
     String? destinationName,
+    String? name,
   })
   onChanged;
 
   const TripInfoForm({
     super.key,
+    this.initialName,
     this.initialDescription,
     this.initialDepartureDateTime,
     this.initialReturnDateTime,
@@ -46,12 +49,19 @@ class TripInfoForm extends ConsumerStatefulWidget {
 
 class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   late TextEditingController _descriptionController;
+  late TextEditingController _nameController;
+  final _nameFocusNode = FocusNode();
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
   String? _destinationHouseId;
   String? _destinationHouseName;
   LocationSuggestionModel? _destinationLocation;
   late bool _useHouseDestination;
+
+  /// Una volta che l'utente ha scritto il nome, nessun cambio di destinazione
+  /// o di date lo tocca più. Senza questo flag l'app cancellerebbe quello che
+  /// l'utente ha appena scritto.
+  bool _nameTouched = false;
 
   // _accentColor rimosso — usare colorScheme.primary nei build methods.
 
@@ -61,6 +71,9 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     _descriptionController = TextEditingController(
       text: widget.initialDescription ?? '',
     );
+    _nameController = TextEditingController(text: widget.initialName ?? '');
+    _nameTouched = (widget.initialName ?? '').isNotEmpty;
+    _nameFocusNode.addListener(_onNameFocusChanged);
     _departureDateTime = widget.initialDepartureDateTime;
     _returnDateTime = widget.initialReturnDateTime;
     _destinationHouseId = widget.initialDestinationHouseId;
@@ -81,12 +94,75 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   }
 
   @override
+  void didUpdateWidget(covariant TripInfoForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Solo se la prop è cambiata davvero: riscrivere il controller a ogni
+    // rebuild cancellerebbe quello che l'utente sta digitando e sposterebbe
+    // il cursore.
+    if (widget.initialName != oldWidget.initialName &&
+        !_nameTouched &&
+        (widget.initialName ?? '').isNotEmpty) {
+      _nameController.text = widget.initialName!;
+    }
+    if (widget.initialDescription != oldWidget.initialDescription &&
+        (widget.initialDescription ?? '') != _descriptionController.text) {
+      _descriptionController.text = widget.initialDescription ?? '';
+    }
+  }
+
+  @override
   void dispose() {
+    _nameFocusNode.removeListener(_onNameFocusChanged);
+    _nameFocusNode.dispose();
+    _nameController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
+  /// Nome derivato da destinazione e date, com'era prima nelle schermate.
+  String _derivedName() {
+    final destination = _destinationHouseId != null
+        ? _destinationHouseName
+        : _destinationLocation?.displayName;
+    final dest = (destination?.trim().isNotEmpty == true)
+        ? destination!.trim()
+        : 'trips.unnamed_destination'.tr();
+
+    final dep = _departureDateTime != null
+        ? DateFormat.yMd(context.locale.toString()).format(_departureDateTime!)
+        : '';
+    final ret = _returnDateTime != null
+        ? DateFormat.yMd(context.locale.toString()).format(_returnDateTime!)
+        : '';
+
+    if (dep.isEmpty) return dest;
+    return ret.isEmpty ? '$dest, $dep' : '$dest, $dep – $ret';
+  }
+
+  /// Alla perdita di focus un campo vuoto torna al nome derivato — aspettare
+  /// il salvataggio lascerebbe un campo visibilmente vuoto per tutta la
+  /// compilazione.
+  void _onNameFocusChanged() {
+    if (_nameFocusNode.hasFocus) return;
+    if (_nameController.text.trim().isNotEmpty) return;
+    setState(() {
+      // Riaggancia: senza questo, cambiare le date dopo aver svuotato il
+      // campo lascerebbe il nome congelato sulle date vecchie.
+      _nameTouched = false;
+      _nameController.text = _derivedName();
+    });
+    _notifyChanged();
+  }
+
+  void _syncDerivedName() {
+    if (_nameTouched) return;
+    _nameController.text = _derivedName();
+  }
+
   void _notifyChanged() {
+    _syncDerivedName();
+
     final destinationName = _destinationHouseId != null
         ? _destinationHouseName
         : (_destinationLocation?.displayName.trim().isNotEmpty == true
@@ -104,6 +180,9 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
           ? _destinationLocation
           : null,
       destinationName: destinationName,
+      name: _nameController.text.trim().isEmpty
+          ? _derivedName()
+          : _nameController.text.trim(),
     );
   }
 
@@ -166,6 +245,39 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Nome del viaggio ──────────────────────────────────────────
+        Text(
+          'trips.name_label'.tr(),
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        SizedBox(height: context.spacingXs),
+        TextField(
+          key: const Key('trip_name_field'),
+          controller: _nameController,
+          focusNode: _nameFocusNode,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                AppConstants.cardBorderRadius,
+              ),
+            ),
+            // La matita dichiara che il nome precompilato è modificabile,
+            // senza aggiungere testo.
+            suffixIcon: Icon(
+              Icons.edit_outlined,
+              size: 18,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          onChanged: (value) {
+            _nameTouched = value.trim().isNotEmpty;
+            _notifyChanged();
+          },
+        ),
+        SizedBox(height: context.spacingMd),
+
         // ── Toggle destinazione — AppPillTab al posto di SegmentedButton ──
         AppPillTab<bool>(
           items: const [false, true],

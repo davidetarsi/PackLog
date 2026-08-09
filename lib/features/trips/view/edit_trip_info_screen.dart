@@ -28,6 +28,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
   TripModel? _trip;
 
   // Dati modificabili
+  String? _name;
   String? _description;
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
@@ -48,6 +49,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
       if (trip != null) {
         setState(() {
           _trip = trip;
+          _name = trip.name;
           _description = trip.description;
           _departureDateTime = trip.departureDateTime;
           _returnDateTime = trip.returnDateTime;
@@ -57,22 +59,6 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
         });
       }
     });
-  }
-
-  String _buildTripName() {
-    final dest = (_destinationName?.trim().isNotEmpty == true)
-        ? _destinationName!
-        : 'trips.unnamed_destination'.tr();
-
-    final dep = _departureDateTime != null
-        ? DateFormat.yMd(context.locale.toString()).format(_departureDateTime!)
-        : '';
-    final ret = _returnDateTime != null
-        ? DateFormat.yMd(context.locale.toString()).format(_returnDateTime!)
-        : '';
-
-    if (dep.isEmpty) return dest;
-    return ret.isEmpty ? '$dest, $dep' : '$dest, $dep – $ret';
   }
 
   Future<void> _saveChanges() async {
@@ -102,7 +88,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     setState(() => _isLoading = true);
 
     final updatedTrip = _trip!.copyWith(
-      name: _buildTripName(),
+      name: _name ?? 'trips.unnamed_destination'.tr(),
       description: _description,
       departureDateTime: _departureDateTime,
       returnDateTime: _returnDateTime,
@@ -158,6 +144,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
               context.spacingMd,
             ).copyWith(bottom: context.spacingMd + context.ctaReservedHeight),
             child: TripInfoForm(
+              initialName: _name,
               initialDescription: _description,
               initialDepartureDateTime: _departureDateTime,
               initialReturnDateTime: _returnDateTime,
@@ -171,6 +158,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
                     destinationHouseId,
                     destinationLocation,
                     destinationName,
+                    name,
                   }) {
                     setState(() {
                       _description = description;
@@ -179,6 +167,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
                       _destinationHouseId = destinationHouseId;
                       _destinationLocation = destinationLocation;
                       _destinationName = destinationName;
+                      _name = name;
                     });
                   },
             ),
