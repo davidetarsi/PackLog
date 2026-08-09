@@ -59,6 +59,15 @@ class Trips extends Table with SyncableTable {
   /// Viaggio salvato/preferito
   BoolColumn get isSaved => boolean().withDefault(const Constant(false))();
 
+  /// Tappe intermedie, serializzate come lista JSON di `TripLeg`.
+  ///
+  /// Blob applicativo come `items.aiMetadata`: nessuna query filtra o ordina
+  /// su questo campo. `NULL` significa "nessuna informazione" (riga creata
+  /// prima dello schema 10 o da un client vecchio); `'[]'` significa "l'utente
+  /// non ha tappe". La differenza è ciò che permette al sync di distinguere
+  /// una cancellazione da un'assenza.
+  TextColumn get legs => text().nullable()();
+
   /// Data di creazione
   DateTimeColumn get createdAt => dateTime()();
 

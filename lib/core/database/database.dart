@@ -76,7 +76,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -335,6 +335,18 @@ class AppDatabase extends _$AppDatabase {
           await customStatement(
             'ALTER TABLE items ADD COLUMN ai_metadata TEXT',
           );
+        }
+
+        if (from < 10) {
+          // Migrazione v9 → v10: tappe intermedie sui viaggi.
+          // Colonna nullable in coda: nessuna riscrittura della tabella,
+          // nessun rischio sui dati esistenti.
+          //
+          // `m.addColumn` invece di customStatement: il DDL lo deriva Drift
+          // dalla definizione della colonna, quindi il tipo non può divergere
+          // da quello dichiarato in trips_table.dart. Le migrazioni precedenti
+          // usano SQL scritto a mano; da qui in poi si usa questo.
+          await m.addColumn(trips, trips.legs);
         }
       },
       beforeOpen: (details) async {
