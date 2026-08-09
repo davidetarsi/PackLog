@@ -227,6 +227,59 @@ void main() {
       },
     );
 
+    testWidgets(
+      'un nome iniziale che coincide col derivato non conta come personalizzato',
+      (tester) async {
+        // Modifica di un viaggio mai rinominato: le schermate caricano il
+        // viaggio sincrono in initState, quindi initialName arriva già al
+        // primo frame e il ramo che decide "personalizzato o no" è quello di
+        // didChangeDependencies. Nome iniziale == derivato ⇒ non è una scelta
+        // dell'utente, e il campo deve continuare a seguire la destinazione.
+        await _pumpForm(tester, initialName: 'Roma', destination: 'Roma');
+
+        expect(_nameFieldText(tester), 'Roma');
+
+        await _changeDestination(tester, 'Xx');
+
+        expect(_nameFieldText(tester), 'Xx');
+      },
+    );
+
+    testWidgets('il derivato non resta indietro se il campo nome ha il focus', (
+      tester,
+    ) async {
+      // Il campo viene toccato solo per leggerlo, senza digitare: la guardia
+      // hasFocus impedisce di riscriverlo, ma il nome che finisce salvato non
+      // deve per questo restare quello vecchio.
+      final host = await _pumpForm(
+        tester,
+        initialName: 'Roma',
+        destination: 'Roma',
+      );
+
+      await tester.tap(find.byKey(_nameFieldKey));
+      await tester.pump();
+      expect(_nameField(tester).focusNode!.hasFocus, isTrue);
+
+      // Il pill azzera la destinazione senza togliere il focus al nome: è il
+      // percorso con cui il difetto si raggiunge in produzione (né i pill né
+      // il ritorno dal calendario fanno unfocus).
+      await tester.tap(find.text('common.destination_house'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(_nameField(tester).focusNode!.hasFocus, isTrue);
+      // Ciò che il genitore salverebbe: già il derivato nuovo, non "Roma".
+      expect(host.currentState!.lastName, 'trips.unnamed_destination');
+
+      // Il campo visibile si riallinea al blur.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      await tester.pump();
+
+      expect(_nameFieldText(tester), 'trips.unnamed_destination');
+    });
+
     testWidgets('un nome personalizzato sopravvive al giro col genitore', (
       tester,
     ) async {

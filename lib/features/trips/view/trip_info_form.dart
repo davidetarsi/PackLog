@@ -137,9 +137,12 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       _nameController.text = newName;
       // Adottare un nome che coincide col derivato non è una
       // personalizzazione: marcarlo "toccato" congelerebbe per sempre un nome
-      // che l'utente non ha mai scritto (caso reale: add_trip_screen in
-      // modifica che carica il viaggio dopo il primo frame). È la stessa
-      // asimmetria che didChangeDependencies già evita sul nome iniziale.
+      // che l'utente non ha mai scritto. Oggi nessuna delle due schermate
+      // arriva qui (entrambe caricano il viaggio in modo sincrono dentro
+      // initState, quindi il nome iniziale passa da didChangeDependencies):
+      // il ramo copre una spinta del genitore successiva al mount, per ora
+      // solo teorica. È la stessa asimmetria che didChangeDependencies già
+      // applica al nome iniziale.
       // Se invece il nome è davvero personalizzato va difeso, altrimenti il
       // prossimo _notifyChanged() lo sovrascriverebbe subito col derivato.
       if (newName != _derivedName()) _nameTouched = true;
@@ -179,16 +182,21 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     return ret.isEmpty ? '$dest, $dep' : '$dest, $dep – $ret';
   }
 
-  /// Alla perdita di focus un campo vuoto torna al nome derivato — aspettare
-  /// il salvataggio lascerebbe un campo visibilmente vuoto per tutta la
+  /// Alla perdita di focus il campo torna al nome derivato — aspettare il
+  /// salvataggio lascerebbe a video un nome sbagliato (o vuoto) per tutta la
   /// compilazione.
   void _onNameFocusChanged() {
     if (_nameFocusNode.hasFocus) return;
-    if (_nameController.text.trim().isNotEmpty) return;
+    final isEmpty = _nameController.text.trim().isEmpty;
+    // Un nome personalizzato e non vuoto è l'unico che sopravvive al blur.
+    if (_nameTouched && !isEmpty) return;
     setState(() {
       // Riaggancia: senza questo, cambiare le date dopo aver svuotato il
       // campo lascerebbe il nome congelato sulle date vecchie.
-      _nameTouched = false;
+      if (isEmpty) _nameTouched = false;
+      // Anche a campo pieno: mentre aveva il focus _syncDerivedName non poteva
+      // riscriverlo, quindi può mostrare una destinazione o delle date che nel
+      // frattempo l'utente ha già cambiato.
       _nameController.text = _derivedName();
     });
     _notifyChanged();
@@ -223,9 +231,13 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
           ? _destinationLocation
           : null,
       destinationName: destinationName,
-      name: _nameController.text.trim().isEmpty
-          ? _derivedName()
-          : _nameController.text.trim(),
+      // Finché il nome non è personalizzato la fonte di verità è _derivedName(),
+      // non il controller: mentre il campo ha il focus nessuno lo riscrive,
+      // quindi può essere rimasto indietro — e questo è il valore che il
+      // genitore salva.
+      name: _nameTouched && _nameController.text.trim().isNotEmpty
+          ? _nameController.text.trim()
+          : _derivedName(),
     );
   }
 
