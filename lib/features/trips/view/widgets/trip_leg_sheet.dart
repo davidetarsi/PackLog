@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../shared/helpers/snack_bar_helper.dart';
 import '../../../../shared/theme/theme.dart';
 import '../../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../../shared/widgets/standard_bottom_sheet_layout.dart';
@@ -14,10 +15,7 @@ import '../trip_date_range_screen.dart';
 /// Restituisce la tappa, oppure `null` se l'utente chiude senza salvare.
 /// In modifica l'id di [initial] viene conservato: senza, modificare una
 /// tappa equivarrebbe a cancellarla e ricrearla.
-Future<TripLeg?> showTripLegSheet(
-  BuildContext context, {
-  TripLeg? initial,
-}) {
+Future<TripLeg?> showTripLegSheet(BuildContext context, {TripLeg? initial}) {
   return showModalBottomSheet<TripLeg>(
     context: context,
     isScrollControlled: true,
@@ -57,7 +55,12 @@ class _TripLegSheetState extends State<_TripLegSheet> {
   }
 
   void _save() {
-    if (!_canSave) return;
+    if (!_canSave) {
+      // Il bottone resta attivo di proposito: un tap che non fa nulla non
+      // fa capire se manca un campo o se l'app è rotta.
+      AppSnackBar.showError(context, 'trips.leg_location_required'.tr());
+      return;
+    }
     Navigator.pop(
       context,
       TripLeg(
@@ -94,8 +97,9 @@ class _TripLegSheetState extends State<_TripLegSheet> {
         children: [
           Text(
             'trips.leg_location'.tr(),
-            style: Theme.of(context).textTheme.labelMedium
-                ?.copyWith(color: colorScheme.onSurfaceVariant),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
           SizedBox(height: context.spacingXs),
           LocationAutocompleteField(
@@ -109,8 +113,9 @@ class _TripLegSheetState extends State<_TripLegSheet> {
           SizedBox(height: context.spacingMd),
           Text(
             'trips.leg_dates'.tr(),
-            style: Theme.of(context).textTheme.labelMedium
-                ?.copyWith(color: colorScheme.onSurfaceVariant),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
           SizedBox(height: context.spacingXs),
           InkWell(

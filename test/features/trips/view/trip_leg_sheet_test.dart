@@ -13,38 +13,37 @@ void main() {
     matching: find.byType(TextField),
   );
 
-  Future<TripLeg?> openSheet(WidgetTester tester, {TripLeg? initial}) async {
-    TripLeg? result;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () async {
-                result = await showTripLegSheet(context, initial: initial);
-              },
-              child: const Text('open'),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
-    return result;
-  }
-
   group('showTripLegSheet', () {
     testWidgets('senza luogo il salvataggio non produce una tappa', (
       tester,
     ) async {
-      // Una tappa senza luogo non è un promemoria di niente.
-      await openSheet(tester);
+      // Una tappa senza luogo non è un promemoria di niente. Il bottone
+      // resta attivo (scelta di design), ma il tap a vuoto deve avvisare
+      // l'utente invece di non fare assolutamente nulla.
+      TripLeg? captured;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  captured = await showTripLegSheet(context);
+                },
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('trip_leg_sheet_save')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('trip_leg_sheet_location')), findsOneWidget);
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(captured, isNull);
     });
 
     testWidgets('con un luogo restituisce la tappa alla chiusura', (
