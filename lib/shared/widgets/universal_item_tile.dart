@@ -171,9 +171,13 @@ class UniversalItemTile extends StatelessWidget {
     return tile;
   }
 
-  /// Altezza minima di una riga piatta. Sotto i 48 si scende sotto il target
-  /// di tocco raccomandato; sopra, la lista torna a respirare troppo.
-  static const double _flatRowMinHeight = 48;
+  /// Altezza minima di una riga piatta.
+  ///
+  /// 56 è l'altezza Material di una voce di lista a una riga; 48 — il valore
+  /// precedente — è il minimo per il target di tocco, non una misura di
+  /// comfort. Con le righe ormai prive di card e sfondo, quegli 8px in più
+  /// sono l'unica cosa che separa una voce dall'altra.
+  static const double _flatRowMinHeight = 56;
 
   /// Layout standard usando ListTile (ItemCard, InTransitItemCard)
   Widget _buildListTileLayout(BuildContext context) {
