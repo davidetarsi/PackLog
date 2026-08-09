@@ -37,16 +37,21 @@ class ItemCard extends ConsumerWidget {
     if (!isSelectionActive) {
       if (hasAnyOnTrip) {
         if (isFullyOnTrip) {
+          // Grigia: "in viaggio" è uno stato dell'oggetto, non un'azione né
+          // una scelta. L'arancione resta a ciò su cui si può agire.
           subtitle = Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.flight_takeoff, size: 12, color: colorScheme.primary),
+              Icon(
+                Icons.flight_takeoff,
+                size: 12,
+                color: colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 4),
               Text(
                 'common.in_transit'.tr(),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -67,13 +72,16 @@ class ItemCard extends ConsumerWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-              Icon(Icons.flight_takeoff, size: 12, color: colorScheme.primary),
+              Icon(
+                Icons.flight_takeoff,
+                size: 12,
+                color: colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 4),
               Text(
                 '$quantityOnTrip ${'common.in_transit'.tr().toLowerCase()}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
