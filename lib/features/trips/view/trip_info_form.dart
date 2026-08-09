@@ -63,6 +63,11 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   /// l'utente ha appena scritto.
   bool _nameTouched = false;
 
+  /// _derivedName() usa context.locale, non chiamabile in initState: il primo
+  /// didChangeDependencies calcola il valore reale di _nameTouched una sola
+  /// volta (guardia). Finché non scatta, il default resta conservativo.
+  bool _initialTouchComputed = false;
+
   // _accentColor rimosso — usare colorScheme.primary nei build methods.
 
   @override
@@ -72,7 +77,10 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
       text: widget.initialDescription ?? '',
     );
     _nameController = TextEditingController(text: widget.initialName ?? '');
-    _nameTouched = (widget.initialName ?? '').isNotEmpty;
+    // Default conservativo finché didChangeDependencies non può calcolare il
+    // valore reale (serve context.locale per _derivedName): meglio non
+    // aggiornare un nome che rischiare di cancellarne uno scritto a mano.
+    _nameTouched = true;
     _nameFocusNode.addListener(_onNameFocusChanged);
     _departureDateTime = widget.initialDepartureDateTime;
     _returnDateTime = widget.initialReturnDateTime;
@@ -94,16 +102,35 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialTouchComputed) return;
+    _initialTouchComputed = true;
+    final initial = widget.initialName ?? '';
+    // "Toccato" solo se il nome iniziale differisce da quello che il calcolo
+    // automatico produrrebbe: un nome mai personalizzato deve continuare a
+    // seguire date e destinazione anche in modifica, uno personalizzato no.
+    _nameTouched = initial.isNotEmpty && initial != _derivedName();
+  }
+
+  @override
   void didUpdateWidget(covariant TripInfoForm oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Solo se la prop è cambiata davvero: riscrivere il controller a ogni
-    // rebuild cancellerebbe quello che l'utente sta digitando e sposterebbe
-    // il cursore.
+    // Solo se la prop è cambiata davvero, il campo non è "touched" e il testo
+    // proposto differisce da quello già nel controller: riscrivere con lo
+    // stesso identico testo (es. round-trip onChanged → setState genitore →
+    // stessa initialName) collasserebbe comunque la selection.
+    final newName = widget.initialName ?? '';
     if (widget.initialName != oldWidget.initialName &&
         !_nameTouched &&
-        (widget.initialName ?? '').isNotEmpty) {
-      _nameController.text = widget.initialName!;
+        newName.isNotEmpty &&
+        newName != _nameController.text) {
+      _nameController.text = newName;
+      // Il genitore ci ha mandato un nome esplicito: da qui in poi va
+      // trattato come se l'utente lo avesse scritto lui, altrimenti il
+      // prossimo _notifyChanged() lo sovrascriverebbe subito col derivato.
+      _nameTouched = true;
     }
     if (widget.initialDescription != oldWidget.initialDescription &&
         (widget.initialDescription ?? '') != _descriptionController.text) {
@@ -156,6 +183,10 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   }
 
   void _syncDerivedName() {
+    // Mentre l'utente ha il campo sotto le dita non si tocca il controller:
+    // riscriverlo cancellerebbe quello che sta digitando e sposterebbe il
+    // cursore. Il ripristino del nome derivato avviene al blur.
+    if (_nameFocusNode.hasFocus) return;
     if (_nameTouched) return;
     _nameController.text = _derivedName();
   }
@@ -260,7 +291,7 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(
-                AppConstants.cardBorderRadius,
+                AppConstants.inputBorderRadius,
               ),
             ),
             // La matita dichiara che il nome precompilato è modificabile,
