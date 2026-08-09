@@ -62,6 +62,9 @@ class StandardBottomSheetLayout extends StatelessWidget {
   /// Se true, mostra il bottone elimina (default: false)
   final bool showDeleteButton;
 
+  /// Key inoltrata al bottone salva, per i test dei form che lo usano.
+  final Key? saveButtonKey;
+
   const StandardBottomSheetLayout({
     super.key,
     required this.title,
@@ -73,6 +76,7 @@ class StandardBottomSheetLayout extends StatelessWidget {
     this.saveLabel,
     this.showCancelButton = true,
     this.showDeleteButton = false,
+    this.saveButtonKey,
   });
 
   @override
@@ -147,6 +151,7 @@ class StandardBottomSheetLayout extends StatelessWidget {
                     context.spacingMd + AppConstants.bottomSheetBottomPadding,
               ),
               child: UniversalActionBar(
+                primaryButtonKey: saveButtonKey,
                 primaryLabel: saveLabel ?? 'common.save'.tr(),
                 primaryIcon: Icons.save,
                 onPrimaryPressed: isLoading ? null : onSave,

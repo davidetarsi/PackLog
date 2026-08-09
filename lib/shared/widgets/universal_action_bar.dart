@@ -51,6 +51,10 @@ class UniversalActionBar extends StatelessWidget {
   /// come l'eliminazione dell'account.
   final bool isDestructive;
 
+  /// Key applicata al bottone primario. Serve ai test per toccare la pill e
+  /// non la barra che la contiene.
+  final Key? primaryButtonKey;
+
   const UniversalActionBar({
     super.key,
     required this.primaryLabel,
@@ -61,6 +65,7 @@ class UniversalActionBar extends StatelessWidget {
     this.isLoading = false,
     this.isSecondary = false,
     this.isDestructive = false,
+    this.primaryButtonKey,
   });
 
   @override
@@ -69,6 +74,7 @@ class UniversalActionBar extends StatelessWidget {
     final isSingleAction = leftAction == null && rightAction == null;
 
     final primaryButton = _PrimaryPillButton(
+      key: primaryButtonKey,
       label: primaryLabel,
       icon: primaryIcon,
       onPressed: onPrimaryPressed,
@@ -100,6 +106,7 @@ class _PrimaryPillButton extends StatelessWidget {
   final bool isDestructive;
 
   const _PrimaryPillButton({
+    super.key,
     required this.label,
     this.icon,
     this.onPressed,
