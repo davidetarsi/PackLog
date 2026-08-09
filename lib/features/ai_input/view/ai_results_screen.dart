@@ -12,13 +12,16 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/circular_action_button.dart';
+import '../../../shared/widgets/ds_error_state.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../houses/model/house_model.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../tour/tour_keys.dart';
+import '../model/ai_failure_reason.dart';
 import '../model/ai_import_state.dart';
 import '../providers/ai_import_notifier.dart';
+import 'widgets/ai_analysis_progress.dart';
 import 'widgets/ai_photo_group_header.dart';
 import 'widgets/ai_result_card.dart';
 
@@ -284,7 +287,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     AiImportNotifier notifier,
   ) {
     if (state.isLoading) return _buildLoading(context, state);
-    if (state.photoGroups.isEmpty) return _buildEmptyError(context, state);
+    if (state.photoGroups.isEmpty) {
+      return _buildEmptyError(context, state, notifier);
+    }
     return _buildResults(context, state, notifier);
   }
 
@@ -423,18 +428,32 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
   // ── Loading state ─────────────────────────────────────────────────────────
 
   Widget _buildLoading(BuildContext context, AiImportState state) {
-    final progress = state.totalImages > 0
-        ? state.processingIndex / state.totalImages
-        : null;
     final colorScheme = Theme.of(context).colorScheme;
     return SizedBox(
       height: context.screenHeight * 0.6,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Sopra la barra: dice cosa sta succedendo e perché conviene restare.
           Padding(
             padding: EdgeInsets.symmetric(horizontal: context.spacingLg),
-            child: LinearProgressIndicator(value: progress, minHeight: 6),
+            child: Text(
+              'ai_import.analysis_in_progress'.tr(),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          SizedBox(height: context.spacingMd),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.spacingLg),
+            child: AiAnalysisProgress(
+              processingIndex: state.processingIndex,
+              totalImages: state.totalImages,
+              avgPhotoMs: state.avgPhotoMs,
+            ),
           ),
           SizedBox(height: context.spacingLg),
           Text(
@@ -470,34 +489,31 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
 
   // ── Empty / error on Page 2 ───────────────────────────────────────────────
 
-  Widget _buildEmptyError(BuildContext context, AiImportState state) {
-    if (state.errorMessage == null) return const SizedBox.shrink();
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: EdgeInsets.all(context.spacingMd),
-      decoration: BoxDecoration(
-        color: colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: context.iconSizeSm,
-            color: colorScheme.onErrorContainer,
-          ),
-          SizedBox(width: context.spacingSm),
-          Expanded(
-            child: Text(
-              state.errorMessage!,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onErrorContainer,
-              ),
-            ),
-          ),
-        ],
+  /// Errore terminale: nessun risultato in mano, la pagina è vuota.
+  ///
+  /// Usa `DsErrorState` — lo stato d'errore condiviso dell'app — invece del
+  /// riquadro rosso locale: qui l'utente resta senza nulla e serve un'azione
+  /// che persista, non una segnalazione che passa. Il messaggio arriva da
+  /// [AiFailureReason], quindi niente dettagli tecnici né URI a schermo.
+  Widget _buildEmptyError(
+    BuildContext context,
+    AiImportState state,
+    AiImportNotifier notifier,
+  ) {
+    final reason = state.failureReason;
+    if (reason == null) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: context.screenHeight * 0.6,
+      child: DsErrorState(
+        error: reason,
+        message: reason.messageKey.tr(),
+        retryLabel: 'ai_import.retry'.tr(),
+        // Su quota esaurita e sessione scaduta riprovare non può funzionare:
+        // DsErrorState richiede una callback, quindi in quei casi la rendiamo
+        // un no-op e il pulsante non viene mostrato.
+        onRetry: reason.isRetryable ? notifier.retryFailed : () {},
+        showRetry: reason.isRetryable,
       ),
     );
   }
@@ -598,7 +614,10 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
             ),
         ],
 
-        if (state.errorMessage != null) ...[
+        // Errore non terminale: qualche foto è riuscita, quindi la pagina
+        // resta utilizzabile e l'errore è un avviso, non uno stato. Il retry
+        // riprende solo dalle foto mancanti.
+        if (state.failureReason != null || state.errorMessage != null) ...[
           SizedBox(height: context.spacingMd),
           Container(
             padding: EdgeInsets.all(context.spacingMd),
@@ -619,13 +638,20 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                 SizedBox(width: context.spacingSm),
                 Expanded(
                   child: Text(
-                    state.errorMessage!,
+                    state.failureReason?.messageKey.tr() ?? state.errorMessage!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: colorScheme.onErrorContainer,
                     ),
                   ),
                 ),
+                if (state.failureReason?.isRetryable ?? false) ...[
+                  SizedBox(width: context.spacingSm),
+                  TextButton(
+                    onPressed: notifier.retryFailed,
+                    child: Text('ai_import.retry'.tr()),
+                  ),
+                ],
               ],
             ),
           ),

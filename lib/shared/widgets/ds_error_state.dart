@@ -42,6 +42,13 @@ class DsErrorState extends StatelessWidget {
   /// Label bottone personalizzata (se null, usa la label dal tema)
   final String? retryLabel;
 
+  /// Se false, il pulsante di retry non viene mostrato.
+  ///
+  /// Serve per gli errori che riprovare non può risolvere — quota esaurita,
+  /// sessione scaduta: un "Riprova" lì è una promessa che il sistema non può
+  /// mantenere.
+  final bool showRetry;
+
   const DsErrorState({
     super.key,
     required this.error,
@@ -52,6 +59,7 @@ class DsErrorState extends StatelessWidget {
     this.messageStyle,
     this.iconSize,
     this.retryLabel,
+    this.showRetry = true,
   });
 
   @override
@@ -76,11 +84,13 @@ class DsErrorState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ),
-          SizedBox(height: theme.stateSpacingMd),
-          ElevatedButton(
-            onPressed: onRetry,
-            child: Text(retryLabel ?? theme.errorStateRetryLabel.tr()),
-          ),
+          if (showRetry) ...[
+            SizedBox(height: theme.stateSpacingMd),
+            ElevatedButton(
+              onPressed: onRetry,
+              child: Text(retryLabel ?? theme.errorStateRetryLabel.tr()),
+            ),
+          ],
         ],
       ),
     );

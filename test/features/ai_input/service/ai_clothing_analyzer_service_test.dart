@@ -87,7 +87,7 @@ void main() {
     );
 
     test(
-      'throws VisionAnalysisException when jwtProvider returns null',
+      'throws AnalysisNotAuthenticatedException when jwtProvider returns null',
       () async {
         final service = AiClothingAnalyzerService(
           proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
@@ -97,7 +97,7 @@ void main() {
 
         await expectLater(
           service.processClothingItem(_fakeImageFile()),
-          throwsA(isA<VisionAnalysisException>()),
+          throwsA(isA<AnalysisNotAuthenticatedException>()),
         );
       },
     );
@@ -239,7 +239,7 @@ void main() {
     });
 
     group('processClothingItem — auth and network', () {
-      test('throws VisionAnalysisException on empty JWT string', () async {
+      test('throws AnalysisNotAuthenticatedException on empty JWT', () async {
         final service = AiClothingAnalyzerService(
           proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
           anonKey: 'fake-anon-key',
@@ -248,11 +248,11 @@ void main() {
 
         await expectLater(
           service.processClothingItem(_fakeImageFile()),
-          throwsA(isA<VisionAnalysisException>()),
+          throwsA(isA<AnalysisNotAuthenticatedException>()),
         );
       });
 
-      test('throws VisionAnalysisException on socket/network error', () async {
+      test('throws AnalysisNetworkException on socket/network error', () async {
         final service = _makeService(
           MockClient(
             (_) async => throw const SocketException('Network unreachable'),
@@ -261,7 +261,7 @@ void main() {
 
         await expectLater(
           service.processClothingItem(_fakeImageFile()),
-          throwsA(isA<VisionAnalysisException>()),
+          throwsA(isA<AnalysisNetworkException>()),
         );
       });
     });

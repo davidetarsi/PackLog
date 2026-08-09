@@ -21,6 +21,8 @@ import 'package:pack_log/features/tour/model/onboarding_state.dart';
 import 'package:pack_log/features/tour/providers/post_login_onboarding_provider.dart';
 import 'package:pack_log/features/tour/repositories/i_onboarding_repository.dart';
 import 'package:pack_log/features/tour/repositories/shared_prefs_onboarding_repository.dart';
+import 'package:pack_log/features/ai_input/model/ai_failure_reason.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -119,6 +121,12 @@ Future<void> _seedOneGroup(
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 void main() {
+  // processFiles legge la stima dei tempi da SharedPreferences: senza binding
+  // e valori mock il plugin non è disponibile nei test unitari.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   setUpAll(() {
     registerFallbackValue(OnboardingStep.aiIntro);
     registerFallbackValue(File(''));
@@ -187,7 +195,7 @@ void main() {
     });
 
     test(
-      'GptLimitExceededException: errorMessage is set, isLoading false, no groups added',
+      'GptLimitExceededException: failureReason=limitReached, no groups added',
       () async {
         final service = MockAiClothingAnalyzerService();
         final container = _makeContainer(service: service);
@@ -202,16 +210,16 @@ void main() {
         ]);
 
         final state = container.read(aiImportNotifierProvider);
-        expect(state.errorMessage, isNotNull);
-        // Senza EasyLocalization inizializzato, .tr() ritorna la chiave stessa.
-        expect(state.errorMessage, contains('ai_import.limit_reached'));
+        expect(state.failureReason, AiFailureReason.limitReached);
+        // Riprovare non può sbloccare una quota esaurita.
+        expect(state.failureReason!.isRetryable, isFalse);
         expect(state.isLoading, isFalse);
         expect(state.photoGroups, isEmpty);
       },
     );
 
     test(
-      'ClothingAnalysisException: errorMessage is set, isLoading false',
+      'VisionAnalysisException: failureReason=serviceError, isLoading false',
       () async {
         final service = MockAiClothingAnalyzerService();
         final container = _makeContainer(service: service);
@@ -226,14 +234,16 @@ void main() {
         ]);
 
         final state = container.read(aiImportNotifierProvider);
-        expect(state.errorMessage, isNotNull);
-        expect(state.errorMessage, contains('Vision failed'));
+        expect(state.failureReason, AiFailureReason.serviceError);
+        expect(state.failureReason!.isRetryable, isTrue);
+        // Il dettaglio tecnico non deve finire in uno stato leggibile dalla UI.
+        expect(state.errorMessage, isNull);
         expect(state.isLoading, isFalse);
       },
     );
 
     test(
-      'partial failure: first file OK, second throws → 1 group + errorMessage',
+      'partial failure: first file OK, second throws → 1 group + failureReason',
       () async {
         final service = MockAiClothingAnalyzerService();
         final container = _makeContainer(service: service);
@@ -254,13 +264,13 @@ void main() {
         final state = container.read(aiImportNotifierProvider);
         expect(state.photoGroups, hasLength(1));
         expect(state.photoGroups.first.results.first.name, 'T-Shirt');
-        expect(state.errorMessage, contains('Second image failed'));
+        expect(state.failureReason, AiFailureReason.serviceError);
         expect(state.isLoading, isFalse);
       },
     );
 
     test(
-      'unexpected (non-ClothingAnalysis) exception sets errorMessage and isLoading=false',
+      'unexpected (non-ClothingAnalysis) exception → failureReason=unknown',
       () async {
         final service = MockAiClothingAnalyzerService();
         final container = _makeContainer(service: service);
@@ -275,8 +285,7 @@ void main() {
         ]);
 
         final state = container.read(aiImportNotifierProvider);
-        // easy_localization returns the key itself in tests (no real locale loaded).
-        expect(state.errorMessage, contains('ai_import.unexpected_error'));
+        expect(state.failureReason, AiFailureReason.unknown);
         expect(state.isLoading, isFalse);
         expect(state.photoGroups, isEmpty);
       },
@@ -316,6 +325,68 @@ void main() {
         await firstCall;
       },
     );
+  });
+
+  // ── retryFailed() ──────────────────────────────────────────────────────────
+
+  group('retryFailed()', () {
+    test(
+      'riprocessa solo le foto non riuscite, senza duplicare i gruppi',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final container = _makeContainer(service: service);
+        addTearDown(container.dispose);
+
+        final fileA = File('${Directory.systemTemp.path}/retry_a.png')
+          ..writeAsBytesSync(Uint8List.fromList([1]));
+        final fileB = File('${Directory.systemTemp.path}/retry_b.png')
+          ..writeAsBytesSync(Uint8List.fromList([2]));
+
+        // Primo giro: A passa, B fallisce.
+        var call = 0;
+        when(() => service.processClothingItem(any())).thenAnswer((_) async {
+          call++;
+          if (call == 1) return [_fakeResult(name: 'A')];
+          throw const AnalysisNetworkException('down');
+        });
+
+        final notifier = container.read(aiImportNotifierProvider.notifier);
+        await notifier.processFiles([fileA, fileB]);
+
+        expect(
+          container.read(aiImportNotifierProvider).photoGroups,
+          hasLength(1),
+        );
+        expect(
+          container.read(aiImportNotifierProvider).failureReason,
+          AiFailureReason.network,
+        );
+
+        // Secondo giro: solo B, che stavolta passa.
+        when(
+          () => service.processClothingItem(any()),
+        ).thenAnswer((_) async => [_fakeResult(name: 'B')]);
+        await notifier.retryFailed();
+
+        final state = container.read(aiImportNotifierProvider);
+        // Due gruppi, non tre: A non è stato rianalizzato.
+        expect(state.photoGroups, hasLength(2));
+        expect(state.photoGroups.map((g) => g.results.first.name), ['A', 'B']);
+        expect(state.failureReason, isNull);
+      },
+    );
+
+    test('è un no-op se non è rimasto nulla da riprovare', () async {
+      final service = MockAiClothingAnalyzerService();
+      final container = _makeContainer(service: service);
+      addTearDown(container.dispose);
+
+      await _seedOneGroup(container, service);
+      clearInteractions(service);
+
+      await container.read(aiImportNotifierProvider.notifier).retryFailed();
+      verifyNever(() => service.processClothingItem(any()));
+    });
   });
 
   // ── deleteItem() ───────────────────────────────────────────────────────────

@@ -86,6 +86,8 @@ class AiClothingAnalyzerService {
     ResponseParsingException() => 'ResponseParsingException',
     GptLimitExceededException() => 'GptLimitExceededException',
     BackgroundRemovalException() => 'BackgroundRemovalException',
+    AnalysisNetworkException() => 'AnalysisNetworkException',
+    AnalysisNotAuthenticatedException() => 'AnalysisNotAuthenticatedException',
   };
 
   // ── Step 1: Background removal [DISABILITATO] ─────────────────────────────
@@ -133,7 +135,7 @@ class AiClothingAnalyzerService {
 
     final jwt = _jwtProvider();
     if (jwt == null || jwt.isEmpty) {
-      throw const VisionAnalysisException('User not authenticated');
+      throw const AnalysisNotAuthenticatedException('User not authenticated');
     }
 
     final http.Response response;
@@ -151,7 +153,11 @@ class AiClothingAnalyzerService {
         body: utf8.encode(body),
       );
     } on Exception catch (e) {
-      throw VisionAnalysisException('Network error during vision analysis: $e');
+      // Il messaggio resta tecnico di proposito: serve a Sentry e ai log, non
+      // alla UI. Chi lo mostra deve passare da AiFailureReason.
+      throw AnalysisNetworkException(
+        'Network error during vision analysis: $e',
+      );
     }
 
     if (response.statusCode == 429) {

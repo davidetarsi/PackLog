@@ -16,6 +16,22 @@ final class VisionAnalysisException extends ClothingAnalysisException {
   const VisionAnalysisException(super.message);
 }
 
+/// Thrown when the request never reaches the proxy: connessione assente,
+/// timeout, DNS, socket chiuso.
+///
+/// Distinta da [VisionAnalysisException] perché per l'utente è un caso
+/// diverso — riprovare ha senso — e perché il messaggio tecnico di queste
+/// eccezioni contiene l'URI dell'endpoint, che non deve arrivare a schermo.
+final class AnalysisNetworkException extends ClothingAnalysisException {
+  const AnalysisNetworkException(super.message);
+}
+
+/// Thrown when there is no valid JWT to call the proxy with.
+final class AnalysisNotAuthenticatedException
+    extends ClothingAnalysisException {
+  const AnalysisNotAuthenticatedException(super.message);
+}
+
 /// Thrown when the OpenAI response body cannot be parsed into
 /// `ClothingAnalysisResult` (unexpected schema or malformed JSON).
 final class ResponseParsingException extends ClothingAnalysisException {

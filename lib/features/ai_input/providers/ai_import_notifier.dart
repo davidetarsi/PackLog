@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/analytics/core_analytics_service.dart';
@@ -14,8 +16,8 @@ import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/repositories/item_repository.dart';
 import '../../tour/providers/post_login_onboarding_provider.dart';
+import '../model/ai_failure_reason.dart';
 import '../model/ai_import_state.dart';
-import '../model/clothing_analysis_exception.dart';
 import '../model/clothing_analysis_result.dart';
 import 'ai_clothing_analyzer_service_provider.dart';
 
@@ -38,21 +40,39 @@ class AiImportNotifier extends _$AiImportNotifier {
 
   // ── Processing ────────────────────────────────────────────────────────────
 
+  /// File dell'ultimo tentativo, per poter riprovare senza rifare la scelta.
+  List<File> _lastFiles = const [];
+
   Future<void> processFiles(List<File> files) async {
     if (state.isLoading) return;
+    _lastFiles = List.unmodifiable(files);
+
+    // Nessun await prima di qui: alzare isLoading dopo una sospensione
+    // lascerebbe passare due chiamate concorrenti dalla guardia qui sopra.
     state = state.copyWith(
       isLoading: true,
       processingIndex: 0,
       totalImages: files.length,
+      failureReason: null,
       errorMessage: null,
+      avgPhotoMs: _cachedAvgMs ?? kDefaultPhotoAnalysisMs,
     );
 
+    // La stima serve alla barra, non all'analisi: leggerla da disco prima di
+    // iniziare ritarderebbe la prima chiamata a GPT per nulla. Parte in
+    // parallelo e aggiorna lo stato quando arriva.
+    unawaited(_primeAvgPhotoMs());
+
+    final durations = <int>[];
     try {
       final service = ref.read(aiClothingAnalyzerServiceProvider);
       for (var i = 0; i < files.length; i++) {
         state = state.copyWith(processingIndex: i + 1);
         final file = files[i];
+
+        final started = DateTime.now();
         final result = await service.processClothingItem(file);
+        durations.add(DateTime.now().difference(started).inMilliseconds);
 
         state = state.copyWith(
           photoGroups: [
@@ -61,17 +81,59 @@ class AiImportNotifier extends _$AiImportNotifier {
           ],
         );
       }
-    } on GptLimitExceededException {
-      state = state.copyWith(errorMessage: 'ai_import.limit_reached'.tr());
-    } on ClothingAnalysisException catch (e) {
-      state = state.copyWith(errorMessage: e.message);
     } catch (e) {
-      state = state.copyWith(
-        errorMessage: 'ai_import.unexpected_error'.tr(args: [e.toString()]),
-      );
+      // Un solo punto di uscita per gli errori: il messaggio tecnico resta
+      // nell'eccezione (log/Sentry), a schermo va il motivo classificato.
+      state = state.copyWith(failureReason: aiFailureReasonFrom(e));
     } finally {
       state = state.copyWith(isLoading: false);
+      if (durations.isNotEmpty) await _recordDurations(durations);
     }
+  }
+
+  /// Riprova l'analisi solo sulle foto non ancora andate a buon fine.
+  ///
+  /// Rilanciare l'intero lotto duplicherebbe i gruppi già ottenuti, visto che
+  /// [processFiles] accoda invece di sostituire.
+  Future<void> retryFailed() async {
+    final done = state.photoGroups.map((g) => g.photo.path).toSet();
+    final remaining = _lastFiles
+        .where((f) => !done.contains(f.path))
+        .toList(growable: false);
+    if (remaining.isEmpty) return;
+    await processFiles(remaining);
+  }
+
+  // ── Stima dei tempi ───────────────────────────────────────────────────────
+
+  static const _avgPhotoMsKey = 'ai_import_avg_photo_ms';
+
+  /// Stima in memoria, per non rileggere il disco a ogni run.
+  int? _cachedAvgMs;
+
+  /// Carica la stima e la applica allo stato, se nel frattempo l'analisi è
+  /// ancora in corso. Non blocca nessuno.
+  Future<void> _primeAvgPhotoMs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getInt(_avgPhotoMsKey);
+    if (stored == null) return;
+    _cachedAvgMs = stored;
+    if (state.isLoading) state = state.copyWith(avgPhotoMs: stored);
+  }
+
+  /// Media mobile esponenziale sui tempi reali: la stima si adatta al backend
+  /// e alla rete dell'utente senza farsi trascinare da un singolo run lento.
+  Future<void> _recordDurations(List<int> durations) async {
+    final prefs = await SharedPreferences.getInstance();
+    var avg = prefs.getInt(_avgPhotoMsKey) ?? kDefaultPhotoAnalysisMs;
+    for (final d in durations) {
+      avg = (avg * 0.7 + d * 0.3).round();
+    }
+    // Limiti di sicurezza: una stima assurda renderebbe la barra inutile.
+    avg = avg.clamp(3000, 60000);
+    _cachedAvgMs = avg;
+    await prefs.setInt(_avgPhotoMsKey, avg);
+    state = state.copyWith(avgPhotoMs: avg);
   }
 
   // ── Item management ───────────────────────────────────────────────────────
