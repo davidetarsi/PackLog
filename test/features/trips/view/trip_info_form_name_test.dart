@@ -245,6 +245,30 @@ void main() {
       },
     );
 
+    testWidgets(
+      'un initialName diverso dal derivato è il caso di ogni viaggio esistente aperto in modifica e sopravvive al cambio destinazione',
+      (tester) async {
+        // Gemello del test "coincide col derivato": qui invece l'utente ha già
+        // personalizzato il nome PRIMA di aprire il form in modifica (caso di
+        // ogni viaggio esistente). didChangeDependencies deve marcare
+        // _nameTouched=true al primo giro perché initial != _derivedName() —
+        // se invece scrivesse `_nameTouched = false;` incondizionato, il primo
+        // cambio di destinazione cancellerebbe il nome personalizzato.
+        final host = await _pumpForm(
+          tester,
+          initialName: 'Da mio fratello',
+          destination: 'Roma',
+        );
+
+        expect(_nameFieldText(tester), 'Da mio fratello');
+
+        await _changeDestination(tester, 'Xx');
+
+        expect(_nameFieldText(tester), 'Da mio fratello');
+        expect(host.currentState!.lastName, 'Da mio fratello');
+      },
+    );
+
     testWidgets('il derivato non resta indietro se il campo nome ha il focus', (
       tester,
     ) async {

@@ -191,9 +191,12 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     // Un nome personalizzato e non vuoto è l'unico che sopravvive al blur.
     if (_nameTouched && !isEmpty) return;
     setState(() {
-      // Riaggancia: senza questo, cambiare le date dopo aver svuotato il
-      // campo lascerebbe il nome congelato sulle date vecchie.
-      if (isEmpty) _nameTouched = false;
+      // A questo punto, se il testo non è vuoto, _nameTouched è già false: il
+      // return sopra esce prima per ogni caso touched+non-vuoto. L'assegnazione
+      // serve quindi solo al caso touched+vuoto — riaggancia il nome alla
+      // destinazione/date correnti, altrimenti svuotare il campo e poi
+      // cambiare le date lo lascerebbe congelato sul derivato vecchio.
+      _nameTouched = false;
       // Anche a campo pieno: mentre aveva il focus _syncDerivedName non poteva
       // riscriverlo, quindi può mostrare una destinazione o delle date che nel
       // frattempo l'utente ha già cambiato.
@@ -232,9 +235,12 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
           : null,
       destinationName: destinationName,
       // Finché il nome non è personalizzato la fonte di verità è _derivedName(),
-      // non il controller: mentre il campo ha il focus nessuno lo riscrive,
-      // quindi può essere rimasto indietro — e questo è il valore che il
-      // genitore salva.
+      // non il controller: mentre il campo ha il focus _syncDerivedName non lo
+      // riscrive, quindi il testo a video può restare indietro rispetto alla
+      // destinazione/date appena cambiate. Il valore emesso qui resta comunque
+      // allineato al derivato anche in quella finestra (non è mai il testo
+      // vecchio che finisce salvato); la finestra si chiude al primo blur, che
+      // risincronizza anche il controller via _onNameFocusChanged.
       name: _nameTouched && _nameController.text.trim().isNotEmpty
           ? _nameController.text.trim()
           : _derivedName(),
