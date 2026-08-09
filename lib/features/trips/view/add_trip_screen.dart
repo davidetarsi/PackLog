@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+import '../model/trip_form_validation.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import '../../luggages/providers/luggage_provider.dart';
@@ -70,30 +71,17 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
     });
   }
 
-  bool get _canSave =>
-      _departureDateTime != null &&
-      _returnDateTime != null &&
-      (_destinationHouseId != null || _destinationLocation != null);
-
   Future<void> _saveTrip() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_destinationLocation == null && _destinationHouseId == null) {
-      AppSnackBar.showSuccess(context, 'trips.destination_required'.tr());
-      return;
-    }
-
-    if (_departureDateTime == null || _returnDateTime == null) {
-      AppSnackBar.showSuccess(context, 'trips.dates_required'.tr());
-      return;
-    }
-
-    // Validazione date
-    if (_returnDateTime!.isBefore(_departureDateTime!)) {
-      AppSnackBar.showWarning(
-        context,
-        'common.return_before_departure_error'.tr(),
-      );
+    // Bottone sempre attivo: un bottone spento senza spiegazione non fa
+    // distinguere "manca qualcosa" da "l'app è rotta".
+    final error = tripFormError(
+      departureDateTime: _departureDateTime,
+      returnDateTime: _returnDateTime,
+    );
+    if (error != null) {
+      AppSnackBar.showError(context, error.tr());
       return;
     }
 
@@ -274,7 +262,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
             ? 'common.save_changes'.tr()
             : 'trips.create_trip'.tr(),
         primaryIcon: Icons.save,
-        onPrimaryPressed: (_isLoading || !_canSave) ? null : _saveTrip,
+        onPrimaryPressed: _isLoading ? null : _saveTrip,
         isLoading: _isLoading,
       ),
     );
