@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../model/trip_form_validation.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import '../../../shared/model/location_suggestion_model.dart';
@@ -66,22 +67,12 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
 
     if (_trip == null) return;
 
-    if (_destinationLocation == null && _destinationHouseId == null) {
-      AppSnackBar.showSuccess(context, 'trips.destination_required'.tr());
-      return;
-    }
-
-    if (_departureDateTime == null || _returnDateTime == null) {
-      AppSnackBar.showSuccess(context, 'trips.dates_required'.tr());
-      return;
-    }
-
-    // Validazione date
-    if (_returnDateTime!.isBefore(_departureDateTime!)) {
-      AppSnackBar.showWarning(
-        context,
-        'common.return_before_departure_error'.tr(),
-      );
+    final error = tripFormError(
+      departureDateTime: _departureDateTime,
+      returnDateTime: _returnDateTime,
+    );
+    if (error != null) {
+      AppSnackBar.showError(context, error.tr());
       return;
     }
 
