@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../../features/houses/model/house_model.dart';
@@ -241,6 +243,11 @@ abstract final class SyncSerializers {
       locationLat: Value(r['location_lat'] as double?),
       locationLon: Value(r['location_lon'] as double?),
       isSaved: Value(r['is_saved'] as bool? ?? false),
+      // `null` = nessuna informazione (riga anteriore allo schema 10) → non
+      // toccare il locale. `[]` = l'utente ha rimosso le tappe → azzerare.
+      legs: r['legs'] == null
+          ? const Value.absent()
+          : Value(jsonEncode(r['legs'])),
       createdAt: Value(DateTime.parse(r['created_at'] as String)),
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
@@ -384,6 +391,9 @@ abstract final class SyncSerializers {
           )
           .toList(),
       'luggage_ids': luggageIds,
+      // Sempre una lista: `null` significherebbe "nessuna informazione" e la
+      // rimozione delle tappe non si propagherebbe mai.
+      'legs': trip.legs == null ? const <dynamic>[] : jsonDecode(trip.legs!),
     };
   }
 }
