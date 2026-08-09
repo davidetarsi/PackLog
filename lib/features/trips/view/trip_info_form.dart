@@ -117,20 +117,32 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
   void didUpdateWidget(covariant TripInfoForm oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Solo se la prop è cambiata davvero, il campo non è "touched" e il testo
-    // proposto differisce da quello già nel controller: riscrivere con lo
-    // stesso identico testo (es. round-trip onChanged → setState genitore →
-    // stessa initialName) collasserebbe comunque la selection.
+    // Mentre il campo ha il focus non lo riscrive nessuno, genitore incluso:
+    // il giro onChanged → setState del genitore → initialName ci rimanda qui
+    // il nome derivato mentre l'utente sta ancora digitando (basta che svuoti
+    // il campo perché _notifyChanged emetta il derivato), e adottarlo gli
+    // cancellerebbe il testo sotto le dita ricollassando il cursore. È la
+    // stessa guardia che ha _syncDerivedName; al blur ci pensa
+    // _onNameFocusChanged.
+    // Le altre condizioni: solo se la prop è cambiata davvero, il campo non è
+    // "touched" e il testo proposto differisce da quello già nel controller —
+    // riscrivere con lo stesso identico testo collasserebbe comunque la
+    // selection.
     final newName = widget.initialName ?? '';
     if (widget.initialName != oldWidget.initialName &&
+        !_nameFocusNode.hasFocus &&
         !_nameTouched &&
         newName.isNotEmpty &&
         newName != _nameController.text) {
       _nameController.text = newName;
-      // Il genitore ci ha mandato un nome esplicito: da qui in poi va
-      // trattato come se l'utente lo avesse scritto lui, altrimenti il
+      // Adottare un nome che coincide col derivato non è una
+      // personalizzazione: marcarlo "toccato" congelerebbe per sempre un nome
+      // che l'utente non ha mai scritto (caso reale: add_trip_screen in
+      // modifica che carica il viaggio dopo il primo frame). È la stessa
+      // asimmetria che didChangeDependencies già evita sul nome iniziale.
+      // Se invece il nome è davvero personalizzato va difeso, altrimenti il
       // prossimo _notifyChanged() lo sovrascriverebbe subito col derivato.
-      _nameTouched = true;
+      if (newName != _derivedName()) _nameTouched = true;
     }
     if (widget.initialDescription != oldWidget.initialDescription &&
         (widget.initialDescription ?? '') != _descriptionController.text) {

@@ -2,46 +2,107 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pack_log/features/trips/view/trip_info_form.dart';
+import 'package:pack_log/shared/model/location_suggestion_model.dart';
 
-/// Raccoglie l'ultimo nome emesso da onChanged, per le assert che vogliono
-/// controllare cosa il form riporta al genitore (non solo cosa c'è a video).
-class _Harness {
+/// Genitore stateful che replica `add_trip_screen`/`edit_trip_info_screen`: a
+/// ogni onChanged fa setState e **ripassa il nome al form come initialName**.
+/// Un harness che si limita a registrare l'ultimo nome emesso non ricostruisce
+/// mai il form, quindi non esercita `didUpdateWidget` — ed è lì che vivono i
+/// difetti che questi test devono vedere.
+class _ParentHost extends StatefulWidget {
+  final String? initialName;
+  final LocationSuggestionModel? destination;
+
+  const _ParentHost({super.key, this.initialName, this.destination});
+
+  @override
+  State<_ParentHost> createState() => _ParentHostState();
+}
+
+class _ParentHostState extends State<_ParentHost> {
+  String? _name;
+
+  /// Ultimo nome emesso da onChanged, per le assert che vogliono controllare
+  /// cosa il form riporta al genitore (non solo cosa c'è a video).
   String? lastName;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = widget.initialName;
+  }
+
+  /// Simula il nome che arriva dal genitore dopo il primo frame, come fa
+  /// `add_trip_screen._loadTrip` in modifica: il form è già montato con
+  /// initialName null e se lo vede cambiare sotto.
+  void pushName(String value) => setState(() => _name = value);
+
+  @override
+  Widget build(BuildContext context) {
+    return TripInfoForm(
+      initialName: _name,
+      initialDestinationLocation: widget.destination,
+      onChanged:
+          ({
+            description,
+            departureDateTime,
+            returnDateTime,
+            destinationHouseId,
+            destinationLocation,
+            destinationName,
+            name,
+          }) {
+            setState(() {
+              lastName = name;
+              _name = name;
+            });
+          },
+    );
+  }
 }
 
 const _nameFieldKey = Key('trip_name_field');
 
-Future<_Harness> _pumpForm(WidgetTester tester, {String? initialName}) async {
-  final harness = _Harness();
+Future<GlobalKey<_ParentHostState>> _pumpForm(
+  WidgetTester tester, {
+  String? initialName,
+  String? destination,
+}) async {
+  final key = GlobalKey<_ParentHostState>();
   await tester.pumpWidget(
     ProviderScope(
       child: MaterialApp(
         home: Scaffold(
-          body: TripInfoForm(
+          body: _ParentHost(
+            key: key,
             initialName: initialName,
-            onChanged:
-                ({
-                  description,
-                  departureDateTime,
-                  returnDateTime,
-                  destinationHouseId,
-                  destinationLocation,
-                  destinationName,
-                  name,
-                }) {
-                  harness.lastName = name;
-                },
+            destination: destination == null
+                ? null
+                : LocationSuggestionModel(
+                    placeId: '',
+                    displayName: destination,
+                  ),
           ),
         ),
       ),
     ),
   );
   await tester.pumpAndSettle();
-  return harness;
+  return key;
 }
 
+TextField _nameField(WidgetTester tester) =>
+    tester.widget<TextField>(find.byKey(_nameFieldKey));
+
 String _nameFieldText(WidgetTester tester) =>
-    tester.widget<TextField>(find.byKey(_nameFieldKey)).controller!.text;
+    _nameField(tester).controller!.text;
+
+/// Testo sotto le 3 lettere: resta sotto `minCharsForSearch` e non innesca la
+/// ricerca via HTTP di LocationAutocompleteField.
+Future<void> _changeDestination(WidgetTester tester, String value) async {
+  await tester.enterText(find.byType(TextFormField), value);
+  await tester.pump();
+}
 
 void main() {
   group('TripInfoForm — nome', () {
@@ -51,7 +112,7 @@ void main() {
         // È il motivo per cui esiste il flag: senza, un cambio di
         // destinazione (o di date) cancellerebbe quello che l'utente ha
         // appena scritto.
-        final harness = await _pumpForm(tester);
+        final host = await _pumpForm(tester);
 
         await tester.enterText(find.byKey(_nameFieldKey), 'Da mio fratello');
         await tester.pump();
@@ -60,13 +121,10 @@ void main() {
         // passare dalla schermata calendario (navigazione reale, esplicitamente
         // evitata nei test), mentre la destinazione attraversa esattamente lo
         // stesso percorso di codice (_notifyChanged → _syncDerivedName), quindi
-        // è equivalente per l'invariante in esame. Testo sotto le 3 lettere
-        // per restare sotto minCharsForSearch e non innescare la ricerca via
-        // HTTP di LocationAutocompleteField.
-        await tester.enterText(find.byType(TextFormField), 'Xx');
-        await tester.pump();
+        // è equivalente per l'invariante in esame.
+        await _changeDestination(tester, 'Xx');
 
-        expect(harness.lastName, 'Da mio fratello');
+        expect(host.currentState!.lastName, 'Da mio fratello');
         expect(_nameFieldText(tester), 'Da mio fratello');
       },
     );
@@ -109,7 +167,7 @@ void main() {
         // `_nameTouched = false;` dentro _onNameFocusChanged.
         await tester.enterText(find.byKey(_nameFieldKey), 'Milano');
         await tester.pump();
-        tester.widget<TextField>(find.byKey(_nameFieldKey)).controller!.clear();
+        _nameField(tester).controller!.clear();
         await tester.pump();
 
         FocusManager.instance.primaryFocus?.unfocus();
@@ -121,11 +179,67 @@ void main() {
         // ripristino, il nome resterebbe congelato su `restored` anche
         // cambiando la destinazione: questo è esattamente ciò che il flag
         // dovrebbe evitare.
-        await tester.enterText(find.byType(TextFormField), 'Xx');
-        await tester.pump();
+        await _changeDestination(tester, 'Xx');
 
         expect(_nameFieldText(tester), isNot(equals(restored)));
       },
     );
+
+    testWidgets('il giro col genitore non ruba il campo mentre si digita', (
+      tester,
+    ) async {
+      // Il difetto: svuotando il campo, _notifyChanged emette comunque il
+      // nome derivato ("Roma"); il genitore fa setState, initialName cambia e
+      // didUpdateWidget riscriveva il controller con "Roma" mentre l'utente
+      // aveva ancora il campo sotto le dita.
+      await _pumpForm(tester, destination: 'Roma');
+
+      await tester.enterText(find.byKey(_nameFieldKey), 'Da mio fratello');
+      await tester.pump();
+
+      await tester.enterText(find.byKey(_nameFieldKey), '');
+      // Due pump: il primo consegna il setState del genitore, il secondo
+      // ricostruisce il form con la nuova initialName. È esattamente il frame
+      // in cui il derivato ricompariva.
+      await tester.pump();
+      await tester.pump();
+
+      expect(_nameField(tester).focusNode!.hasFocus, isTrue);
+      expect(_nameFieldText(tester), isEmpty);
+    });
+
+    testWidgets(
+      'un nome mai personalizzato continua a seguire la destinazione',
+      (tester) async {
+        // Il genitore monta il form senza nome e glielo passa dopo il primo
+        // frame (add_trip_screen in modifica, dopo _loadTrip). Quel nome
+        // coincide col derivato: non è una personalizzazione dell'utente, e
+        // adottarlo non deve congelare il campo.
+        final host = await _pumpForm(tester, destination: 'Roma');
+
+        host.currentState!.pushName('Roma');
+        await tester.pump();
+        expect(_nameFieldText(tester), 'Roma');
+
+        await _changeDestination(tester, 'Xx');
+
+        expect(_nameFieldText(tester), 'Xx');
+      },
+    );
+
+    testWidgets('un nome personalizzato sopravvive al giro col genitore', (
+      tester,
+    ) async {
+      final host = await _pumpForm(tester, destination: 'Roma');
+
+      await tester.enterText(find.byKey(_nameFieldKey), 'Da mio fratello');
+      await tester.pump();
+      await tester.pump();
+
+      await _changeDestination(tester, 'Xx');
+
+      expect(_nameFieldText(tester), 'Da mio fratello');
+      expect(host.currentState!.lastName, 'Da mio fratello');
+    });
   });
 }
