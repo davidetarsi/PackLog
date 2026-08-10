@@ -226,9 +226,14 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
           ),
           bottom: _isWizard
               ? PreferredSize(
-                  // 28 e non 20: il testo bodySmall (12) più il padding basso
-                  // non ci starebbe, e la riga andrebbe in overflow.
-                  preferredSize: const Size.fromHeight(28),
+                  // L'altezza segue il testo invece di essere fissa: la riga
+                  // contiene bodySmall (12) più il padding basso, e con
+                  // "testo grande" di sistema un valore costante tornerebbe
+                  // in overflow.
+                  preferredSize: Size.fromHeight(
+                    MediaQuery.textScalerOf(context).scale(20) +
+                        context.spacingSm,
+                  ),
                   child: Padding(
                     padding: EdgeInsets.only(
                       left: context.spacingMd,
