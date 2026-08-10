@@ -59,7 +59,7 @@
     "trips_has_destination_plural": "{} active/scheduled trips have this house as destination",
     "wait_trips_end": "Wait for trips to end or delete them before deleting the house",
     "modify": "Modify",
-    "manage_sheet_title": "Modify House",
+    "manage_sheet_title": "Edit House",
     "edit_info": "Edit info",
     "add_sheet_title": "Add Items",
     "add_single_item": "Single item",
@@ -135,7 +135,7 @@
     "add_new": "New space",
     "edit": "Edit space",
     "delete": "Delete space",
-    "manage": "Manage spaces",
+    "manage": "Edit spaces",
     "no_spaces": "No spaces",
     "no_spaces_subtitle": "Spaces help you organize items",
     "all_items": "All",
@@ -170,7 +170,7 @@
     "trip_singular": "trip",
     "trip_plural": "trips",
     "luggage_deleted": "Luggage \"{}\" deleted",
-    "manage": "Manage luggages"
+    "manage": "Edit luggages"
   },
   "house_icons": {
     "home": "Home",
@@ -204,8 +204,8 @@
     "edit_info": "Edit Trip Info",
     "edit_items": "Edit Items",
     "save_items": "Save items",
-    "manage": "Manage",
-    "manage_sheet_title": "Manage trip",
+    "manage": "Edit",
+    "manage_sheet_title": "Edit trip",
     "modify": "Modify trip",
     "duplicate_success": "\"{}\" duplicated successfully",
     "trip_info": "Trip information",
