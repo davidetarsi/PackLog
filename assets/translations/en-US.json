@@ -257,8 +257,21 @@
     "no_destination": "No destination",
     "add_clothes": "Add clothes",
     "unnamed_destination": "Trip",
-    "destination_required": "Please select a destination",
-    "dates_required": "Please select departure and return dates"
+    "name_label": "Name",
+    "departure_date_required": "The departure date is missing",
+    "create_trip_with_count": "Create trip ({})",
+    "step_of": "{} of {}",
+    "legs_title": "Other stops",
+    "leg_add": "Add stop",
+    "leg_new": "New stop",
+    "leg_edit": "Edit stop",
+    "leg_location": "Place",
+    "leg_dates": "Dates",
+    "leg_pick_dates": "Pick the dates",
+    "leg_location_required": "The stop is missing a place",
+    "destination_benefit": "With a destination home, the things you pack show up there as temporary while you are away.",
+    "no_items_in_named_house": "No items in {house}",
+    "add_item_to_house": "Add an item"
   },
   "common": {
     "save": "Save",
@@ -335,7 +348,9 @@
     "back_to_home": "Back to home",
     "navigation_error": "Navigation error: {}",
     "profile": "Profile",
-    "move": "Move"
+    "move": "Move",
+    "next": "Next",
+    "dates": "Dates"
   },
   "errors": {
     "generic": "An error occurred",

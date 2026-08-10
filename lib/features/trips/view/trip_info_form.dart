@@ -395,9 +395,38 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
               : _buildLocationRow(context, colorScheme),
         ),
 
+        SizedBox(height: context.spacingXs),
+        // Sempre visibile, non dentro un errore: non è un errore, e un errore
+        // si vede solo quando le cose vanno male.
+        Text(
+          'trips.destination_benefit'.tr(),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+        ),
+
         SizedBox(height: context.spacingMd),
 
         // ── Date ──────────────────────────────────────────────────────
+        // L'asterisco è l'unico della pagina: comunica da solo che tutto il
+        // resto (destinazione, descrizione) è facoltativo.
+        Row(
+          children: [
+            Text(
+              'common.dates'.tr(),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            Text(
+              ' *',
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: colorScheme.primary),
+            ),
+          ],
+        ),
+        SizedBox(height: context.spacingXs),
         Card(
           margin: EdgeInsets.zero,
           elevation: 0,

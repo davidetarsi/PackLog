@@ -126,16 +126,11 @@ void main() {
 
         // Attiva il filtro categoria toccando la pill "vestiti", diversa
         // dalla categoria dell'unico oggetto presente in casa.
-        await tester.tap(
-          find.text(ItemCategory.vestiti.displayName).first,
-        );
+        await tester.tap(find.text(ItemCategory.vestiti.displayName).first);
         await tester.pumpAndSettle();
 
         expect(find.byType(DsEmptyState), findsOneWidget);
-        expect(
-          find.byKey(const Key('trip_items_empty_add')),
-          findsNothing,
-        );
+        expect(find.byKey(const Key('trip_items_empty_add')), findsNothing);
       },
     );
   });

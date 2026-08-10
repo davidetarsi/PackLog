@@ -379,10 +379,8 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         action: (_selectedCategory == null && _selectedHouseId != null)
             ? TextButton.icon(
                 key: const Key('trip_items_empty_add'),
-                onPressed: () => showAddEditItemSheet(
-                  context,
-                  houseId: _selectedHouseId,
-                ),
+                onPressed: () =>
+                    showAddEditItemSheet(context, houseId: _selectedHouseId),
                 icon: const Icon(Icons.add, size: 18),
                 label: Text('trips.add_item_to_house'.tr()),
               )

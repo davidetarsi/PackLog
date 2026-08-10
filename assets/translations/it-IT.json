@@ -257,8 +257,21 @@
     "no_destination": "Nessuna destinazione",
     "add_clothes": "Aggiungi vestiti",
     "unnamed_destination": "Viaggio",
-    "destination_required": "Seleziona una destinazione",
-    "dates_required": "Seleziona le date di partenza e ritorno"
+    "name_label": "Nome",
+    "departure_date_required": "Manca la data di partenza",
+    "create_trip_with_count": "Crea viaggio ({})",
+    "step_of": "{} di {}",
+    "legs_title": "Altre tappe",
+    "leg_add": "Aggiungi tappa",
+    "leg_new": "Nuova tappa",
+    "leg_edit": "Modifica tappa",
+    "leg_location": "Luogo",
+    "leg_dates": "Date",
+    "leg_pick_dates": "Scegli le date",
+    "leg_location_required": "Manca il luogo della tappa",
+    "destination_benefit": "Con una casa di destinazione, gli oggetti che porti compaiono lì come temporanei mentre sei via.",
+    "no_items_in_named_house": "Nessun oggetto in {house}",
+    "add_item_to_house": "Aggiungi un oggetto"
   },
   "common": {
     "save": "Salva",
@@ -335,7 +348,9 @@
     "back_to_home": "Torna alla home",
     "navigation_error": "Errore di navigazione: {}",
     "profile": "Profilo",
-    "move": "Sposta"
+    "move": "Sposta",
+    "next": "Avanti",
+    "dates": "Date"
   },
   "errors": {
     "generic": "Si è verificato un errore",
