@@ -17,6 +17,7 @@ import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/widgets/universal_item_tile.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
+import '../../../shared/widgets/ds_button.dart';
 
 /// Enum per le tab di filtro delle categorie
 enum TripItemFilterTab {
@@ -176,10 +177,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       body: DsEmptyState(
         icon: Icons.luggage_outlined,
         title: 'common.not_found'.tr(),
-        action: ElevatedButton.icon(
+        action: DsButton(
+          label: 'common.back_to_list'.tr(),
+          icon: Icons.arrow_back,
+          variant: DsButtonVariant.secondary,
           onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back),
-          label: Text('common.back_to_list'.tr()),
         ),
       ),
     );

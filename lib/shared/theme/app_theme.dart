@@ -16,9 +16,15 @@ class AppTheme {
   static ThemeData get light {
     const colorScheme = ColorScheme.light(
       // ── Primary ───────────────────────────────────────────────────────────
-      // #E85D04: arancione brand light. onPrimary bianco garantisce WCAG AA.
+      // #E85D04: arancione brand light.
+      //
+      // onPrimary scuro e non bianco: il bianco su questo arancione dà 3,50:1,
+      // sotto la soglia WCAG AA di 4,5:1 per il testo di un bottone (il
+      // commento precedente dichiarava il contrario, misurandolo si scopre che
+      // non regge). Il marrone quasi nero arriva a 4,96:1 e conserva
+      // l'arancione vivo, che scurire il riempimento avrebbe spento.
       primary: Color(0xFFE85D04),
-      onPrimary: Colors.white,
+      onPrimary: Color(0xFF2A1508),
       primaryContainer: Color.fromARGB(255, 255, 245, 238),
       onPrimaryContainer: Color(0xFF4A1F00),
       // ── Secondary ─────────────────────────────────────────────────────────

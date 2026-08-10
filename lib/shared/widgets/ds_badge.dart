@@ -133,8 +133,18 @@ class DsStatusBadge extends StatelessWidget {
         bg = cs.tertiaryContainer;
         fg = cs.onTertiaryContainer;
       case DsStatusBadgeType.temporary:
-        bg = appColors?.itemTemporaryBackground ?? cs.primaryContainer;
-        fg = appColors?.itemTemporaryText ?? cs.onPrimaryContainer;
+        // Neutro e non colorato: "ospite" e "in viaggio" sono i due versi dello
+        // stesso movimento — la tua roba è fuori, oppure roba altrui è qui — ma
+        // non hanno lo stesso peso. "In viaggio" è azionabile, "ospite" è un
+        // fatto passivo, e colorare entrambi non farebbe risaltare nessuno dei
+        // due. I due badge compaiono anche affiancati sulla stessa card
+        // (houses_screen), e lì grigio contro ambra si distingue meglio di due
+        // toni caldi vicini.
+        //
+        // Era l'unico blu dell'app: toglierlo riporta la palette ad arancione,
+        // ambra, rosso e verde.
+        bg = cs.surfaceContainerHighest;
+        fg = cs.onSurfaceVariant;
       case DsStatusBadgeType.primary:
         bg = cs.primaryContainer;
         fg = cs.onPrimaryContainer;

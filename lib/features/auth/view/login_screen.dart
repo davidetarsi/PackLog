@@ -13,6 +13,7 @@ import '../../../shared/config/app_config.dart';
 import '../../../shared/helpers/exception_message.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/ds_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -189,31 +190,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 const Spacer(flex: 3),
 
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: (_isLoading || !_consentGiven)
-                        ? null
-                        : _signInWithGoogle,
-                    icon: _isLoading
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: colorScheme.onPrimary,
-                            ),
-                          )
-                        : const Icon(Icons.g_mobiledata, size: 28),
-                    label: Text(
-                      _isLoading
-                          ? 'common.loading'.tr()
-                          : 'login.sign_in_google'.tr(),
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+                DsButton(
+                  label: 'login.sign_in_google'.tr(),
+                  icon: Icons.g_mobiledata,
+                  expand: true,
+                  isLoading: _isLoading,
+                  // Senza consenso il bottone resta spento: qui il bottone
+                  // disabilitato è corretto, perche la casella da spuntare e
+                  // subito sotto e dice da se cosa manca.
+                  onPressed: _consentGiven ? _signInWithGoogle : null,
                 ),
 
                 AppSpacing.gapMd,

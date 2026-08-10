@@ -32,6 +32,7 @@ import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
+import '../../../shared/widgets/ds_button.dart';
 
 enum _CategoryTab {
   all('trips.filter_all', null),
@@ -348,10 +349,11 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               body: DsEmptyState(
                 icon: Icons.home_outlined,
                 title: 'houses.house_not_found_message'.tr(),
-                action: ElevatedButton.icon(
+                action: DsButton(
+                  label: 'houses.back_to_houses'.tr(),
+                  icon: Icons.home,
+                  variant: DsButtonVariant.secondary,
                   onPressed: () => context.go('/'),
-                  icon: const Icon(Icons.home),
-                  label: Text('houses.back_to_houses'.tr()),
                 ),
               ),
             );

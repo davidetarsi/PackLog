@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/features/auth/view/login_screen.dart';
+import 'package:pack_log/shared/widgets/ds_button.dart';
 
 void main() {
   // The analytics service is the concrete `AppAnalyticsService`; constructing
@@ -35,19 +36,13 @@ void main() {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
-    // The Google sign-in button is the primary FilledButton. It is built via
-    // `FilledButton.icon(...)`, which under the hood constructs the private
-    // subclass `_FilledButtonWithIcon` (see
-    // flutter/lib/src/material/filled_button.dart). `find.byType` matches on
-    // exact `runtimeType`, so it would never find this widget; a predicate
-    // using `is` matches the subclass while still requiring a FilledButton.
-    final buttonFinder = find.byWidgetPredicate(
-      (widget) => widget is FilledButton,
-      description: 'Google sign-in FilledButton',
-    );
+    // Il bottone di accesso è un DsButton, il componente pill condiviso
+    // dell'app: `onPressed == null` è ciò che lo spegne, ed è anche ciò che
+    // ne toglie l'accento arancione (vedi la scala a tre livelli).
+    final buttonFinder = find.byType(DsButton);
     expect(buttonFinder, findsOneWidget);
 
-    FilledButton button = tester.widget(buttonFinder);
+    DsButton button = tester.widget(buttonFinder);
     expect(
       button.onPressed,
       isNull,
@@ -75,10 +70,7 @@ void main() {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
-    expect(
-      find.byWidgetPredicate((widget) => widget is FilledButton),
-      findsOneWidget,
-    );
+    expect(find.byType(DsButton), findsOneWidget);
     expect(find.byType(TextButton), findsNothing);
   });
 }

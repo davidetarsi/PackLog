@@ -12,6 +12,7 @@ import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/entity_action_handler.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
+import '../../../shared/widgets/ds_button.dart';
 
 /// Enum per le tab di filtro
 enum TripFilterTab {
@@ -276,10 +277,10 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       icon: Icons.luggage_outlined,
       iconColor: colorScheme.primary,
       title: 'trips.no_trips_title'.tr(),
-      action: FilledButton.icon(
+      action: DsButton(
+        label: 'trips.no_trips_subtitle'.tr(),
+        icon: Icons.add,
         onPressed: () => context.push('/new-trip'),
-        icon: const Icon(Icons.add),
-        label: Text('trips.no_trips_subtitle'.tr()),
       ),
     );
   }

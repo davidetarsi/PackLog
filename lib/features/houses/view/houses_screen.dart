@@ -17,6 +17,7 @@ import 'add_edit_house_screen.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
 import '../../../shared/widgets/refreshable_empty_state.dart';
+import '../../../shared/widgets/ds_button.dart';
 
 class HousesScreen extends ConsumerStatefulWidget {
   const HousesScreen({super.key});
@@ -50,10 +51,10 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
               icon: Icons.home_outlined,
               iconColor: colorScheme.primary,
               title: 'houses.no_houses_title'.tr(),
-              action: FilledButton.icon(
+              action: DsButton(
+                label: 'houses.no_houses_subtitle'.tr(),
+                icon: Icons.add,
                 onPressed: () => showAddEditHouseSheet(context),
-                icon: const Icon(Icons.add),
-                label: Text('houses.no_houses_subtitle'.tr()),
               ),
             );
           }

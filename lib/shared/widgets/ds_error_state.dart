@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../theme/error_empty_theme_extension.dart';
+import 'ds_button.dart';
 
 /// Widget standardizzato per stati di errore.
 ///
@@ -86,9 +87,11 @@ class DsErrorState extends StatelessWidget {
           ),
           if (showRetry) ...[
             SizedBox(height: theme.stateSpacingMd),
-            ElevatedButton(
+            DsButton(
+              label: retryLabel ?? theme.errorStateRetryLabel.tr(),
+              icon: Icons.refresh,
+              variant: DsButtonVariant.secondary,
               onPressed: onRetry,
-              child: Text(retryLabel ?? theme.errorStateRetryLabel.tr()),
             ),
           ],
         ],

@@ -36,6 +36,7 @@ import '../../features/tour/view/ai_onboarding_intro_screen.dart';
 import '../../features/tour/widgets/tour_trigger_wrapper.dart';
 import '../../shared/dev/ds_theme_showcase_screen.dart';
 import '../../shared/widgets/main_shell.dart';
+import '../../shared/widgets/ds_button.dart';
 
 part 'app_router.g.dart';
 
@@ -368,9 +369,10 @@ class _ErrorScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             AppSpacing.gapMd,
-            ElevatedButton(
+            DsButton(
+              label: 'common.back_to_home'.tr(),
+              variant: DsButtonVariant.secondary,
               onPressed: () => context.go('/'),
-              child: Text('common.back_to_home'.tr()),
             ),
           ],
         ),
