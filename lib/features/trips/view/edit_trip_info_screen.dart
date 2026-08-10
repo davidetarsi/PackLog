@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../model/trip_form_validation.dart';
+import '../model/trip_leg.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import '../../../shared/model/location_suggestion_model.dart';
@@ -12,6 +13,7 @@ import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'trip_info_form.dart';
+import 'widgets/trip_legs_section.dart';
 
 /// Schermata per modificare solo le info del viaggio (nome, date, destinazione).
 class EditTripInfoScreen extends ConsumerStatefulWidget {
@@ -36,6 +38,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
   String? _destinationHouseId;
   LocationSuggestionModel? _destinationLocation;
   String? _destinationName;
+  List<TripLeg> _legs = [];
 
   @override
   void initState() {
@@ -57,6 +60,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
           _destinationHouseId = trip.destinationHouseId;
           _destinationLocation = trip.destinationLocation;
           _destinationName = trip.destinationLocation?.displayName;
+          _legs = List.from(trip.legs);
         });
       }
     });
@@ -83,6 +87,7 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
       description: _description,
       departureDateTime: _departureDateTime,
       returnDateTime: _returnDateTime,
+      legs: _legs,
       destinationHouseId: _destinationHouseId,
       destinationLocation: _destinationHouseId == null
           ? _destinationLocation
@@ -134,38 +139,57 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
             padding: EdgeInsets.all(
               context.spacingMd,
             ).copyWith(bottom: context.spacingMd + context.ctaReservedHeight),
-            child: TripInfoForm(
-              initialName: _name,
-              initialDescription: _description,
-              initialDepartureDateTime: _departureDateTime,
-              initialReturnDateTime: _returnDateTime,
-              initialDestinationHouseId: _destinationHouseId,
-              initialDestinationLocation: _destinationLocation,
-              onChanged:
-                  ({
-                    description,
-                    departureDateTime,
-                    returnDateTime,
-                    destinationHouseId,
-                    destinationLocation,
-                    destinationName,
-                    name,
-                  }) {
-                    setState(() {
-                      _description = description;
-                      _departureDateTime = departureDateTime;
-                      _returnDateTime = returnDateTime;
-                      _destinationHouseId = destinationHouseId;
-                      _destinationLocation = destinationLocation;
-                      _destinationName = destinationName;
-                      _name = name;
-                    });
-                  },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TripInfoForm(
+                  initialName: _name,
+                  initialDescription: _description,
+                  initialDepartureDateTime: _departureDateTime,
+                  initialReturnDateTime: _returnDateTime,
+                  initialDestinationHouseId: _destinationHouseId,
+                  initialDestinationLocation: _destinationLocation,
+                  onChanged:
+                      ({
+                        description,
+                        departureDateTime,
+                        returnDateTime,
+                        destinationHouseId,
+                        destinationLocation,
+                        destinationName,
+                        name,
+                      }) {
+                        setState(() {
+                          _description = description;
+                          _departureDateTime = departureDateTime;
+                          _returnDateTime = returnDateTime;
+                          _destinationHouseId = destinationHouseId;
+                          _destinationLocation = destinationLocation;
+                          _destinationName = destinationName;
+                          _name = name;
+                        });
+                      },
+                ),
+
+                SizedBox(height: context.spacingLg),
+
+                // Stesso trattamento che ha in add_trip_screen: senza questa
+                // sezione una tappa aggiunta in creazione non si potrebbe più
+                // correggere né rimuovere, perché il dettaglio viaggio porta
+                // qui e non a /trips/:id/edit.
+                TripLegsSection(
+                  legs: _legs,
+                  onChanged: (legs) => setState(() => _legs = legs),
+                ),
+              ],
             ),
           ),
         ),
       ),
       bottomContent: UniversalActionBar(
+        // Key sulla pill: il test tocca il bottone senza dipendere dal testo
+        // tradotto.
+        primaryButtonKey: const Key('edit_trip_info_save'),
         primaryLabel: 'common.save_changes'.tr(),
         primaryIcon: Icons.save,
         onPrimaryPressed: _isLoading ? null : _saveChanges,
