@@ -241,7 +241,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             : items.where((i) => i.category == _selectedCategory).toList();
 
         if (filteredItems.isEmpty) {
-          return _buildNoItemsState(context);
+          return _buildNoItemsStateScrollable(context);
         }
 
         // Raggruppa per categoria (ordine canonico: vestiti → toiletries → elettronica → varie)
@@ -353,6 +353,10 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
   /// Era scritto a mano in due punti quasi identici: ora è uno solo, e ha
   /// un'azione. Senza, la creazione di un viaggio da una casa vuota finisce in
   /// un vicolo cieco.
+  ///
+  /// Nessuno scroll qui: usato dal ramo shrinkWrap, il cui genitore è già uno
+  /// `SingleChildScrollView` senza altezza vincolata. Annidarne un altro
+  /// romperebbe con "unbounded height".
   Widget _buildNoItemsState(BuildContext context) {
     final houseName = ref
         .read(houseNotifierProvider)
@@ -386,6 +390,24 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               )
             : null,
       ),
+    );
+  }
+
+  /// Come [_buildNoItemsState], ma scorrevole.
+  ///
+  /// Usato dal ramo non-shrinkWrap, che al passo 2 del wizard vive dentro un
+  /// `Expanded` con vincoli stretti: icona hero + titolo su due righe +
+  /// bottone superano facilmente lo spazio disponibile con il testo grande
+  /// di sistema. La versione con `ListView` dello stato pieno ha sempre avuto
+  /// lo scroll (vedi sopra, `bottom: ... + ctaReservedHeight`); questa lo
+  /// riottiene, compensando la stessa area riservata alla CTA.
+  Widget _buildNoItemsStateScrollable(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.only(
+        bottom: context.spacingMd + context.ctaReservedHeight,
+      ),
+      child: _buildNoItemsState(context),
     );
   }
 

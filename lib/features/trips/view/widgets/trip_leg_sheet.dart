@@ -76,6 +76,9 @@ class _TripLegSheetState extends State<_TripLegSheet> {
     if (_from == null && _to == null) return 'trips.leg_pick_dates'.tr();
     final format = DateFormat('d MMM');
     if (_to == null) return format.format(_from!);
+    // Il picker non produce mai "solo to", ma il valore arriva anche dal
+    // sync di un altro device: un blob con solo `to` non è più impossibile.
+    if (_from == null) return format.format(_to!);
     return '${format.format(_from!)} – ${format.format(_to!)}';
   }
 

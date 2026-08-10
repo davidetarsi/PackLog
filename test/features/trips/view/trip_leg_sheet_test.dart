@@ -108,5 +108,35 @@ void main() {
       expect(captured!.id, 'leg-esistente');
       expect(captured!.locationDisplayName, 'Siena centro');
     });
+
+    testWidgets('apre senza esplodere una tappa con solo la data di ritorno', (
+      tester,
+    ) async {
+      // Il picker non produce mai questa combinazione, ma il valore arriva
+      // anche dal sync di un altro device: un blob con solo `to` non è più
+      // impossibile una volta che le tappe viaggiano fra i dispositivi.
+      final initial = TripLeg(
+        id: 'leg-parziale',
+        locationDisplayName: 'Bologna',
+        to: DateTime(2026, 9, 14),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showTripLegSheet(context, initial: initial),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('trip_leg_sheet_location')), findsOneWidget);
+    });
   });
 }
