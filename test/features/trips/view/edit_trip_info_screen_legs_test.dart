@@ -109,8 +109,9 @@ void main() {
       ],
     );
 
-    // La schermata legge il provider in `initState` e ignora l'AsyncLoading:
-    // risolviamo prima di montare, com'è già risolto nell'app (keepAlive).
+    // Risolviamo prima di montare, com'è già risolto nell'app (keepAlive):
+    // il caso opposto — dato che arriva dopo il mount — ha il suo test in
+    // trip_edit_loading_test.dart.
     await container.read(tripNotifierProvider.future);
   });
 

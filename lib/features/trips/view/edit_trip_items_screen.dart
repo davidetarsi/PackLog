@@ -10,6 +10,7 @@ import '../../items/repositories/item_repository.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'trip_items_selector.dart';
+import 'widgets/trip_edit_placeholder.dart';
 
 /// Schermata per modificare solo gli oggetti del viaggio.
 class EditTripItemsScreen extends ConsumerStatefulWidget {
@@ -27,23 +28,17 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
   TripModel? _trip;
   List<TripItem> _selectedItems = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _loadTrip();
-  }
-
-  void _loadTrip() {
-    final tripsAsync = ref.read(tripNotifierProvider);
-    tripsAsync.whenData((trips) {
-      final trip = trips.where((t) => t.id == widget.tripId).firstOrNull;
-      if (trip != null) {
-        setState(() {
-          _trip = trip;
-          _selectedItems = List.from(trip.items);
-        });
-      }
-    });
+  /// Copia il viaggio nello stato modificabile, una volta sola.
+  ///
+  /// Vedi [tripEditPlaceholder]: la lettura in `initState` lasciava la
+  /// schermata sullo spinner per sempre se il provider era ancora in
+  /// caricamento. Idratando nel build, il primo `AsyncData` la riempie.
+  ///
+  /// Nessun `setState`: siamo dentro il build provocato da `ref.watch`.
+  void _hydrate(TripModel trip) {
+    if (_trip != null) return;
+    _trip = trip;
+    _selectedItems = List.from(trip.items);
   }
 
   /// Normalizza i [TripItem] con [originHouseId] vuoto recuperando la casa
@@ -99,12 +94,20 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    if (_trip == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text('trips.edit_items'.tr())),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    final tripsAsync = ref.watch(tripNotifierProvider);
+    final trip = tripsAsync.valueOrNull
+        ?.where((t) => t.id == widget.tripId)
+        .firstOrNull;
+    if (trip != null) _hydrate(trip);
+
+    final placeholder = tripEditPlaceholder(
+      context: context,
+      ref: ref,
+      title: 'trips.edit_items'.tr(),
+      tripsAsync: tripsAsync,
+      isHydrated: _trip != null,
+    );
+    if (placeholder != null) return placeholder;
 
     return StickyCtaScaffold(
       appBar: AppBar(

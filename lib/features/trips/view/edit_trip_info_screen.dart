@@ -13,6 +13,7 @@ import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'trip_info_form.dart';
+import 'widgets/trip_edit_placeholder.dart';
 import 'widgets/trip_legs_section.dart';
 
 /// Schermata per modificare solo le info del viaggio (nome, date, destinazione).
@@ -40,30 +41,30 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
   String? _destinationName;
   List<TripLeg> _legs = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _loadTrip();
-  }
-
-  void _loadTrip() {
-    final tripsAsync = ref.read(tripNotifierProvider);
-    tripsAsync.whenData((trips) {
-      final trip = trips.where((t) => t.id == widget.tripId).firstOrNull;
-      if (trip != null) {
-        setState(() {
-          _trip = trip;
-          _name = trip.name;
-          _description = trip.description;
-          _departureDateTime = trip.departureDateTime;
-          _returnDateTime = trip.returnDateTime;
-          _destinationHouseId = trip.destinationHouseId;
-          _destinationLocation = trip.destinationLocation;
-          _destinationName = trip.destinationLocation?.displayName;
-          _legs = List.from(trip.legs);
-        });
-      }
-    });
+  /// Copia il viaggio nello stato modificabile, una volta sola.
+  ///
+  /// Prima la lettura avveniva in `initState` e basta: se il provider dei
+  /// viaggi era ancora in caricamento — avvio a freddo su un deep link, o
+  /// invalidazione dopo un sync — `whenData` non faceva nulla e la schermata
+  /// restava sullo spinner per sempre. Ora l'idratazione avviene nel build,
+  /// quindi il primo `AsyncData` che arriva la riempie.
+  ///
+  /// Una volta idratata non si tocca più: un pull di sync che rimpiazza la
+  /// lista non deve sovrascrivere ciò che l'utente sta scrivendo.
+  ///
+  /// Nessun `setState`: siamo dentro il build provocato da `ref.watch`, che
+  /// legge questi campi subito dopo.
+  void _hydrate(TripModel trip) {
+    if (_trip != null) return;
+    _trip = trip;
+    _name = trip.name;
+    _description = trip.description;
+    _departureDateTime = trip.departureDateTime;
+    _returnDateTime = trip.returnDateTime;
+    _destinationHouseId = trip.destinationHouseId;
+    _destinationLocation = trip.destinationLocation;
+    _destinationName = trip.destinationLocation?.displayName;
+    _legs = List.from(trip.legs);
   }
 
   Future<void> _saveChanges() async {
@@ -125,12 +126,20 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_trip == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text('trips.edit_info'.tr())),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    final tripsAsync = ref.watch(tripNotifierProvider);
+    final trip = tripsAsync.valueOrNull
+        ?.where((t) => t.id == widget.tripId)
+        .firstOrNull;
+    if (trip != null) _hydrate(trip);
+
+    final placeholder = tripEditPlaceholder(
+      context: context,
+      ref: ref,
+      title: 'trips.edit_info'.tr(),
+      tripsAsync: tripsAsync,
+      isHydrated: _trip != null,
+    );
+    if (placeholder != null) return placeholder;
 
     return StickyCtaScaffold(
       appBar: AppBar(title: Text('trips.edit_info'.tr())),
