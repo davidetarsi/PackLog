@@ -48,7 +48,9 @@ class ItemsEmptyState extends StatelessWidget {
         ? null
         : DsButton(
             key: actionKey,
-            label: 'items.add_item_to_house'.tr(),
+            // L'invito sta nel bottone, non in un sottotitolo che lo ripete:
+            // stesso schema degli stati vuoti di case e viaggi.
+            label: 'items.no_items_subtitle'.tr(),
             icon: Icons.add,
             onPressed: () => showAddEditItemSheet(context, houseId: houseId),
           );

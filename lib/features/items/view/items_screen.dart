@@ -94,10 +94,9 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                   return ItemsEmptyState(
                     onRefresh: _onRefresh,
                     icon: widget.categoryFilter!.icon,
-                    title: 'items.no_items'.tr(),
-                    subtitle: widget.selectedSpaceId != null
+                    title: widget.selectedSpaceId != null
                         ? 'items.no_items_in_space'.tr()
-                        : 'items.no_items_subtitle'.tr(),
+                        : 'items.no_items'.tr(),
                     // Nessuna CTA sotto un filtro di categoria: l'oggetto
                     // appena creato potrebbe finire fuori dal filtro e
                     // lasciare la lista vuota com'era.
@@ -148,10 +147,11 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                 return ItemsEmptyState(
                   onRefresh: _onRefresh,
                   icon: Icons.inventory_2_outlined,
-                  title: 'items.no_items'.tr(),
-                  subtitle: widget.selectedSpaceId != null
+                  // Niente sottotitolo: l'invito a creare è scritto sul
+                  // bottone, ripeterlo sopra era solo rumore.
+                  title: widget.selectedSpaceId != null
                       ? 'items.no_items_in_space'.tr()
-                      : 'items.no_items_subtitle'.tr(),
+                      : 'items.no_items'.tr(),
                   houseId: widget.houseId,
                 );
               }

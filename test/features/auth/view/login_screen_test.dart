@@ -30,35 +30,37 @@ void main() {
     await EasyLocalization.ensureInitialized();
   });
 
-  testWidgets('Google sign-in button is disabled until consent is given', (
+  testWidgets('senza consenso il tocco dice cosa manca', (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    // Il bottone resta toccabile anche senza consenso: spento non diceva
+    // *perché*, e la casella sotto passava inosservata.
+    final buttonFinder = find.byType(DsButton);
+    final button = tester.widget<DsButton>(buttonFinder);
+    expect(button.onPressed, isNotNull);
+
+    await tester.tap(buttonFinder);
+    await tester.pump();
+
+    expect(find.text('login.consent_required'.tr()), findsOneWidget);
+  });
+
+  testWidgets('con il consenso spuntato il tocco non blocca più', (
     tester,
   ) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
-    // Il bottone di accesso è un DsButton, il componente pill condiviso
-    // dell'app: `onPressed == null` è ciò che lo spegne, ed è anche ciò che
-    // ne toglie l'accento arancione (vedi la scala a tre livelli).
-    final buttonFinder = find.byType(DsButton);
-    expect(buttonFinder, findsOneWidget);
-
-    DsButton button = tester.widget(buttonFinder);
-    expect(
-      button.onPressed,
-      isNull,
-      reason: 'button must be disabled before consent',
-    );
-
-    // Tick the consent checkbox.
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
 
-    button = tester.widget(buttonFinder);
-    expect(
-      button.onPressed,
-      isNotNull,
-      reason: 'button must be enabled after consent',
-    );
+    await tester.tap(find.byType(DsButton));
+    await tester.pump();
+
+    // Il sign-in vero fallisce (niente Supabase nei test) e mostra un'altra
+    // snackbar: quello che conta è che non sia più quella del consenso.
+    expect(find.text('login.consent_required'.tr()), findsNothing);
   });
 
   // Google Sign-In is the only way into the app: a second email/password
