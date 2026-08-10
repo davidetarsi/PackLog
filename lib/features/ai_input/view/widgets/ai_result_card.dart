@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/universal_item_tile.dart';
 import '../../model/clothing_analysis_result.dart';
@@ -33,10 +32,12 @@ class AiResultCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       useListTile: false,
       contentPadding: EdgeInsets.symmetric(vertical: context.spacingXs),
+      // Grigio e non arancione: l'icona dice da dove viene la riga, non è
+      // un'azione. L'unico arancione della schermata resta la CTA.
       leading: Icon(
         Icons.auto_awesome_outlined,
         size: context.iconSizeSm,
-        color: colorScheme.primary,
+        color: colorScheme.onSurfaceVariant,
       ),
       title: TextField(
         controller: controller,
@@ -45,22 +46,17 @@ class AiResultCard extends StatelessWidget {
         style: Theme.of(
           context,
         ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+        // Nessun riquadro attorno al nome: la pill lo faceva sembrare un
+        // bottone, e la riga ha già il suo bordo inferiore (vedi
+        // [UniversalItemTile], ramo `_isFlatRow`) a separarla dalla
+        // successiva. Il campo si segnala solo quando lo si sta scrivendo.
         decoration: InputDecoration(
           hintText: 'ai_import.item_name_hint'.tr(),
-          contentPadding: EdgeInsets.symmetric(
-            vertical: context.spacingMd,
-            horizontal: context.spacingMd,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-            borderSide: BorderSide(color: colorScheme.outlineVariant),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-            borderSide: BorderSide(color: colorScheme.outlineVariant),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+          contentPadding: EdgeInsets.symmetric(vertical: context.spacingSm),
+          isDense: true,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: UnderlineInputBorder(
             borderSide: BorderSide(color: colorScheme.primary, width: 2),
           ),
         ),

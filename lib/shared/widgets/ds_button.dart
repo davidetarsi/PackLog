@@ -43,6 +43,13 @@ class DsButton extends StatelessWidget {
   /// `null` disabilita il bottone e ne spegne l'accento.
   final VoidCallback? onPressed;
 
+  /// Invocato al tocco mentre il bottone è spento.
+  ///
+  /// Un bottone disabilitato che non reagisce lascia l'utente a indovinare
+  /// cosa manchi. Con questa callback resta spento — la scala continua a dire
+  /// che non è pronto — ma il tocco può spiegare perché.
+  final VoidCallback? onDisabledTap;
+
   final IconData? icon;
   final DsButtonVariant variant;
 
@@ -57,6 +64,7 @@ class DsButton extends StatelessWidget {
     super.key,
     required this.label,
     required this.onPressed,
+    this.onDisabledTap,
     this.icon,
     this.variant = DsButtonVariant.primary,
     this.isLoading = false,
@@ -115,7 +123,10 @@ class DsButton extends StatelessWidget {
       elevation: 0,
       child: InkWell(
         borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-        onTap: canTap ? onPressed : null,
+        // Spento non vuol dire inerte: se il chiamante ha qualcosa da dire sul
+        // perché, il tocco lo raccoglie comunque. Durante il caricamento no,
+        // lì il bottone sta già lavorando.
+        onTap: canTap ? onPressed : (isLoading ? null : onDisabledTap),
         child: Container(
           width: expand ? double.infinity : null,
           height: context.responsive(56),

@@ -75,19 +75,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
   }
 
-  /// Tocco sul bottone di accesso.
-  ///
-  /// Il bottone resta acceso anche senza consenso: spento non diceva *perché*,
-  /// e la casella sotto — piccola e sotto la piega dell'attenzione — passava
-  /// inosservata. Un tocco che non fa niente è peggio di un errore che spiega.
-  Future<void> _onSignInPressed() async {
-    if (!_consentGiven) {
-      AppSnackBar.showError(context, 'login.consent_required'.tr());
-      return;
-    }
-    await _signInWithGoogle();
-  }
-
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
     ref
@@ -208,7 +195,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   icon: Icons.g_mobiledata,
                   expand: true,
                   isLoading: _isLoading,
-                  onPressed: _onSignInPressed,
+                  // Senza consenso il bottone è spento: la scala dell'app dice
+                  // che non è pronto. Ma il tocco non cade nel vuoto — la
+                  // casella qui sotto è piccola e passa inosservata, quindi
+                  // l'errore nomina ciò che manca.
+                  onPressed: _consentGiven ? _signInWithGoogle : null,
+                  onDisabledTap: () => AppSnackBar.showError(
+                    context,
+                    'login.consent_required'.tr(),
+                  ),
                 ),
 
                 AppSpacing.gapMd,

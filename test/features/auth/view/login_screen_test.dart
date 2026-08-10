@@ -34,11 +34,13 @@ void main() {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
-    // Il bottone resta toccabile anche senza consenso: spento non diceva
-    // *perché*, e la casella sotto passava inosservata.
+    // Due requisiti in tensione, ed è il punto del test: il bottone deve
+    // *sembrare* spento — `onPressed` nullo è ciò che ne toglie l'accento —
+    // e il tocco deve comunque dire cosa manca, perché la casella qui sotto
+    // è piccola e passa inosservata.
     final buttonFinder = find.byType(DsButton);
     final button = tester.widget<DsButton>(buttonFinder);
-    expect(button.onPressed, isNotNull);
+    expect(button.onPressed, isNull, reason: 'deve apparire disabilitato');
 
     await tester.tap(buttonFinder);
     await tester.pump();

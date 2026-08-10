@@ -347,7 +347,6 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       }
     }
 
-    // rightAction removed: one photo per session.
     return UniversalActionBar(
       primaryLabel: primaryLabel,
       isLoading: state.isLoading,
@@ -358,6 +357,21 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
               onPressed: state.isLoading
                   ? null
                   : () => _showHousePicker(state, notifier),
+            )
+          : null,
+      // Via d'uscita senza salvare. Non un `pop()`: sotto c'è il selettore
+      // delle foto da cui si è passati, e tornarci significherebbe rientrare
+      // nel flusso appena abbandonato. Va alla casa, la stessa destinazione
+      // del salvataggio riuscito.
+      //
+      // Assente in onboarding: lì la schermata è un passo obbligato del tour,
+      // e non esiste ancora una casa a cui tornare.
+      rightAction: !widget.isFirstTimeOnboarding && widget.houseId != null
+          ? CircularActionButton(
+              icon: Icons.close,
+              onPressed: state.isLoading
+                  ? null
+                  : () => context.go('/houses/${widget.houseId}'),
             )
           : null,
     );
@@ -538,10 +552,13 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
             children: [
               Row(
                 children: [
+                  // Intestazione grigia: è un conteggio, non un'azione. In
+                  // arancione competeva con la CTA di salvataggio, che in
+                  // questa schermata deve restare l'unica cosa colorata.
                   Icon(
                     Icons.checkroom_outlined,
                     size: context.iconSizeSm,
-                    color: colorScheme.primary,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                   SizedBox(width: context.spacingXs),
                   Text(
@@ -549,7 +566,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                       args: [allResults.length.toString()],
                     ),
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: colorScheme.primary,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
