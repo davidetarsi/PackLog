@@ -319,7 +319,11 @@ class AppTheme {
             color: colorScheme.onSurfaceVariant,
           ),
           emptyStateIconSize: 80,
-          emptyStateIconColor: colorScheme.onSurface.withValues(alpha: 0.38),
+          // Stesso colore del titolo e del sottotitolo: l'icona è parte del
+          // messaggio, non un elemento a sé. Al 38% sembrava disabilitata, e
+          // in arancione competeva con l'unica cosa toccabile della schermata,
+          // che è la CTA.
+          emptyStateIconColor: colorScheme.onSurfaceVariant,
           emptyStateTitleColor: colorScheme.onSurfaceVariant,
           emptyStateSubtitleColor: colorScheme.onSurfaceVariant,
           errorStateMessage: const TextStyle(

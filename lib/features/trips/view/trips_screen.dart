@@ -272,10 +272,8 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return DsEmptyState(
       icon: Icons.luggage_outlined,
-      iconColor: colorScheme.primary,
       title: 'trips.no_trips_title'.tr(),
       action: DsButton(
         label: 'trips.no_trips_subtitle'.tr(),

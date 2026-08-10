@@ -49,7 +49,6 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
             return RefreshableEmptyState(
               onRefresh: () => ref.refresh(houseNotifierProvider.future),
               icon: Icons.home_outlined,
-              iconColor: colorScheme.primary,
               title: 'houses.no_houses_title'.tr(),
               action: DsButton(
                 label: 'houses.no_houses_subtitle'.tr(),

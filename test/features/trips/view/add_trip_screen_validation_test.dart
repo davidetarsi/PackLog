@@ -37,10 +37,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [houseRepositoryProvider.overrideWithValue(houseRepo)],
-        child: MaterialApp(
-          theme: AppTheme.light,
-          home: const AddTripScreen(),
-        ),
+        child: MaterialApp(theme: AppTheme.light, home: const AddTripScreen()),
       ),
     );
     await tester.pumpAndSettle();

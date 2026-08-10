@@ -13,7 +13,7 @@ import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import 'in_transit_section.dart';
 import 'item_card.dart';
-import '../../../shared/widgets/refreshable_empty_state.dart';
+import '../widgets/items_empty_state.dart';
 
 /// Body della house detail: lista item filtrata per spazio e/o categoria.
 ///
@@ -91,13 +91,16 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                     .toList();
 
                 if (categoryItems.isEmpty) {
-                  return RefreshableEmptyState(
+                  return ItemsEmptyState(
                     onRefresh: _onRefresh,
                     icon: widget.categoryFilter!.icon,
                     title: 'items.no_items'.tr(),
                     subtitle: widget.selectedSpaceId != null
                         ? 'items.no_items_in_space'.tr()
                         : 'items.no_items_subtitle'.tr(),
+                    // Nessuna CTA sotto un filtro di categoria: l'oggetto
+                    // appena creato potrebbe finire fuori dal filtro e
+                    // lasciare la lista vuota com'era.
                   );
                 }
 
@@ -142,13 +145,14 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
               }
 
               if (spaceFiltered.isEmpty && !hasTemporaryItems) {
-                return RefreshableEmptyState(
+                return ItemsEmptyState(
                   onRefresh: _onRefresh,
                   icon: Icons.inventory_2_outlined,
                   title: 'items.no_items'.tr(),
                   subtitle: widget.selectedSpaceId != null
                       ? 'items.no_items_in_space'.tr()
                       : 'items.no_items_subtitle'.tr(),
+                  houseId: widget.houseId,
                 );
               }
 

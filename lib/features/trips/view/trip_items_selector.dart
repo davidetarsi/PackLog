@@ -5,7 +5,7 @@ import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/model/item_model.dart';
-import '../../items/view/add_edit_item_screen.dart';
+import '../../items/widgets/items_empty_state.dart';
 import '../model/trip_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
@@ -359,7 +359,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: context.spacingLg),
-      child: DsEmptyState(
+      child: ItemsEmptyState(
         icon: Icons.inventory_2_outlined,
         title: _selectedCategory != null
             ? 'common.no_items_in_category'.tr(
@@ -370,17 +370,10 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
                       namedArgs: {'house': houseName},
                     )
                   : 'common.no_items_in_house'.tr()),
+        actionKey: const Key('trip_items_empty_add'),
         // L'azione compare solo sul vuoto della casa: su un filtro di
         // categoria vuoto la risposta è togliere il filtro, non creare.
-        action: (_selectedCategory == null && _selectedHouseId != null)
-            ? TextButton.icon(
-                key: const Key('trip_items_empty_add'),
-                onPressed: () =>
-                    showAddEditItemSheet(context, houseId: _selectedHouseId),
-                icon: const Icon(Icons.add, size: 18),
-                label: Text('trips.add_item_to_house'.tr()),
-              )
-            : null,
+        houseId: _selectedCategory == null ? _selectedHouseId : null,
       ),
     );
   }
