@@ -132,7 +132,10 @@ void main() {
     testWidgets(
       'svuotare il campo lo lascia vuoto finché non perde il focus, poi ripristina il derivato',
       (tester) async {
-        await _pumpForm(tester, initialName: 'Roma');
+        // Con una destinazione, così il derivato ha qualcosa da ripristinare:
+        // senza, il nome derivato è vuoto e il test non distinguerebbe "il
+        // blur ha ripristinato" da "il campo è rimasto vuoto".
+        await _pumpForm(tester, initialName: 'Roma', destination: 'Roma');
 
         await tester.enterText(find.byKey(_nameFieldKey), '');
         await tester.pump();
@@ -294,14 +297,17 @@ void main() {
 
       expect(_nameField(tester).focusNode!.hasFocus, isTrue);
       // Ciò che il genitore salverebbe: già il derivato nuovo, non "Roma".
-      expect(host.currentState!.lastName, 'trips.unnamed_destination');
+      // Senza destinazione il derivato è vuoto — è la stringa vuota, e non un
+      // segnaposto, a dire "questo viaggio non ha ancora un'identità": è la
+      // condizione su cui poggia la validazione nome-o-destinazione.
+      expect(host.currentState!.lastName, isEmpty);
 
       // Il campo visibile si riallinea al blur.
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
       await tester.pump();
 
-      expect(_nameFieldText(tester), 'trips.unnamed_destination');
+      expect(_nameFieldText(tester), isEmpty);
     });
 
     testWidgets('un nome personalizzato sopravvive al giro col genitore', (

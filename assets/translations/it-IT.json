@@ -259,6 +259,7 @@
     "unnamed_destination": "Viaggio",
     "name_label": "Nome",
     "departure_date_required": "Manca la data di partenza",
+    "name_or_destination_required": "Dai un nome al viaggio o scegli una destinazione",
     "create_trip_with_count": "Crea viaggio ({})",
     "step_of": "{} di {}",
     "legs_title": "Altre tappe",

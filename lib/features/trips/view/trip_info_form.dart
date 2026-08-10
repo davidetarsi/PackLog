@@ -162,24 +162,22 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     super.dispose();
   }
 
-  /// Nome derivato da destinazione e date, com'era prima nelle schermate.
+  /// Nome derivato dalla sola destinazione.
+  ///
+  /// Niente date: sono già visibili nelle info del viaggio, e ripeterle nel
+  /// nome allungava ogni titolo con un dato che l'utente ha già sotto gli
+  /// occhi.
+  ///
+  /// Stringa vuota quando la destinazione manca, invece di un segnaposto tipo
+  /// "Viaggio": un nome sempre pieno renderebbe impossibile distinguere
+  /// "l'utente non ha dato un'identità al viaggio" da "l'ha chiamato Viaggio",
+  /// ed è proprio quella distinzione che regge la validazione nome-o-
+  /// destinazione.
   String _derivedName() {
     final destination = _destinationHouseId != null
         ? _destinationHouseName
         : _destinationLocation?.displayName;
-    final dest = (destination?.trim().isNotEmpty == true)
-        ? destination!.trim()
-        : 'trips.unnamed_destination'.tr();
-
-    final dep = _departureDateTime != null
-        ? DateFormat.yMd(context.locale.toString()).format(_departureDateTime!)
-        : '';
-    final ret = _returnDateTime != null
-        ? DateFormat.yMd(context.locale.toString()).format(_returnDateTime!)
-        : '';
-
-    if (dep.isEmpty) return dest;
-    return ret.isEmpty ? '$dest, $dep' : '$dest, $dep – $ret';
+    return destination?.trim() ?? '';
   }
 
   /// Alla perdita di focus il campo torna al nome derivato — aspettare il

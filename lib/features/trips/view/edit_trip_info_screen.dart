@@ -72,6 +72,9 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     if (_trip == null) return;
 
     final error = tripFormError(
+      name: _name,
+      hasDestination:
+          _destinationHouseId != null || _destinationLocation != null,
       departureDateTime: _departureDateTime,
       returnDateTime: _returnDateTime,
     );
@@ -83,7 +86,11 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     setState(() => _isLoading = true);
 
     final updatedTrip = _trip!.copyWith(
-      name: _name ?? 'trips.unnamed_destination'.tr(),
+      // Segnaposto come rete di sicurezza: `TripModel.name` non è nullable, ma
+      // tripFormError blocca già il salvataggio se mancano nome e destinazione.
+      name: (_name?.trim().isNotEmpty ?? false)
+          ? _name!.trim()
+          : 'trips.unnamed_destination'.tr(),
       description: _description,
       departureDateTime: _departureDateTime,
       returnDateTime: _returnDateTime,

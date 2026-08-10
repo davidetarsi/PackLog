@@ -259,6 +259,7 @@
     "unnamed_destination": "Trip",
     "name_label": "Name",
     "departure_date_required": "The departure date is missing",
+    "name_or_destination_required": "Name the trip or pick a destination",
     "create_trip_with_count": "Create trip ({})",
     "step_of": "{} of {}",
     "legs_title": "Other stops",
