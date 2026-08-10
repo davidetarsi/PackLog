@@ -74,9 +74,17 @@ class TripDateRangeScreen extends ConsumerWidget {
             ref.read(provider.notifier).onDaySelected(date),
       ),
       bottomContent: UniversalActionBar(
-        primaryLabel: 'trips.confirm_dates'.tr(),
+        // "Conferma date" al plurale presuppone che le date siano due: con la
+        // sola partenza la CTA torna al più generico "Conferma".
+        primaryLabel: state.hasOnlyDeparture
+            ? 'common.confirm'.tr()
+            : 'trips.confirm_dates'.tr(),
         primaryIcon: Icons.check_rounded,
-        onPrimaryPressed: state.isComplete
+        // Obbligatoria è solo la partenza: il ritorno è facoltativo e il
+        // modello sa già gestire "attivo dopo la partenza" quando manca.
+        // Pretendere qui il range completo rimetterebbe il bottone spento che
+        // la validazione ha appena tolto, un pannello più in là.
+        onPrimaryPressed: (state.isComplete || state.hasOnlyDeparture)
             ? () => Navigator.of(context).pop(state)
             : null,
       ),
