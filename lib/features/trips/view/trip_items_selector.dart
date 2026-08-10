@@ -5,6 +5,7 @@ import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/model/item_model.dart';
+import '../../items/view/add_edit_item_screen.dart';
 import '../model/trip_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
@@ -240,7 +241,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             : items.where((i) => i.category == _selectedCategory).toList();
 
         if (filteredItems.isEmpty) {
-          return _buildEmptyItemsState(context);
+          return _buildNoItemsState(context);
         }
 
         // Raggruppa per categoria (ordine canonico: vestiti → toiletries → elettronica → varie)
@@ -287,7 +288,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
             : items.where((i) => i.category == _selectedCategory).toList();
 
         if (filteredItems.isEmpty) {
-          return _buildEmptyItemsStateShrinkWrap(context);
+          return _buildNoItemsState(context);
         }
 
         // Raggruppa per categoria (ordine canonico: vestiti → toiletries → elettronica → varie)
@@ -347,35 +348,45 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     );
   }
 
-  /// Stato vuoto items - versione shrinkWrap (NO scroll interno)
-  Widget _buildEmptyItemsStateShrinkWrap(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+  /// Stato vuoto della lista oggetti.
+  ///
+  /// Era scritto a mano in due punti quasi identici: ora è uno solo, e ha
+  /// un'azione. Senza, la creazione di un viaggio da una casa vuota finisce in
+  /// un vicolo cieco.
+  Widget _buildNoItemsState(BuildContext context) {
+    final houseName = ref
+        .read(houseNotifierProvider)
+        .valueOrNull
+        ?.where((h) => h.id == _selectedHouseId)
+        .firstOrNull
+        ?.displayName;
+
     return Padding(
       padding: EdgeInsets.symmetric(vertical: context.spacingLg),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.inventory_2_outlined,
-              size: context.iconSizeHero,
-              color: colorScheme.primary.withValues(alpha: 0.5),
-            ),
-            SizedBox(height: context.spacingMd),
-            Text(
-              _selectedCategory == null
-                  ? 'common.no_items_in_house'.tr()
-                  : 'common.no_items_in_category'.tr(
-                      namedArgs: {'category': _selectedCategory!.displayName},
-                    ),
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.38),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      child: DsEmptyState(
+        icon: Icons.inventory_2_outlined,
+        title: _selectedCategory != null
+            ? 'common.no_items_in_category'.tr(
+                namedArgs: {'category': _selectedCategory!.displayName},
+              )
+            : (houseName != null
+                  ? 'trips.no_items_in_named_house'.tr(
+                      namedArgs: {'house': houseName},
+                    )
+                  : 'common.no_items_in_house'.tr()),
+        // L'azione compare solo sul vuoto della casa: su un filtro di
+        // categoria vuoto la risposta è togliere il filtro, non creare.
+        action: (_selectedCategory == null && _selectedHouseId != null)
+            ? TextButton.icon(
+                key: const Key('trip_items_empty_add'),
+                onPressed: () => showAddEditItemSheet(
+                  context,
+                  houseId: _selectedHouseId,
+                ),
+                icon: const Icon(Icons.add, size: 18),
+                label: Text('trips.add_item_to_house'.tr()),
+              )
+            : null,
       ),
     );
   }
@@ -402,44 +413,6 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
               SizedBox(height: context.spacingMd),
               Text(
                 'trips.select_house_to_view_items'.tr(),
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.38),
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyItemsState(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.only(
-        bottom: context.spacingMd + context.ctaReservedHeight,
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: context.spacingLg),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.inventory_2_outlined,
-                size: context.iconSizeHero,
-                color: colorScheme.primary.withValues(alpha: 0.5),
-              ),
-              SizedBox(height: context.spacingMd),
-              Text(
-                _selectedCategory == null
-                    ? 'common.no_items_in_house'.tr()
-                    : 'common.no_items_in_category'.tr(
-                        namedArgs: {'category': _selectedCategory!.displayName},
-                      ),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurface.withValues(alpha: 0.38),
                 ),
