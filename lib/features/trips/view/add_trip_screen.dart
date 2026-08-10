@@ -44,6 +44,15 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
 
   // Dati del viaggio
   String? _name;
+
+  /// Nome da salvare. `TripModel.name` non è nullable e un viaggio senza
+  /// titolo in lista sarebbe illeggibile, quindi resta un segnaposto come rete
+  /// di sicurezza — che in pratica non si vede mai, perché [tripFormError]
+  /// blocca il salvataggio quando mancano sia il nome sia la destinazione.
+  String get _effectiveName => (_name?.trim().isNotEmpty ?? false)
+      ? _name!.trim()
+      : 'trips.unnamed_destination'.tr();
+
   String? _description;
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
@@ -92,6 +101,9 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
     // Bottone sempre attivo: un bottone spento senza spiegazione non fa
     // distinguere "manca qualcosa" da "l'app è rotta".
     final error = tripFormError(
+      name: _name,
+      hasDestination:
+          _destinationHouseId != null || _destinationLocation != null,
       departureDateTime: _departureDateTime,
       returnDateTime: _returnDateTime,
     );
@@ -111,7 +123,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
             return trips
                 .firstWhere((t) => t.id == widget.tripId)
                 .copyWith(
-                  name: _name ?? 'trips.unnamed_destination'.tr(),
+                  name: _effectiveName,
                   description: _description,
                   items: _selectedItems,
                   luggages: _selectedLuggages,
@@ -132,7 +144,7 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
           })()
         : TripModel(
             id: const Uuid().v4(),
-            name: _name ?? 'trips.unnamed_destination'.tr(),
+            name: _effectiveName,
             description: _description,
             items: _selectedItems,
             luggages: _selectedLuggages,
@@ -196,6 +208,9 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
 
       // Bottone sempre attivo: l'errore si spiega qui, non spegnendo la CTA.
       final error = tripFormError(
+        name: _name,
+        hasDestination:
+            _destinationHouseId != null || _destinationLocation != null,
         departureDateTime: _departureDateTime,
         returnDateTime: _returnDateTime,
       );
@@ -523,21 +538,14 @@ class _SectionCount extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacingSm,
-        vertical: context.spacingXs,
-      ),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: context.responsiveBorderRadius(12),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.labelMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-      ),
+    // Testo semplice, niente riquadro: è un conteggio di stato accanto al
+    // titolo di sezione, e un badge su "0 selezionati" dava peso visivo a
+    // un'informazione che il più delle volte dice "niente".
+    return Text(
+      label,
+      style: Theme.of(
+        context,
+      ).textTheme.labelMedium?.copyWith(color: colorScheme.onSurfaceVariant),
     );
   }
 }

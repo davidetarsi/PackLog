@@ -155,17 +155,9 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Filtro casa
-        // labelMedium (12) contro il titleMedium (16) del titolo di sezione:
-        // queste sono etichette di controllo annidate, non sezioni. Prima
-        // erano a 16, cioè quasi indistinguibili dal livello sopra.
-        Text(
-          'common.select_house'.tr(),
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        SizedBox(height: context.spacingSm),
+        // Nessuna etichetta sopra le pill delle case: le pill portano già
+        // l'icona della casa e il nome, quindi il titolo ripeteva ciò che il
+        // controllo dice da sé.
         SizedBox(
           height: 40,
           child: housesAsync.when(

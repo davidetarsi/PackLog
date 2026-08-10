@@ -7,13 +7,17 @@ import '../theme/app_colors.dart';
 // DsQuantityBadge
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Badge per quantità ("xN" o "xN/M"). Sostituisce [QuantityBadge] e
-/// [OnTripQuantityBadge].
+/// Quantità ("xN" o "xN/M") resa come testo semplice, senza riquadro.
+///
+/// Non è più un badge con fill: la quantità è un dato di lettura, non uno
+/// stato scelto né un'azione, e su una lista lunga i riquadri diventavano la
+/// cosa più evidente della schermata. Il nome resta per non toccare i
+/// chiamanti.
 ///
 /// ```dart
 /// DsQuantityBadge(current: 3)            // → "x3"
 /// DsQuantityBadge(current: 2, max: 5)    // → "x2/5"
-/// DsQuantityBadge(current: 3, isSelected: true) // fill primaryContainer
+/// DsQuantityBadge(current: 3, isSelected: true) // testo in primary
 /// ```
 class DsQuantityBadge extends StatelessWidget {
   /// Quantità corrente.
@@ -22,9 +26,8 @@ class DsQuantityBadge extends StatelessWidget {
   /// Quantità massima opzionale: se fornita, mostra "xN/M".
   final int? max;
 
-  /// Semantica "item selezionato/in lista". Cambia fill e testo.
-  /// - `true`  → `primaryContainer / onPrimaryContainer`
-  /// - `false` → `surfaceContainerHighest / onSurfaceVariant`
+  /// Semantica "item selezionato/in lista": colora il testo con l'accento
+  /// invece del grigio dei metadati.
   final bool isSelected;
 
   const DsQuantityBadge({
@@ -39,25 +42,18 @@ class DsQuantityBadge extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     // "x1" su un oggetto singolo non informa: è il caso implicito, e ripetuto
-    // su ogni riga diventa la voce più frequente della schermata. Il badge
-    // compare solo quando la quantità dice qualcosa — più di uno, oppure una
-    // frazione rispetto a un massimo.
+    // su ogni riga diventa la voce più frequente della schermata. La quantità
+    // compare solo quando dice qualcosa — più di uno, oppure una frazione
+    // rispetto a un massimo.
     if (current == 1 && max == null) return const SizedBox.shrink();
 
     final showPartial = max != null && current > 0 && current < max!;
     final text = showPartial ? 'x$current/$max' : 'x$current';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: isSelected ? cs.primaryContainer : cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppConstants.badgeBorderRadius),
-      ),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-        ),
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+        color: isSelected ? cs.primary : cs.onSurfaceVariant,
       ),
     );
   }
