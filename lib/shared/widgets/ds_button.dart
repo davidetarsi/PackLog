@@ -32,7 +32,7 @@ enum DsButtonVariant {
 /// |---|---|---|---|
 /// | primary | `primary` | `primary` | `onPrimary` |
 /// | destructive | `error` | `error` | `onError` |
-/// | secondary | `surface` | `primary` | `primary` |
+/// | secondary | trasparente | `primary` | `primary` |
 /// | disabilitato | `surface` | `outline` | `onSurface` al 38% |
 ///
 /// Il testo chiaro sul riempimento arancione non è un'opzione: dà 2,33:1 nel
@@ -89,10 +89,14 @@ class DsButton extends StatelessWidget {
           accentColor = colorScheme.error;
           contentColor = colorScheme.onError;
         case DsButtonVariant.secondary:
-          // Superficie opaca e non trasparente: questi bottoni fluttuano anche
-          // sopra liste scorrevoli, e il contenuto che passa sotto l'etichetta
-          // la rende illeggibile.
-          backgroundColor = colorScheme.surface;
+          // Sfondo trasparente e non `surface`: così il bottone prende il
+          // colore di ciò che gli sta sotto. Dentro un dialog, il cui fondo è
+          // più chiaro della surface, una superficie opaca disegnava un
+          // rettangolo scuro visibile attorno all'etichetta.
+          //
+          // Sicuro perché nessun call site monta un secondary sopra contenuto
+          // scorrevole: le CTA sticky sono tutte primary o destructive.
+          backgroundColor = Colors.transparent;
           accentColor = colorScheme.primary;
           contentColor = colorScheme.primary;
         case DsButtonVariant.primary:
