@@ -115,6 +115,76 @@ class DialogHelpers {
     return confirmed ?? false;
   }
 
+  /// Conferma con **tre** uscite invece di due: annulla, un'azione secondaria
+  /// e una primaria.
+  ///
+  /// Serve dove "sì/no" non basta a descrivere le scelte reali — il logout con
+  /// modifiche non sincronizzate ne è l'esempio: uscire subito e uscire dopo
+  /// aver sincronizzato sono due cose diverse, e nessuna delle due è "annulla".
+  ///
+  /// Ritorna `null` se l'utente annulla o chiude il dialog.
+  static Future<T?> showChoice<T>({
+    required BuildContext context,
+    required String title,
+    required String message,
+    required String secondaryLabel,
+    required T secondaryValue,
+    required String primaryLabel,
+    required T primaryValue,
+    String? cancelLabel,
+  }) {
+    return showDialog<T>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(cancelLabel ?? 'common.cancel'.tr()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, secondaryValue),
+            child: Text(secondaryLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, primaryValue),
+            child: Text(primaryLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Conferma distruttiva protetta dalla digitazione esatta di [requiredText]
+  /// (pattern GitHub/Stripe: difficile da fare per sbaglio).
+  ///
+  /// Il bottone di conferma resta **visibile ma disabilitato** finché il testo
+  /// non combacia: è la digitazione a fare da attrito, non un bottone
+  /// nascosto.
+  ///
+  /// Ritorna `true` solo se l'utente ha digitato correttamente e confermato.
+  static Future<bool> showProtectedDeleteConfirmation({
+    required BuildContext context,
+    required String title,
+    required String warning,
+    required String prompt,
+    required String requiredText,
+    required String confirmLabel,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => _ProtectedDeleteDialog(
+        title: title,
+        warning: warning,
+        prompt: prompt,
+        requiredText: requiredText,
+        confirmLabel: confirmLabel,
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   /// Mostra un dialog informativo con un solo bottone "OK".
   ///
   /// [icon] opzionale viene mostrata sopra il messaggio.
@@ -175,6 +245,97 @@ class DialogHelpers {
           ],
         );
       },
+    );
+  }
+}
+
+/// Corpo di [DialogHelpers.showProtectedDeleteConfirmation].
+///
+/// È uno [StatefulWidget] e non un builder inline perché ha un
+/// [TextEditingController] da creare e distruggere: dentro un `builder` di
+/// `showDialog` il controller verrebbe ricostruito a ogni rebuild e mai
+/// disposto.
+class _ProtectedDeleteDialog extends StatefulWidget {
+  final String title;
+  final String warning;
+  final String prompt;
+  final String requiredText;
+  final String confirmLabel;
+
+  const _ProtectedDeleteDialog({
+    required this.title,
+    required this.warning,
+    required this.prompt,
+    required this.requiredText,
+    required this.confirmLabel,
+  });
+
+  @override
+  State<_ProtectedDeleteDialog> createState() => _ProtectedDeleteDialogState();
+}
+
+class _ProtectedDeleteDialogState extends State<_ProtectedDeleteDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  bool get _matches =>
+      _controller.text.trim().toLowerCase() ==
+      widget.requiredText.toLowerCase();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.warning),
+          const SizedBox(height: 16),
+          Text(widget.prompt, style: theme.textTheme.bodySmall),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            decoration: InputDecoration(
+              hintText: widget.requiredText,
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text('dialogs.cancel'.tr()),
+        ),
+        // Stesso trattamento delle altre conferme distruttive dell'app
+        // (TextButton rosso): l'attrito qui lo fa la digitazione, non il peso
+        // visivo del bottone.
+        TextButton(
+          style: TextButton.styleFrom(
+            foregroundColor: theme.colorScheme.error,
+          ),
+          onPressed: _matches ? () => Navigator.pop(context, true) : null,
+          child: Text(widget.confirmLabel),
+        ),
+      ],
     );
   }
 }
