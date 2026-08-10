@@ -205,8 +205,13 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                 height: widget.height,
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceContainerLow,
-                  // Il bordo dinamico come richiesto
-                  border: Border.all(color: Colors.transparent, width: 1.5),
+                  // Bordo d'accento, spesso come quello di [DsButton]: nella
+                  // schermata della casa questa è l'azione principale, e senza
+                  // bordo non si distingueva dai due bottoni circolari ai lati.
+                  // Il riempimento arancione non è un'opzione — dentro ci sono
+                  // un campo di testo e il suo hint, che devono restare
+                  // leggibili.
+                  border: Border.all(color: colorScheme.primary, width: 2),
                   // Mantiene perennemente la forma a pillola (metà altezza)
                   borderRadius: BorderRadius.circular(widget.height / 2),
                 ),
