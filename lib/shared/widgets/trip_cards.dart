@@ -129,6 +129,12 @@ class TripCardCompact extends ConsumerWidget {
     final action = await showEntityContextMenu(
       context: context,
       entityType: 'common.trip_type'.tr(),
+      // La card mostra il segnalibro quando il viaggio è salvato: senza
+      // queste due righe il menu non offriva alcun modo di toglierlo, e
+      // l'unico punto dell'app da cui si poteva salvare o rimuovere era il
+      // long-press sulla card del prossimo viaggio in TripsScreen.
+      showSaveAction: true,
+      isSaved: trip.isSaved,
     );
     if (action == null || !context.mounted) return;
 
@@ -149,6 +155,12 @@ class TripCardCompact extends ConsumerWidget {
         await ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id);
       },
       deleteErrorMessage: 'errors.delete_trip_failed'.tr(
+        args: [displayDestination],
+      ),
+      onSave: () async {
+        await ref.read(tripNotifierProvider.notifier).toggleSaved(trip.id);
+      },
+      saveErrorMessage: 'errors.save_trip_failed'.tr(
         args: [displayDestination],
       ),
     );

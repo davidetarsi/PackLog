@@ -26,6 +26,12 @@ class LuggageNotifier extends _$LuggageNotifier
   @override
   void onMutationSuccess(List<LuggageModel> updated) {
     ref.read(syncOrchestratorProvider).requestSync();
+    // `mutate` ricarica solo la lista di *questa* casa. [allLuggagesProvider]
+    // è una vista globale keepAlive che osserva il solo repository — che non
+    // cambia mai — quindi senza questa riga resterebbe ferma alla prima
+    // lettura: un bagaglio eliminato ricompariva nel selettore del form
+    // viaggio finché non si riavviava l'app.
+    ref.invalidate(allLuggagesProvider);
   }
 
   Future<void> addLuggage(LuggageModel model) => mutate(
@@ -64,8 +70,15 @@ class LuggageNotifier extends _$LuggageNotifier
 /// Lista globale di tutti i bagagli (cross-casa). Usata dal selector
 /// nel form di creazione viaggio, dove l'utente può scegliere bagagli
 /// da qualunque casa.
+///
+/// Le mutazioni locali la invalidano da [LuggageNotifier.onMutationSuccess];
+/// qui si osserva il trigger di sync per coprire l'altra sorgente di
+/// cambiamento, il pull remoto — stesso motivo per cui lo osserva
+/// `ItemNotifier.build`. Senza, essendo `keepAlive`, resterebbe ferma alla
+/// prima lettura per tutta la vita del processo.
 @Riverpod(keepAlive: true)
 Future<List<LuggageModel>> allLuggages(Ref ref) async {
+  ref.watch(syncTriggerProvider);
   final repository = ref.watch(luggageRepositoryProvider);
   return repository.getAllLuggages();
 }
