@@ -78,6 +78,19 @@ android {
     }
 
     buildTypes {
+        // Le build profile si firmano come le release, non come le debug.
+        // Google Sign-In accetta solo coppie (applicationId, SHA-1) registrate:
+        // con la firma di debug una profile non può riprodurre un problema di
+        // login, che è invece l'unico modo per vederne la causa — in release
+        // `debugPrint` è azzerato di proposito (vedi bootstrap.dart).
+        getByName("profile") {
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
+        }
+
         getByName("release") {
             // Fallback dinamico di sicurezza:
             // Se la pipeline ha creato key.properties (PROD), usa la firma release.
