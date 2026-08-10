@@ -1,15 +1,55 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../theme/theme.dart';
+import '../widgets/ds_button.dart';
 
 /// Helper per i dialog comuni dell'applicazione.
 ///
-/// Convenzione bottoni:
-/// - Annulla / secondario → TextButton (colore default)
-/// - Azione distruttiva   → TextButton (foregroundColor: error)
-/// - Azione primaria neutra → FilledButton (primary)
+/// Convenzione bottoni: le stesse pill del resto dell'app ([DsButton]), due
+/// per riga e di **pari larghezza**. Prima erano due link testuali di peso
+/// identico, e per giunta "Annulla" era colorato d'accento — cioè l'azione
+/// accentata era quella che non fa nulla.
+///
+/// La conferma distruttiva è rossa e non arancione: stessa forma e stesso
+/// peso della primaria, ma un "Elimina" arancione accanto a un "Annulla"
+/// grigio farebbe sembrare la cancellazione la strada consigliata.
 class DialogHelpers {
   DialogHelpers._();
+
+  /// Padding delle azioni: l'`actionsPadding` di default di [AlertDialog] è
+  /// tarato su bottoni testuali e stringerebbe troppo le pill.
+  static const EdgeInsets actionsPadding = EdgeInsets.fromLTRB(24, 8, 24, 20);
+
+  /// Due pill affiancate che si dividono la larghezza in parti uguali.
+  static Widget twoActions({
+    required String cancelLabel,
+    required VoidCallback onCancel,
+    required String confirmLabel,
+    required VoidCallback? onConfirm,
+    bool isDestructive = false,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: DsButton(
+            label: cancelLabel,
+            variant: DsButtonVariant.secondary,
+            onPressed: onCancel,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: DsButton(
+            label: confirmLabel,
+            variant: isDestructive
+                ? DsButtonVariant.destructive
+                : DsButtonVariant.primary,
+            onPressed: onConfirm,
+          ),
+        ),
+      ],
+    );
+  }
 
   /// Mostra un dialog di conferma eliminazione.
   ///
@@ -51,17 +91,14 @@ class DialogHelpers {
               ],
             ],
           ),
+          actionsPadding: actionsPadding,
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text('dialogs.cancel'.tr()),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(dialogContext).colorScheme.error,
-              ),
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text('dialogs.delete_confirm'.tr()),
+            twoActions(
+              cancelLabel: 'dialogs.cancel'.tr(),
+              onCancel: () => Navigator.pop(dialogContext, false),
+              confirmLabel: 'dialogs.delete_confirm'.tr(),
+              onConfirm: () => Navigator.pop(dialogContext, true),
+              isDestructive: true,
             ),
           ],
         );
@@ -90,24 +127,15 @@ class DialogHelpers {
       builder: (dialogContext) => AlertDialog(
         title: Text(title),
         content: Text(message),
+        actionsPadding: actionsPadding,
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(cancelLabel ?? 'common.cancel'.tr()),
+          twoActions(
+            cancelLabel: cancelLabel ?? 'common.cancel'.tr(),
+            onCancel: () => Navigator.pop(dialogContext, false),
+            confirmLabel: confirmLabel ?? 'common.confirm'.tr(),
+            onConfirm: () => Navigator.pop(dialogContext, true),
+            isDestructive: isDestructive,
           ),
-          if (isDestructive)
-            TextButton(
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(dialogContext).colorScheme.error,
-              ),
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(confirmLabel ?? 'common.confirm'.tr()),
-            )
-          else
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(confirmLabel ?? 'common.confirm'.tr()),
-            ),
         ],
       ),
     );
@@ -138,18 +166,34 @@ class DialogHelpers {
       builder: (dialogContext) => AlertDialog(
         title: Text(title),
         content: Text(message),
+        actionsPadding: actionsPadding,
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(cancelLabel ?? 'common.cancel'.tr()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, secondaryValue),
-            child: Text(secondaryLabel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, primaryValue),
-            child: Text(primaryLabel),
+          // Tre scelte impilate e non affiancate: tre pill su una riga
+          // starebbero strette e le etichette andrebbero troncate proprio
+          // dove servono per capire la differenza fra le due uscite.
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DsButton(
+                label: primaryLabel,
+                expand: true,
+                onPressed: () => Navigator.pop(dialogContext, primaryValue),
+              ),
+              const SizedBox(height: 8),
+              DsButton(
+                label: secondaryLabel,
+                variant: DsButtonVariant.secondary,
+                expand: true,
+                onPressed: () => Navigator.pop(dialogContext, secondaryValue),
+              ),
+              const SizedBox(height: 8),
+              DsButton(
+                label: cancelLabel ?? 'common.cancel'.tr(),
+                variant: DsButtonVariant.secondary,
+                expand: true,
+                onPressed: () => Navigator.pop(dialogContext),
+              ),
+            ],
           ),
         ],
       ),
@@ -320,20 +364,17 @@ class _ProtectedDeleteDialogState extends State<_ProtectedDeleteDialog> {
           ),
         ],
       ),
+      actionsPadding: DialogHelpers.actionsPadding,
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text('dialogs.cancel'.tr()),
-        ),
-        // Stesso trattamento delle altre conferme distruttive dell'app
-        // (TextButton rosso): l'attrito qui lo fa la digitazione, non il peso
-        // visivo del bottone.
-        TextButton(
-          style: TextButton.styleFrom(
-            foregroundColor: theme.colorScheme.error,
-          ),
-          onPressed: _matches ? () => Navigator.pop(context, true) : null,
-          child: Text(widget.confirmLabel),
+        // Stesse pill delle altre conferme. Il bottone resta visibile ma
+        // spento finché l'email non combacia: l'attrito lo fa la digitazione,
+        // e uno spento senza accento lo dice già da sé.
+        DialogHelpers.twoActions(
+          cancelLabel: 'dialogs.cancel'.tr(),
+          onCancel: () => Navigator.pop(context, false),
+          confirmLabel: widget.confirmLabel,
+          onConfirm: _matches ? () => Navigator.pop(context, true) : null,
+          isDestructive: true,
         ),
       ],
     );
