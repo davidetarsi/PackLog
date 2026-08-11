@@ -38,6 +38,7 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
     rethrowOnly: true,
     onSuccess: (items) => _analytics.trackItemAdded(
       itemId: model.id,
+      houseId: model.houseId,
       category: model.category.name,
       totalItems: items.length,
     ),

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/auth/auth_provider.dart';
 import 'package:pack_log/core/auth/auth_repository.dart';
 import 'package:pack_log/core/auth/auth_state.dart';
@@ -100,6 +101,62 @@ void main() {
 
       expect(container.read(authNotifierProvider), equals(authenticated));
     });
+
+    // Regressione: `login_completed` veniva emesso sia qui sia in LoginScreen,
+    // raddoppiando il conteggio del funnel. Questa transizione scatta anche al
+    // riavvio con sessione ripristinata, che non è un login — quindi
+    // l'emissione vive solo in LoginScreen, sul tap dell'utente.
+    test(
+      'non emette login_completed sulla transizione verso Authenticated',
+      () async {
+        final controller = StreamController<AuthState>.broadcast();
+        final analytics = MockAnalyticsService();
+        when(
+          () => analytics.logEvent(any(), properties: any(named: 'properties')),
+        ).thenAnswer((_) async {});
+        when(() => analytics.identifyUser(any())).thenReturn(null);
+        when(() => analytics.clearUser()).thenReturn(null);
+
+        when(
+          () => mockRepo.currentAuthState,
+        ).thenReturn(const AuthState.unauthenticated());
+        when(
+          () => mockRepo.authStateChanges,
+        ).thenAnswer((_) => controller.stream);
+
+        final container = ProviderContainer(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockRepo),
+            analyticsServiceProvider.overrideWithValue(analytics),
+            ...mockMonitoringOverrides(),
+          ],
+        );
+        addTearDown(() {
+          container.dispose();
+          controller.close();
+        });
+
+        container.read(authNotifierProvider);
+
+        controller.add(
+          const AuthState.authenticated(userId: 'u1', email: 'a@b.c'),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        verifyNever(
+          () => analytics.logEvent(
+            'login_completed',
+            properties: any(named: 'properties'),
+          ),
+        );
+
+        // `logout` invece resta responsabilità di questa transizione.
+        controller.add(const AuthState.unauthenticated());
+        await Future<void>.delayed(Duration.zero);
+
+        verify(() => analytics.logEvent('logout', properties: null)).called(1);
+      },
+    );
   });
 
   group('currentUserId', () {

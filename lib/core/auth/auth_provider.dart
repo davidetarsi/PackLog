@@ -97,15 +97,25 @@ class AuthNotifier extends _$AuthNotifier {
     }
   }
 
-  /// Traccia il funnel di attivazione: emette `login_completed` alla prima
-  /// transizione Unauthenticated → Authenticated, e `logout` alla transizione
-  /// inversa. Idempotente sugli "stessi stati ripetuti".
+  /// Emette `logout` alla transizione Authenticated → Unauthenticated.
+  /// Idempotente sugli "stessi stati ripetuti".
+  ///
+  /// **`login_completed` non si emette qui**, per quanto la transizione
+  /// inversa sembri il posto naturale. L'unico emettitore è [LoginScreen], sul
+  /// tap che completa il login. Due ragioni, entrambe verificate sui dati:
+  ///
+  /// 1. Con entrambi gli emettitori ogni login riuscito contava **due volte**
+  ///    (22 eventi per 11 login reali, contro 34 `login_attempted`).
+  /// 2. Questa transizione scatta anche al riavvio dell'app con una sessione
+  ///    ripristinata, che non è un login: contarla gonfiava il funnel di
+  ///    attivazione con sessioni semplicemente riaperte.
+  ///
+  /// `logout` invece resta qui: non ha un emettitore concorrente e la
+  /// transizione è l'unico punto che intercetta anche i logout non
+  /// interattivi (sessione revocata, cambio account).
   void _trackAuthTransition(AuthState prev, AuthState next) {
-    final analytics = ref.read(coreAnalyticsServiceProvider);
-    if (next is Authenticated && prev is! Authenticated) {
-      analytics.trackLoginCompleted();
-    } else if (next is Unauthenticated && prev is Authenticated) {
-      analytics.trackLogout();
+    if (next is Unauthenticated && prev is Authenticated) {
+      ref.read(coreAnalyticsServiceProvider).trackLogout();
     }
   }
 }

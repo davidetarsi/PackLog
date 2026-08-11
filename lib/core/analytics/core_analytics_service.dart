@@ -43,8 +43,12 @@ class CoreAnalyticsService {
 
   // ── item_ ─────────────────────────────────────────────────────────────────
 
+  /// `house_id` è la chiave di join con `house_created`: senza, il funnel
+  /// "casa creata → quanti oggetti ci finiscono dentro" si può solo stimare
+  /// per vicinanza temporale.
   void trackItemAdded({
     required String itemId,
+    required String houseId,
     required String category,
     required int totalItems,
   }) {
@@ -52,6 +56,7 @@ class CoreAnalyticsService {
       'item_added',
       properties: {
         'item_id': itemId,
+        'house_id': houseId,
         'item_category': category,
         'is_first_item': totalItems == 1,
       },
@@ -167,20 +172,33 @@ class CoreAnalyticsService {
 
   // ── onboarding_ ───────────────────────────────────────────────────────────
 
+  /// Carosello **pre-login**, non il tour guidato post-login: quello emette
+  /// `ai_onboarding_started` / `onboarding_step_*` / `tour_completed`.
+  /// I nomi si somigliano ma i due flussi sono distinti — non mescolarli nello
+  /// stesso funnel.
   void trackOnboardingStarted() => _safeLogEvent('onboarding_started');
 
   void trackOnboardingCompleted() => _safeLogEvent('onboarding_completed');
 
   // ── auth_ ─────────────────────────────────────────────────────────────────
 
-  void trackLoginCompleted() => _safeLogEvent('login_completed');
+  // Nessun `trackLoginCompleted` qui: `login_completed` ha un solo emettitore,
+  // il tap in LoginScreen, che allega anche `method`. Vedi il commento in
+  // `AuthNotifier._trackAuthTransition` per il doppio conteggio che ne seguiva.
 
   void trackLogout() => _safeLogEvent('logout');
 
   // ── screen_ ───────────────────────────────────────────────────────────────
 
+  /// Passa da [AppAnalyticsService.logPageview] e non da `_safeLogEvent`: su
+  /// tgram la navigazione è un pageview, non un evento custom, ed è l'unica
+  /// forma che alimenta `top_pages`. Vedi il commento su `logPageview`.
   void trackScreenView(String screenName) {
-    _safeLogEvent('screen_view', properties: {'screen_name': screenName});
+    try {
+      _analytics.logPageview(screenName);
+    } catch (e) {
+      debugPrint('[Analytics] trackScreenView failed for $screenName: $e');
+    }
   }
 
   // ── sync_ ─────────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/analytics/analytics_service.dart';
 import '../model/onboarding_state.dart';
 import '../repositories/shared_prefs_onboarding_repository.dart';
 
@@ -68,6 +69,24 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     final repo = ref.read(onboardingRepositoryProvider);
     await repo.saveStep(next);
     state = AsyncData(current.copyWith(step: next));
+
+    // Evento terminale del funnel del tour. Sta qui e non in [markDone] perché
+    // solo `advance()` rappresenta un completamento *naturale*: le altre due
+    // strade verso `done` sono abbandoni, e hanno già il proprio evento
+    // (`ai_onboarding_skipped` da [skipAi], `onboarding_closed` dal tip che ha
+    // chiamato [markDone]). Emetterlo anche lì renderebbe indistinguibile chi
+    // ha finito il tour da chi lo ha chiuso al primo tip.
+    if (next == OnboardingStep.done) {
+      ref
+          .read(analyticsServiceProvider)
+          .logEvent(
+            'tour_completed',
+            properties: {
+              'skipped_ai': current.skippedAi,
+              'last_step_index': current.step.tourStepIndex,
+            },
+          );
+    }
   }
 
   Future<void> markDone() async {

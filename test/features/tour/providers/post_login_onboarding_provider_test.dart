@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/features/tour/model/onboarding_state.dart';
 import 'package:pack_log/features/tour/providers/post_login_onboarding_provider.dart';
 import 'package:pack_log/features/tour/repositories/i_onboarding_repository.dart';
@@ -8,10 +9,26 @@ import 'package:pack_log/features/tour/repositories/shared_prefs_onboarding_repo
 
 class MockOnboardingRepository extends Mock implements IOnboardingRepository {}
 
-ProviderContainer makeContainer({IOnboardingRepository? repo}) {
+class MockAnalyticsService extends Mock implements AppAnalyticsService {}
+
+MockAnalyticsService _makeAnalytics() {
+  final a = MockAnalyticsService();
+  when(
+    () => a.logEvent(any(), properties: any(named: 'properties')),
+  ).thenAnswer((_) async {});
+  return a;
+}
+
+ProviderContainer makeContainer({
+  IOnboardingRepository? repo,
+  AppAnalyticsService? analytics,
+}) {
   final r = repo ?? MockOnboardingRepository();
   return ProviderContainer(
-    overrides: [onboardingRepositoryProvider.overrideWithValue(r)],
+    overrides: [
+      onboardingRepositoryProvider.overrideWithValue(r),
+      analyticsServiceProvider.overrideWithValue(analytics ?? _makeAnalytics()),
+    ],
   );
 }
 
@@ -172,6 +189,83 @@ void main() {
         );
       },
     );
+
+    group('tour_completed', () {
+      test('emitted once when advance() reaches done, with context', () async {
+        final repo = MockOnboardingRepository();
+        _setupDefaultMock(repo, step: OnboardingStep.tripCreationTooltip);
+        final analytics = _makeAnalytics();
+        final container = makeContainer(repo: repo, analytics: analytics);
+        addTearDown(container.dispose);
+
+        await container.read(postLoginOnboardingProvider.future);
+        await container.read(postLoginOnboardingProvider.notifier).advance();
+
+        verify(
+          () => analytics.logEvent(
+            'tour_completed',
+            properties: {'skipped_ai': false, 'last_step_index': 5},
+          ),
+        ).called(1);
+      });
+
+      test('not emitted on the intermediate steps of the tour', () async {
+        final repo = MockOnboardingRepository();
+        _setupDefaultMock(repo, step: OnboardingStep.houseTooltip);
+        final analytics = _makeAnalytics();
+        final container = makeContainer(repo: repo, analytics: analytics);
+        addTearDown(container.dispose);
+
+        await container.read(postLoginOnboardingProvider.future);
+        await container.read(postLoginOnboardingProvider.notifier).advance();
+
+        verifyNever(
+          () => analytics.logEvent(
+            'tour_completed',
+            properties: any(named: 'properties'),
+          ),
+        );
+      });
+
+      // Le due strade verso `done` che NON sono completamenti hanno già il
+      // proprio evento di abbandono: contarle qui renderebbe il funnel cieco
+      // alla differenza fra chi finisce e chi molla.
+      test('not emitted by markDone() (abbandono da un tip)', () async {
+        final repo = MockOnboardingRepository();
+        _setupDefaultMock(repo, step: OnboardingStep.moveItemsTooltip);
+        final analytics = _makeAnalytics();
+        final container = makeContainer(repo: repo, analytics: analytics);
+        addTearDown(container.dispose);
+
+        await container.read(postLoginOnboardingProvider.future);
+        await container.read(postLoginOnboardingProvider.notifier).markDone();
+
+        verifyNever(
+          () => analytics.logEvent(
+            'tour_completed',
+            properties: any(named: 'properties'),
+          ),
+        );
+      });
+
+      test('not emitted by skipAi()', () async {
+        final repo = MockOnboardingRepository();
+        _setupDefaultMock(repo, step: OnboardingStep.aiIntro);
+        final analytics = _makeAnalytics();
+        final container = makeContainer(repo: repo, analytics: analytics);
+        addTearDown(container.dispose);
+
+        await container.read(postLoginOnboardingProvider.future);
+        await container.read(postLoginOnboardingProvider.notifier).skipAi();
+
+        verifyNever(
+          () => analytics.logEvent(
+            'tour_completed',
+            properties: any(named: 'properties'),
+          ),
+        );
+      });
+    });
 
     test('markDone() sets step to done regardless of current step', () async {
       final repo = MockOnboardingRepository();

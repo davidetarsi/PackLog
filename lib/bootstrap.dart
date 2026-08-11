@@ -40,6 +40,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -48,6 +49,7 @@ import 'package:tgram_analytics/tgram_analytics.dart';
 import 'package:sqlite3/open.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
+import 'core/analytics/analytics_service.dart';
 import 'core/auth/secure_local_storage.dart';
 import 'core/consent/consent_provider.dart';
 import 'core/database/database.dart';
@@ -141,7 +143,28 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
   // `hasConsent` è già leggibile: `consentServiceProvider.load()` è stato
   // atteso sopra.
   final bool hasConsent = ref.read(consentServiceProvider).hasConsent;
-  Future.delayed(Duration.zero, () => _initNonCriticalServices(hasConsent));
+  Future.delayed(
+    Duration.zero,
+    () => _initNonCriticalServices(
+      hasConsent,
+      // Un evento per avvio del processo. `trigger` è sempre `cold_start`
+      // oggi: esiste perché il giorno in cui conteremo anche i rientri dal
+      // background quelli avranno `resume`, e i dati storici resteranno
+      // confrontabili filtrando invece di diventare incomparabili.
+      onAnalyticsReady: () async {
+        final analytics = ref.read(analyticsServiceProvider);
+        // La versione va impostata prima del primo `identify`, altrimenti la
+        // sessione resta senza `app_version` fino al login successivo.
+        // `PackageInfo` è async ma siamo già fuori dal percorso critico.
+        try {
+          analytics.appVersion = (await PackageInfo.fromPlatform()).version;
+        } catch (e) {
+          debugPrint('[Bootstrap] versione app non leggibile: $e');
+        }
+        analytics.logEvent('app_opened', properties: {'trigger': 'cold_start'});
+      },
+    ),
+  );
   debugPrint('[Bootstrap] ✅ appBootstrapProvider completato');
 });
 
@@ -213,7 +236,17 @@ bool get consentedAnalyticsStarted => _consentedAnalyticsStarted;
 @visibleForTesting
 void resetConsentedAnalyticsForTest() => _consentedAnalyticsStarted = false;
 
-void _initNonCriticalServices(bool hasConsent) {
+/// [onAnalyticsReady] viene invocata quando gli SDK sotto consenso sono
+/// effettivamente inizializzati, non prima: `AppAnalyticsService` scarta gli
+/// eventi finché `TGA.isInitialized` è falso (bypassando di proposito il
+/// buffering pre-init del SDK), quindi emettere `app_opened` prima di questo
+/// momento significherebbe perderlo. Non viene invocata affatto senza
+/// consenso — è la ragione per cui la primissima apertura di un utente nuovo
+/// non è contata, ed è ricostruibile da `login_screen_viewed`.
+void _initNonCriticalServices(
+  bool hasConsent, {
+  void Function()? onAnalyticsReady,
+}) {
   final bool sentryEnabled =
       AppConfig.sentryDsn.isNotEmpty &&
       AppConfig.sentryDsn != 'MISSING_SENTRY_DSN';
@@ -243,7 +276,7 @@ void _initNonCriticalServices(bool hasConsent) {
   //
   // Amplitude e tgram invece sì: vedi [initConsentedAnalytics].
   if (hasConsent) {
-    initConsentedAnalytics();
+    initConsentedAnalytics().then((_) => onAnalyticsReady?.call());
   } else {
     debugPrint('[Bootstrap] analytics in attesa del consenso');
   }

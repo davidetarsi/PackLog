@@ -7,11 +7,18 @@ import 'package:pack_log/shared/theme/cta_reserved_space.dart';
 /// Fornisce un layout per wizard e form complessi dove:
 /// - Il body è scrollabile e arriva fino in fondo allo schermo (`extendBody`)
 /// - Il CTA (bottoni/actions) resta fisso in basso, sopra il body che scorre
-///   sotto — stesso pattern della nav bar flottante di [MainShell]
+///   sotto
 /// - Con `ctaBackgroundColor` non impostato (default trasparente) il body
 ///   scrollato resta visibile nell'area attorno ai bottoni; quell'area non è
 ///   comunque cliccabile verso il contenuto sotto (vedi commento nel `build`)
 /// - SafeArea gestisce correttamente iOS Home Indicator e Android Nav Bar
+///
+/// **Non è lo stesso pattern della nav bar di [MainShell], ed è bene saperlo.**
+/// Quella è una pill con riempimento `surfaceContainer`, raggio pill e ombra:
+/// i suoi item stanno *dentro* una superficie visibile. Qui l'area CTA è
+/// trasparente e i bottoni galleggiano scoperti sul contenuto che scorre.
+/// Entrambe fluttuano sopra il body, ma somigliano l'una all'altra molto meno
+/// di quanto il codice lasci intendere.
 ///
 /// L'ultimo contenuto del body può finire visivamente sotto l'area CTA quando
 /// si scorre fino in fondo. Per evitare che l'ultimo elemento di una lista
@@ -38,9 +45,8 @@ class StickyCtaScaffold extends StatelessWidget {
   final Widget? bottomContent;
 
   /// Colore di background dell'area CTA (default: trasparente — i bottoni
-  /// "galleggiano" sopra il body che scorre sotto, come la nav bar flottante
-  /// di [MainShell]). Passare un colore esplicito solo se serve un'area CTA
-  /// opaca invece che flottante.
+  /// "galleggiano" scoperti sopra il body che scorre sotto). Passare un colore
+  /// esplicito solo se serve un'area CTA opaca invece che flottante.
   final Color? ctaBackgroundColor;
 
   /// Padding interno del contenitore CTA.
@@ -84,7 +90,8 @@ class StickyCtaScaffold extends StatelessWidget {
     return Scaffold(
       appBar: appBar,
       // Il body scorre FINO in fondo, anche sotto l'area CTA (che di default
-      // è trasparente): stesso pattern di MainShell per la nav bar flottante.
+      // è trasparente). Su questo punto — e solo su questo — l'analogia con
+      // MainShell regge: anche lì il contenuto passa sotto la barra.
       // Senza extendBody, il framework riserverebbe automaticamente spazio
       // per il CTA e il body non arriverebbe mai a mostrarsi dietro di esso
       // — rendendo un ctaBackgroundColor trasparente indistinguibile dallo

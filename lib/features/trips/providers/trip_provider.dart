@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/trip_model.dart';
 import '../repositories/trip_repository.dart';
+import '../services/packing_progress_tracker.dart';
 import '../services/trip_lifecycle_service.dart';
 
 part 'trip_provider.g.dart';
@@ -126,10 +128,45 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       // `replaceTripItems` (DELETE all + INSERT all) seguito da
       // `getAllTrips()`. Path caldo durante il packing.
       await _repo.setTripItemChecked(tripId, itemId, newChecked);
+
+      // Funnel della preparazione valigia. Emesso **dopo** la persistenza:
+      // se il salvataggio fallisce l'evento non deve partire, altrimenti si
+      // misurerebbero intenzioni invece di fatti.
+      //
+      // `logEvent` grezzo e non `CoreAnalyticsService`: le proprietà sono
+      // calcolate dal tracker, e far conoscere al livello tipato in `core/`
+      // un tipo che vive in `features/trips/` invertirebbe la dipendenza.
+      _emitPackingEvents(
+        tripId: tripId,
+        trip: trip,
+        updatedItems: updatedItems,
+      );
+
       ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       rethrow;
+    }
+  }
+
+  void _emitPackingEvents({
+    required String tripId,
+    required TripModel trip,
+    required List<TripItem> updatedItems,
+  }) {
+    final events = packingEventsFor(
+      tripId: tripId,
+      checkedBefore: trip.items.where((i) => i.isChecked).length,
+      checkedAfter: updatedItems.where((i) => i.isChecked).length,
+      totalItems: trip.items.length,
+      departureDateTime: trip.departureDateTime,
+      now: DateTime.now(),
+    );
+    if (events.isEmpty) return;
+
+    final analytics = ref.read(analyticsServiceProvider);
+    for (final event in events) {
+      analytics.logEvent(event.name, properties: event.properties);
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
@@ -17,6 +18,8 @@ class MockItemRepository extends Mock implements ItemRepository {}
 
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
+class MockRawAnalyticsService extends Mock implements AppAnalyticsService {}
+
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 /// Unit tests for TripNotifier (Riverpod AsyncNotifier).
@@ -29,6 +32,7 @@ class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 void main() {
   late MockTripRepository mockRepository;
   late MockCoreAnalyticsService mockAnalytics;
+  late MockRawAnalyticsService mockRawAnalytics;
   late ProviderContainer container;
 
   setUp(() {
@@ -69,11 +73,20 @@ void main() {
       () => mockItemRepo.moveItemsToHouse(any(), any(), any()),
     ).thenAnswer((_) async {});
 
+    mockRawAnalytics = MockRawAnalyticsService();
+    when(
+      () => mockRawAnalytics.logEvent(
+        any(),
+        properties: any(named: 'properties'),
+      ),
+    ).thenAnswer((_) async {});
+
     // Create ProviderContainer with mocked repository
     container = ProviderContainer(
       overrides: [
         tripRepositoryProvider.overrideWithValue(mockRepository),
         coreAnalyticsServiceProvider.overrideWithValue(mockAnalytics),
+        analyticsServiceProvider.overrideWithValue(mockRawAnalytics),
         syncOrchestratorProvider.overrideWithValue(mockSync),
         itemRepositoryProvider.overrideWithValue(mockItemRepo),
       ],
@@ -315,6 +328,116 @@ void main() {
       // getAllTrips chiamato solo una volta nel build iniziale, non dopo
       // il toggle (no reload completo).
       verify(() => mockRepository.getAllTrips()).called(1);
+    });
+
+    group('funnel della preparazione valigia', () {
+      TripModel tripWith({required int total, required int checked}) =>
+          TripModel(
+            id: 'trip-packing',
+            name: 'Trip',
+            items: List.generate(
+              total,
+              (i) => TripItem(
+                id: 'item-$i',
+                name: 'Item $i',
+                category: ItemCategory.varie,
+                quantity: 1,
+                isChecked: i < checked,
+              ),
+            ),
+            luggages: [],
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+
+      test('la prima spunta emette packing_started', () async {
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [tripWith(total: 4, checked: 0)]);
+        when(
+          () => mockRepository.setTripItemChecked(any(), any(), any()),
+        ).thenAnswer((_) async {});
+
+        await container.read(tripNotifierProvider.future);
+        await container
+            .read(tripNotifierProvider.notifier)
+            .toggleItemCheck('trip-packing', 'item-0');
+
+        verify(
+          () => mockRawAnalytics.logEvent(
+            'packing_started',
+            properties: any(named: 'properties'),
+          ),
+        ).called(1);
+      });
+
+      test("l'ultima spunta emette packing_completed", () async {
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [tripWith(total: 2, checked: 1)]);
+        when(
+          () => mockRepository.setTripItemChecked(any(), any(), any()),
+        ).thenAnswer((_) async {});
+
+        await container.read(tripNotifierProvider.future);
+        await container
+            .read(tripNotifierProvider.notifier)
+            .toggleItemCheck('trip-packing', 'item-1');
+
+        verify(
+          () => mockRawAnalytics.logEvent(
+            'packing_completed',
+            properties: any(named: 'properties'),
+          ),
+        ).called(1);
+      });
+
+      test('despuntare non emette nulla', () async {
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [tripWith(total: 4, checked: 2)]);
+        when(
+          () => mockRepository.setTripItemChecked(any(), any(), any()),
+        ).thenAnswer((_) async {});
+
+        await container.read(tripNotifierProvider.future);
+        await container
+            .read(tripNotifierProvider.notifier)
+            .toggleItemCheck('trip-packing', 'item-0');
+
+        verifyNever(
+          () => mockRawAnalytics.logEvent(
+            any(that: startsWith('packing_')),
+            properties: any(named: 'properties'),
+          ),
+        );
+      });
+
+      // Misuriamo fatti, non intenzioni: se il salvataggio fallisce non deve
+      // restare traccia di una spunta che non è avvenuta.
+      test('nessun evento se la persistenza fallisce', () async {
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [tripWith(total: 4, checked: 0)]);
+        when(
+          () => mockRepository.setTripItemChecked(any(), any(), any()),
+        ).thenThrow(Exception('db down'));
+
+        await container.read(tripNotifierProvider.future);
+        await expectLater(
+          container
+              .read(tripNotifierProvider.notifier)
+              .toggleItemCheck('trip-packing', 'item-0'),
+          throwsA(isA<Exception>()),
+        );
+
+        verifyNever(
+          () => mockRawAnalytics.logEvent(
+            any(that: startsWith('packing_')),
+            properties: any(named: 'properties'),
+          ),
+        );
+      });
     });
 
     test('should toggle saved status and refresh state', () async {

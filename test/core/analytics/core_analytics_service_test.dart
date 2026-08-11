@@ -14,6 +14,7 @@ void main() {
     when(
       () => mockAnalytics.logEvent(any(), properties: any(named: 'properties')),
     ).thenAnswer((_) async {});
+    when(() => mockAnalytics.logPageview(any())).thenAnswer((_) async {});
     service = CoreAnalyticsService(mockAnalytics);
   });
 
@@ -33,13 +34,19 @@ void main() {
     });
 
     test('trackItemAdded logs item_added', () async {
-      service.trackItemAdded(itemId: 'i1', category: 'tops', totalItems: 1);
+      service.trackItemAdded(
+        itemId: 'i1',
+        houseId: 'h1',
+        category: 'tops',
+        totalItems: 1,
+      );
       await pump();
       verify(
         () => mockAnalytics.logEvent(
           'item_added',
           properties: {
             'item_id': 'i1',
+            'house_id': 'h1',
             'item_category': 'tops',
             'is_first_item': true,
           },
@@ -278,15 +285,25 @@ void main() {
     });
   });
 
-  group('auth funnel (P2 #14)', () {
-    test('trackLoginCompleted emits login_completed', () async {
-      service.trackLoginCompleted();
+  group('navigazione', () {
+    // Su tgram la navigazione deve essere un pageview e non un evento custom:
+    // `top_pages` legge solo i pageview, e con `track('screen_view')` resta
+    // vuota per sempre.
+    test('trackScreenView passa da logPageview, non da logEvent', () async {
+      service.trackScreenView('house-detail');
       await pump();
-      verify(
-        () => mockAnalytics.logEvent('login_completed', properties: null),
-      ).called(1);
-    });
 
+      verify(() => mockAnalytics.logPageview('house-detail')).called(1);
+      verifyNever(
+        () => mockAnalytics.logEvent(
+          'screen_view',
+          properties: any(named: 'properties'),
+        ),
+      );
+    });
+  });
+
+  group('auth funnel (P2 #14)', () {
     test('trackLogout emits logout', () async {
       service.trackLogout();
       await pump();

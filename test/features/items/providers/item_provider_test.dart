@@ -48,6 +48,7 @@ void main() {
     when(
       () => mockAnalytics.trackItemAdded(
         itemId: any(named: 'itemId'),
+        houseId: any(named: 'houseId'),
         category: any(named: 'category'),
         totalItems: any(named: 'totalItems'),
       ),

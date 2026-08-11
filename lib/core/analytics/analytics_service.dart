@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:amplitude_flutter/amplitude.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,6 +44,34 @@ class AppAnalyticsService {
     ConsentService? consent,
   }) : _tgramSessionId = tgramSessionId,
        _consent = consent;
+
+  /// Versione dell'app, popolata una volta a bootstrap.
+  ///
+  /// Non letta qui da `package_info_plus` perché [identifyUser] è sincrona e
+  /// `PackageInfo.fromPlatform()` no: farla `async` costringerebbe ogni
+  /// chiamante a un `await` per un dato che non cambia mai durante la vita
+  /// del processo. Resta `null` finché bootstrap non la imposta, e in quel
+  /// caso la chiave semplicemente non viene inviata.
+  String? _appVersion;
+
+  set appVersion(String value) => _appVersion = value;
+
+  /// Contesto persistente della sessione: viaggia con `identify` e da lì si
+  /// attacca a **tutti** gli eventi successivi, così qualsiasi funnel è
+  /// segmentabile per versione o lingua senza toccare i punti di emissione.
+  ///
+  /// `locale` è quello del **dispositivo**, non l'eventuale lingua forzata
+  /// dal Profilo: dice in che mercato sta l'utente, che è la domanda a cui
+  /// serve rispondere. Nessuno di questi campi è PII.
+  Map<String, dynamic> get _sessionContext => {
+    if (_appVersion != null) 'app_version': _appVersion,
+    'platform': Platform.isAndroid
+        ? 'android'
+        : Platform.isIOS
+        ? 'ios'
+        : 'other',
+    'locale': Platform.localeName,
+  };
 
   /// `true` se è lecito trasmettere. Fail-closed: un [ConsentService] che non
   /// ha ancora completato `load()` risponde `false`.
@@ -100,7 +130,10 @@ class AppAnalyticsService {
         debugPrint('[Analytics] identifyUser failed: $e');
       }
     }
-    _tgram((sessionId) => TGA.identify(sessionId, {'user_id': userId}));
+    _tgram(
+      (sessionId) =>
+          TGA.identify(sessionId, {'user_id': userId, ..._sessionContext}),
+    );
   }
 
   /// Deliberatamente **non** protetto dal gate: dissociare l'identità è
@@ -140,6 +173,37 @@ class AppAnalyticsService {
     _tgram(
       (sessionId) => TGA.track(eventName, sessionId, properties: properties),
     );
+  }
+
+  /// Navigazione fra schermate. Diverge deliberatamente da [logEvent] nel
+  /// sink tgram.
+  ///
+  /// - **Amplitude** riceve `screen_view` con `screen_name`, esattamente come
+  ///   prima: Amplitude non ha un concetto nativo di pageview, e cambiare
+  ///   nome all'evento spezzerebbe le sue serie storiche.
+  /// - **tgram** riceve `TGA.pageview`, che è il metodo dedicato del SDK e
+  ///   l'unico che alimenta la vista `top_pages`. Con `track('screen_view')`
+  ///   quella vista resta vuota per sempre, perché legge i pageview e non
+  ///   gli eventi custom.
+  ///
+  /// Conseguenza da mettere in conto: da questa versione la serie
+  /// `screen_view` **su tgram** smette di crescere, sostituita dai pageview.
+  /// Gli eventi già raccolti restano dov'erano; non valeva la pena inviare
+  /// entrambe le forme e raddoppiare il volume per preservarne la continuità.
+  Future<void> logPageview(String screenName) async {
+    if (!mayTransmit) return;
+    final amp = _amplitude;
+    if (amp != null) {
+      try {
+        await amp.logEvent(
+          'screen_view',
+          eventProperties: {'screen_name': screenName},
+        );
+      } catch (e) {
+        debugPrint('[Analytics] logPageview "$screenName" failed: $e');
+      }
+    }
+    _tgram((sessionId) => TGA.pageview(sessionId, screenName));
   }
 }
 
