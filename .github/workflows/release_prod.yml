@@ -52,6 +52,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          flutter-version: '3.38.5'
           cache: true
 
       - name: 📦 Install Dependencies
@@ -127,7 +128,6 @@ jobs:
           files: |
             build/app/outputs/bundle/prodRelease/PackLog-prod-v${{ env.APP_VERSION }}.aab
             build/app/outputs/flutter-apk/PackLog-prod-v${{ env.APP_VERSION }}.apk
-
       - name: 🔑 Check Play Console service account
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
