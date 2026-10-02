@@ -3,8 +3,54 @@ name: 🛡️ Continuous Integration
 on:
   pull_request:
     branches: [ "main", "develop" ]
+    types: [opened, reopened, synchronize, labeled, unlabeled]
 
 jobs:
+  version-selection:
+    name: Android Version Selection
+    if: github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Verify one version label and the pubspec bump
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const choices = ['version:major', 'version:minor', 'version:patch'];
+            const selected = pr.labels.map(label => label.name).filter(name => choices.includes(name));
+            if (selected.length !== 1) {
+              core.setFailed(`Choose exactly one version label: ${choices.join(', ')}`);
+              return;
+            }
+
+            async function readPubspec(owner, repo, ref) {
+              const response = await github.rest.repos.getContent({ owner, repo, path: 'pubspec.yaml', ref });
+              if (Array.isArray(response.data) || !response.data.content) {
+                throw new Error('pubspec.yaml is missing');
+              }
+              return Buffer.from(response.data.content, 'base64').toString('utf8');
+            }
+
+            function version(text) {
+              const match = text.match(/^version: (\d+)\.(\d+)\.(\d+)\+(\d+)\s*$/m);
+              if (!match) throw new Error('Expected version: MAJOR.MINOR.PATCH+BUILD in pubspec.yaml');
+              return match.slice(1).map(Number);
+            }
+
+            const base = version(await readPubspec(pr.base.repo.owner.login, pr.base.repo.name, pr.base.sha));
+            const head = version(await readPubspec(pr.head.repo.owner.login, pr.head.repo.name, pr.head.sha));
+            const [major, minor, patch, build] = base;
+            const expected = selected[0] === 'version:major' ? [major + 1, 0, 0, build + 1]
+              : selected[0] === 'version:minor' ? [major, minor + 1, 0, build + 1]
+              : [major, minor, patch + 1, build + 1];
+            if (head.some((number, index) => number !== expected[index])) {
+              core.setFailed(`Expected ${expected.slice(0, 3).join('.')}+${expected[3]} in pubspec.yaml`);
+            }
+
   lint-and-test:
     name: Lint & Unit Tests
     runs-on: ubuntu-latest
