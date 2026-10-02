@@ -6,6 +6,7 @@ import '../../houses/providers/house_provider.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/skeleton/skeleton.dart';
 
 /// Schermata intermedia per selezionare la casa di destinazione
 /// prima di accedere ai template di creazione massiva.
@@ -28,7 +29,7 @@ class HouseSelectionScreen extends ConsumerWidget {
       body: housesAsync.when(
         data: (houses) {
           if (houses.isEmpty) {
-            return EmptyState(
+            return DsEmptyState(
               icon: Icons.home_outlined,
               title: 'houses.no_houses'.tr(),
               subtitle: 'houses.create_first_house'.tr(),
@@ -43,7 +44,7 @@ class HouseSelectionScreen extends ConsumerWidget {
               final house = houses[index];
               return _HouseCard(
                 houseId: house.id,
-                houseName: house.name,
+                houseName: house.displayName,
                 iconName: house.iconName,
                 isPrimary: house.isPrimary,
                 colorScheme: colorScheme,
@@ -54,8 +55,8 @@ class HouseSelectionScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => ErrorState(
+        loading: () => const SkeletonHousesBody(),
+        error: (err, stack) => DsErrorState(
           error: err,
           onRetry: () => ref.invalidate(houseNotifierProvider),
         ),
@@ -91,10 +92,7 @@ class _HouseCard extends StatelessWidget {
         child: Container(
           padding: EdgeInsets.all(context.spacingMd),
           decoration: BoxDecoration(
-            border: Border.all(
-              color: colorScheme.outlineVariant,
-              width: 1,
-            ),
+            border: Border.all(color: colorScheme.outlineVariant, width: 1),
             borderRadius: context.responsiveBorderRadius(12),
           ),
           child: Row(

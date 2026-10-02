@@ -3,7 +3,7 @@ import 'user_gender.dart';
 import '../../items/model/item_model.dart';
 
 /// Template di viaggio con item predefiniti.
-/// 
+///
 /// Rappresenta un tipo di viaggio standard (weekend, business, etc.)
 /// con una lista di oggetti comunemente necessari.
 class TravelTemplate {
@@ -31,24 +31,23 @@ class TravelTemplate {
   });
 
   /// Restituisce gli item filtrati per il genere specificato.
-  /// 
+  ///
   /// Include solo gli item che sono applicabili al genere fornito,
   /// usando la logica definita in [TemplateItemDef.isApplicableForGender].
   List<TemplateItemDef> getItemsByGender(UserGender gender) {
-    return items
-        .where((item) => item.isApplicableForGender(gender))
-        .toList();
+    return items.where((item) => item.isApplicableForGender(gender)).toList();
   }
 
   /// Restituisce il conteggio degli item per categoria per il genere specificato.
-  /// 
+  ///
   /// Ritorna una mappa: ItemCategory -> numero di item
   Map<ItemCategory, int> getCategoryCountsByGender(UserGender gender) {
     final filteredItems = getItemsByGender(gender);
     final Map<ItemCategory, int> counts = {};
 
     for (final item in filteredItems) {
-      counts[item.category] = (counts[item.category] ?? 0) + item.defaultQuantity; 
+      counts[item.category] =
+          (counts[item.category] ?? 0) + item.defaultQuantity;
       //+1 instead of item.defaultquantity to count only the item without the quantity
     }
 

@@ -1,22 +1,36 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
+import 'package:go_router/go_router.dart';
+import '../../../shared/widgets/shell_tab_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/database/controllers/backup_controller.dart';
+import '../../../core/analytics/analytics_service.dart';
+import '../../../core/consent/consent_provider.dart';
+import '../../../core/auth/auth_exceptions.dart';
+import '../../../core/auth/auth_provider.dart';
+import '../../../core/auth/auth_state.dart';
+import '../../../core/sync/sync_provider.dart';
+import '../../../features/houses/providers/house_provider.dart';
+import '../../../features/tour/providers/post_login_onboarding_provider.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
+import '../providers/gpt_usage_provider.dart';
 import '../../../shared/config/app_config.dart';
-import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/nav_bar_spacing.dart';
+import '../../../shared/providers/package_info_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
-import '../providers/last_export_path_provider.dart';
+import '../../../shared/widgets/ds_section_header.dart';
 import '../services/feedback_url_service.dart';
-import '../widgets/language_tile.dart';
-import '../widgets/theme_tile.dart';
+import '../widgets/sync_status_tile.dart';
+import 'dialogs/profile_delete_account_dialog.dart';
+import 'dialogs/profile_language_dialog.dart';
+import 'dialogs/profile_logout_dialog.dart';
+import 'dialogs/profile_theme_dialog.dart';
 
 /// Schermata di profilo: unico punto di accesso a preferenze,
-/// backup/ripristino dati e informazioni sull'app.
+/// sync e informazioni sull'app.
 ///
 /// È una schermata autonoma con proprio [Scaffold] e [AppBar], esposta
 /// come branch nella [StatefulShellRoute] del router (tab "Profilo").
@@ -28,331 +42,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  // -------------------------------------------------------------------------
-  // Dialogs — Tema e Lingua
-  // -------------------------------------------------------------------------
-
-  void _showThemeDialog(BuildContext context) {
-    final currentThemeMode =
-        ref.read(themeModeNotifierProvider).valueOrNull ?? ThemeMode.dark;
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('settings.theme'.tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ThemeTile(
-              mode: ThemeMode.light,
-              title: 'settings.theme_light'.tr(),
-              icon: Icons.light_mode,
-              isSelected: currentThemeMode == ThemeMode.light,
-              onTap: () {
-                ref
-                    .read(themeModeNotifierProvider.notifier)
-                    .setThemeMode(ThemeMode.light);
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            const SizedBox(height: 8),
-            ThemeTile(
-              mode: ThemeMode.dark,
-              title: 'settings.theme_dark'.tr(),
-              icon: Icons.dark_mode,
-              isSelected: currentThemeMode == ThemeMode.dark,
-              onTap: () {
-                ref
-                    .read(themeModeNotifierProvider.notifier)
-                    .setThemeMode(ThemeMode.dark);
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            const SizedBox(height: 8),
-            ThemeTile(
-              mode: ThemeMode.system,
-              title: 'settings.theme_system'.tr(),
-              icon: Icons.brightness_auto,
-              isSelected: currentThemeMode == ThemeMode.system,
-              onTap: () {
-                ref
-                    .read(themeModeNotifierProvider.notifier)
-                    .setThemeMode(ThemeMode.system);
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showLanguageDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('settings.language'.tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            LanguageTile(
-              locale: const Locale('it', 'IT'),
-              title: 'Italiano',
-              flag: '🇮🇹',
-              isSelected: context.locale == const Locale('it', 'IT'),
-              onTap: () async {
-                await context.setLocale(const Locale('it', 'IT'));
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-            ),
-            const SizedBox(height: 8),
-            LanguageTile(
-              locale: const Locale('en', 'US'),
-              title: 'English',
-              flag: '🇺🇸',
-              isSelected: context.locale == const Locale('en', 'US'),
-              onTap: () async {
-                await context.setLocale(const Locale('en', 'US'));
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // -------------------------------------------------------------------------
-  // Backup — Export
-  // -------------------------------------------------------------------------
-
-  Future<void> _handleExportDatabase(BuildContext context) async {
-    ExportResult? exportResult;
-
-    try {
-      debugPrint('[ProfileScreen] 📤 Utente ha richiesto export database');
-      if (!context.mounted) return;
-
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text('backup.export_database'.tr()),
-            ],
-          ),
-        ),
-      );
-
-      final controller = ref.read(backupControllerProvider.notifier);
-      exportResult = await controller.exportToTemporaryFile();
-
-      debugPrint('[ProfileScreen] ✅ Export: ${exportResult.path}');
-
-      await ref
-          .read(lastExportPathProvider.notifier)
-          .updateLastExportPath(exportResult.path);
-
-      if (!context.mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-
-      AppSnackBar.showSuccess(
-        context,
-        'backup.export_saved_to'.tr(args: [p.basename(exportResult.path)]),
-      );
-    } catch (e, stack) {
-      debugPrint('[ProfileScreen] ❌ Export fallito: $e\n$stack');
-      if (context.mounted) {
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (_) {}
-      }
-      if (exportResult == null && context.mounted) {
-        AppSnackBar.showError(context, 'backup.export_failed'.tr());
-      }
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // Backup — Import
-  // -------------------------------------------------------------------------
-
-  Future<void> _handleImportDatabase(BuildContext context) async {
-    try {
-      debugPrint('[ProfileScreen] 📥 Utente ha richiesto import database');
-
-      final backupDirPath = await ref
-          .read(backupControllerProvider.notifier)
-          .getBackupDirectoryPath();
-
-      if (!context.mounted) return;
-
-      final confirmed = await _showImportWarningDialog(
-        context,
-        backupDirPath: backupDirPath,
-      );
-      if (confirmed != true) return;
-
-      if (!context.mounted) return;
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text('backup.creating_safety_backup'.tr()),
-            ],
-          ),
-        ),
-      );
-
-      final controller = ref.read(backupControllerProvider.notifier);
-      String? preCreatedBackupPath;
-      try {
-        preCreatedBackupPath = await controller.createSafetyBackup();
-      } catch (e) {
-        if (context.mounted) {
-          Navigator.of(context, rootNavigator: true).pop();
-          AppSnackBar.showError(context, 'backup.safety_backup_failed'.tr());
-        }
-        return;
-      }
-      if (!context.mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
-        allowMultiple: false,
-        withData: false,
-        withReadStream: false,
-      );
-
-      if (result == null || result.files.isEmpty) return;
-      final filePath = result.files.single.path;
-      if (filePath == null) return;
-
-      if (!controller.validateImportFileName(filePath)) {
-        if (context.mounted) {
-          AppSnackBar.showError(
-            context,
-            'backup.import_validation_failed'.tr(),
-          );
-        }
-        return;
-      }
-
-      if (!context.mounted) return;
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text('backup.importing_data'.tr()),
-            ],
-          ),
-        ),
-      );
-
-      final importResult = await controller.importDatabase(
-        filePath,
-        preCreatedBackupPath: preCreatedBackupPath,
-      );
-
-      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
-
-      if (context.mounted) {
-        if (importResult.success) {
-          AppSnackBar.showSuccess(context, 'backup.import_success'.tr());
-        } else {
-          AppSnackBar.showError(
-            context,
-            importResult.errorMessage ?? 'backup.import_failed'.tr(),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('[ProfileScreen] ❌ Errore critico durante import: $e');
-      if (context.mounted) {
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (_) {}
-        AppSnackBar.showError(context, 'backup.critical_error'.tr());
-      }
-    }
-  }
-
-  Future<bool> _showImportWarningDialog(
-    BuildContext context, {
-    required String backupDirPath,
-  }) async {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('backup.import_warning_title'.tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('backup.import_warning_message'.tr()),
-            const SizedBox(height: 16),
-            Text(
-              'backup.safety_backup_path_label'.tr(),
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius:
-                    BorderRadius.circular(AppConstants.inputBorderRadius),
-              ),
-              child: SelectableText(
-                backupDirPath,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  color: colorScheme.primary.withValues(alpha: 0.85),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text('common.cancel'.tr()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(
-              'common.confirm'.tr(),
-              style: TextStyle(color: colorScheme.error),
-            ),
-          ),
-        ],
-      ),
-    );
-    return confirmed ?? false;
-  }
-
   // -------------------------------------------------------------------------
   // URL helpers
   // -------------------------------------------------------------------------
@@ -401,14 +90,120 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   // -------------------------------------------------------------------------
+  // Auth — Sign Out
+  // -------------------------------------------------------------------------
+
+  Future<void> _handleSignOut(BuildContext context) async {
+    // Legge il conteggio pending fresco prima di aprire il dialog: il dialog
+    // deve sempre mostrare dati attuali, non il valore cacheato della tile.
+    final pending = await ref.read(syncServiceProvider).countPendingChanges();
+    if (!context.mounted) return;
+
+    final choice = await showProfileLogoutDialog(context, pending);
+    if (choice == null || choice == ProfileLogoutChoice.cancel) return;
+
+    if (choice == ProfileLogoutChoice.syncFirst) {
+      // Best-effort flush con timeout, poi logout in ogni caso.
+      try {
+        await ref
+            .read(syncServiceProvider)
+            .processQueue()
+            .timeout(const Duration(seconds: 10));
+      } catch (e) {
+        debugPrint('[ProfileScreen] Pre-logout sync failed: $e');
+      }
+    }
+
+    try {
+      await ref.read(authRepositoryProvider).signOut();
+    } on SignOutFailedException catch (e) {
+      debugPrint('[ProfileScreen] Sign-out failed: $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'login.sign_out_failed'.tr());
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Auth — Delete Account (GDPR Art. 17 — Right to Erasure)
+  // -------------------------------------------------------------------------
+
+  Future<void> _handleDeleteAccount(BuildContext context) async {
+    final authState = ref.read(authNotifierProvider);
+    if (authState is! Authenticated) return;
+    final email = authState.email;
+
+    final confirmed = await showProfileDeleteAccountDialog(context, email);
+    if (confirmed != true || !context.mounted) return;
+
+    // Cattura riferimenti stabili PRIMA degli await: appena `signOut()`
+    // (interno a deleteAccount) fa scattare l'auth gate del router,
+    // ProfileScreen viene disposta e `context.mounted` diventa false →
+    // il pop del loader non scatterebbe più. `rootNavigator` invece punta
+    // al Navigator dentro MaterialApp, che sopravvive alle navigazioni.
+    final rootNav = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    final errorColor = Theme.of(context).colorScheme.error;
+
+    // Loading dialog: l'operazione tocca rete + più DELETE Postgres → può
+    // impiegare qualche secondo. `useRootNavigator: true` mette il dialog
+    // sul root navigator, così la sua chiusura è indipendente dal branch
+    // shell route della tab Profilo.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await ref.read(authRepositoryProvider).deleteAccount();
+      // Wipe del DB locale: senza questo, il prossimo login (anche con
+      // altro utente) vedrebbe transitoriamente i dati di chi è stato
+      // appena cancellato finché il fullPull non sostituisce tutto.
+      await ref.read(syncServiceProvider).wipeAllUserData();
+
+      // Niente check `context.mounted` qui: è già false (l'auth gate ha
+      // rediretto a /login). Il rootNav è ancora valido.
+      if (rootNav.canPop()) rootNav.pop();
+      // Niente snackbar di successo: l'utente sta venendo rediretto a
+      // /login, lo stato "operazione completata" è implicito nel redirect.
+      // Una snackbar mostrata su /login sarebbe out-of-context.
+    } on DeleteAccountFailedException catch (e) {
+      debugPrint('[ProfileScreen] Delete account failed: $e');
+      // Sul path di errore l'utente è ANCORA loggato (deleteAccount
+      // throws prima di signOut) → ProfileScreen ancora mounted →
+      // messenger riferimento valido.
+      if (rootNav.canPop()) rootNav.pop();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('profile.delete_account_failed'.tr()),
+          backgroundColor: errorColor,
+        ),
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Build
   // -------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     final currentLocale = context.locale;
-    final languageName =
-        currentLocale.languageCode == 'it' ? 'Italiano' : 'English';
+    final languageName = currentLocale.languageCode == 'it'
+        ? 'Italiano'
+        : 'English';
+
+    final authState = ref.watch(authNotifierProvider);
+    final displayName = switch (authState) {
+      Authenticated(:final displayName) => displayName,
+      Unauthenticated() => null,
+    };
+    final userEmail = switch (authState) {
+      Authenticated(:final email) => email,
+      Unauthenticated() => '',
+    };
 
     final themeModeAsync = ref.watch(themeModeNotifierProvider);
     final themeModeName = themeModeAsync.when(
@@ -421,151 +216,305 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       error: (_, _) => 'settings.theme_dark'.tr(),
     );
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+    return ShellTabScaffold(
       appBar: AppBar(
         title: Text('settings.title'.tr()),
-        centerTitle: true,
-        // Nessun leading: questa è una schermata radice del tab bar,
-        // non si può fare pop verso un livello superiore.
+        // Nessun leading: schermata radice del tab bar, nessun pop a livello superiore.
         automaticallyImplyLeading: false,
       ),
-      body: ListView(
-        children: [
-          // ── Preferenze ──────────────────────────────────────────────────
-          ListTile(
-            leading: const Icon(Icons.language),
-            title: Text('settings.language'.tr()),
-            subtitle: Text(languageName),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showLanguageDialog(context),
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(gptUsageProvider),
+        child: ListView(
+          // Padding esplicito: senza, ListView (padding null) auto-inietta
+          // MediaQuery.padding.top come proprio sliver padding. Scaffold NON
+          // azzera quel padding per il body quando extendBodyBehindAppBar è
+          // false (default) — l'AppBar occupa già visivamente quello spazio,
+          // ma il valore di MediaQuery resta quello dell'intero schermo.
+          // Risultato senza questo fix: un secondo "status bar" di spazio
+          // vuoto sopra il primo ListTile, sommato a quello già coperto
+          // dall'AppBar.
+          // `bottom`: riserva l'altezza della nav bar flottante dentro lo
+          // scrollable, così il contenuto le scorre DIETRO ma l'ultimo
+          // elemento resta comunque raggiungibile. Vedi [ShellTabScaffold].
+          padding: EdgeInsets.only(
+            top: context.spacingSm,
+            bottom: context.navBarReservedHeight,
           ),
-          const Divider(),
-
-          ListTile(
-            leading: Icon(
-              themeModeAsync.valueOrNull == ThemeMode.light
-                  ? Icons.light_mode
-                  : themeModeAsync.valueOrNull == ThemeMode.dark
-                      ? Icons.dark_mode
-                      : Icons.brightness_auto,
+          children: [
+            // ── Account identity ────────────────────────────────────────────
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: Text(
+                (displayName != null && displayName.isNotEmpty)
+                    ? displayName
+                    : userEmail,
+              ),
+              subtitle: userEmail.isNotEmpty ? Text(userEmail) : null,
             ),
-            title: Text('settings.theme'.tr()),
-            subtitle: Text(themeModeName),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showThemeDialog(context),
-          ),
-          const Divider(),
+            const Divider(),
 
-          // ── Backup & Ripristino ──────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-            child: Text(
-              'backup.title'.tr(),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+            // ── Preferenze ──────────────────────────────────────────────────
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: Text('settings.language'.tr()),
+              subtitle: Text(languageName),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showProfileLanguageDialog(context),
+            ),
+            const Divider(),
+
+            ListTile(
+              leading: Icon(
+                themeModeAsync.valueOrNull == ThemeMode.light
+                    ? Icons.light_mode
+                    : themeModeAsync.valueOrNull == ThemeMode.dark
+                    ? Icons.dark_mode
+                    : Icons.brightness_auto,
+              ),
+              title: Text('settings.theme'.tr()),
+              subtitle: Text(themeModeName),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showProfileThemeDialog(
+                context,
+                currentThemeMode:
+                    ref.read(themeModeNotifierProvider).valueOrNull ??
+                    ThemeMode.dark,
+                onSetThemeMode: (mode) => ref
+                    .read(themeModeNotifierProvider.notifier)
+                    .setThemeMode(mode),
               ),
             ),
-          ),
+            const Divider(),
 
-          Consumer(
-            builder: (context, ref, _) {
-              final exportPathAsync = ref.watch(lastExportPathProvider);
-              final displayPath = exportPathAsync.valueOrNull ?? '...';
-              return ListTile(
-                leading: const Icon(Icons.upload_file),
-                title: Text('backup.export_database'.tr()),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('backup.export_subtitle'.tr()),
-                    const SizedBox(height: 8),
-                    Text(
-                      'backup.path_label'.tr(),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    SelectableText(
-                      displayPath,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontFamily: 'monospace',
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                ),
-                isThreeLine: true,
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _handleExportDatabase(context),
-              );
-            },
-          ),
+            // ── AI usage ────────────────────────────────────────────────────
+            const _GptUsageTile(),
+            const Divider(),
 
-          ListTile(
-            leading: const Icon(Icons.download),
-            title: Text('backup.import_database'.tr()),
-            subtitle: Text('backup.import_subtitle'.tr()),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _handleImportDatabase(context),
-          ),
-          const Divider(),
+            // ── Sync status ───────────────────────────────────────────────────
+            const SyncStatusTile(),
+            const Divider(),
 
-          // ── About ────────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-            child: Text(
-              'settings.about_section_title'.tr(),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+            // ── Tour ──────────────────────────────────────────────────────────────────
+            ListTile(
+              leading: const Icon(Icons.tour_outlined),
+              title: Text('tour.relaunch_title'.tr()),
+              subtitle: Text('tour.relaunch_subtitle'.tr()),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                ref.read(analyticsServiceProvider).logEvent('tour_relaunched');
+                final houses =
+                    ref.read(houseNotifierProvider).valueOrNull ?? [];
+                await ref
+                    .read(postLoginOnboardingProvider.notifier)
+                    .reset(hasExistingHouses: houses.isNotEmpty);
+                if (context.mounted) context.go('/');
+              },
+            ),
+            const Divider(),
+
+            // ── Privacy ───────────────────────────────────────────────────────
+            const _AnalyticsToggleTile(),
+            const Divider(),
+
+            // ── About ────────────────────────────────────────────────────────
+            DsSectionHeader(
+              label: 'settings.about_section_title'.tr(),
+              padding: EdgeInsets.fromLTRB(
+                context.spacingMd,
+                context.spacingLg,
+                context.spacingMd,
+                context.spacingSm,
               ),
             ),
-          ),
 
-          ListTile(
-            leading: const Icon(Icons.feedback_outlined),
-            title: Text('settings.feedback'.tr()),
-            subtitle: Text('settings.feedback_subtitle'.tr()),
-            trailing: const Icon(Icons.open_in_new, size: 18),
-            onTap: () => _openFeedbackForm(context),
-          ),
+            ListTile(
+              leading: const Icon(Icons.feedback_outlined),
+              title: Text('settings.feedback'.tr()),
+              subtitle: Text('settings.feedback_subtitle'.tr()),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => _openFeedbackForm(context),
+            ),
 
-          ListTile(
-            leading: const Icon(Icons.code),
-            title: Text('settings.view_project'.tr()),
-            subtitle: Text('settings.view_project_subtitle'.tr()),
-            trailing: const Icon(Icons.open_in_new, size: 18),
-            onTap: () => _launchUrl(context, AppConfig.githubUrl),
-          ),
+            ListTile(
+              leading: const Icon(Icons.code),
+              title: Text('settings.view_project'.tr()),
+              subtitle: Text('settings.view_project_subtitle'.tr()),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => _launchUrl(context, AppConfig.githubUrl),
+            ),
 
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: Text('settings.about'.tr()),
-            subtitle: Text('${'common.version'.tr()} 1.0.0'),
-          ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: Text('settings.about'.tr()),
+              subtitle: ref
+                  .watch(packageInfoProvider)
+                  .when(
+                    data: (info) =>
+                        Text('${'common.version'.tr()} ${info.version}'),
+                    loading: () => Text('${'common.version'.tr()} …'),
+                    error: (_, _) => Text('${'common.version'.tr()} —'),
+                  ),
+            ),
 
-          ListTile(
+            /* ListTile(
             leading: const Icon(Icons.storage),
             title: Text('common.storage'.tr()),
             subtitle: Text('common.data_saved_locally'.tr()),
-          ),
+          ), */
+            const Divider(),
 
-          const Divider(),
-        ],
+            // ── Account ─────────────────────────────────────────────────
+            AppSpacing.gapSm,
+
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+              child: UniversalActionBar(
+                primaryLabel: 'login.sign_out'.tr(),
+                primaryIcon: Icons.logout,
+                onPrimaryPressed: () => _handleSignOut(context),
+                isSecondary: true,
+              ),
+            ),
+
+            AppSpacing.gapSm,
+
+            // Hard-delete account (GDPR Art. 17). Distruttivo e irreversibile,
+            // protetto da dialog con conferma email.
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+              child: UniversalActionBar(
+                primaryLabel: 'profile.delete_account_cta'.tr(),
+                primaryIcon: Icons.delete_forever,
+                onPrimaryPressed: () => _handleDeleteAccount(context),
+                isDestructive: true,
+              ),
+            ),
+
+            // Gap sotto l'ultimo bottone = gap tra i due bottoni, per coerenza.
+            AppSpacing.gapSm,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Private widget components
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Interruttore delle statistiche d'uso.
+///
+/// Le statistiche non sono un trattamento strettamente necessario: devono
+/// poter essere disattivate **mantenendo l'account**. È anche ciò che rende
+/// veritiera la dichiarazione "raccolta opzionale" nel Data safety di Play.
+///
+/// Non tocca il consenso a privacy policy e termini, che è un registro legale
+/// separato e resta condizione per usare l'app.
+class _AnalyticsToggleTile extends ConsumerStatefulWidget {
+  const _AnalyticsToggleTile();
+
+  @override
+  ConsumerState<_AnalyticsToggleTile> createState() =>
+      _AnalyticsToggleTileState();
+}
+
+class _AnalyticsToggleTileState extends ConsumerState<_AnalyticsToggleTile> {
+  @override
+  Widget build(BuildContext context) {
+    final consent = ref.watch(consentServiceProvider);
+
+    return SwitchListTile(
+      secondary: const Icon(Icons.insights_outlined),
+      title: Text('settings.analytics_title'.tr()),
+      subtitle: Text('settings.analytics_subtitle'.tr()),
+      value: consent.analyticsEnabled,
+      onChanged: (value) async {
+        final analytics = ref.read(analyticsServiceProvider);
+
+        // Disattivando: prima si emette l'evento che documenta la scelta,
+        // poi si chiude il gate. Nell'ordine inverso l'evento verrebbe
+        // scartato dal gate stesso, e non resterebbe traccia dell'opt-out.
+        if (!value) {
+          analytics.logEvent(
+            'analytics_opt_out',
+            properties: {'enabled': false},
+          );
+        }
+
+        await consent.setAnalyticsEnabled(value);
+
+        if (value) {
+          // Riattivando, l'evento va emesso DOPO: prima il gate era chiuso.
+          analytics.logEvent('analytics_opt_in', properties: {'enabled': true});
+        } else {
+          // Dissocia l'identità già inviata ai backend. `clearUser` è
+          // deliberatamente fuori dal gate proprio per questo caso: riduce i
+          // dati, non li trasmette.
+          analytics.clearUser();
+        }
+
+        if (mounted) setState(() {});
+      },
+    );
+  }
+}
+
+class _GptUsageTile extends ConsumerWidget {
+  const _GptUsageTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gptUsageAsync = ref.watch(gptUsageProvider);
+
+    return gptUsageAsync.when(
+      data: (usage) => ListTile(
+        leading: const Icon(Icons.auto_awesome_outlined),
+        title: Text('profile.ai_usage_title'.tr()),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: context.spacingXs),
+            LinearProgressIndicator(
+              value: usage.progress,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            SizedBox(height: context.spacingXs),
+            Text(
+              'profile.ai_usage_subtitle'.tr(
+                args: [usage.usageCount.toString(), usage.usageCap.toString()],
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+      loading: () => ListTile(
+        leading: const Icon(Icons.auto_awesome_outlined),
+        title: Text('profile.ai_usage_title'.tr()),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: context.spacingXs),
+            const LinearProgressIndicator(),
+          ],
+        ),
+      ),
+      error: (_, _) => ListTile(
+        leading: const Icon(Icons.auto_awesome_outlined),
+        title: Text('profile.ai_usage_title'.tr()),
+        subtitle: Text(
+          'errors.load_failed'.tr(),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.error,
+          ),
+        ),
       ),
     );
   }

@@ -3,47 +3,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
+import '../model/trip_date_range.dart';
+import '../view/trip_date_range_screen.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 
-/// Widget riutilizzabile per il form delle info del viaggio.
-/// 
-/// Contiene:
-/// - Campo nome viaggio (in pill tab grande)
-/// - Card con date partenza/ritorno
-/// - Card con selezione casa + location autocomplete
 class TripInfoForm extends ConsumerStatefulWidget {
-  /// Nome iniziale del viaggio
   final String? initialName;
-  
-  /// Descrizione iniziale (opzionale)
   final String? initialDescription;
-  
-  /// Data/ora partenza iniziale
   final DateTime? initialDepartureDateTime;
-  
-  /// Data/ora ritorno iniziale
   final DateTime? initialReturnDateTime;
-  
-  /// ID casa destinazione iniziale
   final String? initialDestinationHouseId;
-  
-  /// Località destinazione iniziale (modello completo)
   final LocationSuggestionModel? initialDestinationLocation;
 
-  
-  /// Callback quando i dati cambiano
   final void Function({
-    String? name,
     String? description,
     DateTime? departureDateTime,
     DateTime? returnDateTime,
     String? destinationHouseId,
     LocationSuggestionModel? destinationLocation,
-  }) onChanged;
+    String? destinationName,
+    String? name,
+  })
+  onChanged;
 
   const TripInfoForm({
     super.key,
@@ -61,169 +48,252 @@ class TripInfoForm extends ConsumerStatefulWidget {
 }
 
 class _TripInfoFormState extends ConsumerState<TripInfoForm> {
-  late TextEditingController _nameController;
   late TextEditingController _descriptionController;
+  late TextEditingController _nameController;
+  final _nameFocusNode = FocusNode();
   DateTime? _departureDateTime;
   DateTime? _returnDateTime;
   String? _destinationHouseId;
+  String? _destinationHouseName;
   LocationSuggestionModel? _destinationLocation;
+  late bool _useHouseDestination;
 
-  // Colore arancione per le icone
-  static const Color _accentColor = Colors.orange;
+  /// Una volta che l'utente ha scritto il nome, nessun cambio di destinazione
+  /// o di date lo tocca più. Senza questo flag l'app cancellerebbe quello che
+  /// l'utente ha appena scritto.
+  bool _nameTouched = false;
+
+  /// _derivedName() usa context.locale, non chiamabile in initState: il primo
+  /// didChangeDependencies calcola il valore reale di _nameTouched una sola
+  /// volta (guardia). Finché non scatta, il default resta conservativo.
+  bool _initialTouchComputed = false;
+
+  // _accentColor rimosso — usare colorScheme.primary nei build methods.
 
   @override
   void initState() {
     super.initState();
+    _descriptionController = TextEditingController(
+      text: widget.initialDescription ?? '',
+    );
     _nameController = TextEditingController(text: widget.initialName ?? '');
-    _descriptionController = TextEditingController(text: widget.initialDescription ?? '');
+    // Default conservativo finché didChangeDependencies non può calcolare il
+    // valore reale (serve context.locale per _derivedName): meglio non
+    // aggiornare un nome che rischiare di cancellarne uno scritto a mano.
+    _nameTouched = true;
+    _nameFocusNode.addListener(_onNameFocusChanged);
     _departureDateTime = widget.initialDepartureDateTime;
     _returnDateTime = widget.initialReturnDateTime;
     _destinationHouseId = widget.initialDestinationHouseId;
     _destinationLocation = widget.initialDestinationLocation;
-    
+    _useHouseDestination = widget.initialDestinationHouseId != null;
+    if (_destinationHouseId != null) {
+      final housesAsync = ref.read(houseNotifierProvider);
+      housesAsync.whenData((houses) {
+        final house = houses
+            .where((h) => h.id == _destinationHouseId)
+            .firstOrNull;
+        _destinationHouseName = house?.displayName;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _notifyChanged();
+        });
+      });
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialTouchComputed) return;
+    _initialTouchComputed = true;
+    final initial = widget.initialName ?? '';
+    // "Toccato" solo se il nome iniziale differisce da quello che il calcolo
+    // automatico produrrebbe: un nome mai personalizzato deve continuare a
+    // seguire date e destinazione anche in modifica, uno personalizzato no.
+    _nameTouched = initial.isNotEmpty && initial != _derivedName();
+  }
+
+  @override
+  void didUpdateWidget(covariant TripInfoForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Mentre il campo ha il focus non lo riscrive nessuno, genitore incluso:
+    // il giro onChanged → setState del genitore → initialName ci rimanda qui
+    // il nome derivato mentre l'utente sta ancora digitando (basta che svuoti
+    // il campo perché _notifyChanged emetta il derivato), e adottarlo gli
+    // cancellerebbe il testo sotto le dita ricollassando il cursore. È la
+    // stessa guardia che ha _syncDerivedName; al blur ci pensa
+    // _onNameFocusChanged.
+    // Le altre condizioni: solo se la prop è cambiata davvero, il campo non è
+    // "touched" e il testo proposto differisce da quello già nel controller —
+    // riscrivere con lo stesso identico testo collasserebbe comunque la
+    // selection.
+    final newName = widget.initialName ?? '';
+    if (widget.initialName != oldWidget.initialName &&
+        !_nameFocusNode.hasFocus &&
+        !_nameTouched &&
+        newName.isNotEmpty &&
+        newName != _nameController.text) {
+      _nameController.text = newName;
+      // Adottare un nome che coincide col derivato non è una
+      // personalizzazione: marcarlo "toccato" congelerebbe per sempre un nome
+      // che l'utente non ha mai scritto. Oggi nessuna delle due schermate
+      // arriva qui (entrambe caricano il viaggio in modo sincrono dentro
+      // initState, quindi il nome iniziale passa da didChangeDependencies):
+      // il ramo copre una spinta del genitore successiva al mount, per ora
+      // solo teorica. È la stessa asimmetria che didChangeDependencies già
+      // applica al nome iniziale.
+      // Se invece il nome è davvero personalizzato va difeso, altrimenti il
+      // prossimo _notifyChanged() lo sovrascriverebbe subito col derivato.
+      if (newName != _derivedName()) _nameTouched = true;
+    }
+    if (widget.initialDescription != oldWidget.initialDescription &&
+        (widget.initialDescription ?? '') != _descriptionController.text) {
+      _descriptionController.text = widget.initialDescription ?? '';
+    }
   }
 
   @override
   void dispose() {
+    _nameFocusNode.removeListener(_onNameFocusChanged);
+    _nameFocusNode.dispose();
     _nameController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
-  void _notifyChanged() {
-    widget.onChanged(
-      name: _nameController.text.trim(),
-      description: _descriptionController.text.trim().isEmpty 
-          ? null 
-          : _descriptionController.text.trim(),
-      departureDateTime: _departureDateTime,
-      returnDateTime: _returnDateTime,
-      destinationHouseId: _destinationHouseId,
-      destinationLocation: _destinationHouseId == null 
-          ? _destinationLocation 
-          : null,
-    );
+  /// Nome derivato dalla sola destinazione.
+  ///
+  /// Niente date: sono già visibili nelle info del viaggio, e ripeterle nel
+  /// nome allungava ogni titolo con un dato che l'utente ha già sotto gli
+  /// occhi.
+  ///
+  /// Stringa vuota quando la destinazione manca, invece di un segnaposto tipo
+  /// "Viaggio": un nome sempre pieno renderebbe impossibile distinguere
+  /// "l'utente non ha dato un'identità al viaggio" da "l'ha chiamato Viaggio",
+  /// ed è proprio quella distinzione che regge la validazione nome-o-
+  /// destinazione.
+  String _derivedName() {
+    final destination = _destinationHouseId != null
+        ? _destinationHouseName
+        : _destinationLocation?.displayName;
+    return destination?.trim() ?? '';
   }
 
-  Future<void> _pickDepartureDateTime() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _departureDateTime ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-      helpText: 'trips.select_departure_date'.tr(),
-    );
-    if (date == null || !mounted) return;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: _departureDateTime != null
-          ? TimeOfDay.fromDateTime(_departureDateTime!)
-          : TimeOfDay.now(),
-      helpText: 'trips.select_departure_time'.tr(),
-    );
-    if (time == null || !mounted) return;
-
+  /// Alla perdita di focus il campo torna al nome derivato — aspettare il
+  /// salvataggio lascerebbe a video un nome sbagliato (o vuoto) per tutta la
+  /// compilazione.
+  void _onNameFocusChanged() {
+    if (_nameFocusNode.hasFocus) return;
+    final isEmpty = _nameController.text.trim().isEmpty;
+    // Un nome personalizzato e non vuoto è l'unico che sopravvive al blur.
+    if (_nameTouched && !isEmpty) return;
     setState(() {
-      _departureDateTime = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute,
-      );
-      final autoReturn = _departureDateTime!.add(const Duration(hours: 1));
-      if (_returnDateTime == null || _returnDateTime!.isBefore(_departureDateTime!)) {
-        _returnDateTime = autoReturn;
-      }
+      // A questo punto, se il testo non è vuoto, _nameTouched è già false: il
+      // return sopra esce prima per ogni caso touched+non-vuoto. L'assegnazione
+      // serve quindi solo al caso touched+vuoto — riaggancia il nome alla
+      // destinazione/date correnti, altrimenti svuotare il campo e poi
+      // cambiare le date lo lascerebbe congelato sul derivato vecchio.
+      _nameTouched = false;
+      // Anche a campo pieno: mentre aveva il focus _syncDerivedName non poteva
+      // riscriverlo, quindi può mostrare una destinazione o delle date che nel
+      // frattempo l'utente ha già cambiato.
+      _nameController.text = _derivedName();
     });
     _notifyChanged();
   }
 
-  Future<void> _pickReturnDateTime() async {
-    final initialDate = _returnDateTime ?? _departureDateTime ?? DateTime.now();
-    final date = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: _departureDateTime ?? DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-      helpText: 'trips.select_return_date'.tr(),
-    );
-    if (date == null || !mounted) return;
+  void _syncDerivedName() {
+    // Mentre l'utente ha il campo sotto le dita non si tocca il controller:
+    // riscriverlo cancellerebbe quello che sta digitando e sposterebbe il
+    // cursore. Il ripristino del nome derivato avviene al blur.
+    if (_nameFocusNode.hasFocus) return;
+    if (_nameTouched) return;
+    _nameController.text = _derivedName();
+  }
 
-    final time = await showTimePicker(
-      context: context,
-      initialTime: _returnDateTime != null
-          ? TimeOfDay.fromDateTime(_returnDateTime!)
-          : TimeOfDay.now(),
-      helpText: 'trips.select_return_time'.tr(),
-    );
-    if (time == null || !mounted) return;
+  void _notifyChanged() {
+    _syncDerivedName();
 
+    final destinationName = _destinationHouseId != null
+        ? _destinationHouseName
+        : (_destinationLocation?.displayName.trim().isNotEmpty == true
+              ? _destinationLocation!.displayName
+              : null);
+
+    widget.onChanged(
+      description: _descriptionController.text.trim().isEmpty
+          ? null
+          : _descriptionController.text.trim(),
+      departureDateTime: _departureDateTime,
+      returnDateTime: _returnDateTime,
+      destinationHouseId: _destinationHouseId,
+      destinationLocation: _destinationHouseId == null
+          ? _destinationLocation
+          : null,
+      destinationName: destinationName,
+      // Finché il nome non è personalizzato la fonte di verità è _derivedName(),
+      // non il controller: mentre il campo ha il focus _syncDerivedName non lo
+      // riscrive, quindi il testo a video può restare indietro rispetto alla
+      // destinazione/date appena cambiate. Il valore emesso qui resta comunque
+      // allineato al derivato anche in quella finestra (non è mai il testo
+      // vecchio che finisce salvato); la finestra si chiude al primo blur, che
+      // risincronizza anche il controller via _onNameFocusChanged.
+      name: _nameTouched && _nameController.text.trim().isNotEmpty
+          ? _nameController.text.trim()
+          : _derivedName(),
+    );
+  }
+
+  Future<void> _pickDateRange() async {
+    final result = await Navigator.of(context).push<TripDateRange>(
+      MaterialPageRoute(
+        builder: (_) => TripDateRangeScreen(
+          initialDeparture: _departureDateTime,
+          initialReturn: _returnDateTime,
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
     setState(() {
-      _returnDateTime = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute,
-      );
+      _departureDateTime = result.departureDate;
+      _returnDateTime = result.returnDate;
     });
     _notifyChanged();
   }
 
   Future<void> _showDestinationHousePicker(List<HouseModel> houses) async {
-    final selected = await showModalBottomSheet<String>(
+    final selected = await DsPickerSheet.show<HouseModel>(
       context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'trips.select_destination_house'.tr(),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.cancel_outlined, color: _accentColor),
-            title: Text('common.none_insert_location'.tr()),
-            trailing: _destinationHouseId == null
-                ? const Icon(Icons.check, color: _accentColor)
-                : null,
-            onTap: () => Navigator.pop(context, ''),
-          ),
-          const Divider(),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: houses.length,
-              itemBuilder: (context, index) {
-                final house = houses[index];
-                return ListTile(
-                  leading: const Icon(Icons.home_outlined, color: _accentColor),
-                  title: Text(house.name),
-                  subtitle: house.description != null ? Text(house.description!) : null,
-                  trailing: _destinationHouseId == house.id
-                      ? const Icon(Icons.check, color: _accentColor)
-                      : null,
-                  onTap: () => Navigator.pop(context, house.id),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
+      title: 'trips.select_destination_house'.tr(),
+      items: houses,
+      getLabel: (h) => h.displayName,
+      getSubtitle: (h) => h.description,
+      getIcon: (_) => Icons.home_outlined,
+      selected: houses.where((h) => h.id == _destinationHouseId).firstOrNull,
     );
 
-    if (selected != null) {
+    if (selected != null && mounted) {
       setState(() {
-        _destinationHouseId = selected.isEmpty ? null : selected;
-        if (_destinationHouseId != null) {
-          _destinationLocation = null;
-        }
+        _destinationHouseId = selected.id;
+        _destinationHouseName = selected.displayName;
+        _destinationLocation = null;
       });
       _notifyChanged();
     }
   }
 
-  String _formatDateTimeLine(DateTime? dateTime) {
-    if (dateTime == null) return 'common.tap_to_set'.tr();
-    return '${DateFormat('d MMM y').format(dateTime)} • ${DateFormat('HH:mm').format(dateTime)}';
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return '—';
+    return DateFormat('d MMM y').format(dt);
+  }
+
+  String _getSelectedHouseName(List<HouseModel> houses) {
+    if (_destinationHouseId == null) {
+      return 'common.none_selected'.tr();
+    }
+    final house = houses.where((h) => h.id == _destinationHouseId).firstOrNull;
+    return house?.displayName ?? 'common.unknown_house'.tr();
   }
 
   @override
@@ -234,223 +304,272 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Nome viaggio - Pill tab grande senza bordi
-        Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHigh,
-            borderRadius: context.responsiveBorderRadius(24),
+        // ── Nome del viaggio ──────────────────────────────────────────
+        Text(
+          'trips.name_label'.tr(),
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
           ),
-          padding: EdgeInsets.symmetric(
-            horizontal: context.spacingMd,
-            vertical: context.spacingSm,
-          ),
-          child: TextFormField(
-            controller: _nameController,
-            style: TextStyle(
-              fontSize: context.fontSizeXl,
-              fontWeight: FontWeight.bold,
-            ),
-            decoration: InputDecoration(
-              hintText: 'trips.name_hint'.tr(),
-              hintStyle: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.4),
-                fontWeight: FontWeight.normal,
+        ),
+        SizedBox(height: context.spacingXs),
+        TextField(
+          key: const Key('trip_name_field'),
+          controller: _nameController,
+          focusNode: _nameFocusNode,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                AppConstants.inputBorderRadius,
               ),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
             ),
-            onChanged: (_) => _notifyChanged(),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'common.name_required_validation'.tr();
+            // La matita dichiara che il nome precompilato è modificabile,
+            // senza aggiungere testo.
+            suffixIcon: Icon(
+              Icons.edit_outlined,
+              size: 18,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          onChanged: (value) {
+            _nameTouched = value.trim().isNotEmpty;
+            _notifyChanged();
+          },
+        ),
+        SizedBox(height: context.spacingMd),
+
+        // ── Toggle destinazione — AppPillTab al posto di SegmentedButton ──
+        AppPillTab<bool>(
+          items: const [false, true],
+          selectedItem: _useHouseDestination,
+          getLabel: (v) => v
+              ? 'common.destination_house'.tr()
+              : 'common.destination_other'.tr(),
+          getIcon: (v) => v
+              ? const Icon(Icons.home_outlined, size: 18)
+              : const Icon(Icons.place_outlined, size: 18),
+          onSelected: (v) {
+            setState(() {
+              _useHouseDestination = v;
+              if (_useHouseDestination) {
+                _destinationLocation = null;
+              } else {
+                _destinationHouseId = null;
+                _destinationHouseName = null;
               }
-              return null;
-            },
-          ),
+            });
+            _notifyChanged();
+          },
         ),
-        
-        SizedBox(height: context.spacingMd),
-        
-        // Card Date - Layout verticale
+
+        SizedBox(height: context.spacingSm),
+
+        // ── Contenuto destinazione ─────────────────────────────────────
         Card(
           margin: EdgeInsets.zero,
           elevation: 0,
           color: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
-            side: BorderSide(
-              color: colorScheme.outline.withValues(alpha: 0.2),
+            borderRadius: context.responsiveBorderRadius(
+              AppConstants.cardBorderRadius,
             ),
+            side: BorderSide(color: colorScheme.outlineVariant),
           ),
-          child: Column(
-            children: [
-              // Partenza
-              _buildDateRow(
-                context,
-                colorScheme,
-                icon: Icons.calendar_month_outlined,
-                label: 'common.departure'.tr(),
-                dateTime: _departureDateTime,
-                onTap: _pickDepartureDateTime,
-                onClear: () {
-                  setState(() => _departureDateTime = null);
-                  _notifyChanged();
-                },
-              ),
-              // Linea arancione di collegamento
-              Padding(
-                padding: const EdgeInsets.only(left: 27),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 2,
-                      height: 16,
-                      color: _accentColor,
+          child: _useHouseDestination
+              ? housesAsync.when(
+                  data: (houses) =>
+                      _buildHouseRow(context, colorScheme, houses),
+                  loading: () => Padding(
+                    padding: EdgeInsets.all(context.spacingMd),
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (e, _) => Padding(
+                    padding: EdgeInsets.all(context.spacingMd),
+                    child: DsErrorState(
+                      error: e,
+                      onRetry: () => ref.invalidate(houseNotifierProvider),
                     ),
-                  ],
-                ),
-              ),
-              // Ritorno
-              _buildDateRow(
-                context,
-                colorScheme,
-                icon: Icons.calendar_month_outlined,
-                label: 'common.return'.tr(),
-                dateTime: _returnDateTime,
-                onTap: _pickReturnDateTime,
-                onClear: () {
-                  setState(() => _returnDateTime = null);
-                  _notifyChanged();
-                },
-              ),
-            ],
-          ),
+                  ),
+                )
+              : _buildLocationRow(context, colorScheme),
         ),
-        
+
+        SizedBox(height: context.spacingXs),
+        // Sempre visibile, non dentro un errore: non è un errore, e un errore
+        // si vede solo quando le cose vanno male.
+        Text(
+          'trips.destination_benefit'.tr(),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+        ),
+
         SizedBox(height: context.spacingMd),
-        
-        // Card Destinazione
+
+        // ── Date ──────────────────────────────────────────────────────
+        // L'asterisco è l'unico della pagina: comunica da solo che tutto il
+        // resto (destinazione, descrizione) è facoltativo.
+        Row(
+          children: [
+            Text(
+              'common.dates'.tr(),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            Text(
+              ' *',
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: colorScheme.primary),
+            ),
+          ],
+        ),
+        SizedBox(height: context.spacingXs),
         Card(
           margin: EdgeInsets.zero,
           elevation: 0,
           color: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: context.responsiveBorderRadius(AppConstants.cardBorderRadius),
-            side: BorderSide(
-              color: colorScheme.outline.withValues(alpha: 0.2),
+            borderRadius: context.responsiveBorderRadius(
+              AppConstants.cardBorderRadius,
             ),
+            side: BorderSide(color: colorScheme.outlineVariant),
           ),
-          child: Column(
-            children: [
-              // Selezione casa - allineato con icona
-              housesAsync.when(
-                data: (houses) => _buildDestinationRow(
-                  context,
-                  colorScheme,
-                  icon: Icons.home_outlined,
-                  label: 'common.arrival_house'.tr(),
-                  value: _getSelectedHouseName(houses),
-                  hasValue: _destinationHouseId != null,
-                  onTap: () => _showDestinationHousePicker(houses),
-                  onClear: _destinationHouseId != null
-                      ? () {
-                          setState(() => _destinationHouseId = null);
-                          _notifyChanged();
-                        }
-                      : null,
-                ),
-                loading: () => Padding(
-                  padding: EdgeInsets.all(context.spacingMd),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                error: (e, _) => Padding(
-                  padding: EdgeInsets.all(context.spacingMd),
-                  child: ErrorState(
-                    error: e,
-                    onRetry: () => ref.invalidate(houseNotifierProvider),
+          child: InkWell(
+            onTap: _pickDateRange,
+            borderRadius: context.responsiveBorderRadius(
+              AppConstants.cardBorderRadius,
+            ),
+            child: Padding(
+              padding: context.cardPaddingHero,
+              child: Row(
+                children: [
+                  // Icona-etichetta, non azione: grigia come le altre.
+                  Icon(
+                    Icons.calendar_month_outlined,
+                    color: colorScheme.onSurfaceVariant,
+                    size: 22,
                   ),
-                ),
+                  SizedBox(width: context.spacingMd),
+                  Expanded(
+                    child:
+                        (_departureDateTime != null || _returnDateTime != null)
+                        ? Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'common.departure'.tr(),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _formatDate(_departureDateTime),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyLarge,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: context.spacingXs,
+                                ),
+                                child: Icon(
+                                  Icons.arrow_forward,
+                                  color: colorScheme.onSurfaceVariant,
+                                  size: 16,
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'common.return'.tr(),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _formatDate(_returnDateTime),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyLarge,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            'common.tap_to_set_dates'.tr(),
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.38,
+                                  ),
+                                ),
+                          ),
+                  ),
+                  if (_departureDateTime != null || _returnDateTime != null)
+                    IconButton(
+                      icon: Icon(
+                        Icons.clear,
+                        color: colorScheme.primary,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _departureDateTime = null;
+                          _returnDateTime = null;
+                        });
+                        _notifyChanged();
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                ],
               ),
-              // Location autocomplete (solo se nessuna casa selezionata)
-              if (_destinationHouseId == null) ...[
-                Divider(height: 1, indent: 56, endIndent: context.spacingMd),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.spacingMd,
-                    vertical: context.spacingSm + 4,
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.search,
-                        color: _accentColor,
-                        size: 22,
-                      ),
-                      SizedBox(width: context.spacingMd),
-                      Expanded(
-                        child: LocationAutocompleteField(
-                          initialValue: _destinationLocation?.displayName,
-                          labelText: null,
-                          hintText: 'trips.destination_hint'.tr(),
-                          showBorder: false,
-                          onLocationSelected: (location) {
-                            setState(() {
-                              _destinationLocation = location;
-                            });
-                            _notifyChanged();
-                          },
-                          onTextChanged: (text) {
-                            // Se l'utente digita manualmente senza selezionare,
-                            // creiamo un modello minimale con solo il displayName
-                            setState(() {
-                              if (text.isEmpty) {
-                                _destinationLocation = null;
-                              } else if (_destinationLocation?.displayName != text) {
-                                // L'utente sta digitando, crea un modello temporaneo
-                                _destinationLocation = LocationSuggestionModel(
-                                  placeId: '',
-                                  displayName: text,
-                                );
-                              }
-                            });
-                            _notifyChanged();
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDateRow(
+  Widget _buildHouseRow(
     BuildContext context,
-    ColorScheme colorScheme, {
-    required IconData icon,
-    required String label,
-    required DateTime? dateTime,
-    required VoidCallback onTap,
-    required VoidCallback onClear,
-  }) {
+    ColorScheme colorScheme,
+    List<HouseModel> houses,
+  ) {
     return InkWell(
-      onTap: onTap,
+      onTap: () => _showDestinationHousePicker(houses),
+      borderRadius: context.responsiveBorderRadius(
+        AppConstants.cardBorderRadius,
+      ),
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: context.spacingMd,
-          vertical: context.spacingSm + 4,
+          vertical: context.spacingMd,
         ),
         child: Row(
           children: [
             Icon(
-              icon,
-              color: _accentColor,
+              Icons.home_outlined,
+              color: colorScheme.onSurfaceVariant,
               size: 22,
             ),
             SizedBox(width: context.spacingMd),
@@ -459,29 +578,33 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: context.fontSizeSm,
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    'common.arrival_house'.tr(),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 6),
                   Text(
-                    _formatDateTimeLine(dateTime),
-                    style: TextStyle(
-                      fontSize: context.fontSizeMd,
-                      color: dateTime != null 
-                          ? colorScheme.onSurface 
-                          : colorScheme.onSurface.withValues(alpha: 0.4),
+                    _getSelectedHouseName(houses),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: _destinationHouseId != null
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurface.withValues(alpha: 0.38),
                     ),
                   ),
                 ],
               ),
             ),
-            if (dateTime != null)
+            if (_destinationHouseId != null)
               IconButton(
-                icon: const Icon(Icons.clear, color: _accentColor, size: 20),
-                onPressed: onClear,
+                icon: Icon(Icons.clear, color: colorScheme.primary, size: 20),
+                onPressed: () {
+                  setState(() {
+                    _destinationHouseId = null;
+                    _destinationHouseName = null;
+                  });
+                  _notifyChanged();
+                },
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -491,77 +614,45 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
     );
   }
 
-  Widget _buildDestinationRow(
-    BuildContext context,
-    ColorScheme colorScheme, {
-    required IconData icon,
-    required String label,
-    required String value,
-    required bool hasValue,
-    required VoidCallback? onTap,
-    required VoidCallback? onClear,
-    Widget? customContent,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.spacingMd,
-          vertical: context.spacingSm + 4,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: _accentColor,
-              size: 22,
+  Widget _buildLocationRow(BuildContext context, ColorScheme colorScheme) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacingMd,
+        vertical: context.spacingSm + 4,
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.search, color: colorScheme.onSurfaceVariant, size: 22),
+          Expanded(
+            child: LocationAutocompleteField(
+              initialValue: _destinationLocation?.displayName,
+              labelText: null,
+              hintText: 'trips.destination_hint'.tr(),
+              hintStyle: TextStyle(
+                color: colorScheme.onSurface.withValues(alpha: 0.38),
+              ),
+              showBorder: false,
+              onLocationSelected: (location) {
+                setState(() => _destinationLocation = location);
+                _notifyChanged();
+              },
+              onTextChanged: (text) {
+                setState(() {
+                  if (text.isEmpty) {
+                    _destinationLocation = null;
+                  } else if (_destinationLocation?.displayName != text) {
+                    _destinationLocation = LocationSuggestionModel(
+                      placeId: '',
+                      displayName: text,
+                    );
+                  }
+                });
+                _notifyChanged();
+              },
             ),
-            SizedBox(width: context.spacingMd),
-            if (customContent != null)
-              customContent
-            else
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: context.fontSizeSm,
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: context.fontSizeMd,
-                        color: hasValue 
-                            ? colorScheme.onSurface 
-                            : colorScheme.onSurface.withValues(alpha: 0.4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            if (onClear != null)
-              IconButton(
-                icon: const Icon(Icons.clear, color: _accentColor, size: 20),
-                onPressed: onClear,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
-  }
-
-  String _getSelectedHouseName(List<HouseModel> houses) {
-    if (_destinationHouseId == null) {
-      return 'common.none_selected'.tr();
-    }
-    final house = houses.where((h) => h.id == _destinationHouseId).firstOrNull;
-    return house?.name ?? 'common.unknown_house'.tr();
   }
 }

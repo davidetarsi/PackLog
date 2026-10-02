@@ -52,16 +52,20 @@ class _ItemCategorySectionState extends State<ItemCategorySection> {
               category: widget.category,
               iconSize: context.iconSizeLg,
               horizontalPadding: context.spacingSm,
-              verticalPadding: context.spacingXs,
+              // Raddoppiato: senza stacco il titolo di gruppo si incollava
+              // alla prima riga, mentre tutte le altre sono separate da un
+              // divisore. Si somma al padding verticale della riga sotto.
+              verticalPadding: context.spacingSm,
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'common.items_count'
-                        .tr(args: [widget.items.length.toString()]),
+                    'common.items_count'.tr(
+                      args: [widget.items.length.toString()],
+                    ),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   SizedBox(width: context.spacingXs),
                   Icon(
@@ -92,9 +96,7 @@ class _ItemCategorySectionState extends State<ItemCategorySection> {
           ),
 
         // ── Spaziatura inferiore tra sezioni ─────────────────────────────────
-        SliverToBoxAdapter(
-          child: SizedBox(height: context.spacingSm),
-        ),
+        SliverToBoxAdapter(child: SizedBox(height: context.spacingSm)),
       ],
     );
   }

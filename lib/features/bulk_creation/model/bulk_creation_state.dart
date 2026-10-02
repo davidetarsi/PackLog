@@ -8,7 +8,7 @@ part 'bulk_creation_state.freezed.dart';
 part 'bulk_creation_state.g.dart';
 
 /// Stato della creazione massiva di item da template.
-/// 
+///
 /// Gestisce:
 /// - Selezione del genere utente (per filtrare item dei template)
 /// - Selezione dei template di viaggio

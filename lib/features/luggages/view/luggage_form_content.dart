@@ -7,22 +7,22 @@ import '../providers/luggage_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
 
 /// Form Content riutilizzabile per luggage (condiviso tra bottom sheet e full screen)
 class LuggageFormContent extends ConsumerStatefulWidget {
   final String houseId;
   final String? luggageId;
-  final void Function() onSaved;
+  final void Function()? onSaved;
   final bool showButtons;
-  final ValueChanged<bool>? onLoadingChanged;
 
   const LuggageFormContent({
     super.key,
     required this.houseId,
     this.luggageId,
-    required this.onSaved,
+    this.onSaved,
     this.showButtons = true,
-    this.onLoadingChanged,
   });
 
   @override
@@ -34,18 +34,10 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
   final _nameController = TextEditingController();
   final _volumeController = TextEditingController();
   LuggageSize _selectedSize = LuggageSize.cabinBaggage;
-  bool _isLoading = false;
+  bool _isSaving = false;
 
-  /// Espone il metodo di salvataggio per uso esterno
-  Future<void> save() => _saveLuggage();
-
-  /// Espone lo stato di loading
-  bool get isLoading => _isLoading;
-
-  void _setLoading(bool value) {
-    setState(() => _isLoading = value);
-    widget.onLoadingChanged?.call(value);
-  }
+  /// Chiamato dal parent sheet via GlobalKey. Puro: niente navigazione.
+  Future<bool> save() => _saveLuggage();
 
   @override
   void initState() {
@@ -58,7 +50,7 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
   }
 
   Future<void> _loadLuggage() async {
-    final luggagesAsync = ref.read(luggageNotifierProvider);
+    final luggagesAsync = ref.read(luggageNotifierProvider(widget.houseId));
     luggagesAsync.whenData((luggages) {
       final matchingLuggages = luggages.where((l) => l.id == widget.luggageId);
       if (matchingLuggages.isEmpty) return;
@@ -81,10 +73,8 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
     super.dispose();
   }
 
-  Future<void> _saveLuggage() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    _setLoading(true);
+  Future<bool> _saveLuggage() async {
+    if (!_formKey.currentState!.validate()) return false;
 
     final now = DateTime.now();
     final luggageId = widget.luggageId ?? const Uuid().v4();
@@ -94,7 +84,9 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
 
     final luggage = widget.luggageId != null
         ? (() {
-            final luggagesAsync = ref.read(luggageNotifierProvider);
+            final luggagesAsync = ref.read(
+              luggageNotifierProvider(widget.houseId),
+            );
             final luggages = luggagesAsync.value;
             if (luggages == null) throw StateError('Bagaglio non trovato');
             return luggages
@@ -117,13 +109,17 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
           );
 
     final isEditing = widget.luggageId != null;
-    final success = await ErrorRetryDialog.executeWithRetry(
+    return ErrorRetryDialog.executeWithRetry(
       context: context,
       operation: () async {
         if (isEditing) {
-          await ref.read(luggageNotifierProvider.notifier).updateLuggage(luggage);
+          await ref
+              .read(luggageNotifierProvider(widget.houseId).notifier)
+              .updateLuggage(luggage);
         } else {
-          await ref.read(luggageNotifierProvider.notifier).addLuggage(luggage);
+          await ref
+              .read(luggageNotifierProvider(widget.houseId).notifier)
+              .addLuggage(luggage);
         }
       },
       errorTitle: 'errors.save_error'.tr(),
@@ -131,13 +127,6 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
           ? 'errors.save_luggage_failed'.tr()
           : 'errors.create_luggage_failed'.tr(),
     );
-
-    if (mounted) {
-      _setLoading(false);
-      if (success) {
-        widget.onSaved();
-      }
-    }
   }
 
   @override
@@ -239,12 +228,13 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
                   SizedBox(width: context.spacingSm),
                   Expanded(
                     child: Text(
-                      'common.approx_volume'.tr(args: [
-                        _selectedSize.approximateVolumeLiters.toString(),
-                      ]),
-                      style: TextStyle(
-                        fontSize: context.fontSizeSm,
-                        color: colorScheme.onSurface.withValues(alpha: 0.8),
+                      'common.approx_volume'.tr(
+                        args: [
+                          _selectedSize.approximateVolumeLiters.toString(),
+                        ],
+                      ),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -254,28 +244,22 @@ class LuggageFormContentState extends ConsumerState<LuggageFormContent> {
             SizedBox(height: context.spacingMd),
           ],
           if (widget.showButtons) ...[
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _saveLuggage,
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-                shape: RoundedRectangleBorder(
-                  borderRadius: context.responsiveBorderRadius(
-                    AppConstants.inputBorderRadius,
-                  ),
-                ),
-              ),
-              child: _isLoading
-                  ? SizedBox(
-                      height: context.responsive(20),
-                      width: context.responsive(20),
-                      child: const CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(
-                      widget.luggageId != null
-                          ? 'common.save'.tr()
-                          : 'common.create'.tr(),
-                    ),
+            AppSpacing.gapMd,
+            UniversalActionBar(
+              primaryLabel: widget.luggageId != null
+                  ? 'common.save'.tr()
+                  : 'common.create'.tr(),
+              isLoading: _isSaving,
+              onPrimaryPressed: _isSaving
+                  ? null
+                  : () async {
+                      setState(() => _isSaving = true);
+                      final saved = await _saveLuggage();
+                      if (mounted) {
+                        setState(() => _isSaving = false);
+                        if (saved) widget.onSaved?.call();
+                      }
+                    },
             ),
           ],
         ],

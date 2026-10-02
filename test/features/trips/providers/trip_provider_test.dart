@@ -1,7 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/analytics_service.dart';
+import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/core/sync/sync_orchestrator.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
@@ -9,8 +14,16 @@ import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 /// Mock implementation of TripRepository for testing.
 class MockTripRepository extends Mock implements TripRepository {}
 
+class MockItemRepository extends Mock implements ItemRepository {}
+
+class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
+
+class MockRawAnalyticsService extends Mock implements AppAnalyticsService {}
+
+class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
+
 /// Unit tests for TripNotifier (Riverpod AsyncNotifier).
-/// 
+///
 /// Tests the state management layer for trips to ensure:
 /// - Correct state transitions (Loading → Data / Error)
 /// - CRUD operations refresh state correctly
@@ -18,6 +31,8 @@ class MockTripRepository extends Mock implements TripRepository {}
 /// - Repository methods are called with correct parameters
 void main() {
   late MockTripRepository mockRepository;
+  late MockCoreAnalyticsService mockAnalytics;
+  late MockRawAnalyticsService mockRawAnalytics;
   late ProviderContainer container;
 
   setUp(() {
@@ -25,19 +40,55 @@ void main() {
     mockRepository = MockTripRepository();
 
     // Register fallback values for any() matchers
-    registerFallbackValue(TripModel(
-      id: 'fallback',
-      name: 'Fallback',
-      items: [],
-      luggages: [],
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ));
+    registerFallbackValue(
+      TripModel(
+        id: 'fallback',
+        name: 'Fallback',
+        items: [],
+        luggages: [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    mockAnalytics = MockCoreAnalyticsService();
+    when(
+      () => mockAnalytics.trackTripCreated(
+        tripId: any(named: 'tripId'),
+        totalTrips: any(named: 'totalTrips'),
+      ),
+    ).thenAnswer((_) async {});
+    when(
+      () => mockAnalytics.trackItemsAddedToTrip(
+        tripId: any(named: 'tripId'),
+        count: any(named: 'count'),
+      ),
+    ).thenAnswer((_) async {});
+
+    final mockSync = MockSyncOrchestrator();
+    when(() => mockSync.requestSync()).thenReturn(null);
+
+    final mockItemRepo = MockItemRepository();
+    when(
+      () => mockItemRepo.moveItemsToHouse(any(), any(), any()),
+    ).thenAnswer((_) async {});
+
+    mockRawAnalytics = MockRawAnalyticsService();
+    when(
+      () => mockRawAnalytics.logEvent(
+        any(),
+        properties: any(named: 'properties'),
+      ),
+    ).thenAnswer((_) async {});
 
     // Create ProviderContainer with mocked repository
     container = ProviderContainer(
       overrides: [
         tripRepositoryProvider.overrideWithValue(mockRepository),
+        coreAnalyticsServiceProvider.overrideWithValue(mockAnalytics),
+        analyticsServiceProvider.overrideWithValue(mockRawAnalytics),
+        syncOrchestratorProvider.overrideWithValue(mockSync),
+        itemRepositoryProvider.overrideWithValue(mockItemRepo),
       ],
     );
   });
@@ -52,7 +103,7 @@ void main() {
       // === ARRANGE ===
       // Mock repository to return empty list initially, then list with new trip
       final emptyTrips = <TripModel>[];
-      
+
       final newTrip = TripModel(
         id: 'new-trip-1',
         name: 'Summer Vacation',
@@ -76,8 +127,9 @@ void main() {
 
       // First call (build): return empty list
       // Second call (after add): return list with new trip
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => emptyTrips);
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => emptyTrips);
 
       // Mock addTrip to succeed
       when(() => mockRepository.addTrip(any())).thenAnswer((_) async {});
@@ -92,8 +144,9 @@ void main() {
       expect(initialState.value, isEmpty);
 
       // Step 2: Update mock to return the new trip on next call
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => tripsWithNewTrip);
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => tripsWithNewTrip);
 
       // Step 3: Call addTrip (triggers second getAllTrips call during refresh)
       final notifier = container.read(provider.notifier);
@@ -115,47 +168,57 @@ void main() {
       expect(finalState.value!.first.items, hasLength(1));
     });
 
-    test('should successfully update an existing trip and refresh state', () async {
-      // === ARRANGE ===
-      final originalTrip = TripModel(
-        id: 'trip-to-update',
-        name: 'Original Name',
-        items: [],
-        luggages: [],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+    test(
+      'should successfully update an existing trip and refresh state',
+      () async {
+        // === ARRANGE ===
+        final originalTrip = TripModel(
+          id: 'trip-to-update',
+          name: 'Original Name',
+          items: [],
+          luggages: [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
 
-      final updatedTrip = originalTrip.copyWith(
-        name: 'Updated Name',
-        description: 'Updated description',
-      );
+        final updatedTrip = originalTrip.copyWith(
+          name: 'Updated Name',
+          description: 'Updated description',
+        );
 
-      // Mock initial state
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => [originalTrip]);
+        // Mock initial state
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [originalTrip]);
 
-      final provider = tripNotifierProvider;
-      await container.read(provider.future);
+        final provider = tripNotifierProvider;
+        await container.read(provider.future);
 
-      // Mock updateTrip and subsequent refresh
-      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => [updatedTrip]);
+        // Mock updateTrip and subsequent refresh
+        when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [updatedTrip]);
 
-      // === ACT ===
-      final notifier = container.read(provider.notifier);
-      await notifier.updateTrip(updatedTrip);
+        // === ACT ===
+        final notifier = container.read(provider.notifier);
+        await notifier.updateTrip(updatedTrip);
 
-      // === ASSERT ===
-      final finalState = container.read(provider);
-      expect(finalState.value, hasLength(1));
-      expect(finalState.value!.first.name, equals('Updated Name'));
-      expect(finalState.value!.first.description, equals('Updated description'));
+        // === ASSERT ===
+        final finalState = container.read(provider);
+        expect(finalState.value, hasLength(1));
+        expect(finalState.value!.first.name, equals('Updated Name'));
+        expect(
+          finalState.value!.first.description,
+          equals('Updated description'),
+        );
 
-      verify(() => mockRepository.updateTrip(updatedTrip)).called(1);
-      verify(() => mockRepository.getAllTrips()).called(2); // Initial + refresh
-    });
+        verify(() => mockRepository.updateTrip(updatedTrip)).called(1);
+        verify(
+          () => mockRepository.getAllTrips(),
+        ).called(2); // Initial + refresh
+      },
+    );
 
     test('should successfully delete a trip and refresh state', () async {
       // === ARRANGE ===
@@ -178,16 +241,18 @@ void main() {
       );
 
       // Mock initial state with 2 trips
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => [trip1, trip2]);
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => [trip1, trip2]);
 
       final provider = tripNotifierProvider;
       await container.read(provider.future);
 
       // Mock deleteTrip and refresh (trip2 removed)
-      when(() => mockRepository.deleteTrip(any())).thenAnswer((_) async => true);
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => [trip1]);
+      when(
+        () => mockRepository.deleteTrip(any()),
+      ).thenAnswer((_) async => true);
+      when(() => mockRepository.getAllTrips()).thenAnswer((_) async => [trip1]);
 
       // === ACT ===
       final notifier = container.read(provider.notifier);
@@ -228,38 +293,151 @@ void main() {
         updatedAt: DateTime.now(),
       );
 
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => [tripWithItems]);
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => [tripWithItems]);
 
       final provider = tripNotifierProvider;
       await container.read(provider.future);
 
-      // Mock updateTrip and refresh with toggled item
-      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
-      
-      final tripWithToggledItem = tripWithItems.copyWith(
-        items: [
-          tripWithItems.items[0].copyWith(isChecked: true), // Toggled
-          tripWithItems.items[1],
-        ],
-      );
-
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => [tripWithToggledItem]);
+      when(
+        () => mockRepository.setTripItemChecked(any(), any(), any()),
+      ).thenAnswer((_) async {});
 
       // === ACT ===
       final notifier = container.read(provider.notifier);
       await notifier.toggleItemCheck('trip-with-items', 'item-1');
 
       // === ASSERT ===
+      // Optimistic state update senza reload completo: la lista in memoria
+      // riflette già il toggle.
       final finalState = container.read(provider);
       expect(finalState.value, hasLength(1));
-      
       final trip = finalState.value!.first;
       final toggledItem = trip.items.firstWhere((i) => i.id == 'item-1');
       expect(toggledItem.isChecked, isTrue);
 
-      verify(() => mockRepository.updateTrip(any())).called(1);
+      verify(
+        () => mockRepository.setTripItemChecked(
+          'trip-with-items',
+          'item-1',
+          true,
+        ),
+      ).called(1);
+      verifyNever(() => mockRepository.updateTrip(any()));
+      // getAllTrips chiamato solo una volta nel build iniziale, non dopo
+      // il toggle (no reload completo).
+      verify(() => mockRepository.getAllTrips()).called(1);
+    });
+
+    group('funnel della preparazione valigia', () {
+      TripModel tripWith({required int total, required int checked}) =>
+          TripModel(
+            id: 'trip-packing',
+            name: 'Trip',
+            items: List.generate(
+              total,
+              (i) => TripItem(
+                id: 'item-$i',
+                name: 'Item $i',
+                category: ItemCategory.varie,
+                quantity: 1,
+                isChecked: i < checked,
+              ),
+            ),
+            luggages: [],
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+
+      test('la prima spunta emette packing_started', () async {
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [tripWith(total: 4, checked: 0)]);
+        when(
+          () => mockRepository.setTripItemChecked(any(), any(), any()),
+        ).thenAnswer((_) async {});
+
+        await container.read(tripNotifierProvider.future);
+        await container
+            .read(tripNotifierProvider.notifier)
+            .toggleItemCheck('trip-packing', 'item-0');
+
+        verify(
+          () => mockRawAnalytics.logEvent(
+            'packing_started',
+            properties: any(named: 'properties'),
+          ),
+        ).called(1);
+      });
+
+      test("l'ultima spunta emette packing_completed", () async {
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [tripWith(total: 2, checked: 1)]);
+        when(
+          () => mockRepository.setTripItemChecked(any(), any(), any()),
+        ).thenAnswer((_) async {});
+
+        await container.read(tripNotifierProvider.future);
+        await container
+            .read(tripNotifierProvider.notifier)
+            .toggleItemCheck('trip-packing', 'item-1');
+
+        verify(
+          () => mockRawAnalytics.logEvent(
+            'packing_completed',
+            properties: any(named: 'properties'),
+          ),
+        ).called(1);
+      });
+
+      test('despuntare non emette nulla', () async {
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [tripWith(total: 4, checked: 2)]);
+        when(
+          () => mockRepository.setTripItemChecked(any(), any(), any()),
+        ).thenAnswer((_) async {});
+
+        await container.read(tripNotifierProvider.future);
+        await container
+            .read(tripNotifierProvider.notifier)
+            .toggleItemCheck('trip-packing', 'item-0');
+
+        verifyNever(
+          () => mockRawAnalytics.logEvent(
+            any(that: startsWith('packing_')),
+            properties: any(named: 'properties'),
+          ),
+        );
+      });
+
+      // Misuriamo fatti, non intenzioni: se il salvataggio fallisce non deve
+      // restare traccia di una spunta che non è avvenuta.
+      test('nessun evento se la persistenza fallisce', () async {
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [tripWith(total: 4, checked: 0)]);
+        when(
+          () => mockRepository.setTripItemChecked(any(), any(), any()),
+        ).thenThrow(Exception('db down'));
+
+        await container.read(tripNotifierProvider.future);
+        await expectLater(
+          container
+              .read(tripNotifierProvider.notifier)
+              .toggleItemCheck('trip-packing', 'item-0'),
+          throwsA(isA<Exception>()),
+        );
+
+        verifyNever(
+          () => mockRawAnalytics.logEvent(
+            any(that: startsWith('packing_')),
+            properties: any(named: 'properties'),
+          ),
+        );
+      });
     });
 
     test('should toggle saved status and refresh state', () async {
@@ -274,17 +452,19 @@ void main() {
         updatedAt: DateTime.now(),
       );
 
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => [tripNotSaved]);
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => [tripNotSaved]);
 
       final provider = tripNotifierProvider;
       await container.read(provider.future);
 
       when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
-      
+
       final tripSaved = tripNotSaved.copyWith(isSaved: true);
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => [tripSaved]);
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => [tripSaved]);
 
       // === ACT ===
       final notifier = container.read(provider.notifier);
@@ -298,131 +478,156 @@ void main() {
     });
   });
 
-  group('TripNotifier - Failure Path (AsyncError)', () {
-    test('should transition to AsyncError when repository throws during initial fetch', () async {
-      // === ARRANGE ===
-      final testException = Exception('Failed to load trips');
+  group('TripNotifier - Failure Path', () {
+    test(
+      'should transition to AsyncError when repository throws during initial fetch',
+      () async {
+        // === ARRANGE ===
+        final testException = Exception('Failed to load trips');
 
-      when(() => mockRepository.getAllTrips()).thenThrow(testException);
+        when(() => mockRepository.getAllTrips()).thenThrow(testException);
 
-      // === ACT ===
-      final provider = tripNotifierProvider;
-      
-      try {
+        // === ACT ===
+        final provider = tripNotifierProvider;
+
+        try {
+          await container.read(provider.future);
+          fail('Should have thrown an exception');
+        } catch (e) {
+          // Expected to throw
+        }
+
+        // === ASSERT ===
+        final state = container.read(provider);
+        expect(state, isA<AsyncError<List<TripModel>>>());
+        expect(state.error, equals(testException));
+        expect(state.hasError, isTrue);
+
+        verify(() => mockRepository.getAllTrips()).called(1);
+      },
+    );
+
+    test(
+      'should rethrow and preserve AsyncData when addTrip throws an exception',
+      () async {
+        // === ARRANGE ===
+        final initialTrips = <TripModel>[];
+
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => initialTrips);
+
+        final provider = tripNotifierProvider;
         await container.read(provider.future);
-        fail('Should have thrown an exception');
-      } catch (e) {
-        // Expected to throw
-      }
 
-      // === ASSERT ===
-      final state = container.read(provider);
-      expect(state, isA<AsyncError<List<TripModel>>>());
-      expect(state.error, equals(testException));
-      expect(state.hasError, isTrue);
+        final newTrip = TripModel(
+          id: 'new-trip',
+          name: 'New Trip',
+          items: [],
+          luggages: [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
 
-      verify(() => mockRepository.getAllTrips()).called(1);
-    });
+        final addException = Exception('Failed to add trip');
+        when(() => mockRepository.addTrip(any())).thenThrow(addException);
 
-    test('should transition to AsyncError when addTrip throws an exception', () async {
-      // === ARRANGE ===
-      final initialTrips = <TripModel>[];
-      
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => initialTrips);
+        // === ACT + ASSERT ===
+        // Contract: rethrowOnly=true — notifier rethrows so ErrorRetryDialog
+        // sees the failure; state is restored to previous AsyncData
+        // (no AsyncError flash — list remains visible and intact).
+        final notifier = container.read(provider.notifier);
+        await expectLater(
+          notifier.addTrip(newTrip),
+          throwsA(equals(addException)),
+        );
 
-      final provider = tripNotifierProvider;
-      await container.read(provider.future);
+        final finalState = container.read(provider);
+        expect(finalState, isA<AsyncData<List<TripModel>>>());
 
-      final newTrip = TripModel(
-        id: 'new-trip',
-        name: 'New Trip',
-        items: [],
-        luggages: [],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+        verify(() => mockRepository.addTrip(newTrip)).called(1);
+        verify(
+          () => mockRepository.getAllTrips(),
+        ).called(1); // Only initial, no refresh after error
+      },
+    );
 
-      final addException = Exception('Failed to add trip');
-      when(() => mockRepository.addTrip(any())).thenThrow(addException);
+    test(
+      'should rethrow and preserve AsyncData when updateTrip throws an exception',
+      () async {
+        // === ARRANGE ===
+        final existingTrip = TripModel(
+          id: 'trip-1',
+          name: 'Trip',
+          items: [],
+          luggages: [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
 
-      // === ACT ===
-      final notifier = container.read(provider.notifier);
-      await notifier.addTrip(newTrip);
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [existingTrip]);
 
-      // === ASSERT ===
-      final finalState = container.read(provider);
-      expect(finalState, isA<AsyncError<List<TripModel>>>());
-      expect(finalState.error, equals(addException));
+        final provider = tripNotifierProvider;
+        await container.read(provider.future);
 
-      verify(() => mockRepository.addTrip(newTrip)).called(1);
-      verify(() => mockRepository.getAllTrips()).called(1); // Only initial, no refresh after error
-    });
+        final updatedTrip = existingTrip.copyWith(name: 'Updated');
+        final updateException = Exception('Update failed');
+        when(() => mockRepository.updateTrip(any())).thenThrow(updateException);
 
-    test('should transition to AsyncError when updateTrip throws an exception', () async {
-      // === ARRANGE ===
-      final existingTrip = TripModel(
-        id: 'trip-1',
-        name: 'Trip',
-        items: [],
-        luggages: [],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+        // === ACT + ASSERT ===
+        // Contract: rethrowOnly=true — state preserved as AsyncData.
+        final notifier = container.read(provider.notifier);
+        await expectLater(
+          notifier.updateTrip(updatedTrip),
+          throwsA(equals(updateException)),
+        );
 
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => [existingTrip]);
+        final finalState = container.read(provider);
+        expect(finalState, isA<AsyncData<List<TripModel>>>());
 
-      final provider = tripNotifierProvider;
-      await container.read(provider.future);
+        verify(() => mockRepository.updateTrip(updatedTrip)).called(1);
+      },
+    );
 
-      final updatedTrip = existingTrip.copyWith(name: 'Updated');
-      final updateException = Exception('Update failed');
-      when(() => mockRepository.updateTrip(any())).thenThrow(updateException);
+    test(
+      'should rethrow and preserve AsyncData when deleteTrip throws an exception',
+      () async {
+        // === ARRANGE ===
+        final existingTrip = TripModel(
+          id: 'trip-to-delete',
+          name: 'Trip',
+          items: [],
+          luggages: [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
 
-      // === ACT ===
-      final notifier = container.read(provider.notifier);
-      await notifier.updateTrip(updatedTrip);
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [existingTrip]);
 
-      // === ASSERT ===
-      final finalState = container.read(provider);
-      expect(finalState, isA<AsyncError<List<TripModel>>>());
-      expect(finalState.error, equals(updateException));
+        final provider = tripNotifierProvider;
+        await container.read(provider.future);
 
-      verify(() => mockRepository.updateTrip(updatedTrip)).called(1);
-    });
+        final deleteException = Exception('Delete failed');
+        when(() => mockRepository.deleteTrip(any())).thenThrow(deleteException);
 
-    test('should transition to AsyncError when deleteTrip throws an exception', () async {
-      // === ARRANGE ===
-      final existingTrip = TripModel(
-        id: 'trip-to-delete',
-        name: 'Trip',
-        items: [],
-        luggages: [],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+        // === ACT + ASSERT ===
+        // Contract: rethrowOnly=true — state preserved as AsyncData.
+        final notifier = container.read(provider.notifier);
+        await expectLater(
+          notifier.deleteTrip(existingTrip.id),
+          throwsA(equals(deleteException)),
+        );
 
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => [existingTrip]);
+        final finalState = container.read(provider);
+        expect(finalState, isA<AsyncData<List<TripModel>>>());
 
-      final provider = tripNotifierProvider;
-      await container.read(provider.future);
-
-      final deleteException = Exception('Delete failed');
-      when(() => mockRepository.deleteTrip(any())).thenThrow(deleteException);
-
-      // === ACT ===
-      final notifier = container.read(provider.notifier);
-      await notifier.deleteTrip(existingTrip.id);
-
-      // === ASSERT ===
-      final finalState = container.read(provider);
-      expect(finalState, isA<AsyncError<List<TripModel>>>());
-      expect(finalState.error, equals(deleteException));
-
-      verify(() => mockRepository.deleteTrip(existingTrip.id)).called(1);
-    });
+        verify(() => mockRepository.deleteTrip(existingTrip.id)).called(1);
+      },
+    );
   });
 
   group('TripNotifier - Refresh Functionality', () {
@@ -458,15 +663,17 @@ void main() {
         ),
       ];
 
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => initialTrips);
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => initialTrips);
 
       final provider = tripNotifierProvider;
       await container.read(provider.future);
 
       // Update mock for refresh
-      when(() => mockRepository.getAllTrips())
-          .thenAnswer((_) async => refreshedTrips);
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => refreshedTrips);
 
       // === ACT ===
       final notifier = container.read(provider.notifier);
@@ -478,5 +685,51 @@ void main() {
 
       verify(() => mockRepository.getAllTrips()).called(2); // Initial + refresh
     });
+  });
+
+  group('TripNotifier - addItemsToTrip', () {
+    test(
+      'calls repository.addItemsToTrip and refreshes state, tracking analytics',
+      () async {
+        final existingTrip = TripModel(
+          id: 'trip-1',
+          name: 'Existing Trip',
+          items: const [],
+          luggages: const [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        final newItem = TripItem(
+          id: 'item-1',
+          name: 'Sunglasses',
+          category: ItemCategory.varie,
+          quantity: 1,
+          originHouseId: 'house-1',
+        );
+
+        when(
+          () => mockRepository.getAllTrips(),
+        ).thenAnswer((_) async => [existingTrip]);
+        when(
+          () => mockRepository.addItemsToTrip('trip-1', [newItem]),
+        ).thenAnswer((_) async {});
+
+        // Prime the notifier's initial state.
+        await container.read(tripNotifierProvider.future);
+
+        await container.read(tripNotifierProvider.notifier).addItemsToTrip(
+          'trip-1',
+          [newItem],
+        );
+
+        verify(
+          () => mockRepository.addItemsToTrip('trip-1', [newItem]),
+        ).called(1);
+        verify(
+          () => mockAnalytics.trackItemsAddedToTrip(tripId: 'trip-1', count: 1),
+        ).called(1);
+      },
+    );
   });
 }

@@ -4,10 +4,13 @@ import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
 import '../constants/app_constants.dart';
+import '../helpers/snack_bar_helper.dart';
 import '../model/model.dart';
+import '../theme/app_spacing.dart';
 
 /// Widget riutilizzabile per l'autocomplete delle località.
 /// Usa l'API Geoapify per cercare città, regioni e stati.
@@ -26,8 +29,14 @@ class LocationAutocompleteField extends StatefulWidget {
   /// Label del campo
   final String? labelText;
 
+  /// Stile personalizzato per la label
+  final TextStyle? labelStyle;
+
   /// Hint del campo
   final String? hintText;
+
+  /// Stile personalizzato per l'hint text
+  final TextStyle? hintStyle;
 
   /// Numero minimo di caratteri per iniziare la ricerca
   final int minCharsForSearch;
@@ -38,16 +47,22 @@ class LocationAutocompleteField extends StatefulWidget {
   /// Se mostrare il bordo del campo di input
   final bool showBorder;
 
+  /// Se usare un layout compatto (meno padding interno)
+  final bool isDense;
+
   const LocationAutocompleteField({
     super.key,
     this.initialValue,
     this.onLocationSelected,
     this.onTextChanged,
     this.labelText,
+    this.labelStyle,
     this.hintText,
+    this.hintStyle,
     this.minCharsForSearch = 3,
     this.debounceMs = 300,
     this.showBorder = true,
+    this.isDense = false,
   });
 
   @override
@@ -144,6 +159,19 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       } else {
         _removeOverlay();
       }
+    } on _GeocodeRateLimitException {
+      if (!mounted) return;
+      setState(() {
+        _suggestions = [];
+        _isLoading = false;
+      });
+      _removeOverlay();
+      // Feedback esplicito all'utente: senza questo vedrebbe "nessun
+      // risultato" e penserebbe che la località non esista.
+      AppSnackBar.showWarning(
+        context,
+        'location_search.rate_limit_reached'.tr(),
+      );
     } catch (e) {
       if (!mounted) return;
 
@@ -158,42 +186,69 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
   Future<List<LocationSuggestionModel>> _fetchLocationSuggestions(
     String query,
   ) async {
-    final uri = Uri.https('api.geoapify.com', '/v1/geocode/autocomplete', {
-      'text': query,
-      'apiKey': AppConfig.geoapify,
-      'lang': 'it',
-      'limit':
-          '10', // Richiedi più risultati per avere varietà dopo deduplicazione
-    });
+    final uri = Uri.parse('${AppConfig.supabaseUrl}/functions/v1/geocode-proxy')
+        .replace(
+          queryParameters: {
+            'text': query,
+            'lang': context.locale.languageCode.substring(0, 2),
+            'limit': '15',
+            'bias': 'countrycode:none',
+          },
+        );
 
-    final response = await http.get(uri);
+    // Il proxy esegue `getUser(token)` per il rate-limit per-utente: serve
+    // il JWT dell'utente loggato, non l'anon key. L'auth gate del router
+    // garantisce che chiunque possa raggiungere questo widget sia loggato;
+    // in caso edge di sessione scaduta tra il check e qui, ritorniamo
+    // suggestion vuoti senza errori — l'utente proverà a digitare ancora.
+    final jwt = Supabase.instance.client.auth.currentSession?.accessToken;
+    if (jwt == null) return [];
 
-    if (response.statusCode != 200) {
-      throw Exception('Errore nella richiesta: ${response.statusCode}');
-    }
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $jwt',
+          'apikey': AppConfig.supabaseAnonKey,
+        },
+      );
 
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-
-    // Usa il modello Freezed per il parsing automatico del JSON
-    final geoapifyResponse = GeoapifyResponseModel.fromJson(json);
-
-    // Converti i risultati Geoapify in LocationSuggestionModel
-    final suggestions = geoapifyResponse.features
-        .map((feature) => LocationSuggestionModel.fromGeoapifyFeature(feature))
-        .where((s) => s.displayName.isNotEmpty)
-        .toList();
-
-    // Rimuovi duplicati basandosi sulla chiave di deduplicazione (nome + tipo + paese)
-    final seen = <String>{};
-    final uniqueSuggestions = <LocationSuggestionModel>[];
-    for (final suggestion in suggestions) {
-      if (seen.add(suggestion.deduplicationKey)) {
-        uniqueSuggestions.add(suggestion);
+      if (response.statusCode == 429) {
+        throw const _GeocodeRateLimitException();
       }
-    }
 
-    // Limita a massimo 5 risultati
-    return uniqueSuggestions.take(5).toList();
+      if (response.statusCode != 200) {
+        throw Exception('Errore HTTP Geoapify: ${response.statusCode}');
+      }
+
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final geoapifyResponse = GeoapifyResponseModel.fromJson(json);
+
+      final suggestions = geoapifyResponse.features
+          .map(
+            (feature) => LocationSuggestionModel.fromGeoapifyFeature(feature),
+          )
+          .where((s) => s.displayName.isNotEmpty)
+          // ARCHITECTURE CHOICE: Filtro applicativo per garantire solo macro-aree.
+          // Scartiamo tutto ciò che finisce nel bucket 'other' (strade, ristoranti, etc.)
+          .where((s) => s.locationType != LocationType.other)
+          .toList();
+
+      final seen = <String>{};
+      final uniqueSuggestions = <LocationSuggestionModel>[];
+
+      for (final suggestion in suggestions) {
+        if (seen.add(suggestion.deduplicationKey)) {
+          uniqueSuggestions.add(suggestion);
+        }
+      }
+
+      return uniqueSuggestions.take(5).toList();
+    } catch (e) {
+      // In produzione, loggare l'errore su Crashlytics/Sentry, non stamparlo solo in console
+      debugPrint('[LocationAutocompleteField] Errore API: $e');
+      rethrow;
+    }
   }
 
   void _showOverlay() {
@@ -238,11 +293,11 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
 
     if (_isLoading) {
       return Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.spacingMd),
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-          border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+          border: Border.all(color: colorScheme.outlineVariant),
         ),
         child: const Center(
           child: SizedBox(
@@ -263,7 +318,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: ListView.builder(
         shrinkWrap: true,
@@ -300,11 +355,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           border: index < _suggestions.length - 1
-              ? Border(
-                  bottom: BorderSide(
-                    color: colorScheme.outline.withValues(alpha: 0.1),
-                  ),
-                )
+              ? Border(bottom: BorderSide(color: colorScheme.outlineVariant))
               : null,
         ),
         child: Row(
@@ -325,9 +376,8 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
                   if (subtitle != null)
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                 ],
@@ -381,15 +431,20 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return CompositedTransformTarget(
       link: _layerLink,
       child: TextFormField(
         controller: _controller,
         focusNode: _focusNode,
+        textCapitalization: TextCapitalization.sentences,
         decoration: InputDecoration(
           floatingLabelBehavior: FloatingLabelBehavior.always,
           labelText: widget.labelText ?? 'common.destination'.tr(),
+          labelStyle: widget.labelStyle,
+          isDense: widget.isDense,
           hintText: widget.hintText ?? 'common.search_location_hint'.tr(),
+          hintStyle: widget.hintStyle,
           border: widget.showBorder
               ? OutlineInputBorder(
                   borderRadius: BorderRadius.circular(
@@ -422,7 +477,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
           prefixIcon: null,
           suffixIcon: _controller.text.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.orange),
+                  icon: Icon(Icons.clear, color: colorScheme.primary),
                   onPressed: () {
                     _controller.clear();
                     widget.onTextChanged?.call('');
@@ -434,4 +489,10 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       ),
     );
   }
+}
+
+/// Sentinella interna: distingue il 429 del rate-limit dagli altri errori
+/// così da poter mostrare un messaggio specifico in `_searchLocations`.
+class _GeocodeRateLimitException implements Exception {
+  const _GeocodeRateLimitException();
 }

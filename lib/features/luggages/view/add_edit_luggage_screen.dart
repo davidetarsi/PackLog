@@ -13,10 +13,8 @@ Future<void> showAddEditLuggageSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => AddEditLuggageSheet(
-      houseId: houseId,
-      luggageId: luggageId,
-    ),
+    builder: (context) =>
+        AddEditLuggageSheet(houseId: houseId, luggageId: luggageId),
   );
 }
 
@@ -25,11 +23,7 @@ class AddEditLuggageSheet extends StatefulWidget {
   final String houseId;
   final String? luggageId;
 
-  const AddEditLuggageSheet({
-    super.key,
-    required this.houseId,
-    this.luggageId,
-  });
+  const AddEditLuggageSheet({super.key, required this.houseId, this.luggageId});
 
   @override
   State<AddEditLuggageSheet> createState() => _AddEditLuggageSheetState();
@@ -37,14 +31,16 @@ class AddEditLuggageSheet extends StatefulWidget {
 
 class _AddEditLuggageSheetState extends State<AddEditLuggageSheet> {
   final GlobalKey<LuggageFormContentState> _formKey = GlobalKey();
-  bool _isLoading = false;
+  bool _isSaving = false;
 
-  void _handleSave() {
-    _formKey.currentState?.save();
-  }
-
-  void _handleLoadingChanged(bool loading) {
-    setState(() => _isLoading = loading);
+  Future<void> _handleSave() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    final saved = await _formKey.currentState?.save() ?? false;
+    if (mounted) {
+      setState(() => _isSaving = false);
+      if (saved) Navigator.pop(context);
+    }
   }
 
   @override
@@ -54,16 +50,16 @@ class _AddEditLuggageSheetState extends State<AddEditLuggageSheet> {
           ? 'luggages.edit'.tr()
           : 'luggages.add_new'.tr(),
       onCancel: () => Navigator.pop(context),
-      onSave: _handleSave,
-      isLoading: _isLoading,
-      saveLabel: widget.luggageId != null ? 'common.save'.tr() : 'common.create'.tr(),
+      onSave: () => _handleSave(),
+      isLoading: _isSaving,
+      saveLabel: widget.luggageId != null
+          ? 'common.save'.tr()
+          : 'common.create'.tr(),
       child: LuggageFormContent(
         key: _formKey,
         houseId: widget.houseId,
         luggageId: widget.luggageId,
-        onSaved: () => Navigator.pop(context),
         showButtons: false,
-        onLoadingChanged: _handleLoadingChanged,
       ),
     );
   }

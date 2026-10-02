@@ -1,10 +1,12 @@
-import 'package:drift/drift.dart';
-import 'package:flutter_test/flutter_test.dart' hide isNull, isNotNull;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for SpacesDao.
-/// 
+///
 /// Tests the DAO operations for spaces including:
 /// - CRUD operations on spaces
 /// - SQLite SET NULL referential integrity (items remain but spaceId becomes null)
@@ -21,269 +23,313 @@ void main() {
   });
 
   group('SpacesDao - SQLite SET NULL Constraint', () {
-    test('should set spaceId to NULL on items when a space is deleted, keeping the item in the general pool', () async {
-      // === ARRANGE ===
-      // Step 1: Insert a house (required for foreign key)
-      final houseId = 'test-house-set-null';
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: houseId,
-          name: 'Test House for SET NULL',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      
-      // Step 2: Insert a space linked to the house
-      final spaceId = 'test-space-set-null';
-      await database.spacesDao.insertSpace(
-        SpacesCompanion.insert(
-          id: spaceId,
-          houseId: houseId,
-          name: 'Kitchen',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      
-      // Step 3: Insert items - some linked to the space, some not
-      final itemInSpaceId = 'item-in-space';
-      final itemInSpace2Id = 'item-in-space-2';
-      final itemNoSpaceId = 'item-no-space';
-      
-      await database.itemsDao.insertItem(
-        ItemsCompanion.insert(
-          id: itemInSpaceId,
-          houseId: houseId,
-          spaceId: Value(spaceId), // Item IS in the space
-          name: 'Plate',
-          category: 'varie',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      
-      await database.itemsDao.insertItem(
-        ItemsCompanion.insert(
-          id: itemInSpace2Id,
-          houseId: houseId,
-          spaceId: Value(spaceId), // Item IS in the space
-          name: 'Cup',
-          category: 'varie',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      
-      await database.itemsDao.insertItem(
-        ItemsCompanion.insert(
-          id: itemNoSpaceId,
-          houseId: houseId,
-          // No spaceId - item is in general pool
-          name: 'Random Item',
-          category: 'varie',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      
-      // Verify initial state: space and items exist with correct spaceId
-      final spaceBeforeDelete = await database.spacesDao.getSpaceById(spaceId);
-      expect(spaceBeforeDelete, isA<Space>());
-      
-      final itemInSpaceBeforeDelete = await database.itemsDao.getItemById(itemInSpaceId);
-      expect(itemInSpaceBeforeDelete, isA<Item>());
-      expect(itemInSpaceBeforeDelete!.spaceId, equals(spaceId));
-      
-      final itemInSpace2BeforeDelete = await database.itemsDao.getItemById(itemInSpace2Id);
-      expect(itemInSpace2BeforeDelete, isA<Item>());
-      expect(itemInSpace2BeforeDelete!.spaceId, equals(spaceId));
-      
-      final itemNoSpaceBeforeDelete = await database.itemsDao.getItemById(itemNoSpaceId);
-      expect(itemNoSpaceBeforeDelete, isA<Item>());
-      expect(itemNoSpaceBeforeDelete!.spaceId, equals(null));
-
-      // === ACT ===
-      // Delete the space - SQLite SET NULL should automatically set spaceId to NULL on items
-      final deleteResult = await database.spacesDao.deleteSpace(spaceId);
-
-      // === ASSERT ===
-      // Verify delete operation affected 1 row
-      expect(deleteResult, equals(1));
-      
-      // Verify space is deleted
-      final spaceAfterDelete = await database.spacesDao.getSpaceById(spaceId);
-      expect(spaceAfterDelete, equals(null));
-      
-      // CRITICAL: Verify items still exist but spaceId is now NULL
-      // We did NOT explicitly call updateItem() - SQLite SET NULL did this automatically
-      final itemInSpaceAfterDelete = await database.itemsDao.getItemById(itemInSpaceId);
-      expect(itemInSpaceAfterDelete, isA<Item>());
-      expect(itemInSpaceAfterDelete!.name, equals('Plate'));
-      expect(itemInSpaceAfterDelete.houseId, equals(houseId)); // House FK unchanged
-      expect(itemInSpaceAfterDelete.spaceId, equals(null)); // Space FK set to NULL by SQLite
-      
-      final itemInSpace2AfterDelete = await database.itemsDao.getItemById(itemInSpace2Id);
-      expect(itemInSpace2AfterDelete, isA<Item>());
-      expect(itemInSpace2AfterDelete!.name, equals('Cup'));
-      expect(itemInSpace2AfterDelete.spaceId, equals(null)); // Space FK set to NULL by SQLite
-      
-      // Verify item that was already in general pool remains unchanged
-      final itemNoSpaceAfterDelete = await database.itemsDao.getItemById(itemNoSpaceId);
-      expect(itemNoSpaceAfterDelete, isA<Item>());
-      expect(itemNoSpaceAfterDelete!.name, equals('Random Item'));
-      expect(itemNoSpaceAfterDelete.spaceId, equals(null)); // Already null, still null
-      
-      // Verify all items still belong to the house
-      final allHouseItems = await database.itemsDao.getItemsByHouseId(houseId);
-      expect(allHouseItems, hasLength(3)); // All 3 items still exist
-      
-      // Verify items with null spaceId are considered in "general pool"
-      final generalPoolItems = allHouseItems.where((item) => item.spaceId == null).toList();
-      expect(generalPoolItems, hasLength(3)); // All 3 items now have null spaceId
-    });
-
-    test('should handle multiple items in the same space when space is deleted', () async {
-      // === ARRANGE ===
-      final houseId = 'house-multi-items';
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: houseId,
-          name: 'Multi Items House',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      
-      final spaceId = 'bedroom-multi';
-      await database.spacesDao.insertSpace(
-        SpacesCompanion.insert(
-          id: spaceId,
-          houseId: houseId,
-          name: 'Bedroom',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      
-      // Create 5 items in the same space
-      final itemIds = <String>[];
-      for (int i = 1; i <= 5; i++) {
-        final itemId = 'bedroom-item-$i';
-        itemIds.add(itemId);
-        
-        await database.itemsDao.insertItem(
-          ItemsCompanion.insert(
-            id: itemId,
-            houseId: houseId,
-            spaceId: Value(spaceId),
-            name: 'Bedroom Item $i',
-            category: 'varie',
+    test(
+      'should set spaceId to NULL on items when a space is deleted, keeping the item in the general pool',
+      () async {
+        // === ARRANGE ===
+        // Step 1: Insert a house (required for foreign key)
+        final houseId = 'test-house-set-null';
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: houseId,
+            name: 'Test House for SET NULL',
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           ),
         );
-      }
-      
-      // Verify all items are in the space
-      for (final itemId in itemIds) {
-        final item = await database.itemsDao.getItemById(itemId);
-        expect(item!.spaceId, equals(spaceId));
-      }
 
-      // === ACT ===
-      await database.spacesDao.deleteSpace(spaceId);
+        // Step 2: Insert a space linked to the house
+        final spaceId = 'test-space-set-null';
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: spaceId,
+            houseId: houseId,
+            name: 'Kitchen',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
 
-      // === ASSERT ===
-      // Verify all items still exist with spaceId set to NULL
-      for (final itemId in itemIds) {
-        final item = await database.itemsDao.getItemById(itemId);
-        expect(item, isA<Item>());
-        expect(item!.spaceId, equals(null));
-        expect(item.houseId, equals(houseId)); // House unchanged
-      }
-    });
+        // Step 3: Insert items - some linked to the space, some not
+        final itemInSpaceId = 'item-in-space';
+        final itemInSpace2Id = 'item-in-space-2';
+        final itemNoSpaceId = 'item-no-space';
 
-    test('should not affect items in other spaces when one space is deleted', () async {
-      // === ARRANGE ===
-      final houseId = 'house-multi-spaces';
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: houseId,
-          name: 'Multi Spaces House',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      
-      // Create two spaces
-      final kitchenSpaceId = 'kitchen-space';
-      final bedroomSpaceId = 'bedroom-space';
-      
-      await database.spacesDao.insertSpace(
-        SpacesCompanion.insert(
-          id: kitchenSpaceId,
-          houseId: houseId,
-          name: 'Kitchen',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      
-      await database.spacesDao.insertSpace(
-        SpacesCompanion.insert(
-          id: bedroomSpaceId,
-          houseId: houseId,
-          name: 'Bedroom',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      
-      // Create items in each space
-      await database.itemsDao.insertItem(
-        ItemsCompanion.insert(
-          id: 'kitchen-item',
-          houseId: houseId,
-          spaceId: Value(kitchenSpaceId),
-          name: 'Kitchen Item',
-          category: 'varie',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
-      
-      await database.itemsDao.insertItem(
-        ItemsCompanion.insert(
-          id: 'bedroom-item',
-          houseId: houseId,
-          spaceId: Value(bedroomSpaceId),
-          name: 'Bedroom Item',
-          category: 'varie',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-      );
+        await database.itemsDao.insertItem(
+          ItemsCompanion.insert(
+            id: itemInSpaceId,
+            houseId: houseId,
+            spaceId: Value(spaceId), // Item IS in the space
+            name: 'Plate',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
 
-      // === ACT ===
-      // Delete only the kitchen space
-      await database.spacesDao.deleteSpace(kitchenSpaceId);
+        await database.itemsDao.insertItem(
+          ItemsCompanion.insert(
+            id: itemInSpace2Id,
+            houseId: houseId,
+            spaceId: Value(spaceId), // Item IS in the space
+            name: 'Cup',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
 
-      // === ASSERT ===
-      // Kitchen item should have spaceId set to NULL
-      final kitchenItem = await database.itemsDao.getItemById('kitchen-item');
-      expect(kitchenItem, isA<Item>());
-      expect(kitchenItem!.spaceId, equals(null));
-      
-      // Bedroom item should still have its spaceId intact
-      final bedroomItem = await database.itemsDao.getItemById('bedroom-item');
-      expect(bedroomItem, isA<Item>());
-      expect(bedroomItem!.spaceId, equals(bedroomSpaceId)); // Unchanged
-      
-      // Bedroom space should still exist
-      final bedroomSpace = await database.spacesDao.getSpaceById(bedroomSpaceId);
-      expect(bedroomSpace, isA<Space>());
-    });
+        await database.itemsDao.insertItem(
+          ItemsCompanion.insert(
+            id: itemNoSpaceId,
+            houseId: houseId,
+            // No spaceId - item is in general pool
+            name: 'Random Item',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        // Verify initial state: space and items exist with correct spaceId
+        final spaceBeforeDelete = await database.spacesDao.getSpaceById(
+          spaceId,
+        );
+        expect(spaceBeforeDelete, isA<Space>());
+
+        final itemInSpaceBeforeDelete = await database.itemsDao.getItemById(
+          itemInSpaceId,
+        );
+        expect(itemInSpaceBeforeDelete, isA<Item>());
+        expect(itemInSpaceBeforeDelete!.spaceId, equals(spaceId));
+
+        final itemInSpace2BeforeDelete = await database.itemsDao.getItemById(
+          itemInSpace2Id,
+        );
+        expect(itemInSpace2BeforeDelete, isA<Item>());
+        expect(itemInSpace2BeforeDelete!.spaceId, equals(spaceId));
+
+        final itemNoSpaceBeforeDelete = await database.itemsDao.getItemById(
+          itemNoSpaceId,
+        );
+        expect(itemNoSpaceBeforeDelete, isA<Item>());
+        expect(itemNoSpaceBeforeDelete!.spaceId, equals(null));
+
+        // === ACT ===
+        // Delete the space - SQLite SET NULL should automatically set spaceId to NULL on items
+        final deleteResult = await database.spacesDao.deleteSpace(spaceId);
+
+        // === ASSERT ===
+        // Verify delete operation affected 1 row
+        expect(deleteResult, equals(1));
+
+        // Verify space is deleted
+        final spaceAfterDelete = await database.spacesDao.getSpaceById(spaceId);
+        expect(spaceAfterDelete, equals(null));
+
+        // CRITICAL: Verify items still exist but spaceId is now NULL
+        // We did NOT explicitly call updateItem() - SQLite SET NULL did this automatically
+        final itemInSpaceAfterDelete = await database.itemsDao.getItemById(
+          itemInSpaceId,
+        );
+        expect(itemInSpaceAfterDelete, isA<Item>());
+        expect(itemInSpaceAfterDelete!.name, equals('Plate'));
+        expect(
+          itemInSpaceAfterDelete.houseId,
+          equals(houseId),
+        ); // House FK unchanged
+        expect(
+          itemInSpaceAfterDelete.spaceId,
+          equals(null),
+        ); // Space FK set to NULL by SQLite
+
+        final itemInSpace2AfterDelete = await database.itemsDao.getItemById(
+          itemInSpace2Id,
+        );
+        expect(itemInSpace2AfterDelete, isA<Item>());
+        expect(itemInSpace2AfterDelete!.name, equals('Cup'));
+        expect(
+          itemInSpace2AfterDelete.spaceId,
+          equals(null),
+        ); // Space FK set to NULL by SQLite
+
+        // Verify item that was already in general pool remains unchanged
+        final itemNoSpaceAfterDelete = await database.itemsDao.getItemById(
+          itemNoSpaceId,
+        );
+        expect(itemNoSpaceAfterDelete, isA<Item>());
+        expect(itemNoSpaceAfterDelete!.name, equals('Random Item'));
+        expect(
+          itemNoSpaceAfterDelete.spaceId,
+          equals(null),
+        ); // Already null, still null
+
+        // Verify all items still belong to the house
+        final allHouseItems = await database.itemsDao.getItemsByHouseId(
+          houseId,
+        );
+        expect(allHouseItems, hasLength(3)); // All 3 items still exist
+
+        // Verify items with null spaceId are considered in "general pool"
+        final generalPoolItems = allHouseItems
+            .where((item) => item.spaceId == null)
+            .toList();
+        expect(
+          generalPoolItems,
+          hasLength(3),
+        ); // All 3 items now have null spaceId
+      },
+    );
+
+    test(
+      'should handle multiple items in the same space when space is deleted',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'house-multi-items';
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: houseId,
+            name: 'Multi Items House',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        final spaceId = 'bedroom-multi';
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: spaceId,
+            houseId: houseId,
+            name: 'Bedroom',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        // Create 5 items in the same space
+        final itemIds = <String>[];
+        for (int i = 1; i <= 5; i++) {
+          final itemId = 'bedroom-item-$i';
+          itemIds.add(itemId);
+
+          await database.itemsDao.insertItem(
+            ItemsCompanion.insert(
+              id: itemId,
+              houseId: houseId,
+              spaceId: Value(spaceId),
+              name: 'Bedroom Item $i',
+              category: ItemCategory.varie,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          );
+        }
+
+        // Verify all items are in the space
+        for (final itemId in itemIds) {
+          final item = await database.itemsDao.getItemById(itemId);
+          expect(item!.spaceId, equals(spaceId));
+        }
+
+        // === ACT ===
+        await database.spacesDao.deleteSpace(spaceId);
+
+        // === ASSERT ===
+        // Verify all items still exist with spaceId set to NULL
+        for (final itemId in itemIds) {
+          final item = await database.itemsDao.getItemById(itemId);
+          expect(item, isA<Item>());
+          expect(item!.spaceId, equals(null));
+          expect(item.houseId, equals(houseId)); // House unchanged
+        }
+      },
+    );
+
+    test(
+      'should not affect items in other spaces when one space is deleted',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'house-multi-spaces';
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: houseId,
+            name: 'Multi Spaces House',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        // Create two spaces
+        final kitchenSpaceId = 'kitchen-space';
+        final bedroomSpaceId = 'bedroom-space';
+
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: kitchenSpaceId,
+            houseId: houseId,
+            name: 'Kitchen',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: bedroomSpaceId,
+            houseId: houseId,
+            name: 'Bedroom',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        // Create items in each space
+        await database.itemsDao.insertItem(
+          ItemsCompanion.insert(
+            id: 'kitchen-item',
+            houseId: houseId,
+            spaceId: Value(kitchenSpaceId),
+            name: 'Kitchen Item',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        await database.itemsDao.insertItem(
+          ItemsCompanion.insert(
+            id: 'bedroom-item',
+            houseId: houseId,
+            spaceId: Value(bedroomSpaceId),
+            name: 'Bedroom Item',
+            category: ItemCategory.varie,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        // === ACT ===
+        // Delete only the kitchen space
+        await database.spacesDao.deleteSpace(kitchenSpaceId);
+
+        // === ASSERT ===
+        // Kitchen item should have spaceId set to NULL
+        final kitchenItem = await database.itemsDao.getItemById('kitchen-item');
+        expect(kitchenItem, isA<Item>());
+        expect(kitchenItem!.spaceId, equals(null));
+
+        // Bedroom item should still have its spaceId intact
+        final bedroomItem = await database.itemsDao.getItemById('bedroom-item');
+        expect(bedroomItem, isA<Item>());
+        expect(bedroomItem!.spaceId, equals(bedroomSpaceId)); // Unchanged
+
+        // Bedroom space should still exist
+        final bedroomSpace = await database.spacesDao.getSpaceById(
+          bedroomSpaceId,
+        );
+        expect(bedroomSpace, isA<Space>());
+      },
+    );
   });
 
   group('SpacesDao - CRUD Operations', () {
@@ -298,7 +344,7 @@ void main() {
           updatedAt: DateTime.now(),
         ),
       );
-      
+
       final spaceId = 'space-crud-1';
       final spaceCompanion = SpacesCompanion.insert(
         id: spaceId,
@@ -330,7 +376,7 @@ void main() {
           updatedAt: DateTime.now(),
         ),
       );
-      
+
       final spaceId = 'space-update-1';
       await database.spacesDao.insertSpace(
         SpacesCompanion.insert(
@@ -350,7 +396,7 @@ void main() {
         createdAt: Value(DateTime.now()),
         updatedAt: Value(DateTime.now()),
       );
-      
+
       final updateResult = await database.spacesDao.updateSpace(updatedSpace);
       final retrieved = await database.spacesDao.getSpaceById(spaceId);
 
@@ -370,9 +416,9 @@ void main() {
           updatedAt: DateTime.now(),
         ),
       );
-      
+
       final now = DateTime.now();
-      
+
       await database.spacesDao.insertSpace(
         SpacesCompanion.insert(
           id: 'space-1',
@@ -382,7 +428,7 @@ void main() {
           updatedAt: now,
         ),
       );
-      
+
       await database.spacesDao.insertSpace(
         SpacesCompanion.insert(
           id: 'space-2',
@@ -392,7 +438,7 @@ void main() {
           updatedAt: now,
         ),
       );
-      
+
       await database.spacesDao.insertSpace(
         SpacesCompanion.insert(
           id: 'space-3',
@@ -408,74 +454,259 @@ void main() {
 
       // === ASSERT ===
       expect(allSpaces, hasLength(3));
-      
+
       final spaceNames = allSpaces.map((s) => s.name).toList();
       expect(spaceNames, containsAll(['Kitchen', 'Bedroom', 'Bathroom']));
     });
   });
 
   group('SpacesDao - Foreign Key Constraints', () {
-    test('should enforce foreign key constraint when creating space with non-existent house', () async {
-      // === ARRANGE ===
-      final nonExistentHouseId = 'non-existent-house';
-      
-      final spaceCompanion = SpacesCompanion.insert(
-        id: 'orphan-space',
-        houseId: nonExistentHouseId, // This house does NOT exist
-        name: 'Orphan Space',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+    test(
+      'should enforce foreign key constraint when creating space with non-existent house',
+      () async {
+        // === ARRANGE ===
+        final nonExistentHouseId = 'non-existent-house';
 
-      // === ACT & ASSERT ===
-      // Attempt to insert space with invalid foreign key
-      // Should fail because PRAGMA foreign_keys = ON
-      expect(
-        () async => await database.spacesDao.insertSpace(spaceCompanion),
-        throwsA(isA<Exception>()),
-      );
-      
-      // Verify space was NOT inserted
-      final space = await database.spacesDao.getSpaceById('orphan-space');
-      expect(space, equals(null));
-    });
+        final spaceCompanion = SpacesCompanion.insert(
+          id: 'orphan-space',
+          houseId: nonExistentHouseId, // This house does NOT exist
+          name: 'Orphan Space',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
 
-    test('should cascade delete space when its parent house is deleted', () async {
-      // === ARRANGE ===
-      // This test verifies that spaces CASCADE delete when house is deleted
-      final houseId = 'house-cascade-space';
+        // === ACT & ASSERT ===
+        // Attempt to insert space with invalid foreign key
+        // Should fail because PRAGMA foreign_keys = ON
+        expect(
+          () async => await database.spacesDao.insertSpace(spaceCompanion),
+          throwsA(isA<Exception>()),
+        );
+
+        // Verify space was NOT inserted
+        final space = await database.spacesDao.getSpaceById('orphan-space');
+        expect(space, equals(null));
+      },
+    );
+
+    test(
+      'should cascade delete space when its parent house is deleted',
+      () async {
+        // === ARRANGE ===
+        // This test verifies that spaces CASCADE delete when house is deleted
+        final houseId = 'house-cascade-space';
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: houseId,
+            name: 'Cascade House',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        final spaceId = 'space-cascade';
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: spaceId,
+            houseId: houseId,
+            name: 'Test Space',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        // Verify space exists
+        final spaceBeforeDelete = await database.spacesDao.getSpaceById(
+          spaceId,
+        );
+        expect(spaceBeforeDelete, isA<Space>());
+
+        // === ACT ===
+        // Delete the house - space should CASCADE delete
+        await database.housesDao.deleteHouse(houseId);
+
+        // === ASSERT ===
+        // Space should be cascade deleted
+        final spaceAfterDelete = await database.spacesDao.getSpaceById(spaceId);
+        expect(spaceAfterDelete, equals(null));
+      },
+    );
+  });
+
+  group('SpacesDao - Sync Operations', () {
+    late String houseId;
+
+    setUp(() async {
+      houseId = 'sync-house-spaces';
       await database.housesDao.insertHouse(
         HousesCompanion.insert(
           id: houseId,
-          name: 'Cascade House',
+          name: 'Sync House',
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
       );
-      
-      final spaceId = 'space-cascade';
+    });
+
+    test('markAsSynced overwrites updatedAt with server timestamp '
+        '(post fix #6: server-side updated_at)', () async {
       await database.spacesDao.insertSpace(
         SpacesCompanion.insert(
-          id: spaceId,
+          id: 's-server-ts',
           houseId: houseId,
-          name: 'Test Space',
+          name: 'Armadio',
+          createdAt: DateTime(2026, 5, 1, 7, 0),
+          updatedAt: DateTime(2026, 5, 1, 8, 0),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
+
+      final clientUpdatedAt = DateTime(2026, 5, 1, 8, 0);
+      final serverTs = DateTime(2026, 5, 1, 12, 0);
+      await database.spacesDao.markAsSynced(
+        's-server-ts',
+        serverTs,
+        localUpdatedAt: clientUpdatedAt,
+      );
+
+      final space = await database.spacesDao.getSpaceById('s-server-ts');
+      expect(
+        space!.updatedAt,
+        equals(serverTs),
+        reason:
+            'updatedAt deve essere allineato al server timestamp per '
+            'rendere immune la LWW al clock drift del client',
+      );
+      expect(space.syncStatus, equals(SyncStatus.synced));
+      expect(space.lastSyncedAt, equals(serverTs));
+    });
+
+    test('markAsSynced is no-op when updatedAt changed during push '
+        '(race condition guard)', () async {
+      final originalUpdatedAt = DateTime(2026, 6, 1, 8, 0);
+      await database.spacesDao.insertSpace(
+        SpacesCompanion.insert(
+          id: 's-race',
+          houseId: houseId,
+          name: 'Armadio Race',
+          createdAt: DateTime(2026, 6, 1, 7, 0),
+          updatedAt: originalUpdatedAt,
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
+
+      final userEditedAt = DateTime(2026, 6, 1, 9, 0);
+      await (database.update(
+        database.spaces,
+      )..where((s) => s.id.equals('s-race'))).write(
+        SpacesCompanion(
+          updatedAt: Value(userEditedAt),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
+
+      final serverTs = DateTime(2026, 6, 1, 12, 0);
+      await database.spacesDao.markAsSynced(
+        's-race',
+        serverTs,
+        localUpdatedAt: originalUpdatedAt,
+      );
+
+      final space = await database.spacesDao.getSpaceById('s-race');
+      expect(
+        space!.syncStatus,
+        equals(SyncStatus.pendingUpdate),
+        reason: 'record modificato durante il push deve restare pendingUpdate',
+      );
+      expect(
+        space.updatedAt,
+        equals(userEditedAt),
+        reason: "l'edit dell'utente non deve essere sovrascritto",
+      );
+    });
+
+    test('resetSyncRetries clears retry counter, error and backoff', () async {
+      await database.spacesDao.insertSpace(
+        SpacesCompanion.insert(
+          id: 's-blocked',
+          houseId: houseId,
+          name: 'Armadio',
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
       );
-      
-      // Verify space exists
-      final spaceBeforeDelete = await database.spacesDao.getSpaceById(spaceId);
-      expect(spaceBeforeDelete, isA<Space>());
+      for (var i = 0; i < 5; i++) {
+        await database.spacesDao.incrementSyncRetry('s-blocked', 'boom');
+      }
 
-      // === ACT ===
-      // Delete the house - space should CASCADE delete
-      await database.housesDao.deleteHouse(houseId);
+      final reset = await database.spacesDao.resetSyncRetries();
+      expect(reset, greaterThan(0));
 
-      // === ASSERT ===
-      // Space should be cascade deleted
-      final spaceAfterDelete = await database.spacesDao.getSpaceById(spaceId);
-      expect(spaceAfterDelete, equals(null));
+      final space = await database.spacesDao.getSpaceById('s-blocked');
+      expect(space!.syncRetryCount, equals(0));
+      expect(space.lastSyncError, isNull);
+      expect(space.nextSyncAttemptAt, isNull);
     });
+
+    test('wipeAll physically removes every space row', () async {
+      await database.spacesDao.insertSpace(
+        SpacesCompanion.insert(
+          id: 's-wipe-1',
+          houseId: houseId,
+          name: 'A',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      await database.spacesDao.insertSpace(
+        SpacesCompanion.insert(
+          id: 's-wipe-2',
+          houseId: houseId,
+          name: 'B',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      await database.spacesDao.wipeAll();
+
+      final allRows = await database.select(database.spaces).get();
+      expect(allRows, isEmpty);
+    });
+
+    test(
+      'updateSpace preserves sync metadata when companion omits sync fields',
+      () async {
+        final originalSyncedAt = DateTime(2026, 5, 1, 8, 0);
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: 's-keep-sync',
+            houseId: houseId,
+            name: 'Original',
+            createdAt: DateTime(2026, 5, 1, 7, 0),
+            updatedAt: DateTime(2026, 5, 1, 7, 0),
+            syncStatus: const Value(SyncStatus.synced),
+            syncRetryCount: const Value(3),
+            lastSyncedAt: Value(originalSyncedAt),
+          ),
+        );
+
+        await database.spacesDao.updateSpace(
+          SpacesCompanion(
+            id: const Value('s-keep-sync'),
+            houseId: Value(houseId),
+            name: const Value('Renamed'),
+            createdAt: Value(DateTime(2026, 5, 1, 7, 0)),
+            updatedAt: Value(DateTime(2026, 5, 1, 10, 0)),
+          ),
+        );
+
+        final space = await database.spacesDao.getSpaceById('s-keep-sync');
+        expect(space!.name, equals('Renamed'));
+        expect(space.lastSyncedAt, equals(originalSyncedAt));
+        expect(space.syncRetryCount, equals(3));
+        expect(space.syncStatus, equals(SyncStatus.pendingUpdate));
+      },
+    );
   });
 }

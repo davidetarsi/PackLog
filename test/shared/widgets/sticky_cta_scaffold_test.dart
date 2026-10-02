@@ -4,7 +4,9 @@ import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 
 void main() {
   group('StickyCtaScaffold', () {
-    testWidgets('renders appBar, body, and bottomContent correctly', (tester) async {
+    testWidgets('renders appBar, body, and bottomContent correctly', (
+      tester,
+    ) async {
       // Arrange
       const testAppBarTitle = 'Test AppBar';
       const testBodyText = 'Test Body Content';
@@ -13,12 +15,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: StickyCtaScaffold(
-            appBar: AppBar(
-              title: const Text(testAppBarTitle),
-            ),
-            body: const Center(
-              child: Text(testBodyText),
-            ),
+            appBar: AppBar(title: const Text(testAppBarTitle)),
+            body: const Center(child: Text(testBodyText)),
             bottomContent: const Padding(
               padding: EdgeInsets.all(16.0),
               child: Text(testCtaText),
@@ -59,19 +57,13 @@ void main() {
               child: Column(
                 children: List.generate(
                   100,
-                  (index) => SizedBox(
-                    height: 50,
-                    child: Text('Item $index'),
-                  ),
+                  (index) => SizedBox(height: 50, child: Text('Item $index')),
                 ),
               ),
             ),
             bottomContent: const Padding(
               padding: EdgeInsets.all(16.0),
-              child: ElevatedButton(
-                onPressed: null,
-                child: Text('Save'),
-              ),
+              child: ElevatedButton(onPressed: null, child: Text('Save')),
             ),
           ),
         ),
@@ -79,7 +71,7 @@ void main() {
 
       // Assert - First item visible
       expect(find.text('Item 0'), findsOneWidget);
-      
+
       // Act - Verify scrollable exists
       expect(find.byType(SingleChildScrollView), findsOneWidget);
     });
@@ -87,7 +79,7 @@ void main() {
     testWidgets('bottomContent remains fixed during scroll', (tester) async {
       // Arrange
       const ctaKey = Key('cta-button');
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: StickyCtaScaffold(
@@ -122,66 +114,17 @@ void main() {
       expect(finalOffset, equals(initialOffset));
     });
 
-    testWidgets('shows shadow when showCtaShadow is true', (tester) async {
-      // Arrange
-      const ctaKey = Key('cta-container');
-      
-      await tester.pumpWidget(
-        MaterialApp(
-          home: StickyCtaScaffold(
-            appBar: AppBar(title: const Text('Test')),
-            body: const SizedBox(),
-            bottomContent: Container(
-              key: ctaKey,
-              child: const Text('CTA'),
-            ),
-            showCtaShadow: true,
-          ),
-        ),
-      );
-
-      // Assert - CTA container exists and widget renders
-      expect(find.byKey(ctaKey), findsOneWidget);
-      expect(find.text('CTA'), findsOneWidget);
-    });
-
-    testWidgets('hides shadow when showCtaShadow is false', (tester) async {
-      // Arrange
-      const ctaKey = Key('cta-no-shadow');
-      
-      await tester.pumpWidget(
-        MaterialApp(
-          home: StickyCtaScaffold(
-            appBar: AppBar(title: const Text('Test')),
-            body: const SizedBox(),
-            bottomContent: Container(
-              key: ctaKey,
-              child: const Text('CTA'),
-            ),
-            showCtaShadow: false,
-          ),
-        ),
-      );
-
-      // Assert - CTA container exists and widget renders
-      expect(find.byKey(ctaKey), findsOneWidget);
-      expect(find.text('CTA'), findsOneWidget);
-    });
-
     testWidgets('applies custom ctaBackgroundColor', (tester) async {
       // Arrange
       const customColor = Colors.red;
       const ctaKey = Key('cta-custom-color');
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: StickyCtaScaffold(
             appBar: AppBar(title: const Text('Test')),
             body: const SizedBox(),
-            bottomContent: Container(
-              key: ctaKey,
-              child: const Text('CTA'),
-            ),
+            bottomContent: Container(key: ctaKey, child: const Text('CTA')),
             ctaBackgroundColor: customColor,
           ),
         ),

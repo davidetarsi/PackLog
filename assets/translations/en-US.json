@@ -1,13 +1,27 @@
 {
   "app_name": "Stuff Tracker",
-  
+  "login": {
+    "subtitle": "Organize your stuff, wherever you are",
+    "sign_in_google": "Sign in with Google",
+    "sign_in_failed": "Sign in failed. Please try again.",
+    "invalid_credentials": "Email or password is incorrect.",
+    "email_not_confirmed": "Please confirm your email before signing in. Check your inbox.",
+    "network_error": "No connection or slow network. Check your connection and try again.",
+    "cancelled": "Sign-in cancelled.",
+    "sign_out": "Sign out",
+    "sign_out_failed": "Error during sign out",
+    "consent_prefix": "By continuing I accept the ",
+    "consent_privacy": "Privacy Policy",
+    "consent_separator": " and the ",
+    "consent_terms": "Terms of Service",
+    "consent_required": "You must accept the Privacy Policy and Terms of Service to continue"
+  },
   "navigation": {
     "home": "Home",
     "houses": "Houses",
     "trips": "Trips",
     "profile": "Profile"
   },
-  
   "houses": {
     "title": "My Houses",
     "add": "House",
@@ -17,8 +31,10 @@
     "set_as_primary": "Set as primary",
     "no_houses": "No houses",
     "no_houses_subtitle": "Add your first house",
-    "name_required": "Name*",
-    "name_label": "Name *",
+    "no_houses_tap_hint": "Tap to add a house",
+    "no_houses_title": "No houses yet",
+    "name_required": "Name",
+    "name_label": "Name",
     "location_required": "Location*",
     "location_label": "Location *",
     "location_hint": "Search for city, region or state...",
@@ -42,8 +58,8 @@
     "trips_has_destination_singular": "{} active/scheduled trip has this house as destination",
     "trips_has_destination_plural": "{} active/scheduled trips have this house as destination",
     "wait_trips_end": "Wait for trips to end or delete them before deleting the house",
-    "manage": "Manage",
-    "manage_sheet_title": "Manage House",
+    "modify": "Modify",
+    "manage_sheet_title": "Edit House",
     "edit_info": "Edit info",
     "add_sheet_title": "Add Items",
     "add_single_item": "Single item",
@@ -51,9 +67,9 @@
     "house_not_found": "House not found",
     "house_not_found_message": "The requested house was not found.",
     "back_to_houses": "Back to houses",
-    "primary": "Primary"
+    "primary": "Primary",
+    "unnamed_house": "Unnamed house"
   },
-  
   "items": {
     "category_vestiti": "Clothes",
     "category_toiletries": "Toiletries",
@@ -95,9 +111,11 @@
     "bulk_delete_success": "{} items deleted",
     "bulk_move_title": "Move to...",
     "bulk_move_success": "{} items moved to {}",
-    "bulk_move_no_houses": "No other houses available"
+    "bulk_move_no_houses": "No other houses available",
+    "bulk_move_sheet_title": "Move {} items",
+    "add_to_trip_success": "{} items added to {}",
+    "rapid_fire_hint": "Add item..."
   },
-  
   "categories": {
     "vestiti": "Clothes",
     "toiletries": "Toiletries",
@@ -117,7 +135,7 @@
     "add_new": "New space",
     "edit": "Edit space",
     "delete": "Delete space",
-    "manage": "Manage spaces",
+    "manage": "Edit spaces",
     "no_spaces": "No spaces",
     "no_spaces_subtitle": "Spaces help you organize items",
     "all_items": "All",
@@ -152,7 +170,7 @@
     "trip_singular": "trip",
     "trip_plural": "trips",
     "luggage_deleted": "Luggage \"{}\" deleted",
-    "manage": "Manage luggages"
+    "manage": "Edit luggages"
   },
   "house_icons": {
     "home": "Home",
@@ -174,9 +192,11 @@
     "postcode": "Postcode",
     "other": "Other"
   },
-  
   "trips": {
     "title": "Trips",
+    "trip_picker_sheet_title": "Add to a trip",
+    "trip_picker_no_trips": "No active or upcoming trips",
+    "duplicate_suffix": " (Copy)",
     "add": "Trip",
     "add_new": "New Trip",
     "create_trip": "Create trip",
@@ -184,8 +204,9 @@
     "edit_info": "Edit Trip Info",
     "edit_items": "Edit Items",
     "save_items": "Save items",
-    "manage": "Manage",
-    "manage_sheet_title": "Manage trip",
+    "manage": "Edit",
+    "manage_sheet_title": "Edit trip",
+    "modify": "Modify trip",
     "duplicate_success": "\"{}\" duplicated successfully",
     "trip_info": "Trip information",
     "items_to_bring": "Items to bring",
@@ -195,9 +216,12 @@
     "no_trips": "No trips",
     "no_trips_subtitle": "Create your first trip",
     "no_trips_tap_hint": "Tap to create a new trip",
+    "no_trips_title": "No trips planned",
     "select_house_to_view_items": "Select a house to view items",
     "no_items_in_list": "No items in the list",
     "no_items_in_category_filter": "No items in \"{}\"",
+    "select_dates": "Select dates",
+    "confirm_dates": "Confirm dates",
     "select_departure_date": "Select departure date",
     "select_departure_time": "Select departure time",
     "select_return_date": "Select return date",
@@ -230,9 +254,25 @@
     "delete_confirmation": "Are you sure you want to delete \"{}\"?",
     "confirm_all_arrived": "Confirm all arrived",
     "all_items_confirmed": "All items confirmed",
-    "no_destination": "No destination"
+    "no_destination": "No destination",
+    "add_clothes": "Add clothes",
+    "unnamed_destination": "Trip",
+    "name_label": "Name",
+    "departure_date_required": "The departure date is missing",
+    "name_or_destination_required": "Name the trip or pick a destination",
+    "create_trip_with_count": "Create trip ({})",
+    "step_of": "{} of {}",
+    "legs_title": "Other stops",
+    "leg_add": "Add stop",
+    "leg_new": "New stop",
+    "leg_edit": "Edit stop",
+    "leg_location": "Place",
+    "leg_dates": "Dates",
+    "leg_pick_dates": "Pick the dates",
+    "leg_location_required": "The stop is missing a place",
+    "destination_benefit": "With a destination home, the things you pack show up there as temporary while you are away.",
+    "no_items_in_named_house": "No items in {house}"
   },
-  
   "common": {
     "save": "Save",
     "save_changes": "Save changes",
@@ -264,6 +304,9 @@
     "select_house": "Select house",
     "select_location": "Select a location",
     "arrival_house": "Arrival house",
+    "destination_house": "House",
+    "destination_other": "Other location",
+    "tap_to_set_dates": "Tap to set dates",
     "departure": "Departure",
     "return": "Return",
     "none_insert_location": "None (insert location)",
@@ -305,9 +348,10 @@
     "back_to_home": "Back to home",
     "navigation_error": "Navigation error: {}",
     "profile": "Profile",
-    "move": "Move"
+    "move": "Move",
+    "next": "Next",
+    "dates": "Dates"
   },
-  
   "errors": {
     "generic": "An error occurred",
     "save_failed": "Unable to save",
@@ -336,6 +380,7 @@
     "retry_message": "Do you want to retry?",
     "invalid_house_id": "Invalid house ID",
     "invalid_trip_id": "Invalid trip ID",
+    "feature_disabled": "This feature is not available in this version.",
     "invalid_list_id": "Invalid list ID",
     "no_trips": "No trips",
     "no_items": "No items to save",
@@ -345,9 +390,40 @@
     "delete_title": "Delete {}",
     "delete_message": "Are you sure you want to delete \"{}\"?",
     "delete_confirm": "Delete",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "context_menu_copy": "Copy {}",
+    "context_menu_save": "Save {}",
+    "context_menu_unsave": "Unsave {}",
+    "context_menu_set_primary": "Set as main",
+    "context_menu_delete": "Delete {}",
+    "copy_success": "\"{}\" copied successfully"
   },
-  
+  "profile": {
+    "ai_usage_title": "AI Analysis",
+    "ai_usage_subtitle": "{} / {} scans available",
+    "logout_confirm_title": "Sign out?",
+    "logout_confirm_body": "Are you sure you want to sign out?",
+    "logout_warning_title": "Unsynced changes",
+    "logout_warning_body": "You have {} local changes not yet uploaded to the cloud. What do you want to do?",
+    "logout_sync_first": "Sync then sign out",
+    "logout_force": "Sign out anyway",
+    "sync_status_title": "Sync status",
+    "sync_status_synced": "All synced",
+    "sync_status_pending": "{} pending changes",
+    "sync_status_retry": "Retry now",
+    "sync_details_dialog_title": "Sync details",
+    "sync_entity_items": "Items",
+    "sync_reason_network": "Connection problem",
+    "sync_reason_server": "The server is temporarily unavailable",
+    "sync_reason_unknown": "Syncing in progress, we'll retry automatically",
+    "delete_account_cta": "Delete my account",
+    "delete_account_title": "Delete account?",
+    "delete_account_warning": "This action is irreversible. Your account and all your houses, items, spaces, luggages and trips will be permanently deleted. There is no undo.",
+    "delete_account_confirm_prompt": "To confirm, type your email below ({}):",
+    "delete_account_button": "Delete permanently",
+    "delete_account_success": "Account and data deleted.",
+    "delete_account_failed": "Deletion failed. Try again or contact support."
+  },
   "settings": {
     "title": "Profile",
     "language": "Language",
@@ -361,38 +437,9 @@
     "feedback_subtitle": "Open the Google Form",
     "view_project": "View project",
     "view_project_subtitle": "GitHub repository",
-    "open_link_error": "Cannot open the link"
-  },
-  "backup": {
-    "title": "Backup & Restore",
-    "export_database": "Export database",
-    "import_database": "Import database",
-    "export_success": "Database exported successfully",
-    "export_saved_to": "File saved: {}",
-    "export_failed": "Export failed",
-    "import_success": "Database imported successfully",
-    "import_failed": "Import failed",
-    "import_validation_failed": "Invalid or corrupted file",
-    "creating_safety_backup": "Creating safety backup...",
-    "validating_file": "Validating file...",
-    "importing_data": "Importing data...",
-    "rolling_back": "Rolling back...",
-    "export_subtitle": "Save a copy of your database",
-    "import_subtitle": "Restore from a saved file",
-    "import_warning_title": "Warning",
-    "import_warning_message": "Importing will replace all current data. A safety backup will be created automatically. Continue?",
-    "rollback_success": "Database restored to previous state",
-    "critical_error": "Critical error: unable to restore. Contact support.",
-    "file_size": "File size: {}",
-    "safety_backup_path_label": "Safety backup saved in:",
-    "file_saved_in": "File saved in:",
-    "path_label": "Path:",
-    "share_unavailable_note": "Note: Sharing not available on simulator",
-    "invalid_filename": "File name must start with \"{}\"",
-    "safety_backup_failed": "Unable to create safety backup",
-    "invalid_sqlite_file": "The file to import is not a valid SQLite database",
-    "downloads_unavailable": "Downloads directory not available on this platform",
-    "rollback_impossible": "Unable to restore safety backup"
+    "open_link_error": "Cannot open the link",
+    "analytics_title": "Usage statistics",
+    "analytics_subtitle": "Help us improve the app with anonymous usage data. You can turn this off at any time."
   },
   "bulk_creation": {
     "add_from_template": "Template",
@@ -505,5 +552,132 @@
       "kit_primo_soccorso": "First aid kit",
       "bastoncini_trekking": "Trekking poles"
     }
+  },
+  "ai_import": {
+    "analysis_in_progress": "AI analysis in progress, don't leave this page",
+    "camera_subtitle": "Take a photo",
+    "choose_house": "Choose a house",
+    "choose_house_title": "Where to save?",
+    "debug_raw_json": "Debug: JSON",
+    "edit_hint": "Edit names or delete before saving",
+    "empty_subtitle": "GPT-4o will analyse each image and identify the clothing items",
+    "empty_title": "Choose up to 5 outfit photos",
+    "error_network": "No connection, or an unstable one. Check your network and try again.",
+    "error_not_authenticated": "Your session has expired. Sign out and back in to continue.",
+    "error_service": "The analysis service did not respond correctly. Try again shortly.",
+    "error_title": "Analysis failed",
+    "error_unknown": "Something went wrong during the analysis. Try again.",
+    "field_activities": "Activities",
+    "field_category": "Category",
+    "field_color": "Color",
+    "field_coverage": "Coverage",
+    "field_fit": "Fit",
+    "field_formality": "Formality",
+    "field_pattern": "Pattern",
+    "field_versatility": "Versatility",
+    "field_warmth": "Warmth",
+    "gallery_subtitle": "Max {} photos selectable",
+    "item_name_hint": "Item name...",
+    "items_found_so_far": "{} items found so far",
+    "items_identified": "{} items identified",
+    "limit_reached": "You've used all your available AI scans.",
+    "loading": "Loading…",
+    "loading_progress": "Analysing image {} of {}…",
+    "no_house_selected": "No house selected",
+    "no_items_found_in_photo": "No items could be recognised in this photo",
+    "photo": "Photo",
+    "photo_of": "Photo {} of {}",
+    "pick_images": "Choose images",
+    "retry": "Try again",
+    "retry_photo": "Pick another photo",
+    "save_button": "Save {}",
+    "save_error": "Error saving: {}",
+    "save_in_house": "Save to {} ({})",
+    "save_success": "{} items saved successfully!",
+    "source_camera": "Camera",
+    "source_gallery": "Gallery",
+    "title": "AI Scan",
+    "unexpected_error": "Unexpected error: {}"
+  },
+  "onboarding": {
+    "next": "Next",
+    "start": "Get started",
+    "houses": {
+      "title": "Your homes",
+      "description": "Organize your belongings across multiple homes. Create spaces within each house to find everything instantly."
+    },
+    "items": {
+      "title": "Add your items",
+      "description": "Quickly add items with rapid fire input, or import directly from a photo using AI."
+    },
+    "trips": {
+      "title": "Your trips",
+      "description": "Create a trip and select the items to bring. During the trip, they're automatically marked as \"travelling\"."
+    },
+    "default_house_name": "Demo House"
+  },
+  "tour": {
+    "relaunch_title": "Replay tour",
+    "relaunch_subtitle": "Review Pack Log's main features",
+    "step_counter": "{current} / {total}",
+    "skip": "Skip",
+    "next": "Next",
+    "finish": "Let's go",
+    "step1": {
+      "title": "Your homes",
+      "body": "Organize items by home and space. You can have multiple homes, each with their own spaces."
+    },
+    "step2": {
+      "title": "Create your first home",
+      "body": "Tap the + to add a home. From there, add spaces and fill them with items."
+    },
+    "step3": {
+      "title": "Your trips",
+      "body": "Create a trip, choose items to bring from any home, and check them off as you pack."
+    },
+    "step4": {
+      "title": "Import with AI",
+      "body": "Inside a home you'll find the AI import button. Upload a photo and Pack Log auto-detects your clothes and adds them to the list."
+    },
+    "step5": {
+      "title": "Move items between homes",
+      "body": "Long-press an item and select Move to transfer it to another home or space in one tap."
+    },
+    "step6": {
+      "title": "Your profile",
+      "body": "Change language, theme, and relaunch this tour anytime from here."
+    },
+    "house_tooltip": {
+      "title": "Create your first home",
+      "body": "Tap + to open the create menu and add your first home."
+    },
+    "default_house_tooltip": {
+      "title": "Open the Demo House",
+      "body": "Your AI items are in 'Demo House'. Tap it to open and move them wherever you like."
+    },
+    "move_items_tooltip": {
+      "title": "Move items",
+      "body": "Long-press an item to select it, select the ones you want to move, then tap Move."
+    },
+    "create_trip_tooltip": {
+      "title": "Create your first trip",
+      "body": "Tap + to open the create menu and add your first trip."
+    },
+    "trip_creation_tooltip": {
+      "title": "Plan your trip",
+      "body": "Add a destination, dates, and choose what to pack. Every trip gets its own checklist."
+    }
+  },
+  "onboarding_tour": {
+    "ai_intro": {
+      "title": "Let's try it out",
+      "body": "Upload a photo of your outfit or take one now. The AI recognises your clothes and saves them for you.",
+      "cta": "Take or upload a photo",
+      "skip": "Skip"
+    },
+    "ai_save_tooltip": "We'll save these items in a new 'Demo House'. You can move them whenever you like."
+  },
+  "location_search": {
+    "rate_limit_reached": "Too many location searches, please try again in a few minutes."
   }
 }

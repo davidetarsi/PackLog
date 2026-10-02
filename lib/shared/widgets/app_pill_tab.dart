@@ -30,9 +30,9 @@ class AppPillTab<T> extends StatelessWidget {
   final T? selectedItem;
   final String Function(T) getLabel;
   final Widget? Function(T)? getIcon;
-  final Function onSelected;  // ValueChanged<T> or ValueChanged<T?>
+  final Function onSelected; // ValueChanged<T> or ValueChanged<T?>
   final bool allowDeselect;
-  
+
   // Styling options
   final Color? selectedColor;
   final Color? unselectedColor;
@@ -86,7 +86,7 @@ class AppPillTab<T> extends StatelessWidget {
 
   void _handleTap(T item) {
     final isCurrentlySelected = selectedItem == item;
-    
+
     if (allowDeselect && isCurrentlySelected) {
       // Nullable behavior: deseleziona
       (onSelected as ValueChanged<T?>)(null);
@@ -100,7 +100,7 @@ class AppPillTab<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveSpacing = spacing ?? context.spacingSm;
-    
+
     final scrollView = SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const ClampingScrollPhysics(),
@@ -109,7 +109,7 @@ class AppPillTab<T> extends StatelessWidget {
         children: items.asMap().entries.map((entry) {
           final item = entry.value;
           final isSelected = selectedItem == item;
-          
+
           return Padding(
             padding: EdgeInsets.only(right: effectiveSpacing),
             child: _RawPillTab(
@@ -128,11 +128,11 @@ class AppPillTab<T> extends StatelessWidget {
         }).toList(),
       ),
     );
-    
+
     if (height != null) {
       return SizedBox(height: height, child: scrollView);
     }
-    
+
     return scrollView;
   }
 }
@@ -214,20 +214,32 @@ class _RawPillTabState extends State<_RawPillTab>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final effectiveHorizontalPadding = widget.horizontalPadding ?? context.spacingMd;
-    final effectiveVerticalPadding = widget.verticalPadding ?? context.spacingSm;
-    
+    final effectiveHorizontalPadding =
+        widget.horizontalPadding ?? context.spacingMd;
+    final effectiveVerticalPadding =
+        widget.verticalPadding ?? context.spacingSm;
+
+    // Pill selezionata: fill tenue dell'accento, bordo e testo pieni.
+    // Prima era fill pieno + testo onPrimary, cioè un blocco arancione solido
+    // ripetuto in cima a ogni schermata.
+    final accent = widget.selectedColor ?? colorScheme.primary;
+
     final backgroundColor = widget.isSelected
-        ? (widget.selectedColor ?? colorScheme.primary)
+        ? accent.withValues(alpha: 0.14)
         : (widget.unselectedColor ?? Colors.transparent);
-    
-    final borderColor = widget.isSelected
-        ? (widget.selectedColor ?? colorScheme.primary)
-        : colorScheme.outline.withValues(alpha: 0.3);
-    
+
+    final borderColor = widget.isSelected ? accent : colorScheme.outlineVariant;
+
+    // In dark l'accento su un suo fill al 14% dà ~6.2:1, sopra AA.
+    // In light lo stesso accostamento scende a ~2.9:1 (l'arancione brand è
+    // troppo chiaro per fare testo su fondo chiaro), quindi il testo passa
+    // alla tinta scura della stessa famiglia: stessa idea, direzione tonale
+    // che il tema chiaro impone.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = widget.isSelected
-        ? (widget.selectedTextColor ?? colorScheme.onPrimary)
-        : (widget.unselectedTextColor ?? colorScheme.onSurface.withValues(alpha: 0.8));
+        ? (widget.selectedTextColor ??
+              (isDark ? accent : colorScheme.onPrimaryContainer))
+        : (widget.unselectedTextColor ?? colorScheme.onSurfaceVariant);
 
     return ScaleTransition(
       scale: _scaleAnimation,
@@ -249,20 +261,10 @@ class _RawPillTabState extends State<_RawPillTab>
               color: backgroundColor,
               borderRadius: context.responsiveBorderRadius(20),
               border: Border.all(color: borderColor, width: 1),
-              // Subtle shadow quando selezionato
-              boxShadow: widget.isSelected
-                  ? [
-                      BoxShadow(
-                        color: (widget.selectedColor ?? colorScheme.primary)
-                            .withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (widget.icon != null) ...[
                   widget.icon!,
@@ -270,12 +272,9 @@ class _RawPillTabState extends State<_RawPillTab>
                 ],
                 Text(
                   widget.label,
-                  style: TextStyle(
-                    fontSize: context.fontSizeXs,
-                    fontWeight: widget.isSelected
-                        ? FontWeight.w600
-                        : FontWeight.normal,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: textColor,
+                    height: 1.0,
                   ),
                 ),
               ],

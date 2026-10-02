@@ -2,10 +2,12 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pack_log/features/bulk_creation/model/travel_template.dart';
 import '../data/templates_data.dart';
 import '../model/user_gender.dart';
 import '../providers/bulk_creation_provider.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
@@ -60,42 +62,50 @@ class _TemplateSelectionScreenState
         ),
         title: Text('bulk_creation.select_templates'.tr()),
       ),
-      body: Column(
-        children: [
-          // Gender Picker (Segmented Control)
-          _GenderPicker(
-            selectedGender: state.gender,
-            onGenderChanged: (gender) => notifier.setGender(gender),
-          ),
-
-          // Template Grid
-          Expanded(
-            child: GridView.builder(
-              padding: EdgeInsets.all(context.spacingMd),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.8,
-                mainAxisSpacing: context.spacingMd,
-                crossAxisSpacing: context.spacingMd,
-              ),
-              itemCount: kTravelTemplates.length,
-              itemBuilder: (context, index) {
-                final template = kTravelTemplates[index];
-                final isSelected = state.selectedTemplateKeys.contains(
-                  template.key,
-                );
-
-                return _TemplateCard(
-                  template: template,
-                  isSelected: isSelected,
-                  onTap: () => notifier.toggleTemplate(template.key),
-                  colorScheme: colorScheme,
-                  selectedGender: state.gender,
-                );
-              },
+      // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
+      // StickyCtaScaffold inserisce come discendente di `body` — serve un
+      // context interno a questo subtree, non quello del metodo build
+      // esterno (che sta sopra lo scope e non lo vedrebbe mai).
+      body: Builder(
+        builder: (context) => Column(
+          children: [
+            // Gender Picker (Segmented Control)
+            _GenderPicker(
+              selectedGender: state.gender,
+              onGenderChanged: (gender) => notifier.setGender(gender),
             ),
-          ),
-        ],
+
+            // Template Grid
+            Expanded(
+              child: GridView.builder(
+                padding: EdgeInsets.all(context.spacingMd).copyWith(
+                  bottom: context.spacingMd + context.ctaReservedHeight,
+                ),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.8,
+                  mainAxisSpacing: context.spacingMd,
+                  crossAxisSpacing: context.spacingMd,
+                ),
+                itemCount: kTravelTemplates.length,
+                itemBuilder: (context, index) {
+                  final template = kTravelTemplates[index];
+                  final isSelected = state.selectedTemplateKeys.contains(
+                    template.key,
+                  );
+
+                  return _TemplateCard(
+                    template: template,
+                    isSelected: isSelected,
+                    onTap: () => notifier.toggleTemplate(template.key),
+                    colorScheme: colorScheme,
+                    selectedGender: state.gender,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
       bottomContent: UniversalActionBar(
         primaryLabel: selectedTemplatesCount > 0
@@ -124,7 +134,9 @@ class _GenderPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.all(context.spacingMd),
+      // Margine solo su lato, top e bottom = 0:
+      // la distanza picker→griglia è gestita dal padding top del GridView (16px).
+      margin: EdgeInsets.symmetric(horizontal: context.spacingMd),
       alignment: Alignment.center,
       child: AppPillTab<UserGender>(
         items: UserGender.values,
@@ -158,7 +170,7 @@ class _GenderPicker extends StatelessWidget {
 
 /// Card per rappresentare un template di viaggio.
 class _TemplateCard extends StatelessWidget {
-  final dynamic template;
+  final TravelTemplate template;
   final bool isSelected;
   final VoidCallback onTap;
   final ColorScheme colorScheme;
@@ -191,7 +203,7 @@ class _TemplateCard extends StatelessWidget {
             ),
             borderRadius: context.responsiveBorderRadius(16),
             color: isSelected
-                ? colorScheme.primaryContainer.withValues(alpha: 0.3)
+                ? colorScheme.primaryContainer
                 : Colors.transparent,
           ),
           child: Stack(
@@ -218,8 +230,9 @@ class _TemplateCard extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                                    ? FontWeight
+                                          .w600 // 16px selected +1 = w600
+                                    : FontWeight.w400,
                                 color: isSelected
                                     ? colorScheme.primary
                                     : colorScheme.onSurface,
@@ -361,7 +374,7 @@ class _TemplateCard extends StatelessWidget {
               color: count > 0
                   ? colorScheme.onSurface
                   : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600, // labelMedium ≈ 12px → w600
             ),
           ),
         ],

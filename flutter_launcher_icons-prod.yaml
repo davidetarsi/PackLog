@@ -1,0 +1,11 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  
+  # Icona classica iOS/legacy
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true
+  
+  # Adaptive Icons Android
+  adaptive_icon_background: "#FFE6C5" # Il tuo arancione/crema originale
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground_clean.png"

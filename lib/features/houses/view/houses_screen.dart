@@ -4,12 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/house_provider.dart';
 import '../providers/house_stats_provider.dart';
-import '../../trips/providers/trip_provider.dart';
+import '../../../core/sync/sync_provider.dart';
 import '../model/house_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/helpers/entity_action_handler.dart';
+import '../../../shared/widgets/ds_badge.dart';
+import '../../../shared/widgets/entity_context_menu.dart';
+import 'add_edit_house_screen.dart';
+import '../../../shared/widgets/skeleton/skeleton.dart';
+import '../../../shared/widgets/shell_tab_scaffold.dart';
+import '../../../shared/widgets/refreshable_empty_state.dart';
+import '../../../shared/widgets/ds_button.dart';
 
 class HousesScreen extends ConsumerStatefulWidget {
   const HousesScreen({super.key});
@@ -20,78 +28,68 @@ class HousesScreen extends ConsumerStatefulWidget {
 
 class _HousesScreenState extends ConsumerState<HousesScreen> {
   @override
-  void initState() {
-    super.initState();
-    // Invalida i viaggi per ricalcolare lo stato (active/completed)
-    // ogni volta che la schermata viene montata
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(tripNotifierProvider);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final housesAsync = ref.watch(houseNotifierProvider);
+    final isSyncing = ref.watch(syncingProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      body: SafeArea(
-        child: housesAsync.when(
-          data: (houses) {
-            if (houses.isEmpty) {
-              // Stato vuoto scrollabile: senza AlwaysScrollableScrollPhysics
-              // il gesto pull-to-refresh non verrebbe rilevato.
-              return RefreshIndicator(
-                onRefresh: () async =>
-                    ref.refresh(houseNotifierProvider.future),
-                color: colorScheme.primary,
-                child: LayoutBuilder(
-                  builder: (_, constraints) => SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: SizedBox(
-                      height: constraints.maxHeight,
-                      child: EmptyState(
-                        icon: Icons.home_outlined,
-                        title: 'houses.no_houses'.tr(),
-                        subtitle: 'houses.no_houses_subtitle'.tr(),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            // Ordina le case: prima quella principale, poi le altre
-            final sortedHouses = houses.toList()
-              ..sort((a, b) {
-                if (a.isPrimary && !b.isPrimary) return -1;
-                if (!a.isPrimary && b.isPrimary) return 1;
-                return 0;
-              });
-
-            return RefreshIndicator(
-              onRefresh: () async =>
-                  ref.refresh(houseNotifierProvider.future),
-              color: colorScheme.primary,
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(
-                  top: context.spacingMd,
-                  bottom: AppConstants.floatingNavBarPadding,
-                ),
-                itemCount: sortedHouses.length,
-                itemBuilder: (context, index) {
-                  final house = sortedHouses[index];
-                  return _HouseCard(house: house);
-                },
+    return ShellTabScaffold(
+      body: housesAsync.when(
+        skipLoadingOnReload: true,
+        data: (houses) {
+          // Lista vuota durante un fullPull = DB appena svuotato (account switch
+          // o primo avvio), non "utente senza case". Mostra skeleton finché il
+          // pull non porta i dati reali.
+          if (houses.isEmpty && isSyncing) {
+            return const SkeletonHousesBody();
+          }
+          if (houses.isEmpty) {
+            // Stato vuoto scrollabile: senza AlwaysScrollableScrollPhysics
+            // il gesto pull-to-refresh non verrebbe rilevato.
+            return RefreshableEmptyState(
+              onRefresh: () => ref.refresh(houseNotifierProvider.future),
+              icon: Icons.home_outlined,
+              title: 'houses.no_houses_title'.tr(),
+              action: DsButton(
+                label: 'houses.no_houses_subtitle'.tr(),
+                icon: Icons.add,
+                onPressed: () => showAddEditHouseSheet(context),
               ),
             );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => ErrorState(
-            error: error,
-            onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
-          ),
+          }
+
+          // Ordina le case: prima quella principale, poi le altre
+          final sortedHouses = houses.toList()
+            ..sort((a, b) {
+              if (a.isPrimary && !b.isPrimary) return -1;
+              if (!a.isPrimary && b.isPrimary) return 1;
+              return 0;
+            });
+
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(houseNotifierProvider.future),
+            color: colorScheme.primary,
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              // `bottom`: vedi [ShellTabScaffold] — il contenuto scorre dietro
+              // la nav bar flottante, questo padding tiene l'ultima card
+              // raggiungibile.
+              padding: EdgeInsets.only(
+                top: context.spacingMd,
+                bottom: context.navBarReservedHeight,
+              ),
+              itemCount: sortedHouses.length,
+              itemBuilder: (context, index) {
+                final house = sortedHouses[index];
+                return _HouseCard(house: house);
+              },
+            ),
+          );
+        },
+        loading: () => const SkeletonHousesBody(),
+        error: (error, stack) => DsErrorState(
+          error: error,
+          onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
         ),
       ),
     );
@@ -103,13 +101,49 @@ class _HouseCard extends ConsumerWidget {
 
   const _HouseCard({required this.house});
 
+  Future<void> _onLongPress(BuildContext context, WidgetRef ref) async {
+    final action = await showEntityContextMenu(
+      context: context,
+      entityType: 'common.house_type'.tr(),
+      showSetPrimaryAction: true,
+      isPrimary: house.isPrimary,
+    );
+    if (action == null || !context.mounted) return;
+
+    await EntityActionHandler.handleAction(
+      context: context,
+      action: action,
+      entityTypeLabel: 'common.house_type'.tr(),
+      entityName: house.displayName,
+      onCopy: () async {
+        await ref.read(houseNotifierProvider.notifier).duplicateHouse(house.id);
+      },
+      copyErrorMessage: 'errors.save_house_failed'.tr(),
+      copySuccessMessage: 'dialogs.copy_success'.tr(args: [house.displayName]),
+      onDelete: () async {
+        await ref.read(houseNotifierProvider.notifier).deleteHouse(house.id);
+      },
+      deleteErrorMessage: 'errors.delete_failed'.tr(args: [house.displayName]),
+      deleteSuccessMessage: 'houses.delete'.tr(),
+      onSetPrimary: () async {
+        await ref
+            .read(houseNotifierProvider.notifier)
+            .setPrimaryHouse(house.id);
+      },
+      setPrimaryErrorMessage: 'errors.save_house_failed'.tr(),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final statsAsync = ref.watch(houseStatsProvider(house.id));
 
     return Card(
-      margin: context.responsiveSymmetricPadding(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.symmetric(
+        horizontal: context.spacingMd,
+        vertical: context.spacingSm,
+      ),
       elevation: 0,
       color: Colors.transparent,
       shape: RoundedRectangleBorder(
@@ -117,8 +151,7 @@ class _HouseCard extends ConsumerWidget {
           AppConstants.cardBorderRadius + 4,
         ),
         side: BorderSide(
-          color:
-              colorScheme.outline.withValues(alpha: 0.2),
+          color: colorScheme.outlineVariant,
           width: /* house.isPrimary ? 1.5 : */ 1,
         ),
       ),
@@ -131,6 +164,7 @@ class _HouseCard extends ConsumerWidget {
             onTap: () {
               context.push('/houses/${house.id}');
             },
+            onLongPress: () => _onLongPress(context, ref),
             child: Padding(
               padding: EdgeInsets.all(context.spacingMd),
               child: Column(
@@ -139,11 +173,9 @@ class _HouseCard extends ConsumerWidget {
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.all(context.spacingSm + 4),
+                        padding: context.cardPaddingDense,
                         decoration: BoxDecoration(
-                          color: house.isPrimary
-                              ? colorScheme.primary.withValues(alpha: 0.1)
-                              : colorScheme.primaryContainer,
+                          color: colorScheme.primaryContainer,
                           borderRadius: context.responsiveBorderRadius(
                             AppConstants.cardBorderRadius,
                           ),
@@ -162,31 +194,33 @@ class _HouseCard extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              house.name,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: context.fontSizeLg,
-                              ),
+                              house.displayName,
+                              style: Theme.of(context).textTheme.titleLarge,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (house.locationDisplayName != null || house.description != null) ...[
+                            if (house.name.trim().isNotEmpty &&
+                                (house.locationDisplayName != null ||
+                                    house.description != null)) ...[
                               SizedBox(height: context.spacingXs),
                               Row(
                                 children: [
                                   Icon(
                                     Icons.location_on_outlined,
                                     size: 14,
-                                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                    color: colorScheme.onSurfaceVariant,
                                   ),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
-                                      house.locationDisplayName ?? house.description!,
-                                      style: TextStyle(
-                                        fontSize: context.fontSizeSm + 1,
-                                        color: colorScheme.onSurface.withValues(alpha: 0.6),
-                                      ),
+                                      house.locationDisplayName ??
+                                          house.description!,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -199,42 +233,46 @@ class _HouseCard extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  
+
                   // Divider
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-                    child: Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.2)),
+                    child: Divider(
+                      height: 1,
+                      color: colorScheme.outlineVariant,
+                    ),
                   ),
-                  
+
                   // Stats row
                   statsAsync.when(
+                    skipLoadingOnReload: true,
                     data: (stats) => Row(
                       children: [
                         Icon(
                           Icons.inventory_2_outlined,
                           size: 16,
-                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'houses.total_items'.tr(args: [stats.totalItems.toString()]),
-                          style: TextStyle(
-                            fontSize: context.fontSizeSm,
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          'houses.total_items'.tr(
+                            args: [stats.totalItems.toString()],
                           ),
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
                         ),
                         const Spacer(),
                         if (stats.hasItemsInTrip)
-                          _Badge(
+                          DsStatusBadge(
+                            type: DsStatusBadgeType.onTrip,
                             label: 'houses.badge_in_trip'.tr(),
-                            color: colorScheme.primary,
                           ),
                         if (stats.hasItemsInTrip && stats.hasTemporaryItems)
-                          const SizedBox(width: 8),
+                          AppSpacing.hGapSm,
                         if (stats.hasTemporaryItems)
-                          _Badge(
+                          DsStatusBadge(
+                            type: DsStatusBadgeType.temporary,
                             label: 'houses.badge_guest'.tr(),
-                            color: Colors.blue,
                           ),
                       ],
                     ),
@@ -245,53 +283,16 @@ class _HouseCard extends ConsumerWidget {
               ),
             ),
           ),
-          
+
           // Badge principale in alto a destra (stile bookmark/salvato)
           if (house.isPrimary)
+            // push_pin = "casa principale/fissata" — non bookmark (riservato ai viaggi salvati)
             Positioned(
               top: 0,
               right: 12,
-              child: Icon(
-                Icons.bookmark,
-                size: 20,
-                color: colorScheme.primary,
-              ),
+              child: Icon(Icons.push_pin, size: 20, color: colorScheme.primary),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// Widget per i badge "In viaggio" e "Ospite"
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _Badge({
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
       ),
     );
   }

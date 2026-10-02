@@ -2,26 +2,55 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
+import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
+import 'package:pack_log/shared/widgets/tri_slot_bar.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
 import '../../items/view/add_edit_item_screen.dart';
+import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/providers/item_selection_provider.dart';
+import '../../items/widgets/rapid_fire_input.dart';
+import '../../tour/tour_keys.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
-import '../../spaces/view/spaces_management_screen.dart';
-import '../../luggages/view/luggages_management_screen.dart';
-import 'add_edit_house_screen.dart';
+import '../../trips/model/trip_model.dart';
+import '../../trips/providers/trip_provider.dart';
+import '../../trips/view/trip_picker_sheet.dart';
+import '../../spaces/model/space_model.dart';
+import '../../spaces/providers/space_provider.dart';
+import '../../tour/model/onboarding_state.dart';
+import '../../tour/providers/post_login_onboarding_provider.dart';
+import 'house_manage_sheet.dart';
 import '../../../shared/constants/house_icons.dart';
+import '../../../shared/widgets/ds_contextual_app_bar.dart';
+import '../../items/view/bulk_move_sheet.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/widgets/skeleton/skeleton.dart';
+import '../../../shared/widgets/ds_button.dart';
+
+enum _CategoryTab {
+  all('trips.filter_all', null),
+  vestiti('categories.vestiti', ItemCategory.vestiti),
+  toiletries('categories.toiletries', ItemCategory.toiletries),
+  elettronica('categories.elettronica', ItemCategory.elettronica),
+  varie('categories.varie', ItemCategory.varie);
+
+  final String labelKey;
+  final ItemCategory? categoryFilter;
+  const _CategoryTab(this.labelKey, this.categoryFilter);
+  String get label => labelKey.tr();
+}
 
 /// Durata delle transizioni animate tra le due modalità della UI
 /// (normale ↔ selezione multipla).
 const _kModeSwitchDuration = Duration(milliseconds: 220);
+const _kBottomBarElementsHeight = 50.0;
 
 class HouseDetailScreen extends ConsumerStatefulWidget {
   final String houseId;
@@ -33,6 +62,11 @@ class HouseDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
+  /// null = tutti gli item, 'default' = pool generale, spaceId = spazio specifico.
+  String? _spaceFilter;
+  _CategoryTab _categoryTab = _CategoryTab.all;
+  bool _isRapidFireExpanded = false;
+
   // -------------------------------------------------------------------------
   // Manage sheet
   // -------------------------------------------------------------------------
@@ -43,85 +77,13 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     bool isPrimary,
     String houseName,
   ) {
-    showModalBottomSheet(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: Text('houses.edit_info'.tr()),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                showAddEditHouseSheet(context, houseId: houseId);
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                Icons.bookmark,
-                color: isPrimary
-                    ? null
-                    : Theme.of(sheetContext).colorScheme.primary,
-              ),
-              title: Text('houses.set_as_primary'.tr()),
-              enabled: !isPrimary,
-              onTap: isPrimary
-                  ? null
-                  : () {
-                      Navigator.pop(sheetContext);
-                      _setPrimaryHouse(context, houseName);
-                    },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.meeting_room),
-              title: Text('spaces.manage'.tr()),
-              onTap: () async {
-                Navigator.pop(sheetContext);
-                await showSpacesManagementSheet(context, houseId: houseId);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.luggage),
-              title: Text('luggages.manage'.tr()),
-              onTap: () async {
-                Navigator.pop(sheetContext);
-                await showLuggagesManagementSheet(context, houseId: houseId);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAddItemsSheet(BuildContext context, String houseId) {
-    showModalBottomSheet(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.add),
-              title: Text('houses.add_single_item'.tr()),
-              onTap: () async {
-                Navigator.pop(sheetContext);
-                await showAddEditItemSheet(context, houseId: houseId);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.grid_view),
-              title: Text('bulk_creation.add_from_template'.tr()),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                context.push('/bulk-creation/templates/$houseId');
-              },
-            ),
-          ],
-        ),
-      ),
+    showHouseManageSheet(
+      context,
+      houseId: houseId,
+      isPrimary: isPrimary,
+      houseName: houseName,
+      onSetPrimary: () => _setPrimaryHouse(context, houseName),
+      onDelete: () => _showDeleteDialog(context, houseName),
     );
   }
 
@@ -162,42 +124,20 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     if (totalItemsCount > 0) {
       if (!context.mounted) return;
 
-      await showDialog<void>(
+      await DialogHelpers.showInfo(
         context: context,
-        builder: (dialogContext) {
-          final theme = Theme.of(dialogContext);
-          return AlertDialog(
-            title: Text('common.error'.tr()),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('houses.cannot_delete_has_items'.tr()),
-                const SizedBox(height: 16),
-                if (permanentItemsCount > 0)
-                  Text(
-                    '• ${'houses.permanent_items_count'.tr(args: [permanentItemsCount.toString()])}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                if (temporaryItemsCount > 0)
-                  Text(
-                    '• ${'houses.temporary_items_count'.tr(args: [temporaryItemsCount.toString()])}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-              ],
+        title: 'common.error'.tr(),
+        message: 'houses.cannot_delete_has_items'.tr(),
+        details: [
+          if (permanentItemsCount > 0)
+            'houses.permanent_items_count'.tr(
+              args: [permanentItemsCount.toString()],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text('common.ok'.tr()),
-              ),
-            ],
-          );
-        },
+          if (temporaryItemsCount > 0)
+            'houses.temporary_items_count'.tr(
+              args: [temporaryItemsCount.toString()],
+            ),
+        ],
       );
       return;
     }
@@ -239,27 +179,15 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     if (selectedIds.isEmpty) return;
 
     final count = selectedIds.length;
-    final colorScheme = Theme.of(context).colorScheme;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await DialogHelpers.showDeleteConfirmation(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          'items.bulk_delete_confirm_title'.tr(args: [count.toString()]),
-        ),
-        content: Text('items.bulk_delete_confirm_body'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text('common.cancel'.tr()),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: colorScheme.error),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text('common.delete'.tr()),
-          ),
-        ],
+      itemType: '',
+      itemName: '',
+      customTitle: 'items.bulk_delete_confirm_title'.tr(
+        args: [count.toString()],
       ),
+      customMessage: 'items.bulk_delete_confirm_body'.tr(),
     );
 
     if (confirmed != true || !context.mounted) return;
@@ -291,142 +219,301 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     final selectedIds = selectionState.selectedIds.toList();
     if (selectedIds.isEmpty) return;
 
-    // Lista delle case disponibili come destinazione (esclude quella corrente).
-    final allHouses = ref.read(houseNotifierProvider).value ?? [];
-    final otherHouses = allHouses.where((h) => h.id != widget.houseId).toList();
+    if (!context.mounted) return;
+
+    final dest = await BulkMoveSheet.show(
+      context,
+      itemCount: selectedIds.length,
+      sourceHouseId: widget.houseId,
+    );
+
+    if (dest == null || !mounted) return;
+
+    final destinationName = dest.houseDisplayName;
+    final count = selectedIds.length;
+
+    try {
+      await ref
+          .read(itemNotifierProvider(widget.houseId).notifier)
+          .bulkMove(selectedIds, dest.houseId, spaceId: dest.spaceId);
+
+      if (mounted) {
+        AppSnackBar.showSuccess(
+          context,
+          'items.bulk_move_success'.tr(
+            args: [count.toString(), destinationName],
+          ),
+        );
+        final onboardingState = ref
+            .read(postLoginOnboardingProvider)
+            .valueOrNull;
+        if (onboardingState?.step == OnboardingStep.moveItemsTooltip &&
+            widget.houseId == onboardingState?.defaultHouseId) {
+          // Pop first so MainShell + houseFab are visible before the tooltip fires.
+          context.pop();
+          await Future.delayed(const Duration(milliseconds: 400));
+          if (mounted) {
+            await ref.read(postLoginOnboardingProvider.notifier).advance();
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'errors.save_error'.tr());
+      }
+    }
+  }
+
+  /// Mostra il picker "scegli un viaggio" e aggiunge gli item selezionati
+  /// al viaggio scelto (operazione additiva, idempotente — vedi
+  /// [TripRepository.addItemsToTrip]).
+  Future<void> _handleAddToTrip() async {
+    final selectionState = ref.read(itemSelectionNotifierProvider);
+    final selectedIds = selectionState.selectedIds.toList();
+    if (selectedIds.isEmpty) return;
 
     if (!context.mounted) return;
 
-    final colorScheme = Theme.of(context).colorScheme;
+    final trip = await TripPickerSheet.show(context);
+    if (trip == null || !mounted) return;
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+    final allItems =
+        ref.read(itemNotifierProvider(widget.houseId)).value ?? const [];
+    final selectedItems = allItems
+        .where((item) => selectedIds.contains(item.id))
+        .toList();
+
+    final tripItems = selectedItems
+        .map(
+          (item) => TripItem(
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            quantity: item.quantity ?? 1,
+            originHouseId: item.houseId,
           ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12, bottom: 8),
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colorScheme.onSurface.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: Text(
-                    'items.bulk_move_title'.tr(),
-                    style: Theme.of(sheetContext).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const Divider(height: 1),
-                if (otherHouses.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Center(
-                      child: Text(
-                        'items.bulk_move_no_houses'.tr(),
-                        style: Theme.of(sheetContext).textTheme.bodyMedium
-                            ?.copyWith(color: colorScheme.onSurfaceVariant),
-                      ),
-                    ),
-                  )
-                else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: otherHouses.length,
-                    itemBuilder: (_, index) {
-                      final house = otherHouses[index];
-                      return ListTile(
-                        leading: Icon(
-                          HouseIcons.getIcon(house.iconName),
-                          color: colorScheme.primary,
-                        ),
-                        title: Text(house.name),
-                        subtitle: house.isPrimary
-                            ? Text(
-                                'houses.primary'.tr(),
-                                style: TextStyle(
-                                  color: colorScheme.primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              )
-                            : null,
-                        onTap: () async {
-                          // Chiudi il bottom sheet prima dell'operazione asincrona
-                          // per evitare che il context del sheet diventi stale.
-                          Navigator.pop(sheetContext);
+        )
+        .toList();
 
-                          final destinationName = house.name;
-                          final count = selectedIds.length;
+    final count = tripItems.length;
 
-                          try {
-                            await ref
-                                .read(
-                                  itemNotifierProvider(widget.houseId).notifier,
-                                )
-                                .bulkMove(selectedIds, house.id);
+    try {
+      await ref
+          .read(tripNotifierProvider.notifier)
+          .addItemsToTrip(trip.id, tripItems);
 
-                            if (mounted) {
-                              AppSnackBar.showSuccess(
-                                context,
-                                'items.bulk_move_success'.tr(
-                                  args: [count.toString(), destinationName],
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              AppSnackBar.showError(
-                                context,
-                                'errors.save_error'.tr(),
-                              );
-                            }
-                          }
-                        },
-                      );
-                    },
-                  ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
+      if (mounted) {
+        AppSnackBar.showSuccess(
+          context,
+          'items.add_to_trip_success'.tr(args: [count.toString(), trip.name]),
         );
-      },
-    );
+        ref.read(itemSelectionNotifierProvider.notifier).clear();
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'errors.save_error'.tr());
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
-  // AppBar builders
+  // Build
   // -------------------------------------------------------------------------
 
-  /// AppBar standard (modalità normale).
-  AppBar _buildNormalAppBar(
-    BuildContext context,
-    ColorScheme colorScheme,
-    String houseName,
-    IconData houseIcon,
-  ) {
+  @override
+  Widget build(BuildContext context) {
+    final housesAsync = ref.watch(houseNotifierProvider);
+    final spacesAsync = ref.watch(spaceNotifierProvider(widget.houseId));
+    final allItems =
+        ref.watch(itemNotifierProvider(widget.houseId)).value ?? const [];
+
+    final selectionState = ref.watch(itemSelectionNotifierProvider);
+    final isSelectionMode = selectionState.isActive;
+    final selectedCount = selectionState.selectedIds.length;
+    final hasSelection = selectedCount > 0;
+    final allItemIds = allItems.map((i) => i.id).toList();
+
+    return PopScope(
+      canPop: !isSelectionMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          ref.read(itemSelectionNotifierProvider.notifier).clear();
+        }
+      },
+      child: housesAsync.when(
+        data: (houses) {
+          final matchingHouses = houses.where((h) => h.id == widget.houseId);
+          if (matchingHouses.isEmpty) {
+            return Scaffold(
+              appBar: AppBar(title: Text('houses.house_not_found'.tr())),
+              body: DsEmptyState(
+                icon: Icons.home_outlined,
+                title: 'houses.house_not_found_message'.tr(),
+                action: DsButton(
+                  label: 'houses.back_to_houses'.tr(),
+                  icon: Icons.home,
+                  variant: DsButtonVariant.secondary,
+                  onPressed: () => context.go('/'),
+                ),
+              ),
+            );
+          }
+
+          final house = matchingHouses.first;
+          final colorScheme = Theme.of(context).colorScheme;
+
+          return StickyCtaScaffold(
+            appBar: DsContextualAppBar(
+              isInSelectionMode: isSelectionMode,
+              switchDuration: _kModeSwitchDuration,
+              normalAppBar: _HouseNormalAppBar(
+                colorScheme: colorScheme,
+                houseName: house.displayName,
+                houseIcon: HouseIcons.getIcon(house.iconName),
+              ),
+              selectionAppBar: _HouseSelectionAppBar(
+                selectedCount: selectedCount,
+                allItemIds: allItemIds,
+              ),
+            ),
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Riga 1: filtro spazi (solo se esistono spazi) ────────────
+                spacesAsync.when(
+                  data: (spaces) {
+                    // Spazio selezionato eliminato: reset al "tutti"
+                    if (_spaceFilter != null &&
+                        _spaceFilter != 'default' &&
+                        !spaces.any((s) => s.id == _spaceFilter)) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) setState(() => _spaceFilter = null);
+                      });
+                    }
+                    if (spaces.isEmpty) return const SizedBox.shrink();
+                    return _SpaceFilterPills(
+                      spaces: spaces,
+                      allItems: allItems,
+                      selectedSpaceId: _spaceFilter,
+                      onSelected: (id) => setState(() => _spaceFilter = id),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                ),
+                // ── Riga 2: filtro categorie ──────────────────────────────────
+                _CategoryFilterPills(
+                  key: tourKeys.houseItemsAnchor,
+                  selected: _categoryTab,
+                  onSelected: (tab) => setState(() => _categoryTab = tab),
+                ),
+                // ── Contenuto ─────────────────────────────────────────────────
+                Expanded(
+                  child: ItemsScreen(
+                    houseId: widget.houseId,
+                    houseName: house.displayName,
+                    selectedSpaceId: _spaceFilter,
+                    categoryFilter: _categoryTab.categoryFilter,
+                  ),
+                ),
+              ],
+            ),
+            // Bottom bar: transizione animata tra barra normale e barra selezione.
+            bottomContent: AnimatedSwitcher(
+              duration: _kModeSwitchDuration,
+              transitionBuilder: (child, animation) =>
+                  FadeTransition(opacity: animation, child: child),
+              layoutBuilder: (currentChild, previousChildren) => Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  ...previousChildren,
+                  if (currentChild != null) currentChild,
+                ],
+              ),
+              child: isSelectionMode
+                  ? KeyedSubtree(
+                      key: const ValueKey('selection_bar'),
+                      child: UniversalActionBar(
+                        key: const ValueKey('selection-bar'),
+                        primaryLabel: 'common.move'.tr(),
+                        primaryIcon: Icons.local_shipping_outlined,
+                        onPrimaryPressed: hasSelection ? _handleBulkMove : null,
+                        leftAction: CircularActionButton(
+                          icon: Icons.delete_outline,
+                          onPressed: hasSelection ? _handleBulkDelete : null,
+                          color: hasSelection
+                              ? colorScheme.error
+                              : colorScheme.outline,
+                          showBorder: true,
+                        ),
+                        rightAction: CircularActionButton(
+                          icon: Icons.luggage_outlined,
+                          onPressed: hasSelection ? _handleAddToTrip : null,
+                          color: hasSelection
+                              ? colorScheme.primary
+                              : colorScheme.outline,
+                          showBorder: true,
+                        ),
+                      ),
+                    )
+                  : KeyedSubtree(
+                      key: const ValueKey('normal_bar'),
+                      child: _HouseNormalActionBar(
+                        houseId: widget.houseId,
+                        isPrimary: house.isPrimary,
+                        houseName: house.displayName,
+                        isExpanded: _isRapidFireExpanded,
+                        currentSpaceId:
+                            (_spaceFilter != null && _spaceFilter != 'default')
+                            ? _spaceFilter
+                            : null,
+                        onManage: () => _showManageSheet(
+                          context,
+                          widget.houseId,
+                          house.isPrimary,
+                          house.displayName,
+                        ),
+                        onExpandedChanged: (v) =>
+                            setState(() => _isRapidFireExpanded = v),
+                      ),
+                    ),
+            ),
+          );
+        },
+        loading: () => const SkeletonHouseDetailScreen(),
+        error: (error, stack) => Scaffold(
+          appBar: AppBar(title: Text('common.error'.tr())),
+          body: DsErrorState(
+            error: error,
+            onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Private widget components
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _HouseNormalAppBar extends StatelessWidget
+    implements PreferredSizeWidget {
+  final ColorScheme colorScheme;
+  final String houseName;
+  final IconData houseIcon;
+
+  const _HouseNormalAppBar({
+    required this.colorScheme,
+    required this.houseName,
+    required this.houseIcon,
+  });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
     return AppBar(
       key: const ValueKey('normal-appbar'),
       leading: IconButton(
@@ -437,29 +524,38 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(houseIcon, color: colorScheme.primary),
-          const SizedBox(width: 8),
+          AppSpacing.hGapSm,
           Text(houseName),
         ],
       ),
     );
   }
+}
 
-  /// AppBar contestuale (modalità selezione multipla).
-  ///
-  /// Mostra il contatore degli item selezionati, un tasto "chiudi" (X) e
-  /// un tasto "seleziona tutti".
-  AppBar _buildSelectionAppBar(
-    BuildContext context,
-    ColorScheme colorScheme,
-    int selectedCount,
-    List<String> allItemIds,
-  ) {
+/// AppBar contestuale per la modalità selezione multipla.
+/// Mostra il contatore degli item selezionati, un tasto "chiudi" (X) e
+/// un tasto "seleziona tutti / deseleziona tutti".
+class _HouseSelectionAppBar extends ConsumerWidget
+    implements PreferredSizeWidget {
+  final int selectedCount;
+  final List<String> allItemIds;
+
+  const _HouseSelectionAppBar({
+    required this.selectedCount,
+    required this.allItemIds,
+  });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final allSelected =
         allItemIds.isNotEmpty && selectedCount == allItemIds.length;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return AppBar(
       key: const ValueKey('selection-appbar'),
-      // Tasto X: esce dalla modalità selezione e pulisce lo stato.
       leading: IconButton(
         icon: const Icon(Icons.close),
         tooltip: 'common.cancel'.tr(),
@@ -475,14 +571,15 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               ? 'items.select_items'.tr()
               : 'items.selected_count'.tr(args: [selectedCount.toString()]),
           key: ValueKey(selectedCount),
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
       actions: [
-        // Bottone "seleziona tutti" / "deseleziona tutti"
         IconButton(
           icon: Icon(
-            allSelected ? Icons.deselect : Icons.select_all,
+            allSelected
+                ? Icons.indeterminate_check_box_outlined
+                : Icons.check_box_outlined,
             color: colorScheme.primary,
           ),
           tooltip: allSelected
@@ -501,186 +598,145 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
       ],
     );
   }
+}
 
-  // -------------------------------------------------------------------------
-  // Action bar builders
-  // -------------------------------------------------------------------------
+/// Bottom action bar in modalità normale: tasto gestisci (sx), rapid-fire
+/// (centro), AI import (dx).
+class _HouseNormalActionBar extends StatelessWidget {
+  final String houseId;
+  final bool isPrimary;
+  final String houseName;
+  final bool isExpanded;
+  final String? currentSpaceId;
+  final VoidCallback onManage;
+  final void Function(bool) onExpandedChanged;
 
-  /// Bottom action bar standard (modalità normale).
-  Widget _buildNormalActionBar(
-    BuildContext context,
-    ColorScheme colorScheme,
-    String houseId,
-    bool isPrimary,
-    String houseName,
-  ) {
-    return UniversalActionBar(
-      key: const ValueKey('normal-bar'),
-      horizontalPadding: 0,
-      primaryLabel: 'houses.manage'.tr(),
-      primaryIcon: Icons.settings,
-      onPrimaryPressed: () =>
-          _showManageSheet(context, houseId, isPrimary, houseName),
-      leftAction: CircularActionButton(
-        icon: Icons.delete_outline,
-        onPressed: () => _showDeleteDialog(context, houseName),
-        color: colorScheme.error,
-        showBorder: true,
-      ),
-      rightAction: CircularActionButton(
-        icon: Icons.add,
-        onPressed: () => _showAddItemsSheet(context, houseId),
-        showBorder: true,
-      ),
-    );
-  }
-
-  /// Bottom action bar contestuale (modalità selezione multipla).
-  ///
-  /// - Sinistra: elimina gli item selezionati (disabilitato se nessuno scelto)
-  /// - Centro: sposta gli item selezionati (disabilitato se nessuno scelto)
-  Widget _buildSelectionActionBar(
-    BuildContext context,
-    ColorScheme colorScheme,
-    bool hasSelection,
-  ) {
-    return UniversalActionBar(
-      key: const ValueKey('selection-bar'),
-      horizontalPadding: 0,
-      primaryLabel: 'common.move'.tr(),
-      primaryIcon: Icons.local_shipping_outlined,
-      onPrimaryPressed: hasSelection ? _handleBulkMove : null,
-      leftAction: CircularActionButton(
-        icon: Icons.delete_outline,
-        onPressed: hasSelection ? _handleBulkDelete : null,
-        color: hasSelection ? colorScheme.error : colorScheme.outline,
-        showBorder: true,
-      ),
-    );
-  }
-
-  // -------------------------------------------------------------------------
-  // Build
-  // -------------------------------------------------------------------------
+  const _HouseNormalActionBar({
+    required this.houseId,
+    required this.isPrimary,
+    required this.houseName,
+    required this.isExpanded,
+    required this.currentSpaceId,
+    required this.onManage,
+    required this.onExpandedChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final housesAsync = ref.watch(houseNotifierProvider);
+    final elementHeight = context.responsive(_kBottomBarElementsHeight);
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    // Stato della selezione multipla: osservato globalmente qui e propagato
-    // verso il basso tramite il provider (ItemCard lo osserva autonomamente).
-    final selectionState = ref.watch(itemSelectionNotifierProvider);
-    final isSelectionMode = selectionState.isActive;
-    final selectedCount = selectionState.selectedIds.length;
-    final hasSelection = selectedCount > 0;
-
-    // IDs di tutti gli item permanenti della casa: servono per "seleziona tutti".
-    // Accesso diretto al valore cache del provider (senza await) per mantenere
-    // la build sincrona.
-    final allItemIds =
-        ref
-            .watch(itemNotifierProvider(widget.houseId))
-            .value
-            ?.map((i) => i.id)
-            .toList() ??
-        const [];
-
-    return housesAsync.when(
-      data: (houses) {
-        final matchingHouses = houses.where((h) => h.id == widget.houseId);
-        if (matchingHouses.isEmpty) {
-          return Scaffold(
-            appBar: AppBar(title: Text('houses.house_not_found'.tr())),
-            body: EmptyState(
-              icon: Icons.home_outlined,
-              title: 'houses.house_not_found_message'.tr(),
-              action: ElevatedButton.icon(
-                onPressed: () => context.go('/'),
-                icon: const Icon(Icons.home),
-                label: Text('houses.back_to_houses'.tr()),
-              ),
-            ),
-          );
-        }
-
-        final house = matchingHouses.first;
-        final colorScheme = Theme.of(context).colorScheme;
-
-        return StickyCtaScaffold(
-          // AppBar: transizione animata tra modalità normale e selezione.
-          // PreferredSize è obbligatorio perché Scaffold si aspetta un
-          // PreferredSizeWidget; AnimatedSwitcher da solo non lo è.
-          appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(kToolbarHeight),
-            child: AnimatedSwitcher(
-              duration: _kModeSwitchDuration,
-              // Dissolvenza semplice: evita jank da slide su AppBar
-              transitionBuilder: (child, animation) =>
-                  FadeTransition(opacity: animation, child: child),
-              child: isSelectionMode
-                  ? _buildSelectionAppBar(
-                      context,
-                      colorScheme,
-                      selectedCount,
-                      allItemIds,
-                    )
-                  : _buildNormalAppBar(
-                      context,
-                      colorScheme,
-                      house.name,
-                      HouseIcons.getIcon(house.iconName),
-                    ),
-            ),
-          ),
-          body: ItemsScreen(houseId: widget.houseId, houseName: house.name),
-          // Bottom bar: transizione animata tra barra normale e barra selezione.
-          bottomContent: AnimatedSwitcher(
-            duration: _kModeSwitchDuration,
-            transitionBuilder: (child, animation) =>
-                FadeTransition(opacity: animation, child: child),
-            layoutBuilder: (currentChild, previousChildren) {
-              return Stack(
-                alignment: Alignment.bottomCenter,
-                children: <Widget>[
-                  ...previousChildren,
-                  if (currentChild != null) currentChild,
-                ],
-              );
-            },
-            child: isSelectionMode
-                ? KeyedSubtree(
-                    key: const ValueKey(
-                      'selection_bar',
-                    ), // Aiuta l'AnimatedSwitcher
-                    child: _buildSelectionActionBar(
-                      context,
-                      colorScheme,
-                      hasSelection,
-                    ),
-                  )
-                : KeyedSubtree(
-                    key: const ValueKey(
-                      'normal_bar',
-                    ), // Aiuta l'AnimatedSwitcher
-                    child: _buildNormalActionBar(
-                      context,
-                      colorScheme,
-                      widget.houseId,
-                      house.isPrimary,
-                      house.name,
-                    ),
-                  ),
-          ),
-        );
-      },
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (error, stack) => Scaffold(
-        appBar: AppBar(title: Text('common.error'.tr())),
-        body: ErrorState(
-          error: error,
-          onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: TriSlotBar(
+        horizontalPadding: 0,
+        sideSlotWidth: isExpanded ? 0.0 : elementHeight,
+        left: AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: isExpanded ? 0.0 : 1.0,
+          child: isExpanded
+              ? null
+              : CircularActionButton(
+                  icon: Icons.edit,
+                  onPressed: onManage,
+                  showBorder: true,
+                ),
         ),
+        center: RapidFireInput(
+          houseId: houseId,
+          currentSpaceId: currentSpaceId,
+          height: elementHeight,
+          onOpenFullForm: (name, category) => showAddEditItemSheet(
+            context,
+            houseId: houseId,
+            initialName: name.isNotEmpty ? name : null,
+            initialCategory: category,
+          ),
+          onExpandedChanged: onExpandedChanged,
+        ),
+        right: AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: isExpanded ? 0.0 : 1.0,
+          child: isExpanded
+              ? null
+              : CircularActionButton(
+                  icon: Icons.auto_awesome,
+                  onPressed: () => context.push('/houses/$houseId/ai-import'),
+                  showBorder: true,
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SpaceFilterPills extends StatelessWidget {
+  final List<SpaceModel> spaces;
+  final List<ItemModel> allItems;
+  final String? selectedSpaceId;
+  final void Function(String?) onSelected;
+
+  const _SpaceFilterPills({
+    required this.spaces,
+    required this.allItems,
+    required this.selectedSpaceId,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tabItems = <String?>[null, 'default', ...spaces.map((s) => s.id)];
+    final generalPoolCount = allItems.where((i) => i.spaceId == null).length;
+    final spaceCounts = {
+      for (final s in spaces)
+        s.id: allItems.where((i) => i.spaceId == s.id).length,
+    };
+
+    return Padding(
+      padding: EdgeInsets.only(left: context.spacingMd, top: context.spacingSm),
+      child: AppPillTab<String?>.nullable(
+        items: tabItems,
+        selectedItem: selectedSpaceId,
+        getLabel: (spaceId) {
+          if (spaceId == null) return 'spaces.all_items'.tr();
+          if (spaceId == 'default') {
+            return '${'spaces.default'.tr()} ($generalPoolCount)';
+          }
+          final space = spaces.firstWhere((s) => s.id == spaceId);
+          return '${space.name} (${spaceCounts[spaceId] ?? 0})';
+        },
+        onSelected: onSelected,
+        scrollPadding: EdgeInsets.zero,
+      ),
+    );
+  }
+}
+
+class _CategoryFilterPills extends StatelessWidget {
+  final _CategoryTab selected;
+  final void Function(_CategoryTab) onSelected;
+
+  const _CategoryFilterPills({
+    super.key,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: context.spacingMd,
+        top: context.spacingSm,
+        bottom: context.spacingSm,
+      ),
+      child: AppPillTab<_CategoryTab>(
+        items: _CategoryTab.values,
+        selectedItem: selected,
+        getLabel: (tab) => tab.label,
+        onSelected: onSelected,
+        height: 40,
+        scrollPadding: EdgeInsets.symmetric(horizontal: context.spacingSm),
       ),
     );
   }

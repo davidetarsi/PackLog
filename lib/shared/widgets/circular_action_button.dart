@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import '../theme/app_spacing.dart';
 
 /// Bottone circolare per azioni secondarie nelle action bar.
-/// 
+///
 /// Fornisce un design consistente per azioni laterali (delete, add, edit)
 /// con supporto per:
 /// - Icona personalizzabile
 /// - Colore custom o da theme
 /// - Bordo e elevazione
 /// - Stato disabled
-/// 
+///
 /// Esempio:
 /// ```dart
 /// CircularActionButton(
@@ -57,12 +57,11 @@ class CircularActionButton extends StatelessWidget {
     final isEnabled = onPressed != null;
     final iconColor = isEnabled
         ? (color ?? colorScheme.onSurfaceVariant)
-        : colorScheme.onSurface.withValues(alpha: 0.3);
-    
-    // CRITICAL: Bordo sempre BIANCO per i bottoni circolari
+        : colorScheme.onSurface.withValues(alpha: 0.38);
+
     final borderColor = isEnabled
-        ? colorScheme.onSurface.withValues(alpha: 0.15)
-        : colorScheme.onSurface.withValues(alpha: 0.1);
+        ? colorScheme.outlineVariant
+        : colorScheme.outlineVariant.withValues(alpha: 0.5);
 
     return Material(
       color: backgroundColor ?? colorScheme.surface,
@@ -77,17 +76,10 @@ class CircularActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: showBorder
-                ? Border.all(
-                    color: borderColor,
-                    width: 2,
-                  )
+                ? Border.all(color: borderColor, width: 2)
                 : null,
           ),
-          child: Icon(
-            icon,
-            color: iconColor,
-            size: context.iconSizeMd,
-          ),
+          child: Icon(icon, color: iconColor, size: context.iconSizeMd),
         ),
       ),
     );

@@ -12,22 +12,25 @@ import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
+import '../../../shared/widgets/universal_action_bar.dart';
 
 /// Form Content riutilizzabile per item (condiviso tra bottom sheet e full screen)
 class ItemFormContent extends ConsumerStatefulWidget {
   final String? houseId;
   final String? itemId;
-  final void Function(String itemId, String houseId) onSaved;
+  final String? initialName;
+  final ItemCategory? initialCategory;
+  final void Function(String itemId, String houseId)? onSaved;
   final bool showButtons;
-  final ValueChanged<bool>? onLoadingChanged;
 
   const ItemFormContent({
     super.key,
     this.houseId,
     this.itemId,
-    required this.onSaved,
+    this.initialName,
+    this.initialCategory,
+    this.onSaved,
     this.showButtons = true,
-    this.onLoadingChanged,
   });
 
   @override
@@ -40,23 +43,16 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
   final _descriptionController = TextEditingController();
   ItemCategory _selectedCategory = ItemCategory.vestiti;
   int _selectedQuantity = 1;
-  bool _isLoading = false;
+  bool _isSaving = false;
   String? _selectedHouseId;
   String? _selectedSpaceId;
 
-  /// Espone il metodo di salvataggio per uso esterno
-  Future<void> save() => _saveItem();
+  /// Chiamato dal parent sheet via GlobalKey.
+  /// Ritorna il record (itemId, houseId) se salvato, null altrimenti.
+  Future<({String itemId, String houseId})?> save() => _saveItem();
 
-  /// Espone lo stato di loading
-  bool get isLoading => _isLoading;
-
-  /// Espone il nome corrente dell'item (per dialog di conferma)
+  /// Espone il nome corrente dell'item (per dialog conferma elimina)
   String get itemName => _nameController.text.trim();
-
-  void _setLoading(bool value) {
-    setState(() => _isLoading = value);
-    widget.onLoadingChanged?.call(value);
-  }
 
   static const List<int> _quantityOptions = [
     1,
@@ -76,12 +72,16 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
     100,
   ];
 
-  bool get _needsHouseSelection => widget.houseId == null;
-
   @override
   void initState() {
     super.initState();
     _selectedHouseId = widget.houseId;
+    if (widget.initialName != null) {
+      _nameController.text = widget.initialName!;
+    }
+    if (widget.initialCategory != null) {
+      _selectedCategory = widget.initialCategory!;
+    }
     if (widget.itemId != null && widget.houseId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadItem();
@@ -121,7 +121,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(context.spacingMd),
             child: Text(
               'common.select_quantity'.tr(),
               style: Theme.of(context).textTheme.titleLarge,
@@ -137,14 +137,14 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                 return ListTile(
                   title: Text(quantity.toString()),
                   trailing: _selectedQuantity == quantity
-                      ? const Icon(Icons.check, color: AppColors.success)
+                      ? Icon(Icons.check, color: context.appColors.success)
                       : null,
                   onTap: () => Navigator.pop(context, quantity),
                 );
               },
             ),
           ),
-          const SizedBox(height: 16),
+          AppSpacing.gapMd,
         ],
       ),
     );
@@ -153,99 +153,96 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
     }
   }
 
-  Future<void> _saveItem() async {
-    if (_formKey.currentState!.validate()) {
-      if (_selectedHouseId == null) {
-        AppSnackBar.showWarning(context, 'common.select_house'.tr());
-        return;
-      }
-
-      _setLoading(true);
-
-      final now = DateTime.now();
-      final quantity = _selectedQuantity;
-      final houseId = _selectedHouseId!;
-      final itemId = widget.itemId ?? const Uuid().v4();
-
-      final item = widget.itemId != null
-          ? (() {
-              final itemsAsync = ref.read(itemNotifierProvider(houseId));
-              final items = itemsAsync.value;
-              if (items == null) {
-                throw StateError('Oggetto non trovato');
-              }
-              return items
-                  .firstWhere((i) => i.id == widget.itemId)
-                  .copyWith(
-                    name: _nameController.text.trim(),
-                    description: _descriptionController.text.trim().isEmpty
-                        ? null
-                        : _descriptionController.text.trim(),
-                    category: _selectedCategory,
-                    quantity: quantity,
-                    spaceId: _selectedSpaceId,
-                    updatedAt: now,
-                  );
-            })()
-          : ItemModel(
-              id: itemId,
-              houseId: houseId,
-              name: _nameController.text.trim(),
-              description: _descriptionController.text.trim().isEmpty
-                  ? null
-                  : _descriptionController.text.trim(),
-              category: _selectedCategory,
-              quantity: quantity,
-              spaceId: _selectedSpaceId,
-              createdAt: now,
-              updatedAt: now,
-            );
-
-      final isEditing = widget.itemId != null;
-      final success = await ErrorRetryDialog.executeWithRetry(
-        context: context,
-        operation: () async {
-          if (isEditing) {
-            await ref.read(itemNotifierProvider(houseId).notifier).updateItem(item);
-          } else {
-            await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
-          }
-        },
-        errorTitle: 'errors.save_error'.tr(),
-        errorMessage: isEditing
-            ? 'errors.save_item_failed'.tr()
-            : 'errors.create_item_failed'.tr(),
-      );
-
-      if (mounted) {
-        _setLoading(false);
-        if (success) {
-          widget.onSaved(item.id, houseId);
-        }
-      }
+  Future<({String itemId, String houseId})?> _saveItem() async {
+    if (!_formKey.currentState!.validate()) return null;
+    if (_selectedHouseId == null) {
+      AppSnackBar.showWarning(context, 'common.select_house'.tr());
+      return null;
     }
+
+    final now = DateTime.now();
+    final quantity = _selectedQuantity;
+    final houseId = _selectedHouseId!;
+    final itemId = widget.itemId ?? const Uuid().v4();
+
+    final item = widget.itemId != null
+        ? (() {
+            final itemsAsync = ref.read(itemNotifierProvider(houseId));
+            final items = itemsAsync.value;
+            if (items == null) {
+              throw StateError('Oggetto non trovato');
+            }
+            return items
+                .firstWhere((i) => i.id == widget.itemId)
+                .copyWith(
+                  name: _nameController.text.trim(),
+                  description: _descriptionController.text.trim().isEmpty
+                      ? null
+                      : _descriptionController.text.trim(),
+                  category: _selectedCategory,
+                  quantity: quantity,
+                  spaceId: _selectedSpaceId,
+                  updatedAt: now,
+                );
+          })()
+        : ItemModel(
+            id: itemId,
+            houseId: houseId,
+            name: _nameController.text.trim(),
+            description: _descriptionController.text.trim().isEmpty
+                ? null
+                : _descriptionController.text.trim(),
+            category: _selectedCategory,
+            quantity: quantity,
+            spaceId: _selectedSpaceId,
+            createdAt: now,
+            updatedAt: now,
+          );
+
+    final isEditing = widget.itemId != null;
+    final success = await ErrorRetryDialog.executeWithRetry(
+      context: context,
+      operation: () async {
+        if (isEditing) {
+          await ref
+              .read(itemNotifierProvider(houseId).notifier)
+              .updateItem(item);
+        } else {
+          await ref.read(itemNotifierProvider(houseId).notifier).addItem(item);
+        }
+      },
+      errorTitle: 'errors.save_error'.tr(),
+      errorMessage: isEditing
+          ? 'errors.save_item_failed'.tr()
+          : 'errors.create_item_failed'.tr(),
+    );
+
+    if (!success) return null;
+    return (itemId: item.id, houseId: houseId);
   }
 
   @override
   Widget build(BuildContext context) {
     final housesAsync = ref.watch(houseNotifierProvider);
+    // Only show the space selector when the selected house has user-created
+    // spaces. Houses with only the implicit default space get no selector.
+    final hasSpaces =
+        _selectedHouseId != null &&
+        (ref
+                .watch(spaceNotifierProvider(_selectedHouseId!))
+                .valueOrNull
+                ?.isNotEmpty ??
+            false);
 
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_needsHouseSelection) ...[
-            housesAsync.when(
-              data: (houses) => _buildHouseSelector(houses),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('${' common.error'.tr()}: $e'),
-            ),
-            SizedBox(height: context.spacingMd),
-          ],
+          SizedBox(height: context.spacingMd),
           TextFormField(
             controller: _nameController,
-            autofocus: !_needsHouseSelection,
+            autofocus: widget.houseId != null,
             decoration: InputDecoration(
               labelText: 'items.name_label'.tr(),
               border: OutlineInputBorder(
@@ -315,10 +312,16 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
             ],
           ),
           SizedBox(height: context.spacingMd),
-          if (_selectedHouseId != null)
+          housesAsync.when(
+            data: (houses) => _buildHouseSelector(houses),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Text('${'common.error'.tr()}: $e'),
+          ),
+          SizedBox(height: context.spacingMd),
+          if (hasSpaces) ...[
             _buildSpaceSelector(),
-          if (_selectedHouseId != null)
             SizedBox(height: context.spacingMd),
+          ],
           TextFormField(
             controller: _descriptionController,
             decoration: InputDecoration(
@@ -332,24 +335,24 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
             maxLines: 2,
           ),
           if (widget.showButtons) ...[
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _saveItem,
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-                shape: RoundedRectangleBorder(
-                  borderRadius: context.responsiveBorderRadius(
-                    AppConstants.inputBorderRadius,
-                  ),
-                ),
-              ),
-              child: _isLoading
-                  ? SizedBox(
-                      height: context.responsive(20),
-                      width: context.responsive(20),
-                      child: const CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(widget.itemId != null ? 'common.save'.tr() : 'common.create'.tr()),
+            AppSpacing.gapXl,
+            UniversalActionBar(
+              primaryLabel: widget.itemId != null
+                  ? 'common.save'.tr()
+                  : 'common.create'.tr(),
+              isLoading: _isSaving,
+              onPrimaryPressed: _isSaving
+                  ? null
+                  : () async {
+                      setState(() => _isSaving = true);
+                      final result = await _saveItem();
+                      if (mounted) {
+                        setState(() => _isSaving = false);
+                        if (result != null) {
+                          widget.onSaved?.call(result.itemId, result.houseId);
+                        }
+                      }
+                    },
             ),
           ],
         ],
@@ -362,21 +365,21 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
       return Container(
         padding: context.responsiveScreenPadding,
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.warning),
+          border: Border.all(color: context.appColors.warning),
           borderRadius: context.responsiveBorderRadius(8),
         ),
         child: Row(
           children: [
             Icon(
               Icons.warning_amber,
-              color: AppColors.warning,
+              color: context.appColors.warning,
               size: context.iconSizeMd,
             ),
             SizedBox(width: context.spacingSm),
             Expanded(
               child: Text(
                 'items.no_houses_available'.tr(),
-                style: TextStyle(color: AppColors.warning),
+                style: TextStyle(color: context.appColors.warning),
               ),
             ),
           ],
@@ -408,10 +411,10 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                           (h) => h.id == _selectedHouseId,
                           orElse: () => houses.first,
                         )
-                        .name
+                        .displayName
                   : 'items.select_house_prompt'.tr(),
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: _selectedHouseId == null ? AppColors.disabled : null,
+                color: _selectedHouseId == null ? context.textDisabled : null,
               ),
             ),
             Icon(Icons.arrow_drop_down, size: context.iconSizeMd),
@@ -443,14 +446,14 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                 final house = houses[index];
                 return ListTile(
                   leading: Icon(Icons.home, size: itemContext.iconSizeMd),
-                  title: Text(house.name),
+                  title: Text(house.displayName),
                   subtitle: house.description != null
                       ? Text(house.description!)
                       : null,
                   trailing: _selectedHouseId == house.id
                       ? Icon(
                           Icons.check,
-                          color: AppColors.success,
+                          color: context.appColors.success,
                           size: itemContext.iconSizeMd,
                         )
                       : null,
@@ -472,7 +475,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
   }
 
   Widget _buildSpaceSelector() {
-    final spacesAsync = ref.watch(spacesByHouseProvider(_selectedHouseId!));
+    final spacesAsync = ref.watch(spaceNotifierProvider(_selectedHouseId!));
 
     return spacesAsync.when(
       data: (spaces) {
@@ -517,7 +520,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
 
   Future<void> _showSpacePicker(List spaces) async {
     const defaultSpaceSentinel = '_default_space_sentinel_';
-    
+
     final selected = await showModalBottomSheet<String?>(
       context: context,
       builder: (sheetContext) => Column(
@@ -537,16 +540,20 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
               children: [
                 // Default space option
                 ListTile(
-                  leading: Icon(Icons.inventory_2, size: sheetContext.iconSizeMd),
+                  leading: Icon(
+                    Icons.inventory_2,
+                    size: sheetContext.iconSizeMd,
+                  ),
                   title: Text('spaces.default'.tr()),
                   trailing: _selectedSpaceId == null
                       ? Icon(
                           Icons.check,
-                          color: AppColors.success,
+                          color: context.appColors.success,
                           size: sheetContext.iconSizeMd,
                         )
                       : null,
-                  onTap: () => Navigator.pop(sheetContext, defaultSpaceSentinel),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, defaultSpaceSentinel),
                 ),
                 // Spaces
                 ...spaces.map((space) {
@@ -561,7 +568,7 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
                     trailing: _selectedSpaceId == space.id
                         ? Icon(
                             Icons.check,
-                            color: AppColors.success,
+                            color: context.appColors.success,
                             size: sheetContext.iconSizeMd,
                           )
                         : null,

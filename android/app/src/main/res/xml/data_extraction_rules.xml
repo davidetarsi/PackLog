@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Data Extraction Rules (Android 12+, API 31+).
+
+  Disabilitiamo completamente sia il cloud backup sia il device-to-device
+  transfer dei dati dell'app. Motivo: il database locale Drift contiene
+  inventario + dati di viaggio dell'utente, e fino al fix #5 (SQLCipher) è
+  in chiaro. Con `allowBackup="false"` + queste regole impediamo anche che
+  un nuovo device riceva i dati via Auto Backup/Transfer.
+
+  Per Android <12 vale `android:allowBackup="false"` nel manifest.
+-->
+<data-extraction-rules>
+  <cloud-backup>
+    <exclude domain="root" />
+    <exclude domain="file" />
+    <exclude domain="database" />
+    <exclude domain="sharedpref" />
+    <exclude domain="external" />
+  </cloud-backup>
+  <device-transfer>
+    <exclude domain="root" />
+    <exclude domain="file" />
+    <exclude domain="database" />
+    <exclude domain="sharedpref" />
+    <exclude domain="external" />
+  </device-transfer>
+</data-extraction-rules>

@@ -65,23 +65,27 @@ void main() {
       // Questo test verifica che setUp/tearDown funzionino correttamente
       // Il database dovrebbe essere vuoto anche se il test precedente ha inserito dati
       final houses = await database.housesDao.getAllHouses();
+      await pumpEventQueue();
       expect(houses, isEmpty);
     });
 
     test('should support watch streams', () async {
-      // Setup stream
+      // 1. Setup stream
       final stream = database.housesDao.watchAllHouses();
 
-      // Expect emissions
-      expectLater(
+      // 2. Registra l'aspettativa SENZA fare await (inizia ad ascoltare in background)
+      final expectation = expectLater(
         stream,
         emitsInOrder([
-          isEmpty, // Stato iniziale
-          hasLength(1), // Dopo insert
+          isEmpty, // Stato iniziale appena ci si iscrive
+          hasLength(1), // Stato atteso DOPO il nostro inserimento
         ]),
       );
 
-      // Trigger insert
+      // 3. Cedi un tick al motore Dart per elaborare l'iscrizione allo stream
+      await pumpEventQueue();
+
+      // 4. Trigger insert (l'azione che causerà l'emissione del dato)
       await database.housesDao.insertHouse(
         HousesCompanion.insert(
           id: 'house-1',
@@ -90,6 +94,10 @@ void main() {
           updatedAt: DateTime.now(),
         ),
       );
+
+      // 5. ORA facciamo await sull'aspettativa per garantire che lo stream
+      // abbia emesso tutti i dati correttamente prima di chiudere il test.
+      await expectation;
     });
   });
 }

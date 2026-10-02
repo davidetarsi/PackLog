@@ -18,6 +18,19 @@ class AppSpacing {
   static const double iconHero = 64;
 
   // === Font size base ===
+  // Floor: fontXxs = 12px. Mai scendere sotto.
+  //
+  // La fonte di verità per la tipografia è il `textTheme` in app_theme.dart:
+  // preferisci `Theme.of(context).textTheme.<slot>` a questi token grezzi.
+  // I token restano per i casi che nessuno slot copre (icone, emoji hero) e
+  // sono i valori su cui il textTheme è costruito.
+  //
+  // Regola size → weight allineata al textTheme:
+  //   headline/title → w600 | label → w500 (w600 sui badge a 12px) | body → w400
+  // Sostituisce la regola "DS Fase 3" (18–22px → w700, 14–16px → w500): il w700
+  // sui titoli a 20px era una delle cause del peso visivo che stiamo togliendo.
+  static const double fontXxs =
+      12; // Floor assoluto: badge, micro-label, timestamp
   static const double fontXs = 14;
   static const double fontSm = 16;
   static const double fontMd = 18;
@@ -25,14 +38,27 @@ class AppSpacing {
   static const double fontXl = 22;
   static const double fontTitle = 24;
   static const double fontHeading = 28;
+  static const double fontDisplay = 32; // Display / emoji hero size
 
   // === Padding predefiniti ===
 
   /// Padding standard per le schermate
   static const EdgeInsets screenPadding = EdgeInsets.all(md);
 
-  /// Padding per le card
+  /// Padding per le card (vedi cardPaddingHero / cardPaddingDense per i token semantici)
   static const EdgeInsets cardPadding = EdgeInsets.all(sm);
+
+  /// Padding semantico per card eroiche/isolate (una per schermata o in liste poco fitte).
+  /// Casi d'uso: HouseCard, TripSummaryCard, TripCard masonry, TemplateCard, card date TripInfoForm.
+  static const EdgeInsets cardPaddingHero = EdgeInsets.all(md); // 16
+
+  /// Padding semantico per item ad alta frequenza in lista (BulkItemRow, UniversalItemTile, ListTile).
+  static const EdgeInsets cardPaddingDense = EdgeInsets.all(sm); // 8
+
+  // Regola di scelta:
+  // • Hero  (16): card "grande" o card in lista poco fitta.
+  // • Dense  (8): item in lista ad alta frequenza.
+  // Il valore 12 (spacingSm + 4) è eliminato. Ogni caso va mappato su Hero o Dense.
 
   /// Padding per gli elementi di una lista
   static const EdgeInsets listItemPadding = EdgeInsets.symmetric(
@@ -54,10 +80,14 @@ class AppSpacing {
   /// Gap grande tra gruppi di contenuto
   static const SizedBox gapLg = SizedBox(height: lg);
 
+  /// Gap extra-large per sezioni isolate (es. CTA finale di un form)
+  static const SizedBox gapXl = SizedBox(height: xl);
+
   // === Gap orizzontali ===
 
   static const SizedBox hGapSm = SizedBox(width: sm);
   static const SizedBox hGapMd = SizedBox(width: md);
+  static const SizedBox hGapLg = SizedBox(width: lg);
 }
 
 /// Extension per calcolare valori responsive basati sulla larghezza dello schermo.
@@ -78,14 +108,23 @@ extension ResponsiveSpacing on BuildContext {
     return scale.clamp(minScale, maxScale);
   }
 
-  /// Fattore di scala per font (più conservativo)
-  double get fontScaleFactor {
-    const baseWidth = 375.0;
-    const minScale = 0.9;
-    const maxScale = 1.15;
-    final scale = screenWidth / baseWidth;
-    return scale.clamp(minScale, maxScale);
-  }
+  /// Fattore di scala per font. Costante 1.0: i token font NON scalano con la
+  /// larghezza dello schermo.
+  ///
+  /// Perché è stato disattivato (era `clamp(0.9, 1.15)` su `screenWidth/375`):
+  /// 1. **Accessibilità**: il floor a 0.9 *rimpiccioliva* il testo sui telefoni
+  ///    stretti (≤ 337dp), cioè proprio dove leggere è più difficile. La scala
+  ///    per larghezza può al più ingrandire, mai ridurre.
+  /// 2. **Coerenza con il textTheme**: `ThemeData` si costruisce senza
+  ///    `BuildContext`, quindi `textTheme` non può essere scalato. Tenere i
+  ///    getter `fontSize*` scalati avrebbe fatto divergere i due binari fino
+  ///    all'8% a seconda del device — lo stesso doppio binario che il
+  ///    textTheme esplicito serve a eliminare.
+  /// 3. La dimensione del testo è una preferenza dell'utente, non del device:
+  ///    ci pensa già `MediaQuery.textScaler` (mai sovrascritto in questa app).
+  ///
+  /// I token in [AppSpacing] valgono quindi esattamente il numero che dichiarano.
+  double get fontScaleFactor => 1.0;
 
   // === Spaziature responsive ===
 
@@ -105,6 +144,7 @@ extension ResponsiveSpacing on BuildContext {
 
   // === Font responsive ===
 
+  double get fontSizeXxs => AppSpacing.fontXxs * fontScaleFactor;
   double get fontSizeXs => AppSpacing.fontXs * fontScaleFactor;
   double get fontSizeSm => AppSpacing.fontSm * fontScaleFactor;
   double get fontSizeMd => AppSpacing.fontMd * fontScaleFactor;
@@ -112,6 +152,7 @@ extension ResponsiveSpacing on BuildContext {
   double get fontSizeXl => AppSpacing.fontXl * fontScaleFactor;
   double get fontSizeTitle => AppSpacing.fontTitle * fontScaleFactor;
   double get fontSizeHeading => AppSpacing.fontHeading * fontScaleFactor;
+  double get fontSizeDisplay => AppSpacing.fontDisplay * fontScaleFactor;
 
   // === Padding responsive ===
 
@@ -119,6 +160,19 @@ extension ResponsiveSpacing on BuildContext {
 
   EdgeInsets get responsiveCardPadding => EdgeInsets.all(spacingSm);
 
+  /// Padding semantico responsive per card eroiche/isolate.
+  /// Corrisponde ad AppSpacing.cardPaddingHero scalato al device.
+  EdgeInsets get cardPaddingHero => EdgeInsets.all(spacingMd);
+
+  /// Padding semantico responsive per item ad alta frequenza in lista.
+  /// Corrisponde ad AppSpacing.cardPaddingDense scalato al device.
+  EdgeInsets get cardPaddingDense => EdgeInsets.all(spacingSm);
+
+  @Deprecated(
+    'Usa EdgeInsets.symmetric(horizontal: context.spacingMd, vertical: context.spacingSm) '
+    'oppure i token context.cardPaddingHero / context.cardPaddingDense. '
+    'Rimosso nella Fase 1 del design system refactor (DS_FIXES 1.10).',
+  )
   EdgeInsets responsiveSymmetricPadding({
     double horizontal = 0,
     double vertical = 0,

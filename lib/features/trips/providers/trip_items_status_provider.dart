@@ -73,7 +73,11 @@ ItemTripStatus itemTripStatus(Ref ref, String itemId) {
       }
       return ItemTripStatus.notOnTrip;
     },
+    // Loading silenzioso: il badge "in viaggio" sull'item è assente mentre i trip
+    // caricano. Meno fastidioso visivamente di uno skeleton inline nella lista item.
     loading: () => ItemTripStatus.notOnTrip,
+    // Error silenzioso: se i trip falliscono, l'item appare "non in viaggio".
+    // L'errore è visibile altrove (trip list), non serve duplicarlo sui badge.
     error: (e, s) => ItemTripStatus.notOnTrip,
   );
 }
@@ -89,11 +93,13 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
   final tripsAsync = ref.watch(tripNotifierProvider);
   // Fallback retrocompatibilità: item con originHouseId vuoto vengono risolti
   // verificando a quale casa appartiene effettivamente l'ItemModel.
-  final houseItemIdSet = ref
-      .watch(itemNotifierProvider(houseId))
-      .valueOrNull
-      ?.map((i) => i.id)
-      .toSet() ?? {};
+  final houseItemIdSet =
+      ref
+          .watch(itemNotifierProvider(houseId))
+          .valueOrNull
+          ?.map((i) => i.id)
+          .toSet() ??
+      {};
 
   return tripsAsync.when(
     data: (trips) {
@@ -101,7 +107,8 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
       for (final trip in trips) {
         if (trip.isActive) {
           for (final item in trip.items) {
-            final belongsToThisHouse = item.originHouseId == houseId ||
+            final belongsToThisHouse =
+                item.originHouseId == houseId ||
                 (item.originHouseId.isEmpty &&
                     houseItemIdSet.contains(item.id));
             if (belongsToThisHouse) {
@@ -112,6 +119,9 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
       }
       return itemIds;
     },
+    // Loading silenzioso: zero item "in viaggio" mentre i trip caricano.
+    // I badge della house detail non mostrano skeleton — appaiono direttamente
+    // quando i dati sono pronti.
     loading: () => <String>{},
     error: (e, s) => <String>{},
   );
@@ -127,11 +137,13 @@ Set<String> itemsOnTripFromHouse(Ref ref, String houseId) {
 @riverpod
 Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
   final tripsAsync = ref.watch(tripNotifierProvider);
-  final houseItemIdSet = ref
-      .watch(itemNotifierProvider(houseId))
-      .valueOrNull
-      ?.map((i) => i.id)
-      .toSet() ?? {};
+  final houseItemIdSet =
+      ref
+          .watch(itemNotifierProvider(houseId))
+          .valueOrNull
+          ?.map((i) => i.id)
+          .toSet() ??
+      {};
 
   return tripsAsync.when(
     data: (trips) {
@@ -141,7 +153,8 @@ Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
       for (final trip in trips) {
         if (trip.isActive) {
           for (final item in trip.items) {
-            final belongsToThisHouse = item.originHouseId == houseId ||
+            final belongsToThisHouse =
+                item.originHouseId == houseId ||
                 (item.originHouseId.isEmpty &&
                     houseItemIdSet.contains(item.id));
             if (belongsToThisHouse) {
@@ -163,6 +176,8 @@ Map<String, int> itemQuantitiesOnTripFromHouse(Ref ref, String houseId) {
       }
       return quantities;
     },
+    // Loading silenzioso: mappa vuota mentre i trip caricano.
+    // Stesso rationale di [itemsOnTripFromHouseProvider].
     loading: () => <String, int>{},
     error: (e, s) => <String, int>{},
   );
@@ -197,6 +212,8 @@ List<TripItem> temporaryItemsInHouse(Ref ref, String houseId) {
       }
       return items;
     },
+    // Loading silenzioso: sezione "item temporanei" assente mentre i trip caricano.
+    // Meno fastidioso di un placeholder vuoto che appare e scompare.
     loading: () => [],
     error: (e, s) => [],
   );

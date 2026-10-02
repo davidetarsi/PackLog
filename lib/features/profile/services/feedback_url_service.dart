@@ -47,8 +47,7 @@ class FeedbackUrlService {
   final PackageInfoFactory _packageInfoFactory;
 
   FeedbackUrlService({PackageInfoFactory? packageInfoFactory})
-      : _packageInfoFactory =
-            packageInfoFactory ?? PackageInfo.fromPlatform;
+    : _packageInfoFactory = packageInfoFactory ?? PackageInfo.fromPlatform;
 
   /// ⚠️ Sostituisci con il valore reale del tuo form (es. `'entry.123456789'`).
   static const String _osEntryId = 'entry.833472047';

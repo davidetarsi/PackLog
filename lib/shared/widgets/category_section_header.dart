@@ -4,17 +4,17 @@ import '../../features/items/model/item_model.dart';
 import '../theme/app_spacing.dart';
 
 /// Widget riutilizzabile per l'intestazione di una sezione di categoria.
-/// 
+///
 /// Mostra un'icona e il nome della categoria, con un trailing widget opzionale
 /// (es: badge con conteggio item).
-/// 
+///
 /// Esempio base:
 /// ```dart
 /// CategorySectionHeader(
 ///   category: ItemCategory.vestiti,
 /// )
 /// ```
-/// 
+///
 /// Esempio con trailing:
 /// ```dart
 /// CategorySectionHeader(
@@ -32,7 +32,7 @@ class CategorySectionHeader extends StatelessWidget {
   /// Dimensione dell'icona (se null, usa la dimensione responsive)
   final double? iconSize;
 
-  /// Colore dell'icona e del testo (se null, usa primary del tema)
+  /// Colore dell'icona e del testo (se null, usa `onSurfaceVariant`)
   final Color? color;
 
   /// Padding orizzontale della sezione
@@ -54,7 +54,10 @@ class CategorySectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final effectiveColor = color ?? colorScheme.primary;
+    // La categoria è un'etichetta di raggruppamento, non un'azione: prende lo
+    // stesso grigio del testo delle pill non selezionate. L'arancione resta
+    // riservato a ciò su cui si può agire o che è stato scelto.
+    final effectiveColor = color ?? colorScheme.onSurfaceVariant;
     final effectiveIconSize = iconSize ?? context.responsive(20);
 
     return Padding(
@@ -64,19 +67,15 @@ class CategorySectionHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            _getCategoryIcon(category),
-            size: effectiveIconSize,
-            color: effectiveColor,
-          ),
+          Icon(category.icon, size: effectiveIconSize, color: effectiveColor),
           SizedBox(width: context.spacingSm),
           Expanded(
             child: Text(
               _getCategoryName(category),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: effectiveColor,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: effectiveColor,
+                fontWeight: FontWeight.w500, // titleSmall ≈ 14px → w500
+              ),
             ),
           ),
           if (trailing != null) ...[
@@ -86,19 +85,6 @@ class CategorySectionHeader extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  IconData _getCategoryIcon(ItemCategory category) {
-    switch (category) {
-      case ItemCategory.vestiti:
-        return Icons.checkroom;
-      case ItemCategory.toiletries:
-        return Icons.soap;
-      case ItemCategory.elettronica:
-        return Icons.devices;
-      case ItemCategory.varie:
-        return Icons.category;
-    }
   }
 
   String _getCategoryName(ItemCategory category) {

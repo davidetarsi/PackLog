@@ -6,6 +6,10 @@ import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/items/view/add_edit_item_screen.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
+import '../../features/tour/tour_keys.dart';
+import '../../features/houses/providers/house_provider.dart';
+import '../../features/tour/model/onboarding_state.dart';
+import '../../features/tour/providers/post_login_onboarding_provider.dart';
 
 /// Shell principale dell'app con tab bar persistente
 class MainShell extends ConsumerStatefulWidget {
@@ -100,14 +104,25 @@ class _MainShellState extends ConsumerState<MainShell>
     showAddEditItemSheet(context);
   }
 
-  void _onCreateHouse() {
+  Future<void> _onCreateHouse() async {
     _closeCreateMenu();
-    showAddEditHouseSheet(context);
-  }
+    final onboardingStep = ref
+        .read(postLoginOnboardingProvider)
+        .valueOrNull
+        ?.step;
+    final housesBefore =
+        ref.read(houseNotifierProvider).valueOrNull?.length ?? 0;
 
-  void _onCreateBulk() {
-    _closeCreateMenu();
-    context.push('/bulk-creation/select-house');
+    await showAddEditHouseSheet(context);
+
+    if (!mounted) return;
+    if (onboardingStep == OnboardingStep.houseTooltip) {
+      final housesAfter =
+          ref.read(houseNotifierProvider).valueOrNull?.length ?? 0;
+      if (housesAfter > housesBefore) {
+        await ref.read(postLoginOnboardingProvider.notifier).advance();
+      }
+    }
   }
 
   @override
@@ -143,6 +158,14 @@ class _MainShellState extends ConsumerState<MainShell>
         extendBody: true,
         body: Stack(
           children: [
+            // Anchor invisibile per gli step info-card del tour (nessun spotlight)
+            Center(
+              child: SizedBox(
+                key: tourKeys.infoCardTarget,
+                width: 1,
+                height: 1,
+              ),
+            ),
             // Contenuto principale
             widget.navigationShell,
 
@@ -192,17 +215,10 @@ class _MainShellState extends ConsumerState<MainShell>
                           ),
                           SizedBox(height: context.spacingSm),
                           _CreatePillTab(
-                            icon: Icons.grid_view,
-                            label: 'bulk_creation.add_from_template'.tr(),
-                            colorScheme: colorScheme,
-                            onTap: _onCreateBulk,
-                          ),
-                          SizedBox(height: context.spacingSm),
-                          _CreatePillTab(
                             icon: Icons.home,
                             label: 'houses.add'.tr(),
                             colorScheme: colorScheme,
-                            onTap: _onCreateHouse,
+                            onTap: () => _onCreateHouse(),
                           ),
                         ],
                       ),
@@ -242,6 +258,7 @@ class _MainShellState extends ConsumerState<MainShell>
                 children: [
                   Expanded(
                     child: _NavItem(
+                      key: tourKeys.profileTab,
                       icon: Icons.person_3_outlined,
                       selectedIcon: Icons.person_3,
                       label: 'common.profile'.tr(),
@@ -251,6 +268,7 @@ class _MainShellState extends ConsumerState<MainShell>
                   ),
                   Expanded(
                     child: _NavItem(
+                      key: tourKeys.housesTab,
                       icon: Icons.home_outlined,
                       selectedIcon: Icons.home,
                       label: 'navigation.houses'.tr(),
@@ -260,6 +278,7 @@ class _MainShellState extends ConsumerState<MainShell>
                   ),
                   Expanded(
                     child: _NavItem(
+                      key: tourKeys.tripsTab,
                       icon: Icons.luggage_outlined,
                       selectedIcon: Icons.luggage,
                       label: 'navigation.trips'.tr(),
@@ -269,6 +288,7 @@ class _MainShellState extends ConsumerState<MainShell>
                   ),
                   Expanded(
                     child: _NavItem(
+                      key: tourKeys.houseFab,
                       icon: _isCreateMenuOpen
                           ? Icons.close
                           : Icons.add_circle_outline,
@@ -298,6 +318,7 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const _NavItem({
+    super.key,
     required this.icon,
     required this.selectedIcon,
     required this.label,
@@ -334,11 +355,7 @@ class _NavItem extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  // fontSize leggermente ridotta per garantire che testo +
-                  // icona stiano sempre dentro tabBarHeight su ogni densità.
-                  fontSize: context.responsive(10),
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: isSelected
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant,
@@ -379,9 +396,9 @@ class _CreatePillTab extends StatelessWidget {
           AppConstants.pillBorderRadius,
         ),
         child: Padding(
-          padding: context.responsiveSymmetricPadding(
-            horizontal: 20,
-            vertical: 12,
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacingMd + context.spacingXs, // 20 scalato
+            vertical: context.spacingSm + context.spacingXs, // 12 scalato
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

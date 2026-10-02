@@ -6,30 +6,292 @@
 /// **Single Responsibility**: ogni file ha esattamente una ragione di essere
 /// modificato.
 ///
-/// Flusso di avvio:
+/// Flusso di avvio (anti-ANR):
 /// ```
 /// main_dev.dart / main_prod.dart
 ///       │
 ///       └─► bootstrap(Environment) ──► _validateConfig()
 ///                                   ──► EasyLocalization.ensureInitialized()
-///                                   ──► _initializePersistence()
-///                                   └─► runApp(MyApp)
+///                                   ──► runApp(MyApp) ← immediato
+///                                          │
+///                                          └─► MyApp watches appBootstrapProvider
+///                                                ├─ loading → splash screen
+///                                                └─ data    → MaterialApp.router
+///                                                     (Sentry, Supabase, Amplitude,
+///                                                      persistence init deferite)
 /// ```
+///
+/// TUTTA l'inizializzazione pesante (Sentry, Supabase, Amplitude, migrazione
+/// DB, backup) è deferita DOPO runApp tramite [appBootstrapProvider] per
+/// evitare ANR: Android triggera ANR se il main thread resta bloccato >5s
+/// prima del primo frame. Sentry viene inizializzato senza appRunner;
+/// gli errori sono comunque catturati via FlutterError.onError e
+/// PlatformDispatcher.onError.
+///
+/// **DataIntegrityService** non è incluso nel flusso automatico: disponibile
+/// tramite [dataIntegrityServiceProvider] per ispezioni manuali (Debug).
 library;
 
+import 'dart:async';
+import 'dart:io' show Platform;
+
+import 'package:amplitude_flutter/amplitude.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tgram_analytics/tgram_analytics.dart';
 
+import 'package:sqlite3/open.dart';
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
+
+import 'core/analytics/analytics_service.dart';
+import 'core/auth/secure_local_storage.dart';
+import 'core/consent/consent_provider.dart';
 import 'core/database/database.dart';
+import 'core/database/encryption/db_passphrase_service.dart';
+import 'core/database/encryption/encryption_migration_service.dart';
 import 'core/database/migration_service.dart';
-import 'core/database/services/backup_service.dart';
-import 'core/database/services/data_integrity_service.dart';
+import 'core/monitoring/app_error_observer.dart';
+import 'core/monitoring/bootstrap_error_buffer.dart';
+import 'core/monitoring/monitoring_service.dart';
 import 'core/routing/app_router.dart';
+import 'core/sync/sync_provider.dart';
+import 'features/onboarding/providers/onboarding_status_provider.dart';
 import 'shared/config/app_config.dart';
+import 'shared/theme/app_spacing.dart';
+import 'shared/providers/language_locale.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/theme/app_theme.dart';
+import 'shared/widgets/ds_error_state.dart';
+
+// ═════════════════════════════════════════════════════════════════════════════
+// DEFERRED BOOTSTRAP PROVIDER
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// Impostato da [bootstrap] prima di [runApp], letto da [appBootstrapProvider].
+///
+/// Nullable e non `late`: [initConsentedAnalytics] è pubblica e viene chiamata
+/// anche dalla schermata di login. In produzione a quel punto il bootstrap è
+/// già passato di qui, ma un `late` non inizializzato farebbe esplodere la
+/// funzione in qualunque contesto che non abbia eseguito [bootstrap] — i test
+/// per primi. Meglio un default esplicito che un `LateInitializationError`.
+Environment? _environment;
+
+/// Environment corrente, con fallback su [Environment.dev].
+///
+/// Il fallback è deliberatamente il più conservativo: in dev tgram non parte
+/// e Sentry campiona tutto, quindi sbagliare in questa direzione non produce
+/// traffico indesiderato verso i backend di produzione.
+Environment get _currentEnvironment => _environment ?? Environment.dev;
+
+/// Buffer per eccezioni di bootstrap avvenute prima dell'init di Sentry.
+///
+/// Viene svuotato in [_initNonCriticalServices] appena Sentry è pronto.
+final BootstrapErrorBuffer _bootstrapErrorBuffer = BootstrapErrorBuffer();
+
+/// Inizializzazione pesante deferita dopo il primo frame.
+///
+/// Sentry, Supabase, Amplitude e persistenza vengono inizializzati qui
+/// anziché in [bootstrap] per evitare ANR su Android: [runApp] viene
+/// chiamato subito, e [MyApp] mostra uno splash screen finché questo
+/// provider non completa.
+///
+/// Sentry è inizializzato senza [appRunner] — gli errori sono comunque
+/// catturati via [FlutterError.onError] e [PlatformDispatcher.onError].
+final appBootstrapProvider = FutureProvider<void>((ref) async {
+  // Solo servizi critici per il funzionamento dell'app (local-first).
+  // Supabase serve al sync orchestrator, persistence al DB.
+  // Il consenso va idratato prima di qualunque altra cosa: `AppAnalyticsService`
+  // è fail-closed e scarta ogni evento finché `hasConsent` non è leggibile.
+  // Anticiparlo riduce a zero la finestra in cui un utente che ha già
+  // acconsentito perderebbe eventi.
+  await ref.read(consentServiceProvider).load();
+
+  await Future.wait([
+    _guardedInit(
+      'Supabase',
+      () => Supabase.initialize(
+        url: AppConfig.supabaseUrl,
+        anonKey: AppConfig.supabaseAnonKey,
+        // Sessione persistita in Keychain (iOS) / EncryptedSharedPreferences
+        // (Android, Keystore-backed). Vedi [SecureLocalStorage] — include
+        // anche migrazione one-shot dalle vecchie SharedPreferences.
+        authOptions: FlutterAuthClientOptions(
+          localStorage: SecureLocalStorage(
+            persistSessionKey:
+                'sb-${Uri.parse(AppConfig.supabaseUrl).host.split(".").first}-auth-token',
+          ),
+        ),
+      ),
+    ),
+    _initializePersistence(),
+  ]);
+
+  debugPrint('[Bootstrap] Future.wait completato, avvio sync orchestrator...');
+  ref.read(syncOrchestratorProvider);
+  debugPrint('[Bootstrap] Sync orchestrator inizializzato');
+
+  // Servizi non critici schedulati sull'event queue — la parte sincrona di
+  // SentryFlutter.init() (native bindings, integrations) blocca il main
+  // thread. Schedulandoli con Future.delayed il provider completa prima,
+  // l'UI renderizza, e solo dopo parte l'init pesante.
+  // `hasConsent` è già leggibile: `consentServiceProvider.load()` è stato
+  // atteso sopra.
+  final bool hasConsent = ref.read(consentServiceProvider).hasConsent;
+  Future.delayed(
+    Duration.zero,
+    () => _initNonCriticalServices(
+      hasConsent,
+      // Un evento per avvio del processo. `trigger` è sempre `cold_start`
+      // oggi: esiste perché il giorno in cui conteremo anche i rientri dal
+      // background quelli avranno `resume`, e i dati storici resteranno
+      // confrontabili filtrando invece di diventare incomparabili.
+      onAnalyticsReady: () async {
+        final analytics = ref.read(analyticsServiceProvider);
+        // La versione va impostata prima del primo `identify`, altrimenti la
+        // sessione resta senza `app_version` fino al login successivo.
+        // `PackageInfo` è async ma siamo già fuori dal percorso critico.
+        try {
+          analytics.appVersion = (await PackageInfo.fromPlatform()).version;
+        } catch (e) {
+          debugPrint('[Bootstrap] versione app non leggibile: $e');
+        }
+        analytics.logEvent('app_opened', properties: {'trigger': 'cold_start'});
+      },
+    ),
+  );
+  debugPrint('[Bootstrap] ✅ appBootstrapProvider completato');
+});
+
+/// Inizializza gli SDK di analytics che richiedono il consenso.
+///
+/// Separata da [_initNonCriticalServices] perché va invocata **anche** nel
+/// momento in cui l'utente presta il consenso, non solo all'avvio: chi apre
+/// l'app per la prima volta non ha consenso al bootstrap, e senza questa
+/// chiamata resterebbe senza analytics fino al riavvio successivo.
+///
+/// Idempotente: le chiamate successive alla prima sono no-op.
+///
+/// **Perché non basta il gate in `AppAnalyticsService`.** Quel gate impedisce
+/// di *trasmettere* eventi, ed è già fail-closed. Ma `Amplitude.init()` apre
+/// per conto proprio una sessione e raccoglie proprietà del dispositivo: è
+/// esso stesso un trattamento, e va quindi posticipato al consenso. Senza
+/// questa separazione la dichiarazione "analytics opzionali" nel Data safety
+/// di Play sarebbe falsa, e Google rileva Amplitude scansionando l'AAB.
+Future<void> initConsentedAnalytics() async {
+  if (_consentedAnalyticsStarted) return;
+  _consentedAnalyticsStarted = true;
+
+  final bool amplitudeEnabled =
+      AppConfig.amplitudeApiKey.isNotEmpty &&
+      AppConfig.amplitudeApiKey != 'MISSING_AMPLITUDE_API_KEY';
+
+  if (amplitudeEnabled) {
+    await _guardedInit(
+      'Amplitude',
+      () => Amplitude.getInstance().init(AppConfig.amplitudeApiKey),
+    );
+  }
+
+  // tgram-analytics: di norma inizializzato SOLO in prod. Il piano free ha
+  // quota 1 progetto, quindi lo stream è riservato agli eventi reali — le
+  // build dev non devono inquinarlo. Finché `init()` non viene chiamato, il
+  // sink tgram in [AppAnalyticsService] è un no-op (non bufferizza), quindi
+  // in dev non accumula nulla in memoria.
+  //
+  // [AppConfig.tgramForceEnable] è la sola deroga: senza di essa le analytics
+  // sarebbero verificabili solo dopo una release firmata dalla CI, perché il
+  // login Google in prod richiede il keystore di release. Il flag va passato
+  // esplicitamente da riga di comando, mai impostato di default.
+  final bool tgramEnabled =
+      (_currentEnvironment == Environment.prod || AppConfig.tgramForceEnable) &&
+      AppConfig.tgramApiKey.isNotEmpty &&
+      AppConfig.tgramApiKey != 'MISSING_TGRAM_API_KEY';
+
+  if (tgramEnabled) {
+    // Sincrono e non fallibile a runtime (l'unica eccezione possibile è sulla
+    // validazione del formato della chiave), ma passa comunque da
+    // _guardedInit per uniformità di logging con gli altri servizi.
+    await _guardedInit(
+      'tgram-analytics',
+      () async => TGA.init(AppConfig.tgramApiKey, AppConfig.tgramServerUrl),
+    );
+  }
+}
+
+/// Guardia di idempotenza per [initConsentedAnalytics].
+bool _consentedAnalyticsStarted = false;
+
+/// `true` se [initConsentedAnalytics] è già stata eseguita in questa
+/// esecuzione dell'app.
+@visibleForTesting
+bool get consentedAnalyticsStarted => _consentedAnalyticsStarted;
+
+/// Azzera la guardia di [initConsentedAnalytics]. Solo per i test.
+@visibleForTesting
+void resetConsentedAnalyticsForTest() => _consentedAnalyticsStarted = false;
+
+/// [onAnalyticsReady] viene invocata quando gli SDK sotto consenso sono
+/// effettivamente inizializzati, non prima: `AppAnalyticsService` scarta gli
+/// eventi finché `TGA.isInitialized` è falso (bypassando di proposito il
+/// buffering pre-init del SDK), quindi emettere `app_opened` prima di questo
+/// momento significherebbe perderlo. Non viene invocata affatto senza
+/// consenso — è la ragione per cui la primissima apertura di un utente nuovo
+/// non è contata, ed è ricostruibile da `login_screen_viewed`.
+void _initNonCriticalServices(
+  bool hasConsent, {
+  void Function()? onAnalyticsReady,
+}) {
+  final bool sentryEnabled =
+      AppConfig.sentryDsn.isNotEmpty &&
+      AppConfig.sentryDsn != 'MISSING_SENTRY_DSN';
+
+  if (sentryEnabled) {
+    // Sample rate per env: in dev catturiamo tutto per facilitare il debug,
+    // in prod 10% per non bruciare la quota performance al crescere degli utenti.
+    final double tracesSampleRate = switch (_currentEnvironment) {
+      Environment.prod => 0.1,
+      Environment.dev => 1.0,
+    };
+    _guardedInit(
+      'Sentry',
+      () => SentryFlutter.init((options) {
+        options.dsn = AppConfig.sentryDsn;
+        options.environment = _currentEnvironment.name;
+        options.tracesSampleRate = tracesSampleRate;
+      }),
+    ).then((_) => _bootstrapErrorBuffer.flush(AppMonitoringService()));
+  }
+
+  // Sentry resta **fuori** dal gate del consenso, deliberatamente: il crash
+  // reporting è diagnostico, non profilazione, gira con `sendDefaultPii`
+  // disattivato (default) e serve a intercettare i crash che avvengono prima
+  // che l'utente possa esprimere qualunque preferenza — cioè proprio quelli
+  // che non si riesce a diagnosticare altrimenti.
+  //
+  // Amplitude e tgram invece sì: vedi [initConsentedAnalytics].
+  if (hasConsent) {
+    initConsentedAnalytics().then((_) => onAnalyticsReady?.call());
+  } else {
+    debugPrint('[Bootstrap] analytics in attesa del consenso');
+  }
+}
+
+Future<void> _guardedInit(String name, Future<dynamic> Function() init) async {
+  try {
+    await init().timeout(const Duration(seconds: 10));
+    debugPrint('[Bootstrap] ✅ $name inizializzato');
+  } on TimeoutException {
+    debugPrint('[Bootstrap] ⚠️  $name init timeout — proseguo senza');
+  } catch (e) {
+    debugPrint('[Bootstrap] ⚠️  $name init fallito: $e');
+  }
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ENUM Environment
@@ -62,57 +324,63 @@ enum Environment {
 
 /// Punto di bootstrap condiviso per tutti gli entry-point dell'app.
 ///
-/// Riceve l'[env] dall'entry-point del flavor e orchestra in sequenza:
-/// 1. Inizializzazione del binding Flutter.
-/// 2. Validazione della configurazione (con severità dipendente da [env]).
-/// 3. Inizializzazione della localizzazione (async).
-/// 4. Pipeline di persistenza: migrazione → integrità → backup.
-/// 5. Avvio dell'app con [runApp].
+/// Esegue solo operazioni veloci prima di [runApp] per evitare ANR:
+/// 1. Binding Sentry-compatibile.
+/// 2. Validazione configurazione.
+/// 3. EasyLocalization (veloce, serve per l'UI).
+/// 4. [runApp] immediato — nessun await pesante.
 ///
-/// Il blocco `try/catch` globale garantisce che qualsiasi errore non gestito
-/// durante l'avvio venga loggato con stack trace leggibile, anziché causare
-/// un crash silenzioso con schermata nera.
-///
-/// Esempio di utilizzo dall'entry-point:
-/// ```dart
-/// Future<void> main() async => bootstrap(Environment.dev);
-/// ```
+/// Tutta l'inizializzazione pesante (Sentry, Supabase, Amplitude, persistenza)
+/// è gestita da [appBootstrapProvider] e visualizzata con uno splash screen.
 Future<void> bootstrap(Environment env) async {
-  // Deve essere la prima chiamata assoluta: abilita l'interazione con il
-  // framework Flutter (channels, plugin, servizi nativi) prima di runApp.
+  // In release silenziamo `debugPrint` globalmente. Motivi:
+  // 1. Sicurezza/privacy: log come `[Auth] ...`, `[SyncService] ...`,
+  //    `[SupabaseRepo] ...` finiscono in logcat su Android e console su iOS;
+  //    su un device condiviso o tramite ADB sono recuperabili. Niente
+  //    secret veri (token coperto altrove), ma userId, houseId, conteggi e
+  //    messaggi di errore raw sono comunque informazioni di troppo.
+  // 2. Performance: ogni `debugPrint` formatta una stringa e fa I/O — su
+  //    sync loop o pull frequenti, costa.
+  // In dev/profile (`kReleaseMode = false`) lasciamo il comportamento
+  // standard di Flutter per debug confortevole.
+  if (kReleaseMode) {
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
+
+  // Usa il binding standard Flutter — idempotente e privo di dipendenze da Sentry.
+  // SentryFlutter.init() viene chiamato dopo runApp in [appBootstrapProvider]
+  // dove si occupa autonomamente dell'integrazione con FlutterError.onError e
+  // PlatformDispatcher.onError (standard Flutter 3.3+).
+  // Non usare SentryWidgetsFlutterBinding.ensureInitialized() qui: il custom
+  // binding Sentry può causare "Binding has not yet been initialized" quando
+  // altri package (es. connectivity_plus, sync orchestrator) accedono a
+  // WidgetsBinding.instance prima che Sentry abbia completato la propria init.
   WidgetsFlutterBinding.ensureInitialized();
+  _environment = env;
 
   try {
     _validateConfig(env);
 
-    // easy_localization carica i file di traduzione in modo asincrono;
-    // deve essere inizializzato prima di runApp per evitare un frame senza
-    // traduzioni visibile all'utente.
     await EasyLocalization.ensureInitialized();
 
-    // Pipeline di persistenza: non-bloccante, gli errori vengono loggati
-    // ma non impediscono l'avvio (meglio l'app parzialmente funzionante
-    // che uno schermo bianco).
-    await _initializePersistence();
+    final deviceLangCode =
+        WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+    final startLocale = resolveLocale(deviceLangCode);
 
     runApp(
       EasyLocalization(
-        supportedLocales: const [
-          Locale('it', 'IT'),
-          Locale('en', 'US'),
-        ],
+        supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
         path: 'assets/translations',
-        fallbackLocale: const Locale('it', 'IT'),
+        fallbackLocale: const Locale('en', 'US'),
+        startLocale: startLocale,
         child: ProviderScope(
+          observers: [AppErrorObserver()],
           child: MyApp(environment: env),
         ),
       ),
     );
   } catch (e, stackTrace) {
-    // Catch-all critico: logga il problema con stack trace completo e
-    // propaga l'eccezione affinché il framework Flutter mostri la schermata
-    // di errore predefinita (rosso su nero in debug, grigio in release).
-    debugPrint('[Bootstrap] ❌ ERRORE CRITICO durante l\'avvio: $e');
+    debugPrint('[Bootstrap] ERRORE CRITICO durante l\'avvio: $e');
     debugPrint('[Bootstrap] Stack trace:\n$stackTrace');
     rethrow;
   }
@@ -140,16 +408,29 @@ void _validateConfig(Environment env) {
       rethrow;
     }
     // In dev logghiamo il problema senza interrompere lo sviluppo.
-    debugPrint('[Bootstrap] ⚠️  Configurazione incompleta (ignorata in dev): $e');
+    debugPrint(
+      '[Bootstrap] ⚠️  Configurazione incompleta (ignorata in dev): $e',
+    );
   }
 }
 
 /// Inizializza tutti i servizi di persistenza in modo robusto.
 ///
 /// Esegue in ordine sequenziale:
-/// 1. **Migrazione**: trasferisce i dati legacy da SharedPreferences a Drift.
-/// 2. **Integrità**: verifica e ripara automaticamente eventuali inconsistenze.
-/// 3. **Backup**: crea un backup automatico se l'ultimo è troppo vecchio.
+/// 1. **Migrazione SQLCipher**: cifra il DB in chiaro, se necessario.
+/// 2. **Migrazione dati**: trasferisce i dati legacy da SharedPreferences a Drift.
+///
+/// Non esiste più alcun backup automatico su file: la copia di sicurezza è
+/// il sync su Supabase. L'unico `.pre-encrypt-backup` che viene creato è
+/// temporaneo, interno a [EncryptionMigrationService], e vive nella
+/// directory privata dell'app.
+///
+/// Il [DataIntegrityService] **non viene eseguito automaticamente** all'avvio:
+/// SQLite garantisce già l'integrità referenziale tramite FK con `ON DELETE
+/// CASCADE/SET NULL` e `PRAGMA foreign_keys = ON`. L'esecuzione automatica
+/// causava overhead O(N) ad ogni avvio senza benefici concreti per un DB
+/// locale. Il servizio resta disponibile per uso manuale (area Debug) o per
+/// sanificare dati migrati dai vecchi JSON tramite [dataIntegrityServiceProvider].
 ///
 /// La connessione [AppDatabase] aperta qui è temporanea e viene chiusa al
 /// termine: ogni provider Riverpod creerà la propria connessione lazy al
@@ -158,23 +439,34 @@ Future<void> _initializePersistence() async {
   debugPrint('[Bootstrap] Inizializzazione persistenza...');
 
   try {
-    final AppDatabase database = AppDatabase();
+    // Su Android, dice al package sqlite3 di caricare libsqlcipher.so invece
+    // di libsqlite3.so (che non esiste: sqlcipher_flutter_libs shippa solo
+    // libsqlcipher.so). Deve avvenire PRIMA di qualsiasi chiamata a sqlite3
+    // inclusa EncryptionMigrationService.
+    if (Platform.isAndroid) {
+      open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+    }
+
+    // Migrazione SQLCipher: deve avvenire PRIMA di qualsiasi apertura del DB.
+    // La migration è idempotente: in fresh install genera solo la passphrase.
+    final passphraseService = DbPassphraseService();
+    final migrationService = await EncryptionMigrationService.withDefaultPaths(
+      passphraseService,
+    );
+    await migrationService.ensureMigrated();
+
+    final AppDatabase database = AppDatabase(passphraseService);
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     await _runMigration(database, prefs);
-    await _checkDataIntegrity(database);
 
-    // CRITICO: chiudi il DB PRIMA del backup automatico.
-    // BackupService copia il file raw: in WAL mode il file .db principale
-    // non contiene le transazioni più recenti finché la connessione è aperta.
-    // Chiudere qui fa flushed il WAL nel file principale e rilascia i lock,
-    // garantendo che la copia sia completa e non corrotta.
+    // Chiudi la connessione usata per la migrazione: i provider Riverpod
+    // aprono la propria connessione lazy al primo utilizzo.
     await database.close();
-
-    await _createAutoBackup();
 
     debugPrint('[Bootstrap] ✅ Persistenza inizializzata con successo');
   } catch (e, stackTrace) {
+    _bootstrapErrorBuffer.record('persistence', e, stackTrace);
     // Non blocchiamo l'avvio: l'app può funzionare (parzialmente) anche
     // senza persistenza inizializzata, e l'utente vedrà comunque i dati
     // già presenti nel database non corrotto.
@@ -198,57 +490,9 @@ Future<void> _runMigration(
     if (!success) {
       debugPrint('[Bootstrap] ⚠️  Migrazione non completata');
     }
-  } catch (e) {
+  } catch (e, st) {
+    _bootstrapErrorBuffer.record('migration', e, st);
     debugPrint('[Bootstrap] Errore durante la migrazione: $e');
-  }
-}
-
-/// Verifica l'integrità dei dati e tenta la riparazione automatica.
-///
-/// Segue una strategia a due fasi per bilanciare velocità e completezza:
-/// 1. Quick check (O(1)): verifica metadati del database.
-/// 2. Full check (O(N)): verifica referential integrity e consistenza dati.
-Future<void> _checkDataIntegrity(AppDatabase database) async {
-  try {
-    final DataIntegrityService integrityService =
-        DataIntegrityService(database);
-
-    final bool quickOk = await integrityService.quickCheck();
-    if (!quickOk) {
-      debugPrint(
-        '[Bootstrap] Quick check fallito, eseguo verifica completa...',
-      );
-    }
-
-    final result = await integrityService.runFullCheck();
-
-    if (!result.isHealthy) {
-      debugPrint(
-        '[Bootstrap] Trovati ${result.issueCount} problemi di integrità',
-      );
-      if (result.fixableIssueCount > 0) {
-        debugPrint('[Bootstrap] Tento riparazione automatica...');
-        final int fixed = await integrityService.autoFix(result);
-        debugPrint('[Bootstrap] Riparati $fixed problemi');
-      }
-    } else {
-      debugPrint('[Bootstrap] ✅ Database integro');
-    }
-  } catch (e) {
-    debugPrint('[Bootstrap] Errore nella verifica integrità: $e');
-  }
-}
-
-/// Crea un backup automatico del database se l'ultimo è troppo vecchio.
-///
-/// La logica di throttling (es. "non prima di X ore dall'ultimo backup")
-/// è delegata al [BackupService] per mantenere questa funzione coesa.
-Future<void> _createAutoBackup() async {
-  try {
-    final BackupService backupService = BackupService();
-    await backupService.createAutoBackupIfNeeded();
-  } catch (e) {
-    debugPrint('[Bootstrap] Errore nel backup automatico: $e');
   }
 }
 
@@ -258,32 +502,114 @@ Future<void> _createAutoBackup() async {
 
 /// Widget radice dell'applicazione.
 ///
-/// Riceve l'[environment] per differenziare il comportamento visivo:
-/// il banner "DEBUG" è mostrato solo in [Environment.dev] per non
-/// confondere gli utenti finali in produzione.
+/// Osserva [appBootstrapProvider]: mostra uno splash screen durante
+/// l'inizializzazione pesante (Supabase, Amplitude, persistenza), poi
+/// passa al [MaterialApp.router] con il router completo.
 class MyApp extends ConsumerWidget {
-  /// L'ambiente di esecuzione corrente.
   final Environment environment;
 
   const MyApp({required this.environment, super.key});
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<ThemeMode> themeModeAsync =
-        ref.watch(themeModeNotifierProvider);
-
-    return MaterialApp.router(
-      title: 'Pack Log',
-      // Il banner "DEBUG" è visibile solo in dev per non disorientare
-      // gli utenti in produzione con indicatori tecnici.
+  // Builds a MaterialApp (splash/error) or MaterialApp.router (main) sharing
+  // all common props. Pass exactly one of [home] or [routerConfig].
+  Widget _app(
+    BuildContext context, {
+    Widget? home,
+    RouterConfig<Object>? routerConfig,
+    ThemeMode themeMode = ThemeMode.dark,
+  }) {
+    assert(
+      (home == null) != (routerConfig == null),
+      'Pass exactly one of home or routerConfig',
+    );
+    if (routerConfig != null) {
+      return MaterialApp.router(
+        title: 'Pack Log',
+        debugShowCheckedModeBanner: environment == Environment.dev,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: themeMode,
+        routerConfig: routerConfig,
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        locale: context.locale,
+      );
+    }
+    return MaterialApp(
       debugShowCheckedModeBanner: environment == Environment.dev,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
-      routerConfig: appRouter,
+      themeMode: themeMode,
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
+      home: home!,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bootstrapState = ref.watch(appBootstrapProvider);
+
+    return bootstrapState.when(
+      loading: () => _app(
+        context,
+        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
+      ),
+      error: (error, _) => _app(
+        context,
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Text(
+                'Errore di avvio: $error',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+      ),
+      data: (_) {
+        return ref
+            .watch(onboardingStatusProvider)
+            .when(
+              loading: () => _app(
+                context,
+                home: const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+              error: (error, _) => _app(
+                context,
+                home: Scaffold(
+                  body: DsErrorState(
+                    error: error,
+                    onRetry: () => ref.invalidate(onboardingStatusProvider),
+                  ),
+                ),
+              ),
+              data: (_) {
+                final themeModeAsync = ref.watch(themeModeNotifierProvider);
+
+                final localeCode = context.locale.languageCode;
+                final currentProviderLocale = ref.read(languageLocaleProvider);
+                if (currentProviderLocale != localeCode) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    ref
+                        .read(languageLocaleProvider.notifier)
+                        .updateLocale(localeCode);
+                  });
+                }
+
+                return _app(
+                  context,
+                  routerConfig: ref.watch(appRouterProvider),
+                  themeMode: themeModeAsync.valueOrNull ?? ThemeMode.dark,
+                );
+              },
+            );
+      },
     );
   }
 }

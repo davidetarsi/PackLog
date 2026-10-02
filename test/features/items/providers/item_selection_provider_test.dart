@@ -46,10 +46,7 @@ void main() {
     });
 
     test('equality: due stati uguali sono ==', () {
-      final s1 = ItemSelectionState(
-        isActive: true,
-        selectedIds: {'x', 'y'},
-      );
+      final s1 = ItemSelectionState(isActive: true, selectedIds: {'x', 'y'});
       final s2 = ItemSelectionState(
         isActive: true,
         selectedIds: {'y', 'x'}, // ordine diverso, stesso contenuto
@@ -152,24 +149,28 @@ void main() {
       );
     });
 
-    test('genera un nuovo Set ad ogni chiamata (contratto reattività Riverpod)',
-        () {
-      final container = makeContainer();
-      addTearDown(container.dispose);
-      final notifier = container.read(itemSelectionNotifierProvider.notifier);
+    test(
+      'genera un nuovo Set ad ogni chiamata (contratto reattività Riverpod)',
+      () {
+        final container = makeContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(itemSelectionNotifierProvider.notifier);
 
-      notifier.toggleMode();
-      notifier.toggleItem('a');
-      final setAfterFirst =
-          container.read(itemSelectionNotifierProvider).selectedIds;
+        notifier.toggleMode();
+        notifier.toggleItem('a');
+        final setAfterFirst = container
+            .read(itemSelectionNotifierProvider)
+            .selectedIds;
 
-      notifier.toggleItem('b');
-      final setAfterSecond =
-          container.read(itemSelectionNotifierProvider).selectedIds;
+        notifier.toggleItem('b');
+        final setAfterSecond = container
+            .read(itemSelectionNotifierProvider)
+            .selectedIds;
 
-      // Istanze diverse: il Set non deve essere mutato in place.
-      expect(identical(setAfterFirst, setAfterSecond), isFalse);
-    });
+        // Istanze diverse: il Set non deve essere mutato in place.
+        expect(identical(setAfterFirst, setAfterSecond), isFalse);
+      },
+    );
 
     test('selezionare più item accumula correttamente', () {
       final container = makeContainer();
@@ -257,10 +258,7 @@ void main() {
       notifier.toggleItem('x');
       notifier.selectAll([]);
 
-      expect(
-        container.read(itemSelectionNotifierProvider).selectionCount,
-        1,
-      );
+      expect(container.read(itemSelectionNotifierProvider).selectionCount, 1);
     });
   });
 
@@ -304,17 +302,11 @@ void main() {
       // 2. Tap su altri item per aggiungere
       notifier.toggleItem('item-B');
       notifier.toggleItem('item-C');
-      expect(
-        container.read(itemSelectionNotifierProvider).selectionCount,
-        3,
-      );
+      expect(container.read(itemSelectionNotifierProvider).selectionCount, 3);
 
       // 3. Tap su item già selezionato → deseleziona
       notifier.toggleItem('item-B');
-      expect(
-        container.read(itemSelectionNotifierProvider).selectionCount,
-        2,
-      );
+      expect(container.read(itemSelectionNotifierProvider).selectionCount, 2);
 
       // 4. Utente annulla la selezione (tasto X o back)
       notifier.clear();

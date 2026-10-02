@@ -2,7 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 /// Icone predefinite disponibili per gli spazi/armadi.
-/// 
+///
 /// Ogni spazio può avere un'icona personalizzata scelta tra queste opzioni.
 class SpaceIcons {
   SpaceIcons._();

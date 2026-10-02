@@ -5,12 +5,16 @@ import '../database.dart';
 enum IntegrityIssueType {
   /// Item senza casa associata
   orphanItem,
+
   /// Trip item senza viaggio associato
   orphanTripItem,
+
   /// Viaggio con casa di destinazione non esistente
   invalidDestinationHouse,
+
   /// Dati mancanti o corrotti
   corruptedData,
+
   /// Foreign key non valida
   invalidForeignKey,
 }
@@ -53,7 +57,7 @@ class IntegrityCheckResult {
 }
 
 /// Servizio per verificare e riparare l'integrità dei dati.
-/// 
+///
 /// Fornisce:
 /// - Verifica delle foreign key
 /// - Rilevamento di dati orfani
@@ -84,7 +88,7 @@ class DataIntegrityService {
     issues.addAll(await _checkDataConsistency());
 
     final duration = DateTime.now().difference(startTime);
-    
+
     debugPrint(
       '[DataIntegrity] Verifica completata in ${duration.inMilliseconds}ms. '
       'Problemi trovati: ${issues.length}',
@@ -100,7 +104,7 @@ class DataIntegrityService {
   /// Verifica items senza casa associata.
   Future<List<IntegrityIssue>> _checkOrphanItems() async {
     final issues = <IntegrityIssue>[];
-    
+
     try {
       final orphans = await _database.customSelect('''
         SELECT i.id, i.name, i.house_id 
@@ -110,14 +114,17 @@ class DataIntegrityService {
       ''').get();
 
       for (final row in orphans) {
-        issues.add(IntegrityIssue(
-          type: IntegrityIssueType.orphanItem,
-          table: 'items',
-          recordId: row.read<String>('id'),
-          description: 'Item "${row.read<String>('name')}" ha house_id '
-              '"${row.read<String>('house_id')}" che non esiste',
-          canAutoFix: true, // Possiamo eliminare l'item orfano
-        ));
+        issues.add(
+          IntegrityIssue(
+            type: IntegrityIssueType.orphanItem,
+            table: 'items',
+            recordId: row.read<String>('id'),
+            description:
+                'Item "${row.read<String>('name')}" ha house_id '
+                '"${row.read<String>('house_id')}" che non esiste',
+            canAutoFix: true, // Possiamo eliminare l'item orfano
+          ),
+        );
       }
     } catch (e) {
       debugPrint('[DataIntegrity] Errore controllando items orfani: $e');
@@ -129,7 +136,7 @@ class DataIntegrityService {
   /// Verifica trip_items senza viaggio associato.
   Future<List<IntegrityIssue>> _checkOrphanTripItems() async {
     final issues = <IntegrityIssue>[];
-    
+
     try {
       final orphans = await _database.customSelect('''
         SELECT ti.id, ti.name, ti.trip_id 
@@ -139,14 +146,17 @@ class DataIntegrityService {
       ''').get();
 
       for (final row in orphans) {
-        issues.add(IntegrityIssue(
-          type: IntegrityIssueType.orphanTripItem,
-          table: 'trip_item_entries',
-          recordId: row.read<String>('id'),
-          description: 'Trip item "${row.read<String>('name')}" ha trip_id '
-              '"${row.read<String>('trip_id')}" che non esiste',
-          canAutoFix: true, // Possiamo eliminare il trip_item orfano
-        ));
+        issues.add(
+          IntegrityIssue(
+            type: IntegrityIssueType.orphanTripItem,
+            table: 'trip_item_entries',
+            recordId: row.read<String>('id'),
+            description:
+                'Trip item "${row.read<String>('name')}" ha trip_id '
+                '"${row.read<String>('trip_id')}" che non esiste',
+            canAutoFix: true, // Possiamo eliminare il trip_item orfano
+          ),
+        );
       }
     } catch (e) {
       debugPrint('[DataIntegrity] Errore controllando trip_items orfani: $e');
@@ -158,7 +168,7 @@ class DataIntegrityService {
   /// Verifica viaggi con casa di destinazione non valida.
   Future<List<IntegrityIssue>> _checkInvalidDestinationHouses() async {
     final issues = <IntegrityIssue>[];
-    
+
     try {
       final invalid = await _database.customSelect('''
         SELECT t.id, t.name, t.destination_house_id 
@@ -168,14 +178,17 @@ class DataIntegrityService {
       ''').get();
 
       for (final row in invalid) {
-        issues.add(IntegrityIssue(
-          type: IntegrityIssueType.invalidDestinationHouse,
-          table: 'trips',
-          recordId: row.read<String>('id'),
-          description: 'Viaggio "${row.read<String>('name')}" ha destination_house_id '
-              '"${row.read<String>('destination_house_id')}" che non esiste',
-          canAutoFix: true, // Possiamo impostare a NULL
-        ));
+        issues.add(
+          IntegrityIssue(
+            type: IntegrityIssueType.invalidDestinationHouse,
+            table: 'trips',
+            recordId: row.read<String>('id'),
+            description:
+                'Viaggio "${row.read<String>('name')}" ha destination_house_id '
+                '"${row.read<String>('destination_house_id')}" che non esiste',
+            canAutoFix: true, // Possiamo impostare a NULL
+          ),
+        );
       }
     } catch (e) {
       debugPrint('[DataIntegrity] Errore controllando case destinazione: $e');
@@ -187,7 +200,7 @@ class DataIntegrityService {
   /// Verifica consistenza generale dei dati.
   Future<List<IntegrityIssue>> _checkDataConsistency() async {
     final issues = <IntegrityIssue>[];
-    
+
     try {
       // Verifica case con nome vuoto
       final emptyHouses = await _database.customSelect('''
@@ -195,13 +208,15 @@ class DataIntegrityService {
       ''').get();
 
       for (final row in emptyHouses) {
-        issues.add(IntegrityIssue(
-          type: IntegrityIssueType.corruptedData,
-          table: 'houses',
-          recordId: row.read<String>('id'),
-          description: 'Casa con nome vuoto o nullo',
-          canAutoFix: false,
-        ));
+        issues.add(
+          IntegrityIssue(
+            type: IntegrityIssueType.corruptedData,
+            table: 'houses',
+            recordId: row.read<String>('id'),
+            description: 'Casa con nome vuoto o nullo',
+            canAutoFix: false,
+          ),
+        );
       }
 
       // Verifica items con nome vuoto
@@ -210,13 +225,15 @@ class DataIntegrityService {
       ''').get();
 
       for (final row in emptyItems) {
-        issues.add(IntegrityIssue(
-          type: IntegrityIssueType.corruptedData,
-          table: 'items',
-          recordId: row.read<String>('id'),
-          description: 'Item con nome vuoto o nullo',
-          canAutoFix: false,
-        ));
+        issues.add(
+          IntegrityIssue(
+            type: IntegrityIssueType.corruptedData,
+            table: 'items',
+            recordId: row.read<String>('id'),
+            description: 'Item con nome vuoto o nullo',
+            canAutoFix: false,
+          ),
+        );
       }
 
       // Verifica viaggi con nome vuoto
@@ -225,13 +242,15 @@ class DataIntegrityService {
       ''').get();
 
       for (final row in emptyTrips) {
-        issues.add(IntegrityIssue(
-          type: IntegrityIssueType.corruptedData,
-          table: 'trips',
-          recordId: row.read<String>('id'),
-          description: 'Viaggio con nome vuoto o nullo',
-          canAutoFix: false,
-        ));
+        issues.add(
+          IntegrityIssue(
+            type: IntegrityIssueType.corruptedData,
+            table: 'trips',
+            recordId: row.read<String>('id'),
+            description: 'Viaggio con nome vuoto o nullo',
+            canAutoFix: false,
+          ),
+        );
       }
     } catch (e) {
       debugPrint('[DataIntegrity] Errore controllando consistenza: $e');
@@ -241,21 +260,22 @@ class DataIntegrityService {
   }
 
   /// Ripara automaticamente i problemi che possono essere risolti.
-  /// 
+  ///
   /// Ritorna il numero di problemi riparati.
   Future<int> autoFix(IntegrityCheckResult checkResult) async {
     int fixed = 0;
-    
+
     for (final issue in checkResult.issues.where((i) => i.canAutoFix)) {
       try {
         switch (issue.type) {
           case IntegrityIssueType.orphanItem:
-            await _database.customStatement(
-              'DELETE FROM items WHERE id = ?',
-              [issue.recordId],
-            );
+            await _database.customStatement('DELETE FROM items WHERE id = ?', [
+              issue.recordId,
+            ]);
             fixed++;
-            debugPrint('[DataIntegrity] Eliminato item orfano: ${issue.recordId}');
+            debugPrint(
+              '[DataIntegrity] Eliminato item orfano: ${issue.recordId}',
+            );
             break;
 
           case IntegrityIssueType.orphanTripItem:
@@ -264,7 +284,9 @@ class DataIntegrityService {
               [issue.recordId],
             );
             fixed++;
-            debugPrint('[DataIntegrity] Eliminato trip_item orfano: ${issue.recordId}');
+            debugPrint(
+              '[DataIntegrity] Eliminato trip_item orfano: ${issue.recordId}',
+            );
             break;
 
           case IntegrityIssueType.invalidDestinationHouse:
@@ -273,7 +295,9 @@ class DataIntegrityService {
               [issue.recordId],
             );
             fixed++;
-            debugPrint('[DataIntegrity] Rimossa destinazione non valida: ${issue.recordId}');
+            debugPrint(
+              '[DataIntegrity] Rimossa destinazione non valida: ${issue.recordId}',
+            );
             break;
 
           default:
@@ -296,7 +320,9 @@ class DataIntegrityService {
       await _database.customSelect('SELECT COUNT(*) FROM houses').getSingle();
       await _database.customSelect('SELECT COUNT(*) FROM items').getSingle();
       await _database.customSelect('SELECT COUNT(*) FROM trips').getSingle();
-      await _database.customSelect('SELECT COUNT(*) FROM trip_item_entries').getSingle();
+      await _database
+          .customSelect('SELECT COUNT(*) FROM trip_item_entries')
+          .getSingle();
       return true;
     } catch (e) {
       debugPrint('[DataIntegrity] Quick check fallito: $e');

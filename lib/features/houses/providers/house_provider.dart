@@ -1,91 +1,98 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/sync/sync_provider.dart';
+import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/house_model.dart';
 import '../repositories/house_repository.dart';
 
 part 'house_provider.g.dart';
 
+/// Notifier per la lista di case dell'utente.
+///
+/// Usa [SyncedCrudNotifier] per il pattern standard load → mutate → reload.
+/// Ogni mutazione richiede automaticamente un sync push tramite l'hook
+/// [onMutationSuccess].
 @Riverpod(keepAlive: true)
-class HouseNotifier extends _$HouseNotifier {
-  HouseRepository? repository;
+class HouseNotifier extends _$HouseNotifier
+    with SyncedCrudNotifier<HouseModel> {
+  HouseRepository get _repo => ref.read(houseRepositoryProvider);
+  CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
 
   @override
   Future<List<HouseModel>> build() async {
-    repository = ref.watch(houseRepositoryProvider);
-    final houses = await repository!.getAllHouses();
-    return houses;
+    ref.watch(syncTriggerProvider);
+    return _repo.getAllHouses();
   }
 
-  Future<void> addHouse(HouseModel model) async {
-    repository ??= ref.read(houseRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.addHouse(model);
-      final houses = await repository!.getAllHouses();
-      state = AsyncData(houses);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
+  @override
+  void onMutationSuccess(List<HouseModel> updated) {
+    ref.read(syncOrchestratorProvider).requestSync();
   }
 
-  Future<void> updateHouse(HouseModel model) async {
-    repository ??= ref.read(houseRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.updateHouse(model);
-      final houses = await repository!.getAllHouses();
-      state = AsyncData(houses);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
-  }
+  Future<void> addHouse(HouseModel model) => mutate(
+    operation: () => _repo.addHouse(model),
+    reload: _repo.getAllHouses,
+    rethrowOnly: true,
+    onSuccess: (houses) => _analytics.trackHouseCreated(
+      houseId: model.id,
+      totalHouses: houses.length,
+    ),
+  );
 
-  Future<void> deleteHouse(String id) async {
-    repository ??= ref.read(houseRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.deleteHouse(id);
-      final houses = await repository!.getAllHouses();
-      state = AsyncData(houses);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
-  }
+  Future<void> updateHouse(HouseModel model) => mutate(
+    operation: () => _repo.updateHouse(model),
+    reload: _repo.getAllHouses,
+    rethrowOnly: true,
+    onSuccess: (_) => _analytics.trackHouseUpdated(),
+  );
 
-  Future<void> refresh() async {
-    repository ??= ref.read(houseRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      final houses = await repository!.getAllHouses();
-      state = AsyncData(houses);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
+  Future<void> deleteHouse(String id) => mutate(
+    operation: () => _repo.deleteHouse(id),
+    reload: _repo.getAllHouses,
+    rethrowOnly: true,
+    onSuccess: (_) => _analytics.trackHouseDeleted(),
+  );
+
+  Future<void> refresh() => mutate(
+    // Nessuna operation: solo reload.
+    operation: () async {},
+    reload: _repo.getAllHouses,
+    showLoading: true,
+    // refresh() è wired a ErrorState.onRetry (VoidCallback) — niente rethrow.
+    rethrowOnError: false,
+  );
+
+  Future<String> duplicateHouse(String houseId) async {
+    late String newId;
+    await mutate(
+      operation: () async {
+        final original = await _repo.getHouseById(houseId);
+        final now = DateTime.now();
+        newId = const Uuid().v4();
+        final copy = original.copyWith(
+          id: newId,
+          isPrimary: false,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await _repo.addHouse(copy);
+      },
+      reload: _repo.getAllHouses,
+      rethrowOnly: true,
+      onSuccess: (_) => _analytics.trackHouseDuplicated(),
+    );
+    return newId;
   }
 
   /// Imposta una casa come principale.
-  /// Rimuove automaticamente lo stato "principale" da tutte le altre case.
-  Future<void> setPrimaryHouse(String houseId) async {
-    repository ??= ref.read(houseRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      final houses = await repository!.getAllHouses();
-      
-      // Aggiorna ogni casa: solo quella selezionata sarà isPrimary = true
-      for (final house in houses) {
-        if (house.isPrimary && house.id != houseId) {
-          // Rimuovi isPrimary da altre case
-          await repository!.updateHouse(house.copyWith(isPrimary: false));
-        } else if (!house.isPrimary && house.id == houseId) {
-          // Imposta isPrimary sulla casa selezionata
-          await repository!.updateHouse(house.copyWith(isPrimary: true));
-        }
-      }
-      
-      // Ricarica le case aggiornate
-      final updatedHouses = await repository!.getAllHouses();
-      state = AsyncData(updatedHouses);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
-  }
+  ///
+  /// Delega al DAO: 4 query bulk in transazione anziché N update in loop.
+  /// Vedi [HousesDao.setPrimaryHouse] per la gestione di pendingCreate.
+  Future<void> setPrimaryHouse(String houseId) => mutate(
+    operation: () => _repo.setPrimaryHouse(houseId),
+    reload: _repo.getAllHouses,
+    rethrowOnly: true,
+  );
 }

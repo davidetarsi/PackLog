@@ -1,10 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/database/services/data_integrity_service.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for DataIntegrityService.
-/// 
+///
 /// Tests the integrity checking and auto-repair mechanisms for:
 /// - Orphan items (items without valid house reference)
 /// - Orphan trip items (trip items without valid trip reference)
@@ -28,7 +29,7 @@ void main() {
       // === ARRANGE ===
       // Simulate corrupted state: insert an item without a valid house.
       // Since foreign keys are enabled by default, we must temporarily disable them.
-      
+
       // Step 1: Disable foreign keys to allow orphan item insertion
       await database.customStatement('PRAGMA foreign_keys = OFF');
 
@@ -67,14 +68,14 @@ void main() {
       // Verify that the orphan item was detected
       expect(checkResult.isHealthy, isFalse);
       expect(checkResult.issueCount, equals(1));
-      expect(checkResult.issues.first.type, equals(IntegrityIssueType.orphanItem));
+      expect(
+        checkResult.issues.first.type,
+        equals(IntegrityIssueType.orphanItem),
+      );
       expect(checkResult.issues.first.table, equals('items'));
       expect(checkResult.issues.first.recordId, equals('orphan-item-1'));
       expect(checkResult.issues.first.canAutoFix, isTrue);
-      expect(
-        checkResult.issues.first.description,
-        contains('Orphan Item'),
-      );
+      expect(checkResult.issues.first.description, contains('Orphan Item'));
       expect(
         checkResult.issues.first.description,
         contains('non-existent-house-id'),
@@ -84,7 +85,7 @@ void main() {
     test('should auto-fix orphan item by deleting it', () async {
       // === ARRANGE ===
       // Create corrupted state: orphan item without valid house
-      
+
       await database.customStatement('PRAGMA foreign_keys = OFF');
 
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -129,7 +130,7 @@ void main() {
     test('should not detect valid items as orphans', () async {
       // === ARRANGE ===
       // Create valid state: house with items
-      
+
       final houseCompanion = HousesCompanion.insert(
         id: 'valid-house',
         name: 'Valid House',
@@ -142,7 +143,7 @@ void main() {
         id: 'valid-item',
         houseId: 'valid-house',
         name: 'Valid Item',
-        category: 'vestiti',
+        category: ItemCategory.vestiti,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -165,7 +166,7 @@ void main() {
     test('should handle multiple orphan items', () async {
       // === ARRANGE ===
       // Create multiple orphan items
-      
+
       await database.customStatement('PRAGMA foreign_keys = OFF');
 
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -208,7 +209,7 @@ void main() {
     test('should detect mixed valid and orphan items', () async {
       // === ARRANGE ===
       // Create a mix of valid items and orphan items
-      
+
       // Valid house with valid item
       final houseCompanion = HousesCompanion.insert(
         id: 'valid-house',
@@ -222,7 +223,7 @@ void main() {
         id: 'valid-item',
         houseId: 'valid-house',
         name: 'Valid Item',
-        category: 'vestiti',
+        category: ItemCategory.vestiti,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -274,7 +275,7 @@ void main() {
     test('should detect and auto-fix orphan trip items', () async {
       // === ARRANGE ===
       // Create orphan trip item (trip_item_entry without valid trip)
-      
+
       await database.customStatement('PRAGMA foreign_keys = OFF');
 
       await database.customStatement(
@@ -296,7 +297,9 @@ void main() {
       await database.customStatement('PRAGMA foreign_keys = ON');
 
       // Verify orphan trip item exists
-      final tripItems = await database.tripsDao.getTripItemsByTripId('non-existent-trip-id');
+      final tripItems = await database.tripsDao.getTripItemsByTripId(
+        'non-existent-trip-id',
+      );
       expect(tripItems, hasLength(1));
 
       // === ACT ===
@@ -305,69 +308,83 @@ void main() {
 
       // === ASSERT ===
       expect(checkResult.issueCount, equals(1));
-      expect(checkResult.issues.first.type, equals(IntegrityIssueType.orphanTripItem));
+      expect(
+        checkResult.issues.first.type,
+        equals(IntegrityIssueType.orphanTripItem),
+      );
       expect(checkResult.issues.first.table, equals('trip_item_entries'));
       expect(checkResult.issues.first.canAutoFix, isTrue);
       expect(fixedCount, equals(1));
 
       // Orphan trip item should be deleted
-      final tripItemsAfterFix = await database.tripsDao.getTripItemsByTripId('non-existent-trip-id');
+      final tripItemsAfterFix = await database.tripsDao.getTripItemsByTripId(
+        'non-existent-trip-id',
+      );
       expect(tripItemsAfterFix, isEmpty);
     });
   });
 
   group('DataIntegrityService - Invalid Destination Houses', () {
-    test('should detect and auto-fix trips with invalid destination house', () async {
-      // === ARRANGE ===
-      // Create a trip with non-existent destination house
-      
-      await database.customStatement('PRAGMA foreign_keys = OFF');
+    test(
+      'should detect and auto-fix trips with invalid destination house',
+      () async {
+        // === ARRANGE ===
+        // Create a trip with non-existent destination house
 
-      final now = DateTime.now().millisecondsSinceEpoch;
-      await database.customStatement(
-        '''
+        await database.customStatement('PRAGMA foreign_keys = OFF');
+
+        final now = DateTime.now().millisecondsSinceEpoch;
+        await database.customStatement(
+          '''
         INSERT INTO trips (id, name, destination_house_id, is_saved, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?)
         ''',
-        [
-          'trip-1',
-          'Trip to Nowhere',
-          'non-existent-destination', // Invalid house reference
-          0,
-          now,
-          now,
-        ],
-      );
+          [
+            'trip-1',
+            'Trip to Nowhere',
+            'non-existent-destination', // Invalid house reference
+            0,
+            now,
+            now,
+          ],
+        );
 
-      await database.customStatement('PRAGMA foreign_keys = ON');
+        await database.customStatement('PRAGMA foreign_keys = ON');
 
-      // Verify trip exists with invalid destination
-      final trips = await database.tripsDao.getAllTrips();
-      expect(trips, hasLength(1));
-      expect(trips.first.destinationHouseId, equals('non-existent-destination'));
+        // Verify trip exists with invalid destination
+        final trips = await database.tripsDao.getAllTrips();
+        expect(trips, hasLength(1));
+        expect(
+          trips.first.destinationHouseId,
+          equals('non-existent-destination'),
+        );
 
-      // === ACT ===
-      final checkResult = await integrityService.runFullCheck();
-      final fixedCount = await integrityService.autoFix(checkResult);
+        // === ACT ===
+        final checkResult = await integrityService.runFullCheck();
+        final fixedCount = await integrityService.autoFix(checkResult);
 
-      // === ASSERT ===
-      expect(checkResult.issueCount, equals(1));
-      expect(checkResult.issues.first.type, equals(IntegrityIssueType.invalidDestinationHouse));
-      expect(checkResult.issues.first.canAutoFix, isTrue);
-      expect(fixedCount, equals(1));
+        // === ASSERT ===
+        expect(checkResult.issueCount, equals(1));
+        expect(
+          checkResult.issues.first.type,
+          equals(IntegrityIssueType.invalidDestinationHouse),
+        );
+        expect(checkResult.issues.first.canAutoFix, isTrue);
+        expect(fixedCount, equals(1));
 
-      // Trip should still exist, but with NULL destination_house_id
-      final tripsAfterFix = await database.tripsDao.getAllTrips();
-      expect(tripsAfterFix, hasLength(1));
-      expect(tripsAfterFix.first.destinationHouseId, equals(null));
-    });
+        // Trip should still exist, but with NULL destination_house_id
+        final tripsAfterFix = await database.tripsDao.getAllTrips();
+        expect(tripsAfterFix, hasLength(1));
+        expect(tripsAfterFix.first.destinationHouseId, equals(null));
+      },
+    );
   });
 
   group('DataIntegrityService - Healthy Database', () {
     test('should report healthy when no issues exist', () async {
       // === ARRANGE ===
       // Create valid data structure
-      
+
       final houseCompanion = HousesCompanion.insert(
         id: 'house-1',
         name: 'Valid House',
@@ -380,7 +397,7 @@ void main() {
         id: 'item-1',
         houseId: 'house-1',
         name: 'Valid Item',
-        category: 'vestiti',
+        category: ItemCategory.vestiti,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -407,7 +424,7 @@ void main() {
     test('should complete check within reasonable time', () async {
       // === ARRANGE ===
       // Create some data
-      
+
       final houseCompanion = HousesCompanion.insert(
         id: 'house-1',
         name: 'Test House',
@@ -430,7 +447,7 @@ void main() {
     test('should pass quick check on valid database', () async {
       // === ARRANGE ===
       // Empty database is valid
-      
+
       // === ACT ===
       final isHealthy = await integrityService.quickCheck();
 
@@ -460,7 +477,7 @@ void main() {
     test('should handle multiple issue types simultaneously', () async {
       // === ARRANGE ===
       // Create multiple types of integrity issues
-      
+
       // Valid house
       await database.housesDao.insertHouse(
         HousesCompanion.insert(
@@ -480,14 +497,7 @@ void main() {
         INSERT INTO items (id, house_id, name, category, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?)
         ''',
-        [
-          'orphan-item',
-          'fake-house',
-          'Orphan Item',
-          'varie',
-          now,
-          now,
-        ],
+        ['orphan-item', 'fake-house', 'Orphan Item', 'varie', now, now],
       );
 
       // Issue 2: Orphan trip item
@@ -542,12 +552,17 @@ void main() {
       final items = await database.itemsDao.getAllItems();
       expect(items, isEmpty); // Orphan item deleted
 
-      final tripItems = await database.tripsDao.getTripItemsByTripId('fake-trip');
+      final tripItems = await database.tripsDao.getTripItemsByTripId(
+        'fake-trip',
+      );
       expect(tripItems, isEmpty); // Orphan trip item deleted
 
       final trips = await database.tripsDao.getAllTrips();
       expect(trips, hasLength(1));
-      expect(trips.first.destinationHouseId, equals(null)); // Invalid FK set to NULL
+      expect(
+        trips.first.destinationHouseId,
+        equals(null),
+      ); // Invalid FK set to NULL
     });
 
     test('should report issue types correctly', () async {
@@ -560,14 +575,7 @@ void main() {
         INSERT INTO items (id, house_id, name, category, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?)
         ''',
-        [
-          'orphan-item',
-          'fake-house',
-          'Orphan Item',
-          'varie',
-          now,
-          now,
-        ],
+        ['orphan-item', 'fake-house', 'Orphan Item', 'varie', now, now],
       );
 
       await database.customStatement('PRAGMA foreign_keys = ON');

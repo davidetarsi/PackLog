@@ -30,10 +30,7 @@ class ItemSelectionState {
     this.selectedIds = const {},
   });
 
-  ItemSelectionState copyWith({
-    bool? isActive,
-    Set<String>? selectedIds,
-  }) =>
+  ItemSelectionState copyWith({bool? isActive, Set<String>? selectedIds}) =>
       ItemSelectionState(
         isActive: isActive ?? this.isActive,
         selectedIds: selectedIds ?? this.selectedIds,

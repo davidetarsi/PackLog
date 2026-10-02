@@ -10,6 +10,7 @@ import '../../items/repositories/item_repository.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'trip_items_selector.dart';
+import 'widgets/trip_edit_placeholder.dart';
 
 /// Schermata per modificare solo gli oggetti del viaggio.
 class EditTripItemsScreen extends ConsumerStatefulWidget {
@@ -18,7 +19,8 @@ class EditTripItemsScreen extends ConsumerStatefulWidget {
   const EditTripItemsScreen({super.key, required this.tripId});
 
   @override
-  ConsumerState<EditTripItemsScreen> createState() => _EditTripItemsScreenState();
+  ConsumerState<EditTripItemsScreen> createState() =>
+      _EditTripItemsScreenState();
 }
 
 class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
@@ -26,23 +28,17 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
   TripModel? _trip;
   List<TripItem> _selectedItems = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _loadTrip();
-  }
-
-  void _loadTrip() {
-    final tripsAsync = ref.read(tripNotifierProvider);
-    tripsAsync.whenData((trips) {
-      final trip = trips.where((t) => t.id == widget.tripId).firstOrNull;
-      if (trip != null) {
-        setState(() {
-          _trip = trip;
-          _selectedItems = List.from(trip.items);
-        });
-      }
-    });
+  /// Copia il viaggio nello stato modificabile, una volta sola.
+  ///
+  /// Vedi [tripEditPlaceholder]: la lettura in `initState` lasciava la
+  /// schermata sullo spinner per sempre se il provider era ancora in
+  /// caricamento. Idratando nel build, il primo `AsyncData` la riempie.
+  ///
+  /// Nessun `setState`: siamo dentro il build provocato da `ref.watch`.
+  void _hydrate(TripModel trip) {
+    if (_trip != null) return;
+    _trip = trip;
+    _selectedItems = List.from(trip.items);
   }
 
   /// Normalizza i [TripItem] con [originHouseId] vuoto recuperando la casa
@@ -80,7 +76,8 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
 
     final success = await ErrorRetryDialog.executeWithRetry(
       context: context,
-      operation: () => ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip),
+      operation: () =>
+          ref.read(tripNotifierProvider.notifier).updateTrip(updatedTrip),
       errorTitle: 'errors.save_error'.tr(),
       errorMessage: 'errors.save_trip_items_failed'.tr(),
     );
@@ -97,12 +94,20 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    if (_trip == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text('trips.edit_items'.tr())),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    final tripsAsync = ref.watch(tripNotifierProvider);
+    final trip = tripsAsync.valueOrNull
+        ?.where((t) => t.id == widget.tripId)
+        .firstOrNull;
+    if (trip != null) _hydrate(trip);
+
+    final placeholder = tripEditPlaceholder(
+      context: context,
+      ref: ref,
+      title: 'trips.edit_items'.tr(),
+      tripsAsync: tripsAsync,
+      isHydrated: _trip != null,
+    );
+    if (placeholder != null) return placeholder;
 
     return StickyCtaScaffold(
       appBar: AppBar(
@@ -120,10 +125,10 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
                 borderRadius: context.responsiveBorderRadius(12),
               ),
               child: Text(
-                'common.items_count'.tr(args: [_selectedItems.length.toString()]),
-                style: TextStyle(
-                  fontSize: context.fontSizeXs,
-                  fontWeight: FontWeight.w600,
+                'common.items_count'.tr(
+                  args: [_selectedItems.length.toString()],
+                ),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: colorScheme.onPrimaryContainer,
                 ),
               ),

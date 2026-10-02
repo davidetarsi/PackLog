@@ -3,193 +3,100 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../items/repositories/item_repository.dart';
+import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/sync/sync_provider.dart';
+import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/trip_model.dart';
 import '../repositories/trip_repository.dart';
+import '../services/packing_progress_tracker.dart';
+import '../services/trip_lifecycle_service.dart';
 
 part 'trip_provider.g.dart';
 
 @Riverpod(keepAlive: true)
-class TripNotifier extends _$TripNotifier {
-  TripRepository? repository;
+class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
+  TripRepository get _repo => ref.read(tripRepositoryProvider);
+  CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
 
   @override
   Future<List<TripModel>> build() async {
-    repository = ref.watch(tripRepositoryProvider);
-    final List<TripModel> trips = await repository!.getAllTrips();
+    final TripLifecycleService lifecycle = ref.read(
+      tripLifecycleServiceProvider,
+    );
 
-    // Trasferisce gli item alla casa di destinazione per i viaggi appena
-    // completati. Questa logica è idempotente: controlla se l'item è già
-    // stato spostato prima di agire, quindi è sicura da rieseguire a ogni
-    // rebuild (es. al riavvio dell'app).
-    await _transferItemsForCompletedTrips(trips);
+    // Trasferisce gli item alla casa di destinazione per i viaggi completati.
+    // Idempotente: il filtro SQL in moveItemsToHouse esclude item già spostati.
+    final List<TripModel> trips = await _repo.getAllTrips();
+    final Set<String> affectedHouseIds = await lifecycle
+        .transferItemsForCompletedTrips(trips);
+    if (affectedHouseIds.isNotEmpty) {
+      // I record toccati da moveItemsToHouse sono ora `pendingUpdate`:
+      // chiediamo subito un push così la tile "Stato sincronizzazione" e il
+      // dialog di logout riflettono il vero stato senza attendere il
+      // prossimo trigger (mutazione utente, app_resume, connectivity).
+      ref.read(syncOrchestratorProvider).requestSync();
+    }
 
-    // Pianifica un refresh automatico al prossimo cambio di stato:
-    // - quando un viaggio "upcoming" diventa "active" (partenza)
-    // - quando un viaggio "active" diventa "completed" (ritorno)
-    // In questo modo l'UI si aggiorna esattamente al momento giusto,
-    // senza polling continuo e senza richiedere interazione dell'utente.
-    _scheduleRefreshForNextStatusChange(trips);
+    // Auto-refresh allo scatto del prossimo cambio di status (upcoming→active
+    // o active→completed). Timer locale al provider, cancellato in onDispose.
+    _scheduleRefreshAt(lifecycle.computeNextStatusChange(trips));
 
     return trips;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // TRIP LIFECYCLE
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /// Trasferisce automaticamente gli item alla casa di destinazione quando
-  /// un viaggio viene completato, usando un bulk UPDATE per gruppo di origine.
-  ///
-  /// **Correttezza garantita dal filtro SQL**: la query include
-  /// `AND house_id = fromHouseId`, quindi vengono spostati *solo* gli item
-  /// che si trovano ancora nella casa di partenza del viaggio. Item già
-  /// trasferiti in precedenti rebuild, manualmente ricollocati, o attualmente
-  /// in un altro viaggio attivo vengono ignorati automaticamente. Questo
-  /// previene il bug "item spariti" che si verificava su pull-to-refresh
-  /// quando un viaggio completato (trip vecchio) e uno attivo (trip corrente)
-  /// condividevano gli stessi item.
-  ///
-  /// **Raggruppamento per originHouseId**: item di uno stesso viaggio possono
-  /// provenire da case diverse. Raggruppiamo prima per evitare query ridondanti
-  /// e mantenere il numero di round-trip pari al numero di case di origine
-  /// distinte (tipicamente 1 per viaggio), non al numero di item.
-  ///
-  /// Criteri di selezione:
-  /// - Viaggio completato con [TripModel.destinationHouseId] valorizzato.
-  /// - [TripItem.originHouseId] non vuoto (retrocompat dati vecchi).
-  /// - Origine ≠ destinazione (i viaggi "locali" non trasferiscono nulla).
-  Future<void> _transferItemsForCompletedTrips(List<TripModel> trips) async {
-    final ItemRepository itemRepo = ref.read(itemRepositoryProvider);
-
-    for (final TripModel trip in trips) {
-      if (!trip.isCompleted) continue;
-      if (trip.destinationHouseId == null) continue;
-      if (trip.items.isEmpty) continue;
-
-      // Raggruppa i candidati per casa di origine per emettere una query
-      // SQL per gruppo, anziché una per item (pattern N+1).
-      final Map<String, List<String>> idsByOrigin = {};
-      for (final TripItem i in trip.items) {
-        if (i.originHouseId.isEmpty) continue;
-        if (i.originHouseId == trip.destinationHouseId) continue;
-        idsByOrigin.putIfAbsent(i.originHouseId, () => []).add(i.id);
-      }
-
-      if (idsByOrigin.isEmpty) continue;
-
-      for (final MapEntry<String, List<String>> entry in idsByOrigin.entries) {
-        try {
-          await itemRepo.moveItemsToHouse(
-            entry.value,
-            entry.key,               // fromHouseId: filtra nel WHERE SQL
-            trip.destinationHouseId!, // toHouseId
-          );
-          debugPrint(
-            '[TripNotifier] ${entry.value.length} item(s) spostati '
-            '${entry.key} → ${trip.destinationHouseId} (viaggio: ${trip.id})',
-          );
-        } catch (e) {
-          debugPrint(
-            '[TripNotifier] Errore nel trasferimento batch '
-            '${entry.key} → ${trip.destinationHouseId}: $e',
-          );
-        }
-      }
-    }
+  @override
+  void onMutationSuccess(List<TripModel> updated) {
+    ref.read(syncOrchestratorProvider).requestSync();
   }
 
-  /// Pianifica [ref.invalidateSelf] al prossimo cambio di stato dei viaggi.
-  ///
-  /// Considera due eventi:
-  /// - Partenza di un viaggio upcoming (diventa active).
-  /// - Ritorno di un viaggio active (diventa completed).
-  ///
-  /// Il timer è a singolo scatto e viene cancellato automaticamente tramite
-  /// [ref.onDispose] se il provider viene rebuiltato o eliminato prima che
-  /// scatti, prevenendo accessi a provider già invalidati.
-  void _scheduleRefreshForNextStatusChange(List<TripModel> trips) {
-    final DateTime now = DateTime.now();
-    DateTime? nextChange;
-
-    for (final TripModel trip in trips) {
-      // Partenza imminente: upcoming → active
-      if (trip.isUpcoming && trip.departureDateTime != null) {
-        final DateTime dt = trip.departureDateTime!;
-        if (dt.isAfter(now)) {
-          if (nextChange == null || dt.isBefore(nextChange)) nextChange = dt;
-        }
-      }
-
-      // Ritorno imminente: active → completed
-      if (trip.isActive && trip.returnDateTime != null) {
-        final DateTime dt = trip.returnDateTime!;
-        if (dt.isAfter(now)) {
-          if (nextChange == null || dt.isBefore(nextChange)) nextChange = dt;
-        }
-      }
-    }
-
-    if (nextChange != null) {
-      // +2 secondi di buffer per assorbire imprecisioni del sistema operativo
-      // nell'esecuzione dei timer in background.
-      final Duration delay =
-          nextChange.difference(now) + const Duration(seconds: 2);
-
-      final Timer timer = Timer(delay, () {
-        debugPrint('[TripNotifier] Auto-refresh: cambio di stato viaggio');
-        ref.invalidateSelf();
-      });
-
-      // Garantisce che il timer venga cancellato se il provider viene
-      // rebuiltato (es. a seguito di un updateTrip) prima che scatti,
-      // evitando chiamate a ref su un provider già invalidato.
-      ref.onDispose(timer.cancel);
-    }
+  void _scheduleRefreshAt(DateTime? at) {
+    if (at == null) return;
+    // +2s buffer per assorbire imprecisioni di scheduling del SO.
+    final Duration delay =
+        at.difference(DateTime.now()) + const Duration(seconds: 2);
+    final Timer timer = Timer(delay, () {
+      debugPrint('[TripNotifier] Auto-refresh: cambio di stato viaggio');
+      ref.invalidateSelf();
+    });
+    ref.onDispose(timer.cancel);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // CRUD
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Future<void> addTrip(TripModel model) async {
-    repository ??= ref.read(tripRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.addTrip(model);
-      final List<TripModel> trips = await repository!.getAllTrips();
-      state = AsyncData(trips);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
-  }
+  Future<void> addTrip(TripModel model) => mutate(
+    operation: () => _repo.addTrip(model),
+    reload: _repo.getAllTrips,
+    rethrowOnly: true,
+    onSuccess: (trips) =>
+        _analytics.trackTripCreated(tripId: model.id, totalTrips: trips.length),
+  );
 
-  Future<void> updateTrip(TripModel model) async {
-    repository ??= ref.read(tripRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.updateTrip(model);
-      final List<TripModel> trips = await repository!.getAllTrips();
-      state = AsyncData(trips);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
-  }
+  Future<void> updateTrip(TripModel model) => mutate(
+    operation: () => _repo.updateTrip(model),
+    reload: _repo.getAllTrips,
+    rethrowOnly: true,
+    onSuccess: (_) => _analytics.trackTripUpdated(),
+  );
 
-  Future<void> deleteTrip(String id) async {
-    repository ??= ref.read(tripRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      await repository!.deleteTrip(id);
-      final List<TripModel> trips = await repository!.getAllTrips();
-      state = AsyncData(trips);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
-  }
+  Future<void> addItemsToTrip(String tripId, List<TripItem> items) => mutate(
+    operation: () => _repo.addItemsToTrip(tripId, items),
+    reload: _repo.getAllTrips,
+    rethrowOnly: true,
+    onSuccess: (_) =>
+        _analytics.trackItemsAddedToTrip(tripId: tripId, count: items.length),
+  );
+
+  Future<void> deleteTrip(String id) => mutate(
+    operation: () => _repo.deleteTrip(id),
+    reload: _repo.getAllTrips,
+    rethrowOnly: true,
+    onSuccess: (_) => _analytics.trackTripDeleted(),
+  );
 
   Future<void> toggleItemCheck(String tripId, String itemId) async {
-    repository ??= ref.read(tripRepositoryProvider);
     try {
       final List<TripModel>? trips = state.value;
       if (trips == null) return;
@@ -201,73 +108,113 @@ class TripNotifier extends _$TripNotifier {
       final int itemIndex = trip.items.indexWhere((i) => i.id == itemId);
       if (itemIndex == -1) return;
 
+      final bool newChecked = !trip.items[itemIndex].isChecked;
+
+      // Optimistic state update: l'UI riflette il toggle subito, senza
+      // ricaricare tutta la lista trip dal DB.
       final List<TripItem> updatedItems = [...trip.items];
       updatedItems[itemIndex] = updatedItems[itemIndex].copyWith(
-        isChecked: !updatedItems[itemIndex].isChecked,
+        isChecked: newChecked,
       );
-
       final TripModel updatedTrip = trip.copyWith(
         items: updatedItems,
         updatedAt: DateTime.now(),
       );
-
-      await repository!.updateTrip(updatedTrip);
-      final List<TripModel> newTrips = await repository!.getAllTrips();
+      final List<TripModel> newTrips = [...trips];
+      newTrips[tripIndex] = updatedTrip;
       state = AsyncData(newTrips);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
-  }
 
-  /// Duplica un viaggio (Deep Copy: viaggio + tutti gli items).
-  ///
-  /// Returns: ID del nuovo viaggio creato.
-  Future<String> duplicateTrip(String tripId) async {
-    repository ??= ref.read(tripRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      final String newTripId = await repository!.duplicateTrip(tripId);
-      final List<TripModel> trips = await repository!.getAllTrips();
-      state = AsyncData(trips);
-      return newTripId;
+      // Fast-path persistenza: una sola colonna toccata invece di
+      // `replaceTripItems` (DELETE all + INSERT all) seguito da
+      // `getAllTrips()`. Path caldo durante il packing.
+      await _repo.setTripItemChecked(tripId, itemId, newChecked);
+
+      // Funnel della preparazione valigia. Emesso **dopo** la persistenza:
+      // se il salvataggio fallisce l'evento non deve partire, altrimenti si
+      // misurerebbero intenzioni invece di fatti.
+      //
+      // `logEvent` grezzo e non `CoreAnalyticsService`: le proprietà sono
+      // calcolate dal tracker, e far conoscere al livello tipato in `core/`
+      // un tipo che vive in `features/trips/` invertirebbe la dipendenza.
+      _emitPackingEvents(
+        tripId: tripId,
+        trip: trip,
+        updatedItems: updatedItems,
+      );
+
+      ref.read(syncOrchestratorProvider).requestSync();
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       rethrow;
     }
   }
 
-  Future<void> refresh() async {
-    repository ??= ref.read(tripRepositoryProvider);
-    state = const AsyncLoading();
-    try {
-      final List<TripModel> trips = await repository!.getAllTrips();
-      state = AsyncData(trips);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
+  void _emitPackingEvents({
+    required String tripId,
+    required TripModel trip,
+    required List<TripItem> updatedItems,
+  }) {
+    final events = packingEventsFor(
+      tripId: tripId,
+      checkedBefore: trip.items.where((i) => i.isChecked).length,
+      checkedAfter: updatedItems.where((i) => i.isChecked).length,
+      totalItems: trip.items.length,
+      departureDateTime: trip.departureDateTime,
+      now: DateTime.now(),
+    );
+    if (events.isEmpty) return;
+
+    final analytics = ref.read(analyticsServiceProvider);
+    for (final event in events) {
+      analytics.logEvent(event.name, properties: event.properties);
     }
   }
 
+  /// Duplica un viaggio (Deep Copy: viaggio + tutti gli items).
+  ///
+  /// Returns: ID del nuovo viaggio creato.
+  Future<String> duplicateTrip(String tripId, {String? nameSuffix}) async {
+    late String newTripId;
+    await mutate(
+      operation: () async {
+        newTripId = await _repo.duplicateTrip(
+          tripId,
+          nameSuffix: nameSuffix ?? ' (Copia)',
+        );
+      },
+      reload: _repo.getAllTrips,
+      rethrowOnly: true,
+      onSuccess: (_) => _analytics.trackTripDuplicated(),
+    );
+    return newTripId;
+  }
+
+  Future<void> refresh() => mutate(
+    operation: () async {},
+    reload: _repo.getAllTrips,
+    showLoading: true,
+    // refresh() è wired a ErrorState.onRetry (VoidCallback) — niente rethrow.
+    rethrowOnError: false,
+  );
+
   /// Toggle dello stato salvato/preferito di un viaggio.
   Future<void> toggleSaved(String tripId) async {
-    repository ??= ref.read(tripRepositoryProvider);
-    try {
-      final List<TripModel>? trips = state.value;
-      if (trips == null) return;
+    final List<TripModel>? trips = state.valueOrNull;
+    if (trips == null) return;
 
-      final int tripIndex = trips.indexWhere((t) => t.id == tripId);
-      if (tripIndex == -1) return;
+    final int tripIndex = trips.indexWhere((t) => t.id == tripId);
+    if (tripIndex == -1) return;
 
-      final TripModel trip = trips[tripIndex];
-      final TripModel updatedTrip = trip.copyWith(
-        isSaved: !trip.isSaved,
-        updatedAt: DateTime.now(),
-      );
-
-      await repository!.updateTrip(updatedTrip);
-      final List<TripModel> newTrips = await repository!.getAllTrips();
-      state = AsyncData(newTrips);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
+    final TripModel updatedTrip = trips[tripIndex].copyWith(
+      isSaved: !trips[tripIndex].isSaved,
+      updatedAt: DateTime.now(),
+    );
+    await mutate(
+      operation: () => _repo.updateTrip(updatedTrip),
+      reload: _repo.getAllTrips,
+      rethrowOnly: true,
+      onSuccess: (_) =>
+          _analytics.trackTripSavedToggled(isSaved: updatedTrip.isSaved),
+    );
   }
 }

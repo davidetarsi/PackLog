@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import '../constants/app_constants.dart';
-import '../theme/app_spacing.dart';
+import 'package:pack_log/shared/widgets/tri_slot_bar.dart';
+import 'ds_button.dart';
 
 /// Action bar universale con bottone primario centrato perfettamente.
-/// 
+///
 /// Fornisce un layout consistente per le azioni bottom delle schermate:
 /// - Bottone primario (center) sempre perfettamente centrato
 /// - Azioni laterali opzionali (left/right) che non influenzano la centratura
 /// - Elevazione e stile pill consistenti
-/// 
+///
 /// **Pattern Critico di Centratura:**
 /// Usa `Expanded` + `Align` per i slot laterali, garantendo che il
 /// bottone centrale rimanga perfettamente centrato anche quando
 /// left/right sono null.
-/// 
+///
 /// Esempio:
 /// ```dart
 /// UniversalActionBar(
@@ -42,8 +42,17 @@ class UniversalActionBar extends StatelessWidget {
   /// Mostra loading indicator nel bottone primario
   final bool isLoading;
 
-  /// Padding orizzontale esterno (default: spacingMd)
-  final double? horizontalPadding;
+  /// Usa bordo outline (grigio) invece di primary. Per azioni secondarie/distruttive
+  /// che non devono richiamare l'attenzione come un'azione primaria.
+  final bool isSecondary;
+
+  /// Usa bordo e testo rosso (colorScheme.error). Per azioni irreversibili
+  /// come l'eliminazione dell'account.
+  final bool isDestructive;
+
+  /// Key applicata al bottone primario. Serve ai test per toccare la pill e
+  /// non la barra che la contiene.
+  final Key? primaryButtonKey;
 
   const UniversalActionBar({
     super.key,
@@ -53,138 +62,37 @@ class UniversalActionBar extends StatelessWidget {
     this.leftAction,
     this.rightAction,
     this.isLoading = false,
-    this.horizontalPadding,
+    this.isSecondary = false,
+    this.isDestructive = false,
+    this.primaryButtonKey,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isSingleAction = leftAction == null && rightAction == null;
 
-    final primaryButton = _PrimaryPillButton(
+    // Il bottone è [DsButton], lo stesso usato inline nelle schermate: forma,
+    // colori e stati vivono in un punto solo, quindi la CTA sticky e i bottoni
+    // dentro le pagine non possono divergere.
+    final primaryButton = DsButton(
+      key: primaryButtonKey,
       label: primaryLabel,
       icon: primaryIcon,
       onPressed: onPrimaryPressed,
       isLoading: isLoading,
-      colorScheme: colorScheme,
-      isFullWidth: isSingleAction,
+      expand: isSingleAction,
+      variant: isDestructive
+          ? DsButtonVariant.destructive
+          : isSecondary
+          ? DsButtonVariant.secondary
+          : DsButtonVariant.primary,
     );
 
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding ?? context.spacingMd,
-      ),
-      child: isSingleAction
-          ? primaryButton
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Slot sinistro con SizedBox fissa
-                SizedBox(
-                  width: 56,
-                  child: leftAction ?? const SizedBox.shrink(),
-                ),
-
-                SizedBox(width: context.spacingSm),
-
-                // Bottone primario centrale (pill button) - Expanded
-                Expanded(child: primaryButton),
-
-                SizedBox(width: context.spacingSm),
-
-                // Slot destro con SizedBox fissa
-                SizedBox(
-                  width: 56,
-                  child: rightAction ?? const SizedBox.shrink(),
-                ),
-              ],
-            ),
-    );
-  }
-}
-
-/// Bottone primario centrale in stile pill.
-class _PrimaryPillButton extends StatelessWidget {
-  final String label;
-  final IconData? icon;
-  final VoidCallback? onPressed;
-  final bool isLoading;
-  final ColorScheme colorScheme;
-  final bool isFullWidth;
-
-  const _PrimaryPillButton({
-    required this.label,
-    this.icon,
-    this.onPressed,
-    required this.isLoading,
-    required this.colorScheme,
-    this.isFullWidth = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isEnabled = onPressed != null && !isLoading;
-
-    return Material(
-      color: colorScheme.surface,
-      borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-      // elevation: 0 elimina il layer di ombra nel compositing: quando la barra
-      // fluttua sopra liste scorrevoli, ogni frame non richiede un shadow pass
-      // separato sull'engine Impeller.
-      elevation: 0,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-        onTap: isEnabled ? onPressed : null,
-        child: Container(
-          width: isFullWidth ? double.infinity : null,
-          height: 56,
-          padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-          decoration: BoxDecoration(
-            // Nessun colore qui: il colore di sfondo è già gestito da Material.
-            // Aggiungere color in BoxDecoration causerebbe un layer di pittura
-            // aggiuntivo sovrapposto a quello di Material.
-            borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-            border: Border.all(
-              color: isEnabled ? colorScheme.primary : colorScheme.outline,
-              width: 2,
-            ),
-          ),
-          child: isLoading
-              ? Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: colorScheme.primary,
-                      // strokeAlignCenter evita artefatti di anti-aliasing
-                      // sul bordo esterno durante l'animazione di rotazione.
-                      strokeAlign: CircularProgressIndicator.strokeAlignCenter,
-                    ),
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(icon, color: colorScheme.onSurfaceVariant, size: context.iconSizeMd),
-                      SizedBox(width: context.spacingSm),
-                    ],
-                    Flexible(
-                      child: Text(
-                        label,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-        ),
-      ),
+    return TriSlotBar(
+      horizontalPadding: 0,
+      left: leftAction,
+      right: rightAction,
+      center: primaryButton,
     );
   }
 }

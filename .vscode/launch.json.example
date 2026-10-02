@@ -1,0 +1,100 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// SETUP LOCALE — istruzioni per un nuovo sviluppatore
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// 1. Copia questo file e rinominalo `launch.json` (stessa cartella .vscode/).
+//    Il file originale (.example) resta nel repo; launch.json è gitignored.
+//
+// 2. Sostituisci ogni INSERISCI_* con il valore reale (vedi commenti inline).
+//
+// 3. Tutte queste chiavi sono lato-client: vengono compilate nell'APK e sono
+//    già visibili a chiunque decompili il binario. Non sono "segreti" nel senso
+//    tradizionale — i dati utente sono protetti da Supabase RLS + autenticazione,
+//    non dall'oscurità della chiave.
+//
+// 4. I valori identici per DEV e PROD sono intenzionali: l'app usa un unico
+//    progetto Supabase. La distinzione dev/prod incide solo su:
+//      - applicationId: com.example.packlog.dev vs com.example.packlog
+//      - app_name:       "PackLog Dev"          vs "PackLog"
+//      - debug banner:   visibile in dev,        nascosto in prod
+// ─────────────────────────────────────────────────────────────────────────────
+
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // ── Config principale per lo sviluppo quotidiano ──────────────────
+            // Installa com.example.packlog.dev — coesiste con la prod sul device.
+            "name": "📱 Lancio in DEV (Debug)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main_dev.dart",
+            "args": [
+                "--flavor",
+                "dev",
+
+                // Supabase ────────────────────────────────────────────────────
+                // Dashboard → Settings → API → "Project URL"
+                "--dart-define=SUPABASE_URL=INSERISCI_SUPABASE_URL",
+
+                // Dashboard → Settings → API → "anon public" (chiave pubblica,
+                // safe to expose — accesso ai dati limitato da RLS)
+                "--dart-define=SUPABASE_ANON_KEY=INSERISCI_SUPABASE_ANON_KEY",
+
+                // Sentry ──────────────────────────────────────────────────────
+                // sentry.io → [progetto] → Settings → Client Keys → DSN
+                // Se non hai Sentry, lascia il valore MISSING_SENTRY_DSN:
+                // bootstrap.dart lo ignorerà senza bloccare l'avvio.
+                "--dart-define=SENTRY_DSN=INSERISCI_SENTRY_DSN",
+
+                // Amplitude ───────────────────────────────────────────────────
+                // app.amplitude.com → Settings → Projects → [progetto] → API Key
+                // Se non hai Amplitude, lascia MISSING_AMPLITUDE_API_KEY.
+                "--dart-define=AMPLITUDE_API_KEY=INSERISCI_AMPLITUDE_API_KEY",
+
+                // Google Sign-In ───────────────────────────────────────────────
+                // console.cloud.google.com → API & Services → Credentials
+                // → OAuth 2.0 Client IDs → tipo "Web application"
+                // (NON il client Android — serve il Web client ID)
+                "--dart-define=GOOGLE_WEB_CLIENT_ID=INSERISCI_GOOGLE_WEB_CLIENT_ID"
+            ]
+        },
+        {
+            // ── Utile per testare il flavor prod in debug sul device ──────────
+            // Installa com.example.packlog — sovrascrive l'app prod se presente.
+            // Usa gli stessi valori del flavor dev (singolo progetto Supabase).
+            "name": "🚀 Lancio in PROD (Debug)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main_prod.dart",
+            "args": [
+                "--flavor",
+                "prod",
+                "--dart-define=SUPABASE_URL=INSERISCI_SUPABASE_URL",
+                "--dart-define=SUPABASE_ANON_KEY=INSERISCI_SUPABASE_ANON_KEY",
+                "--dart-define=SENTRY_DSN=INSERISCI_SENTRY_DSN",
+                "--dart-define=AMPLITUDE_API_KEY=INSERISCI_AMPLITUDE_API_KEY",
+                "--dart-define=GOOGLE_WEB_CLIENT_ID=INSERISCI_GOOGLE_WEB_CLIENT_ID"
+            ]
+        },
+        {
+            // ── Profilazione performance su device fisico ─────────────────────
+            // Usa flutter profile mode: ottimizzato ma con DevTools attivi.
+            // Richiede un device fisico (l'emulatore non è rappresentativo).
+            "name": "📊 Profilazione DEV (Dispositivo Fisico)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main_dev.dart",
+            "flutterMode": "profile",
+            "args": [
+                "--flavor",
+                "dev",
+                "--dart-define=SUPABASE_URL=INSERISCI_SUPABASE_URL",
+                "--dart-define=SUPABASE_ANON_KEY=INSERISCI_SUPABASE_ANON_KEY",
+                "--dart-define=SENTRY_DSN=INSERISCI_SENTRY_DSN",
+                "--dart-define=AMPLITUDE_API_KEY=INSERISCI_AMPLITUDE_API_KEY",
+                "--dart-define=GOOGLE_WEB_CLIENT_ID=INSERISCI_GOOGLE_WEB_CLIENT_ID"
+            ]
+        }
+    ]
+}
