@@ -1,13 +1,16 @@
-name: 🚀 Release PROD
+name: 🚀 Android Release Candidate
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+
+concurrency:
+  group: android-release-candidate
+  cancel-in-progress: false
 
 jobs:
   build-and-release:
-    name: Build & Release PROD
+    name: Build & Upload Internal Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,6 +18,29 @@ jobs:
     steps:
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📖 Validate release version and tag
+        id: release_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_VERSION=$(sed -nE 's/^version: ([0-9]+\.[0-9]+\.[0-9]+\+[0-9]+)$/\1/p' pubspec.yaml)
+          if [[ -z "$APP_VERSION" ]]; then
+            echo 'pubspec.yaml must contain version: MAJOR.MINOR.PATCH+BUILD' >&2
+            exit 1
+          fi
+          TAG="v${APP_VERSION%%+*}"
+          if git rev-parse -q --verify "refs/tags/$TAG^{}" >/dev/null; then
+            TAG_SHA=$(git rev-list -n 1 "$TAG")
+            if [[ "$TAG_SHA" != "$GITHUB_SHA" ]]; then
+              echo "$TAG already points to another commit; bump the version in the PR" >&2
+              exit 1
+            fi
+          fi
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
 
       - name: ⚙️ Setup Java
         uses: actions/setup-java@v4
@@ -37,8 +63,6 @@ jobs:
         # evitare blocchi se ci sono rimasugli di cache
         run: dart run build_runner build -d
 
-      # ... poi prosegui con flutter analyze o flutter build ...
-
       - name: 🔐 Decode Android Keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
 
@@ -49,12 +73,6 @@ jobs:
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
           echo "storeFile=upload-keystore.jks" >> android/key.properties
-
-      - name: 📖 Extract Version from pubspec.yaml
-        id: get_version
-        run: |
-          VERSION=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2)
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: 🏗️ Build PROD AppBundle (AAB) & APK
         run: |
@@ -81,10 +99,49 @@ jobs:
           mv build/app/outputs/bundle/prodRelease/app-prod-release.aab \
              build/app/outputs/bundle/prodRelease/PackLog-prod-v${{ env.APP_VERSION }}.aab
 
-      - name: 🏷️ Create GitHub Release
+      - name: ☁️ Keep the signed build as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PackLog-prod-v${{ env.APP_VERSION }}
+          path: |
+            build/app/outputs/bundle/prodRelease/PackLog-prod-v${{ env.APP_VERSION }}.aab
+            build/app/outputs/flutter-apk/PackLog-prod-v${{ env.APP_VERSION }}.apk
+          retention-days: 30
+
+      - name: 🏷️ Create immutable release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git rev-parse -q --verify "refs/tags/$TAG^{}" >/dev/null; then
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config user.name "github-actions[bot]"
+            git tag -a "$TAG" -m "Android release candidate $TAG"
+            git push origin "refs/tags/$TAG"
+          fi
+
+      - name: 🏷️ Create GitHub prerelease
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG }}
+          prerelease: true
           generate_release_notes: true
           files: |
             build/app/outputs/bundle/prodRelease/PackLog-prod-v${{ env.APP_VERSION }}.aab
             build/app/outputs/flutter-apk/PackLog-prod-v${{ env.APP_VERSION }}.apk
+      - name: 🔑 Check Play Console service account
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [[ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]]; then
+            echo 'Configure GOOGLE_PLAY_SERVICE_ACCOUNT_JSON to upload to Internal testing' >&2
+            exit 1
+          fi
+
+      - name: 📲 Upload the exact signed AAB to Internal testing
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.davidetarsi.packlog
+          releaseFiles: build/app/outputs/bundle/prodRelease/PackLog-prod-v${{ env.APP_VERSION }}.aab
+          tracks: internal
+          status: completed
