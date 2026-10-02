@@ -1,0 +1,73 @@
+name: Bump Android Version
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  bump-version:
+    name: Bump pubspec from PR label
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      # pull_request_target runs this workflow from main. Never check out or execute PR code here.
+      - name: Update version on the PR branch
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const choices = ['version:major', 'version:minor', 'version:patch'];
+            const selected = pr.labels.map(label => label.name).filter(name => choices.includes(name));
+            if (selected.length !== 1) {
+              core.info(`Waiting for exactly one version label: ${choices.join(', ')}`);
+              return;
+            }
+
+            async function readPubspec(ref) {
+              const response = await github.rest.repos.getContent({
+                owner: context.repo.owner, repo: context.repo.repo, path: 'pubspec.yaml', ref,
+              });
+              if (Array.isArray(response.data) || !response.data.content) {
+                throw new Error('pubspec.yaml is missing');
+              }
+              return {
+                sha: response.data.sha,
+                text: Buffer.from(response.data.content, 'base64').toString('utf8'),
+              };
+            }
+
+            const base = await readPubspec(pr.base.sha);
+            const head = await readPubspec(pr.head.sha);
+            const expression = /^version: (\d+)\.(\d+)\.(\d+)\+(\d+)\s*$/m;
+            const current = base.text.match(expression);
+            if (!current || !expression.test(head.text)) {
+              throw new Error('Expected version: MAJOR.MINOR.PATCH+BUILD in both pubspec files');
+            }
+            const [major, minor, patch, build] = current.slice(1).map(Number);
+            const next = selected[0] === 'version:major' ? [major + 1, 0, 0, build + 1]
+              : selected[0] === 'version:minor' ? [major, minor + 1, 0, build + 1]
+              : [major, minor, patch + 1, build + 1];
+            const version = `${next.slice(0, 3).join('.')}+${next[3]}`;
+            const updated = head.text.replace(expression, `version: ${version}`);
+            if (updated === head.text) {
+              core.info(`pubspec.yaml already contains ${version}`);
+              return;
+            }
+
+            await github.rest.repos.createOrUpdateFileContents({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              path: 'pubspec.yaml',
+              branch: pr.head.ref,
+              sha: head.sha,
+              message: `chore(release): bump Android version to ${version}`,
+              content: Buffer.from(updated).toString('base64'),
+            });
+            core.info(`Updated pubspec.yaml to ${version}`);
