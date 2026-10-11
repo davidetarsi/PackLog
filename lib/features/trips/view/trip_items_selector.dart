@@ -141,34 +141,31 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         // Nessuna etichetta sopra le pill delle case: le pill portano già
         // l'icona della casa e il nome, quindi il titolo ripeteva ciò che il
         // controllo dice da sé.
-        SizedBox(
-          height: 40,
-          child: housesAsync.when(
-            data: (houses) {
-              // Trova l'house selezionato (può essere null)
-              final selectedHouse = houses.cast<HouseModel?>().firstWhere(
-                (h) => h?.id == _selectedHouseId,
-                orElse: () => null,
-              );
+        housesAsync.when(
+          data: (houses) {
+            // Trova l'house selezionato (può essere null)
+            final selectedHouse = houses.cast<HouseModel?>().firstWhere(
+              (h) => h?.id == _selectedHouseId,
+              orElse: () => null,
+            );
 
-              return AppPillTab<HouseModel>.nullable(
-                items: houses,
-                selectedItem: selectedHouse,
-                getLabel: (house) => house.displayName,
-                getIcon: (house) => Icon(Icons.home_outlined, size: 16),
-                onSelected: (house) {
-                  setState(() {
-                    _selectedHouseId = house?.id;
-                  });
-                },
-                // Rimosso selectedColor per usare il theme default
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => DsErrorState(
-              error: e,
-              onRetry: () => ref.invalidate(houseNotifierProvider),
-            ),
+            return AppPillTab<HouseModel>.nullable(
+              items: houses,
+              selectedItem: selectedHouse,
+              getLabel: (house) => house.displayName,
+              getIcon: (house) => Icon(Icons.home_outlined, size: 16),
+              onSelected: (house) {
+                setState(() {
+                  _selectedHouseId = house?.id;
+                });
+              },
+              // Rimosso selectedColor per usare il theme default
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => DsErrorState(
+            error: e,
+            onRetry: () => ref.invalidate(houseNotifierProvider),
           ),
         ),
 
@@ -182,21 +179,18 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
           ),
         ),
         SizedBox(height: context.spacingSm),
-        SizedBox(
-          height: 40,
-          child: AppPillTab<_CategoryFilterOption>(
-            items: _categoryOptions,
-            selectedItem: _categoryOptions.firstWhere(
-              (opt) => opt.category == _selectedCategory,
-            ),
-            getLabel: (opt) => opt.label,
-            onSelected: (opt) {
-              setState(() {
-                _selectedCategory = opt.category;
-              });
-            },
-            // Rimossi tutti i colori custom per usare il theme default
+        AppPillTab<_CategoryFilterOption>(
+          items: _categoryOptions,
+          selectedItem: _categoryOptions.firstWhere(
+            (opt) => opt.category == _selectedCategory,
           ),
+          getLabel: (opt) => opt.label,
+          onSelected: (opt) {
+            setState(() {
+              _selectedCategory = opt.category;
+            });
+          },
+          // Rimossi tutti i colori custom per usare il theme default
         ),
       ],
     );

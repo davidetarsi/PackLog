@@ -736,7 +736,6 @@ class _CategoryFilterPills extends StatelessWidget {
         selectedItem: selected,
         getLabel: (tab) => tab.label,
         onSelected: onSelected,
-        height: 40,
         scrollPadding: EdgeInsets.symmetric(horizontal: context.spacingSm),
       ),
     );
