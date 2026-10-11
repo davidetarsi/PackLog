@@ -13,6 +13,7 @@ import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/ds_section_header.dart';
+import '../../../shared/widgets/app_pill_tab.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
@@ -341,44 +342,18 @@ class _AddTripScreenState extends ConsumerState<AddTripScreen> {
           runSpacing: context.spacingSm,
           children: allLuggages.map((luggage) {
             final isSelected = _selectedLuggages.any((l) => l.id == luggage.id);
-            final colorScheme = Theme.of(context).colorScheme;
-
-            return FilterChip(
-              label: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.luggage,
-                    size: context.iconSizeSm,
-                    color: isSelected
-                        ? colorScheme.onPrimaryContainer
-                        : colorScheme.onSurface,
-                  ),
-                  SizedBox(width: context.spacingXs),
-                  Text(luggage.name),
-                  SizedBox(width: context.spacingXs),
-                  Text(
-                    '(${luggage.effectiveVolumeLiters ?? 0}L)',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isSelected
-                          ? colorScheme.onPrimaryContainer
-                          : colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  if (selected) {
-                    _selectedLuggages.add(luggage);
-                  } else {
-                    _selectedLuggages.removeWhere((l) => l.id == luggage.id);
-                  }
-                });
-              },
-              backgroundColor: Colors.transparent,
-              selectedColor: colorScheme.primaryContainer,
+            return AppPill(
+              key: ValueKey('luggage_pill_${luggage.id}'),
+              label: '${luggage.name} (${luggage.effectiveVolumeLiters ?? 0}L)',
+              icon: Icon(Icons.luggage, size: context.iconSizeSm),
+              isSelected: isSelected,
+              onTap: () => setState(() {
+                if (isSelected) {
+                  _selectedLuggages.removeWhere((l) => l.id == luggage.id);
+                } else {
+                  _selectedLuggages.add(luggage);
+                }
+              }),
             );
           }).toList(),
         );
