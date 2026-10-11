@@ -280,6 +280,8 @@ Regole:
 - Sheet di azioni (menu senza form): `DsSheetHeader` come primo figlio, mai handle e titolo scritti a mano
 - Fotocamera/galleria: `showImageSourceSheet()` (`features/ai_input/view/widgets/image_source_sheet.dart`)
 - Tab: `AppPillTab<T>`, mai `SegmentedButton`
+- Scelta multipla a pillola: `Wrap` di `AppPill`, mai `FilterChip`
+- Avvisi d'errore dentro la pagina: `errorContainer` + `onErrorContainer` (anche per l'azione, es. "Riprova"); mai `primary` sopra un container d'errore
 
 ## Checklist: Design System Compliance
 
