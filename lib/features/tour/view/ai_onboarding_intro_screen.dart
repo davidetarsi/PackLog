@@ -12,6 +12,7 @@ import '../../../features/ai_input/providers/ai_import_notifier.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
+import '../../ai_input/view/widgets/image_source_sheet.dart';
 import '../providers/post_login_onboarding_provider.dart';
 
 class AiOnboardingIntroScreen extends ConsumerStatefulWidget {
@@ -41,32 +42,15 @@ class _AiOnboardingIntroScreenState
   }
 
   Future<void> _showSourceSheet() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: Text('ai_import.source_gallery'.tr()),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromGallery();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: Text('ai_import.source_camera'.tr()),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromCamera();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+    final source = await showImageSourceSheet(context);
+    switch (source) {
+      case ImageSource.gallery:
+        await _pickFromGallery();
+      case ImageSource.camera:
+        await _pickFromCamera();
+      case null:
+        return;
+    }
   }
 
   Future<void> _pickFromGallery() async {

@@ -482,6 +482,7 @@
     "save_success": "{} items saved successfully!",
     "source_camera": "Camera",
     "source_gallery": "Gallery",
+    "source_sheet_title": "Add photos",
     "title": "AI Scan",
     "unexpected_error": "Unexpected error: {}"
   },

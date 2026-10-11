@@ -24,6 +24,7 @@ import '../providers/ai_import_notifier.dart';
 import 'widgets/ai_analysis_progress.dart';
 import 'widgets/ai_photo_group_header.dart';
 import 'widgets/ai_result_card.dart';
+import 'widgets/image_source_sheet.dart';
 
 /// Page 2 of the AI import flow: shows loading progress while GPT-4o Vision
 /// analyses the images, then the editable results list with save CTA.
@@ -104,38 +105,21 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     final notifier = ref.read(aiImportNotifierProvider.notifier);
     if (notifier.remainingSlots <= 0) return;
 
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: Text('ai_import.source_gallery'.tr()),
-              subtitle: Text(
-                'ai_import.gallery_subtitle'.tr(
-                  args: [notifier.remainingSlots.toString()],
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromGallery();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: Text('ai_import.source_camera'.tr()),
-              subtitle: Text('ai_import.camera_subtitle'.tr()),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromCamera();
-              },
-            ),
-          ],
-        ),
+    final source = await showImageSourceSheet(
+      context,
+      gallerySubtitle: 'ai_import.gallery_subtitle'.tr(
+        args: [notifier.remainingSlots.toString()],
       ),
+      cameraSubtitle: 'ai_import.camera_subtitle'.tr(),
     );
+    switch (source) {
+      case ImageSource.gallery:
+        await _pickFromGallery();
+      case ImageSource.camera:
+        await _pickFromCamera();
+      case null:
+        return;
+    }
   }
 
   Future<void> _pickFromGallery() async {

@@ -482,6 +482,7 @@
     "save_success": "{} oggetti salvati con successo!",
     "source_camera": "Fotocamera",
     "source_gallery": "Galleria",
+    "source_sheet_title": "Aggiungi foto",
     "title": "AI Scan",
     "unexpected_error": "Errore imprevisto: {}"
   },

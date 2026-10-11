@@ -12,6 +12,7 @@ import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../providers/ai_import_notifier.dart';
+import 'widgets/image_source_sheet.dart';
 
 /// Page 1 of the AI import flow: lets the user pick images (gallery or camera)
 /// and pushes to [AiResultsScreen] once the selection is confirmed.
@@ -44,34 +45,19 @@ class _AiClothingSandboxScreenState
   // ── Picker ────────────────────────────────────────────────────────────────
 
   Future<void> _showPickerSheet() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: Text('ai_import.source_gallery'.tr()),
-              subtitle: Text('ai_import.gallery_subtitle'.tr(args: ['5'])),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromGallery();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: Text('ai_import.source_camera'.tr()),
-              subtitle: Text('ai_import.camera_subtitle'.tr()),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromCamera();
-              },
-            ),
-          ],
-        ),
-      ),
+    final source = await showImageSourceSheet(
+      context,
+      gallerySubtitle: 'ai_import.gallery_subtitle'.tr(args: ['5']),
+      cameraSubtitle: 'ai_import.camera_subtitle'.tr(),
     );
+    switch (source) {
+      case ImageSource.gallery:
+        await _pickFromGallery();
+      case ImageSource.camera:
+        await _pickFromCamera();
+      case null:
+        return;
+    }
   }
 
   Future<void> _pickFromGallery() async {
