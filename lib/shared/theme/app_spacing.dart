@@ -52,7 +52,7 @@ class AppSpacing {
   /// Casi d'uso: HouseCard, TripSummaryCard, TripCard masonry, TemplateCard, card date TripInfoForm.
   static const EdgeInsets cardPaddingHero = EdgeInsets.all(md); // 16
 
-  /// Padding semantico per item ad alta frequenza in lista (BulkItemRow, UniversalItemTile, ListTile).
+  /// Padding semantico per item ad alta frequenza in lista (UniversalItemTile, ListTile).
   static const EdgeInsets cardPaddingDense = EdgeInsets.all(sm); // 8
 
   // Regola di scelta:

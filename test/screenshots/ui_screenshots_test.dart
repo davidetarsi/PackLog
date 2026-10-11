@@ -933,38 +933,6 @@ final flows = <Flow>[
     ),
   ]),
 
-  Flow(
-    '11-creazione-guidata',
-    'Creazione guidata da template (non raggiungibile dalla UI)',
-    [
-      Scenario(
-        1,
-        'scelta-casa',
-        'default',
-        route: '/bulk-creation/select-house',
-        source: 'lib/features/bulk_creation/view/house_selection_screen.dart',
-        description: 'Rotta registrata ma nessun bottone ci porta.',
-        steps: (app) async {
-          await app.go('/');
-          await app.push('/bulk-creation/select-house');
-        },
-      ),
-      Scenario(
-        2,
-        'template',
-        'default',
-        route: '/bulk-creation/templates/:houseId',
-        source:
-            'lib/features/bulk_creation/view/template_selection_screen.dart',
-        description: 'Scelta template.',
-        steps: (app) async {
-          await app.go('/');
-          await app.push('/bulk-creation/templates/$kEmptyHouseId');
-        },
-      ),
-    ],
-  ),
-
   Flow('12-errori', 'Errori di navigazione', [
     Scenario(
       1,

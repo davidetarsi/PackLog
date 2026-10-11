@@ -7,7 +7,6 @@ import '../theme/app_spacing.dart';
 /// Questo widget fornisce un layout unificato e riutilizzabile per:
 /// - `ItemCard` (casa): icon categoria + nome + badge + quantity
 /// - `InTransitItemCard` (in transito): background speciale + shipping info
-/// - `BulkItemRow` (bulk creation): TextField inline + stepper + delete
 /// - Trip item selector: icon + nome + checkbox/stepper
 ///
 /// **Pattern**: Composition over Inheritance (Wrapper Pattern)
@@ -72,8 +71,8 @@ class UniversalItemTile extends StatelessWidget {
   /// dell'oggetto l'unico accento.
   ///
   /// **Non si applica** quando il chiamante passa [borderColor]: in quel caso
-  /// il bordo è semantico (selezione in `TripItemsSelector`, riquadro in
-  /// `BulkItemRow`) e la tile resta un contenitore riquadrato.
+  /// il bordo è semantico (selezione in `TripItemsSelector`) e la tile resta
+  /// un contenitore riquadrato.
   final bool dense;
 
   const UniversalItemTile({
@@ -209,7 +208,7 @@ class UniversalItemTile extends StatelessWidget {
     );
   }
 
-  /// Layout personalizzato usando Row (BulkItemRow, TripItemSelector)
+  /// Layout personalizzato usando Row (TripItemSelector)
   Widget _buildCustomRowLayout(BuildContext context) {
     final row = Padding(
       padding:
