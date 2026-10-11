@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/sync/sync_provider.dart';
+import '../../../shared/theme/app_spacing.dart';
 
 /// Dialog di dettaglio aperto dal tap sulla SyncStatusTile quando ci sono
 /// modifiche non ancora sincronizzate. Mostra, per tipo di entità, quante
@@ -59,9 +60,9 @@ class SyncDetailsDialog extends ConsumerWidget {
                   .toList(),
             );
           },
-          loading: () => const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
+          loading: () => Padding(
+            padding: EdgeInsets.all(context.spacingMd),
+            child: const Center(child: CircularProgressIndicator()),
           ),
           error: (_, _) => Text('errors.load_failed'.tr()),
         ),

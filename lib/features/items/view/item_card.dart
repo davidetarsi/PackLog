@@ -5,6 +5,7 @@ import '../model/item_model.dart';
 import '../providers/item_selection_provider.dart';
 import '../../../shared/widgets/widgets.dart';
 import 'add_edit_item_screen.dart';
+import '../../../shared/theme/app_spacing.dart';
 
 class ItemCard extends ConsumerWidget {
   final ItemModel item;
@@ -44,10 +45,10 @@ class ItemCard extends ConsumerWidget {
             children: [
               Icon(
                 Icons.flight_takeoff,
-                size: 12,
+                size: Theme.of(context).textTheme.bodySmall?.fontSize,
                 color: colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: context.spacingXs),
               Text(
                 'common.in_transit'.tr(),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -74,10 +75,10 @@ class ItemCard extends ConsumerWidget {
               ),
               Icon(
                 Icons.flight_takeoff,
-                size: 12,
+                size: Theme.of(context).textTheme.bodySmall?.fontSize,
                 color: colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: context.spacingXs),
               Text(
                 '$quantityOnTrip ${'common.in_transit'.tr().toLowerCase()}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(

@@ -92,9 +92,9 @@ class TripPickerSheet extends ConsumerWidget {
                           .toList(),
                     );
                   },
-                  loading: () => const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(child: CircularProgressIndicator()),
+                  loading: () => Padding(
+                    padding: EdgeInsets.all(context.spacingMd),
+                    child: const Center(child: CircularProgressIndicator()),
                   ),
                   error: (err, _) => ListTile(
                     enabled: false,

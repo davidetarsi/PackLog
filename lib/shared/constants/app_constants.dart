@@ -1,7 +1,7 @@
 // Regola border radius (DS Phase 1):
 // - Token noti (cardBorderRadius, pillBorderRadius, …) → BorderRadius.circular(AppConstants.X) raw.
 //   Scalare con responsiveBorderRadius su token noti è impercettibile e aggiunge complessità.
-// - Valori contestuali/magici (es. cardBorderRadius + 4) → context.responsiveBorderRadius(X).
+// - Valori contestuali/magici (es. raggi derivati da un'altra misura) → context.responsiveBorderRadius(X).
 class AppConstants {
   static const String housesKey = 'houses';
   static const String itemsKey = 'items';
