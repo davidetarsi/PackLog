@@ -270,7 +270,8 @@
     "leg_pick_dates": "Scegli le date",
     "leg_location_required": "Manca il luogo della tappa",
     "destination_benefit": "Con una casa di destinazione, gli oggetti che porti compaiono lì come temporanei mentre sei via.",
-    "no_items_in_named_house": "Nessun oggetto in {house}"
+    "no_items_in_named_house": "Nessun oggetto in {house}",
+    "destination_house_hint": "Vai in una delle tue case? Scegli «Casa»: gli oggetti che porti compariranno lì come temporanei."
   },
   "common": {
     "save": "Salva",
