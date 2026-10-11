@@ -13,6 +13,7 @@ import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/ds_error_state.dart';
+import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../houses/model/house_model.dart';
@@ -322,7 +323,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
 
       if (selectedHouse != null) {
         primaryLabel = 'ai_import.save_in_house'.tr(
-          args: [selectedHouse.name, totalItems.toString()],
+          args: [selectedHouse.displayName, totalItems.toString()],
         );
         onPrimaryPressed = state.isLoading ? null : notifier.saveItems;
       } else {
@@ -368,59 +369,15 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     final houses = ref.read(houseNotifierProvider).valueOrNull;
     if (houses == null || houses.isEmpty) return;
 
-    await showModalBottomSheet<void>(
+    final selected = await DsPickerSheet.show<HouseModel>(
       context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.spacingMd,
-                context.spacingMd,
-                context.spacingMd,
-                context.spacingXs,
-              ),
-              child: Text(
-                'ai_import.choose_house_title'.tr(),
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: EdgeInsets.only(bottom: context.spacingSm),
-                itemCount: houses.length,
-                itemBuilder: (context, index) {
-                  final house = houses[index];
-                  final isSelected = state.selectedHouseId == house.id;
-                  return ListTile(
-                    leading: Icon(
-                      isSelected ? Icons.home : Icons.home_outlined,
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                    ),
-                    title: Text(house.name),
-                    trailing: isSelected
-                        ? Icon(
-                            Icons.check_circle,
-                            color: Theme.of(context).colorScheme.primary,
-                          )
-                        : null,
-                    onTap: () {
-                      notifier.setSelectedHouseId(house.id);
-                      Navigator.pop(sheetContext);
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+      title: 'ai_import.choose_house_title'.tr(),
+      items: houses,
+      getLabel: (h) => h.displayName,
+      getIcon: (_) => Icons.home_outlined,
+      selected: houses.where((h) => h.id == state.selectedHouseId).firstOrNull,
     );
+    if (selected != null) notifier.setSelectedHouseId(selected.id);
   }
 
   // ── Loading state ─────────────────────────────────────────────────────────
