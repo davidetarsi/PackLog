@@ -33,8 +33,8 @@ class _ParentHostState extends State<_ParentHost> {
   }
 
   /// Simula il nome che arriva dal genitore dopo il primo frame, come fa
-  /// come fa edit_trip_info_screen quando carica il viaggio: il form è già montato con
-  /// initialName null e se lo vede cambiare sotto.
+  /// `edit_trip_info_screen` quando carica il viaggio: il form è già montato
+  /// con initialName null e se lo vede cambiare sotto.
   void pushName(String value) => setState(() => _name = value);
 
   @override
