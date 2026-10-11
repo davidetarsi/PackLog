@@ -85,11 +85,8 @@ class CategoryPill extends StatelessWidget {
   }
 
   static String _labelForCategory(ItemCategory category) {
-    return switch (category) {
-      ItemCategory.vestiti => 'V',
-      ItemCategory.toiletries => 'T',
-      ItemCategory.elettronica => 'E',
-      ItemCategory.varie => '?',
-    };
+    // "Varie" resta un punto interrogativo: è la categoria "non so".
+    if (category == ItemCategory.varie) return '?';
+    return category.displayName.characters.first.toUpperCase();
   }
 }

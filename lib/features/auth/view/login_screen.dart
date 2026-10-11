@@ -172,7 +172,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 AppSpacing.gapLg,
 
                 Text(
-                  'Pack Log',
+                  'app_name'.tr(),
                   style: textTheme.headlineLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: colorScheme.onSurface,

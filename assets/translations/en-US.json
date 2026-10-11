@@ -1,5 +1,5 @@
 {
-  "app_name": "Stuff Tracker",
+  "app_name": "Pack Log",
   "login": {
     "subtitle": "Organize your stuff, wherever you are",
     "sign_in_google": "Sign in with Google",
@@ -139,7 +139,7 @@
     "no_spaces": "No spaces",
     "no_spaces_subtitle": "Spaces help you organize items",
     "all_items": "All",
-    "default": "Default",
+    "default": "No space",
     "name_required": "Name*",
     "name_label": "Name *",
     "name_hint": "E.g. Bedroom Closet, Garage...",

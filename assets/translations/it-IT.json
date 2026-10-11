@@ -1,5 +1,5 @@
 {
-  "app_name": "Stuff Tracker",
+  "app_name": "Pack Log",
   "login": {
     "subtitle": "Organizza i tuoi oggetti, ovunque tu sia",
     "sign_in_google": "Accedi con Google",
@@ -139,7 +139,7 @@
     "no_spaces": "Nessuno spazio",
     "no_spaces_subtitle": "Gli spazi ti aiutano a organizzare gli oggetti",
     "all_items": "Tutti",
-    "default": "Default",
+    "default": "Senza spazio",
     "name_required": "Nome*",
     "name_label": "Nome *",
     "name_hint": "Es. Armadio Camera, Garage...",
@@ -484,7 +484,7 @@
     "source_camera": "Fotocamera",
     "source_gallery": "Galleria",
     "source_sheet_title": "Aggiungi foto",
-    "title": "AI Scan",
+    "title": "Scansione AI",
     "unexpected_error": "Errore imprevisto: {}"
   },
   "onboarding": {
