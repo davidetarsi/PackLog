@@ -253,18 +253,6 @@ GoRouter appRouter(Ref ref) {
         ),
       ),
       GoRoute(
-        path: '/trips/:id/edit',
-        name: 'trip-edit',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final id = state.pathParameters['id'];
-          if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_list_id'.tr());
-          }
-          return AddTripScreen(tripId: id);
-        },
-      ),
-      GoRoute(
         path: '/trips/:id/edit-info',
         name: 'trip-edit-info',
         parentNavigatorKey: _rootNavigatorKey,

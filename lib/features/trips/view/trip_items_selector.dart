@@ -25,14 +25,10 @@ class TripItemsSelector extends ConsumerStatefulWidget {
   /// Callback quando la selezione cambia
   final void Function(List<TripItem> items) onSelectionChanged;
 
-  /// Se true, il widget si adatta al contenuto (per uso in scroll parent)
-  final bool shrinkWrap;
-
   const TripItemsSelector({
     super.key,
     required this.selectedItems,
     required this.onSelectionChanged,
-    this.shrinkWrap = false,
   });
 
   @override
@@ -123,19 +119,6 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final housesAsync = ref.watch(houseNotifierProvider);
-
-    if (widget.shrinkWrap) {
-      // Modalità shrinkWrap per embedding in scroll parent
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildFilters(context, colorScheme, housesAsync),
-          SizedBox(height: context.spacingSm),
-          _buildItemsListShrinkWrap(context, colorScheme),
-        ],
-      );
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,92 +246,13 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
     );
   }
 
-  Widget _buildItemsListShrinkWrap(
-    BuildContext context,
-    ColorScheme colorScheme,
-  ) {
-    if (_selectedHouseId == null) {
-      return _buildEmptyHouseStateShrinkWrap(context);
-    }
-
-    final itemsAsync = ref.watch(itemNotifierProvider(_selectedHouseId!));
-
-    return itemsAsync.when(
-      data: (items) {
-        final filteredItems = _selectedCategory == null
-            ? items
-            : items.where((i) => i.category == _selectedCategory).toList();
-
-        if (filteredItems.isEmpty) {
-          return _buildNoItemsState(context);
-        }
-
-        // Raggruppa per categoria (ordine canonico: vestiti → toiletries → elettronica → varie)
-        final grouped = _groupByCategory(filteredItems);
-
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final entry in grouped.entries) ...[
-              //_buildCategoryHeader(context, entry.key),
-              ...entry.value.map(
-                (item) => _buildItemCard(context, colorScheme, item),
-              ),
-              SizedBox(height: context.spacingSm),
-            ],
-          ],
-        );
-      },
-      loading: () => Padding(
-        padding: EdgeInsets.all(context.spacingLg),
-        child: const Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => Padding(
-        padding: EdgeInsets.all(context.spacingLg),
-        child: Center(child: Text('${'common.error'.tr()}: $e')),
-      ),
-    );
-  }
-
-  /// Stato vuoto casa - versione shrinkWrap (NO scroll interno)
-  Widget _buildEmptyHouseStateShrinkWrap(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: context.spacingLg),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.home_outlined,
-              size: context.iconSizeHero,
-              color: colorScheme.primary.withValues(alpha: 0.5),
-            ),
-            SizedBox(height: context.spacingMd),
-            Text(
-              'trips.select_house_to_view_items'.tr(),
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.38),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// Stato vuoto della lista oggetti.
   ///
   /// Era scritto a mano in due punti quasi identici: ora è uno solo, e ha
   /// un'azione. Senza, la creazione di un viaggio da una casa vuota finisce in
   /// un vicolo cieco.
   ///
-  /// Nessuno scroll qui: usato dal ramo shrinkWrap, il cui genitore è già uno
-  /// `SingleChildScrollView` senza altezza vincolata. Annidarne un altro
-  /// romperebbe con "unbounded height".
+  /// Nessuno scroll qui: lo aggiunge [_buildNoItemsStateScrollable].
   Widget _buildNoItemsState(BuildContext context) {
     final houseName = ref
         .read(houseNotifierProvider)
@@ -380,7 +284,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
 
   /// Come [_buildNoItemsState], ma scorrevole.
   ///
-  /// Usato dal ramo non-shrinkWrap, che al passo 2 del wizard vive dentro un
+  /// Al passo 2 del wizard il selettore vive dentro un
   /// `Expanded` con vincoli stretti: icona hero + titolo su due righe +
   /// bottone superano facilmente lo spazio disponibile con il testo grande
   /// di sistema. La versione con `ListView` dello stato pieno ha sempre avuto

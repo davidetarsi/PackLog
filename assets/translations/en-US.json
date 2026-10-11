@@ -200,7 +200,6 @@
     "add": "Trip",
     "add_new": "New Trip",
     "create_trip": "Create trip",
-    "edit": "Edit Trip",
     "edit_info": "Edit Trip Info",
     "edit_items": "Edit Items",
     "save_items": "Save items",
@@ -381,7 +380,6 @@
     "invalid_house_id": "Invalid house ID",
     "invalid_trip_id": "Invalid trip ID",
     "feature_disabled": "This feature is not available in this version.",
-    "invalid_list_id": "Invalid list ID",
     "no_trips": "No trips",
     "no_items": "No items to save",
     "target_house_id_not_set": "Target house ID not set. Unable to save items."

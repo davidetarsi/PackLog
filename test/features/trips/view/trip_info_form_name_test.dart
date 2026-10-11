@@ -33,7 +33,7 @@ class _ParentHostState extends State<_ParentHost> {
   }
 
   /// Simula il nome che arriva dal genitore dopo il primo frame, come fa
-  /// `add_trip_screen._loadTrip` in modifica: il form è già montato con
+  /// come fa edit_trip_info_screen quando carica il viaggio: il form è già montato con
   /// initialName null e se lo vede cambiare sotto.
   void pushName(String value) => setState(() => _name = value);
 
@@ -215,7 +215,7 @@ void main() {
       'un nome mai personalizzato continua a seguire la destinazione',
       (tester) async {
         // Il genitore monta il form senza nome e glielo passa dopo il primo
-        // frame (add_trip_screen in modifica, dopo _loadTrip). Quel nome
+        // frame (come edit_trip_info_screen, dopo il caricamento). Quel nome
         // coincide col derivato: non è una personalizzazione dell'utente, e
         // adottarlo non deve congelare il campo.
         final host = await _pumpForm(tester, destination: 'Roma');

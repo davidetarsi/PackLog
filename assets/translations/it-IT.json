@@ -201,7 +201,6 @@
     "add": "Viaggio",
     "add_new": "Nuovo viaggio",
     "create_trip": "Crea viaggio",
-    "edit": "Modifica viaggio",
     "edit_info": "Modifica informazioni",
     "edit_items": "Modifica oggetti",
     "save_items": "Salva oggetti",
@@ -381,7 +380,6 @@
     "invalid_house_id": "ID casa non valido",
     "invalid_trip_id": "ID viaggio non valido",
     "feature_disabled": "Questa funzionalità non è disponibile in questa versione.",
-    "invalid_list_id": "ID lista non valido",
     "no_trips": "Nessun viaggio",
     "no_items": "Nessun oggetto da salvare",
     "target_house_id_not_set": "ID casa non impostato. Impossibile salvare gli oggetti."
