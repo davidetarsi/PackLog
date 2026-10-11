@@ -31,6 +31,7 @@ import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/helpers/navigation_helpers.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/ds_button.dart';
 
@@ -518,7 +519,7 @@ class _HouseNormalAppBar extends StatelessWidget
       key: const ValueKey('normal-appbar'),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back),
-        onPressed: () => context.go('/'),
+        onPressed: () => context.popOrGo('/'),
       ),
       title: Row(
         mainAxisSize: MainAxisSize.min,
