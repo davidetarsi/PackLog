@@ -92,7 +92,7 @@ Future<void> _tripDetail(
 
 Future<void> _openManageSheet(ScreenshotApp app) async {
   await _houseDetail(app);
-  await app.tap(_icon(Icons.edit));
+  await app.tap(_icon(Icons.more_horiz));
 }
 
 Future<void> _emitAi(ScreenshotApp app, AiImportState state) async {

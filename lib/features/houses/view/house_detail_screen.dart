@@ -638,7 +638,7 @@ class _HouseNormalActionBar extends StatelessWidget {
           child: isExpanded
               ? null
               : CircularActionButton(
-                  icon: Icons.edit,
+                  icon: Icons.more_horiz,
                   onPressed: onManage,
                   showBorder: true,
                 ),
