@@ -501,7 +501,9 @@
       "title": "I tuoi viaggi",
       "description": "Crea un viaggio e seleziona gli oggetti da portare. Durante il viaggio li ritrovi automaticamente segnati come \"in viaggio\"."
     },
-    "default_house_name": "Casa di prova"
+    "default_house_name": "Casa di prova",
+    "skip": "Salta",
+    "complete_failed": "Non è stato possibile salvare. Riprova."
   },
   "tour": {
     "relaunch_title": "Ripeti il tour",

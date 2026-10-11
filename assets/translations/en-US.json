@@ -501,7 +501,9 @@
       "title": "Your trips",
       "description": "Create a trip and select the items to bring. During the trip, they're automatically marked as \"travelling\"."
     },
-    "default_house_name": "Demo House"
+    "default_house_name": "Demo House",
+    "skip": "Skip",
+    "complete_failed": "Couldn't save. Please try again."
   },
   "tour": {
     "relaunch_title": "Replay tour",

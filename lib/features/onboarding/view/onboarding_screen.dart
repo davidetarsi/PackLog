@@ -53,14 +53,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  Future<void> _handleComplete() async {
+  /// Segna l'onboarding come completato. Il router, vedendolo completato,
+  /// porta al login: vale sia per "Inizia" sia per "Salta".
+  Future<void> _handleComplete({bool skipped = false}) async {
     if (_isCompleting) return;
     setState(() => _isCompleting = true);
     try {
-      ref.read(coreAnalyticsServiceProvider).trackOnboardingCompleted();
+      if (skipped) {
+        ref
+            .read(analyticsServiceProvider)
+            .logEvent(
+              'onboarding_skipped',
+              properties: {'page_index': _currentPage},
+            );
+      } else {
+        ref.read(coreAnalyticsServiceProvider).trackOnboardingCompleted();
+      }
       await ref.read(onboardingStatusProvider.notifier).markCompleted();
       if (mounted && ref.read(onboardingStatusProvider) is AsyncError) {
-        AppSnackBar.showError(context, 'Errore. Riprova.');
+        AppSnackBar.showError(context, 'onboarding.complete_failed'.tr());
       }
     } finally {
       if (mounted) setState(() => _isCompleting = false);
@@ -73,6 +84,28 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // "Salta" sulle prime slide; sull'ultima c'è già "Inizia".
+            // maintainSize: l'altezza non cambia fra le slide, quindi il
+            // contenuto non salta quando il bottone sparisce.
+            Align(
+              alignment: Alignment.centerRight,
+              child: Visibility(
+                visible: !_isLastPage,
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: Padding(
+                  padding: EdgeInsets.only(right: context.spacingSm),
+                  child: TextButton(
+                    key: const Key('onboarding_skip'),
+                    onPressed: _isCompleting
+                        ? null
+                        : () => _handleComplete(skipped: true),
+                    child: Text('onboarding.skip'.tr()),
+                  ),
+                ),
+              ),
+            ),
             const Spacer(),
             Expanded(
               flex: 6,
