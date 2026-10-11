@@ -175,31 +175,31 @@ stimato.
    `/bulk-creation/*` sono registrate (`core/routing/app_router.dart:295`) ma
    nessun bottone ci porta. O va collegata (ad esempio dallo stato vuoto di una
    casa) o va rimossa.
-   **Risolto** in edd6e4b.
+   **Risolto** nella PR #20.
 2. **Due modi di modificare un viaggio.** `/trips/:id/edit`
    (`app_router.dart:259`) apre `AddTripScreen` in modalità modifica, con
    oggetti e bagagli inline, ma nessuno la usa: dal dettaglio si passa da
    `edit-info` + `edit-items`. È codice morto che può divergere.
-   **Risolto** in 6325f81.
+   **Risolto** nella PR #20.
 3. **Il "back" del dettaglio casa non torna indietro, va alla home.** La freccia
    fa `context.go('/')` (`houses/view/house_detail_screen.dart:521`, anche
    `:356`) invece di `pop`: lo stack si perde e la freccia di sistema si
    comporta in modo diverso da quella a schermo.
-   **Risolto** in 6769535.
+   **Risolto** nella PR #20.
 4. **Onboarding senza "Salta" né swipe.** `PageView` con
    `NeverScrollableScrollPhysics` (`onboarding/view/onboarding_screen.dart:81`):
    tre tap obbligati su "Avanti", nessun gesto.
-   **Risolto** in cc1af42.
+   **Risolto** nella PR #20.
 5. **La matita in basso a sinistra del dettaglio casa apre un menu, non
    l'editor** (`house_detail_screen.dart:640`, `Icons.edit`), e il menu contiene
    anche "Elimina". L'icona promette un'azione diversa da quella che fa.
-   **Risolto** in 8ce9b9f.
+   **Risolto** nella PR #20.
 6. **Destinazione del viaggio: il default è "Altra località", ma il testo sotto
    parla della casa di destinazione** ("Con una casa di destinazione, gli
    oggetti… compaiono lì come temporanei") anche quando la casa non è
    selezionata (`trips/view/trip_info_form.dart`, `trips.destination_benefit`).
    Si legge come un'istruzione sul campo sbagliato.
-   **Risolto** in 482346c.
+   **Risolto** nella PR #20.
 
 ### Coerenza con il design system
 
@@ -215,16 +215,16 @@ stimato.
      di `DsPickerSheet`;
    - "Gestisci casa" (`houses/view/house_manage_sheet.dart:20`) non ha né handle
      né titolo, a differenza dei form con `StandardBottomSheetLayout`.
-   **Risolto** in 778acca, 878479b, 82cd622, f1d4bed.
+   **Risolto** nella PR #20.
 8. **Selettore bagagli con `FilterChip`** (`trips/view/add_trip_screen.dart:482`)
    mentre il resto dell'app usa `AppPillTab` per scelte a pillola.
-   **Risolto** in b792b2b.
+   **Risolto** nella PR #20.
 9. **Altezze delle pill tab diverse fra schermate.** `height: 40` fisso nel
    dettaglio casa (`house_detail_screen.dart:738`), nel dettaglio viaggio
    (`trips/view/trip_detail_screen.dart:113`) e nel selettore oggetti
    (`trips/view/trip_items_selector.dart:162`, `:203`); default altrove (tab
    Viaggi).
-   **Risolto** in 5eb0591.
+   **Risolto** nella PR #20.
 10. **Valori numerici fissi fuori dai token**, ad esempio:
     `houses/view/houses_screen.dart:151` (raggio `cardBorderRadius + 4`, solo qui),
     `:210-256` (icone 14/16, gap 4/6); `items/view/item_card.dart:47-80`;
@@ -233,7 +233,7 @@ stimato.
     `trips/view/trip_picker_sheet.dart:96` (`EdgeInsets.all(16)`);
     `shared/widgets/main_shell.dart:411` (`spacingSm + 2`) e `:415`
     (`responsiveFont(15)`, fuori scala).
-   **Risolto** in 3cedc8f.
+   **Risolto** nella PR #20.
 
 ### Testi e localizzazione
 
@@ -242,11 +242,11 @@ stimato.
     (`onboarding/view/onboarding_screen.dart:63`); "Pack Log" scritto nel codice
     nel login (`auth/view/login_screen.dart:175`); "AI Scan", "Default" (spazio
     generico) e "Toiletries" (categoria) appaiono in inglese negli screenshot.
-   **Risolto** in cc1af42 e b35c38d. "Toiletries" resta in inglese per scelta (2026-10-11).
+   **Risolto** nella PR #20. "Toiletries" resta in inglese per scelta (2026-10-11).
 12. **Nomi delle case incoerenti nell'import AI.** La scelta casa e la CTA usano
     `house.name` (`ai_results_screen.dart:421`, `:341`) mentre il resto
     dell'app usa `displayName`.
-   **Risolto** in 75122a0.
+   **Risolto** nella PR #20.
 
 ### Layout
 
@@ -254,7 +254,7 @@ stimato.
     suggerimenti di categoria sfora di 15 px a 412 dp
     (`items/widgets/rapid_fire_input.dart:175`, segnalato nel manifest di
     `04-dettaglio-casa/04-*`).
-   **Risolto** in 3a09263.
+   **Risolto** nella PR #20.
 14. **Il contenuto passa sotto la barra flottante.** Negli screenshot di
     dettaglio casa, dettaglio viaggio e profilo l'ultima riga visibile scorre
     dietro la CTA/tab bar senza sfumatura né separazione. È voluto
@@ -265,7 +265,7 @@ stimato.
     (due `UniversalActionBar` a tutta larghezza,
     `profile/view/profile_screen.dart:375`, `:389`). L'azione distruttiva e
     irreversibile sta subito sotto quella comune.
-   **Risolto** in 74da57e.
+   **Risolto** nella PR #20.
 16. **Errore parziale dell'import AI**: il link "Riprova" arancione sul box rosa
     ha poco contrasto (vedi `06-import-ai/06-*`).
-   **Risolto** in a513a59.
+   **Risolto** nella PR #20.
