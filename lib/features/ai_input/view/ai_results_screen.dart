@@ -606,7 +606,16 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                 if (state.failureReason?.isRetryable ?? false) ...[
                   SizedBox(width: context.spacingSm),
                   TextButton(
+                    key: const Key('ai_partial_error_retry'),
                     onPressed: notifier.retryFailed,
+                    style: TextButton.styleFrom(
+                      foregroundColor: colorScheme.onErrorContainer,
+                      textStyle: Theme.of(context).textTheme.labelLarge
+                          ?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                          ),
+                    ),
                     child: Text('ai_import.retry'.tr()),
                   ),
                 ],
