@@ -45,4 +45,34 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('autofocus: si apre già espanso con la tastiera', (tester) async {
+    var expanded = false;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: RapidFireInput(
+                houseId: 'h1',
+                autofocus: true,
+                onExpandedChanged: (v) => expanded = v,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.focusNode?.hasFocus, isTrue);
+    expect(expanded, isTrue);
+    expect(
+      find.byType(CategoryPill),
+      findsNWidgets(ItemCategory.values.length),
+    );
+  });
 }

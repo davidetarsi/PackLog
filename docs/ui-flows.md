@@ -58,9 +58,11 @@ passati. Un oggetto ha un nome volutamente lungo.
 ## Navigazione
 
 Shell con barra flottante (`lib/shared/widgets/main_shell.dart`): **Case**
-(`/`, home) e **Viaggi** (`/trips`), più un bottone d'azione staccato che fa
-l'azione della tab corrente (Case → foglio "Aggiungi oggetti", Viaggi → nuovo
-viaggio). Il **Profilo** (`/profile`) si apre dall'avatar in alto a destra.
+(`/`, home), **Crea** al centro e **Viaggi** (`/trips`). Crea apre il foglio
+Crea: "Scansiona con AI" in primo piano (con la casa di destinazione), il link
+"scrivili a mano" (apre la casa con il rapid fire attivo), poi Nuova casa e
+Nuovo viaggio, nell'ordine della tab da cui lo si apre. Il **Profilo**
+(`/profile`) si apre dall'avatar in alto a destra.
 Profilo e schermate di dettaglio stanno sul navigator radice, sopra la shell. Redirect in `lib/core/routing/app_router.dart`:
 onboarding non completato → `/onboarding`; non autenticato → `/login`; tour
 post-login allo step `aiIntro` → `/onboarding-ai-intro`.
@@ -89,7 +91,7 @@ Per ogni schermata: file sorgente, come ci si arriva, stati catturati
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
 | 1-4 | Elenco case | `features/houses/view/houses_screen.dart` | tab Case | ✓ vuoto, ✓ skeleton durante il primo sync, ✓ elenco (principale, badge in viaggio/ospite, nome lungo, casa vuota), ✓ menu contestuale (long press). Non catturato: errore |
-| 5 | Aggiungi oggetti (sheet) | `features/items/view/add_items_sheet.dart` | bottone d'azione in Case | ✓ |
+| 5 | Foglio Crea | `shared/widgets/create_sheet.dart` | Crea, dalla tab Case | ✓ |
 | 6 | Nuova casa (sheet) | `features/houses/view/add_edit_house_screen.dart` | riga "Nuova casa" in fondo alla lista | ✓ |
 
 ### 04 · Dettaglio casa
@@ -110,7 +112,7 @@ Per ogni schermata: file sorgente, come ci si arriva, stati catturati
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1 | Nuovo oggetto (sheet) | `features/items/view/add_edit_item_screen.dart` | Aggiungi oggetti → Scrivi a mano | ✓ |
+| 1 | Nuovo oggetto (sheet) | `features/items/view/add_edit_item_screen.dart` | Crea → scrivili a mano → rapid fire → + | ✓ |
 | 2 | Modifica oggetto | `features/items/view/item_form_content.dart` | tap su un oggetto | ✓. Non catturati: picker quantità, casa, spazio (sheet) |
 
 ### 06 · Import AI da dettaglio casa
@@ -125,12 +127,13 @@ Per ogni schermata: file sorgente, come ci si arriva, stati catturati
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
 | 1-5 | Elenco viaggi | `features/trips/view/trips_screen.dart` | tab Viaggi | ✓ vuoto, ✓ Prossimi (hero del viaggio in corso + griglia), ✓ Passati, ✓ Salvati, ✓ menu contestuale. Non catturati: tab "Tutto", errore |
+| 6 | Foglio Crea | `shared/widgets/create_sheet.dart` | Crea, dalla tab Viaggi (Nuovo viaggio in cima) | ✓ |
 
 ### 08 · Creazione viaggio (wizard 2 passi)
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1-4 | Nuovo viaggio, passo 1 | `features/trips/view/add_trip_screen.dart`, `trip_info_form.dart` | bottone d'azione in Viaggi, o CTA nei Viaggi | ✓ vuoto, ✓ errore di validazione, ✓ destinazione "Casa", ✓ picker casa |
+| 1-4 | Nuovo viaggio, passo 1 | `features/trips/view/add_trip_screen.dart`, `trip_info_form.dart` | Crea → Nuovo viaggio, o CTA nei Viaggi | ✓ vuoto, ✓ errore di validazione, ✓ destinazione "Casa", ✓ picker casa |
 | 5 | Selezione date | `features/trips/view/trip_date_range_screen.dart` | tap sulle date | ✓ |
 | 6 | Nuova tappa (sheet) | `features/trips/view/widgets/trip_leg_sheet.dart` | Aggiungi tappa | ✓ |
 | — | Passo 2: oggetti e bagagli | `add_trip_screen.dart` (`_buildItemsStep`), `trip_items_selector.dart` | Avanti con passo 1 valido | **non catturato**: serve compilare date e destinazione via UI |

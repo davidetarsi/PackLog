@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,12 +7,10 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pack_log/core/analytics/analytics_service.dart';
-import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
-import 'package:pack_log/features/items/view/add_edit_item_screen.dart';
-import 'package:pack_log/features/items/view/add_items_sheet.dart';
-import 'package:pack_log/shared/widgets/primary_action_button.dart';
+import 'package:pack_log/features/profile/providers/gpt_usage_provider.dart';
+import 'package:pack_log/shared/widgets/create_sheet.dart';
 import 'package:pack_log/shared/widgets/main_shell.dart';
 
 class _MockAnalytics extends Mock implements AppAnalyticsService {}
@@ -24,19 +20,6 @@ class _FakeHouseNotifier extends HouseNotifier {
   final List<HouseModel> houses;
   @override
   Future<List<HouseModel>> build() async => houses;
-}
-
-/// Case mai caricate: simula l'avvio, prima che il DB risponda.
-class _LoadingHouseNotifier extends HouseNotifier {
-  @override
-  Future<List<HouseModel>> build() => Completer<List<HouseModel>>().future;
-}
-
-class _FakeSyncing extends Syncing {
-  _FakeSyncing(this._value);
-  final bool _value;
-  @override
-  bool build() => _value;
 }
 
 HouseModel _house(String id) => HouseModel(
@@ -82,18 +65,20 @@ void main() {
       ),
       GoRoute(path: '/new-trip', builder: (_, _) => const Text('NEW TRIP')),
       GoRoute(
+        path: '/houses/:id',
+        builder: (_, state) => Text(
+          'HOUSE ${state.pathParameters['id']} '
+          'add=${state.uri.queryParameters['add']}',
+        ),
+      ),
+      GoRoute(
         path: '/houses/:id/ai-import',
         builder: (_, state) => Text('AI IMPORT ${state.pathParameters['id']}'),
       ),
     ],
   );
 
-  Future<void> pumpShell(
-    WidgetTester tester,
-    List<HouseModel> houses, {
-    bool syncing = false,
-    bool housesLoading = false,
-  }) async {
+  Future<void> pumpShell(WidgetTester tester) async {
     await tester.pumpWidget(
       EasyLocalization(
         supportedLocales: const [Locale('en', 'US'), Locale('it', 'IT')],
@@ -104,11 +89,11 @@ void main() {
           overrides: [
             analyticsServiceProvider.overrideWithValue(analytics),
             houseNotifierProvider.overrideWith(
-              () => housesLoading
-                  ? _LoadingHouseNotifier()
-                  : _FakeHouseNotifier(houses),
+              () => _FakeHouseNotifier([_house('a')]),
             ),
-            syncingProvider.overrideWith(() => _FakeSyncing(syncing)),
+            gptUsageProvider.overrideWith(
+              (ref) async => const GptUsageModel(usageCount: 3, usageCap: 30),
+            ),
           ],
           child: MaterialApp.router(routerConfig: buildRouter()),
         ),
@@ -117,148 +102,107 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> settleLabel(WidgetTester tester) async {
-    await tester.pump(const Duration(seconds: 2));
+  Future<void> openCreate(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('nav_create')));
     await tester.pumpAndSettle();
   }
 
-  testWidgets('la barra ha solo Case e Viaggi', (tester) async {
-    await pumpShell(tester, [_house('a')]);
-    expect(find.byKey(const Key('nav_houses')), findsOneWidget);
-    expect(find.byKey(const Key('nav_trips')), findsOneWidget);
-    expect(find.byIcon(Icons.person_3_outlined), findsNothing);
-    await settleLabel(tester);
-  });
-
-  testWidgets('in Case il bottone apre il foglio Aggiungi oggetti', (
+  testWidgets('la barra ha Case, Crea e Viaggi, con Crea al centro', (
     tester,
   ) async {
-    await pumpShell(tester, [_house('a')]);
-    await tester.tap(find.byKey(const Key('primary_action_button')));
-    await tester.pumpAndSettle();
-    expect(find.byType(AddItemsSheet), findsOneWidget);
-    verify(
-      () => analytics.logEvent(
-        'primary_action_tapped',
-        properties: {'tab': 'houses', 'action': 'add_items', 'enabled': true},
-      ),
-    ).called(1);
-    await settleLabel(tester);
+    await pumpShell(tester);
+    double x(String key) => tester.getCenter(find.byKey(Key(key))).dx;
+    expect(x('nav_houses'), lessThan(x('nav_create')));
+    expect(x('nav_create'), lessThan(x('nav_trips')));
   });
 
-  bool buttonEnabled(WidgetTester tester) => tester
-      .widget<PrimaryActionButton>(
-        find.byKey(const Key('primary_action_button')),
-      )
-      .enabled;
-
-  testWidgets('senza case (e senza sync) il bottone è spento e avvisa', (
-    tester,
-  ) async {
-    await pumpShell(tester, const []);
-    expect(buttonEnabled(tester), isFalse);
-    await tester.tap(find.byKey(const Key('primary_action_button')));
-    await tester.pump();
-    expect(find.byType(AddItemsSheet), findsNothing);
-    expect(find.byType(SnackBar), findsOneWidget);
-    verify(
-      () => analytics.logEvent(
-        'primary_action_tapped',
-        properties: {'tab': 'houses', 'action': 'add_items', 'enabled': false},
-      ),
-    ).called(1);
-    await settleLabel(tester);
+  testWidgets('le tre scritte sono allineate', (tester) async {
+    await pumpShell(tester);
+    double labelY(String key) => tester
+        .getCenter(
+          find.descendant(
+            of: find.byKey(Key(key)),
+            matching: find.byType(Text),
+          ),
+        )
+        .dy;
+    expect(labelY('nav_create'), labelY('nav_houses'));
+    expect(labelY('nav_create'), labelY('nav_trips'));
   });
 
-  testWidgets('lista vuota con sync in corso: bottone acceso, tocco inerte', (
+  testWidgets('Crea da Case apre il foglio nell\'ordine di Case', (
     tester,
   ) async {
-    await pumpShell(tester, const [], syncing: true);
-    expect(buttonEnabled(tester), isTrue);
-    await tester.tap(find.byKey(const Key('primary_action_button')));
-    await tester.pumpAndSettle();
-    expect(find.byType(AddItemsSheet), findsNothing);
-    expect(find.byType(SnackBar), findsNothing);
-    verifyNever(
-      () => analytics.logEvent(
-        'primary_action_tapped',
-        properties: any(named: 'properties'),
-      ),
+    await pumpShell(tester);
+    await openCreate(tester);
+    expect(
+      tester.widget<CreateSheet>(find.byType(CreateSheet)).fromTrips,
+      isFalse,
     );
-    await settleLabel(tester);
+    verify(
+      () => analytics.logEvent('create_tapped', properties: {'tab': 'houses'}),
+    ).called(1);
   });
 
-  testWidgets('case in caricamento: bottone acceso, tocco inerte', (
+  testWidgets('Crea da Viaggi apre il foglio nell\'ordine di Viaggi', (
     tester,
   ) async {
-    await pumpShell(tester, const [], housesLoading: true);
-    expect(buttonEnabled(tester), isTrue);
-    await tester.tap(find.byKey(const Key('primary_action_button')));
-    await tester.pump();
-    expect(find.byType(AddItemsSheet), findsNothing);
-    expect(find.byType(SnackBar), findsNothing);
-    await settleLabel(tester);
-  });
-
-  group('scelta nel foglio Aggiungi oggetti', () {
-    Future<void> openSheet(WidgetTester tester) async {
-      await tester.tap(find.byKey(const Key('primary_action_button')));
-      await tester.pumpAndSettle();
-      expect(find.byType(AddItemsSheet), findsOneWidget);
-    }
-
-    testWidgets('manuale: si apre il form oggetto per la casa scelta', (
-      tester,
-    ) async {
-      await pumpShell(tester, [_house('a')]);
-      await openSheet(tester);
-      await tester.tap(find.byKey(const Key('add_items_manual')));
-      await tester.pumpAndSettle();
-      // Nei test il font largo e le chiavi di traduzione grezze fanno andare in
-      // overflow un menu del form: non c'entra con la scelta che verifichiamo.
-      tester.takeException();
-      expect(find.byType(AddItemsSheet), findsNothing);
-      final sheet = tester.widget<AddEditItemSheet>(
-        find.byType(AddEditItemSheet),
-      );
-      expect(sheet.houseId, 'a');
-      expect(sheet.itemId, isNull);
-      await settleLabel(tester);
-    });
-
-    testWidgets('scansione AI: push a /houses/<id>/ai-import', (tester) async {
-      await pumpShell(tester, [_house('a')]);
-      await openSheet(tester);
-      await tester.tap(find.byKey(const Key('add_items_ai_scan')));
-      await tester.pumpAndSettle();
-      expect(find.text('AI IMPORT a'), findsOneWidget);
-      await settleLabel(tester);
-    });
-
-    testWidgets('foglio chiuso senza scelta: nessuna navigazione', (
-      tester,
-    ) async {
-      await pumpShell(tester, [_house('a')]);
-      await openSheet(tester);
-      await tester.tapAt(const Offset(10, 10)); // barriera del foglio
-      await tester.pumpAndSettle();
-      expect(find.byType(AddItemsSheet), findsNothing);
-      expect(find.byType(AddEditItemSheet), findsNothing);
-      expect(find.textContaining('AI IMPORT'), findsNothing);
-      expect(find.text('HOUSES'), findsOneWidget);
-      await settleLabel(tester);
-    });
-  });
-
-  testWidgets('in Viaggi il bottone apre Nuovo viaggio', (tester) async {
-    await pumpShell(tester, [_house('a')]);
+    await pumpShell(tester);
     await tester.tap(find.byKey(const Key('nav_trips')));
     await tester.pumpAndSettle();
-    expect(find.text('TRIPS'), findsOneWidget);
+    await openCreate(tester);
+    expect(
+      tester.widget<CreateSheet>(find.byType(CreateSheet)).fromTrips,
+      isTrue,
+    );
+  });
 
-    await tester.tap(find.byKey(const Key('primary_action_button')));
-    await tester.pumpAndSettle();
-    expect(find.text('NEW TRIP'), findsOneWidget);
-    await settleLabel(tester);
+  group('scelta nel foglio Crea', () {
+    testWidgets('Scansiona con AI apre l\'import della casa', (tester) async {
+      await pumpShell(tester);
+      await openCreate(tester);
+      await tester.tap(find.byKey(const Key('create_ai_scan')));
+      await tester.pumpAndSettle();
+      expect(find.text('AI IMPORT a'), findsOneWidget);
+      verify(
+        () => analytics.logEvent(
+          'create_sheet_choice',
+          properties: {'choice': 'ai_scan', 'tab': 'houses'},
+        ),
+      ).called(1);
+    });
+
+    testWidgets('"Scrivili a mano" apre la casa con il rapid fire', (
+      tester,
+    ) async {
+      await pumpShell(tester);
+      await openCreate(tester);
+      await tester.tap(find.byKey(const Key('create_manual_items')));
+      await tester.pumpAndSettle();
+      expect(find.text('HOUSE a add=manual'), findsOneWidget);
+    });
+
+    testWidgets('Nuovo viaggio apre il wizard', (tester) async {
+      await pumpShell(tester);
+      await openCreate(tester);
+      await tester.tap(find.byKey(const Key('create_new_trip')));
+      await tester.pumpAndSettle();
+      expect(find.text('NEW TRIP'), findsOneWidget);
+    });
+
+    testWidgets('chiudere il foglio non fa nulla', (tester) async {
+      await pumpShell(tester);
+      await openCreate(tester);
+      Navigator.of(tester.element(find.byType(CreateSheet))).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(CreateSheet), findsNothing);
+      expect(find.text('HOUSES'), findsOneWidget);
+      verifyNever(
+        () => analytics.logEvent(
+          'create_sheet_choice',
+          properties: any(named: 'properties'),
+        ),
+      );
+    });
   });
 }

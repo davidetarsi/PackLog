@@ -195,7 +195,11 @@ GoRouter appRouter(Ref ref) {
             align: ContentAlign.bottom,
             advancesOnOk: true,
             requiresMultipleHouses: true,
-            child: HouseDetailScreen(houseId: id),
+            child: HouseDetailScreen(
+              houseId: id,
+              // `?add=manual` arriva da Crea → "scrivili a mano".
+              openRapidFire: state.uri.queryParameters['add'] == 'manual',
+            ),
           );
         },
       ),

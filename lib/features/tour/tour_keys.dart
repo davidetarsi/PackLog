@@ -7,10 +7,11 @@ class _TourKeys {
   final tripsTab = GlobalKey();
   final infoCardTarget = GlobalKey();
 
-  /// Bottone d'azione della shell (Aggiungi oggetti / Nuovo viaggio).
+  /// Voce "Crea" al centro della barra. Target di
+  /// [OnboardingStep.createTripTooltip].
   final primaryAction = GlobalKey();
 
-  /// Riga "Nuova casa" in fondo alla lista case. Target di
+  /// Riga "Nuova casa" (in fondo alla lista, o nello stato vuoto). Target di
   /// [OnboardingStep.houseTooltip].
   final newHouseRow = GlobalKey();
 

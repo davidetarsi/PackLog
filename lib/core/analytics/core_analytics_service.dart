@@ -88,23 +88,19 @@ class CoreAnalyticsService {
 
   // ── navigation_ ───────────────────────────────────────────────────────────
 
-  /// Tocco sul bottone d'azione della shell. `enabled: false` = bottone
-  /// spento (tab Case senza case): misura quante volte l'utente lo cerca
-  /// prima di avere una casa.
-  void trackPrimaryActionTapped({
-    required String tab,
-    required String action,
-    required bool enabled,
-  }) {
-    _safeLogEvent(
-      'primary_action_tapped',
-      properties: {'tab': tab, 'action': action, 'enabled': enabled},
-    );
+  /// Tocco su "Crea" nella barra. `tab` = tab da cui si apre il foglio
+  /// (`houses`/`trips`): l'ordine delle voci del foglio dipende da lì.
+  void trackCreateTapped({required String tab}) {
+    _safeLogEvent('create_tapped', properties: {'tab': tab});
   }
 
-  /// Scelta nel foglio "Aggiungi oggetti": `ai_scan` o `manual`.
-  void trackAddItemsSheetChoice({required String choice}) {
-    _safeLogEvent('add_items_sheet_choice', properties: {'choice': choice});
+  /// Scelta nel foglio Crea: `ai_scan`, `manual_items`, `new_house`,
+  /// `new_trip`.
+  void trackCreateSheetChoice({required String choice, required String tab}) {
+    _safeLogEvent(
+      'create_sheet_choice',
+      properties: {'choice': choice, 'tab': tab},
+    );
   }
 
   // ── space_ ────────────────────────────────────────────────────────────────

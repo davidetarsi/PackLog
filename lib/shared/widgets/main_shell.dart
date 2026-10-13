@@ -6,23 +6,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/analytics/core_analytics_service.dart';
-import '../../core/sync/sync_provider.dart';
-import '../../features/houses/providers/house_provider.dart';
-import '../../features/items/view/add_edit_item_screen.dart';
-import '../../features/items/view/add_items_sheet.dart';
+import '../../features/houses/helpers/create_house_flow.dart';
 import '../../features/tour/tour_keys.dart';
 import '../constants/app_constants.dart';
-import '../helpers/snack_bar_helper.dart';
 import '../theme/app_spacing.dart';
-import 'primary_action_button.dart';
+import 'create_sheet.dart';
 
 /// Effetto vetro della barra (sfocatura dello sfondo). Se sul telefono la
 /// sfocatura fa scattare lo scorrimento, metti `false`: la barra torna a una
 /// superficie tonale piena.
 const bool _kGlassNavBar = true;
 
-/// Shell principale: barra flottante con due luoghi (Case, Viaggi) e, staccato,
-/// il bottone d'azione della tab corrente.
+/// Shell principale: barra flottante Case · Crea · Viaggi.
+///
+/// "Crea" è sempre lo stesso in ogni tab e apre il foglio Crea, dove la
+/// scansione AI è la scelta principale. La tab corrente decide solo l'ordine
+/// delle voci sotto (vedi [showCreateSheet]).
 class MainShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
@@ -34,71 +33,39 @@ class MainShell extends ConsumerWidget {
   void _goBranch(int index) =>
       navigationShell.goBranch(index, initialLocation: false);
 
-  /// [housesState] è lo stato mostrato dal bottone (vedi [_HousesState]).
-  Future<void> _onAddItems(
+  Future<void> _onCreate(
     BuildContext context,
     WidgetRef ref, {
-    required _HousesState housesState,
+    required bool fromTrips,
   }) async {
-    // Case non ancora note (caricamento, errore, o lista vuota durante una
-    // sync che sta ancora riempiendo il DB): il bottone è acceso ma il foglio
-    // non ha una casa da proporre. Soluzione più semplice: non fare nulla, né
-    // foglio né avviso né evento (l'azione non è avvenuta). Appena le case
-    // arrivano, il tocco successivo funziona.
-    if (housesState == _HousesState.pending) return;
-
-    final hasHouses = housesState == _HousesState.available;
     final analytics = ref.read(coreAnalyticsServiceProvider);
-    analytics.trackPrimaryActionTapped(
-      tab: 'houses',
-      action: 'add_items',
-      enabled: hasHouses,
-    );
-    if (!hasHouses) {
-      AppSnackBar.showWarning(context, 'navigation.create_house_first'.tr());
-      return;
-    }
-    final choice = await showAddItemsSheet(context);
-    if (choice == null || !context.mounted) return;
-    switch (choice.method) {
-      case AddItemsMethod.aiScan:
-        analytics.trackAddItemsSheetChoice(choice: 'ai_scan');
-        context.push('/houses/${choice.houseId}/ai-import');
-      case AddItemsMethod.manual:
-        analytics.trackAddItemsSheetChoice(choice: 'manual');
-        await showAddEditItemSheet(context, houseId: choice.houseId);
-    }
-  }
+    final tab = fromTrips ? 'trips' : 'houses';
+    analytics.trackCreateTapped(tab: tab);
 
-  void _onNewTrip(BuildContext context, WidgetRef ref) {
-    ref
-        .read(coreAnalyticsServiceProvider)
-        .trackPrimaryActionTapped(
-          tab: 'trips',
-          action: 'new_trip',
-          enabled: true,
-        );
-    context.push('/new-trip');
+    final choice = await showCreateSheet(context, fromTrips: fromTrips);
+    if (choice == null || !context.mounted) return;
+
+    switch (choice.action) {
+      case CreateAction.aiScan:
+        analytics.trackCreateSheetChoice(choice: 'ai_scan', tab: tab);
+        context.push('/houses/${choice.houseId}/ai-import');
+      case CreateAction.manualItems:
+        analytics.trackCreateSheetChoice(choice: 'manual_items', tab: tab);
+        // L'inserimento a mano passa dal rapid fire della casa, già attivo.
+        context.push('/houses/${choice.houseId}?add=manual');
+      case CreateAction.newHouse:
+        analytics.trackCreateSheetChoice(choice: 'new_house', tab: tab);
+        await createHouseWithTourAdvance(context, ref);
+      case CreateAction.newTrip:
+        analytics.trackCreateSheetChoice(choice: 'new_trip', tab: tab);
+        context.push('/new-trip');
+    }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    final currentIndex = navigationShell.currentIndex;
-    // Stesso criterio di HousesScreen: una lista vuota durante una sync è un
-    // caricamento (DB appena svuotato), non "utente senza case". Il bottone si
-    // spegne solo quando le case sono caricate, vuote e nessuna sync è attiva;
-    // altrimenti spegnerlo farebbe lampeggiare il colore a ogni avvio.
-    final houses = ref.watch(houseNotifierProvider).valueOrNull;
-    final isSyncing = ref.watch(syncingProvider);
-    final housesState = houses == null
-        ? _HousesState.pending
-        : houses.isNotEmpty
-        ? _HousesState.available
-        : isSyncing
-        ? _HousesState.pending
-        : _HousesState.none;
-    final onHouses = currentIndex == _housesBranch;
+    final onHouses = navigationShell.currentIndex == _housesBranch;
 
     final barHeight = context.responsive(56.0);
     final radius = context.responsiveBorderRadius(
@@ -128,6 +95,14 @@ class MainShell extends ConsumerWidget {
               label: 'navigation.houses'.tr(),
               isSelected: onHouses,
               onTap: () => _goBranch(_housesBranch),
+            ),
+          ),
+          Expanded(
+            child: _CreateNavItem(
+              key: const Key('nav_create'),
+              anchorKey: tourKeys.primaryAction,
+              label: 'common.create'.tr(),
+              onTap: () => _onCreate(context, ref, fromTrips: !onHouses),
             ),
           ),
           Expanded(
@@ -174,40 +149,18 @@ class MainShell extends ConsumerWidget {
             context.spacingMd,
             context.spacingMd,
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: radius,
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorScheme.shadow.withValues(alpha: 0.12),
-                        blurRadius: 12,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: bar,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
                 ),
-              ),
-              SizedBox(width: context.spacingSm),
-              KeyedSubtree(
-                key: tourKeys.primaryAction,
-                child: PrimaryActionButton(
-                  key: const Key('primary_action_button'),
-                  icon: onHouses ? Icons.add : Icons.luggage,
-                  label: onHouses
-                      ? 'navigation.add_items'.tr()
-                      : 'navigation.new_trip'.tr(),
-                  enabled: !onHouses || housesState != _HousesState.none,
-                  onPressed: onHouses
-                      ? () =>
-                            _onAddItems(context, ref, housesState: housesState)
-                      : () => _onNewTrip(context, ref),
-                ),
-              ),
-            ],
+              ],
+            ),
+            child: bar,
           ),
         ),
       ),
@@ -215,18 +168,10 @@ class MainShell extends ConsumerWidget {
   }
 }
 
-/// Disponibilità delle case per il bottone "Aggiungi oggetti".
-enum _HousesState {
-  /// Almeno una casa: il foglio si apre.
-  available,
-
-  /// Caricate e vuote, nessuna sync in corso: bottone spento + avviso.
-  none,
-
-  /// Non ancora note (caricamento, errore, sync con lista vuota): bottone
-  /// acceso nell'aspetto, ma il tocco non fa nulla.
-  pending,
-}
+/// Altezza dello slot icona, uguale per tutte le voci: il cerchio di Crea è
+/// più alto di un'icona e senza uno slot comune le scritte non sarebbero
+/// allineate.
+double _iconSlotHeight(BuildContext context) => context.responsive(32);
 
 class _NavItem extends StatelessWidget {
   final GlobalKey anchorKey;
@@ -257,26 +202,100 @@ class _NavItem extends StatelessWidget {
       key: anchorKey,
       onTap: onTap,
       borderRadius: context.responsiveBorderRadius(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            isSelected ? selectedIcon : icon,
-            size: context.responsive(22),
-            color: color,
+      child: _NavItemLayout(
+        icon: Icon(
+          isSelected ? selectedIcon : icon,
+          size: context.responsive(22),
+          color: color,
+        ),
+        label: label,
+        labelColor: color,
+      ),
+    );
+  }
+}
+
+/// Voce "Crea": cerchio a contorno arancio con il +, dentro la barra.
+class _CreateNavItem extends StatelessWidget {
+  final GlobalKey anchorKey;
+  final String label;
+  final VoidCallback onTap;
+
+  const _CreateNavItem({
+    super.key,
+    required this.anchorKey,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final size = _iconSlotHeight(context);
+
+    return Semantics(
+      button: true,
+      child: InkWell(
+        key: anchorKey,
+        onTap: onTap,
+        borderRadius: context.responsiveBorderRadius(16),
+        child: _NavItemLayout(
+          icon: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: colorScheme.primary, width: 1.5),
+            ),
+            child: Icon(
+              Icons.add,
+              size: context.responsive(20),
+              color: colorScheme.primary,
+            ),
           ),
-          SizedBox(height: context.spacingXs / 4),
-          Text(
+          label: label,
+          labelColor: colorScheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItemLayout extends StatelessWidget {
+  final Widget icon;
+  final String label;
+  final Color labelColor;
+
+  const _NavItemLayout({
+    required this.icon,
+    required this.label,
+    required this.labelColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          height: _iconSlotHeight(context),
+          child: Center(child: icon),
+        ),
+        // L'altezza della barra è fissa: con caratteri molto grandi la
+        // scritta non deve spingere l'icona fuori.
+        MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(
               context,
-            ).textTheme.labelSmall?.copyWith(color: color),
+            ).textTheme.labelSmall?.copyWith(color: labelColor),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

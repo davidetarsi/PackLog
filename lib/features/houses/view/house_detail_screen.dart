@@ -56,7 +56,15 @@ const _kBottomBarElementsHeight = 50.0;
 class HouseDetailScreen extends ConsumerStatefulWidget {
   final String houseId;
 
-  const HouseDetailScreen({super.key, required this.houseId});
+  /// Apre la schermata con il rapid fire già attivo (tastiera su): è la
+  /// strada dell'inserimento a mano dal foglio Crea.
+  final bool openRapidFire;
+
+  const HouseDetailScreen({
+    super.key,
+    required this.houseId,
+    this.openRapidFire = false,
+  });
 
   @override
   ConsumerState<HouseDetailScreen> createState() => _HouseDetailScreenState();
@@ -461,6 +469,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                       key: const ValueKey('normal_bar'),
                       child: _HouseNormalActionBar(
                         houseId: widget.houseId,
+                        autofocusRapidFire: widget.openRapidFire,
                         isPrimary: house.isPrimary,
                         houseName: house.displayName,
                         isExpanded: _isRapidFireExpanded,
@@ -605,6 +614,7 @@ class _HouseSelectionAppBar extends ConsumerWidget
 /// (centro), AI import (dx).
 class _HouseNormalActionBar extends StatelessWidget {
   final String houseId;
+  final bool autofocusRapidFire;
   final bool isPrimary;
   final String houseName;
   final bool isExpanded;
@@ -614,6 +624,7 @@ class _HouseNormalActionBar extends StatelessWidget {
 
   const _HouseNormalActionBar({
     required this.houseId,
+    required this.autofocusRapidFire,
     required this.isPrimary,
     required this.houseName,
     required this.isExpanded,
@@ -645,6 +656,7 @@ class _HouseNormalActionBar extends StatelessWidget {
         ),
         center: RapidFireInput(
           houseId: houseId,
+          autofocus: autofocusRapidFire,
           currentSpaceId: currentSpaceId,
           height: elementHeight,
           onOpenFullForm: (name, category) => showAddEditItemSheet(

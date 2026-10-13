@@ -21,10 +21,7 @@
     "houses": "Case",
     "trips": "Viaggi",
     "profile": "Profilo",
-    "open_profile": "Apri profilo",
-    "add_items": "Aggiungi oggetti",
-    "new_trip": "Nuovo viaggio",
-    "create_house_first": "Crea prima una casa"
+    "open_profile": "Apri profilo"
   },
   "houses": {
     "title": "Le mie case",
@@ -119,15 +116,7 @@
     "bulk_move_no_houses": "Nessun'altra casa disponibile",
     "bulk_move_sheet_title": "Sposta {} oggetti",
     "add_to_trip_success": "{} oggetti aggiunti a {}",
-    "rapid_fire_hint": "Aggiungi oggetto...",
-    "add_sheet": {
-      "title": "Aggiungi oggetti",
-      "destination": "Nella casa",
-      "choose_house": "Scegli la casa",
-      "ai_scan": "Scansiona con AI",
-      "ai_scan_hint": "Fotografa i vestiti: l'AI li riconosce e li salva",
-      "manual": "Scrivi a mano"
-    }
+    "rapid_fire_hint": "Aggiungi oggetto..."
   },
   "categories": {
     "vestiti": "Vestiti",
@@ -564,7 +553,7 @@
     },
     "create_trip_tooltip": {
       "title": "Crea il tuo primo viaggio",
-      "body": "Apri Viaggi e tocca «Nuovo viaggio» per creare il tuo primo viaggio."
+      "body": "Tocca Crea e scegli «Nuovo viaggio» per creare il tuo primo viaggio."
     },
     "trip_creation_tooltip": {
       "title": "Organizza il tuo viaggio",
@@ -582,5 +571,19 @@
   },
   "location_search": {
     "rate_limit_reached": "Troppe ricerche di località, riprova tra qualche minuto."
+  },
+  "create_sheet": {
+    "title": "Crea",
+    "ai_scan": "Scansiona con AI",
+    "ai_scan_hint": "Fotografa i vestiti: l'AI li riconosce e li salva",
+    "need_house": "Crea prima una casa: gli oggetti scansionati finiscono lì",
+    "ai_exhausted": "Hai esaurito le scansioni AI",
+    "in_house": "in {}",
+    "choose_house": "Scegli la casa",
+    "manual_link": "Non sono vestiti? Scrivili a mano",
+    "new_house": "Nuova casa",
+    "new_house_hint": "Un altro posto dove tieni le tue cose",
+    "new_trip": "Nuovo viaggio",
+    "new_trip_hint": "Destinazione, date e cosa portare"
   }
 }

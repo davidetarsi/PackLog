@@ -374,32 +374,24 @@ void main() {
   });
 
   group('navigation_', () {
-    test('trackPrimaryActionTapped logs primary_action_tapped', () async {
-      service.trackPrimaryActionTapped(
-        tab: 'houses',
-        action: 'add_items',
-        enabled: false,
-      );
+    test('trackCreateTapped logs create_tapped', () async {
+      service.trackCreateTapped(tab: 'houses');
       await pump();
       verify(
         () => mockAnalytics.logEvent(
-          'primary_action_tapped',
-          properties: {
-            'tab': 'houses',
-            'action': 'add_items',
-            'enabled': false,
-          },
+          'create_tapped',
+          properties: {'tab': 'houses'},
         ),
       ).called(1);
     });
 
-    test('trackAddItemsSheetChoice logs add_items_sheet_choice', () async {
-      service.trackAddItemsSheetChoice(choice: 'ai_scan');
+    test('trackCreateSheetChoice logs create_sheet_choice', () async {
+      service.trackCreateSheetChoice(choice: 'ai_scan', tab: 'trips');
       await pump();
       verify(
         () => mockAnalytics.logEvent(
-          'add_items_sheet_choice',
-          properties: {'choice': 'ai_scan'},
+          'create_sheet_choice',
+          properties: {'choice': 'ai_scan', 'tab': 'trips'},
         ),
       ).called(1);
     });
