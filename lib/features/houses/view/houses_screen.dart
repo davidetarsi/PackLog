@@ -16,10 +16,8 @@ import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
 import '../../../shared/widgets/refreshable_empty_state.dart';
-import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/tab_header.dart';
 import '../../tour/tour_keys.dart';
-import '../helpers/create_house_flow.dart';
 import 'widgets/new_house_row.dart';
 
 class HousesScreen extends ConsumerStatefulWidget {
@@ -57,10 +55,12 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
                     onRefresh: () => ref.refresh(houseNotifierProvider.future),
                     icon: Icons.home_outlined,
                     title: 'houses.no_houses_title'.tr(),
-                    action: DsButton(
-                      label: 'houses.no_houses_subtitle'.tr(),
-                      icon: Icons.add,
-                      onPressed: () => createHouseWithTourAdvance(context, ref),
+                    // Stessa chiave del tour della riga in fondo alla lista:
+                    // le due non sono mai a schermo insieme, e così il tip
+                    // "Crea la tua prima casa" ha sempre un bersaglio.
+                    action: NewHouseRow(
+                      key: tourKeys.newHouseRow,
+                      emphasized: true,
                     ),
                   );
                 }

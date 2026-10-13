@@ -24,7 +24,9 @@
     "open_profile": "Apri profilo",
     "add_items": "Aggiungi oggetti",
     "new_trip": "Nuovo viaggio",
-    "create_house_first": "Crea prima una casa"
+    "create_house_first": "Crea prima una casa",
+    "action_item": "Oggetto",
+    "action_trip": "Viaggio"
   },
   "houses": {
     "title": "Le mie case",
@@ -564,7 +566,7 @@
     },
     "create_trip_tooltip": {
       "title": "Crea il tuo primo viaggio",
-      "body": "Apri Viaggi e tocca «Nuovo viaggio» per creare il tuo primo viaggio."
+      "body": "Apri Viaggi e tocca «+ Viaggio» per creare il tuo primo viaggio."
     },
     "trip_creation_tooltip": {
       "title": "Organizza il tuo viaggio",
