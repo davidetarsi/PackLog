@@ -28,6 +28,7 @@
   },
   "houses": {
     "title": "Le mie case",
+    "new_house_row": "Nuova casa",
     "add": "Casa",
     "add_new": "Nuova casa",
     "edit": "Modifica casa",
