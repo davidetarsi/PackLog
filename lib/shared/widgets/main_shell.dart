@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/analytics/core_analytics_service.dart';
+import '../../core/sync/sync_provider.dart';
 import '../../features/houses/providers/house_provider.dart';
 import '../../features/items/view/add_edit_item_screen.dart';
 import '../../features/items/view/add_items_sheet.dart';
@@ -33,11 +34,20 @@ class MainShell extends ConsumerWidget {
   void _goBranch(int index) =>
       navigationShell.goBranch(index, initialLocation: false);
 
+  /// [housesState] è lo stato mostrato dal bottone (vedi [_HousesState]).
   Future<void> _onAddItems(
     BuildContext context,
     WidgetRef ref, {
-    required bool hasHouses,
+    required _HousesState housesState,
   }) async {
+    // Case non ancora note (caricamento, errore, o lista vuota durante una
+    // sync che sta ancora riempiendo il DB): il bottone è acceso ma il foglio
+    // non ha una casa da proporre. Soluzione più semplice: non fare nulla, né
+    // foglio né avviso né evento (l'azione non è avvenuta). Appena le case
+    // arrivano, il tocco successivo funziona.
+    if (housesState == _HousesState.pending) return;
+
+    final hasHouses = housesState == _HousesState.available;
     final analytics = ref.read(coreAnalyticsServiceProvider);
     analytics.trackPrimaryActionTapped(
       tab: 'houses',
@@ -75,10 +85,19 @@ class MainShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final currentIndex = navigationShell.currentIndex;
+    // Stesso criterio di HousesScreen: una lista vuota durante una sync è un
+    // caricamento (DB appena svuotato), non "utente senza case". Il bottone si
+    // spegne solo quando le case sono caricate, vuote e nessuna sync è attiva;
+    // altrimenti spegnerlo farebbe lampeggiare il colore a ogni avvio.
     final houses = ref.watch(houseNotifierProvider).valueOrNull;
-    // Durante il caricamento il bottone resta acceso: spegnerlo per un frame
-    // farebbe lampeggiare il colore a ogni avvio.
-    final hasHouses = houses == null || houses.isNotEmpty;
+    final isSyncing = ref.watch(syncingProvider);
+    final housesState = houses == null
+        ? _HousesState.pending
+        : houses.isNotEmpty
+        ? _HousesState.available
+        : isSyncing
+        ? _HousesState.pending
+        : _HousesState.none;
     final onHouses = currentIndex == _housesBranch;
 
     final barHeight = context.responsive(56.0);
@@ -181,9 +200,10 @@ class MainShell extends ConsumerWidget {
                   label: onHouses
                       ? 'navigation.add_items'.tr()
                       : 'navigation.new_trip'.tr(),
-                  enabled: !onHouses || hasHouses,
+                  enabled: !onHouses || housesState != _HousesState.none,
                   onPressed: onHouses
-                      ? () => _onAddItems(context, ref, hasHouses: hasHouses)
+                      ? () =>
+                            _onAddItems(context, ref, housesState: housesState)
                       : () => _onNewTrip(context, ref),
                 ),
               ),
@@ -193,6 +213,19 @@ class MainShell extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Disponibilità delle case per il bottone "Aggiungi oggetti".
+enum _HousesState {
+  /// Almeno una casa: il foglio si apre.
+  available,
+
+  /// Caricate e vuote, nessuna sync in corso: bottone spento + avviso.
+  none,
+
+  /// Non ancora note (caricamento, errore, sync con lista vuota): bottone
+  /// acceso nell'aspetto, ma il tocco non fa nulla.
+  pending,
 }
 
 class _NavItem extends StatelessWidget {

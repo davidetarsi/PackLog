@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,9 +9,11 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pack_log/core/analytics/analytics_service.dart';
+import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/items/view/add_items_sheet.dart';
+import 'package:pack_log/shared/widgets/primary_action_button.dart';
 import 'package:pack_log/shared/widgets/main_shell.dart';
 
 class _MockAnalytics extends Mock implements AppAnalyticsService {}
@@ -19,6 +23,19 @@ class _FakeHouseNotifier extends HouseNotifier {
   final List<HouseModel> houses;
   @override
   Future<List<HouseModel>> build() async => houses;
+}
+
+/// Case mai caricate: simula l'avvio, prima che il DB risponda.
+class _LoadingHouseNotifier extends HouseNotifier {
+  @override
+  Future<List<HouseModel>> build() => Completer<List<HouseModel>>().future;
+}
+
+class _FakeSyncing extends Syncing {
+  _FakeSyncing(this._value);
+  final bool _value;
+  @override
+  bool build() => _value;
 }
 
 HouseModel _house(String id) => HouseModel(
@@ -63,10 +80,19 @@ void main() {
         ],
       ),
       GoRoute(path: '/new-trip', builder: (_, _) => const Text('NEW TRIP')),
+      GoRoute(
+        path: '/houses/:id/ai-import',
+        builder: (_, state) => Text('AI IMPORT ${state.pathParameters['id']}'),
+      ),
     ],
   );
 
-  Future<void> pumpShell(WidgetTester tester, List<HouseModel> houses) async {
+  Future<void> pumpShell(
+    WidgetTester tester,
+    List<HouseModel> houses, {
+    bool syncing = false,
+    bool housesLoading = false,
+  }) async {
     await tester.pumpWidget(
       EasyLocalization(
         supportedLocales: const [Locale('en', 'US'), Locale('it', 'IT')],
@@ -77,8 +103,11 @@ void main() {
           overrides: [
             analyticsServiceProvider.overrideWithValue(analytics),
             houseNotifierProvider.overrideWith(
-              () => _FakeHouseNotifier(houses),
+              () => housesLoading
+                  ? _LoadingHouseNotifier()
+                  : _FakeHouseNotifier(houses),
             ),
+            syncingProvider.overrideWith(() => _FakeSyncing(syncing)),
           ],
           child: MaterialApp.router(routerConfig: buildRouter()),
         ),
@@ -116,14 +145,57 @@ void main() {
     await settleLabel(tester);
   });
 
-  testWidgets('senza case il bottone è spento e mostra un avviso', (
+  bool buttonEnabled(WidgetTester tester) => tester
+      .widget<PrimaryActionButton>(
+        find.byKey(const Key('primary_action_button')),
+      )
+      .enabled;
+
+  testWidgets('senza case (e senza sync) il bottone è spento e avvisa', (
     tester,
   ) async {
     await pumpShell(tester, const []);
+    expect(buttonEnabled(tester), isFalse);
     await tester.tap(find.byKey(const Key('primary_action_button')));
     await tester.pump();
     expect(find.byType(AddItemsSheet), findsNothing);
     expect(find.byType(SnackBar), findsOneWidget);
+    verify(
+      () => analytics.logEvent(
+        'primary_action_tapped',
+        properties: {'tab': 'houses', 'action': 'add_items', 'enabled': false},
+      ),
+    ).called(1);
+    await settleLabel(tester);
+  });
+
+  testWidgets('lista vuota con sync in corso: bottone acceso, tocco inerte', (
+    tester,
+  ) async {
+    await pumpShell(tester, const [], syncing: true);
+    expect(buttonEnabled(tester), isTrue);
+    await tester.tap(find.byKey(const Key('primary_action_button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AddItemsSheet), findsNothing);
+    expect(find.byType(SnackBar), findsNothing);
+    verifyNever(
+      () => analytics.logEvent(
+        'primary_action_tapped',
+        properties: any(named: 'properties'),
+      ),
+    );
+    await settleLabel(tester);
+  });
+
+  testWidgets('case in caricamento: bottone acceso, tocco inerte', (
+    tester,
+  ) async {
+    await pumpShell(tester, const [], housesLoading: true);
+    expect(buttonEnabled(tester), isTrue);
+    await tester.tap(find.byKey(const Key('primary_action_button')));
+    await tester.pump();
+    expect(find.byType(AddItemsSheet), findsNothing);
+    expect(find.byType(SnackBar), findsNothing);
     await settleLabel(tester);
   });
 
