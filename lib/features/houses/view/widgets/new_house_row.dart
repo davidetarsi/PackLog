@@ -7,13 +7,25 @@ import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/ds_dashed_box.dart';
 import '../../helpers/create_house_flow.dart';
 
-/// Ultima riga della lista case: azione rara, quindi neutra (niente arancio).
+/// Riga tratteggiata "nuova casa".
+///
+/// In fondo alla lista è un'azione rara, quindi neutra. Nello stato vuoto
+/// ([emphasized]) è l'unica azione possibile: bordo e testo arancio, e
+/// l'etichetta "Aggiungi la tua prima casa".
 class NewHouseRow extends ConsumerWidget {
-  const NewHouseRow({super.key});
+  final bool emphasized;
+
+  const NewHouseRow({super.key, this.emphasized = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final foreground = emphasized
+        ? colorScheme.primary
+        : colorScheme.onSurfaceVariant;
+    final label = emphasized
+        ? 'houses.no_houses_subtitle'.tr()
+        : 'houses.new_house_row'.tr();
     final radius = BorderRadius.circular(AppConstants.cardBorderRadius);
 
     return Padding(
@@ -22,7 +34,7 @@ class NewHouseRow extends ConsumerWidget {
         vertical: context.spacingSm,
       ),
       child: DsDashedBox(
-        color: colorScheme.outlineVariant,
+        color: emphasized ? colorScheme.primary : colorScheme.outlineVariant,
         child: InkWell(
           borderRadius: radius,
           onTap: () => createHouseWithTourAdvance(context, ref),
@@ -32,13 +44,13 @@ class NewHouseRow extends ConsumerWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.add, color: colorScheme.onSurfaceVariant),
+                  Icon(Icons.add, color: foreground),
                   SizedBox(width: context.spacingSm),
                   Text(
-                    'houses.new_house_row'.tr(),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    label,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: foreground),
                   ),
                 ],
               ),

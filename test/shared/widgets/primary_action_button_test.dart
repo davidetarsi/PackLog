@@ -3,128 +3,116 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/shared/widgets/primary_action_button.dart';
 
 void main() {
-  Widget wrap(Widget child) => MaterialApp(
-    home: Scaffold(body: Center(child: child)),
+  Widget wrap(Widget child, {Brightness brightness = Brightness.light}) =>
+      MaterialApp(
+        theme: ThemeData(
+          brightness: brightness,
+          colorSchemeSeed: Colors.orange,
+        ),
+        home: Scaffold(body: Center(child: child)),
+      );
+
+  PrimaryActionButton button({
+    bool enabled = true,
+    PrimaryActionStyle style = PrimaryActionStyle.outlined,
+    String label = 'Oggetto',
+    VoidCallback? onPressed,
+  }) => PrimaryActionButton(
+    icon: Icons.add,
+    label: label,
+    semanticLabel: 'Aggiungi oggetti',
+    enabled: enabled,
+    style: style,
+    onPressed: onPressed ?? () {},
   );
 
-  testWidgets('etichetta visibile all\'avvio, poi si richiude', (tester) async {
-    await tester.pumpWidget(
-      wrap(
-        PrimaryActionButton(
-          icon: Icons.add,
-          label: 'Aggiungi',
-          onPressed: () {},
-        ),
-      ),
-    );
-    expect(find.text('Aggiungi'), findsOneWidget);
+  Material materialOf(WidgetTester tester) => tester.widget<Material>(
+    find
+        .descendant(
+          of: find.byType(PrimaryActionButton),
+          matching: find.byType(Material),
+        )
+        .first,
+  );
 
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
-    expect(find.text('Aggiungi'), findsNothing);
+  ColorScheme schemeOf(WidgetTester tester) =>
+      Theme.of(tester.element(find.byType(PrimaryActionButton))).colorScheme;
+
+  testWidgets('icona ed etichetta breve sempre visibili', (tester) async {
+    await tester.pumpWidget(wrap(button()));
     expect(find.byIcon(Icons.add), findsOneWidget);
+    expect(find.text('Oggetto'), findsOneWidget);
   });
 
-  testWidgets('cambiare etichetta la rimostra', (tester) async {
-    await tester.pumpWidget(
-      wrap(PrimaryActionButton(icon: Icons.add, label: 'A', onPressed: () {})),
-    );
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
-    expect(find.text('A'), findsNothing);
-
-    await tester.pumpWidget(
-      wrap(PrimaryActionButton(icon: Icons.add, label: 'B', onPressed: () {})),
-    );
-    await tester.pump();
-    expect(find.text('B'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
+  testWidgets('colori dei tre stili attivi', (tester) async {
+    for (final style in PrimaryActionStyle.values) {
+      await tester.pumpWidget(wrap(button(style: style)));
+      final scheme = schemeOf(tester);
+      final expected = switch (style) {
+        PrimaryActionStyle.filled => scheme.primary,
+        PrimaryActionStyle.tonal => scheme.primaryContainer,
+        PrimaryActionStyle.outlined => scheme.surfaceContainer,
+      };
+      expect(materialOf(tester).color, expected, reason: style.name);
+    }
   });
 
-  testWidgets('spento: colore tonale ma risponde al tocco', (tester) async {
-    var taps = 0;
-    await tester.pumpWidget(
-      wrap(
-        PrimaryActionButton(
-          icon: Icons.add,
-          label: 'X',
-          enabled: false,
-          onPressed: () => taps++,
-        ),
-      ),
-    );
-    final scheme = Theme.of(
-      tester.element(find.byType(PrimaryActionButton)),
-    ).colorScheme;
-    final material = tester.widget<Material>(
-      find
-          .descendant(
-            of: find.byType(PrimaryActionButton),
-            matching: find.byType(Material),
-          )
-          .first,
-    );
-    expect(material.color, scheme.surfaceContainerHighest);
-
-    await tester.tap(find.byType(PrimaryActionButton));
-    expect(taps, 1);
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
-  });
-
-  testWidgets(
-    'etichetta lunga: una riga, larghezza limitata, nessun overflow',
-    (tester) async {
+  for (final brightness in Brightness.values) {
+    testWidgets('spento (${brightness.name}): valori di disabilitato M3, '
+        'ma risponde al tocco', (tester) async {
+      var taps = 0;
       await tester.pumpWidget(
-        MaterialApp(
-          home: MediaQuery(
-            data: const MediaQueryData(
-              size: Size(400, 800),
-              textScaler: TextScaler.linear(2),
-            ),
-            child: Scaffold(
-              body: Align(
-                alignment: Alignment.centerRight,
-                child: PrimaryActionButton(
-                  icon: Icons.add,
-                  label: 'Un\'etichetta davvero molto lunga da tradurre',
-                  onPressed: () {},
-                ),
-              ),
+        wrap(
+          button(enabled: false, onPressed: () => taps++),
+          brightness: brightness,
+        ),
+      );
+      final scheme = schemeOf(tester);
+      expect(
+        materialOf(tester).color,
+        scheme.onSurface.withValues(alpha: 0.12),
+      );
+      final icon = tester.widget<Icon>(find.byIcon(Icons.add));
+      expect(icon.color, scheme.onSurface.withValues(alpha: 0.38));
+
+      await tester.tap(find.byType(PrimaryActionButton));
+      expect(taps, 1);
+    });
+  }
+
+  testWidgets('caratteri grandi: etichetta su una riga, nessun overflow', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(400, 800),
+            textScaler: TextScaler.linear(2),
+          ),
+          child: Scaffold(
+            body: Center(
+              child: button(label: 'Un\'etichetta davvero molto lunga'),
             ),
           ),
         ),
-      );
-      expect(tester.takeException(), isNull);
-      final text = tester.widget<Text>(
-        find.text('Un\'etichetta davvero molto lunga da tradurre'),
-      );
-      expect(text.maxLines, 1);
-      expect(text.overflow, TextOverflow.ellipsis);
-      expect(
-        tester.getSize(find.byType(PrimaryActionButton)).width,
-        lessThanOrEqualTo(400 * 0.45),
-      );
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle();
-    },
-  );
-
-  testWidgets('semantica: l\'etichetta è letta una volta sola', (tester) async {
-    final handle = tester.ensureSemantics();
-    await tester.pumpWidget(
-      wrap(
-        PrimaryActionButton(
-          icon: Icons.add,
-          label: 'Aggiungi',
-          onPressed: () {},
-        ),
       ),
     );
-    expect(find.bySemanticsLabel('Aggiungi'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    final text = tester.widget<Text>(
+      find.text('Un\'etichetta davvero molto lunga'),
+    );
+    expect(text.maxLines, 1);
+    expect(text.overflow, TextOverflow.ellipsis);
+  });
+
+  testWidgets('semantica: frase completa, letta una volta sola', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(wrap(button()));
+    expect(find.bySemanticsLabel('Aggiungi oggetti'), findsOneWidget);
+    expect(find.bySemanticsLabel('Oggetto'), findsNothing);
     handle.dispose();
   });
 }

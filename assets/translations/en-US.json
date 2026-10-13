@@ -24,7 +24,9 @@
     "open_profile": "Open profile",
     "add_items": "Add items",
     "new_trip": "New trip",
-    "create_house_first": "Create a house first"
+    "create_house_first": "Create a house first",
+    "action_item": "Item",
+    "action_trip": "Trip"
   },
   "houses": {
     "title": "My Houses",
@@ -564,7 +566,7 @@
     },
     "create_trip_tooltip": {
       "title": "Create your first trip",
-      "body": "Open Trips and tap \"New trip\" to create your first trip."
+      "body": "Open Trips and tap \"+ Trip\" to create your first trip."
     },
     "trip_creation_tooltip": {
       "title": "Plan your trip",

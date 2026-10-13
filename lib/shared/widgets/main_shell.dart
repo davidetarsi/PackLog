@@ -21,6 +21,9 @@ import 'primary_action_button.dart';
 /// superficie tonale piena.
 const bool _kGlassNavBar = true;
 
+/// Peso del bottone d'azione (vedi [PrimaryActionStyle]).
+const PrimaryActionStyle _kActionStyle = PrimaryActionStyle.outlined;
+
 /// Shell principale: barra flottante con due luoghi (Case, Viaggi) e, staccato,
 /// il bottone d'azione della tab corrente.
 class MainShell extends ConsumerWidget {
@@ -196,10 +199,14 @@ class MainShell extends ConsumerWidget {
                 key: tourKeys.primaryAction,
                 child: PrimaryActionButton(
                   key: const Key('primary_action_button'),
-                  icon: onHouses ? Icons.add : Icons.luggage,
+                  icon: Icons.add,
                   label: onHouses
+                      ? 'navigation.action_item'.tr()
+                      : 'navigation.action_trip'.tr(),
+                  semanticLabel: onHouses
                       ? 'navigation.add_items'.tr()
                       : 'navigation.new_trip'.tr(),
+                  style: _kActionStyle,
                   enabled: !onHouses || housesState != _HousesState.none,
                   onPressed: onHouses
                       ? () =>
