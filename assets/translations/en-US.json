@@ -20,7 +20,11 @@
     "home": "Home",
     "houses": "Houses",
     "trips": "Trips",
-    "profile": "Profile"
+    "profile": "Profile",
+    "open_profile": "Open profile",
+    "add_items": "Add items",
+    "new_trip": "New trip",
+    "create_house_first": "Create a house first"
   },
   "houses": {
     "title": "My Houses",

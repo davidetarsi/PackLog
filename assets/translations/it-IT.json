@@ -20,7 +20,11 @@
     "home": "Home",
     "houses": "Case",
     "trips": "Viaggi",
-    "profile": "Profilo"
+    "profile": "Profilo",
+    "open_profile": "Apri profilo",
+    "add_items": "Aggiungi oggetti",
+    "new_trip": "Nuovo viaggio",
+    "create_house_first": "Crea prima una casa"
   },
   "houses": {
     "title": "Le mie case",
