@@ -144,6 +144,39 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     ]);
   }
 
+  // ── Uscita dal flusso ─────────────────────────────────────────────────────
+
+  /// Nomi delle route che compongono il flusso di scansione (vedi
+  /// `app_router.dart`): sono quelle da togliere dallo stack in uscita.
+  static const _flowRouteNames = {'ai-import', 'ai-import-results'};
+
+  /// Chiude il flusso e lascia lo stack come [shell, dettaglio casa].
+  ///
+  /// Non usa `go()`: rimpiazzerebbe lo stack radice con il solo dettaglio, la
+  /// shell sparirebbe e il tasto indietro di Android chiuderebbe l'app. Toglie
+  /// invece le route del flusso e apre il dettaglio solo se quello che resta in
+  /// cima non è già il dettaglio della stessa casa (flusso partito da lì).
+  void _exitToHouse() {
+    final houseId = widget.houseId;
+    if (houseId == null) return;
+    final router = GoRouter.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
+
+    Route<dynamic>? remaining;
+    navigator.popUntil((route) {
+      final isFlowRoute = _flowRouteNames.contains(route.settings.name);
+      if (!isFlowRoute) remaining = route;
+      return !isFlowRoute;
+    });
+
+    final args = remaining?.settings.arguments;
+    final isSameHouseDetail =
+        remaining?.settings.name == 'house-detail' &&
+        args is Map &&
+        args['id'] == houseId;
+    if (!isSameHouseDetail) router.push('/houses/$houseId');
+  }
+
   // ── Onboarding tooltip ────────────────────────────────────────────────────
 
   void _showAiSaveTooltip() {
@@ -238,7 +271,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
         );
         if (!widget.isFirstTimeOnboarding && widget.houseId != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) context.go('/houses/${widget.houseId}');
+            if (mounted) _exitToHouse();
           });
         }
         // In onboarding mode the router redirect handles navigation when
@@ -347,16 +380,15 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       // Via d'uscita senza salvare. Non un `pop()`: sotto c'è il selettore
       // delle foto da cui si è passati, e tornarci significherebbe rientrare
       // nel flusso appena abbandonato. Va alla casa, la stessa destinazione
-      // del salvataggio riuscito.
+      // del salvataggio riuscito, togliendo dallo stack solo le route del
+      // flusso (vedi [_exitToHouse]).
       //
       // Assente in onboarding: lì la schermata è un passo obbligato del tour,
       // e non esiste ancora una casa a cui tornare.
       rightAction: !widget.isFirstTimeOnboarding && widget.houseId != null
           ? CircularActionButton(
               icon: Icons.close,
-              onPressed: state.isLoading
-                  ? null
-                  : () => context.go('/houses/${widget.houseId}'),
+              onPressed: state.isLoading ? null : _exitToHouse,
             )
           : null,
     );
