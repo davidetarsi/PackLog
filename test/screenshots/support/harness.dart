@@ -182,6 +182,13 @@ class ScreenshotApp {
     tester.view.viewPadding = tester.view.padding;
     addTearDown(tester.view.reset);
 
+    // flutter_test disegna le elevation come un contorno nero pieno al posto
+    // dell'ombra (`debugDisableShadows` è true nei test): negli screenshot i
+    // bottoni tondi e lo speed-dial sembravano avere un bordo nero spesso che
+    // sul telefono non c'è. Qui vogliamo le ombre vere; [finish] rimette il
+    // valore di default prima della fine del test, che flutter_test verifica.
+    debugDisableShadows = false;
+
     // Il bundle tiene in cache il Future delle traduzioni nato nel test
     // precedente: riusarlo lascia Localizations in attesa per sempre.
     rootBundle.clear();
@@ -313,6 +320,7 @@ class ScreenshotApp {
     container.dispose();
     await tester.runAsync(db.close);
     await tester.pump();
+    debugDisableShadows = true;
   }
 
   /// Fa avanzare il tempo finché la UI si stabilizza.

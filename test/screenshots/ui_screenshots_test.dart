@@ -72,9 +72,9 @@ class Flow {
 Finder _text(String key) => find.text(key.tr());
 Finder _icon(IconData icon) => find.byIcon(icon);
 
-Future<void> _openCreateMenu(ScreenshotApp app) async {
+Future<void> _openAddItemsSheet(ScreenshotApp app) async {
   await app.go('/');
-  await app.tap(_text('common.create'));
+  await app.tap(find.byKey(const Key('primary_action_button')));
 }
 
 Future<void> _houseDetail(ScreenshotApp app, [String id = kHomeId]) async {
@@ -312,22 +312,23 @@ final flows = <Flow>[
     ),
     Scenario(
       5,
-      'shell',
-      'menu-crea',
+      'aggiungi-oggetti',
+      'foglio',
       route: '/',
-      source: 'lib/shared/widgets/main_shell.dart',
-      description: 'Tab "Crea" aperto: viaggio / oggetto / casa.',
-      steps: _openCreateMenu,
+      source: 'lib/features/items/view/add_items_sheet.dart',
+      description:
+          'Bottone d\'azione in Case: casa di destinazione, Scansiona con AI, Scrivi a mano.',
+      steps: _openAddItemsSheet,
     ),
     Scenario(
       6,
       'casa-form',
       'nuova',
       source: 'lib/features/houses/view/add_edit_house_screen.dart',
-      description: 'Bottom sheet nuova casa (da menu Crea).',
+      description: 'Bottom sheet nuova casa (dalla riga in fondo alla lista).',
       steps: (app) async {
-        await _openCreateMenu(app);
-        await app.tap(_text('houses.add'));
+        await app.go('/');
+        await app.tap(find.text('houses.new_house_row'.tr()));
       },
     ),
   ]),
@@ -485,10 +486,10 @@ final flows = <Flow>[
       'oggetto-form',
       'nuovo',
       source: 'lib/features/items/view/add_edit_item_screen.dart',
-      description: 'Nuovo oggetto dal menu Crea (casa da scegliere).',
+      description: 'Nuovo oggetto da Aggiungi oggetti → Scrivi a mano.',
       steps: (app) async {
-        await _openCreateMenu(app);
-        await app.tap(_text('items.add'));
+        await _openAddItemsSheet(app);
+        await app.tap(find.byKey(const Key('add_items_manual')));
       },
     ),
     Scenario(
@@ -864,7 +865,10 @@ final flows = <Flow>[
       route: '/profile',
       source: _profile,
       description: 'Impostazioni, uso AI, sync, privacy, account.',
-      steps: (app) => app.go('/profile'),
+      steps: (app) async {
+        await app.go('/');
+        await app.push('/profile');
+      },
     ),
     Scenario(
       2,
@@ -874,7 +878,8 @@ final flows = <Flow>[
       source: _profile,
       description: 'Scroll in fondo: info app, esci, elimina account.',
       steps: (app) async {
-        await app.go('/profile');
+        await app.go('/');
+        await app.push('/profile');
         await app.tester.drag(
           find.byType(ListView).first,
           const Offset(0, -1200),
@@ -890,7 +895,10 @@ final flows = <Flow>[
       source: 'lib/features/profile/widgets/sync_status_tile.dart',
       description: 'Modifiche non sincronizzate.',
       setup: const AppSetup(unsyncedChanges: 3),
-      steps: (app) => app.go('/profile'),
+      steps: (app) async {
+        await app.go('/');
+        await app.push('/profile');
+      },
     ),
     Scenario(
       4,
@@ -899,7 +907,8 @@ final flows = <Flow>[
       source: 'lib/features/profile/view/dialogs/profile_language_dialog.dart',
       description: 'Dialog scelta lingua.',
       steps: (app) async {
-        await app.go('/profile');
+        await app.go('/');
+        await app.push('/profile');
         await app.tap(_text('settings.language'));
       },
     ),
@@ -910,7 +919,8 @@ final flows = <Flow>[
       source: 'lib/features/profile/view/dialogs/profile_theme_dialog.dart',
       description: 'Dialog scelta tema.',
       steps: (app) async {
-        await app.go('/profile');
+        await app.go('/');
+        await app.push('/profile');
         await app.tap(_text('settings.theme'));
       },
     ),
@@ -922,7 +932,8 @@ final flows = <Flow>[
           'lib/features/profile/view/dialogs/profile_delete_account_dialog.dart',
       description: 'Conferma eliminazione account.',
       steps: (app) async {
-        await app.go('/profile');
+        await app.go('/');
+        await app.push('/profile');
         await app.tester.drag(
           find.byType(ListView).first,
           const Offset(0, -1200),

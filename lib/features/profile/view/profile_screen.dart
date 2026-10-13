@@ -2,7 +2,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../shared/widgets/shell_tab_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/analytics/analytics_service.dart';
@@ -32,8 +31,9 @@ import 'dialogs/profile_theme_dialog.dart';
 /// Schermata di profilo: unico punto di accesso a preferenze,
 /// sync e informazioni sull'app.
 ///
-/// È una schermata autonoma con proprio [Scaffold] e [AppBar], esposta
-/// come branch nella [StatefulShellRoute] del router (tab "Profilo").
+/// È una schermata autonoma con proprio [Scaffold] e [AppBar], aperta come
+/// route radice (`/profile`) dall'avatar nell'intestazione delle tab: non fa
+/// parte della shell, quindi ha la freccia indietro.
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -216,186 +216,188 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       error: (_, _) => 'settings.theme_dark'.tr(),
     );
 
-    return ShellTabScaffold(
-      appBar: AppBar(
-        title: Text('settings.title'.tr()),
-        // Nessun leading: schermata radice del tab bar, nessun pop a livello superiore.
-        automaticallyImplyLeading: false,
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(gptUsageProvider),
-        child: ListView(
-          // Padding esplicito: senza, ListView (padding null) auto-inietta
-          // MediaQuery.padding.top come proprio sliver padding. Scaffold NON
-          // azzera quel padding per il body quando extendBodyBehindAppBar è
-          // false (default) — l'AppBar occupa già visivamente quello spazio,
-          // ma il valore di MediaQuery resta quello dell'intero schermo.
-          // Risultato senza questo fix: un secondo "status bar" di spazio
-          // vuoto sopra il primo ListTile, sommato a quello già coperto
-          // dall'AppBar.
-          // `bottom`: riserva l'altezza della nav bar flottante dentro lo
-          // scrollable, così il contenuto le scorre DIETRO ma l'ultimo
-          // elemento resta comunque raggiungibile. Vedi [ShellTabScaffold].
-          padding: EdgeInsets.only(
-            top: context.spacingSm,
-            bottom: context.navBarReservedHeight,
-          ),
-          children: [
-            // ── Account identity ────────────────────────────────────────────
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: Text(
-                (displayName != null && displayName.isNotEmpty)
-                    ? displayName
-                    : userEmail,
+    return Scaffold(
+      appBar: AppBar(title: Text('settings.title'.tr())),
+      body: SafeArea(
+        top: false,
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: () async => ref.invalidate(gptUsageProvider),
+          child: ListView(
+            // Padding esplicito: senza, ListView (padding null) auto-inietta
+            // MediaQuery.padding.top come proprio sliver padding. Scaffold NON
+            // azzera quel padding per il body quando extendBodyBehindAppBar è
+            // false (default) — l'AppBar occupa già visivamente quello spazio,
+            // ma il valore di MediaQuery resta quello dell'intero schermo.
+            // Risultato senza questo fix: un secondo "status bar" di spazio
+            // vuoto sopra il primo ListTile, sommato a quello già coperto
+            // dall'AppBar.
+            // `bottom`: fuori dalla shell non c'è più la nav bar flottante, resta
+            // solo la gesture bar di sistema: è lo spazio che `navBarReservedHeight`
+            // riserva, così l'ultimo elemento resta raggiungibile.
+            padding: EdgeInsets.only(
+              top: context.spacingSm,
+              bottom: context.navBarReservedHeight,
+            ),
+            children: [
+              // ── Account identity ────────────────────────────────────────────
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: Text(
+                  (displayName != null && displayName.isNotEmpty)
+                      ? displayName
+                      : userEmail,
+                ),
+                subtitle: userEmail.isNotEmpty ? Text(userEmail) : null,
               ),
-              subtitle: userEmail.isNotEmpty ? Text(userEmail) : null,
-            ),
-            const Divider(),
+              const Divider(),
 
-            // ── Preferenze ──────────────────────────────────────────────────
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: Text('settings.language'.tr()),
-              subtitle: Text(languageName),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => showProfileLanguageDialog(context),
-            ),
-            const Divider(),
-
-            ListTile(
-              leading: Icon(
-                themeModeAsync.valueOrNull == ThemeMode.light
-                    ? Icons.light_mode
-                    : themeModeAsync.valueOrNull == ThemeMode.dark
-                    ? Icons.dark_mode
-                    : Icons.brightness_auto,
+              // ── Preferenze ──────────────────────────────────────────────────
+              ListTile(
+                leading: const Icon(Icons.language),
+                title: Text('settings.language'.tr()),
+                subtitle: Text(languageName),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showProfileLanguageDialog(context),
               ),
-              title: Text('settings.theme'.tr()),
-              subtitle: Text(themeModeName),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => showProfileThemeDialog(
-                context,
-                currentThemeMode:
-                    ref.read(themeModeNotifierProvider).valueOrNull ??
-                    ThemeMode.dark,
-                onSetThemeMode: (mode) => ref
-                    .read(themeModeNotifierProvider.notifier)
-                    .setThemeMode(mode),
+              const Divider(),
+
+              ListTile(
+                leading: Icon(
+                  themeModeAsync.valueOrNull == ThemeMode.light
+                      ? Icons.light_mode
+                      : themeModeAsync.valueOrNull == ThemeMode.dark
+                      ? Icons.dark_mode
+                      : Icons.brightness_auto,
+                ),
+                title: Text('settings.theme'.tr()),
+                subtitle: Text(themeModeName),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showProfileThemeDialog(
+                  context,
+                  currentThemeMode:
+                      ref.read(themeModeNotifierProvider).valueOrNull ??
+                      ThemeMode.dark,
+                  onSetThemeMode: (mode) => ref
+                      .read(themeModeNotifierProvider.notifier)
+                      .setThemeMode(mode),
+                ),
               ),
-            ),
-            const Divider(),
+              const Divider(),
 
-            // ── AI usage ────────────────────────────────────────────────────
-            const _GptUsageTile(),
-            const Divider(),
+              // ── AI usage ────────────────────────────────────────────────────
+              const _GptUsageTile(),
+              const Divider(),
 
-            // ── Sync status ───────────────────────────────────────────────────
-            const SyncStatusTile(),
-            const Divider(),
+              // ── Sync status ───────────────────────────────────────────────────
+              const SyncStatusTile(),
+              const Divider(),
 
-            // ── Tour ──────────────────────────────────────────────────────────────────
-            ListTile(
-              leading: const Icon(Icons.tour_outlined),
-              title: Text('tour.relaunch_title'.tr()),
-              subtitle: Text('tour.relaunch_subtitle'.tr()),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () async {
-                ref.read(analyticsServiceProvider).logEvent('tour_relaunched');
-                final houses =
-                    ref.read(houseNotifierProvider).valueOrNull ?? [];
-                await ref
-                    .read(postLoginOnboardingProvider.notifier)
-                    .reset(hasExistingHouses: houses.isNotEmpty);
-                if (context.mounted) context.go('/');
-              },
-            ),
-            const Divider(),
-
-            // ── Privacy ───────────────────────────────────────────────────────
-            const _AnalyticsToggleTile(),
-            const Divider(),
-
-            // ── About ────────────────────────────────────────────────────────
-            DsSectionHeader(
-              label: 'settings.about_section_title'.tr(),
-              padding: EdgeInsets.fromLTRB(
-                context.spacingMd,
-                context.spacingLg,
-                context.spacingMd,
-                context.spacingSm,
+              // ── Tour ──────────────────────────────────────────────────────────────────
+              ListTile(
+                leading: const Icon(Icons.tour_outlined),
+                title: Text('tour.relaunch_title'.tr()),
+                subtitle: Text('tour.relaunch_subtitle'.tr()),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  ref
+                      .read(analyticsServiceProvider)
+                      .logEvent('tour_relaunched');
+                  final houses =
+                      ref.read(houseNotifierProvider).valueOrNull ?? [];
+                  await ref
+                      .read(postLoginOnboardingProvider.notifier)
+                      .reset(hasExistingHouses: houses.isNotEmpty);
+                  if (context.mounted) context.go('/');
+                },
               ),
-            ),
+              const Divider(),
 
-            ListTile(
-              leading: const Icon(Icons.feedback_outlined),
-              title: Text('settings.feedback'.tr()),
-              subtitle: Text('settings.feedback_subtitle'.tr()),
-              trailing: const Icon(Icons.open_in_new, size: 18),
-              onTap: () => _openFeedbackForm(context),
-            ),
+              // ── Privacy ───────────────────────────────────────────────────────
+              const _AnalyticsToggleTile(),
+              const Divider(),
 
-            ListTile(
-              leading: const Icon(Icons.code),
-              title: Text('settings.view_project'.tr()),
-              subtitle: Text('settings.view_project_subtitle'.tr()),
-              trailing: const Icon(Icons.open_in_new, size: 18),
-              onTap: () => _launchUrl(context, AppConfig.githubUrl),
-            ),
+              // ── About ────────────────────────────────────────────────────────
+              DsSectionHeader(
+                label: 'settings.about_section_title'.tr(),
+                padding: EdgeInsets.fromLTRB(
+                  context.spacingMd,
+                  context.spacingLg,
+                  context.spacingMd,
+                  context.spacingSm,
+                ),
+              ),
 
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: Text('settings.about'.tr()),
-              subtitle: ref
-                  .watch(packageInfoProvider)
-                  .when(
-                    data: (info) =>
-                        Text('${'common.version'.tr()} ${info.version}'),
-                    loading: () => Text('${'common.version'.tr()} …'),
-                    error: (_, _) => Text('${'common.version'.tr()} —'),
-                  ),
-            ),
+              ListTile(
+                leading: const Icon(Icons.feedback_outlined),
+                title: Text('settings.feedback'.tr()),
+                subtitle: Text('settings.feedback_subtitle'.tr()),
+                trailing: const Icon(Icons.open_in_new, size: 18),
+                onTap: () => _openFeedbackForm(context),
+              ),
 
-            /* ListTile(
+              ListTile(
+                leading: const Icon(Icons.code),
+                title: Text('settings.view_project'.tr()),
+                subtitle: Text('settings.view_project_subtitle'.tr()),
+                trailing: const Icon(Icons.open_in_new, size: 18),
+                onTap: () => _launchUrl(context, AppConfig.githubUrl),
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: Text('settings.about'.tr()),
+                subtitle: ref
+                    .watch(packageInfoProvider)
+                    .when(
+                      data: (info) =>
+                          Text('${'common.version'.tr()} ${info.version}'),
+                      loading: () => Text('${'common.version'.tr()} …'),
+                      error: (_, _) => Text('${'common.version'.tr()} —'),
+                    ),
+              ),
+
+              /* ListTile(
             leading: const Icon(Icons.storage),
             title: Text('common.storage'.tr()),
             subtitle: Text('common.data_saved_locally'.tr()),
           ), */
-            const Divider(),
+              const Divider(),
 
-            // ── Account ─────────────────────────────────────────────────
-            AppSpacing.gapSm,
+              // ── Account ─────────────────────────────────────────────────
+              AppSpacing.gapSm,
 
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-              child: UniversalActionBar(
-                primaryLabel: 'login.sign_out'.tr(),
-                primaryIcon: Icons.logout,
-                onPrimaryPressed: () => _handleSignOut(context),
-                isSecondary: true,
-              ),
-            ),
-
-            AppSpacing.gapLg,
-
-            // Hard-delete account (GDPR Art. 17). Distruttivo e irreversibile:
-            // si trova, ma non è un bottone pieno e non sta attaccato a "Esci",
-            // così non è l'elemento più evidente della pagina. Protetto da
-            // dialog con conferma email.
-            Center(
-              child: TextButton.icon(
-                key: const Key('profile_delete_account'),
-                onPressed: () => _handleDeleteAccount(context),
-                icon: const Icon(Icons.delete_forever),
-                label: Text('profile.delete_account_cta'.tr()),
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+                child: UniversalActionBar(
+                  primaryLabel: 'login.sign_out'.tr(),
+                  primaryIcon: Icons.logout,
+                  onPrimaryPressed: () => _handleSignOut(context),
+                  isSecondary: true,
                 ),
               ),
-            ),
 
-            AppSpacing.gapSm,
-          ],
+              AppSpacing.gapLg,
+
+              // Hard-delete account (GDPR Art. 17). Distruttivo e irreversibile:
+              // si trova, ma non è un bottone pieno e non sta attaccato a "Esci",
+              // così non è l'elemento più evidente della pagina. Protetto da
+              // dialog con conferma email.
+              Center(
+                child: TextButton.icon(
+                  key: const Key('profile_delete_account'),
+                  onPressed: () => _handleDeleteAccount(context),
+                  icon: const Icon(Icons.delete_forever),
+                  label: Text('profile.delete_account_cta'.tr()),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
+
+              AppSpacing.gapSm,
+            ],
+          ),
         ),
       ),
     );

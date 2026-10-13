@@ -20,10 +20,15 @@
     "home": "Home",
     "houses": "Houses",
     "trips": "Trips",
-    "profile": "Profile"
+    "profile": "Profile",
+    "open_profile": "Open profile",
+    "add_items": "Add items",
+    "new_trip": "New trip",
+    "create_house_first": "Create a house first"
   },
   "houses": {
     "title": "My Houses",
+    "new_house_row": "New house",
     "add": "House",
     "add_new": "New House",
     "edit": "Edit House",
@@ -114,7 +119,15 @@
     "bulk_move_no_houses": "No other houses available",
     "bulk_move_sheet_title": "Move {} items",
     "add_to_trip_success": "{} items added to {}",
-    "rapid_fire_hint": "Add item..."
+    "rapid_fire_hint": "Add item...",
+    "add_sheet": {
+      "title": "Add items",
+      "destination": "In house",
+      "choose_house": "Choose house",
+      "ai_scan": "Scan with AI",
+      "ai_scan_hint": "Take a photo of your clothes: AI recognises and saves them",
+      "manual": "Type it in"
+    }
   },
   "categories": {
     "vestiti": "Clothes",
@@ -539,7 +552,7 @@
     },
     "house_tooltip": {
       "title": "Create your first home",
-      "body": "Tap + to open the create menu and add your first home."
+      "body": "Tap \"New house\" at the bottom of the list to add your first house."
     },
     "default_house_tooltip": {
       "title": "Open the Demo House",
@@ -551,7 +564,7 @@
     },
     "create_trip_tooltip": {
       "title": "Create your first trip",
-      "body": "Tap + to open the create menu and add your first trip."
+      "body": "Open Trips and tap \"New trip\" to create your first trip."
     },
     "trip_creation_tooltip": {
       "title": "Plan your trip",

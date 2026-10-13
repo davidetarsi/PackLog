@@ -57,10 +57,11 @@ passati. Un oggetto ha un nome volutamente lungo.
 
 ## Navigazione
 
-Shell con tab bar flottante (`lib/shared/widgets/main_shell.dart`): **Profilo**
-(`/profile`), **Case** (`/`, home), **Viaggi** (`/trips`), **Crea** (apre un
-menu: Viaggio / Oggetto / Casa). Le schermate di dettaglio stanno sul navigator
-radice, sopra la shell. Redirect in `lib/core/routing/app_router.dart`:
+Shell con barra flottante (`lib/shared/widgets/main_shell.dart`): **Case**
+(`/`, home) e **Viaggi** (`/trips`), più un bottone d'azione staccato che fa
+l'azione della tab corrente (Case → foglio "Aggiungi oggetti", Viaggi → nuovo
+viaggio). Il **Profilo** (`/profile`) si apre dall'avatar in alto a destra.
+Profilo e schermate di dettaglio stanno sul navigator radice, sopra la shell. Redirect in `lib/core/routing/app_router.dart`:
 onboarding non completato → `/onboarding`; non autenticato → `/login`; tour
 post-login allo step `aiIntro` → `/onboarding-ai-intro`.
 
@@ -88,8 +89,8 @@ Per ogni schermata: file sorgente, come ci si arriva, stati catturati
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
 | 1-4 | Elenco case | `features/houses/view/houses_screen.dart` | tab Case | ✓ vuoto, ✓ skeleton durante il primo sync, ✓ elenco (principale, badge in viaggio/ospite, nome lungo, casa vuota), ✓ menu contestuale (long press). Non catturato: errore |
-| 5 | Menu Crea | `shared/widgets/main_shell.dart` | tab Crea | ✓ |
-| 6 | Nuova casa (sheet) | `features/houses/view/add_edit_house_screen.dart` | Crea → Casa | ✓ |
+| 5 | Aggiungi oggetti (sheet) | `features/items/view/add_items_sheet.dart` | bottone d'azione in Case | ✓ |
+| 6 | Nuova casa (sheet) | `features/houses/view/add_edit_house_screen.dart` | riga "Nuova casa" in fondo alla lista | ✓ |
 
 ### 04 · Dettaglio casa
 
@@ -109,7 +110,7 @@ Per ogni schermata: file sorgente, come ci si arriva, stati catturati
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1 | Nuovo oggetto (sheet) | `features/items/view/add_edit_item_screen.dart` | Crea → Oggetto | ✓ |
+| 1 | Nuovo oggetto (sheet) | `features/items/view/add_edit_item_screen.dart` | Aggiungi oggetti → Scrivi a mano | ✓ |
 | 2 | Modifica oggetto | `features/items/view/item_form_content.dart` | tap su un oggetto | ✓. Non catturati: picker quantità, casa, spazio (sheet) |
 
 ### 06 · Import AI da dettaglio casa
@@ -129,7 +130,7 @@ Per ogni schermata: file sorgente, come ci si arriva, stati catturati
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1-4 | Nuovo viaggio, passo 1 | `features/trips/view/add_trip_screen.dart`, `trip_info_form.dart` | Crea → Viaggio, o CTA nei Viaggi | ✓ vuoto, ✓ errore di validazione, ✓ destinazione "Casa", ✓ picker casa |
+| 1-4 | Nuovo viaggio, passo 1 | `features/trips/view/add_trip_screen.dart`, `trip_info_form.dart` | bottone d'azione in Viaggi, o CTA nei Viaggi | ✓ vuoto, ✓ errore di validazione, ✓ destinazione "Casa", ✓ picker casa |
 | 5 | Selezione date | `features/trips/view/trip_date_range_screen.dart` | tap sulle date | ✓ |
 | 6 | Nuova tappa (sheet) | `features/trips/view/widgets/trip_leg_sheet.dart` | Aggiungi tappa | ✓ |
 | — | Passo 2: oggetti e bagagli | `add_trip_screen.dart` (`_buildItemsStep`), `trip_items_selector.dart` | Avanti con passo 1 valido | **non catturato**: serve compilare date e destinazione via UI |
@@ -145,11 +146,11 @@ Per ogni schermata: file sorgente, come ci si arriva, stati catturati
 | 6 | Modifica oggetti | `features/trips/view/edit_trip_items_screen.dart` | "Modifica oggetti" | ✓ |
 | 7 | Viaggio non trovato | `trip_detail_screen.dart` | link a viaggio eliminato | ✓ |
 
-### 10 · Tab Profilo
+### 10 · Profilo
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1-3 | Profilo | `features/profile/view/profile_screen.dart` | tab Profilo | ✓ inizio pagina, ✓ fine pagina, ✓ modifiche non sincronizzate |
+| 1-3 | Profilo | `features/profile/view/profile_screen.dart` | avatar in alto a destra | ✓ inizio pagina, ✓ fine pagina, ✓ modifiche non sincronizzate |
 | 4 | Lingua | `features/profile/view/dialogs/profile_language_dialog.dart` | Lingua | ✓ |
 | 5 | Tema | `features/profile/view/dialogs/profile_theme_dialog.dart` | Tema | ✓ |
 | 6 | Elimina account | `features/profile/view/dialogs/profile_delete_account_dialog.dart` | Elimina il mio account | ✓ |

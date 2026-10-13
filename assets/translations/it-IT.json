@@ -20,10 +20,15 @@
     "home": "Home",
     "houses": "Case",
     "trips": "Viaggi",
-    "profile": "Profilo"
+    "profile": "Profilo",
+    "open_profile": "Apri profilo",
+    "add_items": "Aggiungi oggetti",
+    "new_trip": "Nuovo viaggio",
+    "create_house_first": "Crea prima una casa"
   },
   "houses": {
     "title": "Le mie case",
+    "new_house_row": "Nuova casa",
     "add": "Casa",
     "add_new": "Nuova casa",
     "edit": "Modifica casa",
@@ -114,7 +119,15 @@
     "bulk_move_no_houses": "Nessun'altra casa disponibile",
     "bulk_move_sheet_title": "Sposta {} oggetti",
     "add_to_trip_success": "{} oggetti aggiunti a {}",
-    "rapid_fire_hint": "Aggiungi oggetto..."
+    "rapid_fire_hint": "Aggiungi oggetto...",
+    "add_sheet": {
+      "title": "Aggiungi oggetti",
+      "destination": "Nella casa",
+      "choose_house": "Scegli la casa",
+      "ai_scan": "Scansiona con AI",
+      "ai_scan_hint": "Fotografa i vestiti: l'AI li riconosce e li salva",
+      "manual": "Scrivi a mano"
+    }
   },
   "categories": {
     "vestiti": "Vestiti",
@@ -539,7 +552,7 @@
     },
     "house_tooltip": {
       "title": "Crea la tua prima casa",
-      "body": "Tocca il + per aprire il menu di creazione e aggiungi la tua prima casa."
+      "body": "Tocca «Nuova casa» in fondo all'elenco per aggiungere la tua prima casa."
     },
     "default_house_tooltip": {
       "title": "Apri la Casa di prova",
@@ -551,7 +564,7 @@
     },
     "create_trip_tooltip": {
       "title": "Crea il tuo primo viaggio",
-      "body": "Tocca il + per aprire il menu di creazione e aggiungi il tuo primo viaggio."
+      "body": "Apri Viaggi e tocca «Nuovo viaggio» per creare il tuo primo viaggio."
     },
     "trip_creation_tooltip": {
       "title": "Organizza il tuo viaggio",

@@ -250,7 +250,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
             .valueOrNull;
         if (onboardingState?.step == OnboardingStep.moveItemsTooltip &&
             widget.houseId == onboardingState?.defaultHouseId) {
-          // Pop first so MainShell + houseFab are visible before the tooltip fires.
+          // Pop first so MainShell + primaryAction are visible before the tooltip fires.
           context.pop();
           await Future.delayed(const Duration(milliseconds: 400));
           if (mounted) {

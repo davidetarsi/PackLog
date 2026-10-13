@@ -1,316 +1,235 @@
+import 'dart:ui';
+
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:easy_localization/easy_localization.dart';
-import '../../features/houses/view/add_edit_house_screen.dart';
-import '../../features/items/view/add_edit_item_screen.dart';
-import '../constants/app_constants.dart';
-import '../theme/app_spacing.dart';
-import '../../features/tour/tour_keys.dart';
-import '../../features/houses/providers/house_provider.dart';
-import '../../features/tour/model/onboarding_state.dart';
-import '../../features/tour/providers/post_login_onboarding_provider.dart';
 
-/// Shell principale dell'app con tab bar persistente
-class MainShell extends ConsumerStatefulWidget {
+import '../../core/analytics/core_analytics_service.dart';
+import '../../core/sync/sync_provider.dart';
+import '../../features/houses/providers/house_provider.dart';
+import '../../features/items/view/add_edit_item_screen.dart';
+import '../../features/items/view/add_items_sheet.dart';
+import '../../features/tour/tour_keys.dart';
+import '../constants/app_constants.dart';
+import '../helpers/snack_bar_helper.dart';
+import '../theme/app_spacing.dart';
+import 'primary_action_button.dart';
+
+/// Effetto vetro della barra (sfocatura dello sfondo). Se sul telefono la
+/// sfocatura fa scattare lo scorrimento, metti `false`: la barra torna a una
+/// superficie tonale piena.
+const bool _kGlassNavBar = true;
+
+/// Shell principale: barra flottante con due luoghi (Case, Viaggi) e, staccato,
+/// il bottone d'azione della tab corrente.
+class MainShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
   const MainShell({super.key, required this.navigationShell});
 
-  @override
-  ConsumerState<MainShell> createState() => _MainShellState();
-}
+  static const _housesBranch = 0;
+  static const _tripsBranch = 1;
 
-class _MainShellState extends ConsumerState<MainShell>
-    with SingleTickerProviderStateMixin {
-  bool _isCreateMenuOpen = false;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  void _goBranch(int index) =>
+      navigationShell.goBranch(index, initialLocation: false);
 
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 250),
-      vsync: this,
+  /// [housesState] è lo stato mostrato dal bottone (vedi [_HousesState]).
+  Future<void> _onAddItems(
+    BuildContext context,
+    WidgetRef ref, {
+    required _HousesState housesState,
+  }) async {
+    // Case non ancora note (caricamento, errore, o lista vuota durante una
+    // sync che sta ancora riempiendo il DB): il bottone è acceso ma il foglio
+    // non ha una casa da proporre. Soluzione più semplice: non fare nulla, né
+    // foglio né avviso né evento (l'azione non è avvenuta). Appena le case
+    // arrivano, il tocco successivo funziona.
+    if (housesState == _HousesState.pending) return;
+
+    final hasHouses = housesState == _HousesState.available;
+    final analytics = ref.read(coreAnalyticsServiceProvider);
+    analytics.trackPrimaryActionTapped(
+      tab: 'houses',
+      action: 'add_items',
+      enabled: hasHouses,
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeOutCubic,
-          ),
+    if (!hasHouses) {
+      AppSnackBar.showWarning(context, 'navigation.create_house_first'.tr());
+      return;
+    }
+    final choice = await showAddItemsSheet(context);
+    if (choice == null || !context.mounted) return;
+    switch (choice.method) {
+      case AddItemsMethod.aiScan:
+        analytics.trackAddItemsSheetChoice(choice: 'ai_scan');
+        context.push('/houses/${choice.houseId}/ai-import');
+      case AddItemsMethod.manual:
+        analytics.trackAddItemsSheetChoice(choice: 'manual');
+        await showAddEditItemSheet(context, houseId: choice.houseId);
+    }
+  }
+
+  void _onNewTrip(BuildContext context, WidgetRef ref) {
+    ref
+        .read(coreAnalyticsServiceProvider)
+        .trackPrimaryActionTapped(
+          tab: 'trips',
+          action: 'new_trip',
+          enabled: true,
         );
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  void _onTabTapped(int index) {
-    // Se clicchiamo su altro mentre il menu è aperto, chiudilo
-    if (_isCreateMenuOpen && index != 3) {
-      _closeCreateMenu();
-    }
-
-    switch (index) {
-      case 0:
-        // Branch 0: Profilo — naviga al root del branch preservando lo stack
-        widget.navigationShell.goBranch(0, initialLocation: false);
-      case 1:
-        // Branch 1: Case
-        widget.navigationShell.goBranch(1, initialLocation: false);
-      case 2:
-        // Branch 2: Viaggi
-        widget.navigationShell.goBranch(2, initialLocation: false);
-      case 3:
-        _toggleCreateMenu();
-    }
-  }
-
-  void _toggleCreateMenu() {
-    setState(() {
-      _isCreateMenuOpen = !_isCreateMenuOpen;
-    });
-    if (_isCreateMenuOpen) {
-      _animationController.forward();
-    } else {
-      _animationController.reverse();
-    }
-  }
-
-  void _closeCreateMenu() {
-    if (_isCreateMenuOpen) {
-      setState(() {
-        _isCreateMenuOpen = false;
-      });
-      _animationController.reverse();
-    }
-  }
-
-  void _onCreateTrip() {
-    _closeCreateMenu();
     context.push('/new-trip');
   }
 
-  void _onCreateItem() {
-    _closeCreateMenu();
-    showAddEditItemSheet(context);
-  }
-
-  Future<void> _onCreateHouse() async {
-    _closeCreateMenu();
-    final onboardingStep = ref
-        .read(postLoginOnboardingProvider)
-        .valueOrNull
-        ?.step;
-    final housesBefore =
-        ref.read(houseNotifierProvider).valueOrNull?.length ?? 0;
-
-    await showAddEditHouseSheet(context);
-
-    if (!mounted) return;
-    if (onboardingStep == OnboardingStep.houseTooltip) {
-      final housesAfter =
-          ref.read(houseNotifierProvider).valueOrNull?.length ?? 0;
-      if (housesAfter > housesBefore) {
-        await ref.read(postLoginOnboardingProvider.notifier).advance();
-      }
-    }
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    // currentIndex maps directly to the branch:
-    // 0 = Profile, 1 = Houses, 2 = Trips
-    final currentIndex = widget.navigationShell.currentIndex;
+    final currentIndex = navigationShell.currentIndex;
+    // Stesso criterio di HousesScreen: una lista vuota durante una sync è un
+    // caricamento (DB appena svuotato), non "utente senza case". Il bottone si
+    // spegne solo quando le case sono caricate, vuote e nessuna sync è attiva;
+    // altrimenti spegnerlo farebbe lampeggiare il colore a ogni avvio.
+    final houses = ref.watch(houseNotifierProvider).valueOrNull;
+    final isSyncing = ref.watch(syncingProvider);
+    final housesState = houses == null
+        ? _HousesState.pending
+        : houses.isNotEmpty
+        ? _HousesState.available
+        : isSyncing
+        ? _HousesState.pending
+        : _HousesState.none;
+    final onHouses = currentIndex == _housesBranch;
 
-    // Altezza tab bar + padding bottom - responsive
-    // 1. Recuperiamo lo spazio occupato dall'hardware di sistema (es. gesture bar)
-    final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
-    final tabBarHeight = context.responsive(56.0);
-    final tabBarBottomPadding = context.spacingMd;
-    final tabBarTotalHeight =
-        tabBarHeight + bottomSafeArea + tabBarBottomPadding + context.spacingMd;
+    final barHeight = context.responsive(56.0);
+    final radius = context.responsiveBorderRadius(
+      AppConstants.pillBorderRadius,
+    );
 
-    return PopScope<Object?>(
-      // Il pop di sistema è consentito solo quando il menu è chiuso.
-      // Quando il menu è aperto, intercettiamo il tasto "Indietro" per
-      // chiudere il menu invece di uscire dalla schermata corrente.
-      canPop: !_isCreateMenuOpen,
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        // Se didPop è true il framework ha già gestito il pop (canPop era
-        // true), non c'è nulla da fare.
-        if (didPop) return;
-
-        // canPop era false → il menu era aperto. Lo chiudiamo con la sua
-        // animazione di uscita senza toccare la navigazione dello stack.
-        _closeCreateMenu();
-      },
-      child: Scaffold(
-        extendBody: true,
-        body: Stack(
-          children: [
-            // Anchor invisibile per gli step info-card del tour (nessun spotlight)
-            Center(
-              child: SizedBox(
-                key: tourKeys.infoCardTarget,
-                width: 1,
-                height: 1,
-              ),
-            ),
-            // Contenuto principale
-            widget.navigationShell,
-
-            // Overlay scuro quando il menu è aperto
-            if (_isCreateMenuOpen)
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: _closeCreateMenu,
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Container(
-                      color: Colors.black.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ),
-              ),
-
-            // Menu pill tabs sopra la tab bar
-            if (_isCreateMenuOpen)
-              Positioned(
-                right: context.spacingMd,
-                bottom: tabBarTotalHeight + context.spacingSm,
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width / 2,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _CreatePillTab(
-                            icon: Icons.luggage,
-                            label: 'trips.add'.tr(),
-                            colorScheme: colorScheme,
-                            onTap: _onCreateTrip,
-                          ),
-                          SizedBox(height: context.spacingSm),
-                          _CreatePillTab(
-                            icon: Icons.inventory_2,
-                            label: 'items.add'.tr(),
-                            colorScheme: colorScheme,
-                            onTap: _onCreateItem,
-                          ),
-                          SizedBox(height: context.spacingSm),
-                          _CreatePillTab(
-                            icon: Icons.home,
-                            label: 'houses.add'.tr(),
-                            colorScheme: colorScheme,
-                            onTap: () => _onCreateHouse(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
+    Widget bar = Container(
+      height: barHeight,
+      decoration: BoxDecoration(
+        color: _kGlassNavBar
+            ? colorScheme.surfaceContainer.withValues(alpha: 0.78)
+            : colorScheme.surfaceContainer,
+        borderRadius: radius,
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
-        bottomNavigationBar: SafeArea(
-          bottom: true,
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              context.spacingMd,
-              0,
-              context.spacingMd,
-              tabBarBottomPadding,
-            ),
-            child: Container(
-              height: tabBarHeight,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainer,
-                borderRadius: context.responsiveBorderRadius(
-                  AppConstants.pillBorderRadius,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.shadow.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: _NavItem(
-                      key: tourKeys.profileTab,
-                      icon: Icons.person_3_outlined,
-                      selectedIcon: Icons.person_3,
-                      label: 'common.profile'.tr(),
-                      isSelected: currentIndex == 0,
-                      onTap: () => _onTabTapped(0),
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavItem(
-                      key: tourKeys.housesTab,
-                      icon: Icons.home_outlined,
-                      selectedIcon: Icons.home,
-                      label: 'navigation.houses'.tr(),
-                      isSelected: currentIndex == 1,
-                      onTap: () => _onTabTapped(1),
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavItem(
-                      key: tourKeys.tripsTab,
-                      icon: Icons.luggage_outlined,
-                      selectedIcon: Icons.luggage,
-                      label: 'navigation.trips'.tr(),
-                      isSelected: currentIndex == 2,
-                      onTap: () => _onTabTapped(2),
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavItem(
-                      key: tourKeys.houseFab,
-                      icon: _isCreateMenuOpen
-                          ? Icons.close
-                          : Icons.add_circle_outline,
-                      selectedIcon: Icons.add_circle,
-                      label: _isCreateMenuOpen
-                          ? 'common.close'.tr()
-                          : 'common.create'.tr(),
-                      isSelected: _isCreateMenuOpen,
-                      onTap: () => _onTabTapped(3),
-                    ),
-                  ),
-                ],
-              ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _NavItem(
+              key: const Key('nav_houses'),
+              anchorKey: tourKeys.housesTab,
+              icon: Icons.home_outlined,
+              selectedIcon: Icons.home,
+              label: 'navigation.houses'.tr(),
+              isSelected: onHouses,
+              onTap: () => _goBranch(_housesBranch),
             ),
           ),
+          Expanded(
+            child: _NavItem(
+              key: const Key('nav_trips'),
+              anchorKey: tourKeys.tripsTab,
+              icon: Icons.luggage_outlined,
+              selectedIcon: Icons.luggage,
+              label: 'navigation.trips'.tr(),
+              isSelected: !onHouses,
+              onTap: () => _goBranch(_tripsBranch),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (_kGlassNavBar) {
+      bar = ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: bar,
         ),
-      ), // Scaffold
-    ); // PopScope
-  } // build
+      );
+    }
+
+    return Scaffold(
+      extendBody: true,
+      body: Stack(
+        children: [
+          // Anchor invisibile per gli step info-card del tour (nessun spotlight)
+          Center(
+            child: SizedBox(key: tourKeys.infoCardTarget, width: 1, height: 1),
+          ),
+          navigationShell,
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            context.spacingMd,
+            0,
+            context.spacingMd,
+            context.spacingMd,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: radius,
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.shadow.withValues(alpha: 0.12),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: bar,
+                ),
+              ),
+              SizedBox(width: context.spacingSm),
+              KeyedSubtree(
+                key: tourKeys.primaryAction,
+                child: PrimaryActionButton(
+                  key: const Key('primary_action_button'),
+                  icon: onHouses ? Icons.add : Icons.luggage,
+                  label: onHouses
+                      ? 'navigation.add_items'.tr()
+                      : 'navigation.new_trip'.tr(),
+                  enabled: !onHouses || housesState != _HousesState.none,
+                  onPressed: onHouses
+                      ? () =>
+                            _onAddItems(context, ref, housesState: housesState)
+                      : () => _onNewTrip(context, ref),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Disponibilità delle case per il bottone "Aggiungi oggetti".
+enum _HousesState {
+  /// Almeno una casa: il foglio si apre.
+  available,
+
+  /// Caricate e vuote, nessuna sync in corso: bottone spento + avviso.
+  none,
+
+  /// Non ancora note (caricamento, errore, sync con lista vuota): bottone
+  /// acceso nell'aspetto, ma il tocco non fa nulla.
+  pending,
 }
 
 class _NavItem extends StatelessWidget {
+  final GlobalKey anchorKey;
   final IconData icon;
   final IconData selectedIcon;
   final String label;
@@ -319,6 +238,7 @@ class _NavItem extends StatelessWidget {
 
   const _NavItem({
     super.key,
+    required this.anchorKey,
     required this.icon,
     required this.selectedIcon,
     required this.label,
@@ -329,95 +249,33 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final color = isSelected
+        ? colorScheme.primary
+        : colorScheme.onSurfaceVariant;
 
     return InkWell(
+      key: anchorKey,
       onTap: onTap,
       borderRadius: context.responsiveBorderRadius(16),
-      // Occupa tutta l'altezza disponibile nella Row della tab bar in modo
-      // che il Column possa centrarsi verticalmente senza overflow.
-      child: SizedBox(
-        width: double.infinity,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: context.responsive(10)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isSelected ? selectedIcon : icon,
-                size: context.responsive(22),
-                color: isSelected
-                    ? colorScheme.primary
-                    : colorScheme.onSurfaceVariant,
-              ),
-              SizedBox(height: context.spacingXs / 4),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: isSelected
-                      ? colorScheme.primary
-                      : colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            isSelected ? selectedIcon : icon,
+            size: context.responsive(22),
+            color: color,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CreatePillTab extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final ColorScheme colorScheme;
-  final VoidCallback onTap;
-
-  const _CreatePillTab({
-    required this.icon,
-    required this.label,
-    required this.colorScheme,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: colorScheme.primaryContainer,
-      borderRadius: context.responsiveBorderRadius(
-        AppConstants.pillBorderRadius,
-      ),
-      elevation: 4,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: context.responsiveBorderRadius(
-          AppConstants.pillBorderRadius,
-        ),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: context.spacingMd + context.spacingXs, // 20 scalato
-            vertical: context.spacingSm + context.spacingXs, // 12 scalato
+          SizedBox(height: context.spacingXs / 4),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: color),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: context.responsive(22),
-                color: colorScheme.onPrimaryContainer,
-              ),
-              SizedBox(width: context.spacingSm),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: colorScheme.onPrimaryContainer,
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
