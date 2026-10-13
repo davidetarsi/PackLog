@@ -17,9 +17,13 @@ class RapidFireInput extends ConsumerStatefulWidget {
   final ValueChanged<bool>? onExpandedChanged;
   final double height;
 
+  /// Prende il focus appena montato (tastiera su, modalità espansa).
+  final bool autofocus;
+
   const RapidFireInput({
     super.key,
     required this.houseId,
+    this.autofocus = false,
     this.currentSpaceId,
     this.onOpenFullForm,
     this.onExpandedChanged,
@@ -42,6 +46,13 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
   void initState() {
     super.initState();
     _focusNode.addListener(_onFocusChanged);
+    if (widget.autofocus) {
+      // Dopo il primo frame: durante la transizione di route il focus
+      // richiesto subito andrebbe perso.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focusNode.requestFocus();
+      });
+    }
   }
 
   @override

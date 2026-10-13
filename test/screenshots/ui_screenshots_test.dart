@@ -72,9 +72,9 @@ class Flow {
 Finder _text(String key) => find.text(key.tr());
 Finder _icon(IconData icon) => find.byIcon(icon);
 
-Future<void> _openAddItemsSheet(ScreenshotApp app) async {
-  await app.go('/');
-  await app.tap(find.byKey(const Key('primary_action_button')));
+Future<void> _openCreateSheet(ScreenshotApp app, [String tab = '/']) async {
+  await app.go(tab);
+  await app.tap(find.byKey(const Key('nav_create')));
 }
 
 Future<void> _houseDetail(ScreenshotApp app, [String id = kHomeId]) async {
@@ -312,13 +312,13 @@ final flows = <Flow>[
     ),
     Scenario(
       5,
-      'aggiungi-oggetti',
-      'foglio',
+      'crea',
+      'foglio-da-case',
       route: '/',
-      source: 'lib/features/items/view/add_items_sheet.dart',
+      source: 'lib/shared/widgets/create_sheet.dart',
       description:
-          'Bottone d\'azione in Case: casa di destinazione, Scansiona con AI, Scrivi a mano.',
-      steps: _openAddItemsSheet,
+          'Crea dalla tab Case: Scansiona con AI (con la casa), link a mano, poi Nuova casa e Nuovo viaggio.',
+      steps: _openCreateSheet,
     ),
     Scenario(
       6,
@@ -486,10 +486,12 @@ final flows = <Flow>[
       'oggetto-form',
       'nuovo',
       source: 'lib/features/items/view/add_edit_item_screen.dart',
-      description: 'Nuovo oggetto da Aggiungi oggetti → Scrivi a mano.',
+      description:
+          'Nuovo oggetto: Crea → "scrivili a mano" → rapid fire della casa → +.',
       steps: (app) async {
-        await _openAddItemsSheet(app);
-        await app.tap(find.byKey(const Key('add_items_manual')));
+        await _openCreateSheet(app);
+        await app.tap(find.byKey(const Key('create_manual_items')));
+        await app.tap(find.byIcon(Icons.add).last);
       },
     ),
     Scenario(
@@ -698,6 +700,16 @@ final flows = <Flow>[
         await app.go('/trips');
         await app.longPress(find.text('Lisbona, Portogallo').first);
       },
+    ),
+    Scenario(
+      6,
+      'crea',
+      'foglio-da-viaggi',
+      route: '/trips',
+      source: 'lib/shared/widgets/create_sheet.dart',
+      description:
+          'Crea dalla tab Viaggi: Nuovo viaggio sale sopra Nuova casa.',
+      steps: (app) => _openCreateSheet(app, '/trips'),
     ),
   ]),
 

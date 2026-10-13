@@ -21,12 +21,7 @@
     "houses": "Houses",
     "trips": "Trips",
     "profile": "Profile",
-    "open_profile": "Open profile",
-    "add_items": "Add items",
-    "new_trip": "New trip",
-    "create_house_first": "Create a house first",
-    "action_item": "Item",
-    "action_trip": "Trip"
+    "open_profile": "Open profile"
   },
   "houses": {
     "title": "My Houses",
@@ -121,15 +116,7 @@
     "bulk_move_no_houses": "No other houses available",
     "bulk_move_sheet_title": "Move {} items",
     "add_to_trip_success": "{} items added to {}",
-    "rapid_fire_hint": "Add item...",
-    "add_sheet": {
-      "title": "Add items",
-      "destination": "In house",
-      "choose_house": "Choose house",
-      "ai_scan": "Scan with AI",
-      "ai_scan_hint": "Take a photo of your clothes: AI recognises and saves them",
-      "manual": "Type it in"
-    }
+    "rapid_fire_hint": "Add item..."
   },
   "categories": {
     "vestiti": "Clothes",
@@ -566,7 +553,7 @@
     },
     "create_trip_tooltip": {
       "title": "Create your first trip",
-      "body": "Open Trips and tap \"+ Trip\" to create your first trip."
+      "body": "Tap Create and choose \"New trip\" to create your first trip."
     },
     "trip_creation_tooltip": {
       "title": "Plan your trip",
@@ -584,5 +571,19 @@
   },
   "location_search": {
     "rate_limit_reached": "Too many location searches, please try again in a few minutes."
+  },
+  "create_sheet": {
+    "title": "Create",
+    "ai_scan": "Scan with AI",
+    "ai_scan_hint": "Take a photo of your clothes: AI recognises and saves them",
+    "need_house": "Create a house first: scanned items go there",
+    "ai_exhausted": "You've used all your AI scans",
+    "in_house": "in {}",
+    "choose_house": "Choose house",
+    "manual_link": "Not clothes? Type them in",
+    "new_house": "New house",
+    "new_house_hint": "Another place where you keep your things",
+    "new_trip": "New trip",
+    "new_trip_hint": "Destination, dates and what to pack"
   }
 }

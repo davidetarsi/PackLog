@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/analytics/analytics_service.dart';
@@ -105,8 +104,6 @@ class _PostLoginOnboardingListenerState
     // questa chiamata — vedi il commento lì.
     final notifier = ref.read(postLoginOnboardingProvider.notifier);
     final analytics = ref.read(analyticsServiceProvider);
-    // Catturato prima del gap asincrono qui sotto (`ensureVisible`).
-    final router = GoRouter.maybeOf(context);
     // step_index: numero d'ordine 1-based del tip nel tour (vedi
     // OnboardingStepTourIndex), per costruire il funnel per posizione senza
     // dover riordinare a mano i nomi degli step.
@@ -123,11 +120,6 @@ class _PostLoginOnboardingListenerState
     void advance() {
       analytics.logEvent('onboarding_step_advanced', properties: stepProps);
       notifier.advance();
-      // Il tip "Crea il tuo primo viaggio" punta alla tab Viaggi: avanzare
-      // (Avanti o tocco sul bersaglio) porta lì, dove c'è il bottone.
-      if (onboarding.step == OnboardingStep.createTripTooltip) {
-        router?.go('/trips');
-      }
     }
 
     final cfg = _stepConfig(onboarding.step);
@@ -213,7 +205,7 @@ class _PostLoginOnboardingListenerState
         align: ContentAlign.top,
       ),
       OnboardingStep.createTripTooltip => _StepConfig(
-        key: tourKeys.tripsTab,
+        key: tourKeys.primaryAction,
         title: 'tour.create_trip_tooltip.title'.tr(),
         body: 'tour.create_trip_tooltip.body'.tr(),
         isSpotlight: true,
