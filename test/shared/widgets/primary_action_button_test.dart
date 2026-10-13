@@ -72,4 +72,59 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+    'etichetta lunga: una riga, larghezza limitata, nessun overflow',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(400, 800),
+              textScaler: TextScaler.linear(2),
+            ),
+            child: Scaffold(
+              body: Align(
+                alignment: Alignment.centerRight,
+                child: PrimaryActionButton(
+                  icon: Icons.add,
+                  label: 'Un\'etichetta davvero molto lunga da tradurre',
+                  onPressed: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      final text = tester.widget<Text>(
+        find.text('Un\'etichetta davvero molto lunga da tradurre'),
+      );
+      expect(text.maxLines, 1);
+      expect(text.overflow, TextOverflow.ellipsis);
+      expect(
+        tester.getSize(find.byType(PrimaryActionButton)).width,
+        lessThanOrEqualTo(400 * 0.45),
+      );
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets('semantica: l\'etichetta è letta una volta sola', (tester) async {
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      wrap(
+        PrimaryActionButton(
+          icon: Icons.add,
+          label: 'Aggiungi',
+          onPressed: () {},
+        ),
+      ),
+    );
+    expect(find.bySemanticsLabel('Aggiungi'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    handle.dispose();
+  });
 }

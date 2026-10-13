@@ -12,6 +12,7 @@ import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
+import 'package:pack_log/features/items/view/add_edit_item_screen.dart';
 import 'package:pack_log/features/items/view/add_items_sheet.dart';
 import 'package:pack_log/shared/widgets/primary_action_button.dart';
 import 'package:pack_log/shared/widgets/main_shell.dart';
@@ -197,6 +198,56 @@ void main() {
     expect(find.byType(AddItemsSheet), findsNothing);
     expect(find.byType(SnackBar), findsNothing);
     await settleLabel(tester);
+  });
+
+  group('scelta nel foglio Aggiungi oggetti', () {
+    Future<void> openSheet(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('primary_action_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(AddItemsSheet), findsOneWidget);
+    }
+
+    testWidgets('manuale: si apre il form oggetto per la casa scelta', (
+      tester,
+    ) async {
+      await pumpShell(tester, [_house('a')]);
+      await openSheet(tester);
+      await tester.tap(find.byKey(const Key('add_items_manual')));
+      await tester.pumpAndSettle();
+      // Nei test il font largo e le chiavi di traduzione grezze fanno andare in
+      // overflow un menu del form: non c'entra con la scelta che verifichiamo.
+      tester.takeException();
+      expect(find.byType(AddItemsSheet), findsNothing);
+      final sheet = tester.widget<AddEditItemSheet>(
+        find.byType(AddEditItemSheet),
+      );
+      expect(sheet.houseId, 'a');
+      expect(sheet.itemId, isNull);
+      await settleLabel(tester);
+    });
+
+    testWidgets('scansione AI: push a /houses/<id>/ai-import', (tester) async {
+      await pumpShell(tester, [_house('a')]);
+      await openSheet(tester);
+      await tester.tap(find.byKey(const Key('add_items_ai_scan')));
+      await tester.pumpAndSettle();
+      expect(find.text('AI IMPORT a'), findsOneWidget);
+      await settleLabel(tester);
+    });
+
+    testWidgets('foglio chiuso senza scelta: nessuna navigazione', (
+      tester,
+    ) async {
+      await pumpShell(tester, [_house('a')]);
+      await openSheet(tester);
+      await tester.tapAt(const Offset(10, 10)); // barriera del foglio
+      await tester.pumpAndSettle();
+      expect(find.byType(AddItemsSheet), findsNothing);
+      expect(find.byType(AddEditItemSheet), findsNothing);
+      expect(find.textContaining('AI IMPORT'), findsNothing);
+      expect(find.text('HOUSES'), findsOneWidget);
+      await settleLabel(tester);
+    });
   });
 
   testWidgets('in Viaggi il bottone apre Nuovo viaggio', (tester) async {

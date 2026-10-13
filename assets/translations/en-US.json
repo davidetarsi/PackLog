@@ -564,7 +564,7 @@
     },
     "create_trip_tooltip": {
       "title": "Create your first trip",
-      "body": "Open Trips and tap + to create your first trip."
+      "body": "Open Trips and tap \"New trip\" to create your first trip."
     },
     "trip_creation_tooltip": {
       "title": "Plan your trip",

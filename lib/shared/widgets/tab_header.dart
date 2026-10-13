@@ -17,12 +17,12 @@ String profileInitials(String? displayName, String email) {
       .where((w) => w.isNotEmpty)
       .toList();
   if (words.isNotEmpty) {
-    final first = words.first[0];
-    final last = words.length > 1 ? words.last[0] : '';
+    final first = words.first.characters.first;
+    final last = words.length > 1 ? words.last.characters.first : '';
     return (first + last).toUpperCase();
   }
   final mail = email.trim();
-  return mail.isNotEmpty ? mail[0].toUpperCase() : '?';
+  return mail.isNotEmpty ? mail.characters.first.toUpperCase() : '?';
 }
 
 /// Intestazione comune delle tab della shell: titolo a sinistra, avatar del

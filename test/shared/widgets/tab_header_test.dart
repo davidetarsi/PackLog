@@ -13,6 +13,11 @@ void main() {
     test('un solo nome', () {
       expect(profileInitials('  davide ', 'd@x.it'), 'D');
     });
+    test('iniziali fuori dal BMP (emoji) non spezzano la coppia surrogata', () {
+      expect(profileInitials('😀 Luca', 'l@x.it'), '😀L');
+      expect(profileInitials('Luca 😀', 'l@x.it'), 'L😀');
+      expect(profileInitials(null, '😀@x.it'), '😀'.toUpperCase());
+    });
     test('senza nome usa la email', () {
       expect(profileInitials(null, 'marco@x.it'), 'M');
       expect(profileInitials('', 'marco@x.it'), 'M');

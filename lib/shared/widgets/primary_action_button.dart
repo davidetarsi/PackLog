@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -76,6 +77,9 @@ class _PrimaryActionButtonState extends State<PrimaryActionButton> {
     return Semantics(
       button: true,
       label: widget.label,
+      // L'etichetta è già nel nodo semantico: senza questo il Text la fa
+      // leggere una seconda volta.
+      excludeSemantics: true,
       child: Material(
         color: background,
         shape: const StadiumBorder(),
@@ -88,7 +92,15 @@ class _PrimaryActionButtonState extends State<PrimaryActionButton> {
             curve: Curves.easeOutCubic,
             child: Container(
               height: size,
-              constraints: BoxConstraints(minWidth: size),
+              // Con caratteri grandi l'etichetta non deve schiacciare la barra
+              // dei luoghi accanto: il bottone espanso ha un tetto di larghezza.
+              constraints: BoxConstraints(
+                minWidth: size,
+                maxWidth: math.max(
+                  size,
+                  MediaQuery.sizeOf(context).width * 0.45,
+                ),
+              ),
               padding: EdgeInsets.symmetric(
                 horizontal: _showLabel ? context.spacingMd : 0,
               ),
@@ -103,11 +115,15 @@ class _PrimaryActionButtonState extends State<PrimaryActionButton> {
                   ),
                   if (_showLabel) ...[
                     SizedBox(width: context.spacingSm),
-                    Text(
-                      widget.label,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelLarge?.copyWith(color: foreground),
+                    Flexible(
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelLarge?.copyWith(color: foreground),
+                      ),
                     ),
                   ],
                 ],
