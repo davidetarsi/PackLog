@@ -110,15 +110,21 @@ jobs:
             exit 0
           fi
           APK="build/app/outputs/flutter-apk/PackLog-dev-v${DEV_VERSION}.apk"
-          # I bot Telegram accettano file fino a 50 MB.
-          SIZE=$(stat -c %s "$APK")
-          if (( SIZE > 50 * 1024 * 1024 )); then
-            echo "::warning::APK di $((SIZE / 1024 / 1024)) MB: oltre il limite di 50 MB dei bot Telegram, resta solo come artifact."
-            exit 0
-          fi
           SUBJECT=$(git log -1 --format=%s | cut -c1-200)
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           CAPTION=$(printf 'PackLog dev %s\n%s\n%s' "$DEV_VERSION" "$SUBJECT" "$RUN_URL")
+          # I bot Telegram accettano file fino a 50 MB: oltre, arriva almeno un
+          # messaggio con il link alla run, da cui scaricare l'artifact.
+          SIZE=$(stat -c %s "$APK")
+          if (( SIZE > 50 * 1024 * 1024 )); then
+            SIZE_MB=$((SIZE / 1024 / 1024))
+            echo "::warning::APK di ${SIZE_MB} MB: oltre il limite di 50 MB dei bot Telegram, mando solo il link."
+            curl -sS --fail-with-body -o /dev/null \
+              --data-urlencode chat_id="$TELEGRAM_CHAT_ID" \
+              --data-urlencode text="$(printf '%s\n\nAPK di %s MB, troppo grande per Telegram: scaricalo dalla run (artifact).' "$CAPTION" "$SIZE_MB")" \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+            exit 0
+          fi
           curl -sS --fail-with-body -o /dev/null \
             -F chat_id="$TELEGRAM_CHAT_ID" \
             -F caption="$CAPTION" \
