@@ -114,7 +114,15 @@
     "bulk_move_no_houses": "No other houses available",
     "bulk_move_sheet_title": "Move {} items",
     "add_to_trip_success": "{} items added to {}",
-    "rapid_fire_hint": "Add item..."
+    "rapid_fire_hint": "Add item...",
+    "add_sheet": {
+      "title": "Add items",
+      "destination": "In house",
+      "choose_house": "Choose house",
+      "ai_scan": "Scan with AI",
+      "ai_scan_hint": "Take a photo of your clothes: AI recognises and saves them",
+      "manual": "Type it in"
+    }
   },
   "categories": {
     "vestiti": "Clothes",
