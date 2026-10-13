@@ -552,7 +552,7 @@
     },
     "house_tooltip": {
       "title": "Create your first home",
-      "body": "Tap + to open the create menu and add your first home."
+      "body": "Tap \"New house\" at the bottom of the list to add your first house."
     },
     "default_house_tooltip": {
       "title": "Open the Demo House",
@@ -564,7 +564,7 @@
     },
     "create_trip_tooltip": {
       "title": "Create your first trip",
-      "body": "Tap + to open the create menu and add your first trip."
+      "body": "Open Trips and tap + to create your first trip."
     },
     "trip_creation_tooltip": {
       "title": "Plan your trip",

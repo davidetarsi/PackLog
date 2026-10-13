@@ -174,7 +174,7 @@ class MainShell extends ConsumerWidget {
               ),
               SizedBox(width: context.spacingSm),
               KeyedSubtree(
-                key: tourKeys.houseFab,
+                key: tourKeys.primaryAction,
                 child: PrimaryActionButton(
                   key: const Key('primary_action_button'),
                   icon: onHouses ? Icons.add : Icons.luggage,

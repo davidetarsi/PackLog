@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/analytics/analytics_service.dart';
@@ -44,7 +45,7 @@ class _PostLoginOnboardingListenerState
     // e continua quindi a ricostruirsi. Senza questo gate, un avanzamento di
     // step fatto da un `TourTriggerWrapper` su quelle route farebbe scattare
     // qui il tip successivo sopra la schermata sbagliata, per giunta puntando
-    // a una GlobalKey (`tourKeys.houseFab`) in quel momento coperta.
+    // a una GlobalKey (`tourKeys.primaryAction`) in quel momento coperta.
     //
     // `ModalRoute.of` registra una dipendenza da `_ModalScopeStatus`, che
     // notifica i dipendenti quando `isCurrent` cambia: al ritorno sulla shell
@@ -96,11 +97,16 @@ class _PostLoginOnboardingListenerState
         step == OnboardingStep.createTripTooltip;
   }
 
-  void _showTooltip(BuildContext context, OnboardingState onboarding) {
+  Future<void> _showTooltip(
+    BuildContext context,
+    OnboardingState onboarding,
+  ) async {
     // `_lastShownStep` è già stato marcato nel `build` che ha schedulato
     // questa chiamata — vedi il commento lì.
     final notifier = ref.read(postLoginOnboardingProvider.notifier);
     final analytics = ref.read(analyticsServiceProvider);
+    // Catturato prima del gap asincrono qui sotto (`ensureVisible`).
+    final router = GoRouter.maybeOf(context);
     // step_index: numero d'ordine 1-based del tip nel tour (vedi
     // OnboardingStepTourIndex), per costruire il funnel per posizione senza
     // dover riordinare a mano i nomi degli step.
@@ -117,9 +123,26 @@ class _PostLoginOnboardingListenerState
     void advance() {
       analytics.logEvent('onboarding_step_advanced', properties: stepProps);
       notifier.advance();
+      // Il tip "Crea il tuo primo viaggio" punta alla tab Viaggi: avanzare
+      // (Avanti o tocco sul bersaglio) porta lì, dove c'è il bottone.
+      if (onboarding.step == OnboardingStep.createTripTooltip) {
+        router?.go('/trips');
+      }
     }
 
     final cfg = _stepConfig(onboarding.step);
+
+    // Il bersaglio di houseTooltip è la riga "Nuova casa" in fondo alla
+    // lista: va portata in vista prima di calcolarne la posizione.
+    final targetContext = cfg.key.currentContext;
+    if (targetContext != null) {
+      await Scrollable.ensureVisible(
+        targetContext,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 200),
+      );
+      if (!context.mounted) return;
+    }
 
     TutorialCoachMark(
       targets: [
@@ -177,7 +200,7 @@ class _PostLoginOnboardingListenerState
   _StepConfig _stepConfig(OnboardingStep step) {
     return switch (step) {
       OnboardingStep.houseTooltip => _StepConfig(
-        key: tourKeys.houseFab,
+        key: tourKeys.newHouseRow,
         title: 'tour.house_tooltip.title'.tr(),
         body: 'tour.house_tooltip.body'.tr(),
         isSpotlight: true,
@@ -190,7 +213,7 @@ class _PostLoginOnboardingListenerState
         align: ContentAlign.top,
       ),
       OnboardingStep.createTripTooltip => _StepConfig(
-        key: tourKeys.houseFab,
+        key: tourKeys.tripsTab,
         title: 'tour.create_trip_tooltip.title'.tr(),
         body: 'tour.create_trip_tooltip.body'.tr(),
         isSpotlight: true,

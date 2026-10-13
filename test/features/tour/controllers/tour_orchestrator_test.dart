@@ -56,10 +56,15 @@ void main() {
     );
   }
 
-  /// Schermata che espone il target dei tip spotlight della shell.
+  /// Schermata che espone tutti i bersagli dei tip della shell.
   Widget shellScreen() => Scaffold(
-    body: Center(
-      child: SizedBox(key: tourKeys.houseFab, width: 48, height: 48),
+    body: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(key: tourKeys.newHouseRow, width: 48, height: 48),
+        SizedBox(key: tourKeys.tripsTab, width: 48, height: 48),
+        SizedBox(key: tourKeys.primaryAction, width: 48, height: 48),
+      ],
     ),
   );
 
