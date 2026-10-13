@@ -13,6 +13,7 @@ import '../../../shared/helpers/entity_action_handler.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
 import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/tab_header.dart';
 
 /// Enum per le tab di filtro
 enum TripFilterTab {
@@ -140,23 +141,31 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return ShellTabScaffold(
-      body: tripsAsync.when(
-        skipLoadingOnReload: true,
-        data: (trips) => _buildTripsContent(context, ref, colorScheme, trips),
-        loading: () => const SkeletonTripsBody(),
-        error: (error, stack) => RefreshIndicator(
-          onRefresh: () => ref.refresh(tripNotifierProvider.future),
-          color: colorScheme.primary,
-          child: LayoutBuilder(
-            builder: (_, constraints) => SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: SizedBox(
-                height: constraints.maxHeight,
-                child: _buildErrorState(context, ref, error),
+      body: Column(
+        children: [
+          TabHeader(title: 'navigation.trips'.tr()),
+          Expanded(
+            child: tripsAsync.when(
+              skipLoadingOnReload: true,
+              data: (trips) =>
+                  _buildTripsContent(context, ref, colorScheme, trips),
+              loading: () => const SkeletonTripsBody(),
+              error: (error, stack) => RefreshIndicator(
+                onRefresh: () => ref.refresh(tripNotifierProvider.future),
+                color: colorScheme.primary,
+                child: LayoutBuilder(
+                  builder: (_, constraints) => SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: constraints.maxHeight,
+                      child: _buildErrorState(context, ref, error),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -186,23 +195,9 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       color: colorScheme.primary,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Header sempre visibile: titolo + pill tabs.
+          // Header sempre visibile: pill tabs (il titolo sta in TabHeader).
           // Estratto come lista per evitare duplicazioni tra i due branch.
           final headerWidgets = <Widget>[
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.spacingXs,
-                vertical: context.spacingSm,
-              ),
-              child: Text(
-                'trips.welcome_title'.tr(),
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  color: colorScheme.onSurface,
-                  height: 1.2,
-                ),
-              ),
-            ),
-            SizedBox(height: context.spacingMd),
             Center(
               child: AppPillTab<TripFilterTab>(
                 items: TripFilterTab.values,
