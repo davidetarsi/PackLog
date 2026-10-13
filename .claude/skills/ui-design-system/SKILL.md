@@ -277,7 +277,11 @@ Regole:
 - Form content come widget separato con `GlobalKey` per delegare `save()`
 - Gap tra sezioni: `AppSpacing.gapMd` (intra-sezione) / `AppSpacing.gapLg` (inter-sezione)
 - Picker: `DsPickerSheet.show<T>()`, mai `showModalBottomSheet` raw
+- Sheet di azioni (menu senza form): `DsSheetHeader` come primo figlio, mai handle e titolo scritti a mano
+- Fotocamera/galleria: `showImageSourceSheet()` (`features/ai_input/view/widgets/image_source_sheet.dart`)
 - Tab: `AppPillTab<T>`, mai `SegmentedButton`
+- Scelta multipla a pillola: `Wrap` di `AppPill`, mai `FilterChip`
+- Avvisi d'errore dentro la pagina: `errorContainer` + `onErrorContainer` (anche per l'azione, es. "Riprova"); mai `primary` sopra un container d'errore
 
 ## Checklist: Design System Compliance
 
@@ -317,6 +321,7 @@ Usa il widget condiviso giusto per lo scenario. Mai reimplementare da zero.
 | Tab/filtri a pill | `AppPillTab<T>` | `SegmentedButton`, `ChoiceChip` |
 | Form in bottom sheet | `StandardBottomSheetLayout` | Bottom sheet custom con handle |
 | Picker selezione | `DsPickerSheet<T>` | `showModalBottomSheet` + ListView raw |
+| Sheet di azioni | `DsSheetHeader` + `ListTile` | Sheet senza handle né titolo |
 | Tile lista universale | `UniversalItemTile` | ListTile o Row custom |
 | Stato vuoto | `EmptyState` | Column inline con Icon + Text |
 | Stato errore | `ErrorState` | Text('Errore') inline |

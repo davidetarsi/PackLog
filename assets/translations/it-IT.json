@@ -1,5 +1,5 @@
 {
-  "app_name": "Stuff Tracker",
+  "app_name": "Pack Log",
   "login": {
     "subtitle": "Organizza i tuoi oggetti, ovunque tu sia",
     "sign_in_google": "Accedi con Google",
@@ -56,7 +56,7 @@
     "trips_contain_items_singular": "{} viaggio attivo/programmato contiene oggetti provenienti da questa casa",
     "trips_contain_items_plural": "{} viaggi attivi/programmati contengono oggetti provenienti da questa casa",
     "modify": "Modifica",
-    "manage_sheet_title": "Modifica Casa",
+    "manage_sheet_title": "Gestisci casa",
     "edit_info": "Modifica info",
     "add_sheet_title": "Aggiungi Oggetti",
     "add_single_item": "Oggetto singolo",
@@ -139,7 +139,7 @@
     "no_spaces": "Nessuno spazio",
     "no_spaces_subtitle": "Gli spazi ti aiutano a organizzare gli oggetti",
     "all_items": "Tutti",
-    "default": "Default",
+    "default": "Senza spazio",
     "name_required": "Nome*",
     "name_label": "Nome *",
     "name_hint": "Es. Armadio Camera, Garage...",
@@ -201,7 +201,6 @@
     "add": "Viaggio",
     "add_new": "Nuovo viaggio",
     "create_trip": "Crea viaggio",
-    "edit": "Modifica viaggio",
     "edit_info": "Modifica informazioni",
     "edit_items": "Modifica oggetti",
     "save_items": "Salva oggetti",
@@ -271,7 +270,8 @@
     "leg_pick_dates": "Scegli le date",
     "leg_location_required": "Manca il luogo della tappa",
     "destination_benefit": "Con una casa di destinazione, gli oggetti che porti compaiono lì come temporanei mentre sei via.",
-    "no_items_in_named_house": "Nessun oggetto in {house}"
+    "no_items_in_named_house": "Nessun oggetto in {house}",
+    "destination_house_hint": "Vai in una delle tue case? Scegli «Casa»: gli oggetti che porti compariranno lì come temporanei."
   },
   "common": {
     "save": "Salva",
@@ -381,7 +381,6 @@
     "invalid_house_id": "ID casa non valido",
     "invalid_trip_id": "ID viaggio non valido",
     "feature_disabled": "Questa funzionalità non è disponibile in questa versione.",
-    "invalid_list_id": "ID lista non valido",
     "no_trips": "Nessun viaggio",
     "no_items": "Nessun oggetto da salvare",
     "target_house_id_not_set": "ID casa non impostato. Impossibile salvare gli oggetti."
@@ -441,118 +440,6 @@
     "analytics_title": "Statistiche d'uso",
     "analytics_subtitle": "Aiutaci a migliorare l'app con dati anonimi sull'utilizzo. Puoi disattivarle in qualsiasi momento."
   },
-  "bulk_creation": {
-    "add_from_template": "Template",
-    "select_house": "Seleziona Casa",
-    "select_templates": "Scegli Template",
-    "select_at_least_one": "Seleziona almeno un template",
-    "continue_with_items": "Continua con {count} oggetti",
-    "continue_without_templates": "Prosegui senza selezionare",
-    "edit_items": "Modifica Oggetti",
-    "no_items": "Nessun oggetto da aggiungere",
-    "item_name_hint": "Nome oggetto",
-    "add_manual_item": "Aggiungi oggetto:",
-    "gender_male": "Uomo",
-    "gender_female": "Donna",
-    "gender_neutral": "Neutro",
-    "save_failed": "Errore durante il salvataggio degli oggetti",
-    "save_success": "{count} oggetti aggiunti con successo!",
-    "new_item": "Nuovo oggetto",
-    "templates": {
-      "weekend": {
-        "name": "Weekend",
-        "description": "Viaggio breve di 2-3 giorni"
-      },
-      "long_trip": {
-        "name": "Viaggio lungo",
-        "description": "Viaggio di una settimana o più"
-      },
-      "business": {
-        "name": "Business trip",
-        "description": "Viaggio di lavoro professionale"
-      },
-      "digital_nomad": {
-        "name": "Nomade digitale",
-        "description": "Viaggio prolungato con lavoro remoto"
-      },
-      "beach": {
-        "name": "Vacanza al mare",
-        "description": "Viaggio al mare o in località balneare"
-      },
-      "mountain": {
-        "name": "Montagna/Trekking",
-        "description": "Escursioni in montagna e trekking"
-      }
-    },
-    "items": {
-      "documenti_identita": "Documenti d'identità / Passaporto",
-      "portafoglio": "Portafoglio e contanti",
-      "chiavi_casa": "Chiavi di casa",
-      "tshirt": "T-shirt",
-      "jeans": "Jeans",
-      "biancheria_intima": "Biancheria intima",
-      "pigiama_camicia": "Pigiama / Camicia da notte",
-      "pigiama": "Pigiama",
-      "spazzolino": "Spazzolino da denti",
-      "dentifricio": "Dentifricio",
-      "deodorante": "Deodorante",
-      "shampoo": "Shampoo",
-      "rasoio": "Rasoio",
-      "schiuma_barba": "Schiuma da barba",
-      "trucchi": "Trucchi",
-      "trucchi_waterproof": "Trucchi waterproof",
-      "assorbenti": "Assorbenti",
-      "crema_solare": "Crema solare",
-      "crema_solare_alta": "Crema solare alta protezione",
-      "doposole": "Doposole",
-      "antizanzare": "Antizanzare",
-      "kit_toilette": "Kit toilette completo",
-      "caricabatterie_smartphone": "Caricabatterie smartphone",
-      "caricabatterie_laptop": "Caricabatterie laptop",
-      "cuffie": "Cuffie / Auricolari",
-      "cuffie_noise_cancelling": "Cuffie noise-cancelling",
-      "laptop": "Laptop",
-      "tablet": "Tablet",
-      "hard_disk": "Hard Disk / SSD esterno",
-      "mouse_wireless": "Mouse wireless",
-      "mouse_mousepad": "Mouse e Mousepad",
-      "power_bank": "Power bank",
-      "adattatore_universale": "Adattatore universale",
-      "cavo_hdmi": "Cavo HDMI",
-      "piastra_capelli": "Piastra per capelli",
-      "torcia": "Torcia",
-      "bussola_gps": "Bussola / GPS",
-      "occhiali_sole": "Occhiali da sole",
-      "libro_ereader": "Libro / E-reader",
-      "pantaloni": "Pantaloni",
-      "pantaloni_eleganti": "Pantaloni eleganti",
-      "pantaloni_comodi": "Pantaloni comodi",
-      "pantaloni_trekking": "Pantaloni da trekking",
-      "calzini": "Calzini",
-      "calzini_tecnici": "Calzini tecnici",
-      "giacca": "Giacca",
-      "giacca_impermeabile": "Giacca impermeabile",
-      "pile": "Pile",
-      "camicia_elegante": "Camicia elegante",
-      "scarpe_eleganti": "Scarpe eleganti",
-      "cintura": "Cintura",
-      "cravatta": "Cravatta",
-      "cappello": "Cappello",
-      "infradito": "Infradito",
-      "bikini": "Bikini / Costume intero",
-      "boxer_bagno": "Boxer da bagno",
-      "scarponi_trekking": "Scarponi da trekking",
-      "blocco_appunti": "Blocco appunti",
-      "penna": "Penna",
-      "biglietti_visita": "Biglietti da visita",
-      "asciugamano_mare": "Asciugamano mare",
-      "maschera_boccaglio": "Maschera e boccaglio",
-      "zaino_trekking": "Zaino da trekking",
-      "borraccia": "Borraccia",
-      "kit_primo_soccorso": "Kit primo soccorso",
-      "bastoncini_trekking": "Bastoncini da trekking"
-    }
-  },
   "ai_import": {
     "analysis_in_progress": "Analisi AI in corso, non uscire dalla pagina",
     "camera_subtitle": "Scatta una foto",
@@ -596,7 +483,8 @@
     "save_success": "{} oggetti salvati con successo!",
     "source_camera": "Fotocamera",
     "source_gallery": "Galleria",
-    "title": "AI Scan",
+    "source_sheet_title": "Aggiungi foto",
+    "title": "Scansione AI",
     "unexpected_error": "Errore imprevisto: {}"
   },
   "onboarding": {
@@ -614,7 +502,9 @@
       "title": "I tuoi viaggi",
       "description": "Crea un viaggio e seleziona gli oggetti da portare. Durante il viaggio li ritrovi automaticamente segnati come \"in viaggio\"."
     },
-    "default_house_name": "Casa di prova"
+    "default_house_name": "Casa di prova",
+    "skip": "Salta",
+    "complete_failed": "Non è stato possibile salvare. Riprova."
   },
   "tour": {
     "relaunch_title": "Ripeti il tour",

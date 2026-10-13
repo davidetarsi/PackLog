@@ -56,6 +56,11 @@ class AppTheme {
       // ── Error / Inverse ───────────────────────────────────────────────────
       error: Color(0xFFBA1A1A),
       onError: Colors.white,
+      // Container d'errore per avvisi (box di errore parziale): rosa tenue con
+      // testo scuro. Senza, Flutter usa `error` pieno e il box diventa un
+      // blocco rosso.
+      errorContainer: Color(0xFFFFDAD6),
+      onErrorContainer: Color(0xFF93000A),
       inverseSurface: Color(0xFF2D2D2D),
       onInverseSurface: Color(0xFFF5F5F5),
       inversePrimary: Color(0xFFFFAB73),
@@ -100,6 +105,8 @@ class AppTheme {
       // ── Error / Inverse ───────────────────────────────────────────────────
       error: Color(0xFFFFB4AB),
       onError: Color(0xFF690005),
+      errorContainer: Color(0xFF93000A),
+      onErrorContainer: Color(0xFFFFDAD6),
       inverseSurface: Color(0xFFE8E8E8),
       onInverseSurface: Color(0xFF1E1E1E),
       inversePrimary: Color(0xFFBF360C),

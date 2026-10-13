@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../../../shared/widgets/ds_sheet_header.dart';
 import '../../luggages/view/luggages_management_screen.dart';
 import '../../spaces/view/spaces_management_screen.dart';
 import 'add_edit_house_screen.dart';
@@ -19,10 +20,14 @@ Future<void> showHouseManageSheet(
 }) {
   return showModalBottomSheet(
     context: context,
+    // Senza isScrollControlled il sheet è limitato a 9/16 dello schermo: con
+    // la testata in più il contenuto non ci sta sugli schermi bassi.
+    isScrollControlled: true,
     builder: (sheetContext) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          DsSheetHeader(title: 'houses.manage_sheet_title'.tr()),
           ListTile(
             leading: const Icon(Icons.edit),
             title: Text('houses.edit_info'.tr()),

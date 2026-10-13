@@ -395,9 +395,19 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
 
         SizedBox(height: context.spacingXs),
         // Sempre visibile, non dentro un errore: non è un errore, e un errore
-        // si vede solo quando le cose vanno male.
+        // si vede solo quando le cose vanno male. Cambia con la pill: con
+        // "Casa" spiega cosa succede agli oggetti; con "Altra località"
+        // invita a scegliere Casa, invece di descrivere un campo che non è
+        // quello sopra.
         Text(
-          'trips.destination_benefit'.tr(),
+          _useHouseDestination
+              ? 'trips.destination_benefit'.tr()
+              : 'trips.destination_house_hint'.tr(),
+          key: Key(
+            _useHouseDestination
+                ? 'destination_hint_house'
+                : 'destination_hint_other',
+          ),
           style: Theme.of(
             context,
           ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),

@@ -25,9 +25,6 @@ import '../../features/trips/view/edit_trip_info_screen.dart';
 import '../../features/trips/view/edit_trip_items_screen.dart';
 import '../../features/ai_input/view/ai_clothing_sandbox_screen.dart';
 import '../../features/ai_input/view/ai_results_screen.dart';
-import '../../features/bulk_creation/view/house_selection_screen.dart';
-import '../../features/bulk_creation/view/template_selection_screen.dart';
-import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
 import '../../features/tour/controllers/tour_orchestrator.dart';
 import '../../features/tour/model/onboarding_state.dart';
 import '../../features/tour/providers/post_login_onboarding_provider.dart';
@@ -256,18 +253,6 @@ GoRouter appRouter(Ref ref) {
         ),
       ),
       GoRoute(
-        path: '/trips/:id/edit',
-        name: 'trip-edit',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final id = state.pathParameters['id'];
-          if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_list_id'.tr());
-          }
-          return AddTripScreen(tripId: id);
-        },
-      ),
-      GoRoute(
         path: '/trips/:id/edit-info',
         name: 'trip-edit-info',
         parentNavigatorKey: _rootNavigatorKey,
@@ -289,36 +274,6 @@ GoRouter appRouter(Ref ref) {
             return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
           }
           return EditTripItemsScreen(tripId: id);
-        },
-      ),
-      GoRoute(
-        path: '/bulk-creation/select-house',
-        name: 'bulk-house-selection',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const HouseSelectionScreen(),
-      ),
-      GoRoute(
-        path: '/bulk-creation/templates/:houseId',
-        name: 'bulk-template-selection',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final houseId = state.pathParameters['houseId'];
-          if (houseId == null || houseId.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
-          }
-          return TemplateSelectionScreen(houseId: houseId);
-        },
-      ),
-      GoRoute(
-        path: '/bulk-creation/items/:houseId',
-        name: 'bulk-item-list',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final houseId = state.pathParameters['houseId'];
-          if (houseId == null || houseId.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
-          }
-          return BulkItemListScreen(houseId: houseId);
         },
       ),
       GoRoute(

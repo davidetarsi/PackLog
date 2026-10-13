@@ -171,20 +171,25 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                       opacity: _isExpanded ? 1.0 : 0.0,
                       child: Padding(
                         // Spazio visivo tra le categorie fluttuanti e l'input sottostante
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            for (final category in ItemCategory.values) ...[
-                              if (category != ItemCategory.values.first)
-                                SizedBox(width: context.responsive(6)),
-                              CategoryPill(
-                                category: category,
-                                pillState: _computePillState(category),
-                                onTap: () => _toggleForcedCategory(category),
-                              ),
+                        padding: EdgeInsets.only(bottom: context.spacingSm),
+                        // scaleDown: su schermi stretti (o con testo grande di
+                        // sistema) la riga si rimpicciolisce invece di sforare.
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (final category in ItemCategory.values) ...[
+                                if (category != ItemCategory.values.first)
+                                  SizedBox(width: context.spacingXs),
+                                CategoryPill(
+                                  category: category,
+                                  pillState: _computePillState(category),
+                                  onTap: () => _toggleForcedCategory(category),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     )
@@ -308,18 +313,22 @@ class _SubmitButton extends StatelessWidget {
       onTap: enabled ? onPressed : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        width: 32,
-        height: 32,
+        width: context.iconSizeLg,
+        height: context.iconSizeLg,
         decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
         child: isSubmitting
             ? Padding(
-                padding: const EdgeInsets.all(6),
+                padding: EdgeInsets.all(context.spacingXs),
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: iconColor,
                 ),
               )
-            : Icon(Icons.arrow_upward, size: 18, color: iconColor),
+            : Icon(
+                Icons.arrow_upward,
+                size: context.iconSizeSm,
+                color: iconColor,
+              ),
       ),
     );
   }

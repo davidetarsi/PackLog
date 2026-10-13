@@ -182,4 +182,32 @@ void main() {
       });
     }
   });
+
+  group('colori d\'errore', () {
+    double contrast(Color a, Color b) {
+      final la = a.computeLuminance();
+      final lb = b.computeLuminance();
+      final (hi, lo) = la > lb ? (la, lb) : (lb, la);
+      return (hi + 0.05) / (lo + 0.05);
+    }
+
+    for (final (name, theme) in [
+      ('light', AppTheme.light),
+      ('dark', AppTheme.dark),
+    ]) {
+      test('$name: errorContainer è un avviso, non il rosso pieno', () {
+        final cs = theme.colorScheme;
+        expect(cs.errorContainer, isNot(cs.error));
+        expect(cs.onErrorContainer, isNot(cs.onError));
+      });
+
+      test('$name: testo su errorContainer sopra AA (4.5:1)', () {
+        final cs = theme.colorScheme;
+        expect(
+          contrast(cs.onErrorContainer, cs.errorContainer),
+          greaterThanOrEqualTo(4.5),
+        );
+      });
+    }
+  });
 }

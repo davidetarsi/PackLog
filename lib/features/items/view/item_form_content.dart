@@ -6,11 +6,13 @@ import '../model/item_model.dart';
 import '../providers/item_provider.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
+import '../../spaces/model/space_model.dart';
 import '../../spaces/providers/space_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 
@@ -36,6 +38,11 @@ class ItemFormContent extends ConsumerStatefulWidget {
   @override
   ConsumerState<ItemFormContent> createState() => ItemFormContentState();
 }
+
+/// Opzione del picker spazio. `id == null` è lo spazio predefinito: non si
+/// può usare `null` come valore dell'opzione, perché per [DsPickerSheet]
+/// `null` vuol dire "chiuso senza scegliere".
+typedef _SpaceOption = ({String? id, String name, IconData icon});
 
 class ItemFormContentState extends ConsumerState<ItemFormContent> {
   final _formKey = GlobalKey<FormState>();
@@ -115,38 +122,12 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
   }
 
   Future<void> _showQuantityPicker() async {
-    final selected = await showModalBottomSheet<int>(
+    final selected = await DsPickerSheet.show<int>(
       context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: EdgeInsets.all(context.spacingMd),
-            child: Text(
-              'common.select_quantity'.tr(),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ),
-          const Divider(),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _quantityOptions.length,
-              itemBuilder: (context, index) {
-                final quantity = _quantityOptions[index];
-                return ListTile(
-                  title: Text(quantity.toString()),
-                  trailing: _selectedQuantity == quantity
-                      ? Icon(Icons.check, color: context.appColors.success)
-                      : null,
-                  onTap: () => Navigator.pop(context, quantity),
-                );
-              },
-            ),
-          ),
-          AppSpacing.gapMd,
-        ],
-      ),
+      title: 'common.select_quantity'.tr(),
+      items: _quantityOptions,
+      getLabel: (q) => q.toString(),
+      selected: _selectedQuantity,
     );
     if (selected != null) {
       setState(() => _selectedQuantity = selected);
@@ -425,50 +406,18 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
   }
 
   Future<void> _showHousePicker(List<HouseModel> houses) async {
-    final selected = await showModalBottomSheet<String>(
+    final selected = await DsPickerSheet.show<HouseModel>(
       context: context,
-      builder: (sheetContext) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: sheetContext.responsiveScreenPadding,
-            child: Text(
-              'common.select_house'.tr(),
-              style: Theme.of(sheetContext).textTheme.titleLarge,
-            ),
-          ),
-          const Divider(),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: houses.length,
-              itemBuilder: (itemContext, index) {
-                final house = houses[index];
-                return ListTile(
-                  leading: Icon(Icons.home, size: itemContext.iconSizeMd),
-                  title: Text(house.displayName),
-                  subtitle: house.description != null
-                      ? Text(house.description!)
-                      : null,
-                  trailing: _selectedHouseId == house.id
-                      ? Icon(
-                          Icons.check,
-                          color: context.appColors.success,
-                          size: itemContext.iconSizeMd,
-                        )
-                      : null,
-                  onTap: () => Navigator.pop(itemContext, house.id),
-                );
-              },
-            ),
-          ),
-          SizedBox(height: sheetContext.spacingMd),
-        ],
-      ),
+      title: 'common.select_house'.tr(),
+      items: houses,
+      getLabel: (h) => h.displayName,
+      getSubtitle: (h) => h.description,
+      getIcon: (_) => Icons.home_outlined,
+      selected: houses.where((h) => h.id == _selectedHouseId).firstOrNull,
     );
     if (selected != null) {
       setState(() {
-        _selectedHouseId = selected;
+        _selectedHouseId = selected.id;
         _selectedSpaceId = null;
       });
     }
@@ -518,74 +467,32 @@ class ItemFormContentState extends ConsumerState<ItemFormContent> {
     );
   }
 
-  Future<void> _showSpacePicker(List spaces) async {
-    const defaultSpaceSentinel = '_default_space_sentinel_';
+  Future<void> _showSpacePicker(List<SpaceModel> spaces) async {
+    final options = <_SpaceOption>[
+      (id: null, name: 'spaces.default'.tr(), icon: Icons.inventory_2),
+      for (final space in spaces)
+        (
+          id: space.id,
+          name: space.name,
+          icon: space.iconName != null
+              ? SpaceIcons.getIcon(space.iconName!)
+              : Icons.meeting_room,
+        ),
+    ];
 
-    final selected = await showModalBottomSheet<String?>(
+    final selected = await DsPickerSheet.show<_SpaceOption>(
       context: context,
-      builder: (sheetContext) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: sheetContext.responsiveScreenPadding,
-            child: Text(
-              'items.select_space'.tr(),
-              style: Theme.of(sheetContext).textTheme.titleLarge,
-            ),
-          ),
-          const Divider(),
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                // Default space option
-                ListTile(
-                  leading: Icon(
-                    Icons.inventory_2,
-                    size: sheetContext.iconSizeMd,
-                  ),
-                  title: Text('spaces.default'.tr()),
-                  trailing: _selectedSpaceId == null
-                      ? Icon(
-                          Icons.check,
-                          color: context.appColors.success,
-                          size: sheetContext.iconSizeMd,
-                        )
-                      : null,
-                  onTap: () =>
-                      Navigator.pop(sheetContext, defaultSpaceSentinel),
-                ),
-                // Spaces
-                ...spaces.map((space) {
-                  return ListTile(
-                    leading: Icon(
-                      space.iconName != null
-                          ? SpaceIcons.getIcon(space.iconName!)
-                          : Icons.meeting_room,
-                      size: sheetContext.iconSizeMd,
-                    ),
-                    title: Text(space.name),
-                    trailing: _selectedSpaceId == space.id
-                        ? Icon(
-                            Icons.check,
-                            color: context.appColors.success,
-                            size: sheetContext.iconSizeMd,
-                          )
-                        : null,
-                    onTap: () => Navigator.pop(sheetContext, space.id),
-                  );
-                }),
-              ],
-            ),
-          ),
-        ],
+      title: 'items.select_space'.tr(),
+      items: options,
+      getLabel: (o) => o.name,
+      getIcon: (o) => o.icon,
+      selected: options.firstWhere(
+        (o) => o.id == _selectedSpaceId,
+        orElse: () => options.first,
       ),
     );
-
     if (selected != null) {
-      setState(() {
-        _selectedSpaceId = selected == defaultSpaceSentinel ? null : selected;
-      });
+      setState(() => _selectedSpaceId = selected.id);
     }
   }
 }

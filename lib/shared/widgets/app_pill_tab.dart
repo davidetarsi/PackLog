@@ -112,7 +112,7 @@ class AppPillTab<T> extends StatelessWidget {
 
           return Padding(
             padding: EdgeInsets.only(right: effectiveSpacing),
-            child: _RawPillTab(
+            child: AppPill(
               label: getLabel(item),
               icon: getIcon?.call(item),
               isSelected: isSelected,
@@ -137,14 +137,12 @@ class AppPillTab<T> extends StatelessWidget {
   }
 }
 
-/// Widget privato che si occupa esclusivamente del rendering di una singola pill.
-/// Non contiene logica di business, solo UI e animazioni.
+/// Una singola pill del design system: lo stesso aspetto di [AppPillTab].
 ///
-/// Principi seguiti:
-/// - Single Responsibility: solo rendering
-/// - Separation of Concerns: nessuna logica applicativa
-/// - Reusability: può essere usato da qualsiasi wrapper
-class _RawPillTab extends StatefulWidget {
+/// Si usa da sola quando la scelta non è "uno fra tanti" (es. selezione
+/// multipla dei bagagli, in un `Wrap`). Solo rendering e animazione: lo
+/// stato di selezione lo decide il chiamante.
+class AppPill extends StatefulWidget {
   final String label;
   final Widget? icon;
   final bool isSelected;
@@ -156,7 +154,8 @@ class _RawPillTab extends StatefulWidget {
   final double? horizontalPadding;
   final double? verticalPadding;
 
-  const _RawPillTab({
+  const AppPill({
+    super.key,
     required this.label,
     required this.isSelected,
     required this.onTap,
@@ -170,11 +169,10 @@ class _RawPillTab extends StatefulWidget {
   });
 
   @override
-  State<_RawPillTab> createState() => _RawPillTabState();
+  State<AppPill> createState() => _AppPillState();
 }
 
-class _RawPillTabState extends State<_RawPillTab>
-    with SingleTickerProviderStateMixin {
+class _AppPillState extends State<AppPill> with SingleTickerProviderStateMixin {
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
 

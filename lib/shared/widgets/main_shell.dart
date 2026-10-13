@@ -408,12 +408,10 @@ class _CreatePillTab extends StatelessWidget {
                 size: context.responsive(22),
                 color: colorScheme.onPrimaryContainer,
               ),
-              SizedBox(width: context.spacingSm + 2),
+              SizedBox(width: context.spacingSm),
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: context.responsiveFont(15),
-                  fontWeight: FontWeight.w600,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: colorScheme.onPrimaryContainer,
                 ),
               ),

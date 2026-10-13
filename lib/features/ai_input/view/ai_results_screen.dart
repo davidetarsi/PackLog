@@ -13,6 +13,7 @@ import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/ds_error_state.dart';
+import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../houses/model/house_model.dart';
@@ -24,6 +25,7 @@ import '../providers/ai_import_notifier.dart';
 import 'widgets/ai_analysis_progress.dart';
 import 'widgets/ai_photo_group_header.dart';
 import 'widgets/ai_result_card.dart';
+import 'widgets/image_source_sheet.dart';
 
 /// Page 2 of the AI import flow: shows loading progress while GPT-4o Vision
 /// analyses the images, then the editable results list with save CTA.
@@ -104,38 +106,21 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     final notifier = ref.read(aiImportNotifierProvider.notifier);
     if (notifier.remainingSlots <= 0) return;
 
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: Text('ai_import.source_gallery'.tr()),
-              subtitle: Text(
-                'ai_import.gallery_subtitle'.tr(
-                  args: [notifier.remainingSlots.toString()],
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromGallery();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: Text('ai_import.source_camera'.tr()),
-              subtitle: Text('ai_import.camera_subtitle'.tr()),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromCamera();
-              },
-            ),
-          ],
-        ),
+    final source = await showImageSourceSheet(
+      context,
+      gallerySubtitle: 'ai_import.gallery_subtitle'.tr(
+        args: [notifier.remainingSlots.toString()],
       ),
+      cameraSubtitle: 'ai_import.camera_subtitle'.tr(),
     );
+    switch (source) {
+      case ImageSource.gallery:
+        await _pickFromGallery();
+      case ImageSource.camera:
+        await _pickFromCamera();
+      case null:
+        return;
+    }
   }
 
   Future<void> _pickFromGallery() async {
@@ -338,7 +323,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
 
       if (selectedHouse != null) {
         primaryLabel = 'ai_import.save_in_house'.tr(
-          args: [selectedHouse.name, totalItems.toString()],
+          args: [selectedHouse.displayName, totalItems.toString()],
         );
         onPrimaryPressed = state.isLoading ? null : notifier.saveItems;
       } else {
@@ -384,59 +369,15 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     final houses = ref.read(houseNotifierProvider).valueOrNull;
     if (houses == null || houses.isEmpty) return;
 
-    await showModalBottomSheet<void>(
+    final selected = await DsPickerSheet.show<HouseModel>(
       context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.spacingMd,
-                context.spacingMd,
-                context.spacingMd,
-                context.spacingXs,
-              ),
-              child: Text(
-                'ai_import.choose_house_title'.tr(),
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: EdgeInsets.only(bottom: context.spacingSm),
-                itemCount: houses.length,
-                itemBuilder: (context, index) {
-                  final house = houses[index];
-                  final isSelected = state.selectedHouseId == house.id;
-                  return ListTile(
-                    leading: Icon(
-                      isSelected ? Icons.home : Icons.home_outlined,
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                    ),
-                    title: Text(house.name),
-                    trailing: isSelected
-                        ? Icon(
-                            Icons.check_circle,
-                            color: Theme.of(context).colorScheme.primary,
-                          )
-                        : null,
-                    onTap: () {
-                      notifier.setSelectedHouseId(house.id);
-                      Navigator.pop(sheetContext);
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+      title: 'ai_import.choose_house_title'.tr(),
+      items: houses,
+      getLabel: (h) => h.displayName,
+      getIcon: (_) => Icons.home_outlined,
+      selected: houses.where((h) => h.id == state.selectedHouseId).firstOrNull,
     );
+    if (selected != null) notifier.setSelectedHouseId(selected.id);
   }
 
   // ── Loading state ─────────────────────────────────────────────────────────
@@ -665,7 +606,16 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                 if (state.failureReason?.isRetryable ?? false) ...[
                   SizedBox(width: context.spacingSm),
                   TextButton(
+                    key: const Key('ai_partial_error_retry'),
                     onPressed: notifier.retryFailed,
+                    style: TextButton.styleFrom(
+                      foregroundColor: colorScheme.onErrorContainer,
+                      textStyle: Theme.of(context).textTheme.labelLarge
+                          ?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                          ),
+                    ),
                     child: Text('ai_import.retry'.tr()),
                   ),
                 ],

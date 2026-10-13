@@ -5,8 +5,8 @@ import '../theme/app_spacing.dart';
 /// Picker icone a griglia 5×N. Sostituisce i layout custom in
 /// [HouseFormContent] (GridView 5xN) e [SpaceFormContent] (Wrap).
 ///
-/// La griglia 5 colonne è coerente con il resto dell'app (palette colori,
-/// gender picker in TemplateSelectionScreen, ecc.).
+/// La griglia 5 colonne è coerente con il resto dell'app (es. la palette
+/// colori).
 ///
 /// ```dart
 /// DsIconPicker(

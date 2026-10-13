@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
-import 'ds_bottom_sheet_handle.dart';
+import 'ds_sheet_header.dart';
 import '../theme/app_spacing.dart';
 
 /// Bottom sheet generico per la **selezione di un elemento da una lista**.
 ///
-/// Struttura: `BottomSheetHandle → titolo → Divider → ListView` di opzioni.
+/// Struttura: `[DsSheetHeader] → ListView` di opzioni.
 /// Toccare un'opzione chiude il sheet e restituisce il valore.
 ///
 /// Distinto da [StandardBottomSheetLayout] (usato per form di entità):
@@ -86,20 +86,7 @@ class DsPickerSheet<T> extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const DsBottomSheetHandle(),
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              child: Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-            const Divider(height: 1),
+            DsSheetHeader(title: title),
             if (items.isEmpty)
               Padding(
                 padding: EdgeInsets.all(AppSpacing.lg),

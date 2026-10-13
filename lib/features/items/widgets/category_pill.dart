@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../model/item_model.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/app_spacing.dart';
 
 enum CategoryPillState { inactive, inferred, forced }
 
@@ -44,7 +45,10 @@ class CategoryPill extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacingSm + context.spacingXs,
+          vertical: context.spacingSm,
+        ),
         decoration: BoxDecoration(
           color: backgroundColor,
           border: Border.all(color: borderColor, width: 1.5),
@@ -53,8 +57,12 @@ class CategoryPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(_iconForCategory(category), size: 16, color: foregroundColor),
-            const SizedBox(width: 6),
+            Icon(
+              _iconForCategory(category),
+              size: context.iconSizeSm,
+              color: foregroundColor,
+            ),
+            SizedBox(width: context.spacingXs),
             Text(
               _labelForCategory(category),
               style: Theme.of(
@@ -77,11 +85,8 @@ class CategoryPill extends StatelessWidget {
   }
 
   static String _labelForCategory(ItemCategory category) {
-    return switch (category) {
-      ItemCategory.vestiti => 'V',
-      ItemCategory.toiletries => 'T',
-      ItemCategory.elettronica => 'E',
-      ItemCategory.varie => '?',
-    };
+    // "Varie" resta un punto interrogativo: è la categoria "non so".
+    if (category == ItemCategory.varie) return '?';
+    return category.displayName.characters.first.toUpperCase();
   }
 }

@@ -376,21 +376,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
 
-            AppSpacing.gapSm,
+            AppSpacing.gapLg,
 
-            // Hard-delete account (GDPR Art. 17). Distruttivo e irreversibile,
-            // protetto da dialog con conferma email.
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-              child: UniversalActionBar(
-                primaryLabel: 'profile.delete_account_cta'.tr(),
-                primaryIcon: Icons.delete_forever,
-                onPrimaryPressed: () => _handleDeleteAccount(context),
-                isDestructive: true,
+            // Hard-delete account (GDPR Art. 17). Distruttivo e irreversibile:
+            // si trova, ma non è un bottone pieno e non sta attaccato a "Esci",
+            // così non è l'elemento più evidente della pagina. Protetto da
+            // dialog con conferma email.
+            Center(
+              child: TextButton.icon(
+                key: const Key('profile_delete_account'),
+                onPressed: () => _handleDeleteAccount(context),
+                icon: const Icon(Icons.delete_forever),
+                label: Text('profile.delete_account_cta'.tr()),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
               ),
             ),
 
-            // Gap sotto l'ultimo bottone = gap tra i due bottoni, per coerenza.
             AppSpacing.gapSm,
           ],
         ),

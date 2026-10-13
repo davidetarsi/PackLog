@@ -110,7 +110,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                   selectedItem: _selectedTab,
                   getLabel: (tab) => tab.label,
                   onSelected: (tab) => setState(() => _selectedTab = tab),
-                  height: 40,
                   scrollPadding: EdgeInsets.symmetric(
                     horizontal: context.spacingSm,
                   ),

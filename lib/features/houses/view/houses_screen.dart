@@ -147,9 +147,7 @@ class _HouseCard extends ConsumerWidget {
       elevation: 0,
       color: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: context.responsiveBorderRadius(
-          AppConstants.cardBorderRadius + 4,
-        ),
+        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
         side: BorderSide(
           color: colorScheme.outlineVariant,
           width: /* house.isPrimary ? 1.5 : */ 1,
@@ -158,9 +156,7 @@ class _HouseCard extends ConsumerWidget {
       child: Stack(
         children: [
           InkWell(
-            borderRadius: context.responsiveBorderRadius(
-              AppConstants.cardBorderRadius + 4,
-            ),
+            borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
             onTap: () {
               context.push('/houses/${house.id}');
             },
@@ -207,10 +203,10 @@ class _HouseCard extends ConsumerWidget {
                                 children: [
                                   Icon(
                                     Icons.location_on_outlined,
-                                    size: 14,
+                                    size: context.iconSizeSm,
                                     color: colorScheme.onSurfaceVariant,
                                   ),
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: context.spacingXs),
                                   Expanded(
                                     child: Text(
                                       house.locationDisplayName ??
@@ -250,10 +246,10 @@ class _HouseCard extends ConsumerWidget {
                       children: [
                         Icon(
                           Icons.inventory_2_outlined,
-                          size: 16,
+                          size: context.iconSizeSm,
                           color: colorScheme.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: context.spacingXs),
                         Text(
                           'houses.total_items'.tr(
                             args: [stats.totalItems.toString()],

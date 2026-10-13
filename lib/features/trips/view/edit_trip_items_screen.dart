@@ -145,7 +145,6 @@ class _EditTripItemsScreenState extends ConsumerState<EditTripItemsScreen> {
               _selectedItems = items;
             });
           },
-          shrinkWrap: false,
         ),
       ),
       bottomContent: UniversalActionBar(
