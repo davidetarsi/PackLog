@@ -98,10 +98,13 @@ class MainShell extends ConsumerWidget {
             ),
           ),
           Expanded(
-            child: _CreateNavItem(
+            child: _NavItem(
               key: const Key('nav_create'),
               anchorKey: tourKeys.primaryAction,
+              icon: Icons.add_circle_outline,
+              selectedIcon: Icons.add_circle_outline,
               label: 'common.create'.tr(),
+              accent: true,
               onTap: () => _onCreate(context, ref, fromTrips: !onHouses),
             ),
           ),
@@ -168,17 +171,19 @@ class MainShell extends ConsumerWidget {
   }
 }
 
-/// Altezza dello slot icona, uguale per tutte le voci: il cerchio di Crea è
-/// più alto di un'icona e senza uno slot comune le scritte non sarebbero
-/// allineate.
-double _iconSlotHeight(BuildContext context) => context.responsive(32);
-
+/// Voce della barra. La usano i luoghi (Case, Viaggi) e Crea.
+///
+/// I luoghi sono neutri anche da attivi: la tab corrente si riconosce
+/// dall'icona piena e dalla lineetta arancio sul bordo superiore. [accent]
+/// colora la voce di arancio: è riservato a Crea, l'unico arancio della
+/// barra, che non è un luogo e quindi non è mai "selezionato".
 class _NavItem extends StatelessWidget {
   final GlobalKey anchorKey;
   final IconData icon;
   final IconData selectedIcon;
   final String label;
   final bool isSelected;
+  final bool accent;
   final VoidCallback onTap;
 
   const _NavItem({
@@ -187,115 +192,69 @@ class _NavItem extends StatelessWidget {
     required this.icon,
     required this.selectedIcon,
     required this.label,
-    required this.isSelected,
     required this.onTap,
+    this.isSelected = false,
+    this.accent = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final color = isSelected
-        ? colorScheme.primary
-        : colorScheme.onSurfaceVariant;
-
-    return InkWell(
-      key: anchorKey,
-      onTap: onTap,
-      borderRadius: context.responsiveBorderRadius(16),
-      child: _NavItemLayout(
-        icon: Icon(
-          isSelected ? selectedIcon : icon,
-          size: context.responsive(22),
-          color: color,
-        ),
-        label: label,
-        labelColor: color,
-      ),
-    );
-  }
-}
-
-/// Voce "Crea": cerchio a contorno arancio con il +, dentro la barra.
-class _CreateNavItem extends StatelessWidget {
-  final GlobalKey anchorKey;
-  final String label;
-  final VoidCallback onTap;
-
-  const _CreateNavItem({
-    super.key,
-    required this.anchorKey,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final size = _iconSlotHeight(context);
+    final color = accent ? colorScheme.primary : colorScheme.onSurface;
 
     return Semantics(
+      selected: isSelected,
       button: true,
       child: InkWell(
         key: anchorKey,
         onTap: onTap,
         borderRadius: context.responsiveBorderRadius(16),
-        child: _NavItemLayout(
-          icon: Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: colorScheme.primary, width: 1.5),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isSelected ? selectedIcon : icon,
+                  size: context.responsive(22),
+                  color: color,
+                ),
+                SizedBox(height: context.spacingXs / 4),
+                // L'altezza della barra è fissa: con caratteri molto grandi la
+                // scritta non deve spingere l'icona fuori.
+                MediaQuery.withClampedTextScaling(
+                  maxScaleFactor: 1.3,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: color),
+                  ),
+                ),
+              ],
             ),
-            child: Icon(
-              Icons.add,
-              size: context.responsive(20),
-              color: colorScheme.primary,
-            ),
-          ),
-          label: label,
-          labelColor: colorScheme.primary,
+            if (isSelected)
+              Positioned(
+                top: 0,
+                child: Container(
+                  key: const Key('nav_indicator'),
+                  width: context.spacingLg,
+                  height: context.spacingXs,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary,
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(context.spacingXs),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
-    );
-  }
-}
-
-class _NavItemLayout extends StatelessWidget {
-  final Widget icon;
-  final String label;
-  final Color labelColor;
-
-  const _NavItemLayout({
-    required this.icon,
-    required this.label,
-    required this.labelColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        SizedBox(
-          height: _iconSlotHeight(context),
-          child: Center(child: icon),
-        ),
-        // L'altezza della barra è fissa: con caratteri molto grandi la
-        // scritta non deve spingere l'icona fuori.
-        MediaQuery.withClampedTextScaling(
-          maxScaleFactor: 1.3,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: labelColor),
-          ),
-        ),
-      ],
     );
   }
 }

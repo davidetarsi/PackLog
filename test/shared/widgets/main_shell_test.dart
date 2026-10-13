@@ -130,6 +130,48 @@ void main() {
     expect(labelY('nav_create'), labelY('nav_trips'));
   });
 
+  testWidgets('le tre icone hanno la stessa misura', (tester) async {
+    await pumpShell(tester);
+    Size iconSize(String key) => tester.getSize(
+      find.descendant(of: find.byKey(Key(key)), matching: find.byType(Icon)),
+    );
+    expect(iconSize('nav_create'), iconSize('nav_houses'));
+    expect(iconSize('nav_create'), iconSize('nav_trips'));
+  });
+
+  testWidgets('tab attiva: lineetta arancio, scritte dei luoghi non arancio', (
+    tester,
+  ) async {
+    await pumpShell(tester);
+    Finder indicatorIn(String key) => find.descendant(
+      of: find.byKey(Key(key)),
+      matching: find.byKey(const Key('nav_indicator')),
+    );
+    expect(indicatorIn('nav_houses'), findsOneWidget);
+    expect(indicatorIn('nav_trips'), findsNothing);
+
+    final scheme = Theme.of(
+      tester.element(find.byKey(const Key('nav_houses'))),
+    ).colorScheme;
+    Color? labelColor(String key) => tester
+        .widget<Text>(
+          find.descendant(
+            of: find.byKey(Key(key)),
+            matching: find.byType(Text),
+          ),
+        )
+        .style
+        ?.color;
+    expect(labelColor('nav_houses'), scheme.onSurface);
+    expect(labelColor('nav_trips'), scheme.onSurface);
+    expect(labelColor('nav_create'), scheme.primary);
+
+    await tester.tap(find.byKey(const Key('nav_trips')));
+    await tester.pumpAndSettle();
+    expect(indicatorIn('nav_houses'), findsNothing);
+    expect(indicatorIn('nav_trips'), findsOneWidget);
+  });
+
   testWidgets('Crea da Case apre il foglio nell\'ordine di Case', (
     tester,
   ) async {
