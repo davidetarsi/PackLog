@@ -168,11 +168,6 @@ class MainShell extends ConsumerWidget {
   }
 }
 
-/// Altezza dello slot icona, uguale per tutte le voci: il cerchio di Crea è
-/// più alto di un'icona e senza uno slot comune le scritte non sarebbero
-/// allineate.
-double _iconSlotHeight(BuildContext context) => context.responsive(32);
-
 class _NavItem extends StatelessWidget {
   final GlobalKey anchorKey;
   final IconData icon;
@@ -194,28 +189,54 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final color = isSelected
-        ? colorScheme.primary
-        : colorScheme.onSurfaceVariant;
+    // Le voci dei luoghi sono neutre anche quando attive: nella barra l'unico
+    // arancio è Crea. La tab corrente si riconosce dall'icona piena e dalla
+    // lineetta arancio sul bordo superiore.
+    final color = colorScheme.onSurface;
 
-    return InkWell(
-      key: anchorKey,
-      onTap: onTap,
-      borderRadius: context.responsiveBorderRadius(16),
-      child: _NavItemLayout(
-        icon: Icon(
-          isSelected ? selectedIcon : icon,
-          size: context.responsive(22),
-          color: color,
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      child: InkWell(
+        key: anchorKey,
+        onTap: onTap,
+        borderRadius: context.responsiveBorderRadius(16),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            _NavItemLayout(
+              icon: Icon(
+                isSelected ? selectedIcon : icon,
+                size: context.responsive(22),
+                color: color,
+              ),
+              label: label,
+              labelColor: color,
+            ),
+            if (isSelected)
+              Positioned(
+                top: 0,
+                child: Container(
+                  key: const Key('nav_indicator'),
+                  width: context.responsive(24),
+                  height: context.responsive(3),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary,
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(context.responsive(3)),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
-        label: label,
-        labelColor: color,
       ),
     );
   }
 }
 
-/// Voce "Crea": cerchio a contorno arancio con il +, dentro la barra.
+/// Voce "Crea": stessa icona standard da 22 dp delle altre voci
+/// (`add_circle_outline`), in arancio.
 class _CreateNavItem extends StatelessWidget {
   final GlobalKey anchorKey;
   final String label;
@@ -231,7 +252,6 @@ class _CreateNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final size = _iconSlotHeight(context);
 
     return Semantics(
       button: true,
@@ -240,18 +260,10 @@ class _CreateNavItem extends StatelessWidget {
         onTap: onTap,
         borderRadius: context.responsiveBorderRadius(16),
         child: _NavItemLayout(
-          icon: Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: colorScheme.primary, width: 1.5),
-            ),
-            child: Icon(
-              Icons.add,
-              size: context.responsive(20),
-              color: colorScheme.primary,
-            ),
+          icon: Icon(
+            Icons.add_circle_outline,
+            size: context.responsive(22),
+            color: colorScheme.primary,
           ),
           label: label,
           labelColor: colorScheme.primary,
@@ -278,10 +290,8 @@ class _NavItemLayout extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        SizedBox(
-          height: _iconSlotHeight(context),
-          child: Center(child: icon),
-        ),
+        icon,
+        SizedBox(height: context.spacingXs / 4),
         // L'altezza della barra è fissa: con caratteri molto grandi la
         // scritta non deve spingere l'icona fuori.
         MediaQuery.withClampedTextScaling(
