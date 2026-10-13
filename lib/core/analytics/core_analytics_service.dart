@@ -86,6 +86,27 @@ class CoreAnalyticsService {
     );
   }
 
+  // ── navigation_ ───────────────────────────────────────────────────────────
+
+  /// Tocco sul bottone d'azione della shell. `enabled: false` = bottone
+  /// spento (tab Case senza case): misura quante volte l'utente lo cerca
+  /// prima di avere una casa.
+  void trackPrimaryActionTapped({
+    required String tab,
+    required String action,
+    required bool enabled,
+  }) {
+    _safeLogEvent(
+      'primary_action_tapped',
+      properties: {'tab': tab, 'action': action, 'enabled': enabled},
+    );
+  }
+
+  /// Scelta nel foglio "Aggiungi oggetti": `ai_scan` o `manual`.
+  void trackAddItemsSheetChoice({required String choice}) {
+    _safeLogEvent('add_items_sheet_choice', properties: {'choice': choice});
+  }
+
   // ── space_ ────────────────────────────────────────────────────────────────
 
   void trackSpaceCreated() => _safeLogEvent('space_created');

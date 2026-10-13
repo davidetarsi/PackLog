@@ -372,4 +372,36 @@ void main() {
       await pump();
     });
   });
+
+  group('navigation_', () {
+    test('trackPrimaryActionTapped logs primary_action_tapped', () async {
+      service.trackPrimaryActionTapped(
+        tab: 'houses',
+        action: 'add_items',
+        enabled: false,
+      );
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'primary_action_tapped',
+          properties: {
+            'tab': 'houses',
+            'action': 'add_items',
+            'enabled': false,
+          },
+        ),
+      ).called(1);
+    });
+
+    test('trackAddItemsSheetChoice logs add_items_sheet_choice', () async {
+      service.trackAddItemsSheetChoice(choice: 'ai_scan');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'add_items_sheet_choice',
+          properties: {'choice': 'ai_scan'},
+        ),
+      ).called(1);
+    });
+  });
 }
