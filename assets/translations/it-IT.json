@@ -455,6 +455,15 @@
     "analytics_subtitle": "Aiutaci a migliorare l'app con dati anonimi sull'utilizzo. Puoi disattivarle in qualsiasi momento."
   },
   "ai_import": {
+    "already_here_title": "C'è già in {}?",
+    "already_here_default_title": "C'è già in casa?",
+    "already_here_load_error": "Impossibile caricare gli oggetti della casa. Riprova.",
+    "already_here_help": "Se c'è già, togli la spunta per non aggiungerlo.",
+    "add_details": "Aggiungi i dettagli",
+    "from_photo": "Dalla foto: {}",
+    "most_similar": "Più simili",
+    "others_of": "Altri {}",
+    "others_items": "Altri oggetti",
     "already_here": "C'è già?",
     "analysis_in_progress": "Analisi AI in corso, non uscire dalla pagina",
     "camera_subtitle": "Scatta una foto",

@@ -30,6 +30,7 @@ import '../providers/ai_import_notifier.dart';
 import 'widgets/ai_analysis_progress.dart';
 import 'widgets/ai_photo_group_header.dart';
 import 'widgets/ai_result_card.dart';
+import 'widgets/already_here_sheet.dart';
 import 'widgets/image_source_sheet.dart';
 
 /// Page 2 of the AI import flow: shows loading progress while GPT-4o Vision
@@ -59,6 +60,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
   bool _allowProgrammaticPop = false;
   bool _exitStarted = false;
   bool _saveRequested = false;
+  bool _alreadyHereOpen = false;
 
   @override
   void initState() {
@@ -529,12 +531,32 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     return items.where((item) => item.id == id).firstOrNull?.name;
   }
 
-  /// Il foglio informativo viene implementato nel task 4.
   Future<void> _openAlreadyHere(
     AiImportState state,
     int groupIndex,
     int itemIndex,
-  ) async {}
+  ) async {
+    final houseId = state.selectedHouseId;
+    if (_alreadyHereOpen || houseId == null || state.isLoading) return;
+    _alreadyHereOpen = true;
+    try {
+      final itemId = await showAlreadyHereSheet(
+        context,
+        houseId: houseId,
+        scanned: state.photoGroups[groupIndex].results[itemIndex],
+      );
+      if (itemId == null || !mounted) return;
+      final currentState = ref.read(aiImportNotifierProvider);
+      if (currentState.isLoading || currentState.selectedHouseId != houseId) {
+        return;
+      }
+      ref
+          .read(aiImportNotifierProvider.notifier)
+          .linkToExisting(groupIndex, itemIndex, itemId);
+    } finally {
+      _alreadyHereOpen = false;
+    }
+  }
 
   // ── Loading state ─────────────────────────────────────────────────────────
 

@@ -455,6 +455,15 @@
     "analytics_subtitle": "Help us improve the app with anonymous usage data. You can turn this off at any time."
   },
   "ai_import": {
+    "already_here_title": "Already in {}?",
+    "already_here_default_title": "Already at home?",
+    "already_here_load_error": "Couldn't load the items in this home. Try again.",
+    "already_here_help": "If you already have it, untick it so it isn't added.",
+    "add_details": "Add the details",
+    "from_photo": "From the photo: {}",
+    "most_similar": "Most similar",
+    "others_of": "Other {}",
+    "others_items": "Other items",
     "already_here": "Already have it?",
     "analysis_in_progress": "AI analysis in progress, don't leave this page",
     "camera_subtitle": "Take a photo",
