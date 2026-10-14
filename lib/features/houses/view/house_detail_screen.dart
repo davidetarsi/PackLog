@@ -6,7 +6,6 @@ import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import '../../../core/analytics/core_analytics_service.dart';
-import '../../../shared/helpers/search_match.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
 import '../../items/view/add_edit_item_screen.dart';
@@ -67,6 +66,10 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   String? _search;
   final _searchController = TextEditingController();
 
+  /// Ultima ricerca senza risultati già registrata: invio e chiusura della
+  /// stessa ricerca contano una volta sola.
+  String? _lastReportedQuery;
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -78,30 +81,43 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   void _openSearch() {
     _analytics.trackSearchOpened(context: 'house');
     _searchController.clear();
+    // Il campo rapid-fire perde il focus: la ricerca prende la tastiera.
+    FocusManager.instance.primaryFocus?.unfocus();
+    _lastReportedQuery = null;
     setState(() => _search = '');
   }
 
   /// Chiamato all'invio della tastiera e alla chiusura: una ricerca che non
-  /// ha trovato niente è il segnale che serve, una per tentativo.
+  /// ha trovato niente è il segnale che serve, una per tentativo. Il filtro
+  /// è lo stesso della lista (spazio scelto e temporanei compresi).
   void _reportIfNoResults() {
     final query = _search?.trim() ?? '';
-    if (query.isEmpty) return;
+    if (query.isEmpty || query == _lastReportedQuery) return;
     final items =
         ref.read(itemNotifierProvider(widget.houseId)).valueOrNull ?? const [];
     final temporaries = ref.read(temporaryItemsInHouseProvider(widget.houseId));
     final found =
-        items.any((i) => matchesSearch(i.name, query)) ||
-        temporaries.any((i) => matchesSearch(i.name, query));
-    if (!found) {
-      _analytics.trackSearchNoResults(
-        context: 'house',
-        queryLength: query.length,
-      );
-    }
+        visibleHouseItems(
+          items,
+          spaceId: _spaceFilter,
+          query: query,
+        ).isNotEmpty ||
+        visibleTemporaries(
+          temporaries,
+          spaceId: _spaceFilter,
+          query: query,
+        ).isNotEmpty;
+    if (found) return;
+    _lastReportedQuery = query;
+    _analytics.trackSearchNoResults(
+      context: 'house',
+      queryLength: query.length,
+    );
   }
 
   void _closeSearch() {
     _reportIfNoResults();
+    _lastReportedQuery = null;
     _searchController.clear();
     setState(() => _search = null);
   }

@@ -7,6 +7,7 @@ import '../../../shared/widgets/skeleton/skeleton.dart';
 
 import '../providers/item_provider.dart';
 import '../model/item_model.dart';
+import '../../trips/model/trip_model.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
 import '../../trips/providers/trip_provider.dart';
 import '../../houses/providers/house_provider.dart';
@@ -14,6 +15,38 @@ import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import 'in_transit_section.dart';
 import '../widgets/items_empty_state.dart';
+
+/// Oggetti della casa visibili con il filtro spazio e la ricerca. È l'unico
+/// predicato: la lista e il controllo "nessun risultato" della casa lo usano
+/// entrambi, così non possono discordare.
+///
+/// [spaceId]: null = tutti, 'default' = pool generale (senza spazio),
+/// altrimenti lo spazio specifico.
+List<ItemModel> visibleHouseItems(
+  List<ItemModel> items, {
+  String? spaceId,
+  String query = '',
+}) {
+  return items.where((i) {
+    final inSpace = switch (spaceId) {
+      null => true,
+      'default' => i.spaceId == null,
+      _ => i.spaceId == spaceId,
+    };
+    return inSpace && matchesSearch(i.name, query);
+  }).toList();
+}
+
+/// Temporanei visibili nella casa. Il gruppo Temporanei non passa dal filtro
+/// spazio: con uno spazio scelto non compare, quindi non è mai visibile.
+List<TripItem> visibleTemporaries(
+  List<TripItem> temporaries, {
+  String? spaceId,
+  String query = '',
+}) {
+  if (spaceId != null) return const [];
+  return temporaries.where((i) => matchesSearch(i.name, query)).toList();
+}
 
 /// Body della house detail: lista item filtrata per spazio e ricerca.
 ///
@@ -71,10 +104,12 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
     );
     final query = widget.searchQuery ?? '';
     final isSearching = query.trim().isNotEmpty;
-    final temporaryItems = ref
-        .watch(temporaryItemsInHouseProvider(widget.houseId))
-        .where((i) => matchesSearch(i.name, query))
-        .toList();
+    // Stesso predicato del controllo "nessun risultato" in HouseDetailScreen.
+    final temporaryItems = visibleTemporaries(
+      ref.watch(temporaryItemsInHouseProvider(widget.houseId)),
+      spaceId: widget.selectedSpaceId,
+      query: query,
+    );
     final housesAsync = ref.watch(houseNotifierProvider);
 
     return Column(
@@ -82,29 +117,12 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
         Expanded(
           child: itemsAsync.when(
             data: (loadedItems) {
-              final allItems = loadedItems
-                  .where((i) => matchesSearch(i.name, query))
-                  .toList();
-              final hasTemporaryItems = temporaryItems.isNotEmpty;
-
-              // ── Filtro per spazio ─────────────────────────────────────────
-              final List<ItemModel> spaceFiltered;
-              if (widget.selectedSpaceId == null) {
-                spaceFiltered = allItems;
-              } else if (widget.selectedSpaceId == 'default') {
-                spaceFiltered = allItems
-                    .where((i) => i.spaceId == null)
-                    .toList();
-              } else {
-                spaceFiltered = allItems
-                    .where((i) => i.spaceId == widget.selectedSpaceId)
-                    .toList();
-              }
-
-              // Il gruppo Temporanei non passa dal filtro spazio: con uno spazio
-              // scelto non compare, quindi non conta come contenuto visibile.
-              final showsTemporaries =
-                  hasTemporaryItems && widget.selectedSpaceId == null;
+              final spaceFiltered = visibleHouseItems(
+                loadedItems,
+                spaceId: widget.selectedSpaceId,
+                query: query,
+              );
+              final showsTemporaries = temporaryItems.isNotEmpty;
 
               // ── Vista tutte le categorie con sezioni ──────────────────────
               final itemsByCategory = <ItemCategory, List<ItemModel>>{};

@@ -107,6 +107,56 @@ void main() {
     await app.finish();
   });
 
+  testWidgets('invio e chiusura della stessa ricerca contano una volta', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(find.byKey(const Key('house_search')));
+    await app.enterText(find.byKey(const Key('house_search_field')), 'zzzz');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await app.settle();
+    await app.tap(find.byKey(const Key('house_search_close')));
+    verify(
+      () => analytics.trackSearchNoResults(context: 'house', queryLength: 4),
+    ).called(1);
+    await app.finish();
+  });
+
+  testWidgets('il tasto indietro chiude la ricerca e resta sulla casa', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(find.byKey(const Key('house_search')));
+    await app.enterText(find.byKey(const Key('house_search_field')), 'calz');
+    await tester.binding.handlePopRoute();
+    await app.settle();
+    expect(find.byKey(const Key('house_search_field')), findsNothing);
+    expect(find.text('Jeans blu'), findsOneWidget);
+    expect(find.text('Casa Milano'), findsOneWidget);
+    await app.finish();
+  });
+
+  testWidgets('con uno spazio scelto la ricerca conta solo quello spazio', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    // Calzini sta in "Cassettiera": nello spazio "Armadio camera" non c'è.
+    // Il test usa un font di sistema più largo: la pillola è fuori schermo a
+    // destra, quindi la portiamo in vista prima del tocco.
+    final armadioPill = find.textContaining('Armadio camera');
+    await tester.ensureVisible(armadioPill);
+    await app.tap(armadioPill);
+    await app.tap(find.byKey(const Key('house_search')));
+    await app.enterText(find.byKey(const Key('house_search_field')), 'calz');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await app.settle();
+    expect(find.text('Nessun oggetto trovato'), findsOneWidget);
+    verify(
+      () => analytics.trackSearchNoResults(context: 'house', queryLength: 4),
+    ).called(1);
+    await app.finish();
+  });
+
   testWidgets('in basso solo campo e AI; l AI è l unico arancio', (
     tester,
   ) async {
