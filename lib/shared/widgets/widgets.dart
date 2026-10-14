@@ -11,6 +11,7 @@ export 'category_section_header.dart';
 export 'circular_action_button.dart';
 export 'ds_badge.dart';
 export 'ds_contextual_app_bar.dart';
+export 'ds_group_header.dart';
 export 'ds_icon_picker.dart';
 export 'ds_picker_sheet.dart';
 export 'ds_sheet_header.dart';
