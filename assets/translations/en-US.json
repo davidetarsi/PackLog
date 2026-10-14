@@ -26,6 +26,8 @@
   "houses": {
     "title": "My Houses",
     "new_house_row": "New house",
+    "search_hint": "Search in {}",
+    "search_tooltip": "Search items",
     "add": "House",
     "add_new": "New House",
     "edit": "Edit House",
@@ -73,10 +75,6 @@
     "unnamed_house": "Unnamed house"
   },
   "items": {
-    "category_vestiti": "Clothes",
-    "category_toiletries": "Toiletries",
-    "category_elettronica": "Electronics",
-    "category_varie": "Misc",
     "add": "Item",
     "add_new": "New Item",
     "edit": "Edit Item",
@@ -87,6 +85,7 @@
     "no_items": "No items",
     "no_items_subtitle": "Add your first item",
     "no_items_in_space": "No items in this space",
+    "no_search_results": "No items found",
     "name_required": "Name*",
     "name_label": "Name *",
     "category": "Category",
@@ -286,6 +285,7 @@
     "add": "Add",
     "close": "Close",
     "back": "Back",
+    "clear": "Clear",
     "retry": "Retry",
     "retry_question": "Do you want to retry?",
     "error": "Error",
@@ -324,7 +324,6 @@
     "here": "here",
     "temporary": "Temporary",
     "temporaries": "Temporary",
-    "at_house": "At home",
     "guest": "Guest",
     "icon": "Icon",
     "category": "Category",

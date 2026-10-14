@@ -103,6 +103,37 @@ class CoreAnalyticsService {
     );
   }
 
+  // ── search_ ───────────────────────────────────────────────────────────────
+
+  /// Ricerca aperta. `context`: `house` (dentro una casa) o `houses_tab`
+  /// (ricerca globale, fase successiva).
+  void trackSearchOpened({required String context}) {
+    _safeLogEvent('search_opened', properties: {'context': context});
+  }
+
+  /// Risultato aperto; `position` parte da 1.
+  void trackSearchResultTapped({
+    required String context,
+    required int position,
+  }) {
+    _safeLogEvent(
+      'search_result_tapped',
+      properties: {'context': context, 'position': position},
+    );
+  }
+
+  /// Ricerca senza risultati. Solo la lunghezza: il testo cercato è un dato
+  /// dell'utente e non lascia il telefono.
+  void trackSearchNoResults({
+    required String context,
+    required int queryLength,
+  }) {
+    _safeLogEvent(
+      'search_no_results',
+      properties: {'context': context, 'query_length': queryLength},
+    );
+  }
+
   // ── space_ ────────────────────────────────────────────────────────────────
 
   void trackSpaceCreated() => _safeLogEvent('space_created');

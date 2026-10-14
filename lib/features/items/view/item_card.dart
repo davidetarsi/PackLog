@@ -12,11 +12,16 @@ class ItemCard extends ConsumerWidget {
   final String houseId;
   final int quantityOnTrip;
 
+  /// Chiamato in modalità normale appena prima di aprire la scheda
+  /// dell'oggetto (la ricerca lo usa per l'evento del risultato aperto).
+  final VoidCallback? onOpened;
+
   const ItemCard({
     super.key,
     required this.item,
     required this.houseId,
     required this.quantityOnTrip,
+    this.onOpened,
   });
 
   @override
@@ -135,11 +140,14 @@ class ItemCard extends ConsumerWidget {
           ? () => ref
                 .read(itemSelectionNotifierProvider.notifier)
                 .toggleItem(item.id)
-          : () => showAddEditItemSheet(
-              context,
-              houseId: item.houseId,
-              itemId: item.id,
-            ),
+          : () {
+              onOpened?.call();
+              showAddEditItemSheet(
+                context,
+                houseId: item.houseId,
+                itemId: item.id,
+              );
+            },
       // Long press attiva la selezione multipla dal primo item premuto.
       // Disabilitato se in selezione o se l'item è in viaggio.
       onLongPress: isSelectionActive || hasAnyOnTrip

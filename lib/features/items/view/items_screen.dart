@@ -2,36 +2,80 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pack_log/features/items/view/item_category_section.dart';
+import 'package:pack_log/shared/helpers/search_match.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 
 import '../providers/item_provider.dart';
 import '../model/item_model.dart';
+import '../../trips/model/trip_model.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
 import '../../trips/providers/trip_provider.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import 'in_transit_section.dart';
-import 'item_card.dart';
 import '../widgets/items_empty_state.dart';
 
-/// Body della house detail: lista item filtrata per spazio e/o categoria.
+/// Oggetti della casa visibili con il filtro spazio e la ricerca. È l'unico
+/// predicato: la lista e il controllo "nessun risultato" della casa lo usano
+/// entrambi, così non possono discordare.
+///
+/// [spaceId]: null = tutti, 'default' = pool generale (senza spazio),
+/// altrimenti lo spazio specifico.
+List<ItemModel> visibleHouseItems(
+  List<ItemModel> items, {
+  String? spaceId,
+  String query = '',
+}) {
+  return items.where((i) {
+    final inSpace = switch (spaceId) {
+      null => true,
+      'default' => i.spaceId == null,
+      _ => i.spaceId == spaceId,
+    };
+    return inSpace && matchesSearch(i.name, query);
+  }).toList();
+}
+
+/// Temporanei visibili nella casa. Il gruppo Temporanei non passa dal filtro
+/// spazio: con uno spazio scelto non compare, quindi non è mai visibile.
+List<TripItem> visibleTemporaries(
+  List<TripItem> temporaries, {
+  String? spaceId,
+  String query = '',
+}) {
+  if (spaceId != null) return const [];
+  return temporaries.where((i) => matchesSearch(i.name, query)).toList();
+}
+
+/// Body della house detail: lista item filtrata per spazio e ricerca.
 ///
 /// Lo stato dei filtri vive nel parent ([HouseDetailScreen]) che passa:
 /// - [selectedSpaceId]: null = tutti, 'default' = pool generale, spaceId = spazio specifico
-/// - [categoryFilter]: null = tutte le categorie con sezioni, altrimenti lista piatta
+/// - [searchQuery]: testo cercato tra gli oggetti; null o vuoto = nessun filtro
 class ItemsScreen extends ConsumerStatefulWidget {
   final String houseId;
   final String houseName;
   final String? selectedSpaceId;
-  final ItemCategory? categoryFilter;
+
+  /// Testo della ricerca nella casa; `null` o vuoto = nessun filtro.
+  final String? searchQuery;
+
+  /// Key per l'etichetta del primo gruppo (il tour la usa come bersaglio).
+  final Key? firstGroupKey;
+
+  /// Con la ricerca attiva: un risultato è stato aperto. `position` parte
+  /// da 1, nell'ordine in cui le righe sono a schermo.
+  final void Function(int position)? onSearchResultOpened;
 
   const ItemsScreen({
     super.key,
     required this.houseId,
     required this.houseName,
     this.selectedSpaceId,
-    this.categoryFilter,
+    this.searchQuery,
+    this.firstGroupKey,
+    this.onSearchResultOpened,
   });
 
   @override
@@ -58,8 +102,13 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
     final itemQuantitiesOnTrip = ref.watch(
       itemQuantitiesOnTripFromHouseProvider(widget.houseId),
     );
-    final temporaryItems = ref.watch(
-      temporaryItemsInHouseProvider(widget.houseId),
+    final query = widget.searchQuery ?? '';
+    final isSearching = query.trim().isNotEmpty;
+    // Stesso predicato del controllo "nessun risultato" in HouseDetailScreen.
+    final temporaryItems = visibleTemporaries(
+      ref.watch(temporaryItemsInHouseProvider(widget.houseId)),
+      spaceId: widget.selectedSpaceId,
+      query: query,
     );
     final housesAsync = ref.watch(houseNotifierProvider);
 
@@ -67,75 +116,13 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
       children: [
         Expanded(
           child: itemsAsync.when(
-            data: (allItems) {
-              final hasTemporaryItems = temporaryItems.isNotEmpty;
-
-              // ── Filtro per spazio ─────────────────────────────────────────
-              final List<ItemModel> spaceFiltered;
-              if (widget.selectedSpaceId == null) {
-                spaceFiltered = allItems;
-              } else if (widget.selectedSpaceId == 'default') {
-                spaceFiltered = allItems
-                    .where((i) => i.spaceId == null)
-                    .toList();
-              } else {
-                spaceFiltered = allItems
-                    .where((i) => i.spaceId == widget.selectedSpaceId)
-                    .toList();
-              }
-
-              // ── Vista per singola categoria (lista piatta) ────────────────
-              if (widget.categoryFilter != null) {
-                final categoryItems = spaceFiltered
-                    .where((i) => i.category == widget.categoryFilter)
-                    .toList();
-
-                if (categoryItems.isEmpty) {
-                  return ItemsEmptyState(
-                    onRefresh: _onRefresh,
-                    icon: widget.categoryFilter!.icon,
-                    title: widget.selectedSpaceId != null
-                        ? 'items.no_items_in_space'.tr()
-                        : 'items.no_items'.tr(),
-                    // Nessuna CTA sotto un filtro di categoria: l'oggetto
-                    // appena creato potrebbe finire fuori dal filtro e
-                    // lasciare la lista vuota com'era.
-                  );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: _onRefresh,
-                  color: Theme.of(context).colorScheme.primary,
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverPadding(
-                        padding: EdgeInsets.fromLTRB(
-                          context.spacingMd,
-                          context.spacingMd,
-                          context.spacingMd,
-                          0,
-                        ),
-                        sliver: SliverList.builder(
-                          itemCount: categoryItems.length,
-                          itemBuilder: (context, index) => ItemCard(
-                            item: categoryItems[index],
-                            houseId: widget.houseId,
-                            quantityOnTrip:
-                                itemQuantitiesOnTrip[categoryItems[index].id] ??
-                                0,
-                          ),
-                        ),
-                      ),
-                      SliverToBoxAdapter(
-                        child: SizedBox(
-                          height: context.spacingMd + context.ctaReservedHeight,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
+            data: (loadedItems) {
+              final spaceFiltered = visibleHouseItems(
+                loadedItems,
+                spaceId: widget.selectedSpaceId,
+                query: query,
+              );
+              final showsTemporaries = temporaryItems.isNotEmpty;
 
               // ── Vista tutte le categorie con sezioni ──────────────────────
               final itemsByCategory = <ItemCategory, List<ItemModel>>{};
@@ -143,8 +130,17 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                 itemsByCategory.putIfAbsent(item.category, () => []).add(item);
               }
 
-              if (spaceFiltered.isEmpty && !hasTemporaryItems) {
+              if (isSearching && spaceFiltered.isEmpty && !showsTemporaries) {
                 return ItemsEmptyState(
+                  onRefresh: _onRefresh,
+                  icon: Icons.search_off,
+                  title: 'items.no_search_results'.tr(),
+                );
+              }
+
+              if (spaceFiltered.isEmpty && !showsTemporaries) {
+                return ItemsEmptyState(
+                  key: widget.firstGroupKey,
                   onRefresh: _onRefresh,
                   icon: Icons.inventory_2_outlined,
                   // Niente sottotitolo: l'invito a creare è scritto sul
@@ -160,6 +156,14 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                 data: (houses) {
                   final categoryEntries = itemsByCategory.entries.toList()
                     ..sort((a, b) => a.key.index.compareTo(b.key.index));
+                  // Posizione del primo oggetto di ogni gruppo nell'ordine a
+                  // schermo, per l'evento del risultato aperto.
+                  final offsets = <int>[];
+                  var running = 0;
+                  for (final entry in categoryEntries) {
+                    offsets.add(running);
+                    running += entry.value.length;
+                  }
 
                   return RefreshIndicator(
                     onRefresh: _onRefresh,
@@ -167,51 +171,23 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                     child: CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [
-                        // ── Sezione In Transito ───────────────────────────
-                        if (hasTemporaryItems &&
-                            widget.selectedSpaceId == null) ...[
+                        // ── Gruppo Temporanei ─────────────────────────────
+                        if (showsTemporaries)
                           SliverPadding(
-                            padding: EdgeInsets.fromLTRB(
-                              context.spacingMd,
-                              context.spacingMd,
-                              context.spacingMd,
-                              0,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.spacingMd,
                             ),
-                            sliver: SliverToBoxAdapter(
-                              child: InTransitSection(
-                                items: temporaryItems,
-                                houses: houses,
-                              ),
-                            ),
-                          ),
-                          SliverToBoxAdapter(
-                            child: SizedBox(height: context.spacingMd),
-                          ),
-                        ],
-
-                        // ── Intestazione "In casa" ────────────────────────
-                        if (itemsByCategory.isNotEmpty)
-                          SliverPadding(
-                            padding: EdgeInsets.fromLTRB(
-                              context.spacingMd,
-                              (hasTemporaryItems &&
-                                      widget.selectedSpaceId == null)
-                                  ? context.spacingSm
-                                  : context.spacingMd,
-                              context.spacingMd,
-                              context.spacingSm,
-                            ),
-                            sliver: SliverToBoxAdapter(
-                              child: Text(
-                                'common.at_house'.tr(),
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
+                            sliver: InTransitSection(
+                              items: temporaryItems,
+                              houses: houses,
+                              headerKey: widget.firstGroupKey,
                             ),
                           ),
 
                         // ── Categorie ─────────────────────────────────────
-                        for (final entry in categoryEntries)
+                        for (final (i, entry) in categoryEntries.indexed)
                           SliverPadding(
+                            key: ValueKey(entry.key),
                             padding: EdgeInsets.symmetric(
                               horizontal: context.spacingMd,
                             ),
@@ -220,6 +196,16 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                               items: entry.value,
                               houseId: widget.houseId,
                               itemQuantitiesOnTrip: itemQuantitiesOnTrip,
+                              headerKey: i == 0 && !showsTemporaries
+                                  ? widget.firstGroupKey
+                                  : null,
+                              onItemOpened:
+                                  isSearching &&
+                                      widget.onSearchResultOpened != null
+                                  ? (index) => widget.onSearchResultOpened!(
+                                      offsets[i] + index + 1,
+                                    )
+                                  : null,
                             ),
                           ),
 
