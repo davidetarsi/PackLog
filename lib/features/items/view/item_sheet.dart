@@ -76,7 +76,14 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   void initState() {
     super.initState();
     final item = _item();
-    if (item == null) return;
+    if (item == null) {
+      // Oggetto non trovato (es. cancellato da un altro dispositivo): il foglio
+      // si chiude invece di restare vuoto.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.pop(context);
+      });
+      return;
+    }
     _nameController.text = item.name;
     _noteController.text = item.description ?? '';
     _category = item.category;
@@ -134,7 +141,11 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   Future<void> _save() async {
     if (_isSaving || !_formKey.currentState!.validate()) return;
     final item = _item();
-    if (item == null) return;
+    if (item == null) {
+      AppSnackBar.showError(context, 'errors.save_item_failed'.tr());
+      Navigator.pop(context);
+      return;
+    }
     final note = _noteController.text.trim();
     final updated = item.copyWith(
       name: _nameController.text.trim(),

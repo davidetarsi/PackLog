@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/features/items/view/item_sheet.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -90,6 +93,20 @@ void main() {
     final app = await openCalzini(tester);
     final plus = tester.widget<Icon>(find.byIcon(Icons.add_circle_outline));
     expect(plus.color, isNot(AppTheme.light.colorScheme.primary));
+    await app.finish();
+  });
+
+  testWidgets('oggetto non trovato: la scheda si chiude da sola', (
+    tester,
+  ) async {
+    final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+    await app.go('/');
+    await app.push('/houses/$kHomeId');
+    final context = tester.element(find.byType(Scaffold).last);
+    unawaited(showItemSheet(context, houseId: kHomeId, itemId: 'non-esiste'));
+    await app.settle();
+    expect(find.byType(ItemSheet), findsNothing);
+    expect(find.byKey(const Key('item_sheet_close')), findsNothing);
     await app.finish();
   });
 }
