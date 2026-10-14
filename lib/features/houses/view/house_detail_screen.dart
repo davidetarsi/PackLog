@@ -76,12 +76,15 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   /// apre la pagina "aggiungi" mettendo il focus qui.
   final _rapidFireFocus = FocusNode();
 
-  /// Pagina "aggiungi": `null` = chiusa; altrimenti gli id degli oggetti
-  /// presenti quando si è aperta (quelli nuovi sono gli "Aggiunti ora").
+  /// Pagina "aggiungi" aperta: il campo rapid fire ha il focus. Il
+  /// [_addBaseline] sono gli id degli oggetti presenti quando si è aperta
+  /// (quelli nuovi sono gli "Aggiunti ora"); si cattura al primo build con
+  /// gli oggetti caricati, perché aprendo la pagina subito possono mancare.
+  bool _isAdding = false;
   Set<String>? _addBaseline;
-  String _addQuery = '';
 
-  bool get _isAdding => _addBaseline != null;
+  /// Testo del campo: resta anche a pagina chiusa, il campo lo ricorda.
+  String _addQuery = '';
 
   @override
   void dispose() {
@@ -137,22 +140,20 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   }
 
   void _onRapidFireExpanded(bool expanded) {
+    // La ricerca e la pagina aggiungi non stanno insieme nell'intestazione:
+    // chi prende il focus è il campo, quindi la ricerca si chiude.
+    if (expanded && _search != null) _closeSearch();
     setState(() {
       _isRapidFireExpanded = expanded;
       if (expanded) {
-        _addBaseline ??= {
-          for (final item
-              in ref.read(itemNotifierProvider(widget.houseId)).valueOrNull ??
-                  const <ItemModel>[])
-            item.id,
-        };
+        _isAdding = true;
       } else if (ModalRoute.of(context)?.isCurrent ?? true) {
         // Il campo ha perso il focus perché si è usciti (indietro, tocco
         // fuori): la pagina si chiude. Se invece sopra c'è un foglio (la
         // scheda di un oggetto aperta da qui) la pagina resta, e al ritorno
         // il focus torna sul campo.
+        _isAdding = false;
         _addBaseline = null;
-        _addQuery = '';
       }
     });
   }
@@ -160,8 +161,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   void _closeAddPage() {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
+      _isAdding = false;
       _addBaseline = null;
-      _addQuery = '';
+      _isRapidFireExpanded = false;
     });
   }
 
@@ -430,6 +432,13 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     final selectedCount = selectionState.selectedIds.length;
     final hasSelection = selectedCount > 0;
     // "Seleziona tutti" prende solo gli oggetti visibili (ricerca e spazio).
+    final loadedItems = ref
+        .watch(itemNotifierProvider(widget.houseId))
+        .valueOrNull;
+    if (_isAdding && _addBaseline == null && loadedItems != null) {
+      _addBaseline = {for (final item in loadedItems) item.id};
+    }
+    final addBaseline = _addBaseline;
     final allItemIds = visibleHouseItems(
       allItems,
       spaceId: _spaceFilter,
@@ -495,13 +504,16 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               ),
             ),
             body: _isAdding
-                ? _AddPage(
-                    houseId: widget.houseId,
-                    query: _addQuery,
-                    baselineIds: _addBaseline!,
-                    onExistingOpened: (position) => _analytics
-                        .trackAddExistingMatchTapped(position: position),
-                  )
+                ? addBaseline == null
+                      // Gli oggetti non sono ancora arrivati: pagina vuota.
+                      ? const SizedBox.shrink()
+                      : _AddPage(
+                          houseId: widget.houseId,
+                          query: _addQuery,
+                          baselineIds: addBaseline,
+                          onExistingOpened: (position) => _analytics
+                              .trackAddExistingMatchTapped(position: position),
+                        )
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -852,9 +864,12 @@ class _AddPage extends ConsumerWidget {
       houseId: houseId,
       quantityOnTrip: quantitiesOnTrip[item.id] ?? 0,
       onOpened: onOpened,
+      // Qui la selezione non parte: il campo resta il centro della pagina.
+      allowSelection: false,
     );
 
     return SingleChildScrollView(
+      key: const Key('house_add_page'),
       padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
       // Solo il contenuto è "dentro" il campo: toccare lo spazio vuoto sotto
       // chiude la pagina, toccare una riga apre l'oggetto.

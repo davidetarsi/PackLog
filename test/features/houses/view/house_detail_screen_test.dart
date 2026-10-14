@@ -241,6 +241,74 @@ void main() {
     await app.enterText(rapidFire(), 'calz');
     await app.tap(find.text('Calzini'));
     verify(() => analytics.trackAddExistingMatchTapped(position: 1)).called(1);
+    // La scheda dell'oggetto si apre sopra la pagina.
+    expect(find.text('Modifica oggetto'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await app.settle();
+    expect(find.text('Modifica oggetto'), findsNothing);
+    // Chiusa la scheda, la pagina è ancora lì.
+    expect(find.text('Già in casa · 1'), findsOneWidget);
+    await app.finish();
+  });
+
+  testWidgets('tenere premuto un Già in casa non avvia la selezione', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(rapidFire());
+    await app.enterText(rapidFire(), 'calz');
+    await app.longPress(find.text('Calzini'));
+    expect(find.text('1 selezionati'), findsNothing);
+    expect(find.byKey(const ValueKey('selection_bar')), findsNothing);
+    expect(find.text('Già in casa · 1'), findsOneWidget);
+    await app.finish();
+  });
+
+  testWidgets(
+    'toccare fuori dalla pagina la chiude; il campo ricorda il testo',
+    (tester) async {
+      final app = await openHome(tester);
+      await app.tap(rapidFire());
+      await app.enterText(rapidFire(), 'calz');
+      expect(find.text('Già in casa · 1'), findsOneWidget);
+      // Sotto il contenuto della pagina non c'è nulla: sta fuori dal gruppo
+      // del campo.
+      final page = tester.getRect(find.byKey(const Key('house_add_page')));
+      await tester.tapAt(Offset(page.center.dx, page.bottom + 150));
+      await app.settle();
+      expect(find.text('Vestiti · 7'), findsOneWidget);
+      await app.tap(rapidFire());
+      expect(find.text('Già in casa · 1'), findsOneWidget);
+      await app.finish();
+    },
+  );
+
+  testWidgets(
+    'la freccia indietro della barra chiude la pagina e resta sulla casa',
+    (tester) async {
+      final app = await openHome(tester);
+      await app.tap(rapidFire());
+      await app.enterText(rapidFire(), 'calz');
+      await app.tap(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.byIcon(Icons.arrow_back),
+        ),
+      );
+      expect(find.text('Già in casa · 1'), findsNothing);
+      expect(find.text('Vestiti · 7'), findsOneWidget);
+      expect(find.text('Casa Milano'), findsOneWidget);
+      await app.finish();
+    },
+  );
+
+  testWidgets('con la ricerca aperta, il campo la chiude', (tester) async {
+    final app = await openHome(tester);
+    await app.tap(find.byKey(const Key('house_search')));
+    await app.tap(rapidFire());
+    expect(find.byKey(const Key('house_search_field')), findsNothing);
+    await app.enterText(rapidFire(), 'calz');
+    expect(find.text('Già in casa · 1'), findsOneWidget);
     await app.finish();
   });
 
