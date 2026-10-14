@@ -422,7 +422,6 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                     houseId: widget.houseId,
                     houseName: house.displayName,
                     selectedSpaceId: _spaceFilter,
-                    categoryFilter: _categoryTab.categoryFilter,
                   ),
                 ),
               ],

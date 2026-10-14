@@ -7,7 +7,6 @@
 library;
 
 export 'app_pill_tab.dart';
-export 'category_section_header.dart';
 export 'circular_action_button.dart';
 export 'ds_badge.dart';
 export 'ds_contextual_app_bar.dart';
