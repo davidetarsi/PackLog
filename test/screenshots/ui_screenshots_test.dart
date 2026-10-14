@@ -341,7 +341,7 @@ final flows = <Flow>[
       route: '/houses/:id',
       source: _houseDetailSrc,
       description:
-          'Inventario con filtri spazi e categorie, barra con gestisci / rapid-fire / AI.',
+          'Inventario a gruppi con etichette fisse, filtro spazi, barra con rapid-fire e AI; gestisci e ricerca in alto.',
       steps: _houseDetail,
     ),
     Scenario(
@@ -477,6 +477,32 @@ final flows = <Flow>[
       source: _houseDetailSrc,
       description: 'Id inesistente (es. casa eliminata da un altro device).',
       steps: (app) => _houseDetail(app, 'casa-che-non-esiste'),
+    ),
+    Scenario(
+      14,
+      'dettaglio-casa',
+      'ricerca',
+      route: '/houses/:id',
+      source: _houseDetailSrc,
+      description:
+          'Ricerca nella casa: "cal" lascia i soli oggetti che corrispondono.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.byKey(const Key('house_search')));
+        await app.enterText(find.byKey(const Key('house_search_field')), 'cal');
+      },
+    ),
+    Scenario(
+      15,
+      'dettaglio-casa',
+      'gruppo-chiuso',
+      route: '/houses/:id',
+      source: _houseDetailSrc,
+      description: 'Gruppo Vestiti chiuso toccando la sua etichetta.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.textContaining('Vestiti ·'));
+      },
     ),
   ]),
 

@@ -96,9 +96,21 @@ Per ogni schermata: file sorgente, come ci si arriva, stati catturati
 
 ### 04 · Dettaglio casa
 
+Inventario a gruppi per categoria. Ogni gruppo ha un'etichetta grigia fissa in
+alto ("Vestiti · 7") che resta visibile mentre si scorre e si chiude toccandola;
+"Temporanei" (oggetti di viaggi attivi verso questa casa) è un gruppo come gli altri. Le
+categorie non sono più filtri: il filtro in alto è solo per spazio. Niente
+titolo "In casa": il nome della casa sta nell'app bar, con un'icona neutra.
+In alto: 🔍 apre la ricerca (l'app bar diventa un campo e la lista mostra solo
+gli oggetti che corrispondono) e "⋯" gestisce la casa. In basso: il campo
+rapid-fire con bordo neutro e il bottone AI tondo, l'unico elemento arancione
+della schermata. La pillola dello spazio scelto è neutra.
+
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
 | 1-5 | Dettaglio casa | `features/houses/view/house_detail_screen.dart` | tap su una casa | ✓ pieno, ✓ filtro spazio, ✓ casa vuota, ✓ input rapido espanso, ✓ selezione multipla |
+| 14 | Ricerca nella casa | `features/houses/view/house_detail_screen.dart`, `features/items/view/items_screen.dart` | 🔍 in alto, poi testo | ✓ "cal": solo gli oggetti che corrispondono |
+| 15 | Gruppo chiuso | `features/items/view/item_category_section.dart` | tap sull'etichetta "Vestiti · 7" | ✓ gruppo Vestiti chiuso |
 | 6 | Sposta in… | `features/items/view/bulk_move_sheet.dart` | selezione → Sposta | ✓ |
 | 7 | Aggiungi a viaggio | `features/trips/view/trip_picker_sheet.dart` | selezione → icona valigia | ✓ |
 | 8 | Gestisci casa | `features/houses/view/house_manage_sheet.dart` | matita in basso a sinistra | ✓ |
