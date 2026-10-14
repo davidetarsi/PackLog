@@ -221,13 +221,10 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                 height: widget.height,
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceContainerLow,
-                  // Bordo d'accento, spesso come quello di [DsButton]: nella
-                  // schermata della casa questa è l'azione principale, e senza
-                  // bordo non si distingueva dai due bottoni circolari ai lati.
-                  // Il riempimento arancione non è un'opzione — dentro ci sono
-                  // un campo di testo e il suo hint, che devono restare
-                  // leggibili.
-                  border: Border.all(color: colorScheme.primary, width: 2),
+                  // Bordo neutro: nella casa l'arancio è del bottone AI, la
+                  // strada che vogliamo far prendere. Il campo resta
+                  // riconoscibile per la forma e il segnaposto.
+                  border: Border.all(color: colorScheme.outlineVariant),
                   // Mantiene perennemente la forma a pillola (metà altezza)
                   borderRadius: BorderRadius.circular(widget.height / 2),
                 ),

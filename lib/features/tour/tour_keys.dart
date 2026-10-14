@@ -15,8 +15,8 @@ class _TourKeys {
   /// [OnboardingStep.houseTooltip].
   final newHouseRow = GlobalKey();
 
-  /// Riga filtri categoria in cima a [HouseDetailScreen]. Target di
-  /// [OnboardingStep.moveItemsTooltip]: sempre presente (anche a lista
-  /// vuota), a differenza di evidenziare una card item specifica.
+  /// Etichetta del primo gruppo della lista in [HouseDetailScreen] (o lo
+  /// stato vuoto, se la casa non ha oggetti). Target di
+  /// [OnboardingStep.moveItemsTooltip].
   final houseItemsAnchor = GlobalKey();
 }

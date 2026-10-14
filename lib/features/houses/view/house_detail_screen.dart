@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
-import 'package:pack_log/shared/widgets/tri_slot_bar.dart';
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../shared/helpers/search_match.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
 import '../../items/view/add_edit_item_screen.dart';
@@ -35,19 +36,6 @@ import '../../../shared/helpers/navigation_helpers.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/ds_button.dart';
 
-enum _CategoryTab {
-  all('trips.filter_all', null),
-  vestiti('categories.vestiti', ItemCategory.vestiti),
-  toiletries('categories.toiletries', ItemCategory.toiletries),
-  elettronica('categories.elettronica', ItemCategory.elettronica),
-  varie('categories.varie', ItemCategory.varie);
-
-  final String labelKey;
-  final ItemCategory? categoryFilter;
-  const _CategoryTab(this.labelKey, this.categoryFilter);
-  String get label => labelKey.tr();
-}
-
 /// Durata delle transizioni animate tra le due modalità della UI
 /// (normale ↔ selezione multipla).
 const _kModeSwitchDuration = Duration(milliseconds: 220);
@@ -73,8 +61,50 @@ class HouseDetailScreen extends ConsumerStatefulWidget {
 class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   /// null = tutti gli item, 'default' = pool generale, spaceId = spazio specifico.
   String? _spaceFilter;
-  _CategoryTab _categoryTab = _CategoryTab.all;
   bool _isRapidFireExpanded = false;
+
+  /// Ricerca nella casa: `null` = chiusa, stringa (anche vuota) = aperta.
+  String? _search;
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
+
+  void _openSearch() {
+    _analytics.trackSearchOpened(context: 'house');
+    _searchController.clear();
+    setState(() => _search = '');
+  }
+
+  /// Chiamato all'invio della tastiera e alla chiusura: una ricerca che non
+  /// ha trovato niente è il segnale che serve, una per tentativo.
+  void _reportIfNoResults() {
+    final query = _search?.trim() ?? '';
+    if (query.isEmpty) return;
+    final items =
+        ref.read(itemNotifierProvider(widget.houseId)).valueOrNull ?? const [];
+    final temporaries = ref.read(temporaryItemsInHouseProvider(widget.houseId));
+    final found =
+        items.any((i) => matchesSearch(i.name, query)) ||
+        temporaries.any((i) => matchesSearch(i.name, query));
+    if (!found) {
+      _analytics.trackSearchNoResults(
+        context: 'house',
+        queryLength: query.length,
+      );
+    }
+  }
+
+  void _closeSearch() {
+    _reportIfNoResults();
+    _searchController.clear();
+    setState(() => _search = null);
+  }
 
   // -------------------------------------------------------------------------
   // Manage sheet
@@ -343,10 +373,13 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     final allItemIds = allItems.map((i) => i.id).toList();
 
     return PopScope(
-      canPop: !isSelectionMode,
+      canPop: !isSelectionMode && _search == null,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) {
+        if (didPop) return;
+        if (isSelectionMode) {
           ref.read(itemSelectionNotifierProvider.notifier).clear();
+        } else if (_search != null) {
+          _closeSearch();
         }
       },
       child: housesAsync.when(
@@ -376,9 +409,19 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               isInSelectionMode: isSelectionMode,
               switchDuration: _kModeSwitchDuration,
               normalAppBar: _HouseNormalAppBar(
-                colorScheme: colorScheme,
                 houseName: house.displayName,
                 houseIcon: HouseIcons.getIcon(house.iconName),
+                searchController: _search == null ? null : _searchController,
+                onSearchOpen: _openSearch,
+                onSearchChanged: (q) => setState(() => _search = q),
+                onSearchSubmitted: _reportIfNoResults,
+                onSearchClose: _closeSearch,
+                onManage: () => _showManageSheet(
+                  context,
+                  widget.houseId,
+                  house.isPrimary,
+                  house.displayName,
+                ),
               ),
               selectionAppBar: _HouseSelectionAppBar(
                 selectedCount: selectedCount,
@@ -410,18 +453,19 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                   loading: () => const SizedBox.shrink(),
                   error: (_, _) => const SizedBox.shrink(),
                 ),
-                // ── Riga 2: filtro categorie ──────────────────────────────────
-                _CategoryFilterPills(
-                  key: tourKeys.houseItemsAnchor,
-                  selected: _categoryTab,
-                  onSelected: (tab) => setState(() => _categoryTab = tab),
-                ),
                 // ── Contenuto ─────────────────────────────────────────────────
                 Expanded(
                   child: ItemsScreen(
                     houseId: widget.houseId,
                     houseName: house.displayName,
                     selectedSpaceId: _spaceFilter,
+                    searchQuery: _search,
+                    firstGroupKey: tourKeys.houseItemsAnchor,
+                    onSearchResultOpened: (position) =>
+                        _analytics.trackSearchResultTapped(
+                          context: 'house',
+                          position: position,
+                        ),
                   ),
                 ),
               ],
@@ -469,19 +513,11 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                       child: _HouseNormalActionBar(
                         houseId: widget.houseId,
                         autofocusRapidFire: widget.openRapidFire,
-                        isPrimary: house.isPrimary,
-                        houseName: house.displayName,
                         isExpanded: _isRapidFireExpanded,
                         currentSpaceId:
                             (_spaceFilter != null && _spaceFilter != 'default')
                             ? _spaceFilter
                             : null,
-                        onManage: () => _showManageSheet(
-                          context,
-                          widget.houseId,
-                          house.isPrimary,
-                          house.displayName,
-                        ),
                         onExpandedChanged: (v) =>
                             setState(() => _isRapidFireExpanded = v),
                       ),
@@ -508,14 +544,26 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
 
 class _HouseNormalAppBar extends StatelessWidget
     implements PreferredSizeWidget {
-  final ColorScheme colorScheme;
   final String houseName;
   final IconData houseIcon;
 
+  /// Non nullo quando la ricerca è aperta: l'intestazione diventa il campo.
+  final TextEditingController? searchController;
+  final VoidCallback onSearchOpen;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onSearchSubmitted;
+  final VoidCallback onSearchClose;
+  final VoidCallback onManage;
+
   const _HouseNormalAppBar({
-    required this.colorScheme,
     required this.houseName,
     required this.houseIcon,
+    required this.searchController,
+    required this.onSearchOpen,
+    required this.onSearchChanged,
+    required this.onSearchSubmitted,
+    required this.onSearchClose,
+    required this.onManage,
   });
 
   @override
@@ -523,6 +571,51 @@ class _HouseNormalAppBar extends StatelessWidget
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final controller = searchController;
+
+    if (controller != null) {
+      return AppBar(
+        key: const ValueKey('search-appbar'),
+        leading: IconButton(
+          key: const Key('house_search_close'),
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'common.back'.tr(),
+          onPressed: onSearchClose,
+        ),
+        title: TextField(
+          key: const Key('house_search_field'),
+          controller: controller,
+          autofocus: true,
+          textInputAction: TextInputAction.search,
+          onChanged: onSearchChanged,
+          onSubmitted: (_) => onSearchSubmitted(),
+          decoration: InputDecoration(
+            hintText: 'houses.search_hint'.tr(args: [houseName]),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            filled: false,
+          ),
+        ),
+        actions: [
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) => value.text.isEmpty
+                ? const SizedBox.shrink()
+                : IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'common.clear'.tr(),
+                    onPressed: () {
+                      controller.clear();
+                      onSearchChanged('');
+                    },
+                  ),
+          ),
+        ],
+      );
+    }
+
     return AppBar(
       key: const ValueKey('normal-appbar'),
       leading: IconButton(
@@ -532,11 +625,25 @@ class _HouseNormalAppBar extends StatelessWidget
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(houseIcon, color: colorScheme.primary),
+          // Neutra: è il contesto, non un'azione.
+          Icon(houseIcon, color: colorScheme.onSurfaceVariant),
           AppSpacing.hGapSm,
-          Text(houseName),
+          Flexible(child: Text(houseName, overflow: TextOverflow.ellipsis)),
         ],
       ),
+      actions: [
+        IconButton(
+          key: const Key('house_search'),
+          icon: const Icon(Icons.search),
+          tooltip: 'houses.search_tooltip'.tr(),
+          onPressed: onSearchOpen,
+        ),
+        IconButton(
+          icon: const Icon(Icons.more_horiz),
+          tooltip: 'houses.manage_sheet_title'.tr(),
+          onPressed: onManage,
+        ),
+      ],
     );
   }
 }
@@ -609,26 +716,20 @@ class _HouseSelectionAppBar extends ConsumerWidget
   }
 }
 
-/// Bottom action bar in modalità normale: tasto gestisci (sx), rapid-fire
-/// (centro), AI import (dx).
+/// Bottom action bar in modalità normale: campo rapid-fire (sinistra) e
+/// scansione AI (destra). "⋯" e ricerca stanno nell'intestazione.
 class _HouseNormalActionBar extends StatelessWidget {
   final String houseId;
   final bool autofocusRapidFire;
-  final bool isPrimary;
-  final String houseName;
   final bool isExpanded;
   final String? currentSpaceId;
-  final VoidCallback onManage;
   final void Function(bool) onExpandedChanged;
 
   const _HouseNormalActionBar({
     required this.houseId,
     required this.autofocusRapidFire,
-    required this.isPrimary,
-    required this.houseName,
     required this.isExpanded,
     required this.currentSpaceId,
-    required this.onManage,
     required this.onExpandedChanged,
   });
 
@@ -639,44 +740,37 @@ class _HouseNormalActionBar extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
-      child: TriSlotBar(
-        horizontalPadding: 0,
-        sideSlotWidth: isExpanded ? 0.0 : elementHeight,
-        left: AnimatedOpacity(
-          duration: const Duration(milliseconds: 150),
-          opacity: isExpanded ? 0.0 : 1.0,
-          child: isExpanded
-              ? null
-              : CircularActionButton(
-                  icon: Icons.more_horiz,
-                  onPressed: onManage,
-                  showBorder: true,
-                ),
-        ),
-        center: RapidFireInput(
-          houseId: houseId,
-          autofocus: autofocusRapidFire,
-          currentSpaceId: currentSpaceId,
-          height: elementHeight,
-          onOpenFullForm: (name, category) => showAddEditItemSheet(
-            context,
-            houseId: houseId,
-            initialName: name.isNotEmpty ? name : null,
-            initialCategory: category,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: RapidFireInput(
+              houseId: houseId,
+              autofocus: autofocusRapidFire,
+              currentSpaceId: currentSpaceId,
+              height: elementHeight,
+              onOpenFullForm: (name, category) => showAddEditItemSheet(
+                context,
+                houseId: houseId,
+                initialName: name.isNotEmpty ? name : null,
+                initialCategory: category,
+              ),
+              onExpandedChanged: onExpandedChanged,
+            ),
           ),
-          onExpandedChanged: onExpandedChanged,
-        ),
-        right: AnimatedOpacity(
-          duration: const Duration(milliseconds: 150),
-          opacity: isExpanded ? 0.0 : 1.0,
-          child: isExpanded
-              ? null
-              : CircularActionButton(
-                  icon: Icons.auto_awesome,
-                  onPressed: () => context.push('/houses/$houseId/ai-import'),
-                  showBorder: true,
-                ),
-        ),
+          // Mentre si scrive il campo prende tutta la riga.
+          if (!isExpanded) ...[
+            SizedBox(width: context.spacingSm),
+            CircularActionButton(
+              icon: Icons.auto_awesome,
+              // L'unico arancio della schermata: la scansione AI è la strada
+              // che vogliamo far prendere per aggiungere oggetti.
+              color: Theme.of(context).colorScheme.primary,
+              showBorder: true,
+              onPressed: () => context.push('/houses/$houseId/ai-import'),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -704,8 +798,13 @@ class _SpaceFilterPills extends StatelessWidget {
         s.id: allItems.where((i) => i.spaceId == s.id).length,
     };
 
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: EdgeInsets.only(left: context.spacingMd, top: context.spacingSm),
+      padding: EdgeInsets.only(
+        left: context.spacingMd,
+        top: context.spacingSm,
+        bottom: context.spacingXs,
+      ),
       child: AppPillTab<String?>.nullable(
         items: tabItems,
         selectedItem: selectedSpaceId,
@@ -718,36 +817,11 @@ class _SpaceFilterPills extends StatelessWidget {
           return '${space.name} (${spaceCounts[spaceId] ?? 0})';
         },
         onSelected: onSelected,
+        // Il filtro scelto è uno stato di lettura, non l'azione della
+        // schermata: niente arancio.
+        selectedColor: colorScheme.onSurface,
+        selectedTextColor: colorScheme.onSurface,
         scrollPadding: EdgeInsets.zero,
-      ),
-    );
-  }
-}
-
-class _CategoryFilterPills extends StatelessWidget {
-  final _CategoryTab selected;
-  final void Function(_CategoryTab) onSelected;
-
-  const _CategoryFilterPills({
-    super.key,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: context.spacingMd,
-        top: context.spacingSm,
-        bottom: context.spacingSm,
-      ),
-      child: AppPillTab<_CategoryTab>(
-        items: _CategoryTab.values,
-        selectedItem: selected,
-        getLabel: (tab) => tab.label,
-        onSelected: onSelected,
-        scrollPadding: EdgeInsets.symmetric(horizontal: context.spacingSm),
       ),
     );
   }
