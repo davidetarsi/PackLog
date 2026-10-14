@@ -101,15 +101,18 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                     .toList();
               }
 
+              // Il gruppo Temporanei non passa dal filtro spazio: con uno spazio
+              // scelto non compare, quindi non conta come contenuto visibile.
+              final showsTemporaries =
+                  hasTemporaryItems && widget.selectedSpaceId == null;
+
               // ── Vista tutte le categorie con sezioni ──────────────────────
               final itemsByCategory = <ItemCategory, List<ItemModel>>{};
               for (final item in spaceFiltered) {
                 itemsByCategory.putIfAbsent(item.category, () => []).add(item);
               }
 
-              if (isSearching &&
-                  spaceFiltered.isEmpty &&
-                  temporaryItems.isEmpty) {
+              if (isSearching && spaceFiltered.isEmpty && !showsTemporaries) {
                 return ItemsEmptyState(
                   onRefresh: _onRefresh,
                   icon: Icons.search_off,
@@ -117,7 +120,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                 );
               }
 
-              if (spaceFiltered.isEmpty && !hasTemporaryItems) {
+              if (spaceFiltered.isEmpty && !showsTemporaries) {
                 return ItemsEmptyState(
                   key: widget.firstGroupKey,
                   onRefresh: _onRefresh,
@@ -135,8 +138,6 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                 data: (houses) {
                   final categoryEntries = itemsByCategory.entries.toList()
                     ..sort((a, b) => a.key.index.compareTo(b.key.index));
-                  final showsTemporaries =
-                      hasTemporaryItems && widget.selectedSpaceId == null;
                   // Posizione del primo oggetto di ogni gruppo nell'ordine a
                   // schermo, per l'evento del risultato aperto.
                   final offsets = <int>[];
@@ -168,11 +169,11 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                         // ── Categorie ─────────────────────────────────────
                         for (final (i, entry) in categoryEntries.indexed)
                           SliverPadding(
+                            key: ValueKey(entry.key),
                             padding: EdgeInsets.symmetric(
                               horizontal: context.spacingMd,
                             ),
                             sliver: ItemCategorySection(
-                              key: ValueKey(entry.key),
                               category: entry.key,
                               items: entry.value,
                               houseId: widget.houseId,
