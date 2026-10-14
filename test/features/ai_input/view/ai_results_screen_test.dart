@@ -22,6 +22,7 @@ import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/universal_action_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../screenshots/support/fakes.dart'
@@ -358,6 +359,49 @@ void main() {
       savedItems.map((item) => item.name),
       containsAll(['Camicia rinominata', 'T-shirt rinominata']),
     );
+    await app.finish();
+  });
+
+  testWidgets('doppio tap su Salva completa una sola uscita riuscita', (
+    tester,
+  ) async {
+    final app = await _openResults(tester);
+    final saveCompleter = Completer<int>();
+    when(
+      () => app.itemRepository.saveAiItemsToHouse(
+        houseId: any(named: 'houseId'),
+        newItems: any(named: 'newItems'),
+        metadataByItemId: any(named: 'metadataByItemId'),
+      ),
+    ).thenAnswer((_) => saveCompleter.future);
+
+    final onSave = tester
+        .widget<UniversalActionBar>(find.byType(UniversalActionBar))
+        .onPrimaryPressed!;
+    onSave();
+    onSave();
+    await tester.pump();
+
+    verify(
+      () => app.itemRepository.saveAiItemsToHouse(
+        houseId: any(named: 'houseId'),
+        newItems: any(named: 'newItems'),
+        metadataByItemId: any(named: 'metadataByItemId'),
+      ),
+    ).called(1);
+
+    saveCompleter.complete(0);
+    await tester.pumpAndSettle();
+
+    expect(find.text('DETAIL $kHomeId'), findsOneWidget);
+    final savedState = app.container.read(aiImportNotifierProvider);
+    expect(savedState.photoGroups, isEmpty);
+    expect(savedState.errorMessage, isNull);
+    app.router.pop();
+    await tester.pumpAndSettle();
+    expect(find.text('SHELL'), findsOneWidget);
+    expect(find.text('DETAIL $kHomeId', skipOffstage: false), findsNothing);
+    expect(app.router.canPop(), isFalse);
     await app.finish();
   });
 

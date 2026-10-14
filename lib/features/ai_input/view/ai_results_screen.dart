@@ -469,6 +469,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
   }
 
   Future<void> _saveResults(AiImportNotifier notifier) async {
+    if (_saveRequested) return;
     _saveRequested = true;
     try {
       if (widget.isFirstTimeOnboarding) {
