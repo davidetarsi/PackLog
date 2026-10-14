@@ -157,6 +157,22 @@ void main() {
     await app.finish();
   });
 
+  testWidgets('seleziona tutti prende solo gli oggetti visibili', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(find.byKey(const Key('house_search')));
+    // "in" trova tre oggetti (Calzini, Camicia, Spazzolino). Con un solo
+    // risultato, dopo il long press la selezione sarebbe già completa e il
+    // bottone non mostrerebbe più "seleziona tutti".
+    await app.enterText(find.byKey(const Key('house_search_field')), 'in');
+    expect(find.text('Spazzolino'), findsOneWidget);
+    await app.longPress(find.text('Calzini'));
+    await app.tap(find.byIcon(Icons.check_box_outlined));
+    expect(find.text('3 selezionati'), findsOneWidget);
+    await app.finish();
+  });
+
   testWidgets('in basso solo campo e AI; l AI è l unico arancio', (
     tester,
   ) async {

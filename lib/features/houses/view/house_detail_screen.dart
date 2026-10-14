@@ -386,7 +386,12 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     final isSelectionMode = selectionState.isActive;
     final selectedCount = selectionState.selectedIds.length;
     final hasSelection = selectedCount > 0;
-    final allItemIds = allItems.map((i) => i.id).toList();
+    // "Seleziona tutti" prende solo gli oggetti visibili (ricerca e spazio).
+    final allItemIds = visibleHouseItems(
+      allItems,
+      spaceId: _spaceFilter,
+      query: _search ?? '',
+    ).map((i) => i.id).toList();
 
     return PopScope(
       canPop: !isSelectionMode && _search == null,
