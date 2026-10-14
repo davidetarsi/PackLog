@@ -387,7 +387,7 @@ final flows = <Flow>[
       route: '/houses/:id',
       source: _houseDetailSrc,
       description:
-          'Long press su un oggetto: modalità selezione con azioni bulk.',
+          'Selezione: caselle arancio, velo neutro, barra Sposta · In viaggio · Elimina.',
       steps: (app) async {
         await _houseDetail(app);
         await app.longPress(find.text('Maglione di lana'));
@@ -399,11 +399,12 @@ final flows = <Flow>[
       'sposta-oggetti',
       'scelta-casa',
       source: 'lib/features/items/view/bulk_move_sheet.dart',
-      description: 'Sheet "Sposta in…" dalla selezione multipla.',
+      description:
+          'Foglio "Sposta": tocco sulla casa (o sullo spazio) e l\'oggetto è spostato.',
       steps: (app) async {
         await _houseDetail(app);
         await app.longPress(find.text('Maglione di lana'));
-        await app.tap(_text('common.move'));
+        await app.tap(find.byKey(const Key('selection_move')));
       },
     ),
     Scenario(
@@ -415,7 +416,7 @@ final flows = <Flow>[
       steps: (app) async {
         await _houseDetail(app);
         await app.longPress(find.text('Maglione di lana'));
-        await app.tap(_icon(Icons.luggage_outlined).last);
+        await app.tap(find.byKey(const Key('selection_trip')));
       },
     ),
     Scenario(
@@ -424,7 +425,7 @@ final flows = <Flow>[
       'menu',
       source: 'lib/features/houses/view/house_manage_sheet.dart',
       description:
-          'Sheet gestione: modifica, principale, spazi, bagagli, elimina.',
+          'Sheet gestione con "Seleziona oggetti" in cima, poi modifica, principale, spazi, bagagli ed elimina.',
       steps: _openManageSheet,
     ),
     Scenario(
@@ -435,7 +436,9 @@ final flows = <Flow>[
       description: 'Modifica casa esistente.',
       steps: (app) async {
         await _openManageSheet(app);
-        await app.tap(find.byType(ListTile).first);
+        await app.tap(
+          find.ancestor(of: _icon(Icons.edit), matching: find.byType(ListTile)),
+        );
       },
     ),
     Scenario(
@@ -527,6 +530,20 @@ final flows = <Flow>[
         await _houseDetail(app);
         await app.tap(find.byType(TextField).last);
         await app.enterText(find.byType(TextField).last, 'calz');
+      },
+    ),
+    Scenario(
+      18,
+      'sposta-oggetti',
+      'scelta-spazio',
+      source: 'lib/features/items/view/bulk_move_sheet.dart',
+      description:
+          'Da Casa al mare, seleziona Infradito e scegli Casa Milano: il foglio mostra gli spazi e Senza spazio.',
+      steps: (app) async {
+        await _houseDetail(app, kSeaHouseId);
+        await app.longPress(find.text('Infradito'));
+        await app.tap(find.byKey(const Key('selection_move')));
+        await app.tap(find.text('Casa Milano'));
       },
     ),
   ]),
