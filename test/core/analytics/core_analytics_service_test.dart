@@ -396,4 +396,42 @@ void main() {
       ).called(1);
     });
   });
+
+  group('search_', () {
+    test('trackSearchOpened logs search_opened', () async {
+      service.trackSearchOpened(context: 'house');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'search_opened',
+          properties: {'context': 'house'},
+        ),
+      ).called(1);
+    });
+
+    test('trackSearchResultTapped logs search_result_tapped', () async {
+      service.trackSearchResultTapped(context: 'house', position: 2);
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'search_result_tapped',
+          properties: {'context': 'house', 'position': 2},
+        ),
+      ).called(1);
+    });
+
+    test(
+      'trackSearchNoResults logs search_no_results without the text',
+      () async {
+        service.trackSearchNoResults(context: 'house', queryLength: 4);
+        await pump();
+        verify(
+          () => mockAnalytics.logEvent(
+            'search_no_results',
+            properties: {'context': 'house', 'query_length': 4},
+          ),
+        ).called(1);
+      },
+    );
+  });
 }
