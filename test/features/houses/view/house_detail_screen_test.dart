@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
+import 'package:pack_log/shared/widgets/universal_item_tile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../screenshots/support/harness.dart';
@@ -175,8 +177,89 @@ void main() {
     await app.enterText(find.byKey(const Key('house_search_field')), 'in');
     expect(find.text('Spazzolino'), findsOneWidget);
     await app.longPress(find.text('Calzini'));
-    await app.tap(find.byIcon(Icons.check_box_outlined));
+    await app.tap(find.text('Seleziona tutti'));
     expect(find.text('3 selezionati'), findsOneWidget);
+    await app.finish();
+  });
+
+  testWidgets('un oggetto scelto: 1 selezionato, azioni neutre e accese', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.longPress(find.text('Calzini'));
+    expect(find.text('1 selezionato'), findsOneWidget);
+    final selectedTile = tester.widget<UniversalItemTile>(
+      find.ancestor(
+        of: find.text('Calzini'),
+        matching: find.byType(UniversalItemTile),
+      ),
+    );
+    expect(
+      selectedTile.backgroundColor,
+      AppTheme.light.colorScheme.onSurface.withValues(alpha: 0.06),
+    );
+    final move = tester.widget<DsBarItem>(
+      find.byKey(const Key('selection_move')),
+    );
+    expect(move.onTap, isNotNull);
+    final icon = tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const Key('selection_delete')),
+        matching: find.byType(Icon),
+      ),
+    );
+    expect(icon.color, AppTheme.light.colorScheme.onSurface);
+    await app.finish();
+  });
+
+  testWidgets('senza oggetti selezionati le tre azioni sono spente', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.longPress(find.text('Calzini'));
+    await app.tap(find.byType(Checkbox).first);
+    for (final key in const [
+      Key('selection_move'),
+      Key('selection_trip'),
+      Key('selection_delete'),
+    ]) {
+      expect(tester.widget<DsBarItem>(find.byKey(key)).onTap, isNull);
+    }
+    await app.finish();
+  });
+
+  testWidgets('la ricerca prende il focus alla prima apertura', (tester) async {
+    final app = await openHome(tester);
+    await app.tap(find.byKey(const Key('house_search')));
+    final field = find.descendant(
+      of: find.byKey(const Key('house_search_field')),
+      matching: find.byType(EditableText),
+    );
+    expect(tester.widget<EditableText>(field).focusNode.hasFocus, isTrue);
+    await app.finish();
+  });
+
+  testWidgets('dopo la selezione la ricerca non riprende la tastiera', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(find.byKey(const Key('house_search')));
+    await app.enterText(find.byKey(const Key('house_search_field')), 'calz');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await app.settle();
+    await app.longPress(find.text('Calzini'));
+    await app.tap(find.byIcon(Icons.close));
+    final textField = tester.widget<TextField>(
+      find.byKey(const Key('house_search_field')),
+    );
+    final field = find.descendant(
+      of: find.byKey(const Key('house_search_field')),
+      matching: find.byType(EditableText),
+    );
+    expect(tester.widget<EditableText>(field).focusNode.hasFocus, isFalse);
+    expect(textField.controller?.text, 'calz');
+    expect(find.text('Calzini'), findsOneWidget);
+    expect(find.text('Jeans blu'), findsNothing);
     await app.finish();
   });
 
@@ -262,8 +345,9 @@ void main() {
     await app.tap(rapidFire());
     await app.enterText(rapidFire(), 'calz');
     await app.longPress(find.text('Calzini'));
-    expect(find.text('1 selezionati'), findsNothing);
-    expect(find.byKey(const ValueKey('selection_bar')), findsNothing);
+    expect(find.byKey(const Key('selection_move')), findsNothing);
+    expect(find.byKey(const ValueKey('selection-bar')), findsNothing);
+    expect(find.byType(Checkbox), findsNothing);
     expect(find.text('Già in casa · 1'), findsOneWidget);
     await app.finish();
   });

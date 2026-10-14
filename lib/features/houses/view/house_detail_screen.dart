@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
+import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
@@ -28,7 +29,6 @@ import '../../../shared/widgets/ds_contextual_app_bar.dart';
 import '../../items/view/bulk_move_sheet.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/circular_action_button.dart';
-import '../../../shared/widgets/universal_action_bar.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/helpers/navigation_helpers.dart';
@@ -67,6 +67,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   /// Ricerca nella casa: `null` = chiusa, stringa (anche vuota) = aperta.
   String? _search;
   final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
 
   /// Ultima ricerca senza risultati già registrata: invio e chiusura della
   /// stessa ricerca contano una volta sola.
@@ -89,6 +90,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
     _rapidFireFocus.dispose();
     super.dispose();
   }
@@ -102,6 +104,15 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     _lastReportedQuery = null;
     setState(() => _search = '');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          _search == null ||
+          _isAdding ||
+          ref.read(itemSelectionNotifierProvider).isActive) {
+        return;
+      }
+      _searchFocus.requestFocus();
+    });
   }
 
   /// Chiamato all'invio della tastiera e alla chiusura: una ricerca che non
@@ -475,7 +486,6 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
           }
 
           final house = matchingHouses.first;
-          final colorScheme = Theme.of(context).colorScheme;
 
           return StickyCtaScaffold(
             appBar: DsContextualAppBar(
@@ -485,6 +495,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                 houseName: house.displayName,
                 houseIcon: HouseIcons.getIcon(house.iconName),
                 searchController: _search == null ? null : _searchController,
+                searchFocusNode: _searchFocus,
                 onSearchOpen: _openSearch,
                 onSearchChanged: (q) => setState(() => _search = q),
                 onSearchSubmitted: _reportIfNoResults,
@@ -578,30 +589,28 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                 ],
               ),
               child: isSelectionMode
-                  ? KeyedSubtree(
-                      key: const ValueKey('selection_bar'),
-                      child: UniversalActionBar(
-                        key: const ValueKey('selection-bar'),
-                        primaryLabel: 'common.move'.tr(),
-                        primaryIcon: Icons.local_shipping_outlined,
-                        onPrimaryPressed: hasSelection ? _handleBulkMove : null,
-                        leftAction: CircularActionButton(
-                          icon: Icons.delete_outline,
-                          onPressed: hasSelection ? _handleBulkDelete : null,
-                          color: hasSelection
-                              ? colorScheme.error
-                              : colorScheme.outline,
-                          showBorder: true,
+                  ? DsFloatingBar(
+                      key: const ValueKey('selection-bar'),
+                      children: [
+                        DsBarItem(
+                          key: const Key('selection_move'),
+                          icon: Icons.drive_file_move_outline,
+                          label: 'common.move'.tr(),
+                          onTap: hasSelection ? _handleBulkMove : null,
                         ),
-                        rightAction: CircularActionButton(
+                        DsBarItem(
+                          key: const Key('selection_trip'),
                           icon: Icons.luggage_outlined,
-                          onPressed: hasSelection ? _handleAddToTrip : null,
-                          color: hasSelection
-                              ? colorScheme.primary
-                              : colorScheme.outline,
-                          showBorder: true,
+                          label: 'items.to_trip'.tr(),
+                          onTap: hasSelection ? _handleAddToTrip : null,
                         ),
-                      ),
+                        DsBarItem(
+                          key: const Key('selection_delete'),
+                          icon: Icons.delete_outline,
+                          label: 'common.delete'.tr(),
+                          onTap: hasSelection ? _handleBulkDelete : null,
+                        ),
+                      ],
                     )
                   : KeyedSubtree(
                       key: const ValueKey('normal_bar'),
@@ -645,6 +654,7 @@ class _HouseNormalAppBar extends StatelessWidget
 
   /// Non nullo quando la ricerca è aperta: l'intestazione diventa il campo.
   final TextEditingController? searchController;
+  final FocusNode searchFocusNode;
   final VoidCallback onSearchOpen;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onSearchSubmitted;
@@ -659,6 +669,7 @@ class _HouseNormalAppBar extends StatelessWidget
     required this.houseName,
     required this.houseIcon,
     required this.searchController,
+    required this.searchFocusNode,
     required this.onSearchOpen,
     required this.onSearchChanged,
     required this.onSearchSubmitted,
@@ -688,7 +699,7 @@ class _HouseNormalAppBar extends StatelessWidget
         title: TextField(
           key: const Key('house_search_field'),
           controller: controller,
-          autofocus: true,
+          focusNode: searchFocusNode,
           textInputAction: TextInputAction.search,
           onChanged: onSearchChanged,
           onSubmitted: (_) => onSearchSubmitted(),
@@ -800,31 +811,23 @@ class _HouseSelectionAppBar extends ConsumerWidget
         child: Text(
           selectedCount == 0
               ? 'items.select_items'.tr()
-              : 'items.selected_count'.tr(args: [selectedCount.toString()]),
+              : 'items.selected_count'.plural(selectedCount),
           key: ValueKey(selectedCount),
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
       actions: [
-        IconButton(
-          icon: Icon(
-            allSelected
-                ? Icons.indeterminate_check_box_outlined
-                : Icons.check_box_outlined,
-            color: colorScheme.primary,
-          ),
-          tooltip: allSelected
-              ? 'items.deselect_all'.tr()
-              : 'items.select_all'.tr(),
+        TextButton(
           onPressed: () {
-            if (allSelected) {
-              ref.read(itemSelectionNotifierProvider.notifier).deselectAll();
-            } else {
-              ref
-                  .read(itemSelectionNotifierProvider.notifier)
-                  .selectAll(allItemIds);
-            }
+            final notifier = ref.read(itemSelectionNotifierProvider.notifier);
+            allSelected
+                ? notifier.deselectAll()
+                : notifier.selectAll(allItemIds);
           },
+          child: Text(
+            allSelected ? 'items.deselect_all'.tr() : 'items.select_all'.tr(),
+            style: TextStyle(color: colorScheme.onSurface),
+          ),
         ),
       ],
     );

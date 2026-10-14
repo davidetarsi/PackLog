@@ -107,7 +107,11 @@
     "delete_confirmation": "Sei sicuro di voler eliminare \"{}\"?",
     "item_deleted": "Oggetto eliminato",
     "select_items": "Seleziona oggetti",
-    "selected_count": "{} selezionati",
+    "selected_count": {
+      "one": "{} selezionato",
+      "other": "{} selezionati"
+    },
+    "to_trip": "In viaggio",
     "select_all": "Seleziona tutti",
     "deselect_all": "Deseleziona tutti",
     "bulk_delete_confirm_title": "Eliminare {} oggetti?",

@@ -125,9 +125,9 @@ class ItemCard extends ConsumerWidget {
           )
         : null;
 
-    // Il colore di sfondo segnala visivamente la selezione.
+    // Velo neutro: l'arancio della selezione sta solo nella casella.
     final Color? bgColor = isSelected
-        ? colorScheme.primary.withValues(alpha: 0.08)
+        ? colorScheme.onSurface.withValues(alpha: 0.06)
         : null;
 
     return UniversalItemTile(
