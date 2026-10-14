@@ -548,7 +548,7 @@ final flows = <Flow>[
       2,
       'oggetto-form',
       'modifica',
-      source: 'lib/features/items/view/item_form_content.dart',
+      source: 'lib/features/items/view/item_sheet.dart',
       description: 'Tap su un oggetto nel dettaglio casa.',
       steps: (app) async {
         await _houseDetail(app);
