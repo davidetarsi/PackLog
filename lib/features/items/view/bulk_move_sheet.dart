@@ -119,7 +119,8 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
                 vertical: context.spacingSm,
               ),
               child: Text(
-                'items.bulk_move_sheet_title'.tr(
+                'items.bulk_move_sheet_title'.plural(
+                  widget.itemCount,
                   args: [widget.itemCount.toString()],
                 ),
                 style: Theme.of(context).textTheme.titleMedium,

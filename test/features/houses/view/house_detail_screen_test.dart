@@ -236,6 +236,7 @@ void main() {
     final app = await openHome(tester);
     await app.longPress(find.text('Calzini'));
     await app.tap(find.byKey(const Key('selection_move')));
+    expect(find.text('Sposta 1 oggetto'), findsOneWidget);
     await app.tap(find.text('Casa al mare'));
 
     expect(find.byType(BulkMoveSheet), findsNothing);
@@ -245,6 +246,16 @@ void main() {
         .getItemById('item-4');
     expect(movedItem.houseId, kSeaHouseId);
     expect(movedItem.spaceId, isNull);
+    await app.finish();
+  });
+
+  testWidgets('Sposta con due oggetti usa il titolo plurale', (tester) async {
+    final app = await openHome(tester);
+    await app.longPress(find.text('Calzini'));
+    await app.tap(find.text('Jeans blu'));
+    await app.tap(find.byKey(const Key('selection_move')));
+
+    expect(find.text('Sposta 2 oggetti'), findsOneWidget);
     await app.finish();
   });
 

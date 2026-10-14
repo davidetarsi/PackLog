@@ -120,7 +120,10 @@
     "bulk_move_title": "Move to...",
     "bulk_move_success": "{} items moved to {}",
     "bulk_move_no_houses": "No other houses available",
-    "bulk_move_sheet_title": "Move {} items",
+    "bulk_move_sheet_title": {
+      "one": "Move {} item",
+      "other": "Move {} items"
+    },
     "add_to_trip_success": "{} items added to {}",
     "rapid_fire_hint": "Add item...",
     "already_here": "Already at home",

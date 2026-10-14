@@ -1,5 +1,8 @@
-import 'package:easy_localization/easy_localization.dart';
+import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
+
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,11 +18,27 @@ class _MockHouseRepository extends Mock implements HouseRepository {}
 
 class _MockSpaceRepository extends Mock implements SpaceRepository {}
 
+class _TestAssetLoader extends AssetLoader {
+  const _TestAssetLoader(this.translations);
+
+  final Map<String, dynamic> translations;
+
+  @override
+  Future<Map<String, dynamic>> load(String path, Locale locale) async =>
+      translations;
+}
+
 void main() {
+  late _TestAssetLoader assetLoader;
+
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
+    final translations =
+        jsonDecode(File('assets/translations/it-IT.json').readAsStringSync())
+            as Map<String, dynamic>;
+    assetLoader = _TestAssetLoader(translations);
   });
 
   testWidgets('errore spazi mostra retry e il retry ricarica il provider', (
@@ -59,18 +78,24 @@ void main() {
           path: 'assets/translations',
           fallbackLocale: const Locale('it', 'IT'),
           startLocale: const Locale('it', 'IT'),
-          child: MaterialApp(
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: TextButton(
-                  onPressed: () async {
-                    result = await BulkMoveSheet.show(
-                      context,
-                      itemCount: 1,
-                      sourceHouseId: 'source',
-                    );
-                  },
-                  child: const Text('Apri'),
+          assetLoader: assetLoader,
+          child: Builder(
+            builder: (context) => MaterialApp(
+              localizationsDelegates: context.localizationDelegates,
+              supportedLocales: context.supportedLocales,
+              locale: context.locale,
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: TextButton(
+                    onPressed: () async {
+                      result = await BulkMoveSheet.show(
+                        context,
+                        itemCount: 1,
+                        sourceHouseId: 'source',
+                      );
+                    },
+                    child: const Text('Apri'),
+                  ),
                 ),
               ),
             ),
@@ -79,6 +104,7 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Apri'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Casa destinazione'));
@@ -87,9 +113,9 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('errors.load_failed'), findsOneWidget);
-    expect(find.text('common.retry'), findsOneWidget);
-    await tester.tap(find.text('common.retry'));
+    expect(find.text('errors.load_failed'.tr()), findsOneWidget);
+    expect(find.text('common.retry'.tr()), findsOneWidget);
+    await tester.tap(find.text('common.retry'.tr()));
     await tester.pumpAndSettle();
 
     expect(spaceLoads, 2);
@@ -137,18 +163,24 @@ void main() {
           path: 'assets/translations',
           fallbackLocale: const Locale('it', 'IT'),
           startLocale: const Locale('it', 'IT'),
-          child: MaterialApp(
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: TextButton(
-                  onPressed: () async {
-                    result = await BulkMoveSheet.show(
-                      context,
-                      itemCount: 1,
-                      sourceHouseId: 'source',
-                    );
-                  },
-                  child: const Text('Apri'),
+          assetLoader: assetLoader,
+          child: Builder(
+            builder: (context) => MaterialApp(
+              localizationsDelegates: context.localizationDelegates,
+              supportedLocales: context.supportedLocales,
+              locale: context.locale,
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: TextButton(
+                    onPressed: () async {
+                      result = await BulkMoveSheet.show(
+                        context,
+                        itemCount: 1,
+                        sourceHouseId: 'source',
+                      );
+                    },
+                    child: const Text('Apri'),
+                  ),
                 ),
               ),
             ),
@@ -157,6 +189,7 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Apri'));
     await tester.pumpAndSettle();
     await tester.tap(find.text(destination.name));
@@ -223,18 +256,24 @@ void main() {
           path: 'assets/translations',
           fallbackLocale: const Locale('it', 'IT'),
           startLocale: const Locale('it', 'IT'),
-          child: MaterialApp(
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: TextButton(
-                  onPressed: () async {
-                    result = await BulkMoveSheet.show(
-                      context,
-                      itemCount: 1,
-                      sourceHouseId: 'source',
-                    );
-                  },
-                  child: const Text('Apri'),
+          assetLoader: assetLoader,
+          child: Builder(
+            builder: (context) => MaterialApp(
+              localizationsDelegates: context.localizationDelegates,
+              supportedLocales: context.supportedLocales,
+              locale: context.locale,
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: TextButton(
+                    onPressed: () async {
+                      result = await BulkMoveSheet.show(
+                        context,
+                        itemCount: 1,
+                        sourceHouseId: 'source',
+                      );
+                    },
+                    child: const Text('Apri'),
+                  ),
                 ),
               ),
             ),
@@ -243,6 +282,7 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Apri'));
     await tester.pumpAndSettle();
     await tester.tap(find.text(firstHouse.name));
