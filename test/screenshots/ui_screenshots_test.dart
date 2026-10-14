@@ -504,6 +504,16 @@ final flows = <Flow>[
         await app.tap(find.textContaining('Vestiti ·'));
       },
     ),
+    Scenario(
+      16,
+      'dettaglio-casa',
+      'temporanei',
+      route: '/houses/:id',
+      source: _houseDetailSrc,
+      description:
+          'Casa al mare: gruppo Temporanei in cima, con la provenienza nell\'etichetta.',
+      steps: (app) => _houseDetail(app, kSeaHouseId),
+    ),
   ]),
 
   Flow('05-oggetti', 'Oggetti: creazione e modifica', [
