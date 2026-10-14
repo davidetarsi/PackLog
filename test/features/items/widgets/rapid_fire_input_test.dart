@@ -75,4 +75,78 @@ void main() {
       findsNWidgets(ItemCategory.values.length),
     );
   });
+
+  Future<void> pumpInput(
+    WidgetTester tester, {
+    ValueChanged<String>? onTextChanged,
+    ValueChanged<bool>? onExpandedChanged,
+    FocusNode? focusNode,
+  }) async {
+    tester.view.physicalSize = const Size(412, 915);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: RapidFireInput(
+                  houseId: 'h1',
+                  onTextChanged: onTextChanged,
+                  onExpandedChanged: onExpandedChanged,
+                  focusNode: focusNode,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  testWidgets('pillole col nome intero, tutte larghe uguali', (tester) async {
+    await pumpInput(tester);
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+
+    expect(find.text('categories.vestiti'), findsOneWidget);
+    expect(find.text('categories.varie'), findsOneWidget);
+    final pills = find.byType(CategoryPill);
+    final first = tester.getSize(pills.at(0)).width;
+    for (var i = 1; i < ItemCategory.values.length; i++) {
+      expect(tester.getSize(pills.at(i)).width, first);
+    }
+  });
+
+  testWidgets('niente "+" per il form completo', (tester) async {
+    await pumpInput(tester);
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.add), findsNothing);
+  });
+
+  testWidgets('il testo scritto arriva a onTextChanged', (tester) async {
+    String? last;
+    await pumpInput(tester, onTextChanged: (v) => last = v);
+    await tester.enterText(find.byType(TextField), 'calz');
+    expect(last, 'calz');
+  });
+
+  testWidgets('usa il FocusNode passato da fuori', (tester) async {
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    var expanded = false;
+    await pumpInput(
+      tester,
+      focusNode: node,
+      onExpandedChanged: (v) => expanded = v,
+    );
+    node.requestFocus();
+    await tester.pumpAndSettle();
+    expect(expanded, isTrue);
+  });
 }

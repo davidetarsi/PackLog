@@ -8,7 +8,6 @@ import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
-import '../../items/view/add_edit_item_screen.dart';
 import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/providers/item_selection_provider.dart';
@@ -770,12 +769,6 @@ class _HouseNormalActionBar extends StatelessWidget {
               autofocus: autofocusRapidFire,
               currentSpaceId: currentSpaceId,
               height: elementHeight,
-              onOpenFullForm: (name, category) => showAddEditItemSheet(
-                context,
-                houseId: houseId,
-                initialName: name.isNotEmpty ? name : null,
-                initialCategory: category,
-              ),
               onExpandedChanged: onExpandedChanged,
             ),
           ),
