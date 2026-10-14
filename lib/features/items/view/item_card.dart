@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/item_model.dart';
 import '../providers/item_selection_provider.dart';
 import '../../../shared/widgets/widgets.dart';
-import 'add_edit_item_screen.dart';
+import 'item_sheet.dart';
 import '../../../shared/theme/app_spacing.dart';
 
 class ItemCard extends ConsumerWidget {
@@ -151,7 +151,7 @@ class ItemCard extends ConsumerWidget {
                 .toggleItem(item.id)
           : () {
               onOpened?.call();
-              showAddEditItemSheet(
+              showItemSheet(
                 context,
                 houseId: item.houseId,
                 itemId: item.id,

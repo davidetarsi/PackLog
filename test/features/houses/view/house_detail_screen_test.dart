@@ -242,10 +242,10 @@ void main() {
     await app.tap(find.text('Calzini'));
     verify(() => analytics.trackAddExistingMatchTapped(position: 1)).called(1);
     // La scheda dell'oggetto si apre sopra la pagina.
-    expect(find.text('Modifica oggetto'), findsOneWidget);
+    expect(find.byKey(const Key('item_sheet_name')), findsOneWidget);
     await tester.binding.handlePopRoute();
     await app.settle();
-    expect(find.text('Modifica oggetto'), findsNothing);
+    expect(find.byKey(const Key('item_sheet_name')), findsNothing);
     // Chiusa la scheda, la pagina è ancora lì e il campo riprende il focus.
     expect(find.text('Già in casa · 1'), findsOneWidget);
     expect(
