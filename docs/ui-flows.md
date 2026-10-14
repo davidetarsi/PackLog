@@ -136,8 +136,9 @@ freccia dell'app bar o un tocco fuori chiudono la pagina.
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1 | Pagina "aggiungi" dalla Crea | `features/houses/view/house_detail_screen.dart` (`_AddPage`) | Crea → scrivili a mano (niente più "+": il campo è già attivo) | ✓ campo attivo, casa nascosta. Il form di creazione non si apre più dalla casa; `add_edit_item_screen.dart` resta per la modifica |
-| 2 | Modifica oggetto | `features/items/view/item_form_content.dart` | tap su un oggetto | ✓. Non catturati: picker quantità, casa, spazio (sheet) |
+| 1 | Pagina "aggiungi" dalla Crea | `features/houses/view/house_detail_screen.dart` (`_AddPage`) | Crea → scrivili a mano (niente più "+": il campo è già attivo) | ✓ campo attivo, casa nascosta. La creazione di un oggetto passa solo da qui: la scheda oggetto è solo modifica |
+| 2 | Scheda oggetto | `features/items/view/item_sheet.dart` (`ItemSheet`) | tap su un oggetto nel dettaglio casa | ✓ nome come titolo, righe Categoria / Quantità / Spazio, "Aggiungi una nota" grigio, solo "Salva" arancio. Non catturati: picker di categoria e spazio aperti |
+| 3 | Scheda oggetto: menu | `features/items/view/item_sheet.dart` | ⋯ in alto a destra della scheda | ✓ "Sposta in un'altra casa" ed "Elimina" (rosso). Non catturati: sheet di spostamento e conferma di eliminazione |
 
 ### 06 · Import AI da dettaglio casa
 

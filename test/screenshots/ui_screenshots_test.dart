@@ -546,13 +546,27 @@ final flows = <Flow>[
     ),
     Scenario(
       2,
-      'oggetto-form',
+      'oggetto-scheda',
       'modifica',
       source: 'lib/features/items/view/item_sheet.dart',
-      description: 'Tap su un oggetto nel dettaglio casa.',
+      description:
+          'Tocco su un oggetto: nome come titolo, righe Categoria / Quantità / Spazio, solo Salva arancio.',
       steps: (app) async {
         await _houseDetail(app);
         await app.tap(find.text('Maglione di lana'));
+      },
+    ),
+    Scenario(
+      3,
+      'oggetto-scheda',
+      'menu',
+      source: 'lib/features/items/view/item_sheet.dart',
+      description:
+          'Menu ⋯ della scheda: Sposta in un\'altra casa ed Elimina (rosso).',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.text('Maglione di lana'));
+        await app.tap(find.byKey(const Key('item_sheet_menu')));
       },
     ),
   ]),
