@@ -60,7 +60,7 @@ passati. Un oggetto ha un nome volutamente lungo.
 Shell con barra flottante (`lib/shared/widgets/main_shell.dart`): **Case**
 (`/`, home), **Crea** al centro e **Viaggi** (`/trips`). Crea apre il foglio
 Crea: "Scansiona con AI" in primo piano (con la casa di destinazione), il link
-"scrivili a mano" (apre la casa con il rapid fire attivo), poi Nuova casa e
+"scrivili a mano" (apre la pagina "aggiungi" della casa con il campo attivo), poi Nuova casa e
 Nuovo viaggio, nell'ordine della tab da cui lo si apre. Il **Profilo**
 (`/profile`) si apre dall'avatar in alto a destra.
 Profilo e schermate di dettaglio stanno sul navigator radice, sopra la shell. Redirect in `lib/core/routing/app_router.dart`:
@@ -106,9 +106,19 @@ gli oggetti che corrispondono) e "⋯" gestisce la casa. In basso: il campo
 rapid-fire con bordo neutro e il bottone AI tondo, l'unico elemento arancione
 della schermata. La pillola dello spazio scelto è neutra.
 
+Toccando il campo si apre la **pagina "aggiungi"**: la lista della casa sparisce
+e restano solo le risposte utili. Sopra il campo, una fila di quattro pillole
+di uguale larghezza (icona sopra, nome intero sotto: Vestiti, Toiletries,
+Elettronica, Varie). Da due caratteri digitati (spazi esclusi) compare
+"Già in casa · n", con gli oggetti già presenti nella casa, in qualunque
+spazio; sotto, "Aggiunti ora · n" con quelli salvati in questa pagina. L'app
+bar ha solo la freccia e il nome della casa (niente 🔍 né "⋯"). Il tasto
+"fatto" della tastiera salva e tiene il campo attivo; la freccia indietro, la
+freccia dell'app bar o un tocco fuori chiudono la pagina.
+
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1-5 | Dettaglio casa | `features/houses/view/house_detail_screen.dart` | tap su una casa | ✓ pieno, ✓ filtro spazio, ✓ casa vuota, ✓ input rapido espanso, ✓ selezione multipla |
+| 1-5 | Dettaglio casa | `features/houses/view/house_detail_screen.dart` | tap su una casa | ✓ pieno, ✓ filtro spazio, ✓ casa vuota (stato vuoto AI-first: "Scansiona con AI" e il link "scrivili a mano"), ✓ pagina "aggiungi" con un nome digitato (casa nascosta, pillole col nome intero), ✓ selezione multipla |
 | 6 | Sposta in… | `features/items/view/bulk_move_sheet.dart` | selezione → Sposta | ✓ |
 | 7 | Aggiungi a viaggio | `features/trips/view/trip_picker_sheet.dart` | selezione → icona valigia | ✓ |
 | 8 | Gestisci casa | `features/houses/view/house_manage_sheet.dart` | "⋯" in alto a destra | ✓ |
@@ -120,12 +130,13 @@ della schermata. La pillola dello spazio scelto è neutra.
 | 14 | Ricerca nella casa | `features/houses/view/house_detail_screen.dart`, `features/items/view/items_screen.dart` | 🔍 in alto, poi testo | ✓ "cal": solo gli oggetti che corrispondono |
 | 15 | Gruppo chiuso | `features/items/view/item_category_section.dart` | tap sull'etichetta "Vestiti · 7" | ✓ gruppo Vestiti chiuso |
 | 16 | Temporanei in cima | `features/items/view/in_transit_section.dart` | Casa al mare (viaggio attivo verso di lei) | ✓ "Temporanei · 4 · da Casa Milano" in cima |
+| 17 | Pagina "aggiungi": Già in casa | `features/houses/view/house_detail_screen.dart` (`_AddPage`) | campo rapid-fire, scrivi "calz" | ✓ "Già in casa · 1" con Calzini (x7) sopra le pillole |
 
 ### 05 · Oggetti
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1 | Nuovo oggetto (sheet) | `features/items/view/add_edit_item_screen.dart` | Crea → scrivili a mano → rapid fire → + | ✓ |
+| 1 | Pagina "aggiungi" dalla Crea | `features/houses/view/house_detail_screen.dart` (`_AddPage`) | Crea → scrivili a mano (niente più "+": il campo è già attivo) | ✓ campo attivo, casa nascosta. Il form di creazione non si apre più dalla casa; `add_edit_item_screen.dart` resta per la modifica |
 | 2 | Modifica oggetto | `features/items/view/item_form_content.dart` | tap su un oggetto | ✓. Non catturati: picker quantità, casa, spazio (sheet) |
 
 ### 06 · Import AI da dettaglio casa

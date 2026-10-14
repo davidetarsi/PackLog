@@ -362,7 +362,8 @@ final flows = <Flow>[
       'vuota',
       route: '/houses/:id',
       source: 'lib/features/items/view/items_screen.dart',
-      description: 'Casa senza oggetti.',
+      description:
+          'Casa vuota: "Scansiona con AI" e il link "scrivili a mano".',
       steps: (app) => _houseDetail(app, kEmptyHouseId),
     ),
     Scenario(
@@ -371,7 +372,8 @@ final flows = <Flow>[
       'rapid-fire',
       route: '/houses/:id',
       source: 'lib/features/items/widgets/rapid_fire_input.dart',
-      description: 'Input rapido espanso con un nome digitato.',
+      description:
+          'Pagina "aggiungi": la casa sparisce, sopra il campo le pillole delle categorie col nome intero.',
       steps: (app) async {
         await _houseDetail(app);
         await app.tap(find.byType(TextField).last);
@@ -514,20 +516,32 @@ final flows = <Flow>[
           'Casa al mare: gruppo Temporanei in cima, con la provenienza nell\'etichetta.',
       steps: (app) => _houseDetail(app, kSeaHouseId),
     ),
+    Scenario(
+      17,
+      'dettaglio-casa',
+      'aggiungi-gia-in-casa',
+      route: '/houses/:id',
+      source: _houseDetailSrc,
+      description: 'Pagina "aggiungi": scrivendo "calz" compare Già in casa.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.byType(TextField).last);
+        await app.enterText(find.byType(TextField).last, 'calz');
+      },
+    ),
   ]),
 
   Flow('05-oggetti', 'Oggetti: creazione e modifica', [
     Scenario(
       1,
-      'oggetto-form',
-      'nuovo',
-      source: 'lib/features/items/view/add_edit_item_screen.dart',
+      'oggetto-aggiungi',
+      'da-crea',
+      source: _houseDetailSrc,
       description:
-          'Nuovo oggetto: Crea → "scrivili a mano" → rapid fire della casa → +.',
+          'Crea → "scrivili a mano": pagina "aggiungi" della casa con il campo attivo.',
       steps: (app) async {
         await _openCreateSheet(app);
         await app.tap(find.byKey(const Key('create_manual_items')));
-        await app.tap(find.byIcon(Icons.add).last);
       },
     ),
     Scenario(
