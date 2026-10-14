@@ -314,19 +314,41 @@ void main() {
   });
 
   group('AI & onboarding funnel (P2 #14)', () {
+    test('trackAiItemsSaved logs count + is_onboarding + updated', () async {
+      service.trackAiItemsSaved(count: 4, isOnboarding: true);
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_items_saved',
+          properties: {'count': 4, 'is_onboarding': true, 'updated': 0},
+        ),
+      ).called(1);
+    });
+
     test(
-      'trackAiItemsSaved logs ai_items_saved with count + is_onboarding',
+      'trackAlreadyHereOpened logs whether manual candidates exist',
       () async {
-        service.trackAiItemsSaved(count: 4, isOnboarding: true);
+        service.trackAlreadyHereOpened(hasManualCandidates: true);
         await pump();
         verify(
           () => mockAnalytics.logEvent(
-            'ai_items_saved',
-            properties: {'count': 4, 'is_onboarding': true},
+            'already_here_opened',
+            properties: {'has_manual_candidates': true},
           ),
         ).called(1);
       },
     );
+
+    test('trackAlreadyHereDetailsAdded logs without properties', () async {
+      service.trackAlreadyHereDetailsAdded();
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'already_here_details_added',
+          properties: null,
+        ),
+      ).called(1);
+    });
 
     test('trackOnboardingStarted logs onboarding_started', () async {
       service.trackOnboardingStarted();

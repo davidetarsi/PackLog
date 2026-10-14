@@ -16,6 +16,7 @@ import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/repositories/item_repository.dart';
 import '../../tour/providers/post_login_onboarding_provider.dart';
+import '../helpers/ai_item_category.dart';
 import '../model/ai_failure_reason.dart';
 import '../model/ai_import_state.dart';
 import '../model/clothing_analysis_result.dart';
@@ -37,6 +38,23 @@ class AiImportNotifier extends _$AiImportNotifier {
 
   List<ClothingAnalysisResult> get allResults =>
       state.photoGroups.expand((g) => g.results).toList();
+
+  List<ClothingAnalysisResult> get _newResults => [
+    for (final group in state.photoGroups)
+      for (var i = 0; i < group.results.length; i++)
+        if (!group.excluded.contains(i) && !group.linkedItemIds.containsKey(i))
+          group.results[i],
+  ];
+
+  Map<String, ClothingAnalysisResult> get _links => {
+    for (final group in state.photoGroups)
+      for (final entry in group.linkedItemIds.entries)
+        entry.value: group.results[entry.key],
+  };
+
+  int get newCount => _newResults.length;
+
+  int get updatedCount => _links.length;
 
   // ── Processing ────────────────────────────────────────────────────────────
 
@@ -138,18 +156,44 @@ class AiImportNotifier extends _$AiImportNotifier {
 
   // ── Item management ───────────────────────────────────────────────────────
 
-  void deleteItem(int groupIndex, int itemIndex) {
-    final groups = List<PhotoGroup>.from(state.photoGroups);
-    final group = groups[groupIndex];
-    final newResults = List<ClothingAnalysisResult>.from(group.results)
-      ..removeAt(itemIndex);
+  PhotoGroup _group(int index) => state.photoGroups[index];
 
-    if (newResults.isEmpty) {
-      groups.removeAt(groupIndex);
-    } else {
-      groups[groupIndex] = group.copyWith(results: newResults);
-    }
+  void _replaceGroup(int index, PhotoGroup group) {
+    final groups = List<PhotoGroup>.from(state.photoGroups);
+    groups[index] = group;
     state = state.copyWith(photoGroups: groups);
+  }
+
+  void setIncluded(int groupIndex, int itemIndex, bool included) {
+    final group = _group(groupIndex);
+    final excluded = Set<int>.from(group.excluded);
+    if (included) {
+      excluded.remove(itemIndex);
+    } else {
+      excluded.add(itemIndex);
+    }
+    _replaceGroup(groupIndex, group.copyWith(excluded: excluded));
+  }
+
+  void linkToExisting(int groupIndex, int itemIndex, String itemId) {
+    final groups = List<PhotoGroup>.from(state.photoGroups);
+    for (var index = 0; index < groups.length; index++) {
+      final links = Map<int, String>.from(groups[index].linkedItemIds)
+        ..removeWhere((_, linkedId) => linkedId == itemId);
+      groups[index] = groups[index].copyWith(linkedItemIds: links);
+    }
+    final target = groups[groupIndex];
+    groups[groupIndex] = target.copyWith(
+      linkedItemIds: {...target.linkedItemIds, itemIndex: itemId},
+    );
+    state = state.copyWith(photoGroups: groups);
+  }
+
+  void unlink(int groupIndex, int itemIndex) {
+    final group = _group(groupIndex);
+    final linkedItemIds = Map<int, String>.from(group.linkedItemIds)
+      ..remove(itemIndex);
+    _replaceGroup(groupIndex, group.copyWith(linkedItemIds: linkedItemIds));
   }
 
   void updateItemName(int groupIndex, int itemIndex, String name) {
@@ -162,7 +206,14 @@ class AiImportNotifier extends _$AiImportNotifier {
   }
 
   void setSelectedHouseId(String id) {
-    state = state.copyWith(selectedHouseId: id);
+    if (state.selectedHouseId == id) return;
+    state = state.copyWith(
+      selectedHouseId: id,
+      photoGroups: [
+        for (final group in state.photoGroups)
+          group.copyWith(linkedItemIds: const <int, String>{}),
+      ],
+    );
   }
 
   void reset() {
@@ -174,14 +225,16 @@ class AiImportNotifier extends _$AiImportNotifier {
   /// Saves items to the house specified by [state.selectedHouseId].
   /// Throws if [state.selectedHouseId] is null.
   Future<void> saveItems() async {
+    if (state.isLoading) return;
     final houseId = state.selectedHouseId;
     if (houseId == null) {
       state = state.copyWith(errorMessage: 'ai_import.no_house_selected'.tr());
       return;
     }
 
-    final results = allResults;
-    if (results.isEmpty) return;
+    final results = _newResults;
+    final links = _links;
+    if (results.isEmpty && links.isEmpty) return;
 
     state = state.copyWith(isLoading: true);
     try {
@@ -192,7 +245,7 @@ class AiImportNotifier extends _$AiImportNotifier {
               id: _uuid.v4(),
               houseId: houseId,
               name: r.name,
-              category: _mapCategory(r.category),
+              category: aiItemCategory(r.category),
               quantity: 1,
               createdAt: now,
               updatedAt: now,
@@ -201,12 +254,26 @@ class AiImportNotifier extends _$AiImportNotifier {
           )
           .toList();
 
-      await ref.read(itemRepositoryProvider).insertMultipleItems(items);
+      final metadataByItemId = {
+        for (final entry in links.entries)
+          entry.key: jsonEncode(entry.value.toJson()),
+      };
+      final updated = await ref
+          .read(itemRepositoryProvider)
+          .saveAiItemsToHouse(
+            houseId: houseId,
+            newItems: items,
+            metadataByItemId: metadataByItemId,
+          );
       ref.invalidate(itemNotifierProvider(houseId));
       ref.read(syncOrchestratorProvider).requestSync();
       ref
           .read(coreAnalyticsServiceProvider)
-          .trackAiItemsSaved(count: items.length, isOnboarding: false);
+          .trackAiItemsSaved(
+            count: items.length,
+            isOnboarding: false,
+            updated: updated,
+          );
       state = const AiImportState();
     } catch (e) {
       state = state.copyWith(
@@ -219,7 +286,8 @@ class AiImportNotifier extends _$AiImportNotifier {
   /// Creates a default house, saves all AI items to it, advances onboarding.
   /// Used only during first-time onboarding.
   Future<void> saveItemsOnboarding() async {
-    final results = allResults;
+    if (state.isLoading) return;
+    final results = _newResults;
     if (results.isEmpty) return;
 
     state = state.copyWith(isLoading: true);
@@ -238,7 +306,7 @@ class AiImportNotifier extends _$AiImportNotifier {
               id: _uuid.v4(),
               houseId: houseId,
               name: r.name,
-              category: _mapCategory(r.category),
+              category: aiItemCategory(r.category),
               quantity: 1,
               createdAt: now,
               updatedAt: now,
@@ -264,13 +332,5 @@ class AiImportNotifier extends _$AiImportNotifier {
         errorMessage: 'ai_import.save_error'.tr(args: [e.toString()]),
       );
     }
-  }
-
-  // ── Private helpers ───────────────────────────────────────────────────────
-
-  static ItemCategory _mapCategory(String aiCategory) {
-    final lower = aiCategory.toLowerCase();
-    if (lower.contains('accessory')) return ItemCategory.varie;
-    return ItemCategory.vestiti;
   }
 }

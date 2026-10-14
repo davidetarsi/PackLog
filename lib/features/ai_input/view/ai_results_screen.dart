@@ -582,7 +582,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                         () => notifier.updateItemName(gi, ii, value),
                       );
                     },
-                    onDelete: () => notifier.deleteItem(gi, ii),
+                    onDelete: () => notifier.setIncluded(gi, ii, false),
                   ),
                 ),
           if (state.photoGroups[gi].results.isEmpty)
