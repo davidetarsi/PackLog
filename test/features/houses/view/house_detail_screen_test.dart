@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/features/items/view/bulk_move_sheet.dart';
+import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
+import 'package:pack_log/shared/widgets/universal_item_tile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../screenshots/support/harness.dart';
@@ -175,8 +179,171 @@ void main() {
     await app.enterText(find.byKey(const Key('house_search_field')), 'in');
     expect(find.text('Spazzolino'), findsOneWidget);
     await app.longPress(find.text('Calzini'));
-    await app.tap(find.byIcon(Icons.check_box_outlined));
+    await app.tap(find.text('Seleziona tutti'));
     expect(find.text('3 selezionati'), findsOneWidget);
+    await app.finish();
+  });
+
+  testWidgets('un oggetto scelto: 1 selezionato, azioni neutre e accese', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.longPress(find.text('Calzini'));
+    expect(find.text('1 selezionato'), findsOneWidget);
+    final selectedTile = tester.widget<UniversalItemTile>(
+      find.ancestor(
+        of: find.text('Calzini'),
+        matching: find.byType(UniversalItemTile),
+      ),
+    );
+    expect(
+      selectedTile.backgroundColor,
+      AppTheme.light.colorScheme.onSurface.withValues(alpha: 0.06),
+    );
+    final move = tester.widget<DsBarItem>(
+      find.byKey(const Key('selection_move')),
+    );
+    expect(move.onTap, isNotNull);
+    final icon = tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const Key('selection_delete')),
+        matching: find.byType(Icon),
+      ),
+    );
+    expect(icon.color, AppTheme.light.colorScheme.onSurface);
+    await app.finish();
+  });
+
+  testWidgets('senza oggetti selezionati le tre azioni sono spente', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.longPress(find.text('Calzini'));
+    await app.tap(find.byType(Checkbox).first);
+    for (final key in const [
+      Key('selection_move'),
+      Key('selection_trip'),
+      Key('selection_delete'),
+    ]) {
+      expect(tester.widget<DsBarItem>(find.byKey(key)).onTap, isNull);
+    }
+    await app.finish();
+  });
+
+  testWidgets('Sposta verso una casa senza spazi: basta un tocco', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.longPress(find.text('Calzini'));
+    await app.tap(find.byKey(const Key('selection_move')));
+    expect(find.text('Sposta 1 oggetto'), findsOneWidget);
+    await app.tap(find.text('Casa al mare'));
+
+    expect(find.byType(BulkMoveSheet), findsNothing);
+    expect(find.text('Calzini'), findsNothing);
+    final movedItem = await app.container
+        .read(itemRepositoryProvider)
+        .getItemById('item-4');
+    expect(movedItem.houseId, kSeaHouseId);
+    expect(movedItem.spaceId, isNull);
+    await app.finish();
+  });
+
+  testWidgets('Sposta con due oggetti usa il titolo plurale', (tester) async {
+    final app = await openHome(tester);
+    await app.longPress(find.text('Calzini'));
+    await app.tap(find.text('Jeans blu'));
+    await app.tap(find.byKey(const Key('selection_move')));
+
+    expect(find.text('Sposta 2 oggetti'), findsOneWidget);
+    await app.finish();
+  });
+
+  testWidgets('Sposta verso una casa con spazi: casa, poi spazio', (
+    tester,
+  ) async {
+    final app = await openHouse(tester, kSeaHouseId);
+    await app.longPress(find.text('Infradito'));
+    await app.tap(find.byKey(const Key('selection_move')));
+    await app.tap(find.text('Casa Milano'));
+    expect(find.text('Armadio camera'), findsOneWidget);
+    await app.tap(find.text('Armadio camera'));
+
+    expect(find.byType(BulkMoveSheet), findsNothing);
+    expect(find.text('Infradito'), findsNothing);
+    final movedItem = await app.container
+        .read(itemRepositoryProvider)
+        .getItemById('sea-item-1');
+    expect(movedItem.houseId, kHomeId);
+    expect(movedItem.spaceId, 'space-armadio');
+    await app.finish();
+  });
+
+  testWidgets(
+    'Senza spazio mantiene la casa di destinazione e azzera lo spazio',
+    (tester) async {
+      final app = await openHouse(tester, kSeaHouseId);
+      await app.longPress(find.text('Infradito'));
+      await app.tap(find.byKey(const Key('selection_move')));
+      await app.tap(find.text('Casa Milano'));
+      await app.tap(find.text('Senza spazio'));
+
+      expect(find.byType(BulkMoveSheet), findsNothing);
+      final movedItem = await app.container
+          .read(itemRepositoryProvider)
+          .getItemById('sea-item-1');
+      expect(movedItem.houseId, kHomeId);
+      expect(movedItem.spaceId, isNull);
+      await app.finish();
+    },
+  );
+
+  testWidgets('dal ⋯: Seleziona oggetti apre la selezione vuota', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(find.byIcon(Icons.more_horiz));
+    await app.tap(find.text('Seleziona oggetti'));
+
+    final move = tester.widget<DsBarItem>(
+      find.byKey(const Key('selection_move')),
+    );
+    expect(move.onTap, isNull);
+    await app.finish();
+  });
+
+  testWidgets('la ricerca prende il focus alla prima apertura', (tester) async {
+    final app = await openHome(tester);
+    await app.tap(find.byKey(const Key('house_search')));
+    final field = find.descendant(
+      of: find.byKey(const Key('house_search_field')),
+      matching: find.byType(EditableText),
+    );
+    expect(tester.widget<EditableText>(field).focusNode.hasFocus, isTrue);
+    await app.finish();
+  });
+
+  testWidgets('dopo la selezione la ricerca non riprende la tastiera', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(find.byKey(const Key('house_search')));
+    await app.enterText(find.byKey(const Key('house_search_field')), 'calz');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await app.settle();
+    await app.longPress(find.text('Calzini'));
+    await app.tap(find.byIcon(Icons.close));
+    final textField = tester.widget<TextField>(
+      find.byKey(const Key('house_search_field')),
+    );
+    final field = find.descendant(
+      of: find.byKey(const Key('house_search_field')),
+      matching: find.byType(EditableText),
+    );
+    expect(tester.widget<EditableText>(field).focusNode.hasFocus, isFalse);
+    expect(textField.controller?.text, 'calz');
+    expect(find.text('Calzini'), findsOneWidget);
+    expect(find.text('Jeans blu'), findsNothing);
     await app.finish();
   });
 
@@ -262,8 +429,9 @@ void main() {
     await app.tap(rapidFire());
     await app.enterText(rapidFire(), 'calz');
     await app.longPress(find.text('Calzini'));
-    expect(find.text('1 selezionati'), findsNothing);
-    expect(find.byKey(const ValueKey('selection_bar')), findsNothing);
+    expect(find.byKey(const Key('selection_move')), findsNothing);
+    expect(find.byKey(const ValueKey('selection-bar')), findsNothing);
+    expect(find.byType(Checkbox), findsNothing);
     expect(find.text('Già in casa · 1'), findsOneWidget);
     await app.finish();
   });

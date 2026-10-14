@@ -6,6 +6,7 @@ import 'package:pack_log/shared/widgets/ds_sheet_header.dart';
 Future<void> _open(
   WidgetTester tester, {
   required VoidCallback onDelete,
+  VoidCallback? onSelectItems,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -19,6 +20,7 @@ Future<void> _open(
               houseName: 'Casa',
               onSetPrimary: () {},
               onDelete: onDelete,
+              onSelectItems: onSelectItems,
             ),
             child: const Text('apri'),
           ),
@@ -47,5 +49,35 @@ void main() {
 
     expect(deleted, isTrue);
     expect(find.byType(DsSheetHeader), findsNothing);
+  });
+
+  testWidgets('Seleziona oggetti chiude il sheet e chiama onSelectItems', (
+    tester,
+  ) async {
+    var called = false;
+    await _open(tester, onDelete: () {}, onSelectItems: () => called = true);
+
+    await tester.tap(find.byIcon(Icons.checklist));
+    await tester.pumpAndSettle();
+
+    expect(called, isTrue);
+    expect(find.byType(DsSheetHeader), findsNothing);
+  });
+
+  testWidgets('su schermo basso le azioni restano raggiungibili scorrendo', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 420);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var deleted = false;
+    await _open(tester, onDelete: () => deleted = true, onSelectItems: () {});
+
+    await tester.ensureVisible(find.byIcon(Icons.delete_outline));
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+
+    expect(deleted, isTrue);
+    expect(tester.takeException(), isNull);
   });
 }

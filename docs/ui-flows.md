@@ -67,6 +67,10 @@ Profilo e schermate di dettaglio stanno sul navigator radice, sopra la shell. Re
 onboarding non completato → `/onboarding`; non autenticato → `/login`; tour
 post-login allo step `aiIntro` → `/onboarding-ai-intro`.
 
+La barra di navigazione e quella della selezione multipla condividono i
+componenti `DsFloatingBar` e `DsBarItem`; nella selezione le azioni sono
+Sposta, In viaggio ed Elimina.
+
 ## Flussi
 
 Per ogni schermata: file sorgente, come ci si arriva, stati catturati
@@ -118,10 +122,10 @@ freccia dell'app bar o un tocco fuori chiudono la pagina.
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1-5 | Dettaglio casa | `features/houses/view/house_detail_screen.dart` | tap su una casa | ✓ pieno, ✓ filtro spazio, ✓ casa vuota (stato vuoto AI-first: "Scansiona con AI" e il link "scrivili a mano"), ✓ pagina "aggiungi" con un nome digitato (casa nascosta, pillole col nome intero), ✓ selezione multipla |
-| 6 | Sposta in… | `features/items/view/bulk_move_sheet.dart` | selezione → Sposta | ✓ |
-| 7 | Aggiungi a viaggio | `features/trips/view/trip_picker_sheet.dart` | selezione → icona valigia | ✓ |
-| 8 | Gestisci casa | `features/houses/view/house_manage_sheet.dart` | "⋯" in alto a destra | ✓ |
+| 1-5 | Dettaglio casa | `features/houses/view/house_detail_screen.dart` | tap su una casa | ✓ pieno, ✓ filtro spazio, ✓ casa vuota (stato vuoto AI-first: "Scansiona con AI" e il link "scrivili a mano"), ✓ pagina "aggiungi" con un nome digitato (casa nascosta, pillole col nome intero), ✓ selezione multipla con caselle arancio, velo neutro e barra Sposta · In viaggio · Elimina |
+| 6 | Sposta in… | `features/items/view/bulk_move_sheet.dart` | selezione → Sposta | ✓. Toccare una casa senza spazi sposta subito; una casa con spazi apre la scelta dello spazio, compresa "Senza spazio" |
+| 7 | Aggiungi a viaggio | `features/trips/view/trip_picker_sheet.dart` | selezione → In viaggio | ✓ |
+| 8 | Gestisci casa | `features/houses/view/house_manage_sheet.dart` | "⋯" in alto a destra | ✓, con "Seleziona oggetti" in cima |
 | 9 | Modifica casa | `features/houses/view/add_edit_house_screen.dart` | Gestisci → Modifica info | ✓ |
 | 10 | Spazi | `features/spaces/view/spaces_management_screen.dart` | Gestisci → Modifica spazi | ✓. Non catturato: sheet nuovo/modifica spazio |
 | 11 | Bagagli | `features/luggages/view/luggages_management_screen.dart` | Gestisci → Modifica bagagli | ✓. Non catturato: sheet nuovo/modifica bagaglio |
@@ -131,6 +135,7 @@ freccia dell'app bar o un tocco fuori chiudono la pagina.
 | 15 | Gruppo chiuso | `features/items/view/item_category_section.dart` | tap sull'etichetta "Vestiti · 7" | ✓ gruppo Vestiti chiuso |
 | 16 | Temporanei in cima | `features/items/view/in_transit_section.dart` | Casa al mare (viaggio attivo verso di lei) | ✓ "Temporanei · 4 · da Casa Milano" in cima |
 | 17 | Pagina "aggiungi": Già in casa | `features/houses/view/house_detail_screen.dart` (`_AddPage`) | campo rapid-fire, scrivi "calz" | ✓ "Già in casa · 1" con Calzini (x7) sopra le pillole |
+| 18 | Sposta in…: scelta spazio | `features/items/view/bulk_move_sheet.dart` | Casa al mare → selezione di Infradito → Sposta → Casa Milano | ✓ elenco degli spazi di Casa Milano e "Senza spazio" |
 
 ### 05 · Oggetti
 

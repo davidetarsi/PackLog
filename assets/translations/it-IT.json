@@ -107,7 +107,11 @@
     "delete_confirmation": "Sei sicuro di voler eliminare \"{}\"?",
     "item_deleted": "Oggetto eliminato",
     "select_items": "Seleziona oggetti",
-    "selected_count": "{} selezionati",
+    "selected_count": {
+      "one": "{} selezionato",
+      "other": "{} selezionati"
+    },
+    "to_trip": "In viaggio",
     "select_all": "Seleziona tutti",
     "deselect_all": "Deseleziona tutti",
     "bulk_delete_confirm_title": "Eliminare {} oggetti?",
@@ -116,7 +120,10 @@
     "bulk_move_title": "Sposta in...",
     "bulk_move_success": "{} oggetti spostati in {}",
     "bulk_move_no_houses": "Nessun'altra casa disponibile",
-    "bulk_move_sheet_title": "Sposta {} oggetti",
+    "bulk_move_sheet_title": {
+      "one": "Sposta {} oggetto",
+      "other": "Sposta {} oggetti"
+    },
     "add_to_trip_success": "{} oggetti aggiunti a {}",
     "rapid_fire_hint": "Aggiungi oggetto...",
     "already_here": "Già in casa",
