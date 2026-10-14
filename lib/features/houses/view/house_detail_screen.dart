@@ -6,6 +6,7 @@ import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
+import '../../ai_input/helpers/start_ai_scan.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../providers/house_provider.dart';
 import '../../items/view/items_screen.dart';
@@ -618,6 +619,8 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                       key: const ValueKey('normal_bar'),
                       child: _HouseNormalActionBar(
                         houseId: widget.houseId,
+                        onAiScan: () =>
+                            startAiScan(context, ref, widget.houseId),
                         autofocusRapidFire: widget.openRapidFire,
                         isExpanded: _isRapidFireExpanded,
                         currentSpaceId:
@@ -918,6 +921,7 @@ class _AddPage extends ConsumerWidget {
 /// scansione AI (destra). "⋯" e ricerca stanno nell'intestazione.
 class _HouseNormalActionBar extends StatelessWidget {
   final String houseId;
+  final VoidCallback onAiScan;
   final bool autofocusRapidFire;
   final bool isExpanded;
   final String? currentSpaceId;
@@ -927,6 +931,7 @@ class _HouseNormalActionBar extends StatelessWidget {
 
   const _HouseNormalActionBar({
     required this.houseId,
+    required this.onAiScan,
     required this.autofocusRapidFire,
     required this.isExpanded,
     required this.currentSpaceId,
@@ -965,7 +970,7 @@ class _HouseNormalActionBar extends StatelessWidget {
               // che vogliamo far prendere per aggiungere oggetti.
               color: Theme.of(context).colorScheme.primary,
               showBorder: true,
-              onPressed: () => context.push('/houses/$houseId/ai-import'),
+              onPressed: onAiScan,
             ),
           ],
         ],

@@ -21,6 +21,7 @@ import '../../houses/providers/house_provider.dart';
 import '../../tour/tour_keys.dart';
 import '../model/ai_failure_reason.dart';
 import '../model/ai_import_state.dart';
+import '../helpers/start_ai_scan.dart';
 import '../providers/ai_import_notifier.dart';
 import 'widgets/ai_analysis_progress.dart';
 import 'widgets/ai_photo_group_header.dart';
@@ -30,9 +31,8 @@ import 'widgets/image_source_sheet.dart';
 /// Page 2 of the AI import flow: shows loading progress while GPT-4o Vision
 /// analyses the images, then the editable results list with save CTA.
 ///
-/// Always reached by pushing from [AiClothingSandboxScreen] (normal flow) or
-/// [AiOnboardingIntroScreen] (onboarding flow), both of which call
-/// [AiImportNotifier.processFiles] before navigating here.
+/// Normal scans arrive through [startAiScan]; the onboarding scan arrives
+/// through [AiOnboardingIntroScreen]. Both start processing before navigation.
 class AiResultsScreen extends ConsumerStatefulWidget {
   final String? houseId;
   final bool isFirstTimeOnboarding;
@@ -148,7 +148,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
 
   /// Nomi delle route che compongono il flusso di scansione (vedi
   /// `app_router.dart`): sono quelle da togliere dallo stack in uscita.
-  static const _flowRouteNames = {'ai-import', 'ai-import-results'};
+  static const _flowRouteNames = {'ai-import-results'};
 
   /// Chiude il flusso e lascia lo stack come [shell, dettaglio casa].
   ///

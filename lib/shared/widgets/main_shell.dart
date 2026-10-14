@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/analytics/core_analytics_service.dart';
+import '../../features/ai_input/helpers/start_ai_scan.dart';
 import '../../features/houses/helpers/create_house_flow.dart';
 import '../../features/tour/tour_keys.dart';
 import '../theme/app_spacing.dart';
@@ -41,7 +42,7 @@ class MainShell extends ConsumerWidget {
     switch (choice.action) {
       case CreateAction.aiScan:
         analytics.trackCreateSheetChoice(choice: 'ai_scan', tab: tab);
-        context.push('/houses/${choice.houseId}/ai-import');
+        await startAiScan(context, ref, choice.houseId!);
       case CreateAction.manualItems:
         analytics.trackCreateSheetChoice(choice: 'manual_items', tab: tab);
         // L'inserimento a mano passa dal rapid fire della casa, già attivo.

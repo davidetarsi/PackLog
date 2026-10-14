@@ -71,10 +71,6 @@ void main() {
           'add=${state.uri.queryParameters['add']}',
         ),
       ),
-      GoRoute(
-        path: '/houses/:id/ai-import',
-        builder: (_, state) => Text('AI IMPORT ${state.pathParameters['id']}'),
-      ),
     ],
   );
 
@@ -200,12 +196,15 @@ void main() {
   });
 
   group('scelta nel foglio Crea', () {
-    testWidgets('Scansiona con AI apre l\'import della casa', (tester) async {
+    testWidgets('Scansiona con AI apre il selettore immagini', (tester) async {
       await pumpShell(tester);
       await openCreate(tester);
       await tester.tap(find.byKey(const Key('create_ai_scan')));
       await tester.pumpAndSettle();
-      expect(find.text('AI IMPORT a'), findsOneWidget);
+      expect(find.byIcon(Icons.photo_library_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
       verify(
         () => analytics.logEvent(
           'create_sheet_choice',

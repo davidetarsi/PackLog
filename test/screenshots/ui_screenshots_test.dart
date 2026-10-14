@@ -591,31 +591,6 @@ final flows = <Flow>[
   Flow('06-import-ai', 'Import AI da dettaglio casa', [
     Scenario(
       1,
-      'import-ai',
-      'vuoto',
-      route: '/houses/:id/ai-import',
-      source: 'lib/features/ai_input/view/ai_clothing_sandbox_screen.dart',
-      description: 'Schermata iniziale: scegli immagini.',
-      steps: (app) async {
-        await _houseDetail(app);
-        await app.tap(_icon(Icons.auto_awesome));
-      },
-    ),
-    Scenario(
-      2,
-      'import-ai',
-      'scelta-sorgente',
-      route: '/houses/:id/ai-import',
-      source: 'lib/features/ai_input/view/ai_clothing_sandbox_screen.dart',
-      description: 'Sheet fotocamera / galleria.',
-      steps: (app) async {
-        await _houseDetail(app);
-        await app.tap(_icon(Icons.auto_awesome));
-        await app.tap(_text('ai_import.pick_images'));
-      },
-    ),
-    Scenario(
-      3,
       'ai-risultati',
       'analisi-in-corso',
       route: '/houses/:id/ai-import/results',
@@ -634,7 +609,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      4,
+      2,
       'ai-risultati',
       'capi-riconosciuti',
       route: '/houses/:id/ai-import/results',
@@ -652,7 +627,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      5,
+      3,
       'ai-risultati',
       'scelta-casa',
       route: '/houses/:id/ai-import/results',
@@ -671,7 +646,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      6,
+      4,
       'ai-risultati',
       'errore-parziale',
       route: '/houses/:id/ai-import/results',
@@ -689,7 +664,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      7,
+      5,
       'ai-risultati',
       'errore-rete',
       route: '/houses/:id/ai-import/results',
@@ -707,7 +682,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      8,
+      6,
       'ai-risultati',
       'limite-raggiunto',
       route: '/houses/:id/ai-import/results',

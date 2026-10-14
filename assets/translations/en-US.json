@@ -488,6 +488,8 @@
     "photo": "Photo",
     "photo_of": "Photo {} of {}",
     "pick_images": "Choose images",
+    "picker_error": "Could not open your photos. Try again.",
+    "picker_retry": "Retry",
     "retry": "Try again",
     "retry_photo": "Pick another photo",
     "save_button": "Save {}",

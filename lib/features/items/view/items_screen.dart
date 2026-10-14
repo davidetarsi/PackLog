@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pack_log/features/ai_input/helpers/start_ai_scan.dart';
 import 'package:pack_log/features/items/view/item_category_section.dart';
 import 'package:pack_log/shared/helpers/search_match.dart';
 import '../../../shared/widgets/refreshable_empty_state.dart';
@@ -156,8 +157,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                   // e metadati; poi la scrittura a mano.
                   ctaLabel: 'create_sheet.ai_scan'.tr(),
                   ctaIcon: Icons.auto_awesome,
-                  onCta: () =>
-                      context.push('/houses/${widget.houseId}/ai-import'),
+                  onCta: () => startAiScan(context, ref, widget.houseId),
                   linkLabel: 'create_sheet.manual_link'.tr(),
                   linkKey: const Key('items_empty_manual'),
                   onLink:

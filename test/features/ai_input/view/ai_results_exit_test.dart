@@ -103,12 +103,6 @@ void main() {
         builder: (_, state) => Text('DETAIL ${state.pathParameters['id']}'),
       ),
       GoRoute(
-        path: '/houses/:id/ai-import',
-        name: 'ai-import',
-        parentNavigatorKey: rootKey,
-        builder: (_, _) => const Text('SANDBOX'),
-      ),
-      GoRoute(
         path: '/houses/:id/ai-import/results',
         name: 'ai-import-results',
         parentNavigatorKey: rootKey,
@@ -143,8 +137,6 @@ void main() {
       router.push('/houses/a');
       await tester.pumpAndSettle();
     }
-    router.push('/houses/a/ai-import');
-    await tester.pumpAndSettle();
     router.push('/houses/a/ai-import/results');
     // Lo stato di caricamento ha un'animazione infinita: niente pumpAndSettle.
     await tester.pump();
@@ -158,7 +150,6 @@ void main() {
   /// shell non si può più tornare (non resta un secondo dettaglio sotto).
   Future<void> expectShellThenDetailOnly(WidgetTester tester) async {
     expect(find.text('DETAIL a'), findsOneWidget);
-    expect(find.text('SANDBOX', skipOffstage: false), findsNothing);
     router.pop();
     await tester.pumpAndSettle();
     expect(find.text('SHELL'), findsOneWidget);
