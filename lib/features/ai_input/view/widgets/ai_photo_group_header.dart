@@ -5,44 +5,101 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/widgets/ds_group_header.dart';
 
+/// Foto d'origine e intestazione del relativo gruppo di risultati.
 class AiPhotoGroupHeader extends StatelessWidget {
   final File photo;
   final int photoIndex;
-  final int totalPhotos;
+  final int itemCount;
 
   const AiPhotoGroupHeader({
     super.key,
     required this.photo,
     required this.photoIndex,
-    required this.totalPhotos,
+    required this.itemCount,
   });
+
+  Widget _missingPhoto(BuildContext context) => ColoredBox(
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    child: Center(
+      child: Icon(
+        Icons.image_not_supported_outlined,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
+
+  void _openFull(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog.fullscreen(
+        key: const Key('ai_photo_viewer'),
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: Image.file(
+                  photo,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _missingPhoto(context),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: 'common.close'.tr(),
+                  onPressed: () => Navigator.pop(dialogContext),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          child: Image.file(
-            photo,
-            width: context.iconSizeHero,
-            height: context.iconSizeHero,
-            fit: BoxFit.cover,
+    final size = context.responsive(88);
+    final radius = BorderRadius.circular(AppConstants.cardBorderRadius);
+    return Padding(
+      padding: EdgeInsets.only(top: context.spacingMd),
+      child: Row(
+        children: [
+          Material(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: radius,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              key: const Key('ai_photo_preview'),
+              borderRadius: radius,
+              onTap: () => _openFull(context),
+              child: Image.file(
+                photo,
+                width: size,
+                height: size,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => SizedBox.square(
+                  dimension: size,
+                  child: _missingPhoto(context),
+                ),
+              ),
+            ),
           ),
-        ),
-        SizedBox(width: context.spacingMd),
-        Text(
-          totalPhotos > 1
-              ? 'ai_import.photo_of'.tr(
-                  args: [photoIndex.toString(), totalPhotos.toString()],
-                )
-              : 'ai_import.photo'.tr(),
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-        ),
-      ],
+          SizedBox(width: context.spacingMd),
+          Expanded(
+            child: DsGroupHeader(
+              label: 'ai_import.photo_number'.tr(args: ['$photoIndex']),
+              detail: 'ai_import.items_count'.plural(itemCount),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -14,6 +14,8 @@ import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
 import 'package:pack_log/features/ai_input/view/ai_results_screen.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/providers/item_provider.dart';
 
 /// Verifica la fine del flusso di scansione AI: lo stack radice deve restare
 /// [shell, dettaglio casa], senza `go()` che butterebbe via la shell.
@@ -25,11 +27,32 @@ class _FakeAiImport extends AiImportNotifier {
   AiImportState build() => _initial;
 
   void emit(AiImportState next) => state = next;
+
+  @override
+  Future<void> saveItems() async {
+    state = state.copyWith(isLoading: true);
+    state = const AiImportState();
+  }
 }
 
 class _FakeHouseNotifier extends HouseNotifier {
   @override
   Future<List<HouseModel>> build() async => [_house];
+}
+
+class _FakeItemNotifier extends ItemNotifier {
+  @override
+  Future<List<ItemModel>> build(String houseId) async => const [];
+}
+
+class _TestAssetLoader extends AssetLoader {
+  const _TestAssetLoader(this.translations);
+
+  final Map<String, dynamic> translations;
+
+  @override
+  Future<Map<String, dynamic>> load(String path, Locale locale) async =>
+      translations;
 }
 
 final _house = HouseModel(
@@ -53,12 +76,17 @@ const _garment = ClothingAnalysisResult(
 );
 
 void main() {
+  late AssetLoader assetLoader;
   late File photo;
   late AiImportState resultsState;
 
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
+    assetLoader = _TestAssetLoader(
+      jsonDecode(File('assets/translations/it-IT.json').readAsStringSync())
+          as Map<String, dynamic>,
+    );
     final dir = Directory.systemTemp.createTempSync('ai_exit_test');
     photo = File('${dir.path}/p.png')
       ..writeAsBytesSync(
@@ -114,7 +142,11 @@ void main() {
     ],
   );
 
-  Future<void> pumpApp(WidgetTester tester, {required bool fromDetail}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    required bool fromDetail,
+    bool emitResults = true,
+  }) async {
     fakeAi = _FakeAiImport(const AiImportState(isLoading: true));
     router = buildRouter(GlobalKey<NavigatorState>());
     await tester.pumpWidget(
@@ -123,12 +155,21 @@ void main() {
         path: 'assets/translations',
         fallbackLocale: const Locale('en', 'US'),
         saveLocale: false,
+        assetLoader: assetLoader,
         child: ProviderScope(
           overrides: [
             aiImportNotifierProvider.overrideWith(() => fakeAi),
             houseNotifierProvider.overrideWith(_FakeHouseNotifier.new),
+            itemNotifierProvider('a').overrideWith(_FakeItemNotifier.new),
           ],
-          child: MaterialApp.router(routerConfig: router),
+          child: Builder(
+            builder: (context) => MaterialApp.router(
+              localizationsDelegates: context.localizationDelegates,
+              supportedLocales: context.supportedLocales,
+              locale: context.locale,
+              routerConfig: router,
+            ),
+          ),
         ),
       ),
     );
@@ -142,8 +183,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     // Transizione caricamento → risultati, come nell'app.
-    fakeAi.emit(resultsState);
-    await tester.pumpAndSettle();
+    if (emitResults) {
+      fakeAi.emit(resultsState);
+      await tester.pumpAndSettle();
+    }
   }
 
   /// Stack radice atteso: indietro dal dettaglio torna alla shell, e dalla
@@ -161,7 +204,10 @@ void main() {
     tester,
   ) async {
     await pumpApp(tester, fromDetail: false);
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(find.byKey(const Key('ai_results_close')));
+    await tester.pumpAndSettle();
+    expect(find.text('Scartare i risultati?'), findsOneWidget);
+    await tester.tap(find.text('Scarta'));
     await tester.pumpAndSettle();
     await expectShellThenDetailOnly(tester);
   });
@@ -170,7 +216,10 @@ void main() {
     tester,
   ) async {
     await pumpApp(tester, fromDetail: true);
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(find.byKey(const Key('ai_results_close')));
+    await tester.pumpAndSettle();
+    expect(find.text('Scartare i risultati?'), findsOneWidget);
+    await tester.tap(find.text('Scarta'));
     await tester.pumpAndSettle();
     await expectShellThenDetailOnly(tester);
   });
@@ -179,7 +228,7 @@ void main() {
     tester,
   ) async {
     await pumpApp(tester, fromDetail: false);
-    fakeAi.emit(const AiImportState());
+    await tester.tap(find.text('Salva: 1 nuovo'));
     await tester.pumpAndSettle();
     await expectShellThenDetailOnly(tester);
   });
@@ -188,7 +237,56 @@ void main() {
     tester,
   ) async {
     await pumpApp(tester, fromDetail: true);
-    fakeAi.emit(const AiImportState());
+    await tester.tap(find.text('Salva: 1 nuovo'));
+    await tester.pumpAndSettle();
+    await expectShellThenDetailOnly(tester);
+  });
+
+  testWidgets(
+    'back durante loading resta sulla pagina; con zero pending esce',
+    (tester) async {
+      await pumpApp(tester, fromDetail: true, emitResults: false);
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(find.byType(AiResultsScreen), findsOneWidget);
+      expect(
+        tester
+            .widget<IconButton>(find.byKey(const Key('ai_results_close')))
+            .onPressed,
+        isNull,
+      );
+
+      fakeAi.emit(
+        resultsState.copyWith(
+          photoGroups: [
+            resultsState.photoGroups.single.copyWith(excluded: const {0}),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pumpAndSettle();
+      await expectShellThenDetailOnly(tester);
+    },
+  );
+
+  testWidgets('doppio tap X senza pending non duplica il dettaglio', (
+    tester,
+  ) async {
+    await pumpApp(tester, fromDetail: false);
+    fakeAi.emit(
+      resultsState.copyWith(
+        photoGroups: [
+          resultsState.photoGroups.single.copyWith(excluded: const {0}),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final close = find.byKey(const Key('ai_results_close'));
+    await tester.tap(close);
+    await tester.tap(close);
+    await tester.pump();
     await tester.pumpAndSettle();
     await expectShellThenDetailOnly(tester);
   });
