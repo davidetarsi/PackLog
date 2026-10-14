@@ -195,6 +195,8 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
       houseName: houseName,
       onSetPrimary: () => _setPrimaryHouse(context, houseName),
       onDelete: () => _showDeleteDialog(context, houseName),
+      onSelectItems: () =>
+          ref.read(itemSelectionNotifierProvider.notifier).toggleMode(),
     );
   }
 

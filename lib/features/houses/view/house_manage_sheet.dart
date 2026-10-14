@@ -17,6 +17,7 @@ Future<void> showHouseManageSheet(
   required String houseName,
   required VoidCallback onSetPrimary,
   required VoidCallback onDelete,
+  VoidCallback? onSelectItems,
 }) {
   return showModalBottomSheet(
     context: context,
@@ -24,67 +25,80 @@ Future<void> showHouseManageSheet(
     // la testata in più il contenuto non ci sta sugli schermi bassi.
     isScrollControlled: true,
     builder: (sheetContext) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DsSheetHeader(title: 'houses.manage_sheet_title'.tr()),
-          ListTile(
-            leading: const Icon(Icons.edit),
-            title: Text('houses.edit_info'.tr()),
-            onTap: () {
-              Navigator.pop(sheetContext);
-              showAddEditHouseSheet(context, houseId: houseId);
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.push_pin,
-              color: isPrimary
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DsSheetHeader(title: 'houses.manage_sheet_title'.tr()),
+            if (onSelectItems != null)
+              ListTile(
+                leading: const Icon(Icons.checklist),
+                title: Text('items.select_items'.tr()),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  onSelectItems();
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: Text('houses.edit_info'.tr()),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                showAddEditHouseSheet(context, houseId: houseId);
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.push_pin,
+                color: isPrimary
+                    ? null
+                    : Theme.of(sheetContext).colorScheme.primary,
+              ),
+              title: Text('houses.set_as_primary'.tr()),
+              enabled: !isPrimary,
+              onTap: isPrimary
                   ? null
-                  : Theme.of(sheetContext).colorScheme.primary,
+                  : () {
+                      Navigator.pop(sheetContext);
+                      onSetPrimary();
+                    },
             ),
-            title: Text('houses.set_as_primary'.tr()),
-            enabled: !isPrimary,
-            onTap: isPrimary
-                ? null
-                : () {
-                    Navigator.pop(sheetContext);
-                    onSetPrimary();
-                  },
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.meeting_room),
-            title: Text('spaces.manage'.tr()),
-            onTap: () async {
-              Navigator.pop(sheetContext);
-              await showSpacesManagementSheet(context, houseId: houseId);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.luggage),
-            title: Text('luggages.manage'.tr()),
-            onTap: () async {
-              Navigator.pop(sheetContext);
-              await showLuggagesManagementSheet(context, houseId: houseId);
-            },
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(
-              Icons.delete_outline,
-              color: Theme.of(sheetContext).colorScheme.error,
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.meeting_room),
+              title: Text('spaces.manage'.tr()),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                await showSpacesManagementSheet(context, houseId: houseId);
+              },
             ),
-            title: Text(
-              'common.delete'.tr(),
-              style: TextStyle(color: Theme.of(sheetContext).colorScheme.error),
+            ListTile(
+              leading: const Icon(Icons.luggage),
+              title: Text('luggages.manage'.tr()),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                await showLuggagesManagementSheet(context, houseId: houseId);
+              },
             ),
-            onTap: () {
-              Navigator.pop(sheetContext);
-              onDelete();
-            },
-          ),
-        ],
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(
+                Icons.delete_outline,
+                color: Theme.of(sheetContext).colorScheme.error,
+              ),
+              title: Text(
+                'common.delete'.tr(),
+                style: TextStyle(
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                onDelete();
+              },
+            ),
+          ],
+        ),
       ),
     ),
   );

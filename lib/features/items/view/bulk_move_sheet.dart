@@ -10,7 +10,6 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/helpers/design_system.dart';
-import '../../../shared/widgets/universal_action_bar.dart';
 
 class BulkMoveDestination {
   const BulkMoveDestination({
@@ -54,26 +53,38 @@ class BulkMoveSheet extends ConsumerStatefulWidget {
 
 class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
   HouseModel? _selectedHouse;
-  bool _spaceConfirmed = false;
-  String? _selectedSpaceId;
+  bool _isLoadingSpaces = false;
+  bool _isFinishing = false;
 
   Future<void> _selectHouse(HouseModel house) async {
-    final spaces = await ref.read(spaceNotifierProvider(house.id).future);
-    if (!mounted) return;
+    if (_isLoadingSpaces || _isFinishing) return;
     setState(() {
+      _isLoadingSpaces = true;
       _selectedHouse = house;
-      _spaceConfirmed = spaces.isEmpty;
-      _selectedSpaceId = null;
     });
+    await _loadSpaces(house);
   }
 
-  void _confirm() {
-    if (_selectedHouse == null || !_spaceConfirmed) return;
+  Future<void> _loadSpaces(HouseModel house) async {
+    try {
+      final spaces = await ref.read(spaceNotifierProvider(house.id).future);
+      if (!mounted) return;
+      setState(() => _isLoadingSpaces = false);
+      if (spaces.isEmpty) _finish(house, null);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingSpaces = false);
+    }
+  }
+
+  void _finish(HouseModel house, String? spaceId) {
+    if (_isFinishing) return;
+    _isFinishing = true;
     Navigator.of(context).pop(
       BulkMoveDestination(
-        houseId: _selectedHouse!.id,
-        houseDisplayName: _selectedHouse!.displayName,
-        spaceId: _selectedSpaceId,
+        houseId: house.id,
+        houseDisplayName: house.displayName,
+        spaceId: spaceId,
       ),
     );
   }
@@ -137,17 +148,26 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
                                         : cs.onSurfaceVariant,
                                   ),
                                   title: Text(house.displayName),
-                                  trailing: _selectedHouse?.id == house.id
-                                      ? Icon(Icons.check, color: cs.primary)
+                                  trailing:
+                                      _isLoadingSpaces &&
+                                          _selectedHouse?.id == house.id
+                                      ? SizedBox.square(
+                                          dimension: context.spacingLg,
+                                          child:
+                                              const CircularProgressIndicator(),
+                                        )
                                       : null,
-                                  onTap: () => _selectHouse(house),
+                                  enabled: !_isLoadingSpaces,
+                                  onTap: _isLoadingSpaces
+                                      ? null
+                                      : () => _selectHouse(house),
                                 ),
                               )
                               .toList(),
                         );
                       },
-                      loading: () => const Padding(
-                        padding: EdgeInsets.all(16),
+                      loading: () => Padding(
+                        padding: EdgeInsets.all(context.spacingMd),
                         child: Center(child: CircularProgressIndicator()),
                       ),
                       error: (err, _) => ListTile(
@@ -157,20 +177,9 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
                       ),
                     ),
                     if (_selectedHouse != null && spacesAsync != null)
-                      _buildSpaceSection(spacesAsync),
+                      _buildSpaceSection(_selectedHouse!, spacesAsync),
                   ],
                 ),
-              ),
-            ),
-            SizedBox(height: context.spacingMd),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-              child: UniversalActionBar(
-                primaryLabel: 'common.move'.tr(),
-                primaryIcon: Icons.local_shipping_outlined,
-                onPrimaryPressed: (_selectedHouse != null && _spaceConfirmed)
-                    ? _confirm
-                    : null,
               ),
             ),
           ],
@@ -179,7 +188,10 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
     );
   }
 
-  Widget _buildSpaceSection(AsyncValue<List<SpaceModel>> spacesAsync) {
+  Widget _buildSpaceSection(
+    HouseModel house,
+    AsyncValue<List<SpaceModel>> spacesAsync,
+  ) {
     final cs = Theme.of(context).colorScheme;
 
     return spacesAsync.when(
@@ -194,13 +206,10 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
             ListTile(
               leading: Icon(Icons.inventory_2, color: cs.onSurfaceVariant),
               title: Text('spaces.default'.tr()),
-              trailing: (_spaceConfirmed && _selectedSpaceId == null)
-                  ? Icon(Icons.check, color: cs.primary)
-                  : null,
-              onTap: () => setState(() {
-                _selectedSpaceId = null;
-                _spaceConfirmed = true;
-              }),
+              enabled: !_isLoadingSpaces && !_isFinishing,
+              onTap: _isLoadingSpaces || _isFinishing
+                  ? null
+                  : () => _finish(house, null),
             ),
             ...spaces.map(
               (s) => ListTile(
@@ -209,30 +218,40 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
                   color: cs.onSurfaceVariant,
                 ),
                 title: Text(s.name),
-                trailing: (_spaceConfirmed && _selectedSpaceId == s.id)
-                    ? Icon(Icons.check, color: cs.primary)
-                    : null,
-                onTap: () => setState(() {
-                  _selectedSpaceId = s.id;
-                  _spaceConfirmed = true;
-                }),
+                enabled: !_isLoadingSpaces && !_isFinishing,
+                onTap: _isLoadingSpaces || _isFinishing
+                    ? null
+                    : () => _finish(house, s.id),
               ),
             ),
           ],
         );
       },
-      loading: () => const SizedBox.shrink(),
+      loading: () => Padding(
+        padding: EdgeInsets.all(context.spacingMd),
+        child: const Center(child: CircularProgressIndicator()),
+      ),
       error: (_, stack) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Divider(height: 1),
           ListTile(
-            enabled: false,
             leading: const Icon(Icons.error_outline),
             title: Text('errors.load_failed'.tr()),
+            trailing: TextButton(
+              onPressed: _isLoadingSpaces ? null : () => _retrySpaces(house),
+              child: Text('common.retry'.tr()),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _retrySpaces(HouseModel house) async {
+    if (_isLoadingSpaces || _isFinishing) return;
+    setState(() => _isLoadingSpaces = true);
+    ref.invalidate(spaceNotifierProvider(house.id));
+    await _loadSpaces(house);
   }
 }

@@ -1,0 +1,271 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/features/houses/model/house_model.dart';
+import 'package:pack_log/features/houses/repositories/house_repository.dart';
+import 'package:pack_log/features/items/view/bulk_move_sheet.dart';
+import 'package:pack_log/features/spaces/model/space_model.dart';
+import 'package:pack_log/features/spaces/repositories/space_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class _MockHouseRepository extends Mock implements HouseRepository {}
+
+class _MockSpaceRepository extends Mock implements SpaceRepository {}
+
+void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+    await EasyLocalization.ensureInitialized();
+  });
+
+  testWidgets('errore spazi mostra retry e il retry ricarica il provider', (
+    tester,
+  ) async {
+    final houseRepository = _MockHouseRepository();
+    final spaceRepository = _MockSpaceRepository();
+    var spaceLoads = 0;
+    final now = DateTime(2026);
+    final destination = HouseModel(
+      id: 'destination',
+      name: 'Casa destinazione',
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    when(
+      () => houseRepository.getAllHouses(),
+    ).thenAnswer((_) async => [destination]);
+    when(() => spaceRepository.getSpacesByHouseId('destination')).thenAnswer((
+      _,
+    ) async {
+      spaceLoads++;
+      if (spaceLoads == 1) throw Exception('errore temporaneo');
+      return <SpaceModel>[];
+    });
+
+    BulkMoveDestination? result;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          houseRepositoryProvider.overrideWithValue(houseRepository),
+          spaceRepositoryProvider.overrideWithValue(spaceRepository),
+        ],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('it', 'IT')],
+          path: 'assets/translations',
+          fallbackLocale: const Locale('it', 'IT'),
+          startLocale: const Locale('it', 'IT'),
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () async {
+                    result = await BulkMoveSheet.show(
+                      context,
+                      itemCount: 1,
+                      sourceHouseId: 'source',
+                    );
+                  },
+                  child: const Text('Apri'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Apri'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Casa destinazione'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 20)),
+    );
+    await tester.pump();
+
+    expect(find.text('errors.load_failed'), findsOneWidget);
+    expect(find.text('common.retry'), findsOneWidget);
+    await tester.tap(find.text('common.retry'));
+    await tester.pumpAndSettle();
+
+    expect(spaceLoads, 2);
+    expect(find.byType(BulkMoveSheet), findsNothing);
+    expect(result?.houseId, 'destination');
+    expect(result?.spaceId, isNull);
+  });
+
+  testWidgets('doppio tocco sullo spazio chiude solo il foglio una volta', (
+    tester,
+  ) async {
+    final houseRepository = _MockHouseRepository();
+    final spaceRepository = _MockSpaceRepository();
+    final now = DateTime(2026);
+    final destination = HouseModel(
+      id: 'destination',
+      name: 'Casa destinazione',
+      createdAt: now,
+      updatedAt: now,
+    );
+    final space = SpaceModel(
+      id: 'space-1',
+      houseId: destination.id,
+      name: 'Armadio camera',
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    when(
+      () => houseRepository.getAllHouses(),
+    ).thenAnswer((_) async => [destination]);
+    when(
+      () => spaceRepository.getSpacesByHouseId(destination.id),
+    ).thenAnswer((_) async => [space]);
+
+    BulkMoveDestination? result;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          houseRepositoryProvider.overrideWithValue(houseRepository),
+          spaceRepositoryProvider.overrideWithValue(spaceRepository),
+        ],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('it', 'IT')],
+          path: 'assets/translations',
+          fallbackLocale: const Locale('it', 'IT'),
+          startLocale: const Locale('it', 'IT'),
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () async {
+                    result = await BulkMoveSheet.show(
+                      context,
+                      itemCount: 1,
+                      sourceHouseId: 'source',
+                    );
+                  },
+                  child: const Text('Apri'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Apri'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(destination.name));
+    await tester.pumpAndSettle();
+    final spaceFinder = find.text(space.name);
+    final spaceTile = tester.widget<ListTile>(
+      find.ancestor(of: spaceFinder, matching: find.byType(ListTile)),
+    );
+    final onTap = spaceTile.onTap;
+    expect(onTap, isNotNull);
+    onTap!();
+    onTap();
+    await tester.pumpAndSettle();
+
+    expect(result?.houseId, destination.id);
+    expect(result?.spaceId, space.id);
+    expect(find.byType(BulkMoveSheet), findsNothing);
+    expect(find.text('Apri'), findsOneWidget);
+  });
+
+  testWidgets('durante il caricamento non parte una seconda casa', (
+    tester,
+  ) async {
+    final houseRepository = _MockHouseRepository();
+    final spaceRepository = _MockSpaceRepository();
+    final now = DateTime(2026);
+    final firstHouse = HouseModel(
+      id: 'first',
+      name: 'Casa A',
+      createdAt: now,
+      updatedAt: now,
+    );
+    final secondHouse = HouseModel(
+      id: 'second',
+      name: 'Casa B',
+      createdAt: now,
+      updatedAt: now,
+    );
+    final firstLoad = Completer<List<SpaceModel>>();
+    var secondHouseLoads = 0;
+
+    when(
+      () => houseRepository.getAllHouses(),
+    ).thenAnswer((_) async => [firstHouse, secondHouse]);
+    when(
+      () => spaceRepository.getSpacesByHouseId(firstHouse.id),
+    ).thenAnswer((_) => firstLoad.future);
+    when(() => spaceRepository.getSpacesByHouseId(secondHouse.id)).thenAnswer((
+      _,
+    ) async {
+      secondHouseLoads++;
+      return <SpaceModel>[];
+    });
+
+    BulkMoveDestination? result;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          houseRepositoryProvider.overrideWithValue(houseRepository),
+          spaceRepositoryProvider.overrideWithValue(spaceRepository),
+        ],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('it', 'IT')],
+          path: 'assets/translations',
+          fallbackLocale: const Locale('it', 'IT'),
+          startLocale: const Locale('it', 'IT'),
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () async {
+                    result = await BulkMoveSheet.show(
+                      context,
+                      itemCount: 1,
+                      sourceHouseId: 'source',
+                    );
+                  },
+                  child: const Text('Apri'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Apri'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(firstHouse.name));
+    await tester.pump();
+    await tester.tap(find.text(secondHouse.name));
+    await tester.pump();
+
+    expect(secondHouseLoads, 0);
+    expect(
+      tester
+          .widget<ListTile>(
+            find.ancestor(
+              of: find.text(secondHouse.name),
+              matching: find.byType(ListTile),
+            ),
+          )
+          .enabled,
+      isFalse,
+    );
+
+    firstLoad.complete(<SpaceModel>[]);
+    await tester.pumpAndSettle();
+    expect(result?.houseId, firstHouse.id);
+    expect(find.text('Apri'), findsOneWidget);
+  });
+}

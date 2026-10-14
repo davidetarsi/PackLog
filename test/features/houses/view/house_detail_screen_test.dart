@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/features/items/view/bulk_move_sheet.dart';
+import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
 import 'package:pack_log/shared/widgets/universal_item_tile.dart';
@@ -225,6 +227,77 @@ void main() {
     ]) {
       expect(tester.widget<DsBarItem>(find.byKey(key)).onTap, isNull);
     }
+    await app.finish();
+  });
+
+  testWidgets('Sposta verso una casa senza spazi: basta un tocco', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.longPress(find.text('Calzini'));
+    await app.tap(find.byKey(const Key('selection_move')));
+    await app.tap(find.text('Casa al mare'));
+
+    expect(find.byType(BulkMoveSheet), findsNothing);
+    expect(find.text('Calzini'), findsNothing);
+    final movedItem = await app.container
+        .read(itemRepositoryProvider)
+        .getItemById('item-4');
+    expect(movedItem.houseId, kSeaHouseId);
+    expect(movedItem.spaceId, isNull);
+    await app.finish();
+  });
+
+  testWidgets('Sposta verso una casa con spazi: casa, poi spazio', (
+    tester,
+  ) async {
+    final app = await openHouse(tester, kSeaHouseId);
+    await app.longPress(find.text('Infradito'));
+    await app.tap(find.byKey(const Key('selection_move')));
+    await app.tap(find.text('Casa Milano'));
+    expect(find.text('Armadio camera'), findsOneWidget);
+    await app.tap(find.text('Armadio camera'));
+
+    expect(find.byType(BulkMoveSheet), findsNothing);
+    expect(find.text('Infradito'), findsNothing);
+    final movedItem = await app.container
+        .read(itemRepositoryProvider)
+        .getItemById('sea-item-1');
+    expect(movedItem.houseId, kHomeId);
+    expect(movedItem.spaceId, 'space-armadio');
+    await app.finish();
+  });
+
+  testWidgets(
+    'Senza spazio mantiene la casa di destinazione e azzera lo spazio',
+    (tester) async {
+      final app = await openHouse(tester, kSeaHouseId);
+      await app.longPress(find.text('Infradito'));
+      await app.tap(find.byKey(const Key('selection_move')));
+      await app.tap(find.text('Casa Milano'));
+      await app.tap(find.text('Senza spazio'));
+
+      expect(find.byType(BulkMoveSheet), findsNothing);
+      final movedItem = await app.container
+          .read(itemRepositoryProvider)
+          .getItemById('sea-item-1');
+      expect(movedItem.houseId, kHomeId);
+      expect(movedItem.spaceId, isNull);
+      await app.finish();
+    },
+  );
+
+  testWidgets('dal ⋯: Seleziona oggetti apre la selezione vuota', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(find.byIcon(Icons.more_horiz));
+    await app.tap(find.text('Seleziona oggetti'));
+
+    final move = tester.widget<DsBarItem>(
+      find.byKey(const Key('selection_move')),
+    );
+    expect(move.onTap, isNull);
     await app.finish();
   });
 
