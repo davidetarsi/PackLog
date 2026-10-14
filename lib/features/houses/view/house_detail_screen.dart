@@ -513,6 +513,13 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                           baselineIds: addBaseline,
                           onExistingOpened: (position) => _analytics
                               .trackAddExistingMatchTapped(position: position),
+                          onSheetClosed: () {
+                            // La scheda chiusa riporta il focus sul campo: la
+                            // pagina resta usabile senza un altro tocco.
+                            if (mounted && _isAdding) {
+                              _rapidFireFocus.requestFocus();
+                            }
+                          },
                         )
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -834,11 +841,15 @@ class _AddPage extends ConsumerWidget {
   final Set<String> baselineIds;
   final void Function(int position) onExistingOpened;
 
+  /// La scheda di un oggetto aperta dalla pagina si è chiusa.
+  final VoidCallback onSheetClosed;
+
   const _AddPage({
     required this.houseId,
     required this.query,
     required this.baselineIds,
     required this.onExistingOpened,
+    required this.onSheetClosed,
   });
 
   @override
@@ -866,6 +877,7 @@ class _AddPage extends ConsumerWidget {
       onOpened: onOpened,
       // Qui la selezione non parte: il campo resta il centro della pagina.
       allowSelection: false,
+      onSheetClosed: onSheetClosed,
     );
 
     return SingleChildScrollView(

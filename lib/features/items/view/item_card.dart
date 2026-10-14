@@ -16,6 +16,9 @@ class ItemCard extends ConsumerWidget {
   /// dell'oggetto (la ricerca lo usa per l'evento del risultato aperto).
   final VoidCallback? onOpened;
 
+  /// Chiamato quando la scheda aperta da questa riga si chiude.
+  final VoidCallback? onSheetClosed;
+
   /// `false` dove la selezione multipla non deve partire (la pagina
   /// "aggiungi" della casa): il long press non fa nulla.
   final bool allowSelection;
@@ -26,6 +29,7 @@ class ItemCard extends ConsumerWidget {
     required this.houseId,
     required this.quantityOnTrip,
     this.onOpened,
+    this.onSheetClosed,
     this.allowSelection = true,
   });
 
@@ -151,7 +155,7 @@ class ItemCard extends ConsumerWidget {
                 context,
                 houseId: item.houseId,
                 itemId: item.id,
-              );
+              ).then((_) => onSheetClosed?.call());
             },
       // Long press attiva la selezione multipla dal primo item premuto.
       // Disabilitato se in selezione, se l'item è in viaggio o se la

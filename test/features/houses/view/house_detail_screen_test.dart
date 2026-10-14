@@ -246,8 +246,12 @@ void main() {
     await tester.binding.handlePopRoute();
     await app.settle();
     expect(find.text('Modifica oggetto'), findsNothing);
-    // Chiusa la scheda, la pagina è ancora lì.
+    // Chiusa la scheda, la pagina è ancora lì e il campo riprende il focus.
     expect(find.text('Già in casa · 1'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).last).focusNode?.hasFocus,
+      isTrue,
+    );
     await app.finish();
   });
 
