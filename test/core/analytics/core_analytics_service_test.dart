@@ -434,4 +434,20 @@ void main() {
       },
     );
   });
+
+  group('add_', () {
+    test(
+      'trackAddExistingMatchTapped logs add_existing_match_tapped',
+      () async {
+        service.trackAddExistingMatchTapped(position: 1);
+        await pump();
+        verify(
+          () => mockAnalytics.logEvent(
+            'add_existing_match_tapped',
+            properties: {'position': 1},
+          ),
+        ).called(1);
+      },
+    );
+  });
 }

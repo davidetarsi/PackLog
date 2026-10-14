@@ -134,6 +134,17 @@ class CoreAnalyticsService {
     );
   }
 
+  // ── add_ ──────────────────────────────────────────────────────────────────
+
+  /// Nella pagina "aggiungi" della casa si è aperto un oggetto di "Già in
+  /// casa": la pagina ha evitato un doppione. `position` parte da 1.
+  void trackAddExistingMatchTapped({required int position}) {
+    _safeLogEvent(
+      'add_existing_match_tapped',
+      properties: {'position': position},
+    );
+  }
+
   // ── space_ ────────────────────────────────────────────────────────────────
 
   void trackSpaceCreated() => _safeLogEvent('space_created');
