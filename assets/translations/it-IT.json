@@ -115,7 +115,9 @@
     "bulk_move_no_houses": "Nessun'altra casa disponibile",
     "bulk_move_sheet_title": "Sposta {} oggetti",
     "add_to_trip_success": "{} oggetti aggiunti a {}",
-    "rapid_fire_hint": "Aggiungi oggetto..."
+    "rapid_fire_hint": "Aggiungi oggetto...",
+    "already_here": "Già in casa",
+    "added_now": "Aggiunti ora"
   },
   "categories": {
     "vestiti": "Vestiti",

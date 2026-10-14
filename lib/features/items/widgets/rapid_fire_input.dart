@@ -273,6 +273,11 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                           isDense: true,
                         ),
                         textInputAction: TextInputAction.done,
+                        // Il campo resta attivo dopo l'invio: il rapid fire
+                        // serve a scrivere più oggetti di fila (vedi "Aggiunti
+                        // ora" nella pagina aggiungi). Si chiude con indietro o
+                        // toccando fuori.
+                        onEditingComplete: () {},
                         onSubmitted: (_) => _handleSubmit(),
                         onChanged: _handleTextChanged,
                         style: Theme.of(context).textTheme.bodyLarge,

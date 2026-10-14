@@ -149,4 +149,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(expanded, isTrue);
   });
+
+  testWidgets('invio da tastiera: il campo resta a fuoco per il prossimo', (
+    tester,
+  ) async {
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    await pumpInput(tester, focusNode: node);
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Felpa verde');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    // Il salvataggio tocca il database: qui conta solo il focus, qualunque
+    // sia l'esito del salvataggio.
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(node.hasFocus, isTrue);
+  });
 }
