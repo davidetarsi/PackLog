@@ -1,11 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/model/item_model.dart';
-import '../../items/widgets/items_empty_state.dart';
 import '../model/trip_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
@@ -255,9 +255,13 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         .firstOrNull
         ?.displayName;
 
+    // L'azione compare solo sul vuoto della casa: su un filtro di categoria
+    // vuoto la risposta è togliere il filtro, non creare.
+    final addHouseId = _selectedCategory == null ? _selectedHouseId : null;
+
     return Padding(
       padding: EdgeInsets.symmetric(vertical: context.spacingLg),
-      child: ItemsEmptyState(
+      child: DsEmptyState(
         icon: Icons.inventory_2_outlined,
         title: _selectedCategory != null
             ? 'common.no_items_in_category'.tr(
@@ -268,10 +272,16 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
                       namedArgs: {'house': houseName},
                     )
                   : 'common.no_items_in_house'.tr()),
-        actionKey: const Key('trip_items_empty_add'),
-        // L'azione compare solo sul vuoto della casa: su un filtro di
-        // categoria vuoto la risposta è togliere il filtro, non creare.
-        houseId: _selectedCategory == null ? _selectedHouseId : null,
+        ctaLabel: addHouseId == null ? null : 'create_sheet.ai_scan'.tr(),
+        ctaIcon: Icons.auto_awesome,
+        ctaKey: const Key('trip_items_empty_add'),
+        onCta: addHouseId == null
+            ? null
+            : () => context.push('/houses/$addHouseId/ai-import'),
+        linkLabel: addHouseId == null ? null : 'create_sheet.manual_link'.tr(),
+        onLink: addHouseId == null
+            ? null
+            : () => context.push('/houses/$addHouseId?add=manual'),
       ),
     );
   }

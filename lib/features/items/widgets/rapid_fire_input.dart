@@ -10,12 +10,27 @@ import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 import 'category_pill.dart';
 
+/// Gruppo dei tocchi "dentro" il rapid fire. Chi mostra contenuti legati al
+/// campo (la pagina "aggiungi" della casa) li avvolge in un [TapRegion] con
+/// questo gruppo: toccarli non chiude il campo.
+const Object rapidFireTapRegionGroup = _RapidFireTapRegionGroup();
+
+class _RapidFireTapRegionGroup {
+  const _RapidFireTapRegionGroup();
+}
+
 class RapidFireInput extends ConsumerStatefulWidget {
   final String houseId;
   final String? currentSpaceId;
-  final void Function(String name, ItemCategory category)? onOpenFullForm;
   final ValueChanged<bool>? onExpandedChanged;
   final double height;
+
+  /// Ogni modifica del testo (anche lo svuotamento dopo il salvataggio).
+  final ValueChanged<String>? onTextChanged;
+
+  /// Focus del campo, se lo gestisce il chiamante (la casa lo usa per aprire
+  /// la pagina "aggiungi" dallo stato vuoto). Se nullo il campo ne crea uno.
+  final FocusNode? focusNode;
 
   /// Prende il focus appena montato (tastiera su, modalità espansa).
   final bool autofocus;
@@ -25,8 +40,9 @@ class RapidFireInput extends ConsumerStatefulWidget {
     required this.houseId,
     this.autofocus = false,
     this.currentSpaceId,
-    this.onOpenFullForm,
     this.onExpandedChanged,
+    this.onTextChanged,
+    this.focusNode,
     this.height = 50.0,
   });
 
@@ -36,7 +52,9 @@ class RapidFireInput extends ConsumerStatefulWidget {
 
 class _RapidFireInputState extends ConsumerState<RapidFireInput> {
   final _textController = TextEditingController();
-  final _focusNode = FocusNode();
+  FocusNode? _ownFocusNode;
+  FocusNode get _focusNode =>
+      widget.focusNode ?? (_ownFocusNode ??= FocusNode());
   bool _isExpanded = false;
   ItemCategory? _forcedCategory;
   ({ItemCategory category, InferConfidence confidence})? _inferResult;
@@ -59,7 +77,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
   void dispose() {
     _focusNode.removeListener(_onFocusChanged);
     _textController.dispose();
-    _focusNode.dispose();
+    _ownFocusNode?.dispose();
     super.dispose();
   }
 
@@ -72,6 +90,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
   }
 
   void _handleTextChanged(String value) {
+    widget.onTextChanged?.call(value);
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
       setState(() => _inferResult = null);
@@ -134,6 +153,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
           .addItem(item);
 
       _textController.clear();
+      widget.onTextChanged?.call('');
       _forcedCategory = null;
       _inferResult = null;
       HapticFeedback.lightImpact();
@@ -160,6 +180,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
         }
       },
       child: TapRegion(
+        groupId: rapidFireTapRegionGroup,
         onTapOutside: (event) {
           if (_focusNode.hasFocus) {
             _focusNode.unfocus();
@@ -183,20 +204,21 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                       child: Padding(
                         // Spazio visivo tra le categorie fluttuanti e l'input sottostante
                         padding: EdgeInsets.only(bottom: context.spacingSm),
-                        // scaleDown: su schermi stretti (o con testo grande di
-                        // sistema) la riga si rimpicciolisce invece di sforare.
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
+                        // Larga quanto il campo, quattro pillole uguali.
+                        child: SizedBox(
+                          height: widget.height,
                           child: Row(
-                            mainAxisSize: MainAxisSize.min,
                             children: [
                               for (final category in ItemCategory.values) ...[
                                 if (category != ItemCategory.values.first)
                                   SizedBox(width: context.spacingXs),
-                                CategoryPill(
-                                  category: category,
-                                  pillState: _computePillState(category),
-                                  onTap: () => _toggleForcedCategory(category),
+                                Expanded(
+                                  child: CategoryPill(
+                                    category: category,
+                                    pillState: _computePillState(category),
+                                    onTap: () =>
+                                        _toggleForcedCategory(category),
+                                  ),
                                 ),
                               ],
                             ],
@@ -230,31 +252,9 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                 ),
                 clipBehavior: Clip.antiAlias,
                 // Gestione fluida del padding orizzontale
-                padding: EdgeInsets.only(
-                  left: _isExpanded ? context.spacingSm : context.spacingMd,
-                  right: 6.0,
-                ),
+                padding: EdgeInsets.only(left: context.spacingMd, right: 6.0),
                 child: Row(
                   children: [
-                    // Pulsante "+" visibile solo in stato espanso
-                    if (_isExpanded) ...[
-                      IconButton(
-                        icon: Icon(Icons.add, size: context.responsive(24)),
-                        onPressed: () {
-                          final name = _textController.text.trim();
-                          final category =
-                              _forcedCategory ??
-                              _inferResult?.category ??
-                              ItemCategory.varie;
-                          widget.onOpenFullForm?.call(name, category);
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      AppSpacing.hGapSm,
-                    ],
-
                     // TextField espanso al massimo (ora il testo andrà fino in fondo)
                     Expanded(
                       child: TextField(
@@ -273,6 +273,11 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                           isDense: true,
                         ),
                         textInputAction: TextInputAction.done,
+                        // Il campo resta attivo dopo l'invio: il rapid fire
+                        // serve a scrivere più oggetti di fila (vedi "Aggiunti
+                        // ora" nella pagina aggiungi). Si chiude con indietro o
+                        // toccando fuori.
+                        onEditingComplete: () {},
                         onSubmitted: (_) => _handleSubmit(),
                         onChanged: _handleTextChanged,
                         style: Theme.of(context).textTheme.bodyLarge,

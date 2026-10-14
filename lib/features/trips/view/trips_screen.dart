@@ -12,7 +12,6 @@ import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/entity_action_handler.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
-import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/tab_header.dart';
 
 /// Enum per le tab di filtro
@@ -270,11 +269,9 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     return DsEmptyState(
       icon: Icons.luggage_outlined,
       title: 'trips.no_trips_title'.tr(),
-      action: DsButton(
-        label: 'trips.no_trips_subtitle'.tr(),
-        icon: Icons.add,
-        onPressed: () => context.push('/new-trip'),
-      ),
+      ctaLabel: 'trips.no_trips_subtitle'.tr(),
+      ctaIcon: Icons.add,
+      onCta: () => context.push('/new-trip'),
     );
   }
 

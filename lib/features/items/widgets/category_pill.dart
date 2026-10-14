@@ -29,7 +29,7 @@ class CategoryPill extends StatelessWidget {
     switch (pillState) {
       case CategoryPillState.inactive:
         backgroundColor = colorScheme.surfaceContainerLow;
-        foregroundColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.5);
+        foregroundColor = colorScheme.onSurfaceVariant;
         borderColor = Colors.transparent;
       case CategoryPillState.inferred:
         backgroundColor = categoryColor.withValues(alpha: 0.1);
@@ -41,52 +41,47 @@ class CategoryPill extends StatelessWidget {
         borderColor = categoryColor;
     }
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: EdgeInsets.symmetric(
-          horizontal: context.spacingSm + context.spacingXs,
-          vertical: context.spacingSm,
-        ),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          border: Border.all(color: borderColor, width: 1.5),
-          borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _iconForCategory(category),
-              size: context.iconSizeSm,
-              color: foregroundColor,
-            ),
-            SizedBox(width: context.spacingXs),
-            Text(
-              _labelForCategory(category),
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(color: foregroundColor),
-            ),
-          ],
+    // Icona sopra e nome intero sotto, come le voci della barra di
+    // navigazione: con la pagina "aggiungi" lo spazio c'è e le iniziali
+    // (V, T, E, ?) non servono più.
+    return Semantics(
+      button: true,
+      selected: pillState == CategoryPillState.forced,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: EdgeInsets.symmetric(horizontal: context.spacingXs),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            border: Border.all(color: borderColor, width: 1.5),
+            borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                category.icon,
+                size: context.iconSizeSm,
+                color: foregroundColor,
+              ),
+              SizedBox(height: context.spacingXs / 4),
+              // scaleDown: con caratteri di sistema grandi o in inglese
+              // ("Electronics") il nome si stringe invece di sforare.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  category.displayName,
+                  maxLines: 1,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: foregroundColor),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
-  }
-
-  static IconData _iconForCategory(ItemCategory category) {
-    return switch (category) {
-      ItemCategory.vestiti => Icons.checkroom,
-      ItemCategory.toiletries => Icons.soap,
-      ItemCategory.elettronica => Icons.devices,
-      ItemCategory.varie => Icons.category,
-    };
-  }
-
-  static String _labelForCategory(ItemCategory category) {
-    // "Varie" resta un punto interrogativo: è la categoria "non so".
-    if (category == ItemCategory.varie) return '?';
-    return category.displayName.characters.first.toUpperCase();
   }
 }
