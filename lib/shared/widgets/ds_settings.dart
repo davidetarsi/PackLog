@@ -71,24 +71,35 @@ class DsSettingsRow extends StatelessWidget {
         trailing ??
         (value == null
             ? null
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    value,
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: cs.onSurfaceVariant,
+            // Il valore non supera metà riga: l'etichetta resta leggibile
+            // anche con nomi lunghi scritti dall'utente.
+            : ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.sizeOf(context).width * 0.5,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
                     ),
-                  ),
-                  if (onTap != null) ...[
-                    SizedBox(width: context.spacingXs),
-                    Icon(
-                      Icons.chevron_right,
-                      size: context.iconSizeSm,
-                      color: cs.onSurfaceVariant,
-                    ),
+                    if (onTap != null) ...[
+                      SizedBox(width: context.spacingXs),
+                      Icon(
+                        Icons.chevron_right,
+                        size: context.iconSizeSm,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ));
 
     return ListTile(

@@ -25,6 +25,39 @@ void main() {
     expect(taps, 1);
   });
 
+  testWidgets('valore senza onTap: niente chevron', (tester) async {
+    await pump(
+      tester,
+      const DsSettingsRow(label: 'Categoria', value: 'Vestiti'),
+    );
+    expect(find.text('Vestiti'), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right), findsNothing);
+  });
+
+  testWidgets('trailing prevale su value', (tester) async {
+    await pump(
+      tester,
+      const DsSettingsRow(
+        label: 'Quantità',
+        value: 'ignorato',
+        trailing: Text('7'),
+      ),
+    );
+    expect(find.text('7'), findsOneWidget);
+    expect(find.text('ignorato'), findsNothing);
+  });
+
+  testWidgets('valore lunghissimo: tronca senza eccezioni e lascia leggibile '
+      'l\'etichetta', (tester) async {
+    await pump(
+      tester,
+      DsSettingsRow(label: 'Spazio', value: 'A' * 200, onTap: () {}),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('Spazio'), findsOneWidget);
+    expect(tester.getSize(find.text('Spazio')).width, greaterThan(0));
+  });
+
   testWidgets('riga con controllo: niente chevron', (tester) async {
     await pump(
       tester,
