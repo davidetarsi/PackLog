@@ -8,6 +8,7 @@ import '../../features/profile/providers/gpt_usage_provider.dart';
 import '../constants/app_constants.dart';
 import '../constants/house_icons.dart';
 import '../theme/app_spacing.dart';
+import 'ds_link_button.dart';
 import 'ds_picker_sheet.dart';
 import 'ds_sheet_header.dart';
 
@@ -134,12 +135,10 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
               padding: EdgeInsets.symmetric(horizontal: context.spacingSm),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: TextButton.icon(
+                child: DsLinkButton(
                   key: const Key('create_manual_items'),
+                  label: 'create_sheet.manual_link'.tr(),
                   onPressed: () => _choose(CreateAction.manualItems, house.id),
-                  icon: Icon(Icons.arrow_forward, size: context.iconSizeSm),
-                  iconAlignment: IconAlignment.end,
-                  label: Text('create_sheet.manual_link'.tr()),
                 ),
               ),
             )

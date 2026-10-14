@@ -411,12 +411,10 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               body: DsEmptyState(
                 icon: Icons.home_outlined,
                 title: 'houses.house_not_found_message'.tr(),
-                action: DsButton(
-                  label: 'houses.back_to_houses'.tr(),
-                  icon: Icons.home,
-                  variant: DsButtonVariant.secondary,
-                  onPressed: () => context.go('/'),
-                ),
+                ctaLabel: 'houses.back_to_houses'.tr(),
+                ctaIcon: Icons.home,
+                ctaVariant: DsButtonVariant.secondary,
+                onCta: () => context.go('/'),
               ),
             );
           }

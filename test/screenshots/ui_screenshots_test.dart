@@ -361,7 +361,7 @@ final flows = <Flow>[
       'dettaglio-casa',
       'vuota',
       route: '/houses/:id',
-      source: 'lib/features/items/widgets/items_empty_state.dart',
+      source: 'lib/features/items/view/items_screen.dart',
       description: 'Casa senza oggetti.',
       steps: (app) => _houseDetail(app, kEmptyHouseId),
     ),

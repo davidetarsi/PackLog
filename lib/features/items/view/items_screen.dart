@@ -1,8 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pack_log/features/items/view/item_category_section.dart';
 import 'package:pack_log/shared/helpers/search_match.dart';
+import '../../../shared/widgets/refreshable_empty_state.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 
 import '../providers/item_provider.dart';
@@ -14,7 +16,6 @@ import '../../houses/providers/house_provider.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/design_system.dart';
 import 'in_transit_section.dart';
-import '../widgets/items_empty_state.dart';
 
 /// Oggetti della casa visibili con il filtro spazio e la ricerca. È l'unico
 /// predicato: la lista e il controllo "nessun risultato" della casa lo usano
@@ -68,6 +69,10 @@ class ItemsScreen extends ConsumerStatefulWidget {
   /// da 1, nell'ordine in cui le righe sono a schermo.
   final void Function(int position)? onSearchResultOpened;
 
+  /// Stato vuoto, "scrivili a mano": la casa passa il comando che apre la
+  /// pagina "aggiungi". Senza, il link apre `/houses/:id?add=manual`.
+  final VoidCallback? onWriteManually;
+
   const ItemsScreen({
     super.key,
     required this.houseId,
@@ -76,6 +81,7 @@ class ItemsScreen extends ConsumerStatefulWidget {
     this.searchQuery,
     this.firstGroupKey,
     this.onSearchResultOpened,
+    this.onWriteManually,
   });
 
   @override
@@ -131,7 +137,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
               }
 
               if (isSearching && spaceFiltered.isEmpty && !showsTemporaries) {
-                return ItemsEmptyState(
+                return RefreshableEmptyState(
                   onRefresh: _onRefresh,
                   icon: Icons.search_off,
                   title: 'items.no_search_results'.tr(),
@@ -139,16 +145,25 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
               }
 
               if (spaceFiltered.isEmpty && !showsTemporaries) {
-                return ItemsEmptyState(
+                return RefreshableEmptyState(
                   key: widget.firstGroupKey,
                   onRefresh: _onRefresh,
                   icon: Icons.inventory_2_outlined,
-                  // Niente sottotitolo: l'invito a creare è scritto sul
-                  // bottone, ripeterlo sopra era solo rumore.
                   title: widget.selectedSpaceId != null
                       ? 'items.no_items_in_space'.tr()
                       : 'items.no_items'.tr(),
-                  houseId: widget.houseId,
+                  // Prima la scansione AI, la strada che dà agli oggetti foto
+                  // e metadati; poi la scrittura a mano.
+                  ctaLabel: 'create_sheet.ai_scan'.tr(),
+                  ctaIcon: Icons.auto_awesome,
+                  onCta: () =>
+                      context.push('/houses/${widget.houseId}/ai-import'),
+                  linkLabel: 'create_sheet.manual_link'.tr(),
+                  linkKey: const Key('items_empty_manual'),
+                  onLink:
+                      widget.onWriteManually ??
+                      () =>
+                          context.push('/houses/${widget.houseId}?add=manual'),
                 );
               }
 

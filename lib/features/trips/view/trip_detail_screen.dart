@@ -176,12 +176,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       body: DsEmptyState(
         icon: Icons.luggage_outlined,
         title: 'common.not_found'.tr(),
-        action: DsButton(
-          label: 'common.back_to_list'.tr(),
-          icon: Icons.arrow_back,
-          variant: DsButtonVariant.secondary,
-          onPressed: () => context.pop(),
-        ),
+        ctaLabel: 'common.back_to_list'.tr(),
+        ctaIcon: Icons.arrow_back,
+        ctaVariant: DsButtonVariant.secondary,
+        onCta: () => context.pop(),
       ),
     );
   }
