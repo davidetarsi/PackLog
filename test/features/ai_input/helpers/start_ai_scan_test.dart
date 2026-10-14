@@ -60,7 +60,10 @@ void main() {
     router.dispose();
   });
 
-  Future<void> pumpApp(WidgetTester tester) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    void Function(Future<void> operation)? onScanStarted,
+  }) async {
     router = GoRouter(
       initialLocation: '/',
       routes: [
@@ -71,7 +74,10 @@ void main() {
               builder: (context, ref, _) => Column(
                 children: [
                   TextButton(
-                    onPressed: () => startAiScan(context, ref, 'h1'),
+                    onPressed: () {
+                      final operation = startAiScan(context, ref, 'h1');
+                      onScanStarted?.call(operation);
+                    },
                     child: const Text('scan'),
                   ),
                   TextButton(
@@ -377,4 +383,37 @@ void main() {
     expect(find.text('results h1'), findsOneWidget);
     expect(find.byIcon(Icons.photo_library_outlined), findsNothing);
   });
+
+  testWidgets(
+    'un nuovo Navigator puo avviare uno scan se il vecchio sheet resta pending',
+    (tester) async {
+      var firstOperationCompleted = false;
+      await pumpApp(
+        tester,
+        onScanStarted: (operation) {
+          operation.then((_) => firstOperationCompleted = true);
+        },
+      );
+
+      await tester.tap(find.text('scan'));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.photo_library_outlined), findsOneWidget);
+      expect(firstOperationCompleted, isFalse);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      expect(firstOperationCompleted, isFalse);
+      router.dispose();
+
+      aiImport = _RecordingAiImport();
+      await pumpApp(tester);
+      await tester.tap(find.text('scan'));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.photo_library_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+    },
+  );
 }

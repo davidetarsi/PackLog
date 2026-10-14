@@ -13,7 +13,8 @@ import '../view/widgets/image_source_sheet.dart';
 /// Numero massimo di immagini selezionabili per scansione.
 const kAiScanMaxPhotos = 5;
 
-bool _isAiScanActive = false;
+BuildContext? _activeAiScanContext;
+Object? _activeAiScanOperation;
 
 /// Apre il selettore delle immagini e avvia l'analisi per la casa indicata.
 ///
@@ -25,6 +26,8 @@ Future<void> startAiScan(
   String houseId,
 ) async {
   if (!context.mounted) return;
+  if (_activeAiScanContext?.mounted ?? false) return;
+
   final router = GoRouter.of(context);
   final notifier = ref.read(aiImportNotifierProvider.notifier);
   final matches = router.routerDelegate.currentConfiguration.matches;
@@ -32,13 +35,13 @@ Future<void> startAiScan(
       matches.isNotEmpty &&
       matches.last is RouteMatch &&
       (matches.last as RouteMatch).route.name == 'ai-import-results';
-  if (_isAiScanActive ||
-      isAlreadyOnResults ||
-      ref.read(aiImportNotifierProvider).isLoading) {
+  if (isAlreadyOnResults || ref.read(aiImportNotifierProvider).isLoading) {
     return;
   }
 
-  _isAiScanActive = true;
+  final operation = Object();
+  _activeAiScanContext = context;
+  _activeAiScanOperation = operation;
   try {
     final source = await showImageSourceSheet(
       context,
@@ -97,6 +100,9 @@ Future<void> startAiScan(
     // l'analisi senza legare la guardia alla durata del Future di navigazione.
     unawaited(context.push<void>('/houses/$houseId/ai-import/results'));
   } finally {
-    _isAiScanActive = false;
+    if (identical(_activeAiScanOperation, operation)) {
+      _activeAiScanContext = null;
+      _activeAiScanOperation = null;
+    }
   }
 }
