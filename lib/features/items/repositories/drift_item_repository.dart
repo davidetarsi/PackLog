@@ -146,6 +146,43 @@ class DriftItemRepository implements ItemRepository {
     debugPrint('[ItemRepo] ${models.length} oggetti inseriti con successo');
   }
 
+  @override
+  Future<int> saveAiItemsToHouse({
+    required String houseId,
+    required List<ItemModel> newItems,
+    required Map<String, String> metadataByItemId,
+  }) async {
+    for (final item in newItems) {
+      if (item.houseId != houseId) {
+        throw ArgumentError.value(
+          item.houseId,
+          'newItems.houseId',
+          'Tutti i nuovi oggetti devono appartenere a $houseId.',
+        );
+      }
+    }
+    if (newItems.isEmpty && metadataByItemId.isEmpty) return 0;
+
+    final result = await _dbService.executeWithRetry(
+      () => _dao.saveAiItemsToHouse(
+        houseId: houseId,
+        newItems: newItems.map(_toCompanion).toList(),
+        metadataByItemId: metadataByItemId,
+      ),
+      operationName: 'saveAiItemsToHouse($houseId)',
+      config: RetryConfig.criticalConfig,
+    );
+
+    if (!result.success) {
+      throw EntitySaveException(
+        'saveAiItemsToHouse($houseId)',
+        cause: result.error,
+      );
+    }
+
+    return result.data!;
+  }
+
   /// Stream reattivo di tutti gli oggetti
   Stream<List<ItemModel>> watchAllItems() {
     return _dao.watchAllItems().map((items) => items.map(_toModel).toList());

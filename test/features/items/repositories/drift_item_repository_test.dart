@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/database/exceptions/database_exceptions.dart';
@@ -423,6 +424,113 @@ void main() {
 
       expect(house1Items, hasLength(2));
       expect(house2Items, hasLength(1));
+    });
+  });
+
+  group('DriftItemRepository - AI result persistence', () {
+    test('returns the actual number of existing items enriched', () async {
+      final now = DateTime(2026, 10, 14);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'ai-repository-house',
+          name: 'Casa AI',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      for (final id in ['existing-a', 'existing-b', 'already-scanned']) {
+        await database.itemsDao.insertItem(
+          ItemsCompanion.insert(
+            id: id,
+            houseId: 'ai-repository-house',
+            name: id,
+            category: ItemCategory.varie,
+            createdAt: now,
+            updatedAt: now,
+            aiMetadata: Value(id == 'already-scanned' ? '{"old":true}' : null),
+          ),
+        );
+      }
+
+      final count = await repository.saveAiItemsToHouse(
+        houseId: 'ai-repository-house',
+        newItems: [
+          ItemModel(
+            id: 'new-ai-item',
+            houseId: 'ai-repository-house',
+            name: 'Nuovo',
+            category: ItemCategory.vestiti,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        ],
+        metadataByItemId: const {
+          'existing-a': '{"confidence":0.8}',
+          'existing-b': '{"confidence":0.9}',
+          'already-scanned': '{"confidence":1}',
+          'missing': '{"confidence":1}',
+        },
+      );
+
+      expect(count, 2);
+      expect((await repository.getItemById('new-ai-item')).name, 'Nuovo');
+      expect(
+        (await repository.getItemById('already-scanned')).aiMetadata,
+        '{"old":true}',
+      );
+    });
+
+    test('rejects new items from another house before writing', () async {
+      final now = DateTime(2026, 10, 14);
+      final item = ItemModel(
+        id: 'wrong-house-item',
+        houseId: 'different-house',
+        name: 'Errato',
+        category: ItemCategory.varie,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await expectLater(
+        repository.saveAiItemsToHouse(
+          houseId: 'requested-house',
+          newItems: [item],
+          metadataByItemId: const {},
+        ),
+        throwsArgumentError,
+      );
+      expect(await database.itemsDao.findItemById(item.id), isNull);
+    });
+
+    test('wraps database failures in EntitySaveException', () async {
+      final now = DateTime(2026, 10, 14);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'ai-error-house',
+          name: 'Casa errore',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final duplicate = ItemModel(
+        id: 'duplicate-ai-id',
+        houseId: 'ai-error-house',
+        name: 'Primo',
+        category: ItemCategory.varie,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.addItem(duplicate);
+
+      await expectLater(
+        repository.saveAiItemsToHouse(
+          houseId: 'ai-error-house',
+          newItems: [duplicate.copyWith(name: 'Duplicato')],
+          metadataByItemId: const {},
+        ),
+        throwsA(isA<EntitySaveException>()),
+      );
+      expect((await repository.getItemById(duplicate.id)).name, 'Primo');
     });
   });
 

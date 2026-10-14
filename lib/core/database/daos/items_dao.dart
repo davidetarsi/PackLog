@@ -125,6 +125,60 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Inserisce i nuovi oggetti e arricchisce i record esistenti in una sola
+  /// transazione. I metadati vengono scritti solo se il record è ancora vivo,
+  /// appartiene alla casa richiesta e non è già stato arricchito.
+  ///
+  /// Ritorna il numero di record esistenti aggiornati realmente. I dati non
+  /// più eleggibili (per esempio già scansionati nel frattempo) non contano.
+  Future<int> saveAiItemsToHouse({
+    required String houseId,
+    required List<ItemsCompanion> newItems,
+    required Map<String, String> metadataByItemId,
+  }) async {
+    if (newItems.isEmpty && metadataByItemId.isEmpty) return 0;
+
+    return transaction(() async {
+      if (newItems.isNotEmpty) {
+        await batch((batch) => batch.insertAll(items, newItems));
+      }
+
+      if (metadataByItemId.isEmpty) return 0;
+
+      final updatedAt = DateTime.now();
+      final metadataExpression = items.id.caseMatch<String>(
+        when: {
+          for (final entry in metadataByItemId.entries)
+            Constant(entry.key): Constant(entry.value),
+        },
+        orElse: const Constant(''),
+      );
+      final syncStatusExpression = items.syncStatus.caseMatch<int>(
+        when: {
+          Constant(SyncStatus.pendingCreate.index): Constant(
+            SyncStatus.pendingCreate.index,
+          ),
+        },
+        orElse: Constant(SyncStatus.pendingUpdate.index),
+      );
+
+      return (update(items)..where(
+            (item) =>
+                item.id.isIn(metadataByItemId.keys) &
+                item.houseId.equals(houseId) &
+                item.isDeleted.equals(false) &
+                item.aiMetadata.isNull(),
+          ))
+          .write(
+            ItemsCompanion.custom(
+              aiMetadata: metadataExpression,
+              updatedAt: Constant(updatedAt),
+              syncStatus: syncStatusExpression,
+            ),
+          );
+    });
+  }
+
   // === Space Filtering Methods ===
 
   /// Ottiene gli oggetti non eliminati di una casa filtrati per spazio specifico

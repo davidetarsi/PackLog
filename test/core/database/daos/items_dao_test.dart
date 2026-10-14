@@ -444,6 +444,199 @@ void main() {
     });
   });
 
+  group('ItemsDao - AI result persistence', () {
+    test(
+      'inserts and enriches eligible items atomically with one result count',
+      () async {
+        final now = DateTime(2026, 10, 14);
+        for (final houseId in ['ai-house', 'other-house']) {
+          await database.housesDao.insertHouse(
+            HousesCompanion.insert(
+              id: houseId,
+              name: houseId,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+        }
+        await database.spacesDao.insertSpace(
+          SpacesCompanion.insert(
+            id: 'ai-space',
+            houseId: 'ai-house',
+            name: 'Camera',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+
+        Future<void> insertExisting(
+          String id, {
+          String houseId = 'ai-house',
+          bool isDeleted = false,
+          String? aiMetadata,
+          SyncStatus syncStatus = SyncStatus.synced,
+        }) async {
+          await database.itemsDao.insertItem(
+            ItemsCompanion.insert(
+              id: id,
+              houseId: houseId,
+              name: 'Oggetto $id',
+              category: ItemCategory.varie,
+              quantity: const Value(4),
+              spaceId: const Value('ai-space'),
+              createdAt: now,
+              updatedAt: now,
+              isDeleted: Value(isDeleted),
+              aiMetadata: Value(aiMetadata),
+              syncStatus: Value(syncStatus),
+              userId: const Value('owner'),
+              syncRetryCount: const Value(3),
+              lastSyncError: const Value('previous error'),
+              sentryTraceId: const Value('trace-id'),
+              nextSyncAttemptAt: Value(now.add(const Duration(hours: 1))),
+              lastSyncedAt: Value(now.subtract(const Duration(days: 1))),
+            ),
+          );
+        }
+
+        await insertExisting('eligible-a');
+        await insertExisting(
+          'eligible-b',
+          syncStatus: SyncStatus.pendingCreate,
+        );
+        await insertExisting('already-scanned', aiMetadata: '{"old":true}');
+        await insertExisting('deleted', isDeleted: true);
+        await insertExisting('other-house-item', houseId: 'other-house');
+
+        final updatedAtBefore = (await database.itemsDao.findItemById(
+          'eligible-a',
+        ))!.updatedAt;
+        final inserted = ItemsCompanion.insert(
+          id: 'new-ai-item',
+          houseId: 'ai-house',
+          name: 'Nuovo',
+          category: ItemCategory.vestiti,
+          createdAt: now,
+          updatedAt: now,
+        );
+
+        final enrichedCount = await database.itemsDao.saveAiItemsToHouse(
+          houseId: 'ai-house',
+          newItems: [inserted],
+          metadataByItemId: const {
+            'eligible-a': '{"color":"blu"}',
+            'eligible-b': '{"color":"rosso"}',
+            'already-scanned': '{"color":"verde"}',
+            'deleted': '{"color":"nero"}',
+            'other-house-item': '{"color":"giallo"}',
+          },
+        );
+
+        expect(enrichedCount, 2);
+        expect(await database.itemsDao.getItemById('new-ai-item'), isNotNull);
+        final eligibleA = (await database.itemsDao.findItemById('eligible-a'))!;
+        final eligibleB = (await database.itemsDao.findItemById('eligible-b'))!;
+        final alreadyScanned = (await database.itemsDao.findItemById(
+          'already-scanned',
+        ))!;
+        final deleted = (await database.itemsDao.findItemById('deleted'))!;
+        final otherHouse = (await database.itemsDao.findItemById(
+          'other-house-item',
+        ))!;
+
+        expect(eligibleA.aiMetadata, '{"color":"blu"}');
+        expect(eligibleB.aiMetadata, '{"color":"rosso"}');
+        expect(alreadyScanned.aiMetadata, '{"old":true}');
+        expect(deleted.aiMetadata, isNull);
+        expect(otherHouse.aiMetadata, isNull);
+        expect(eligibleA.updatedAt.isAfter(updatedAtBefore), isTrue);
+        expect(eligibleA.syncStatus, SyncStatus.pendingUpdate);
+        expect(eligibleB.syncStatus, SyncStatus.pendingCreate);
+        for (final item in [eligibleA, eligibleB]) {
+          expect(item.name, startsWith('Oggetto '));
+          expect(item.quantity, 4);
+          expect(item.spaceId, 'ai-space');
+          expect(item.userId, 'owner');
+          expect(item.createdAt, now);
+          expect(item.syncRetryCount, 3);
+          expect(item.lastSyncError, 'previous error');
+          expect(item.sentryTraceId, 'trace-id');
+          expect(item.nextSyncAttemptAt, now.add(const Duration(hours: 1)));
+          expect(item.lastSyncedAt, now.subtract(const Duration(days: 1)));
+        }
+        expect(alreadyScanned.updatedAt, now);
+        expect(alreadyScanned.syncStatus, SyncStatus.synced);
+        expect(deleted.updatedAt, now);
+        expect(deleted.syncStatus, SyncStatus.synced);
+        expect(otherHouse.updatedAt, now);
+        expect(otherHouse.syncStatus, SyncStatus.synced);
+      },
+    );
+
+    test('rolls back inserted items when the metadata update fails', () async {
+      final now = DateTime(2026, 10, 14);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'rollback-house',
+          name: 'Rollback',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'rollback-existing',
+          houseId: 'rollback-house',
+          name: 'Esistente',
+          category: ItemCategory.varie,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await database.customStatement('''
+        CREATE TRIGGER reject_ai_metadata
+        BEFORE UPDATE OF ai_metadata ON items
+        WHEN OLD.id = 'rollback-existing'
+        BEGIN SELECT RAISE(ABORT, 'forced metadata failure'); END
+      ''');
+
+      await expectLater(
+        database.itemsDao.saveAiItemsToHouse(
+          houseId: 'rollback-house',
+          newItems: [
+            ItemsCompanion.insert(
+              id: 'must-rollback',
+              houseId: 'rollback-house',
+              name: 'Nuovo',
+              category: ItemCategory.varie,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          ],
+          metadataByItemId: const {'rollback-existing': '{"ok":true}'},
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(await database.itemsDao.findItemById('must-rollback'), isNull);
+      expect(
+        (await database.itemsDao.findItemById('rollback-existing'))!.aiMetadata,
+        isNull,
+      );
+    });
+
+    test('empty input performs no changes', () async {
+      expect(
+        await database.itemsDao.saveAiItemsToHouse(
+          houseId: 'unused-house',
+          newItems: const [],
+          metadataByItemId: const {},
+        ),
+        0,
+      );
+    });
+  });
+
   group('ItemsDao - incrementSyncRetry', () {
     test('non modifica updatedAt (pivot LWW)', () async {
       final t0 = DateTime(2026, 5, 1, 8, 0);
