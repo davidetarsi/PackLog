@@ -63,6 +63,12 @@ class UniversalItemTile extends StatelessWidget {
   /// Margin esterno (default: bottom spacingSm)
   final EdgeInsets? margin;
 
+  /// Rientro del divisore per le righe piatte.
+  final EdgeInsets dividerInsets;
+
+  /// L'ultima riga di un gruppo può non avere divisore.
+  final bool showDivider;
+
   /// Se true (default) la tile è una **riga piatta con divisore inferiore**
   /// invece di una Card con sfondo e margine.
   ///
@@ -90,6 +96,8 @@ class UniversalItemTile extends StatelessWidget {
     this.useListTile = true,
     this.contentPadding,
     this.margin,
+    this.dividerInsets = EdgeInsets.zero,
+    this.showDivider = true,
     this.dense = true,
   });
 
@@ -112,16 +120,23 @@ class UniversalItemTile extends StatelessWidget {
       // copra durante il tap.
       tile = Padding(
         padding: margin ?? EdgeInsets.zero,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: colorScheme.outlineVariant),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Material(
+              color: backgroundColor ?? Colors.transparent,
+              child: cardChild,
             ),
-          ),
-          child: Material(
-            color: backgroundColor ?? Colors.transparent,
-            child: cardChild,
-          ),
+            if (showDivider)
+              Padding(
+                padding: dividerInsets,
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: colorScheme.outlineVariant,
+                ),
+              ),
+          ],
         ),
       );
     } else {

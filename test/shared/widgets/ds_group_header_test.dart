@@ -54,4 +54,29 @@ void main() {
     final text = tester.widget<Text>(find.text('Vestiti · 7'));
     expect(text.style?.color, AppTheme.light.colorScheme.onSurfaceVariant);
   });
+
+  testWidgets('la variante in evidenza gerarchizza nome e conteggio', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      const DsGroupHeader(label: 'Vestiti', count: 7, prominent: true),
+    );
+
+    final header = tester.widget<Text>(
+      find.byKey(const Key('group_header_text')),
+    );
+    final spans = header.textSpan! as TextSpan;
+    expect(spans.toPlainText(), 'Vestiti · 7');
+    expect(spans.children![0].style?.fontSize, 16);
+    expect(spans.children![1].style?.fontSize, 14);
+    expect(
+      spans.children![0].style?.color,
+      AppTheme.light.colorScheme.onSurface,
+    );
+    expect(
+      spans.children![1].style?.color,
+      AppTheme.light.colorScheme.onSurfaceVariant,
+    );
+  });
 }

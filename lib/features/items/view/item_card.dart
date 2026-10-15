@@ -23,6 +23,10 @@ class ItemCard extends ConsumerWidget {
   /// "aggiungi" della casa): il long press non fa nulla.
   final bool allowSelection;
 
+  /// Rientro e visibilità del divisore quando la riga è dentro un gruppo.
+  final EdgeInsets dividerInsets;
+  final bool showDivider;
+
   const ItemCard({
     super.key,
     required this.item,
@@ -31,6 +35,8 @@ class ItemCard extends ConsumerWidget {
     this.onOpened,
     this.onSheetClosed,
     this.allowSelection = true,
+    this.dividerInsets = EdgeInsets.zero,
+    this.showDivider = true,
   });
 
   @override
@@ -132,6 +138,8 @@ class ItemCard extends ConsumerWidget {
 
     return UniversalItemTile(
       backgroundColor: bgColor,
+      dividerInsets: dividerInsets,
+      showDivider: showDivider,
       leading: leading,
       title: Text(
         item.name,

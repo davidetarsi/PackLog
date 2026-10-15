@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/view/item_card.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/widgets/ds_group_header.dart';
+import 'package:pack_log/shared/widgets/ds_group_surface_sliver.dart';
 
 /// Gruppo di una categoria nella lista della casa.
 ///
@@ -51,24 +53,32 @@ class _ItemCategorySectionState extends State<ItemCategorySection> {
             key: widget.headerKey,
             label: widget.category.displayName,
             count: widget.items.length,
+            prominent: true,
             expanded: _isExpanded,
             onTap: () => setState(() => _isExpanded = !_isExpanded),
           ),
         ),
         if (_isExpanded)
-          SliverList.builder(
-            itemCount: widget.items.length,
-            itemBuilder: (context, index) {
-              final item = widget.items[index];
-              return ItemCard(
-                item: item,
-                houseId: widget.houseId,
-                quantityOnTrip: widget.itemQuantitiesOnTrip[item.id] ?? 0,
-                onOpened: onItemOpened == null
-                    ? null
-                    : () => onItemOpened(index),
-              );
-            },
+          DsGroupSurfaceSliver(
+            surfaceKey: ValueKey('house_group_surface_${widget.category.name}'),
+            sliver: SliverList.builder(
+              itemCount: widget.items.length,
+              itemBuilder: (context, index) {
+                final item = widget.items[index];
+                return ItemCard(
+                  item: item,
+                  houseId: widget.houseId,
+                  quantityOnTrip: widget.itemQuantitiesOnTrip[item.id] ?? 0,
+                  onOpened: onItemOpened == null
+                      ? null
+                      : () => onItemOpened(index),
+                  dividerInsets: EdgeInsets.symmetric(
+                    horizontal: context.spacingMd,
+                  ),
+                  showDivider: index < widget.items.length - 1,
+                );
+              },
+            ),
           ),
       ],
     );
