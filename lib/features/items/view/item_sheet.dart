@@ -7,7 +7,6 @@ import '../../../shared/constants/space_icons.dart';
 import '../../../shared/helpers/dialog_helpers.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
-import '../../../shared/widgets/ds_bottom_sheet_handle.dart';
 import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/ds_settings.dart';
@@ -248,16 +247,8 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const DsBottomSheetHandle(),
                   Row(
                     children: [
-                      IconButton(
-                        key: const Key('item_sheet_close'),
-                        icon: const Icon(Icons.close),
-                        tooltip: 'common.close'.tr(),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      const Spacer(),
                       PopupMenuButton<_ItemMenu>(
                         key: const Key('item_sheet_menu'),
                         icon: const Icon(Icons.more_horiz),
@@ -278,6 +269,13 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                             ),
                           ),
                         ],
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        key: const Key('item_sheet_close'),
+                        icon: const Icon(Icons.close),
+                        tooltip: 'common.close'.tr(),
+                        onPressed: () => Navigator.pop(context),
                       ),
                     ],
                   ),
@@ -346,19 +344,22 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                       ),
                     )
                   else
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        key: const Key('item_sheet_add_note'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: cs.onSurfaceVariant,
+                    Padding(
+                      padding: EdgeInsets.only(top: context.spacingMd),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          key: const Key('item_sheet_add_note'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: cs.onSurfaceVariant,
+                          ),
+                          onPressed: () => setState(() => _showNote = true),
+                          icon: Icon(Icons.add, size: context.iconSizeSm),
+                          label: Text('items.add_note'.tr()),
                         ),
-                        onPressed: () => setState(() => _showNote = true),
-                        icon: Icon(Icons.add, size: context.iconSizeSm),
-                        label: Text('items.add_note'.tr()),
                       ),
                     ),
-                  SizedBox(height: context.spacingSm),
+                  SizedBox(height: context.spacingMd),
                   DsButton(
                     key: const Key('item_sheet_save'),
                     label: 'common.save'.tr(),
