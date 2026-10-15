@@ -4,7 +4,10 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/view/item_sheet.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_bottom_sheet_handle.dart';
+import 'package:pack_log/shared/widgets/ds_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../screenshots/support/harness.dart';
@@ -47,6 +50,45 @@ void main() {
         matching: find.text('Cassettiera'),
       ),
       findsOneWidget,
+    );
+    await app.finish();
+  });
+
+  testWidgets('senza maniglia, menu a sinistra e chiusura a destra', (
+    tester,
+  ) async {
+    final app = await openCalzini(tester);
+
+    expect(find.byType(DsBottomSheetHandle), findsNothing);
+    expect(
+      tester.getCenter(find.byKey(const Key('item_sheet_menu'))).dx,
+      lessThan(tester.getCenter(find.byKey(const Key('item_sheet_close'))).dx),
+    );
+    await app.finish();
+  });
+
+  testWidgets('separa card, nota e CTA con spaziatura di sezione', (
+    tester,
+  ) async {
+    final app = await openCalzini(tester);
+    final context = tester.element(
+      find.byKey(const Key('item_sheet_add_note')),
+    );
+    final settingsBottom = tester.getRect(find.byType(DsSettingsGroup)).bottom;
+    final addNoteRect = tester.getRect(
+      find.byKey(const Key('item_sheet_add_note')),
+    );
+    final saveTop = tester
+        .getRect(find.byKey(const Key('item_sheet_save')))
+        .top;
+
+    expect(
+      addNoteRect.top - settingsBottom,
+      greaterThanOrEqualTo(context.spacingMd - 0.1),
+    );
+    expect(
+      saveTop - addNoteRect.bottom,
+      greaterThanOrEqualTo(context.spacingMd - 0.1),
     );
     await app.finish();
   });

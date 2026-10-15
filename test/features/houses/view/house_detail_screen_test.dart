@@ -346,6 +346,27 @@ void main() {
     await app.finish();
   });
 
+  testWidgets('la ricerca nasconde la barra inferiore e la ripristina', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(find.byKey(const Key('house_search')));
+
+    expect(find.byKey(const ValueKey('normal_bar')), findsNothing);
+    expect(find.byIcon(Icons.auto_awesome), findsNothing);
+    final field = find.descendant(
+      of: find.byKey(const Key('house_search_field')),
+      matching: find.byType(EditableText),
+    );
+    expect(tester.widget<EditableText>(field).focusNode.hasFocus, isTrue);
+
+    await app.tap(find.byKey(const Key('house_search_close')));
+    await app.settle();
+    expect(find.byKey(const ValueKey('normal_bar')), findsOneWidget);
+    expect(find.byIcon(Icons.auto_awesome), findsOneWidget);
+    await app.finish();
+  });
+
   testWidgets('dopo la selezione la ricerca non riprende la tastiera', (
     tester,
   ) async {
@@ -497,13 +518,16 @@ void main() {
     },
   );
 
-  testWidgets('con la ricerca aperta, il campo la chiude', (tester) async {
+  testWidgets('con la ricerca aperta, la barra azioni resta nascosta', (
+    tester,
+  ) async {
     final app = await openHome(tester);
     await app.tap(find.byKey(const Key('house_search')));
-    await app.tap(rapidFire());
-    expect(find.byKey(const Key('house_search_field')), findsNothing);
-    await app.enterText(rapidFire(), 'calz');
-    expect(find.text('Già in casa · 1'), findsOneWidget);
+    expect(find.byKey(const ValueKey('normal_bar')), findsNothing);
+    expect(find.byIcon(Icons.document_scanner_outlined), findsNothing);
+    expect(find.byKey(const Key('house_search_field')), findsOneWidget);
+    await app.tap(find.byKey(const Key('house_search_close')));
+    expect(find.byKey(const ValueKey('normal_bar')), findsOneWidget);
     await app.finish();
   });
 

@@ -580,59 +580,63 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                     ],
                   ),
             // Bottom bar: transizione animata tra barra normale e barra selezione.
-            bottomContent: AnimatedSwitcher(
-              duration: _kModeSwitchDuration,
-              transitionBuilder: (child, animation) =>
-                  FadeTransition(opacity: animation, child: child),
-              layoutBuilder: (currentChild, previousChildren) => Stack(
-                alignment: Alignment.bottomCenter,
-                children: [
-                  ...previousChildren,
-                  if (currentChild != null) currentChild,
-                ],
-              ),
-              child: isSelectionMode
-                  ? DsFloatingBar(
-                      key: const ValueKey('selection-bar'),
+            bottomContent: _search != null && !isSelectionMode
+                ? null
+                : AnimatedSwitcher(
+                    duration: _kModeSwitchDuration,
+                    transitionBuilder: (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
+                    layoutBuilder: (currentChild, previousChildren) => Stack(
+                      alignment: Alignment.bottomCenter,
                       children: [
-                        DsBarItem(
-                          key: const Key('selection_move'),
-                          icon: Icons.drive_file_move_outline,
-                          label: 'common.move'.tr(),
-                          onTap: hasSelection ? _handleBulkMove : null,
-                        ),
-                        DsBarItem(
-                          key: const Key('selection_trip'),
-                          icon: Icons.luggage_outlined,
-                          label: 'items.to_trip'.tr(),
-                          onTap: hasSelection ? _handleAddToTrip : null,
-                        ),
-                        DsBarItem(
-                          key: const Key('selection_delete'),
-                          icon: Icons.delete_outline,
-                          label: 'common.delete'.tr(),
-                          onTap: hasSelection ? _handleBulkDelete : null,
-                        ),
+                        ...previousChildren,
+                        if (currentChild != null) currentChild,
                       ],
-                    )
-                  : KeyedSubtree(
-                      key: const ValueKey('normal_bar'),
-                      child: _HouseNormalActionBar(
-                        houseId: widget.houseId,
-                        onAiScan: () =>
-                            startAiScan(context, ref, widget.houseId),
-                        autofocusRapidFire: widget.openRapidFire,
-                        isExpanded: _isRapidFireExpanded,
-                        currentSpaceId:
-                            (_spaceFilter != null && _spaceFilter != 'default')
-                            ? _spaceFilter
-                            : null,
-                        focusNode: _rapidFireFocus,
-                        onTextChanged: (q) => setState(() => _addQuery = q),
-                        onExpandedChanged: _onRapidFireExpanded,
-                      ),
                     ),
-            ),
+                    child: isSelectionMode
+                        ? DsFloatingBar(
+                            key: const ValueKey('selection-bar'),
+                            children: [
+                              DsBarItem(
+                                key: const Key('selection_move'),
+                                icon: Icons.drive_file_move_outline,
+                                label: 'common.move'.tr(),
+                                onTap: hasSelection ? _handleBulkMove : null,
+                              ),
+                              DsBarItem(
+                                key: const Key('selection_trip'),
+                                icon: Icons.luggage_outlined,
+                                label: 'items.to_trip'.tr(),
+                                onTap: hasSelection ? _handleAddToTrip : null,
+                              ),
+                              DsBarItem(
+                                key: const Key('selection_delete'),
+                                icon: Icons.delete_outline,
+                                label: 'common.delete'.tr(),
+                                onTap: hasSelection ? _handleBulkDelete : null,
+                              ),
+                            ],
+                          )
+                        : KeyedSubtree(
+                            key: const ValueKey('normal_bar'),
+                            child: _HouseNormalActionBar(
+                              houseId: widget.houseId,
+                              onAiScan: () =>
+                                  startAiScan(context, ref, widget.houseId),
+                              autofocusRapidFire: widget.openRapidFire,
+                              isExpanded: _isRapidFireExpanded,
+                              currentSpaceId:
+                                  (_spaceFilter != null &&
+                                      _spaceFilter != 'default')
+                                  ? _spaceFilter
+                                  : null,
+                              focusNode: _rapidFireFocus,
+                              onTextChanged: (q) =>
+                                  setState(() => _addQuery = q),
+                              onExpandedChanged: _onRapidFireExpanded,
+                            ),
+                          ),
+                  ),
           );
         },
         loading: () => const SkeletonHouseDetailScreen(),
