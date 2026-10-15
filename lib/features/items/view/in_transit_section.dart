@@ -4,6 +4,8 @@ import 'package:pack_log/features/items/view/in_transit_item_card.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/shared/widgets/ds_group_header.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
+import 'package:pack_log/shared/widgets/ds_group_surface_sliver.dart';
 
 /// Gruppo "Temporanei" della lista della casa.
 ///
@@ -53,6 +55,7 @@ class _InTransitSectionState extends State<InTransitSection> {
             key: widget.headerKey,
             label: 'common.temporaries'.tr(),
             count: widget.items.length,
+            prominent: true,
             detail: sharedOrigin == null
                 ? null
                 : '${'common.from'.tr().toLowerCase()} $sharedOrigin',
@@ -61,15 +64,23 @@ class _InTransitSectionState extends State<InTransitSection> {
           ),
         ),
         if (_isExpanded)
-          SliverList.list(
-            children: [
-              for (final item in widget.items)
-                InTransitItemCard(
+          DsGroupSurfaceSliver(
+            surfaceKey: const ValueKey('house_group_surface_temporaries'),
+            sliver: SliverList.builder(
+              itemCount: widget.items.length,
+              itemBuilder: (context, index) {
+                final item = widget.items[index];
+                return InTransitItemCard(
                   item: item,
                   originHouseName: _originName(item),
                   showOrigin: sharedOrigin == null,
-                ),
-            ],
+                  dividerInsets: EdgeInsets.symmetric(
+                    horizontal: context.spacingMd,
+                  ),
+                  showDivider: index < widget.items.length - 1,
+                );
+              },
+            ),
           ),
       ],
     );

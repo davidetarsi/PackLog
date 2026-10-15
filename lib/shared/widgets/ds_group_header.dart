@@ -4,9 +4,10 @@ import '../theme/app_spacing.dart';
 
 /// Etichetta di un gruppo di righe: "Vestiti · 7".
 ///
-/// Piccola e grigia: è un riferimento, non un titolo né un'azione. Ha lo
-/// sfondo della pagina perché nelle liste sta in un `PinnedHeaderSliver` e
-/// resta fissa in alto mentre le righe del gruppo le scorrono sotto.
+/// Per impostazione predefinita è un riferimento piccolo e grigio. La variante
+/// [prominent] evidenzia invece il nome del gruppo e lascia conteggio e dettaglio
+/// al livello secondario. Ha lo sfondo della pagina perché nelle liste sta in
+/// un `PinnedHeaderSliver` e resta fissa mentre scorrono le righe del gruppo.
 ///
 /// Con [expanded] non nullo il gruppo è chiudibile: compare la freccetta e
 /// [onTap] apre o chiude.
@@ -21,6 +22,9 @@ class DsGroupHeader extends StatelessWidget {
   final bool? expanded;
   final VoidCallback? onTap;
 
+  /// Mostra il nome del gruppo come titolo e i metadati come testo secondario.
+  final bool prominent;
+
   const DsGroupHeader({
     super.key,
     required this.label,
@@ -28,6 +32,7 @@ class DsGroupHeader extends StatelessWidget {
     this.detail,
     this.expanded,
     this.onTap,
+    this.prominent = false,
   });
 
   @override
@@ -39,6 +44,23 @@ class DsGroupHeader extends StatelessWidget {
       if (count != null) '$count',
       if (detail != null) detail!,
     ].join(' · ');
+    final labelStyle = prominent
+        ? theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurface,
+          )
+        : theme.textTheme.labelLarge?.copyWith(color: color);
+    final detailStyle = theme.textTheme.labelLarge?.copyWith(color: color);
+    final richText = prominent
+        ? TextSpan(
+            children: [
+              TextSpan(text: label, style: labelStyle),
+              if (count != null)
+                TextSpan(text: ' · $count', style: detailStyle),
+              if (detail != null)
+                TextSpan(text: ' · $detail', style: detailStyle),
+            ],
+          )
+        : null;
 
     return Semantics(
       button: onTap != null,
@@ -55,10 +77,16 @@ class DsGroupHeader extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    text,
-                    style: theme.textTheme.labelLarge?.copyWith(color: color),
-                  ),
+                  child: prominent
+                      ? Text.rich(
+                          richText!,
+                          key: const Key('group_header_text'),
+                        )
+                      : Text(
+                          text,
+                          key: const Key('group_header_text'),
+                          style: labelStyle,
+                        ),
                 ),
                 if (expanded != null)
                   Icon(

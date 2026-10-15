@@ -14,12 +14,16 @@ class InTransitItemCard extends StatelessWidget {
   /// nell'header di sezione (caso in cui tutti i temporanei vengono dalla
   /// stessa casa, che è la norma).
   final bool showOrigin;
+  final EdgeInsets dividerInsets;
+  final bool showDivider;
 
   const InTransitItemCard({
     super.key,
     required this.item,
     required this.originHouseName,
     this.showOrigin = true,
+    this.dividerInsets = EdgeInsets.zero,
+    this.showDivider = true,
   });
 
   @override
@@ -33,6 +37,8 @@ class InTransitItemCard extends StatelessWidget {
     // Gli oggetti "in viaggio" nella stessa schermata non hanno mai avuto uno
     // sfondo, quindi questa era l'eccezione.
     return UniversalItemTile(
+      dividerInsets: dividerInsets,
+      showDivider: showDivider,
       leading: CategoryIcon(category: item.category),
       title: Text(
         item.name,

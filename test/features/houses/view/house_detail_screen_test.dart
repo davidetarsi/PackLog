@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/features/items/view/bulk_move_sheet.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/shared/constants/app_constants.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
 import 'package:pack_log/shared/widgets/universal_item_tile.dart';
@@ -69,6 +70,28 @@ void main() {
     expect(find.text('Calzini'), findsNothing);
     await app.tap(find.text('Vestiti · 7'));
     expect(find.text('Calzini'), findsOneWidget);
+    await app.finish();
+  });
+
+  testWidgets('le categorie hanno una superficie tonale a blocco', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+
+    final section = tester.widget<DecoratedSliver>(
+      find.byKey(const Key('house_group_surface_vestiti')),
+    );
+    final decoration = section.decoration as BoxDecoration;
+    expect(decoration.color, AppTheme.light.colorScheme.surfaceContainer);
+    expect(
+      decoration.borderRadius,
+      BorderRadius.circular(AppConstants.cardBorderRadius),
+    );
+
+    final header = tester.widget<Text>(
+      find.byKey(const Key('group_header_text')).first,
+    );
+    expect((header.textSpan! as TextSpan).children!.first.style?.fontSize, 16);
     await app.finish();
   });
 
