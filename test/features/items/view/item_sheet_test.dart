@@ -54,15 +54,23 @@ void main() {
     await app.finish();
   });
 
-  testWidgets('senza maniglia, menu a sinistra e chiusura a destra', (
-    tester,
-  ) async {
+  testWidgets('azioni a destra: chiusura prima del menu', (tester) async {
     final app = await openCalzini(tester);
 
     expect(find.byType(DsBottomSheetHandle), findsNothing);
     expect(
-      tester.getCenter(find.byKey(const Key('item_sheet_menu'))).dx,
-      lessThan(tester.getCenter(find.byKey(const Key('item_sheet_close'))).dx),
+      tester.getCenter(find.byKey(const Key('item_sheet_close'))).dx,
+      lessThan(tester.getCenter(find.byKey(const Key('item_sheet_menu'))).dx),
+    );
+
+    final context = tester.element(find.byKey(const Key('item_sheet_close')));
+    final sheetWidth = MediaQuery.sizeOf(context).width;
+    final closeRight = tester
+        .getRect(find.byKey(const Key('item_sheet_close')))
+        .right;
+    expect(
+      sheetWidth - closeRight,
+      greaterThanOrEqualTo(context.spacingMd + context.spacingSm - 0.1),
     );
     await app.finish();
   });
