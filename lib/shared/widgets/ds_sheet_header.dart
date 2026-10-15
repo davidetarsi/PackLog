@@ -10,8 +10,9 @@ import 'ds_bottom_sheet_handle.dart';
 /// azioni, che si chiudono toccando un'opzione.
 class DsSheetHeader extends StatelessWidget {
   final String title;
+  final VoidCallback? onClose;
 
-  const DsSheetHeader({super.key, required this.title});
+  const DsSheetHeader({super.key, required this.title, this.onClose});
 
   @override
   Widget build(BuildContext context) {
@@ -25,12 +26,33 @@ class DsSheetHeader extends StatelessWidget {
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
           ),
-          child: Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
+          child: onClose == null
+              ? Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      key: const Key('sheet_close'),
+                      icon: const Icon(Icons.close),
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).closeButtonTooltip,
+                      onPressed: onClose,
+                    ),
+                  ],
+                ),
         ),
         const Divider(height: 1),
       ],

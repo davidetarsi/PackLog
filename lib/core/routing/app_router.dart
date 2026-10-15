@@ -23,7 +23,6 @@ import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/add_trip_screen.dart';
 import '../../features/trips/view/edit_trip_info_screen.dart';
 import '../../features/trips/view/edit_trip_items_screen.dart';
-import '../../features/ai_input/view/ai_clothing_sandbox_screen.dart';
 import '../../features/ai_input/view/ai_results_screen.dart';
 import '../../features/tour/controllers/tour_orchestrator.dart';
 import '../../features/tour/model/onboarding_state.dart';
@@ -201,18 +200,6 @@ GoRouter appRouter(Ref ref) {
               openRapidFire: state.uri.queryParameters['add'] == 'manual',
             ),
           );
-        },
-      ),
-      GoRoute(
-        path: '/houses/:id/ai-import',
-        name: 'ai-import',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final id = state.pathParameters['id'];
-          if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
-          }
-          return AiClothingSandboxScreen(houseId: id);
         },
       ),
       GoRoute(

@@ -12,6 +12,12 @@ class PhotoGroup with _$PhotoGroup {
   const factory PhotoGroup({
     required File photo,
     required List<ClothingAnalysisResult> results,
+
+    /// Indici dei capi esclusi: restano visibili e possono essere inclusi di nuovo.
+    @Default(<int>{}) Set<int> excluded,
+
+    /// Indice del capo → id dell'oggetto esistente da arricchire.
+    @Default(<int, String>{}) Map<int, String> linkedItemIds,
   }) = _PhotoGroup;
 }
 

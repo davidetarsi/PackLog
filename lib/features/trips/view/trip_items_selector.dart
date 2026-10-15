@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../ai_input/helpers/start_ai_scan.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../houses/model/house_model.dart';
 import '../../items/providers/item_provider.dart';
@@ -277,7 +278,7 @@ class _TripItemsSelectorState extends ConsumerState<TripItemsSelector> {
         ctaKey: const Key('trip_items_empty_add'),
         onCta: addHouseId == null
             ? null
-            : () => context.push('/houses/$addHouseId/ai-import'),
+            : () => startAiScan(context, ref, addHouseId),
         linkLabel: addHouseId == null ? null : 'create_sheet.manual_link'.tr(),
         onLink: addHouseId == null
             ? null

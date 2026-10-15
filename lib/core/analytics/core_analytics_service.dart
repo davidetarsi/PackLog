@@ -222,12 +222,32 @@ class CoreAnalyticsService {
     _safeLogEvent('ai_input_failed', properties: {'error_type': errorType});
   }
 
-  void trackAiItemsSaved({required int count, required bool isOnboarding}) {
+  void trackAiItemsSaved({
+    required int count,
+    required bool isOnboarding,
+    int updated = 0,
+  }) {
     _safeLogEvent(
       'ai_items_saved',
-      properties: {'count': count, 'is_onboarding': isOnboarding},
+      properties: {
+        'count': count,
+        'is_onboarding': isOnboarding,
+        'updated': updated,
+      },
     );
   }
+
+  /// Apre il foglio che confronta i risultati AI con gli oggetti esistenti.
+  void trackAlreadyHereOpened({required bool hasManualCandidates}) {
+    _safeLogEvent(
+      'already_here_opened',
+      properties: {'has_manual_candidates': hasManualCandidates},
+    );
+  }
+
+  /// L'utente aggiunge dettagli AI a un oggetto esistente.
+  void trackAlreadyHereDetailsAdded() =>
+      _safeLogEvent('already_here_details_added');
 
   // ── onboarding_ ───────────────────────────────────────────────────────────
 

@@ -12,9 +12,8 @@ import 'seed.dart';
 /// Import AI pilotato dal test: niente fotocamera, niente GPT.
 ///
 /// Parte da [_initial] e passa a uno stato nuovo con [emit]. La schermata
-/// risultati crea i campi di testo dei capi dentro un `ref.listen`, cioè solo
-/// su una *transizione* di stato, come accade nell'app (caricamento →
-/// risultati): uno stato iniziale già pieno mostrerebbe le foto senza capi.
+/// risultati inizializza i campi di testo sia dallo stato già disponibile al
+/// mount sia dalle successive transizioni di stato.
 class FakeAiImport extends AiImportNotifier {
   FakeAiImport([this._initial = const AiImportState(isLoading: true)]);
 
@@ -69,7 +68,7 @@ Future<File> _photo(String name, Color garment) async {
 ClothingAnalysisResult _garment(String name, String color, String sub) =>
     ClothingAnalysisResult(
       name: name,
-      category: 'vestiti',
+      category: sub == 'Pantaloni' ? 'Lower Body' : 'Upper Body',
       subCategory: sub,
       baseColor: color,
       pattern: 'Tinta unita',

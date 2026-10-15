@@ -592,30 +592,27 @@ final flows = <Flow>[
     Scenario(
       1,
       'import-ai',
-      'vuoto',
-      route: '/houses/:id/ai-import',
-      source: 'lib/features/ai_input/view/ai_clothing_sandbox_screen.dart',
-      description: 'Schermata iniziale: scegli immagini.',
+      'scelta-sorgente',
+      route: '/houses/:id',
+      source: _houseDetailSrc,
+      description:
+          'Foglio Galleria/Fotocamera aperto dal bottone AI della casa.',
+      setup: AppSetup(
+        extraOverrides: [
+          aiImportNotifierProvider.overrideWith(
+            () => FakeAiImport(const AiImportState()),
+          ),
+        ],
+      ),
       steps: (app) async {
         await _houseDetail(app);
         await app.tap(_icon(Icons.auto_awesome));
+        expect(_text('ai_import.source_gallery'), findsOneWidget);
+        expect(_text('ai_import.source_camera'), findsOneWidget);
       },
     ),
     Scenario(
       2,
-      'import-ai',
-      'scelta-sorgente',
-      route: '/houses/:id/ai-import',
-      source: 'lib/features/ai_input/view/ai_clothing_sandbox_screen.dart',
-      description: 'Sheet fotocamera / galleria.',
-      steps: (app) async {
-        await _houseDetail(app);
-        await app.tap(_icon(Icons.auto_awesome));
-        await app.tap(_text('ai_import.pick_images'));
-      },
-    ),
-    Scenario(
-      3,
       'ai-risultati',
       'analisi-in-corso',
       route: '/houses/:id/ai-import/results',
@@ -634,7 +631,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      4,
+      3,
       'ai-risultati',
       'capi-riconosciuti',
       route: '/houses/:id/ai-import/results',
@@ -652,7 +649,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      5,
+      4,
       'ai-risultati',
       'scelta-casa',
       route: '/houses/:id/ai-import/results',
@@ -667,11 +664,125 @@ final flows = <Flow>[
         await _houseDetail(app);
         await app.push('/houses/$kHomeId/ai-import/results');
         await _emitAi(app, aiResultsState());
-        await app.tap(_icon(Icons.other_houses_outlined));
+        await app.tap(find.byKey(const Key('ai_destination')));
+      },
+    ),
+    Scenario(
+      5,
+      'ai-risultati',
+      'un-capo-tolto',
+      route: '/houses/:id/ai-import/results',
+      source: _aiResults,
+      description: 'Secondo capo escluso dalla selezione senza rimuoverlo.',
+      setup: AppSetup(
+        extraOverrides: [
+          aiImportNotifierProvider.overrideWith(FakeAiImport.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.push('/houses/$kHomeId/ai-import/results');
+        await _emitAi(app, aiResultsState());
+        await app.tap(find.byType(Checkbox).at(1));
       },
     ),
     Scenario(
       6,
+      'ai-risultati',
+      'nome-in-modifica',
+      route: '/houses/:id/ai-import/results',
+      source: _aiResults,
+      description: 'Primo nome AI aperto in modifica.',
+      setup: AppSetup(
+        extraOverrides: [
+          aiImportNotifierProvider.overrideWith(FakeAiImport.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.push('/houses/$kHomeId/ai-import/results');
+        await _emitAi(app, aiResultsState());
+        await app.tap(find.byKey(const Key('ai_result_name')).first);
+      },
+    ),
+    Scenario(
+      7,
+      'ai-risultati',
+      'c-e-gia',
+      route: '/houses/:id/ai-import/results',
+      source: _aiResults,
+      description: 'Foglio “C’è già?” aperto per la T-shirt presente in casa.',
+      setup: AppSetup(
+        extraOverrides: [
+          aiImportNotifierProvider.overrideWith(FakeAiImport.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.push('/houses/$kHomeId/ai-import/results');
+        await _emitAi(app, aiResultsState());
+        await app.tap(find.byKey(const Key('ai_already_here')).at(1));
+      },
+    ),
+    Scenario(
+      8,
+      'ai-risultati',
+      'collegato',
+      route: '/houses/:id/ai-import/results',
+      source: _aiResults,
+      description: 'T-shirt riconosciuta collegata all’oggetto già presente.',
+      setup: AppSetup(
+        extraOverrides: [
+          aiImportNotifierProvider.overrideWith(FakeAiImport.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.push('/houses/$kHomeId/ai-import/results');
+        await _emitAi(app, aiResultsState());
+        await app.tap(find.byKey(const Key('ai_already_here')).at(1));
+        await app.tap(find.byKey(const Key('add_details_item-0')));
+      },
+    ),
+    Scenario(
+      9,
+      'ai-risultati',
+      'casa-vuota',
+      route: '/houses/:id/ai-import/results',
+      source: _aiResults,
+      description: 'Risultati per una casa vuota senza azioni “C’è già?”.',
+      setup: AppSetup(
+        extraOverrides: [
+          aiImportNotifierProvider.overrideWith(FakeAiImport.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app, kEmptyHouseId);
+        await app.push('/houses/$kEmptyHouseId/ai-import/results');
+        await _emitAi(app, aiResultsState(houseId: kEmptyHouseId));
+      },
+    ),
+    Scenario(
+      10,
+      'ai-risultati',
+      'conferma-uscita',
+      route: '/houses/:id/ai-import/results',
+      source: _aiResults,
+      description: 'Conferma di uscita con capi ancora selezionati.',
+      setup: AppSetup(
+        extraOverrides: [
+          aiImportNotifierProvider.overrideWith(FakeAiImport.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.push('/houses/$kHomeId/ai-import/results');
+        await _emitAi(app, aiResultsState());
+        await app.tap(find.byKey(const Key('ai_results_close')));
+      },
+    ),
+    Scenario(
+      11,
       'ai-risultati',
       'errore-parziale',
       route: '/houses/:id/ai-import/results',
@@ -689,7 +800,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      7,
+      12,
       'ai-risultati',
       'errore-rete',
       route: '/houses/:id/ai-import/results',
@@ -707,7 +818,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      8,
+      13,
       'ai-risultati',
       'limite-raggiunto',
       route: '/houses/:id/ai-import/results',

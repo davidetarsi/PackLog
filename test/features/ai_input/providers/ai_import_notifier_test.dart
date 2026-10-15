@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/ai_input/model/ai_import_state.dart';
@@ -36,6 +38,8 @@ class MockHouseRepository extends Mock implements HouseRepository {}
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 class MockOnboardingRepository extends Mock implements IOnboardingRepository {}
+
+class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -73,6 +77,7 @@ ProviderContainer _makeContainer({
   MockHouseRepository? houseRepo,
   MockSyncOrchestrator? syncOrchestrator,
   MockOnboardingRepository? onboardingRepo,
+  MockCoreAnalyticsService? analytics,
 }) {
   return ProviderContainer(
     overrides: [
@@ -85,6 +90,8 @@ ProviderContainer _makeContainer({
         syncOrchestratorProvider.overrideWith((_) => syncOrchestrator),
       if (onboardingRepo != null)
         onboardingRepositoryProvider.overrideWithValue(onboardingRepo),
+      if (analytics != null)
+        coreAnalyticsServiceProvider.overrideWithValue(analytics),
     ],
   );
 }
@@ -389,11 +396,40 @@ void main() {
     });
   });
 
-  // ── deleteItem() ───────────────────────────────────────────────────────────
+  // ── inclusion and existing item links ─────────────────────────────────────
 
-  group('deleteItem()', () {
+  group('setIncluded() / link', () {
+    test('exclusion keeps the item visible and can be reversed', () async {
+      final service = MockAiClothingAnalyzerService();
+      final container = _makeContainer(service: service);
+      addTearDown(container.dispose);
+
+      await _seedOneGroup(
+        container,
+        service,
+        results: [
+          _fakeResult(name: 'T-Shirt'),
+          _fakeResult(name: 'Jeans'),
+        ],
+      );
+
+      final notifier = container.read(aiImportNotifierProvider.notifier);
+      notifier.setIncluded(0, 0, false);
+
+      var group = container.read(aiImportNotifierProvider).photoGroups.first;
+      expect(group.results, hasLength(2));
+      expect(notifier.allResults, hasLength(2));
+      expect(group.excluded, {0});
+      expect(notifier.newCount, 1);
+
+      notifier.setIncluded(0, 0, true);
+      group = container.read(aiImportNotifierProvider).photoGroups.first;
+      expect(group.excluded, isEmpty);
+      expect(notifier.newCount, 2);
+    });
+
     test(
-      'removes item from group; group remains with remaining items',
+      'linking removes a new item from the count; unlink restores it',
       () async {
         final service = MockAiClothingAnalyzerService();
         final container = _makeContainer(service: service);
@@ -408,26 +444,45 @@ void main() {
           ],
         );
 
-        container.read(aiImportNotifierProvider.notifier).deleteItem(0, 0);
+        final notifier = container.read(aiImportNotifierProvider.notifier);
+        notifier.linkToExisting(0, 1, 'item-jeans');
+        expect(notifier.newCount, 1);
+        expect(notifier.updatedCount, 1);
 
-        final state = container.read(aiImportNotifierProvider);
-        expect(state.photoGroups.length, 1);
-        expect(state.photoGroups.first.results.length, 1);
-        expect(state.photoGroups.first.results.first.name, 'Jeans');
+        notifier.unlink(0, 1);
+        expect(notifier.newCount, 2);
+        expect(notifier.updatedCount, 0);
       },
     );
 
-    test('removes entire group when last item is deleted', () async {
+    test('same target can be linked from only one group at a time', () async {
       final service = MockAiClothingAnalyzerService();
       final container = _makeContainer(service: service);
       addTearDown(container.dispose);
 
-      await _seedOneGroup(container, service);
+      _stubServiceSuccess(service, [_fakeResult(name: 'T-Shirt')]);
+      await container.read(aiImportNotifierProvider.notifier).processFiles([
+        _fakeFile(),
+      ]);
+      _stubServiceSuccess(service, [_fakeResult(name: 'Jeans')]);
+      await container.read(aiImportNotifierProvider.notifier).processFiles([
+        _fakeFile(),
+      ]);
 
-      container.read(aiImportNotifierProvider.notifier).deleteItem(0, 0);
+      final notifier = container.read(aiImportNotifierProvider.notifier);
+      notifier.linkToExisting(0, 0, 'existing-1');
+      notifier.linkToExisting(1, 0, 'existing-1');
 
-      final state = container.read(aiImportNotifierProvider);
-      expect(state.photoGroups, isEmpty);
+      expect(notifier.updatedCount, 1);
+      expect(notifier.newCount, 1);
+      expect(
+        container.read(aiImportNotifierProvider).photoGroups[0].linkedItemIds,
+        isEmpty,
+      );
+      expect(
+        container.read(aiImportNotifierProvider).photoGroups[1].linkedItemIds,
+        {0: 'existing-1'},
+      );
     });
   });
 
@@ -499,6 +554,51 @@ void main() {
       final state = container.read(aiImportNotifierProvider);
       expect(state.selectedHouseId, 'house-42');
     });
+
+    test(
+      'changing house clears links but preserves exclusions and results',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final container = _makeContainer(service: service);
+        addTearDown(container.dispose);
+
+        await _seedOneGroup(
+          container,
+          service,
+          results: [
+            _fakeResult(name: 'T-Shirt'),
+            _fakeResult(name: 'Jeans'),
+          ],
+        );
+        final notifier = container.read(aiImportNotifierProvider.notifier)
+          ..setSelectedHouseId('house-1')
+          ..linkToExisting(0, 1, 'existing-1')
+          ..setIncluded(0, 0, false);
+        _stubServiceSuccess(service, [_fakeResult(name: 'Felpa')]);
+        await notifier.processFiles([_fakeFile()]);
+        notifier.linkToExisting(1, 0, 'existing-2');
+
+        notifier.setSelectedHouseId('house-1');
+        expect(
+          container.read(aiImportNotifierProvider).photoGroups[0].linkedItemIds,
+          {1: 'existing-1'},
+        );
+        expect(
+          container.read(aiImportNotifierProvider).photoGroups[1].linkedItemIds,
+          {0: 'existing-2'},
+        );
+
+        notifier.setSelectedHouseId('house-2');
+        final groups = container.read(aiImportNotifierProvider).photoGroups;
+        expect(
+          groups.map((group) => group.linkedItemIds),
+          everyElement(isEmpty),
+        );
+        expect(groups[0].excluded, {0});
+        expect(groups[0].results, hasLength(2));
+        expect(notifier.newCount, 2);
+      },
+    );
   });
 
   // ── reset() ────────────────────────────────────────────────────────────────
@@ -549,11 +649,17 @@ void main() {
       container
           .read(aiImportNotifierProvider.notifier)
           .setSelectedHouseId('house-1');
-      // No processFiles call → allResults is empty
+      // No processFiles call → there are no scan results
 
       await container.read(aiImportNotifierProvider.notifier).saveItems();
 
-      verifyNever(() => itemRepo.insertMultipleItems(any()));
+      verifyNever(
+        () => itemRepo.saveAiItemsToHouse(
+          houseId: any(named: 'houseId'),
+          newItems: any(named: 'newItems'),
+          metadataByItemId: any(named: 'metadataByItemId'),
+        ),
+      );
       expect(container.read(aiImportNotifierProvider).isLoading, isFalse);
     });
 
@@ -571,8 +677,12 @@ void main() {
         addTearDown(container.dispose);
 
         when(
-          () => itemRepo.insertMultipleItems(any()),
-        ).thenAnswer((_) async {});
+          () => itemRepo.saveAiItemsToHouse(
+            houseId: any(named: 'houseId'),
+            newItems: any(named: 'newItems'),
+            metadataByItemId: any(named: 'metadataByItemId'),
+          ),
+        ).thenAnswer((_) async => 0);
         when(() => syncOrchestrator.requestSync()).thenReturn(null);
 
         await _seedOneGroup(container, service);
@@ -583,13 +693,19 @@ void main() {
         await container.read(aiImportNotifierProvider.notifier).saveItems();
 
         final captured = verify(
-          () => itemRepo.insertMultipleItems(captureAny()),
+          () => itemRepo.saveAiItemsToHouse(
+            houseId: captureAny(named: 'houseId'),
+            newItems: captureAny(named: 'newItems'),
+            metadataByItemId: captureAny(named: 'metadataByItemId'),
+          ),
         ).captured;
-        final items = captured.first as List<ItemModel>;
+        final items = captured[1] as List<ItemModel>;
 
         expect(items.length, 1);
         expect(items.first.houseId, 'house-99');
         expect(items.first.aiMetadata, isNotNull);
+        expect(captured[0], 'house-99');
+        expect(captured[2], isEmpty);
 
         // State resets after success
         expect(container.read(aiImportNotifierProvider), const AiImportState());
@@ -608,7 +724,11 @@ void main() {
       addTearDown(container.dispose);
 
       when(
-        () => itemRepo.insertMultipleItems(any()),
+        () => itemRepo.saveAiItemsToHouse(
+          houseId: any(named: 'houseId'),
+          newItems: any(named: 'newItems'),
+          metadataByItemId: any(named: 'metadataByItemId'),
+        ),
       ).thenThrow(Exception('DB write failed'));
       when(() => syncOrchestrator.requestSync()).thenReturn(null);
 
@@ -623,6 +743,113 @@ void main() {
       expect(state.errorMessage, isNotNull);
       expect(state.isLoading, isFalse);
     });
+
+    test(
+      'saves only included new items and linked metadata in one repository call',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final itemRepo = MockItemRepository();
+        final syncOrchestrator = MockSyncOrchestrator();
+        final analytics = MockCoreAnalyticsService();
+        final container = _makeContainer(
+          service: service,
+          itemRepo: itemRepo,
+          syncOrchestrator: syncOrchestrator,
+          analytics: analytics,
+        );
+        addTearDown(container.dispose);
+        when(
+          () => itemRepo.saveAiItemsToHouse(
+            houseId: any(named: 'houseId'),
+            newItems: any(named: 'newItems'),
+            metadataByItemId: any(named: 'metadataByItemId'),
+          ),
+        ).thenAnswer((_) async => 1);
+        when(() => syncOrchestrator.requestSync()).thenReturn(null);
+
+        await _seedOneGroup(
+          container,
+          service,
+          results: [
+            _fakeResult(name: 'T-Shirt'),
+            _fakeResult(name: 'Jeans'),
+            _fakeResult(name: 'Felpa'),
+            _fakeResult(name: 'Gonna'),
+          ],
+        );
+        final notifier = container.read(aiImportNotifierProvider.notifier)
+          ..setSelectedHouseId('house-99')
+          ..setIncluded(0, 0, false)
+          ..linkToExisting(0, 1, 'manual-item')
+          ..linkToExisting(0, 2, 'already-scanned');
+
+        await notifier.saveItems();
+
+        final captured = verify(
+          () => itemRepo.saveAiItemsToHouse(
+            houseId: captureAny(named: 'houseId'),
+            newItems: captureAny(named: 'newItems'),
+            metadataByItemId: captureAny(named: 'metadataByItemId'),
+          ),
+        ).captured;
+        final inserted = captured[1] as List<ItemModel>;
+        final metadataById = captured[2] as Map<String, String>;
+        expect(inserted.map((item) => item.name), ['Gonna']);
+        expect(metadataById.keys.toSet(), {'manual-item', 'already-scanned'});
+        expect(jsonDecode(metadataById['manual-item']!)['name'], 'Jeans');
+        expect(jsonDecode(metadataById['already-scanned']!)['name'], 'Felpa');
+        verify(
+          () => analytics.trackAiItemsSaved(
+            count: 1,
+            isOnboarding: false,
+            updated: 1,
+          ),
+        ).called(1);
+        verifyNever(() => itemRepo.insertMultipleItems(any()));
+      },
+    );
+
+    test(
+      'ignores a second submission while the first save is pending',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final itemRepo = MockItemRepository();
+        final syncOrchestrator = MockSyncOrchestrator();
+        final container = _makeContainer(
+          service: service,
+          itemRepo: itemRepo,
+          syncOrchestrator: syncOrchestrator,
+        );
+        addTearDown(container.dispose);
+        final saveCompleter = Completer<int>();
+        when(
+          () => itemRepo.saveAiItemsToHouse(
+            houseId: any(named: 'houseId'),
+            newItems: any(named: 'newItems'),
+            metadataByItemId: any(named: 'metadataByItemId'),
+          ),
+        ).thenAnswer((_) => saveCompleter.future);
+        when(() => syncOrchestrator.requestSync()).thenReturn(null);
+        await _seedOneGroup(container, service);
+        final notifier = container.read(aiImportNotifierProvider.notifier)
+          ..setSelectedHouseId('house-99');
+        expect(notifier.newCount, 1);
+
+        final firstSave = notifier.saveItems();
+        expect(container.read(aiImportNotifierProvider).isLoading, isTrue);
+        await notifier.saveItems();
+        verify(
+          () => itemRepo.saveAiItemsToHouse(
+            houseId: any(named: 'houseId'),
+            newItems: any(named: 'newItems'),
+            metadataByItemId: any(named: 'metadataByItemId'),
+          ),
+        ).called(1);
+
+        saveCompleter.complete(0);
+        await firstSave;
+      },
+    );
   });
 
   // ── saveItemsOnboarding() ──────────────────────────────────────────────────
@@ -681,5 +908,41 @@ void main() {
       verifyNever(() => houseRepo.createHouseWithItems(any(), any()));
       expect(container.read(aiImportNotifierProvider).isLoading, isFalse);
     });
+
+    test(
+      'ignores a second submission while house creation is pending',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final houseRepo = MockHouseRepository();
+        final itemRepo = MockItemRepository();
+        final syncOrchestrator = MockSyncOrchestrator();
+        final onboardingRepo = MockOnboardingRepository();
+        final container = _makeContainer(
+          service: service,
+          houseRepo: houseRepo,
+          itemRepo: itemRepo,
+          syncOrchestrator: syncOrchestrator,
+          onboardingRepo: onboardingRepo,
+        );
+        addTearDown(container.dispose);
+        final saveCompleter = Completer<String>();
+        when(
+          () => houseRepo.createHouseWithItems(any(), any()),
+        ).thenAnswer((_) => saveCompleter.future);
+        when(() => syncOrchestrator.requestSync()).thenReturn(null);
+        _setupOnboardingMock(onboardingRepo);
+        await container.read(postLoginOnboardingProvider.future);
+        await _seedOneGroup(container, service);
+        final notifier = container.read(aiImportNotifierProvider.notifier);
+
+        final firstSave = notifier.saveItemsOnboarding();
+        expect(container.read(aiImportNotifierProvider).isLoading, isTrue);
+        await notifier.saveItemsOnboarding();
+        verify(() => houseRepo.createHouseWithItems(any(), any())).called(1);
+
+        saveCompleter.complete('new-house');
+        await firstSave;
+      },
+    );
   });
 }
