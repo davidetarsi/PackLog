@@ -136,11 +136,25 @@ void main() {
   group('francobollo', () {
     testWidgets('giorni alla partenza', (tester) async {
       final now = DateTime.now();
+      // Giorni di calendario, non Duration: con il cambio d'ora di ottobre
+      // `add(Duration(days: 9))` cade a ore 23 del giorno prima.
       await _pump(
         tester,
         trip: _trip(
-          departure: now.add(const Duration(days: 9)),
-          returnAt: now.add(const Duration(days: 12)),
+          departure: DateTime(
+            now.year,
+            now.month,
+            now.day + 9,
+            now.hour,
+            now.minute,
+          ),
+          returnAt: DateTime(
+            now.year,
+            now.month,
+            now.day + 12,
+            now.hour,
+            now.minute,
+          ),
         ),
       );
 
