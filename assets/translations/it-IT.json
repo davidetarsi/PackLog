@@ -284,7 +284,30 @@
     "leg_location_required": "Manca il luogo della tappa",
     "destination_benefit": "Con una casa di destinazione, gli oggetti che porti compaiono lì come temporanei mentre sei via.",
     "no_items_in_named_house": "Nessun oggetto in {house}",
-    "destination_house_hint": "Vai in una delle tue case? Scegli «Casa»: gli oggetti che porti compariranno lì come temporanei."
+    "destination_house_hint": "Vai in una delle tue case? Scegli «Casa»: gli oggetti che porti compariranno lì come temporanei.",
+    "postcard": {
+      "greetings": "Saluti da",
+      "days_label": {"one": "giorno", "other": "giorni"},
+      "today": "oggi",
+      "traveling": "in viaggio",
+      "no_date": "da decidere",
+      "postmark_brand": "PACKLOG",
+      "ready_count": "{} di {} pronti",
+      "missing": {"one": "manca {}", "other": "mancano {}"},
+      "all_packed": "tutto in valigia",
+      "empty_title": "Valigia vuota",
+      "empty_sub": "nessun oggetto",
+      "cta_prepare": "Prepara la valigia",
+      "cta_ready": "Valigia pronta",
+      "cta_continue": "Continua a preparare"
+    },
+    "itinerary": {
+      "departure": "Andata",
+      "transfer": "Spostamento",
+      "return": "Ritorno",
+      "nights": {"one": "{} notte", "other": "{} notti"},
+      "more_stops": {"one": "+{} tappa", "other": "+{} tappe"}
+    }
   },
   "common": {
     "save": "Salva",

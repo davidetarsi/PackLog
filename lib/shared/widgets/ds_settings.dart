@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
+import '../theme/surface_colors.dart';
 
 /// Blocco di righe di impostazioni: il componente standard dei moduli
 /// (oggetto, casa, spazio, bagaglio, viaggio). Le righe sono separate da
@@ -14,16 +15,10 @@ class DsSettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    // In chiaro bianco sulla pagina crema; in scuro un grigio più chiaro
-    // della pagina, come i gruppi di Revolut.
-    final background = theme.brightness == Brightness.light
-        ? cs.surfaceContainerLowest
-        : cs.surfaceContainer;
+    final cs = Theme.of(context).colorScheme;
 
     return Material(
-      color: background,
+      color: context.groupSurface,
       borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
       clipBehavior: Clip.antiAlias,
       child: Column(

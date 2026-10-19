@@ -284,7 +284,30 @@
     "leg_location_required": "The stop is missing a place",
     "destination_benefit": "With a destination home, the things you pack show up there as temporary while you are away.",
     "no_items_in_named_house": "No items in {house}",
-    "destination_house_hint": "Going to one of your homes? Choose “House”: the things you pack will show up there as temporary."
+    "destination_house_hint": "Going to one of your homes? Choose “House”: the things you pack will show up there as temporary.",
+    "postcard": {
+      "greetings": "Greetings from",
+      "days_label": {"one": "day", "other": "days"},
+      "today": "today",
+      "traveling": "travelling",
+      "no_date": "to be decided",
+      "postmark_brand": "PACKLOG",
+      "ready_count": "{} of {} packed",
+      "missing": {"one": "{} left", "other": "{} left"},
+      "all_packed": "all packed",
+      "empty_title": "Empty suitcase",
+      "empty_sub": "no items",
+      "cta_prepare": "Pack your suitcase",
+      "cta_ready": "Suitcase ready",
+      "cta_continue": "Keep packing"
+    },
+    "itinerary": {
+      "departure": "Outbound",
+      "transfer": "Transfer",
+      "return": "Return",
+      "nights": {"one": "{} night", "other": "{} nights"},
+      "more_stops": {"one": "+{} stop", "other": "+{} stops"}
+    }
   },
   "common": {
     "save": "Save",
