@@ -57,6 +57,9 @@ export const DA_NOME: Record<string, string> = {
 
 const CALDI = new Set(["Sweater", "Hoodie", "Sweatshirt"]);
 const CAPISPALLA_CALDI = new Set(["Coat", "Down Jacket"]);
+const VESTITI = new Set(["Upper Body", "Lower Body", "Full Body"]);
+/** Scarpe da spiaggia: le sneakers di uno slot 'da mare' restano scarpe comode. */
+const SCARPE_MARE = new Set(["Sandals", "Flip-Flops", "Water Shoes"]);
 
 /** La valigia con il viaggio da cui nasce: scenario, meteo e uscita del generatore. */
 export interface Valigia {
@@ -132,14 +135,27 @@ function clima(ctx: Contesto, tappeCapo: string[] | null | undefined): Clima {
   };
 }
 
-/** Il motivo di uno slot: dal nome se lo mette il codice, se no dai dati. */
+/** Il motivo di uno slot: dal nome se lo mette il codice, se no dai dati.
+ *  Giudizi di Davide (19 ottobre): un capo da vestire col tag Everyday non e'
+ *  "da trekking"; una scarpa da trekking lo e' anche in uno slot da spiaggia;
+ *  un capospalla dello slot pioggia senza pioggia vera ripara dal vento. */
 export function codiceSlot(nome: string, slot: Record_ | null | undefined, capo: Record_, occasione = false,
-  trekking = false, tmin: number | null = null): string {
+  trekking = false, tmin: number | null = null, pioggia: number | null = null): string {
+  const c = codiceSlotDati(nome, slot, capo, occasione, trekking, tmin);
+  if (c === "pioggia" && get(capo, "category") === "Outerwear" && (o(pioggia, 0) as number) < 1) return "vento";
+  return c;
+}
+
+function codiceSlotDati(nome: string, slot: Record_ | null | undefined, capo: Record_, occasione: boolean,
+  trekking: boolean, tmin: number | null): string {
+  const tagCapo = o(get(capo, "activityTags"), []) as string[];
+  const quotidiano = VESTITI.has(get(capo, "category")) && tagCapo.includes("Everyday");
   const caldoVero = get(capo, "category") === "Outerwear" && (o(get(capo, "warmth"), 0) as number) >= 4;
   if (nome in DA_NOME) {
     const c = DA_NOME[nome];
     if (c === "pioggia" && caldoVero) return "capospalla_caldo";
     if (c === "trekking" && !trekking) return "cammino";
+    if (c === "trekking" && quotidiano) return "giorno";
     return c;
   }
   slot = o(slot, {}) as Record_;
@@ -153,13 +169,16 @@ export function codiceSlot(nome: string, slot: Record_ | null | undefined, capo:
     return occasione ? "formale" : "sera";
   }
   // Trekking solo se lo e' il CAPO: il modello mette il tag a slot generici.
-  if (trekking && (o(get(capo, "activityTags"), []) as string[]).includes("Hiking")
-    && (tag.has("Hiking") || sub === "Hiking Boots")) return "trekking";
+  if (trekking && tagCapo.includes("Hiking") && !quotidiano && (tag.has("Hiking") || cat === "Shoes")) {
+    return "trekking";
+  }
   if (cat === "Shoes" && tmin != null && tmin <= 0 && (o(get(capo, "waterResistance"), 0) as number) >= 1) {
     return "scarpe_neve";
   }
   if (caldoVero) return "capospalla_caldo";
-  if (sub === "Swimwear" || ((tag.has("Beach") || tag.has("Swimming")) && cat === "Shoes")) return "mare";
+  if (sub === "Swimwear" || ((tag.has("Beach") || tag.has("Swimming")) && cat === "Shoes" && SCARPE_MARE.has(sub))) {
+    return "mare";
+  }
   if ((o(get(slot, "minWaterResistance"), 0) as number) >= 1 || subs.has("Rain Jacket")) return "pioggia";
   if (cat === "Outerwear") return [...subs].some((x) => CAPISPALLA_CALDI.has(x)) ? "capospalla_caldo" : "vento";
   if (cat === "Upper Body" && subs.size && [...subs].every((x) => CALDI.has(x) || x === "Fleece")) {
@@ -169,6 +188,7 @@ export function codiceSlot(nome: string, slot: Record_ | null | undefined, capo:
     if (sub === "Scarf") return (o(get(capo, "warmth"), 0) as number) >= 3 ? "collo" : "consigliato";
     if ((sub === "Sunglasses" || sub === "Cap/Hat") && (o(get(capo, "warmth"), 3) as number) <= 2) return "sole";
     if (sub === "Cap/Hat") return "testa";
+    if (sub === "Gloves") return "guanti";
     return "consigliato";
   }
   if (cat === "Shoes") return "cammino";
@@ -208,7 +228,7 @@ export function frase(codice: string, capo: Record_, ctx: Contesto, nomeSlot = "
     }
     case "strato_caldo": {
       const t = c.tmin;
-      if (t != null && t <= 8) return `Minima di ${gradi(t)}: uno strato caldo sotto il capospalla`;
+      if (t != null && t <= 8) return `Minima di ${gradi(t)}: uno strato caldo sotto la giacca`;
       if (t != null && t > 18) return `Minima di ${gradi(t)}: qualcosa di leggero per le sere fresche`;
       return `Minima di ${gradi(t)}: uno strato caldo per la sera e il fresco`;
     }
@@ -234,10 +254,11 @@ export interface Motivo { codice: string; etichetta: string; frase: string; anch
 /** Il motivo principale e le note del capo. */
 export function motivoCapo(capo: Record_, ctx: Contesto): Motivo {
   const candidati: [string, string][] = [];
+  const cl = clima(ctx, get(capo, "tappe"));
   for (const a of o(get(capo, "assegnazioni"), [{ slot: get(capo, "slot") }]) as Record_[]) {
     const nome = o(get(a, "slot"), "") as string;
     candidati.push([codiceSlot(nome, ctx.richiesti.get(nome), capo, ctx.occasione, ctx.trekking,
-      clima(ctx, get(capo, "tappe")).tmin), nome]);
+      cl.tmin, cl.pioggia), nome]);
   }
   const [codice, nome] = minimo(candidati, (x) => CATALOGO[x[0]][1])!;
   const note: string[] = [];
@@ -264,6 +285,7 @@ export function fraseQuantita(gruppo: Record_[], ctx: Contesto): string {
   if (caldo && !sopra && p > 1) return `${pezzi(p)} per ${g} giorni: col caldo si cambiano piu' spesso`;
   if (p > 1) {
     const ogni = Math.max(1, Math.floor(g / p + 0.5));
+    if (ogni === 1) return `${pezzi(p)} per ${g} giorni: uno al giorno`;
     return `${pezzi(p)} per ${g} giorni: uno ogni ${ogni} giorni circa`;
   }
   return "";
