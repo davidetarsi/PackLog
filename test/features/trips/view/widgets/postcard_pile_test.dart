@@ -35,7 +35,28 @@ final _pileFinder = find.byKey(const Key('postcard_pile'));
 final _topFinder = find.byKey(const Key('postcard_pile_top'));
 final _dotsFinder = find.byKey(const Key('postcard_pile_dots'));
 
-Future<void> _pump(WidgetTester tester, {required int itemCount}) async {
+/// Elemento con stato: la State ricorda l'indice per cui è stata creata.
+class _Probe extends StatefulWidget {
+  final int index;
+
+  const _Probe(this.index);
+
+  @override
+  State<_Probe> createState() => _ProbeState();
+}
+
+class _ProbeState extends State<_Probe> {
+  late final int createdFor = widget.index;
+
+  @override
+  Widget build(BuildContext context) => Text('probe $createdFor');
+}
+
+Future<void> _pump(
+  WidgetTester tester, {
+  required int itemCount,
+  IndexedWidgetBuilder? itemBuilder,
+}) async {
   await tester.pumpWidget(
     EasyLocalization(
       supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
@@ -57,7 +78,7 @@ Future<void> _pump(WidgetTester tester, {required int itemCount}) async {
                 height: 640,
                 child: PostcardPile(
                   itemCount: itemCount,
-                  itemBuilder: (_, i) => Text('card $i'),
+                  itemBuilder: itemBuilder ?? (_, i) => Text('card $i'),
                   semanticLabel: (i) => 'Viaggio ${i + 1}',
                 ),
               ),
@@ -69,6 +90,11 @@ Future<void> _pump(WidgetTester tester, {required int itemCount}) async {
   );
   await tester.pumpAndSettle();
 }
+
+/// Matrice del Transform della cartolina in cima: storage[12] è la traslazione
+/// orizzontale, storage[1] il seno della rotazione (zero a riposo).
+Matrix4 _topMatrix(WidgetTester tester) =>
+    tester.widget<Transform>(_topFinder).transform;
 
 void main() {
   setUpAll(() async {
@@ -172,6 +198,39 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('un gesto interrotto riporta la cartolina al centro', (
+    tester,
+  ) async {
+    await _pump(tester, itemCount: 3);
+
+    final gesture = await tester.startGesture(tester.getCenter(_pileFinder));
+    await gesture.moveBy(const Offset(-100, 0));
+    await tester.pump();
+    expect(_topMatrix(tester).storage[12], lessThan(0));
+
+    await gesture.cancel();
+    await tester.pumpAndSettle();
+
+    expect(_topMatrix(tester).storage[12], 0);
+    expect(_topMatrix(tester).storage[1], 0);
+    expect(find.text('card 0'), findsOneWidget);
+    expect(find.text('1 di 3'), findsOneWidget);
+  });
+
+  testWidgets('lo stato di un elemento non passa al successivo', (
+    tester,
+  ) async {
+    await _pump(tester, itemCount: 3, itemBuilder: (_, i) => _Probe(i));
+
+    await tester.drag(_pileFinder, const Offset(-300, 0));
+    await tester.pumpAndSettle();
+    await tester.drag(_pileFinder, const Offset(300, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('probe 0'), findsOneWidget);
+    expect(find.text('probe 1'), findsNothing);
+  });
 
   testWidgets('a riposo la cartolina in cima ha rotazione zero', (
     tester,

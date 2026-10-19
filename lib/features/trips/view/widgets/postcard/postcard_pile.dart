@@ -77,6 +77,10 @@ class _PostcardPileState extends State<PostcardPile>
   /// Indice da applicare a fine animazione, se il gesto è stato confermato.
   int? _commitTo;
 
+  /// Vero se il puntatore è stato interrotto dal sistema (cancel): il rilascio
+  /// che ne segue non deve confermare lo scorrimento.
+  bool _interrupted = false;
+
   @override
   void initState() {
     super.initState();
@@ -145,6 +149,10 @@ class _PostcardPileState extends State<PostcardPile>
   }
 
   void _onDragEnd(DragEndDetails details) {
+    if (_interrupted) {
+      _settle(0);
+      return;
+    }
     final velocity = details.primaryVelocity ?? 0;
     final threshold = _width * _commitFraction;
     final swipedNext =
@@ -207,28 +215,32 @@ class _PostcardPileState extends State<PostcardPile>
           child: LayoutBuilder(
             builder: (context, constraints) {
               _width = constraints.maxWidth;
-              return GestureDetector(
-                key: const Key('postcard_pile'),
-                behavior: HitTestBehavior.opaque,
-                onHorizontalDragStart: _onDragStart,
-                onHorizontalDragUpdate: _onDragUpdate,
-                onHorizontalDragEnd: _onDragEnd,
-                child: Semantics(
-                  container: true,
-                  label: widget.semanticLabel(index),
-                  customSemanticsActions: {
-                    if (_hasNext)
-                      CustomSemanticsAction(
-                        label: 'trips.pile.next'.tr(),
-                      ): () =>
-                          _settle(-_width, commitTo: index + 1),
-                    if (_hasPrevious)
-                      CustomSemanticsAction(
-                        label: 'trips.pile.previous'.tr(),
-                      ): () =>
-                          _settle(_width, commitTo: index - 1),
-                  },
-                  child: _buildPile(context, index, spacing),
+              return Listener(
+                onPointerDown: (_) => _interrupted = false,
+                onPointerCancel: (_) => _interrupted = true,
+                child: GestureDetector(
+                  key: const Key('postcard_pile'),
+                  behavior: HitTestBehavior.opaque,
+                  onHorizontalDragStart: _onDragStart,
+                  onHorizontalDragUpdate: _onDragUpdate,
+                  onHorizontalDragEnd: _onDragEnd,
+                  child: Semantics(
+                    container: true,
+                    label: widget.semanticLabel(index),
+                    customSemanticsActions: {
+                      if (_hasNext)
+                        CustomSemanticsAction(
+                          label: 'trips.pile.next'.tr(),
+                        ): () =>
+                            _settle(-_width, commitTo: index + 1),
+                      if (_hasPrevious)
+                        CustomSemanticsAction(
+                          label: 'trips.pile.previous'.tr(),
+                        ): () =>
+                            _settle(_width, commitTo: index - 1),
+                    },
+                    child: _buildPile(context, index, spacing),
+                  ),
                 ),
               );
             },
@@ -243,6 +255,15 @@ class _PostcardPileState extends State<PostcardPile>
           ),
         ],
       ],
+    );
+  }
+
+  /// Costruisce la cartolina di [index] con una chiave propria: così lo stato
+  /// di un elemento non passa a quello successivo dopo uno scorrimento.
+  Widget _item(BuildContext context, int index) {
+    return KeyedSubtree(
+      key: ValueKey(index),
+      child: widget.itemBuilder(context, index),
     );
   }
 
@@ -267,7 +288,7 @@ class _PostcardPileState extends State<PostcardPile>
           dy: spacing * (1 - progress),
           angle: _levelTilt(1 - progress),
           child: progress > 0
-              ? widget.itemBuilder(context, index + 1)
+              ? _item(context, index + 1)
               : const PostcardPaper(),
         ),
       if (_dx > 0 && _hasPrevious)
@@ -275,14 +296,14 @@ class _PostcardPileState extends State<PostcardPile>
           dx: _dx - _width,
           dy: 0,
           angle: _tiltFor(_dx - _width),
-          child: widget.itemBuilder(context, index - 1),
+          child: _item(context, index - 1),
         ),
       _pose(
         key: const Key('postcard_pile_top'),
         dx: _dx,
         dy: 0,
         angle: _tiltFor(_dx),
-        child: widget.itemBuilder(context, index),
+        child: _item(context, index),
       ),
     ];
 
