@@ -30,6 +30,15 @@ export async function utente(db: Db, req: Request): Promise<{ id: string } | Res
   return { id: user.id };
 }
 
+/** Un tetto d'uso da public.app_config (scelta di prodotto: si cambia senza
+ *  rifare il deploy); se la chiave manca o non e' un intero positivo, `predefinito`. */
+export async function tetto(db: Db, chiave: string, predefinito: number): Promise<number> {
+  const { data, error } = await db.from("app_config").select("value").eq("key", chiave).maybeSingle();
+  if (error) console.error(`[app_config] ${chiave}:`, error.message);
+  const n = Number(data?.value);
+  return Number.isInteger(n) && n > 0 ? n : predefinito;
+}
+
 /** Un uso in piu' nella finestra scorrevole; false se il tetto e' raggiunto. */
 export async function consumaUso(db: Db, userId: string, tipo: string, tetto: number,
   finestraMinuti: number): Promise<boolean | Response> {

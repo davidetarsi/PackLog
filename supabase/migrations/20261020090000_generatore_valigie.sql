@@ -10,6 +10,9 @@
 --    del capo (`card`) cambia.
 -- 3. usage_counters + increment_usage: tetto d'uso per utente e per funzione,
 --    finestra scorrevole, come increment_geocode_count ma per piu' funzioni.
+--    I tetti sono una scelta di prodotto: le Edge Functions li leggono da
+--    public.app_config (pack_trip_daily_cap, trip_weather_daily_cap), con un
+--    predefinito nel codice (30 e 100) se la riga manca.
 --
 -- Nessuna policy RLS: le tabelle le legge e scrive solo il service role delle
 -- Edge Functions (rls_auto_enable le protegge comunque).
@@ -77,3 +80,8 @@ SET search_path = public, pg_temp;
 -- Come le altre RPC di usage: solo il service role (vedi baseline, 7bis).
 REVOKE ALL ON FUNCTION public.increment_usage(uuid, text, timestamptz, integer, integer)
   FROM PUBLIC, anon, authenticated;
+
+INSERT INTO public.app_config (key, value) VALUES
+  ('pack_trip_daily_cap', '30'),
+  ('trip_weather_daily_cap', '100')
+ON CONFLICT (key) DO NOTHING;

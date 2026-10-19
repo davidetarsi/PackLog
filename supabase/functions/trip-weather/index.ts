@@ -11,10 +11,11 @@ import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
 import { climaViaggio } from "../_shared/clima/meteo.ts";
 import { IngressoNonValido, validaViaggio } from "../_shared/valigia/ingresso.ts";
-import { consumaUso, corpo, CORS_HEADERS, errore, json, serviziMeteo, utente } from "../_shared/servizi.ts";
+import { consumaUso, corpo, CORS_HEADERS, errore, json, serviziMeteo, tetto, utente } from "../_shared/servizi.ts";
 
 // Ogni viaggio nuovo costa a Open-Meteo da 2 a ~50 richieste (5 anni x tappe):
 // tetto per utente, le risposte gia' in cache non lo consumano meno.
+// Predefinito: si cambia con la riga 'trip_weather_daily_cap' di public.app_config.
 const TETTO_GIORNALIERO = 100;
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -41,7 +42,8 @@ Deno.serve(async (req) => {
     throw e;
   }
 
-  const ok = await consumaUso(db, u.id, "trip-weather", TETTO_GIORNALIERO, 60 * 24);
+  const ok = await consumaUso(db, u.id, "trip-weather",
+    await tetto(db, "trip_weather_daily_cap", TETTO_GIORNALIERO), 60 * 24);
   if (ok instanceof Response) return ok;
   if (!ok) return errore(429, "Weather rate limit reached");
 

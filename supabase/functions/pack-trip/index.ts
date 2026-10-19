@@ -18,10 +18,11 @@ import { conRiprova, generaValigia, openaiHttp, scenarioDaApp } from "../_shared
 import { IngressoNonValido, validaViaggio } from "../_shared/valigia/ingresso.ts";
 import { jevHttp, MODELLO as MODELLO_JEV, type ProfiloNoto } from "../_shared/valigia/jev.ts";
 import type { RigaArmadio } from "../_shared/valigia/capo.ts";
-import { consumaUso, corpo, CORS_HEADERS, errore, json, serviziMeteo, utente } from "../_shared/servizi.ts";
+import { consumaUso, corpo, CORS_HEADERS, errore, json, serviziMeteo, tetto, utente } from "../_shared/servizi.ts";
 
 // Una valigia costa circa un decimo di centesimo (gpt-4o-mini + Jev): il
 // tetto difende dagli abusi, non dal costo normale.
+// Predefinito: si cambia con la riga 'pack_trip_daily_cap' di public.app_config.
 const TETTO_GIORNALIERO = 30;
 const MAX_CAPI = 400;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -68,7 +69,8 @@ Deno.serve(async (req) => {
   if (!righe?.length) return errore(422, "Wardrobe is empty");
   if (righe.length > MAX_CAPI) return errore(422, `Wardrobe too large (max ${MAX_CAPI} items)`);
 
-  const ok = await consumaUso(db, u.id, "pack-trip", TETTO_GIORNALIERO, 60 * 24);
+  const ok = await consumaUso(db, u.id, "pack-trip",
+    await tetto(db, "pack_trip_daily_cap", TETTO_GIORNALIERO), 60 * 24);
   if (ok instanceof Response) return ok;
   if (!ok) return errore(429, "Packing rate limit reached");
 

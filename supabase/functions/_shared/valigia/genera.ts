@@ -67,6 +67,8 @@ export interface Risultato {
   meteo: Record_;
   jev: { profili_nuovi: Record<string, ProfiloNoto>; errori: string[] };
   uso?: Uso;
+  /** Per verifiche e log, non per il client: prompt, risposta grezza e dati di Jev. */
+  diagnostica: { prompt: string; testo: string; jev: Partial<DatiJev> };
 }
 
 /** Il cuore: dato il testo del modello e i dati di Jev, la valigia (come riesegui_cella). */
@@ -105,6 +107,7 @@ export async function generaValigia(sc: Record_, righe: RigaArmadio[], s: Serviz
   return {
     valigia, motivi, perche: percheValigia(v, tag, motivi), geo, meteo,
     jev: { profili_nuovi: jev.profili_nuovi, errori: jev.errori }, uso: risposta.uso,
+    diagnostica: { prompt, testo: risposta.testo, jev },
   };
 }
 
