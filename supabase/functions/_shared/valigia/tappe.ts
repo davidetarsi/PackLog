@@ -11,7 +11,7 @@ import {
   segnaCapiDaNeve, slotCapiNuovi, sottoinsieme, stratiInTracolla, caloreMaxStrato, viaggioDiLavoro,
 } from "./inject.ts";
 import {
-  applicaBudgetRotazione, applicaTettoVolume, berrettoColFreddo, caloreEfficace, canonicalizeGaps, capienzaBagaglio,
+  applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps, capienzaBagaglio,
   capienzaPotabile, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri, score, segnaInPartenza,
   segnalaScarpeCammino, segnalaVolume, togliDoppioni,
 } from "./dopo.ts";
@@ -309,6 +309,11 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
   const r = strategySlots(testoModello, items, {
     giorni: giorniTot, lavatrice: lavMt, attivita: attBase, attivita_viaggio: attContesto,
     lavatrice_essenziali: Boolean(get(sc, "lavatrice", false)),
+    temp_max_essenziali: (() => {
+      const m = perTappa.map((t) => t.meteo.temp_max_media).filter((x) => x != null);
+      return m.length ? Math.min(...m) : null;
+    })(),
+    vestiti: false,
     temp_min: base.meteo.temp_min_media ?? null, temp_max: base.meteo.temp_max_media ?? null, bagaglio,
     giorni_pioggia: base.meteo.giorni_di_pioggia ?? null, intensita: sc.intensita ?? null, voti_scarpe: a.voti_scarpe ?? null,
     temp_min_assoluta: base.meteo.temp_min_assoluta ?? null, profili_capi: profiliCapi, scarti_capi: a.scarti_capi ?? null,
@@ -404,6 +409,15 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     minimoCapiLeggeri(perTappa.map((t) => [Math.trunc(Number(t.giorni || 1)), t.meteo.temp_max_media ?? null]), lavMt),
     perTappa.map((t) => [Math.trunc(Number(t.giorni || 1)), t.meteo.temp_max_media ?? null, t.meteo.temp_min_media ?? null]),
     lavMt);
+  r.ideali = r.ideali.filter((x: Record_) => q(x) >= 1);
+  r.ripieghi = r.ripieghi.filter((x: Record_) => q(x) >= 1);
+  // vestiti: col caldo nelle tappe calde, col fresco (nessuna tappa calda) uno di lana
+  const calde = perTappa.filter((t) => t.meteo.temp_max_media != null && t.meteo.temp_max_media > K.SOGLIA_VESTITO_CALDO);
+  const tappeV = calde.length ? calde : perTappa;
+  const massimeV = tappeV.map((t) => t.meteo.temp_max_media).filter((x) => x != null);
+  r.ideali.push(...applicaVestiti([...r.ideali, ...r.ripieghi], items,
+    tappeV.reduce((n, t) => n + Math.trunc(Number(t.giorni || 1)), 0), massimeV.length ? Math.max(...massimeV) : null,
+    attContesto, tappeV.map((t) => t.destinazione), capienzaBagaglio(get(sc, "bagaglio", ""))));
   r.ideali = r.ideali.filter((x: Record_) => q(x) >= 1);
   r.ripieghi = r.ripieghi.filter((x: Record_) => q(x) >= 1);
   applicaTettoVolume([...r.ideali, ...r.ripieghi], capienzaPotabile(get(sc, "bagaglio", "")));

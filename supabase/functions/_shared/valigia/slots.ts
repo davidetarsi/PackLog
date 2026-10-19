@@ -14,7 +14,7 @@ import {
   warmthFloor, eTrekking,
 } from "./inject.ts";
 import {
-  applicaBudgetRotazione, applicaTettoVolume, berrettoColFreddo, caloreEfficace, canonicalizeGaps,
+  applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps,
   capienzaBagaglio, capienzaPotabile, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri,
   penalitaVetoCapo, penalitaVoto, score, segnaInPartenza, segnalaScarpeCammino, segnalaVolume, togliDoppioni,
 } from "./dopo.ts";
@@ -191,6 +191,10 @@ export interface ArgomentiSlots {
   temp_min_assoluta?: number | null;
   attivita_viaggio?: string[] | null;
   lavatrice_essenziali?: boolean | null;
+  /** I collant si decidono su questa massima (a tappe: la tappa piu' fresca). */
+  temp_max_essenziali?: number | null;
+  /** false nei viaggi a tappe: i vestiti si mettono alla fine. */
+  vestiti?: boolean;
 }
 
 /** Contenitori dentro un oggetto o un array: `x in xs` di Python per i dict (uguaglianza). */
@@ -656,6 +660,11 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     minimoCapiLeggeri([[giorni, tempMax]], lavatrice), [[giorni, tempMax, tempMin]], lavatrice);
   ideali = ideali.filter((x) => q(x) >= 1);
   ripieghi = ripieghi.filter((x) => q(x) >= 1);
+  if (a.vestiti ?? true) {
+    ideali.push(...applicaVestiti([...ideali, ...ripieghi], items, giorni, tempMax, attivita, null, capienzaBagaglio(bagaglio)));
+    ideali = ideali.filter((x) => q(x) >= 1);
+    ripieghi = ripieghi.filter((x) => q(x) >= 1);
+  }
   const nVolume = applicaTettoVolume([...ideali, ...ripieghi], capienzaPotabile(bagaglio));
   const avvisoVolume = segnalaVolume([...ideali, ...ripieghi], capienzaPotabile(bagaglio));
   if (avvisoVolume) gaps.push(avvisoVolume);
@@ -665,7 +674,8 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   segnaInPartenza([...ideali, ...ripieghi]);
   const setFix = new Set(fixes.map(String)), setRej = new Set(rejects.map(String));
   return {
-    essenziali: essenzialiPerViaggio(items, giorni, lavatriceVera),
+    essenziali: essenzialiPerViaggio(items, giorni, lavatriceVera,
+      a.temp_max_essenziali == null ? tempMax : a.temp_max_essenziali),
     slots_richiesti: slots.length,
     ideali, ripieghi, mancanti: gaps,
     mancanti_canonici: canonicalizeGaps(gaps),

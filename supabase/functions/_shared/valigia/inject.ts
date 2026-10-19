@@ -234,7 +234,7 @@ export function slotCapiNuovi(items: Capo[], tempMin: number | null | undefined,
     ["guanti", "Accessory", "Gloves", tempMin != null && tempMin <= K.SOGLIA_ESTREMITA, `minima ${pf(tempMin)}: mani coperte`],
     ["pantaloni da neve", "Lower Body", "Ski Pants", interseca(pw, K.PAROLE_NEVE), "neve o sci"],
     ["muta", "Lower Body", "Wetsuit", interseca(pw, K.PAROLE_MUTA), "immersioni o surf"],
-    ["calzamaglia termica", "Lower Body", "Thermal Bottoms", tempMin != null && tempMin <= rc.FREDDO_VERO,
+    ["calzamaglia termica", "Lower Body", "Thermal Bottoms", tempMin != null && tempMin <= K.SOGLIA_ESTREMITA,
       `minima ${pf(tempMin)}: uno strato termico sotto i pantaloni`],
     ["cravatta", "Accessory", "Tie", rc.occasioneFormale(attivita || []), "occasione formale"],
     ["ombrello", "Accessory", "Umbrella", K.OMBRELLO_CON_PIOGGIA && (giorniPioggia || 0) >= K.OMBRELLO_GIORNI_PIOGGIA,
@@ -248,6 +248,8 @@ export function slotCapiNuovi(items: Capo[], tempMin: number | null | undefined,
         minWaterResistance: 0, frequency: "once", essential: true, _fabbisogno: true, _imposto: true,
         senza_tetto: true, reason: pre + perche,
       });
+      // la calzamaglia: un paio sotto i 5 gradi, due sotto lo zero
+      if (sub === "Thermal Bottoms" && tempMin! <= rc.FREDDO_VERO) out[out.length - 1]._restano = 2;
     }
   }
   return out;

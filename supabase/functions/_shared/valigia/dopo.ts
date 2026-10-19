@@ -428,3 +428,110 @@ export function consolidaBloccoViaggio(ideali: Record_[], ripieghi: Record_[]): 
   }
   return out;
 }
+
+// ── Vestiti (Davide, 19 ottobre, armadio femminile) ─────────────────────────
+// Un vestito vale una T-shirt e un pantalone di lino, al massimo una camicia e
+// un pantalone eleganti. Col caldo uno ogni 3 giorni, fino a 3; col fresco solo
+// un vestito caldo, al massimo uno. Un vestito elegante vale il capo
+// presentabile per la sera; l'abito da cerimonia vale il completo.
+
+function recVestito(g: Capo, slot: string, reason: string, tappe: string[] | null): Record_ {
+  const r: Record_ = {
+    category: g.category, subCategory: g.sub_category, warmth: g.warmth, bulk: g.bulk,
+    waterResistance: g.water_resistance, formality: g.formality, coverage: g.coverage,
+    item_id: g.id, item: g.name,
+    assegnazioni: [{ slot, match: "ideale", reason, imposto: true, quantita: 1, frequency: "occasional", intensita: null }],
+    quantita: 1,
+  };
+  if (tappe != null) r.tappe = [...tappe];
+  return r;
+}
+
+/** Una copia in meno al capo adatto con piu' copie, mai l'ultima della zona. */
+function togliUnaCopia(capi: Record_[], adatto: (x: Record_) => boolean): Record_ | null {
+  const vivi = capi.filter((x) => adatto(x) && (x.quantita ?? 1) >= 1);
+  if (vivi.reduce((n, x) => n + (x.quantita ?? 1), 0) <= 1) return null;
+  const candidati = vivi.filter((x) => !intoccabile(x));
+  if (!candidati.length) return null;
+  const x = massimo(candidati, (x) => x.quantita ?? 1)!;
+  x.quantita = (x.quantita ?? 1) - 1;
+  return x;
+}
+
+const contiene = (a: Set<string>, b: Set<string>) => [...a].some((x) => b.has(x));
+
+/** I vestiti dell'armadio al posto di altri capi: restituisce i record nuovi, le
+ *  copie sostituite scendono (a zero: chi chiama le toglie). */
+export function applicaVestiti(capi: Record_[], items: Capo[], giorni: number, tempMax: number | null | undefined,
+  attivita: string[] | null | undefined, tappe: string[] | null = null, capienza: number | null = null): Record_[] {
+  const inValigia = new Set(capi.map((x) => x.item_id));
+  const culto = capi.some((x) => contiene(slotDi(x), K.SLOT_CULTO_VESTITI));
+  const vestiti = items.filter((g) => g.has_metadata && g.sub_fine === "Dress" && !inValigia.has(g.id)
+    && !(culto && g.coverage === "Sleeveless"));
+  if (!K.VESTITI || !vestiti.length || tempMax == null || (capienza != null && capienza <= 8)) return [];
+  const perId = new Map(items.map((g) => [g.id, g]));
+  const tecnico = (x: Record_) => {
+    const g = perId.get(x.item_id);
+    return !!g && g.activity_tags.includes("Hiking") && !g.activity_tags.includes("Everyday");
+  };
+  const caldo = tempMax > K.SOGLIA_VESTITO_CALDO;
+  const climaOk = caldo ? (g: Capo) => (g.warmth || 1) <= 2 : (g: Capo) => (g.warmth || 0) >= K.CALORE_VESTITO_FRESCO;
+  const presi = new Set<string>();
+  const prendi = (formalita: string[], colClima = true): Capo | null => {
+    for (const f of formalita) {
+      for (const g of vestiti) {
+        if (!presi.has(g.id) && g.formality === f && (!colClima || climaOk(g))) {
+          presi.add(g.id);
+          return g;
+        }
+      }
+    }
+    return null;
+  };
+  const nuovi: Record_[] = [];
+  // l'abito da cerimonia vale il completo
+  if (rc.ha(attivita ?? [], [...K.RADICI_CERIMONIA])) {
+    const g = prendi(["Formal"], false);
+    if (g) {
+      const completo = capi.filter((x) => { const s = slotDi(x); return s.size > 0 && [...s].every((v) => K.SLOT_COMPLETO.has(v)) && (x.quantita ?? 1) >= 1; });
+      if (!completo.length) {
+        for (const zona of ["Upper Body", "Lower Body"]) {
+          const eleganti = capi.filter((x) => x.category === zona && (x.formality === "Business" || x.formality === "Formal")
+            && (x.quantita ?? 1) >= 1);
+          if (eleganti.length) completo.push(massimo(eleganti, (x) => x.quantita ?? 1)!);
+        }
+      }
+      for (const x of completo) x.quantita = (x.quantita ?? 1) - 1;
+      nuovi.push(recVestito(g, K.SLOT_ABITO_CERIMONIA, "occasione formale: vale il completo", tappe));
+    }
+  }
+  // un vestito elegante vale un capo presentabile per la sera (solo un capo della sola sera)
+  const sera = capi.filter((x) => { const s = slotDi(x); return s.size === 1 && s.has(K.SLOT_SERA_PRESENTABILE)
+    && (x.quantita ?? 1) >= 1 && (x.category === "Upper Body" || x.category === "Lower Body"); });
+  if (sera.length) {
+    const x = massimo(sera, (x) => x.quantita ?? 1)!;
+    const scala: string[] = [...K.FORMALITA_VESTITO_SERA];
+    const rango = scala.includes(x.formality) ? scala.indexOf(x.formality) : 0;
+    const g = prendi(scala.slice(rango));
+    if (g) {
+      x.quantita = (x.quantita ?? 1) - 1;
+      nuovi.push(recVestito(g, K.SLOT_SERA_PRESENTABILE, "per la sera: vale un capo presentabile", tappe));
+    }
+  }
+  // di giorno: ognuno al posto di un capo sopra leggero e di uno sotto
+  const quanti = Math.min(caldo ? K.MAX_VESTITI : 1, Math.floor(giorni / K.GIORNI_PER_VESTITO));
+  const libero = (x: Record_) => !tecnico(x) && !contiene(slotDi(x), K.SLOT_CULTO_VESTITI);
+  const sopra = (x: Record_) => x.category === "Upper Body" && K.SOPRA_DA_VESTITO.has(x.subCategory) && libero(x);
+  const sotto = (x: Record_) => x.category === "Lower Body" && !K.SOTTO_STRATI.has(x.subCategory)
+    && x.subCategory !== "Swimwear" && x.formality !== "Business" && x.formality !== "Formal" && libero(x);
+  for (let i = 0; i < quanti; i++) {
+    const g = prendi([...K.FORMALITA_VESTITO_GIORNO]);
+    if (!g) break;
+    const su = togliUnaCopia(capi, sopra);
+    if (!su) break;
+    const giu = togliUnaCopia(capi, sotto);
+    if (!giu) { su.quantita += 1; break; }
+    nuovi.push(recVestito(g, K.SLOT_VESTITO, "un vestito al posto di un capo sopra e uno sotto", tappe));
+  }
+  return nuovi;
+}

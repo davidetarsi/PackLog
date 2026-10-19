@@ -43,7 +43,7 @@ export interface RigaArmadio {
 // Riconoscimento per RADICE del nome: non finiscono mai in una foto.
 export const RADICI_SEMPRE = [
   "mutand", "slip", "boxer", "perizoma", "intim", "underwear", "brief",
-  "calz", "sock", "reggisen", "bra ", "canottiera intima",
+  "calz", "sock", "reggisen", "bra ", "canottiera intima", "collant",
   "pigiama", "pyjama", "pajama", "camicia da notte",
   "beauty", "trousse", "necessaire", "nécessaire", "washbag", "toilette",
   "spazzolin", "dentifric", "shampoo", "deodorant",

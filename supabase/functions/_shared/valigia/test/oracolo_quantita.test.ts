@@ -18,7 +18,8 @@ const FUNZIONI: Record<string, (...a: any[]) => unknown> = {
   radice_sempre: radiceSempre,
   e_sempre_in_valigia: eSempreInValigia,
   quantity_for: q.quantityFor,
-  essenziali_per_viaggio: (nome: string, giorni: number, lav: boolean) => q.essenzialiPerViaggio(armadi[nome], giorni, lav),
+  essenziali_per_viaggio: (nome: string, giorni: number, lav: boolean, tmax: number | null = null) =>
+    q.essenzialiPerViaggio(armadi[nome], giorni, lav, tmax),
 };
 
 test("quantita', mare ed essenziali rispondono come il bench Python", () => {

@@ -10,7 +10,7 @@ export const TETTO_ESSENZIALI_EXTRA = 2;
 export const USI_PER_PEZZO: Record<string, number> = {
   "mutand": 1, "slip": 1, "boxer": 1, "perizoma": 1, "intim": 1,
   "underwear": 1, "brief": 1, "calz": 1, "sock": 1, "reggisen": 2, "bra ": 2,
-  "canottiera intima": 1,
+  "canottiera intima": 1, "collant": 2,
   "pigiama": 4, "pyjama": 4, "pajama": 4, "camicia da notte": 4,
 };
 export const RADICI_NOTTE = new Set(["pigiama", "pyjama", "pajama", "camicia da notte"]);
@@ -26,12 +26,18 @@ export interface Essenziale {
 
 const ceilDiv = (a: number, b: number) => -floorDiv(-a, b);
 
-export function essenzialiPerViaggio(items: Capo[], giorni: number, lavatrice: boolean): Essenziale[] {
+/** Collant (Davide, 20 ottobre): solo col fresco, un paio ogni due giorni, al massimo 3. */
+export const SOGLIA_COLLANT = 20.0;
+export const MAX_COLLANT = 3;
+
+export function essenzialiPerViaggio(items: Capo[], giorni: number, lavatrice: boolean,
+  tempMax: number | null = null): Essenziale[] {
   const out: Essenziale[] = [];
   const visti = new Set<string>();
   for (const g of items) {
     if (!g.sempre_in_valigia) continue;
     const r = radiceSempre(g.name) || RADICE_DA_SOTTOCAT[g.sub_fine] || null;
+    if (r === "collant" && (tempMax == null || tempMax > SOGLIA_COLLANT)) continue;
     if (r != null && visti.has(r)) continue;   // una sola voce per tipo
     if (r != null && RADICI_NOTTE.has(r)) {      // una sola cosa per la notte
       if (visti.has("notte")) continue;
@@ -48,6 +54,7 @@ export function essenzialiPerViaggio(items: Capo[], giorni: number, lavatrice: b
       qta = ceilDiv(giorni, usi) + 1;
       if (lavatrice) qta = Math.min(qta, ceilDiv(5, usi) + 1);
       qta = Math.min(qta, giorni + TETTO_ESSENZIALI_EXTRA);
+      if (r === "collant") qta = Math.min(ceilDiv(giorni, usi), MAX_COLLANT);
     }
     out.push({ item: g.name, item_id: g.id, radice: r || "categoria", quantita: qta, bulk: g.bulk || 1 });
   }

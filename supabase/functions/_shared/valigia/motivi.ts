@@ -39,6 +39,7 @@ export const CATALOGO: Record<string, [string, number]> = {
 export const DA_NOME: Record<string, string> = {
   "spalle coperte": "culto", "ginocchia coperte": "culto", "foulard": "culto",
   "strato formale": "formale", "parte inferiore formale": "formale", "cravatta": "formale",
+  "abito da cerimonia": "formale",
   "pantaloni da trekking": "trekking", "maglietta tecnica": "trekking",
   "scarpe da trekking": "trekking", "antivento leggero": "trekking",
   "pantaloni da neve": "neve", "muta": "muta",
