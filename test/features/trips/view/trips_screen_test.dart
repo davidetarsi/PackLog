@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +26,7 @@ import 'package:pack_log/features/trips/view/widgets/postcard/trip_album.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_empty_state.dart';
 import 'package:pack_log/shared/widgets/ds_group_header.dart';
+import 'package:pack_log/shared/widgets/skeleton/skeleton.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
@@ -155,13 +158,16 @@ void main() {
     WidgetTester tester, {
     required List<TripModel> trips,
     List<HouseModel> houses = const [],
+    Future<List<TripModel>>? tripsFuture,
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    when(() => tripRepo.getAllTrips()).thenAnswer((_) async => trips);
+    when(
+      () => tripRepo.getAllTrips(),
+    ).thenAnswer((_) => tripsFuture ?? Future.value(trips));
     when(() => houseRepo.getAllHouses()).thenAnswer((_) async => houses);
 
     final container = ProviderContainer(
@@ -177,7 +183,9 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
-    await container.read(tripNotifierProvider.future);
+    if (tripsFuture == null) {
+      await container.read(tripNotifierProvider.future);
+    }
     await container.read(houseNotifierProvider.future);
 
     final router = GoRouter(
@@ -195,6 +203,7 @@ void main() {
             body: Column(
               children: [
                 const Text('edit-info'),
+                Text('path=${state.uri.path}'),
                 Text('reuse=${state.uri.queryParameters['reuse']}'),
               ],
             ),
@@ -234,7 +243,14 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    if (tripsFuture == null) {
+      await tester.pumpAndSettle();
+    } else {
+      // In caricamento lo shimmer non si ferma: niente pumpAndSettle.
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
   }
 
   Future<void> tapFilter(WidgetTester tester, String label) async {
@@ -347,6 +363,7 @@ void main() {
 
       verify(() => tripRepo.reuseTrip('past')).called(1);
       expect(find.text('edit-info'), findsOneWidget);
+      expect(find.text('path=/trips/copy-1/edit-info'), findsOneWidget);
       expect(find.text('reuse=1'), findsOneWidget);
     });
 
@@ -378,5 +395,28 @@ void main() {
         findsOneWidget,
       );
     });
+    testWidgets(
+      'durante il caricamento i filtri compaiono una sola volta, con la sagoma',
+      (tester) async {
+        final completer = Completer<List<TripModel>>();
+        await pumpScreen(
+          tester,
+          trips: const [],
+          tripsFuture: completer.future,
+        );
+        expect(find.byType(SkeletonTripsBody), findsOneWidget);
+        expect(find.text('Prossimi'), findsOneWidget);
+        expect(find.text('Passati'), findsOneWidget);
+        expect(find.text('Salvati'), findsOneWidget);
+        // Una sola sagoma: la cartolina, senza pillole placeholder.
+        expect(find.byType(SkeletonBox), findsOneWidget);
+
+        completer.complete([_active]);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SkeletonTripsBody), findsNothing);
+        expect(find.byKey(const Key('postcard_pile')), findsOneWidget);
+      },
+    );
   });
 }

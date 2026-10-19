@@ -49,7 +49,7 @@ class AppSpacing {
   static const EdgeInsets cardPadding = EdgeInsets.all(sm);
 
   /// Padding semantico per card eroiche/isolate (una per schermata o in liste poco fitte).
-  /// Casi d'uso: HouseCard, TripSummaryCard, TripCard masonry, TemplateCard, card date TripInfoForm.
+  /// Casi d'uso: HouseCard, TemplateCard, card date TripInfoForm.
   static const EdgeInsets cardPaddingHero = EdgeInsets.all(md); // 16
 
   /// Padding semantico per item ad alta frequenza in lista (UniversalItemTile, ListTile).

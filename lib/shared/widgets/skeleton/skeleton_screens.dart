@@ -44,8 +44,9 @@ class SkeletonItemsBody extends StatelessWidget {
   }
 }
 
-/// Skeleton per la tab Viaggi (TripsScreen): pillole dei filtri e la sagoma
-/// della cartolina in cima che riempie l'altezza disponibile.
+/// Skeleton della tab Viaggi (TripsScreen): solo la sagoma della cartolina in
+/// cima, che riempie l'altezza disponibile. I filtri sono reali e sempre
+/// visibili sopra, quindi non si ripetono qui.
 class SkeletonTripsBody extends StatelessWidget {
   const SkeletonTripsBody({super.key});
 
@@ -58,23 +59,9 @@ class SkeletonTripsBody extends StatelessWidget {
           right: context.spacingMd,
           bottom: context.navBarReservedHeight + context.spacingLg,
         ),
-        child: Column(
-          children: [
-            Center(
-              child: SkeletonBox(
-                width: 280,
-                height: 36,
-                borderRadius: AppConstants.pillBorderRadius,
-              ),
-            ),
-            SizedBox(height: context.spacingMd),
-            Expanded(
-              child: SkeletonBox(
-                width: double.infinity,
-                height: double.infinity,
-              ),
-            ),
-          ],
+        child: const SkeletonBox(
+          width: double.infinity,
+          height: double.infinity,
         ),
       ),
     );

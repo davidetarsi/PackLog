@@ -382,7 +382,6 @@
     "list_type": "lista",
     "items_count": "{} oggetti",
     "items_selected": "{} selezionati",
-    "items_ready": "{} / {} pronti",
     "available_quantity": "Disponibili: {}",
     "from": "Da",
     "no_items_in_category": "Nessun oggetto in \"{}\"",
