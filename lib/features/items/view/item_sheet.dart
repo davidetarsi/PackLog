@@ -247,37 +247,42 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    children: [
-                      PopupMenuButton<_ItemMenu>(
-                        key: const Key('item_sheet_menu'),
-                        icon: const Icon(Icons.more_horiz),
-                        onSelected: (choice) => switch (choice) {
-                          _ItemMenu.move => _moveToHouse(),
-                          _ItemMenu.delete => _delete(),
-                        },
-                        itemBuilder: (_) => [
-                          PopupMenuItem(
-                            value: _ItemMenu.move,
-                            child: Text('items.move_to_house'.tr()),
-                          ),
-                          PopupMenuItem(
-                            value: _ItemMenu.delete,
-                            child: Text(
-                              'common.delete'.tr(),
-                              style: TextStyle(color: cs.error),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.spacingSm,
+                    ),
+                    child: Row(
+                      children: [
+                        const Spacer(),
+                        IconButton(
+                          key: const Key('item_sheet_close'),
+                          icon: const Icon(Icons.close),
+                          tooltip: 'common.close'.tr(),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        PopupMenuButton<_ItemMenu>(
+                          key: const Key('item_sheet_menu'),
+                          icon: const Icon(Icons.more_horiz),
+                          onSelected: (choice) => switch (choice) {
+                            _ItemMenu.move => _moveToHouse(),
+                            _ItemMenu.delete => _delete(),
+                          },
+                          itemBuilder: (_) => [
+                            PopupMenuItem(
+                              value: _ItemMenu.move,
+                              child: Text('items.move_to_house'.tr()),
                             ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        key: const Key('item_sheet_close'),
-                        icon: const Icon(Icons.close),
-                        tooltip: 'common.close'.tr(),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
+                            PopupMenuItem(
+                              value: _ItemMenu.delete,
+                              child: Text(
+                                'common.delete'.tr(),
+                                style: TextStyle(color: cs.error),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   TextFormField(
                     key: const Key('item_sheet_name'),

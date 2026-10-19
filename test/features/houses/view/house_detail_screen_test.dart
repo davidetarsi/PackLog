@@ -141,6 +141,26 @@ void main() {
     await app.finish();
   });
 
+  testWidgets('inviare la ricerca chiude la tastiera ma conserva i risultati', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(find.byKey(const Key('house_search')));
+    await app.enterText(find.byKey(const Key('house_search_field')), 'calz');
+    tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+    await tester.pump();
+
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await app.settle();
+    tester.view.viewInsets = FakeViewPadding.zero;
+    tester.binding.handleMetricsChanged();
+    await app.settle();
+
+    expect(find.byKey(const Key('house_search_field')), findsOneWidget);
+    expect(find.text('Calzini'), findsOneWidget);
+    await app.finish();
+  });
+
   testWidgets('invio e chiusura della stessa ricerca contano una volta', (
     tester,
   ) async {
@@ -169,6 +189,32 @@ void main() {
     expect(find.text('Casa Milano'), findsOneWidget);
     await app.finish();
   });
+
+  testWidgets(
+    'quando si nasconde la tastiera con il focus la ricerca si chiude',
+    (tester) async {
+      final app = await openHome(tester);
+      await app.tap(find.byKey(const Key('house_search')));
+      await app.enterText(find.byKey(const Key('house_search_field')), 'calz');
+
+      tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+      await tester.pump();
+      final field = find.descendant(
+        of: find.byKey(const Key('house_search_field')),
+        matching: find.byType(EditableText),
+      );
+      expect(tester.widget<EditableText>(field).focusNode.hasFocus, isTrue);
+
+      tester.view.viewInsets = FakeViewPadding.zero;
+      tester.binding.handleMetricsChanged();
+      await tester.pump();
+      await app.settle();
+
+      expect(find.byKey(const Key('house_search_field')), findsNothing);
+      expect(find.text('Jeans blu'), findsOneWidget);
+      await app.finish();
+    },
+  );
 
   testWidgets('con uno spazio scelto la ricerca conta solo quello spazio', (
     tester,

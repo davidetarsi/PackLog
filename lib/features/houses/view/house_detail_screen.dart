@@ -69,6 +69,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   String? _search;
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
+  bool _searchKeyboardWasVisible = false;
 
   /// Ultima ricerca senza risultati già registrata: invio e chiusura della
   /// stessa ricerca contano una volta sola.
@@ -436,6 +437,28 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final searchKeyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final searchKeyboardWasDismissed =
+        _searchKeyboardWasVisible && !searchKeyboardVisible;
+    _searchKeyboardWasVisible = searchKeyboardVisible;
+    if (searchKeyboardWasDismissed &&
+        _search != null &&
+        _searchFocus.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted ||
+            _search == null ||
+            !_searchFocus.hasFocus ||
+            MediaQuery.viewInsetsOf(context).bottom > 0 ||
+            !(ModalRoute.of(context)?.isCurrent ?? true)) {
+          return;
+        }
+        // Su Android il Back può essere consumato dall'IME per prima: il focus
+        // resta sul campo mentre la tastiera scompare. Chiudiamo la ricerca
+        // insieme alla tastiera invece di lasciare uno stato intermedio.
+        _closeSearch();
+      });
+    }
+
     final housesAsync = ref.watch(houseNotifierProvider);
     final spacesAsync = ref.watch(spaceNotifierProvider(widget.houseId));
     final allItems =
