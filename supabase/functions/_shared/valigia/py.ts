@@ -100,3 +100,15 @@ export function ps(x: unknown, float = false): string {
   if (typeof x === "boolean") return x ? "True" : "False";
   return String(x);
 }
+
+/** sum() di Python 3.12 sui float: somma compensata di Neumaier, non la somma
+ *  semplice di JavaScript (le medie del meteo cambierebbero all'ultima cifra). */
+export function pySum(xs: Iterable<number>): number {
+  let s = 0, c = 0;
+  for (const x of xs) {
+    const t = s + x;
+    c += Math.abs(s) >= Math.abs(x) ? (s - t) + x : (x - t) + s;
+    s = t;
+  }
+  return c && Number.isFinite(c) ? s + c : s;
+}

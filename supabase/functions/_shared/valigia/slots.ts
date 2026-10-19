@@ -38,7 +38,8 @@ export function round2(x: number, n = 2): number {
     const r = ultima % 2 === 0 ? tronco : tronco + passo;
     return Math.sign(x) * Number(r.toFixed(n));
   }
-  return Number(x.toFixed(n));
+  const r = Number(x.toFixed(n));
+  return r === 0 && (x < 0 || Object.is(x, -0)) ? -0 : r;   // round(-0.0, 1) e' -0.0
 }
 
 const SUBCATEGORIES = new Set<string>([...K.SUBCATEGORIES]);
