@@ -18,7 +18,8 @@ export const VECCHIE: Record<string, string[]> = {
 export const NUOVE: Record<string, [string, string | null, string]> = {
   "Thermal Top": ["Upper Body", "T-Shirt", "maglia termica, strato base"],
   "Fleece": ["Upper Body", "Sweater", "pile"],
-  "Thermal Bottoms": ["Lower Body", "Leggings", "calzamaglia o pantaloni termici"],
+  // senza genitore (20 ottobre): come Leggings faceva da pantalone; va sotto i pantaloni
+  "Thermal Bottoms": ["Lower Body", null, "calzamaglia o pantaloni termici"],
   "Ski Pants": ["Lower Body", null, "pantaloni da sci o salopette"],
   "Wetsuit": ["Lower Body", null, "muta da sub o da surf"],
   "Dress": ["Full Body", null, "vestito o abito da donna, copre sopra e sotto"],

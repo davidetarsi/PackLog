@@ -518,7 +518,8 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   }
 
   // ── Rete per le zone rimaste scoperte ──
-  const coperte = insieme([...ideali, ...ripieghi].map((r) => r.category));
+  // la calzamaglia termica va sotto i pantaloni: non copre la zona da sola
+  const coperte = insieme([...ideali, ...ripieghi].filter((r) => !K.SOTTO_STRATI.has(r.subCategory)).map((r) => r.category));
   for (const [zona, subs] of Object.entries(K.ZONE_FALLBACK) as [string, string[]][]) {
     if (coperte.has(zona)) continue;
     const larghe = insieme(subs);

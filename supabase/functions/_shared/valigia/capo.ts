@@ -3,6 +3,9 @@
 import { perIlGeneratore } from "./tassonomia.ts";
 import { senzaAccenti } from "./py.ts";
 
+/** Categorie dei capi da vestire: con i metadati non sono mai intimo. */
+export const CATEGORIE_DA_VESTIRE = new Set(["Upper Body", "Lower Body", "Full Body", "Outerwear"]);
+
 export interface Capo {
   id: string;
   name: string;
@@ -98,6 +101,9 @@ export function caricaArmadio(righe: RigaArmadio[]): Capo[] {
         g.bulk = (m.bulk as number | null | undefined) ?? null;
         g.has_metadata = true;
         if (g.category === "Essentials") g.sempre_in_valigia = true;
+        // un capo da vestire non e' intimo anche se il nome ha una radice dell'intimo
+        // (la calzamaglia termica non sono calzini)
+        else if (CATEGORIE_DA_VESTIRE.has(g.category)) g.sempre_in_valigia = false;
       }
     }
     return g;

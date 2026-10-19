@@ -234,6 +234,8 @@ export function slotCapiNuovi(items: Capo[], tempMin: number | null | undefined,
     ["guanti", "Accessory", "Gloves", tempMin != null && tempMin <= K.SOGLIA_ESTREMITA, `minima ${pf(tempMin)}: mani coperte`],
     ["pantaloni da neve", "Lower Body", "Ski Pants", interseca(pw, K.PAROLE_NEVE), "neve o sci"],
     ["muta", "Lower Body", "Wetsuit", interseca(pw, K.PAROLE_MUTA), "immersioni o surf"],
+    ["calzamaglia termica", "Lower Body", "Thermal Bottoms", tempMin != null && tempMin <= rc.FREDDO_VERO,
+      `minima ${pf(tempMin)}: uno strato termico sotto i pantaloni`],
     ["cravatta", "Accessory", "Tie", rc.occasioneFormale(attivita || []), "occasione formale"],
     ["ombrello", "Accessory", "Umbrella", K.OMBRELLO_CON_PIOGGIA && (giorniPioggia || 0) >= K.OMBRELLO_GIORNI_PIOGGIA,
       `${ps(giorniPioggia, true)} giorni di pioggia`],
@@ -395,11 +397,14 @@ export function injectFabbisogno(slots: Slot[], tempMin: number | null | undefin
     if (!dedicati.has(JSON.stringify(["Cap/Hat"]))) {
       slots.push(nuovo("testa coperta", "Accessory", ["Cap/Hat"], { reason: `minima ${tm}: la testa disperde` }));
     }
-    for (const s of slots) {
-      if (s.category === "Accessory" && JSON.stringify(s.subCategories) === JSON.stringify(["Cap/Hat"])) s._preferisci_calore = true;
-    }
     if (!dedicati.has(JSON.stringify(["Scarf"]))) {
       slots.push(nuovo("collo e mani", "Accessory", ["Scarf"], { reason: `minima ${tm}: collo e mani coperti` }));
+    }
+    for (const s of slots) {
+      // cappello e sciarpa: col freddo il piu' caldo (non il foulard di seta a -2)
+      const subs = JSON.stringify(s.subCategories);
+      if (s.category === "Accessory" && (subs === JSON.stringify(["Cap/Hat"])
+        || (subs === JSON.stringify(["Scarf"]) && s.slot !== "foulard"))) s._preferisci_calore = true;
     }
   } else if (!slots.some((s) => s.category === "Accessory")) {
     if (floor >= 4) {

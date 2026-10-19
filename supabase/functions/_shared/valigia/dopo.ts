@@ -161,7 +161,7 @@ export function applicaBudgetRotazione(capi: Record_[], giorni: number, minimoSo
   let tagliati = 0;
   for (const zona of ["Upper Body", "Lower Body"]) {
     const inZona = capi.filter((x) => x.category === zona && x.subCategory !== "Swimwear" &&
-      (K.RUOLO_STRATO[x.subCategory || ""] ?? "base") === "base");
+      !K.SOTTO_STRATI.has(x.subCategory) && (K.RUOLO_STRATO[x.subCategory || ""] ?? "base") === "base");
     let totale = inZona.reduce((s, x) => s + q(x), 0);
     let limite = Math.min(giorni + 1, K.TETTO_ROTAZIONE_ZONA[zona] ?? 99);
     if (zona === "Lower Body" && K.PANTALONI_PER_CLIMA && vero(climaTappe)) {

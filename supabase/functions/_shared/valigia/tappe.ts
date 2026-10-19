@@ -112,9 +112,9 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
   const tminT = meteo.temp_min_media, tmaxT = meteo.temp_max_media;
   if (tminT != null && tminT <= K.SOGLIA_ESTREMITA) {
     richieste.push({ slot: "testa coperta", category: "Accessory", subCategories: ["Cap/Hat"], minWaterResistance: 0,
-      reason: `${nome}: minima ${pf(tminT)}, la testa disperde` });
+      _preferisci_calore: true, reason: `${nome}: minima ${pf(tminT)}, la testa disperde` });
     richieste.push({ slot: "collo e mani", category: "Accessory", subCategories: ["Scarf"], minWaterResistance: 0,
-      reason: `${nome}: minima ${pf(tminT)}, collo e mani coperti` });
+      _preferisci_calore: true, reason: `${nome}: minima ${pf(tminT)}, collo e mani coperti` });
   } else if (tminT != null && pavimentoDi(meteo) >= 4) {
     richieste.push({ slot: "estremita al freddo", category: "Accessory", subCategories: ["Cap/Hat", "Scarf"], minWaterResistance: 0,
       reason: `${nome}: minima ${pf(tminT)}, testa e collo coperti` });

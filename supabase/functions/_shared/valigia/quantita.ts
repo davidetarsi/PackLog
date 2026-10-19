@@ -33,6 +33,10 @@ export function essenzialiPerViaggio(items: Capo[], giorni: number, lavatrice: b
     if (!g.sempre_in_valigia) continue;
     const r = radiceSempre(g.name) || RADICE_DA_SOTTOCAT[g.sub_fine] || null;
     if (r != null && visti.has(r)) continue;   // una sola voce per tipo
+    if (r != null && RADICI_NOTTE.has(r)) {      // una sola cosa per la notte
+      if (visti.has("notte")) continue;
+      visti.add("notte");
+    }
     if (r) visti.add(r);
     const usi = USI_PER_PEZZO[r ?? ""] ?? 99;
     let qta: number;
