@@ -51,7 +51,7 @@ passando dai repository veri (`support/seed.dart`). Nessuna modifica a `lib/`.
 Utente "Davide Rossi". Case: *Casa Milano* (principale, 18 oggetti in 3 spazi,
 3 bagagli), *Casa al mare*, *Baita dei nonni a Courmayeur, Valle d'Aosta* (nome
 lungo), *Monolocale Torino* (vuota). Viaggi: *Weekend al mare* (in corso, verso
-Casa al mare), *Lisbona* (fra 10 giorni, 2 tappe, 11 oggetti di cui 4 spuntati),
+Casa al mare), *Lisbona* (fra 10 giorni, con una tappa a Sintra, 11 oggetti di cui 4 spuntati),
 *Matrimonio Giulia* (salvato), *Weekend a Torino* (senza oggetti), due viaggi
 passati. Un oggetto ha un nome volutamente lungo.
 
@@ -154,10 +154,27 @@ freccia dell'app bar o un tocco fuori chiudono la pagina.
 
 ### 07 · Tab Viaggi
 
+Filtri: Prossimi, Passati, Salvati (il vecchio "Tutto" è stato tolto). Prossimi
+è una pila di cartoline (`features/trips/view/widgets/postcard/postcard_pile.dart`,
+scorrimento orizzontale, cartolina in cima sempre dritta, arancio solo sul
+bottone della cartolina in cima). Le cartoline sotto sono solo carta. Passati e
+Salvati sono un album (`widgets/postcard/trip_album.dart`) con i viaggi senza
+date marcati "Riusa".
+
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1-5 | Elenco viaggi | `features/trips/view/trips_screen.dart` | tab Viaggi | ✓ vuoto, ✓ Prossimi (hero del viaggio in corso + griglia), ✓ Passati, ✓ Salvati, ✓ menu contestuale. Non catturati: tab "Tutto", errore |
-| 6 | Foglio Crea | `shared/widgets/create_sheet.dart` | Crea, dalla tab Viaggi (Nuovo viaggio in cima) | ✓ |
+| 1 | Elenco vuoto | `features/trips/view/trips_screen.dart` | tab Viaggi senza viaggi | ✓ vuoto, con "Nuovo viaggio" |
+| 2 | Prossimi | `trips_screen.dart`, `widgets/postcard/postcard_pile.dart`, `widgets/postcard/trip_postcard.dart` | tab Viaggi, filtro Prossimi | ✓ viaggio in corso in cima (Casa al mare, francobollo "in viaggio") |
+| 3 | Prossimi dopo uno scorrimento | `widgets/postcard/postcard_pile.dart` | scorrimento della pila di 330 dp | ✓ Lisbona: Andata, Spostamento, tappa Sintra, Ritorno; 2 bagagli |
+| 4 | Prossimi, valigia vuota | `widgets/postcard/trip_postcard.dart`, `widgets/postcard/postcard_parts.dart` | secondo scorrimento | ✓ Torino senza oggetti né bagagli, CTA "Prepara la valigia" |
+| 5 | Passati | `widgets/postcard/trip_album.dart` | filtro Passati | ✓ album per anno, Barcellona e una baita con nome lungo (titolo su due righe con ellissi) |
+| 6 | Salvati | `widgets/postcard/trip_album.dart` | filtro Salvati | ✓ gruppo "Da riusare" con Firenze |
+| 7 | Menu contestuale | `shared/widgets/entity_context_menu.dart` | pressione lunga sulla cartolina in cima | ✓ copia / salva / elimina |
+| 8 | Prossimi vuoto | `trips_screen.dart` | filtro Prossimi quando restano solo viaggi passati | ✓ "Nessun viaggio in programma" con "Nuovo viaggio". Lo stato si ottiene eliminando i viaggi futuri nello scenario |
+| 9 | Foglio Crea | `shared/widgets/create_sheet.dart` | Crea, dalla tab Viaggi (Nuovo viaggio in cima) | ✓ |
+
+Non catturati: stato di errore del caricamento; il tap sulla cartolina porta
+al dettaglio viaggio (flusso 09).
 
 ### 08 · Creazione viaggio (wizard 2 passi)
 
