@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,26 +5,7 @@ import 'package:pack_log/features/trips/view/widgets/postcard/postcard_pile.dart
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Traduzioni lette una volta dal disco e servite in memoria, come nei test
-/// della cartolina: niente I/O asincrono sugli asset dentro il test.
-class _MemoryAssetLoader extends AssetLoader {
-  const _MemoryAssetLoader(this.translations);
-
-  final Map<String, Map<String, dynamic>> translations;
-
-  @override
-  Future<Map<String, dynamic>> load(String path, Locale locale) async =>
-      translations[locale.toString()] ?? translations['en_US']!;
-}
-
-Map<String, Map<String, dynamic>> _readTranslations() => {
-  'it_IT':
-      jsonDecode(File('assets/translations/it-IT.json').readAsStringSync())
-          as Map<String, dynamic>,
-  'en_US':
-      jsonDecode(File('assets/translations/en-US.json').readAsStringSync())
-          as Map<String, dynamic>,
-};
+import '../../../../helpers/memory_asset_loader.dart';
 
 late AssetLoader _assetLoader;
 
@@ -100,7 +78,7 @@ void main() {
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
-    _assetLoader = _MemoryAssetLoader(_readTranslations());
+    _assetLoader = MemoryAssetLoader(readAppTranslations());
   });
 
   testWidgets('mostra il primo elemento e il contatore', (tester) async {

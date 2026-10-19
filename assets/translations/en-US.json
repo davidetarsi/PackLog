@@ -312,6 +312,10 @@
       "position": "{} of {}",
       "next": "Next trip",
       "previous": "Previous trip"
+    },
+    "album": {
+      "reuse": "Reuse",
+      "saved_group": "To reuse"
     }
   },
   "common": {

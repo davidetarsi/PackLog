@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,29 +10,9 @@ import 'package:pack_log/features/trips/view/widgets/postcard/trip_postcard.dart
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../helpers/memory_asset_loader.dart';
+
 final _stampKey = find.byKey(const Key('postcard_stamp'));
-
-/// Traduzioni lette una volta dal disco e servite in memoria: niente I/O
-/// asincrono sugli asset dentro il test, che lascerebbe EasyLocalization in
-/// caricamento e la cartolina non costruita.
-class _MemoryAssetLoader extends AssetLoader {
-  const _MemoryAssetLoader(this.translations);
-
-  final Map<String, Map<String, dynamic>> translations;
-
-  @override
-  Future<Map<String, dynamic>> load(String path, Locale locale) async =>
-      translations[locale.toString()] ?? translations['en_US']!;
-}
-
-Map<String, Map<String, dynamic>> _readTranslations() => {
-  'it_IT':
-      jsonDecode(File('assets/translations/it-IT.json').readAsStringSync())
-          as Map<String, dynamic>,
-  'en_US':
-      jsonDecode(File('assets/translations/en-US.json').readAsStringSync())
-          as Map<String, dynamic>,
-};
 
 TripModel _trip({
   String name = 'Lisbona',
@@ -128,7 +105,7 @@ void main() {
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
-    _assetLoader = _MemoryAssetLoader(_readTranslations());
+    _assetLoader = MemoryAssetLoader(readAppTranslations());
   });
 
   group('itinerario', () {
