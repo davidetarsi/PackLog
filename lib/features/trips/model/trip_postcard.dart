@@ -97,8 +97,14 @@ List<ItineraryEntry> buildItinerary(
   final returnAt = trip.returnDateTime;
 
   final legs = trip.legs;
-  final dated = legs.where((leg) => leg.from != null).toList()
-    ..sort((a, b) => a.from!.compareTo(b.from!));
+  // A parità di partenza vale l'ordine d'ingresso: List.sort non è stabile.
+  final datedEntries =
+      legs.indexed.where((entry) => entry.$2.from != null).toList()
+        ..sort((a, b) {
+          final byFrom = a.$2.from!.compareTo(b.$2.from!);
+          return byFrom != 0 ? byFrom : a.$1.compareTo(b.$1);
+        });
+  final dated = [for (final (_, leg) in datedEntries) leg];
   final undated = legs.where((leg) => leg.from == null);
 
   final stops = [...dated, ...undated];
@@ -208,30 +214,40 @@ List<TripModel> upcomingTrips(List<TripModel> trips) {
   final result = trips
       .where((trip) => trip.isActive || trip.isUpcoming)
       .toList();
+  // A parità di chiave lo spareggio è l'id: List.sort non è stabile e la
+  // pila non deve cambiare ordine tra un rebuild e l'altro.
   result.sort((a, b) {
     final byRank = rank(a).compareTo(rank(b));
     if (byRank != 0) return byRank;
-    return key(a).compareTo(key(b));
+    final byKey = key(a).compareTo(key(b));
+    return byKey != 0 ? byKey : a.id.compareTo(b.id);
   });
   return result;
 }
 
-/// Viaggi conclusi, dal più recente.
+/// Viaggi conclusi, dal più recente. A parità di data, ordine per id.
 List<TripModel> pastTrips(List<TripModel> trips) {
   DateTime key(TripModel trip) =>
       trip.returnDateTime ?? trip.departureDateTime ?? trip.createdAt;
 
   final result = trips.where((trip) => trip.isCompleted).toList();
-  result.sort((a, b) => key(b).compareTo(key(a)));
+  result.sort((a, b) {
+    final byKey = key(b).compareTo(key(a));
+    return byKey != 0 ? byKey : a.id.compareTo(b.id);
+  });
   return result;
 }
 
-/// Viaggi salvati, per data di partenza decrescente.
+/// Viaggi salvati, per data di partenza decrescente. A parità di data, ordine
+/// per id.
 List<TripModel> savedTrips(List<TripModel> trips) {
   DateTime key(TripModel trip) => trip.departureDateTime ?? trip.createdAt;
 
   final result = trips.where((trip) => trip.isSaved).toList();
-  result.sort((a, b) => key(b).compareTo(key(a)));
+  result.sort((a, b) {
+    final byKey = key(b).compareTo(key(a));
+    return byKey != 0 ? byKey : a.id.compareTo(b.id);
+  });
   return result;
 }
 

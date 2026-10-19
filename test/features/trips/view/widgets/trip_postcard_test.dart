@@ -6,7 +6,9 @@ import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/trips/model/trip_leg.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/model/trip_postcard.dart';
+import 'package:pack_log/features/trips/view/widgets/postcard/postcard_parts.dart';
 import 'package:pack_log/features/trips/view/widgets/postcard/trip_postcard.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -282,6 +284,36 @@ void main() {
         PostcardCta.continuePacking,
       );
     });
+  });
+
+  testWidgets('il bottone sta in fondo alla carta anche su un box alto', (
+    tester,
+  ) async {
+    // La finestra di test è 800x600: serve più altezza perché la carta sia alta 700.
+    tester.view.physicalSize = const Size(800, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final now = DateTime.now();
+    await _pump(
+      tester,
+      size: const Size(390, 700),
+      trip: _trip(
+        departure: now.add(const Duration(days: 20)),
+        returnAt: now.add(const Duration(days: 25)),
+        items: [_item('a'), _item('b', checked: true)],
+        luggages: [_luggage('l1', 'Zaino')],
+      ),
+    );
+
+    final card = tester.getRect(find.byType(PostcardPaper));
+    final padding = tester.element(find.byType(TripPostcard)).spacingLg;
+    final ctaBottom = tester
+        .getBottomLeft(find.byKey(const Key('postcard_cta')))
+        .dy;
+    // Il bordo della carta aggiunge 1 px allo spazio interno.
+    expect(ctaBottom, closeTo(card.bottom - padding, 2));
   });
 
   testWidgets('nomi lunghi non producono overflow', (tester) async {

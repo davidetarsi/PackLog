@@ -191,6 +191,31 @@ void main() {
       final place = entries[1];
       expect(nightsBetween(place.from, place.to), isNull);
     });
+
+    test('tappe con la stessa partenza: ordine d ingresso', () {
+      final trip = makeTrip(
+        't6',
+        departure: DateTime(2026, 10, 10, 9),
+        returnAt: DateTime(2026, 10, 20, 8),
+        destination: lisbona,
+        legs: [
+          makeLeg('sintra', 'Sintra, Portogallo', from: DateTime(2026, 10, 12)),
+          makeLeg(
+            'cascais',
+            'Cascais, Portogallo',
+            from: DateTime(2026, 10, 12),
+          ),
+        ],
+      );
+
+      final entries = buildItinerary(trip, destination: 'Lisbona');
+
+      final places = entries
+          .where((e) => e.kind == ItineraryKind.place)
+          .map((e) => e.name)
+          .toList();
+      expect(places, ['Lisbona', 'Sintra', 'Cascais']);
+    });
   });
 
   group('ItineraryEntry', () {
@@ -392,6 +417,16 @@ void main() {
         ]);
       },
     );
+
+    test('stessa chiave: ordine per id, indipendente dall ingresso', () {
+      final partenza = DateTime.now().add(const Duration(days: 30));
+      final result = upcomingTrips([
+        makeTrip('b', departure: partenza),
+        makeTrip('a', departure: partenza),
+      ]);
+
+      expect(result.map((t) => t.id).toList(), ['a', 'b']);
+    });
   });
 
   group('pastTrips', () {
@@ -416,6 +451,16 @@ void main() {
 
       expect(result.map((t) => t.id).toList(), ['recente', 'vecchio']);
     });
+
+    test('stesso rientro: ordine per id, indipendente dall ingresso', () {
+      final rientro = DateTime(2026, 9, 1);
+      final result = pastTrips([
+        makeTrip('b', departure: DateTime(2026, 8, 1), returnAt: rientro),
+        makeTrip('a', departure: DateTime(2026, 8, 1), returnAt: rientro),
+      ]);
+
+      expect(result.map((t) => t.id).toList(), ['a', 'b']);
+    });
   });
 
   group('savedTrips', () {
@@ -438,6 +483,16 @@ void main() {
       final result = savedTrips([anticipo, nonSalvato, tardi]);
 
       expect(result.map((t) => t.id).toList(), ['tardi', 'anticipo']);
+    });
+
+    test('stessa partenza: ordine per id, indipendente dall ingresso', () {
+      final partenza = DateTime(2026, 8, 1);
+      final result = savedTrips([
+        makeTrip('b', departure: partenza, saved: true),
+        makeTrip('a', departure: partenza, saved: true),
+      ]);
+
+      expect(result.map((t) => t.id).toList(), ['a', 'b']);
     });
   });
 

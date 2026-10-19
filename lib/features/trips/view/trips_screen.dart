@@ -2,7 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../houses/model/house_model.dart';
+import '../../../core/monitoring/monitoring_service.dart';
 import '../../houses/providers/house_provider.dart';
 import '../model/trip_model.dart';
 import '../model/trip_postcard.dart';
@@ -77,13 +77,16 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   /// riuso. Se l'utente esce senza salvare, la copia viene eliminata dalla
   /// rotta di modifica.
   Future<void> _handleReuse(TripModel trip) async {
+    // Letto prima dell'await: il catch può arrivare dopo il dispose.
+    final monitoring = ref.read(monitoringServiceProvider);
     try {
       final newId = await ref
           .read(tripNotifierProvider.notifier)
           .reuseTrip(trip.id);
       if (!mounted) return;
       context.push('/trips/$newId/edit-info?reuse=1');
-    } catch (_) {
+    } catch (error, stack) {
+      monitoring.captureException(error, stackTrace: stack);
       if (!mounted) return;
       AppSnackBar.showError(
         context,
@@ -101,22 +104,21 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   }
 
   /// Nome della meta: casa di destinazione se esiste, altrimenti città o
-  /// nome del viaggio.
-  String _destinationOf(TripModel trip, List<HouseModel> houses) {
-    String? houseName;
-    for (final house in houses) {
-      if (house.id == trip.destinationHouseId) {
-        houseName = house.displayName;
-        break;
-      }
-    }
-    return tripDestinationName(trip, houseName: houseName);
+  /// nome del viaggio. [houseNames] è costruita una volta per build.
+  String _destinationOf(TripModel trip, Map<String, String> houseNames) {
+    return tripDestinationName(
+      trip,
+      houseName: houseNames[trip.destinationHouseId],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripNotifierProvider);
     final houses = ref.watch(houseNotifierProvider).valueOrNull ?? const [];
+    final houseNames = {
+      for (final house in houses) house.id: house.displayName,
+    };
     final colorScheme = Theme.of(context).colorScheme;
 
     return ShellTabScaffold(
@@ -137,7 +139,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
           Expanded(
             child: tripsAsync.when(
               skipLoadingOnReload: true,
-              data: (trips) => _buildContent(context, trips, houses),
+              data: (trips) => _buildContent(context, trips, houseNames),
               loading: () => const SkeletonTripsBody(),
               error: (error, stack) => RefreshIndicator(
                 onRefresh: () => ref.refresh(tripNotifierProvider.future),
@@ -162,7 +164,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   Widget _buildContent(
     BuildContext context,
     List<TripModel> trips,
-    List<HouseModel> houses,
+    Map<String, String> houseNames,
   ) {
     if (trips.isEmpty) {
       return _buildScrollableEmpty(
@@ -192,7 +194,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
             ),
           );
         }
-        return _buildPile(context, upcoming, houses);
+        return _buildPile(context, upcoming, houseNames);
 
       case TripFilterTab.past:
         final past = pastTrips(trips);
@@ -212,7 +214,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
               TripAlbumGroup('${entry.key}', entry.value),
           ],
           cancelledStamps: true,
-          houses: houses,
+          houseNames: houseNames,
         );
 
       case TripFilterTab.saved:
@@ -231,7 +233,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
           context,
           groups: [TripAlbumGroup('trips.album.saved_group'.tr(), saved)],
           cancelledStamps: false,
-          houses: houses,
+          houseNames: houseNames,
         );
     }
   }
@@ -239,7 +241,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   Widget _buildPile(
     BuildContext context,
     List<TripModel> upcoming,
-    List<HouseModel> houses,
+    Map<String, String> houseNames,
   ) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -254,7 +256,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
           args: [
             '${index + 1}',
             '${upcoming.length}',
-            _destinationOf(upcoming[index], houses),
+            _destinationOf(upcoming[index], houseNames),
           ],
         ),
         itemBuilder: (context, index) {
@@ -264,7 +266,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
             onLongPress: () => _handleTripLongPress(trip),
             child: TripPostcard(
               trip: trip,
-              destination: _destinationOf(trip, houses),
+              destination: _destinationOf(trip, houseNames),
               onCta: (cta) => _onPileCta(trip, cta),
             ),
           );
@@ -277,7 +279,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     BuildContext context, {
     required List<TripAlbumGroup> groups,
     required bool cancelledStamps,
-    required List<HouseModel> houses,
+    required Map<String, String> houseNames,
   }) {
     return RefreshIndicator(
       onRefresh: () => ref.refresh(tripNotifierProvider.future),
@@ -285,7 +287,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       child: TripAlbum(
         groups: groups,
         cancelledStamps: cancelledStamps,
-        destinationOf: (trip) => _destinationOf(trip, houses),
+        destinationOf: (trip) => _destinationOf(trip, houseNames),
         onTap: (trip) => context.push('/trips/${trip.id}'),
         onLongPress: _handleTripLongPress,
         onReuse: _handleReuse,

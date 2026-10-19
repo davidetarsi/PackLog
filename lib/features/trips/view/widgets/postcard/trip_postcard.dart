@@ -11,8 +11,9 @@ import 'trip_itinerary_view.dart';
 /// Cartolina grande di un viaggio: intestazione con la meta, francobollo con
 /// timbro, itinerario, stato della valigia e azione principale.
 ///
-/// Richiede un'altezza vincolata dal genitore: l'itinerario scorre se lo
-/// spazio è poco, il resto della carta resta fermo.
+/// Richiede un'altezza vincolata dal genitore: l'itinerario parte dall'alto e
+/// scorre se lo spazio è poco; lo spazio libero sta tra itinerario e valigia,
+/// così valigia e azione restano in fondo alla carta.
 class TripPostcard extends StatelessWidget {
   static const double _ringStroke = 6;
 
@@ -44,7 +45,6 @@ class TripPostcard extends StatelessWidget {
     return PostcardPaper(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,7 +86,7 @@ class TripPostcard extends StatelessWidget {
             ],
           ),
           SizedBox(height: context.spacingMd),
-          Flexible(
+          Expanded(
             child: SingleChildScrollView(
               child: TripItineraryView(
                 entries: buildItinerary(trip, destination: destination),
