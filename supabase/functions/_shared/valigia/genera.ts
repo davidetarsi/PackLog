@@ -6,7 +6,7 @@ import { caricaArmadio, type RigaArmadio } from "./capo.ts";
 import { type ChiediJev, datiJev, type DatiJev, type ProfiloNoto } from "./jev.ts";
 import { motiviValigia, percheValigia, tagArmadio } from "./motivi.ts";
 import { attivitaScenario, promptValigia } from "./prompt.ts";
-import { strategySlots } from "./slots.ts";
+import { parseJsonBlock, strategySlots } from "./slots.ts";
 import { strategySlotsMultitappa } from "./tappe.ts";
 import type { Luogo, Tappa } from "../clima/meteo.ts";
 
@@ -128,5 +128,20 @@ export function openaiHttp(chiave: string, fetchFn: typeof fetch = fetch, timeou
     if (r.status >= 400) throw new Error(`${MODELLO_OPENAI}: ${r.status} ${(await r.text()).slice(0, 300)}`);
     const d = await r.json();
     return { testo: d.choices[0].message.content, uso: { ...(d.usage ?? {}), model: MODELLO_OPENAI } };
+  };
+}
+
+/** Una risposta del modello che non e' un JSON leggibile si richiede una volta. */
+export function conRiprova(chiedi: ChiediModello, tentativi = 2): ChiediModello {
+  return async (prompt) => {
+    for (let i = 1; ; i++) {
+      const r = await chiedi(prompt);
+      try {
+        parseJsonBlock(r.testo);
+        return r;
+      } catch (e) {
+        if (i >= tentativi) throw new Error(`risposta del modello non leggibile: ${(e as Error).message}`);
+      }
+    }
   };
 }

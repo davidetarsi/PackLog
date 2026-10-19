@@ -86,7 +86,7 @@ function attivitaDi(sc: Record_): string[] {
 
 /** Dati del viaggio che servono alle frasi: giorni, clima per tappa, attivita'. */
 export function contesto(v: Valigia): Contesto {
-  const sc = v.scenario, m: Record_ = o(v.meteo, {}), s = v.slots;
+  const sc = v.scenario, m = o(v.meteo, {}) as Record_, s = v.slots;
   const tappe = new Map<string, Record_>();
   if (vero(get(m, "_per_tappa"))) {
     const legs = new Map<string, Record_>();
