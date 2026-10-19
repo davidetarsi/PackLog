@@ -247,7 +247,10 @@ GoRouter appRouter(Ref ref) {
           if (id == null || id.isEmpty) {
             return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
           }
-          return EditTripInfoScreen(tripId: id);
+          return EditTripInfoScreen(
+            tripId: id,
+            discardOnExit: state.uri.queryParameters['reuse'] == '1',
+          );
         },
       ),
       GoRoute(
