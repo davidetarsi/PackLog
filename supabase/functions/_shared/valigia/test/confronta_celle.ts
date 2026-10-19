@@ -4,6 +4,7 @@
 import { readFileSync } from "node:fs";
 import { caricaArmadio, type Capo, type RigaArmadio } from "../capo.ts";
 import { strategySlots } from "../slots.ts";
+import { strategySlotsMultitappa } from "../tappe.ts";
 
 const file = process.argv[2] && !process.argv[2].startsWith("-")
   ? process.argv[2] : new URL("./oracolo_celle_campione.json", import.meta.url).pathname;
@@ -35,15 +36,18 @@ function normalizzaNumeri(x: unknown): unknown {
   return JSON.parse(JSON.stringify(x), (_k, v) => typeof v === "string" ? v.replace(/(\d)\.0\b/g, "$1") : v);
 }
 
-let ok = 0, ko = 0, saltate = 0;
+let ok = 0, ko = 0;
+const perTipo: Record<string, [number, number]> = { singola: [0, 0], tappe: [0, 0] };
 const perCampo: Record<string, number> = {};
 const esempi: string[] = [];
 for (const c of casi) {
-  if (c.tipo !== "singola") { saltate++; continue; }
+  perTipo[c.tipo][1]++;
   const items: Capo[] = caricaArmadio(righe[c.armadio]);
   let out: unknown;
   try {
-    out = JSON.parse(JSON.stringify(strategySlots(c.grezzo, items, c.args)));
+    const r = c.tipo === "singola" ? strategySlots(c.grezzo, items, c.args)
+      : strategySlotsMultitappa(c.grezzo, items, structuredClone(c.args));
+    out = JSON.parse(JSON.stringify(r));
   } catch (e) {
     ko++; perCampo["(errore)"] = (perCampo["(errore)"] ?? 0) + 1;
     if (esempi.length < 8) esempi.push(`${c.insieme}/${c.armadio}/${c.id}: ERRORE ${(e as Error).stack?.split("\n").slice(0, 3).join(" | ")}`);
@@ -53,13 +57,13 @@ for (const c of casi) {
   // dato (previsione o clima storico), il JSON letto non lo distingue piu'.
   // Nei testi interni (reason) "2.0" e "2" valgono uguale.
   const d = prima(normalizzaNumeri(out), normalizzaNumeri(c.atteso));
-  if (d == null) { ok++; continue; }
+  if (d == null) { ok++; perTipo[c.tipo][0]++; continue; }
   ko++;
   const campo = d.split(/[.:[]/)[1] ?? d;
   perCampo[campo] = (perCampo[campo] ?? 0) + 1;
   if (esempi.length < (verboso ? 40 : 8)) esempi.push(`${c.insieme}/${c.armadio}/${c.id}: ${d}`);
 }
-console.log(`valigie a una destinazione: ${ok} identiche, ${ko} diverse (a tappe saltate: ${saltate})`);
+console.log(`valigie: ${ok} identiche, ${ko} diverse; a una destinazione ${perTipo.singola[0]}/${perTipo.singola[1]}, a tappe ${perTipo.tappe[0]}/${perTipo.tappe[1]}`);
 console.log("prima differenza per campo:", perCampo);
 for (const e of esempi) console.log("  " + e);
 process.exitCode = ko ? 1 : 0;
