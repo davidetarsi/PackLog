@@ -307,6 +307,11 @@
       "return": "Ritorno",
       "nights": {"one": "{} notte", "other": "{} notti"},
       "more_stops": {"one": "+{} tappa", "other": "+{} tappe"}
+    },
+    "pile": {
+      "position": "{} di {}",
+      "next": "Viaggio successivo",
+      "previous": "Viaggio precedente"
     }
   },
   "common": {

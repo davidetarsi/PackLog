@@ -307,6 +307,11 @@
       "return": "Return",
       "nights": {"one": "{} night", "other": "{} nights"},
       "more_stops": {"one": "+{} stop", "other": "+{} stops"}
+    },
+    "pile": {
+      "position": "{} of {}",
+      "next": "Next trip",
+      "previous": "Previous trip"
     }
   },
   "common": {
