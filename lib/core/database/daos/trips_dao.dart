@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import '../database.dart';
 import '../tables/mixins/syncable_table.dart';
@@ -276,6 +278,95 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
 
       return newTripId;
     });
+  }
+
+  /// Riusa un viaggio: crea un nuovo viaggio partendo da [originalTripId],
+  /// pensato per essere ridefinito (stessa meta, altre date).
+  ///
+  /// Copia come [duplicateTrip] (oggetti non spuntati, bagagli collegati),
+  /// con queste differenze:
+  /// - Nome originale, senza suffisso
+  /// - Date di partenza e ritorno a null, viaggio non salvato
+  /// - Tappe con stessi id e nomi, ma `from` e `to` a null
+  ///
+  /// Returns: ID del nuovo viaggio creato
+  /// Throws: Exception se il viaggio originale non esiste o è stato eliminato
+  Future<String> reuseTrip(String originalTripId, String newTripId) async {
+    return transaction(() async {
+      final originalTrip = await getTripById(originalTripId);
+      if (originalTrip == null) {
+        throw Exception('Trip $originalTripId not found');
+      }
+
+      final now = DateTime.now();
+      final newTrip = TripsCompanion.insert(
+        id: newTripId,
+        name: originalTrip.name,
+        description: Value(originalTrip.description),
+        legs: Value(_legsWithoutDates(originalTrip.legs)),
+        destinationHouseId: Value(originalTrip.destinationHouseId),
+        locationPlaceId: Value(originalTrip.locationPlaceId),
+        locationDisplayName: Value(originalTrip.locationDisplayName),
+        locationName: Value(originalTrip.locationName),
+        locationCity: Value(originalTrip.locationCity),
+        locationState: Value(originalTrip.locationState),
+        locationCountry: Value(originalTrip.locationCountry),
+        locationType: Value(originalTrip.locationType),
+        locationLat: Value(originalTrip.locationLat),
+        locationLon: Value(originalTrip.locationLon),
+        isSaved: const Value(false),
+        createdAt: now,
+        updatedAt: now,
+      );
+      await insertTrip(newTrip);
+
+      final originalItems = await getTripItemsByTripId(originalTripId);
+      if (originalItems.isNotEmpty) {
+        final copiedItems = originalItems.map((item) {
+          return TripItemEntriesCompanion.insert(
+            id: item.id,
+            tripId: newTripId,
+            name: item.name,
+            category: item.category,
+            quantity: Value(item.quantity),
+            originHouseId: Value(item.originHouseId),
+            isChecked: const Value(false),
+          );
+        }).toList();
+
+        await insertMultipleTripItems(copiedItems);
+      }
+
+      final originalLuggageLinks = await (select(
+        tripLuggageEntries,
+      )..where((t) => t.tripId.equals(originalTripId))).get();
+      if (originalLuggageLinks.isNotEmpty) {
+        await batch((batch) {
+          batch.insertAll(
+            tripLuggageEntries,
+            originalLuggageLinks
+                .map(
+                  (link) => TripLuggageEntriesCompanion.insert(
+                    tripId: newTripId,
+                    luggageId: link.luggageId,
+                  ),
+                )
+                .toList(),
+          );
+        });
+      }
+
+      return newTripId;
+    });
+  }
+
+  /// Svuota le date delle tappe, mantenendo id e nome. `null` resta `null`.
+  static String? _legsWithoutDates(String? legsJson) {
+    if (legsJson == null) return null;
+    final legs = (jsonDecode(legsJson) as List).cast<Map<String, dynamic>>();
+    return jsonEncode(
+      legs.map((leg) => {...leg, 'from': null, 'to': null}).toList(),
+    );
   }
 
   // === OPTIMIZED BATCH LOADING (Avoid N+1) ===
