@@ -11,6 +11,9 @@ import 'sync_dao_mixin.dart';
 
 part 'trips_dao.g.dart';
 
+/// Quale copia di un viaggio produce [TripsDao._copyTrip].
+enum _TripCopyMode { duplicate, reuse }
+
 /// DAO per le operazioni CRUD sui viaggi e i loro oggetti.
 @DriftAccessor(tables: [Trips, TripItemEntries, Luggages, TripLuggageEntries])
 class TripsDao extends DatabaseAccessor<AppDatabase>
@@ -229,7 +232,37 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
     String originalTripId,
     String newTripId, {
     String nameSuffix = ' (Copia)',
-  }) async {
+  }) => _copyTrip(
+    originalTripId,
+    newTripId,
+    mode: _TripCopyMode.duplicate,
+    nameSuffix: nameSuffix,
+  );
+
+  /// Riusa un viaggio: crea un nuovo viaggio partendo da [originalTripId],
+  /// pensato per essere ridefinito (stessa meta, altre date).
+  ///
+  /// Copia come [duplicateTrip] (oggetti non spuntati), con queste differenze:
+  /// - Nome originale, senza suffisso
+  /// - Date di partenza e ritorno a null, viaggio non salvato
+  /// - Tappe con stessi id e nomi, ma `from` e `to` a null
+  /// - Bagagli collegati, una riga per ogni riga dell'originale
+  ///
+  /// Returns: ID del nuovo viaggio creato
+  /// Throws: Exception se il viaggio originale non esiste o è stato eliminato
+  Future<String> reuseTrip(String originalTripId, String newTripId) =>
+      _copyTrip(originalTripId, newTripId, mode: _TripCopyMode.reuse);
+
+  /// Nucleo condiviso di [duplicateTrip] e [reuseTrip]: copia viaggio e
+  /// oggetti in una transazione. [mode] decide solo ciò che differisce tra
+  /// le due copie (date, stato salvato, tappe, bagagli e suffisso del nome).
+  Future<String> _copyTrip(
+    String originalTripId,
+    String newTripId, {
+    required _TripCopyMode mode,
+    String nameSuffix = '',
+  }) {
+    final reuse = mode == _TripCopyMode.reuse;
     return transaction(() async {
       final originalTrip = await getTripById(originalTripId);
       if (originalTrip == null) {
@@ -241,8 +274,15 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
         id: newTripId,
         name: '${originalTrip.name}$nameSuffix',
         description: Value(originalTrip.description),
-        departureDateTime: Value(originalTrip.departureDateTime),
-        returnDateTime: Value(originalTrip.returnDateTime),
+        departureDateTime: reuse
+            ? const Value.absent()
+            : Value(originalTrip.departureDateTime),
+        returnDateTime: reuse
+            ? const Value.absent()
+            : Value(originalTrip.returnDateTime),
+        legs: reuse
+            ? Value(_legsWithoutDates(originalTrip.legs))
+            : const Value.absent(),
         destinationHouseId: Value(originalTrip.destinationHouseId),
         locationPlaceId: Value(originalTrip.locationPlaceId),
         locationDisplayName: Value(originalTrip.locationDisplayName),
@@ -253,7 +293,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
         locationType: Value(originalTrip.locationType),
         locationLat: Value(originalTrip.locationLat),
         locationLon: Value(originalTrip.locationLon),
-        isSaved: Value(originalTrip.isSaved),
+        isSaved: Value(reuse ? false : originalTrip.isSaved),
         createdAt: now,
         updatedAt: now,
       );
@@ -276,84 +316,25 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
         await insertMultipleTripItems(copiedItems);
       }
 
-      return newTripId;
-    });
-  }
-
-  /// Riusa un viaggio: crea un nuovo viaggio partendo da [originalTripId],
-  /// pensato per essere ridefinito (stessa meta, altre date).
-  ///
-  /// Copia come [duplicateTrip] (oggetti non spuntati, bagagli collegati),
-  /// con queste differenze:
-  /// - Nome originale, senza suffisso
-  /// - Date di partenza e ritorno a null, viaggio non salvato
-  /// - Tappe con stessi id e nomi, ma `from` e `to` a null
-  ///
-  /// Returns: ID del nuovo viaggio creato
-  /// Throws: Exception se il viaggio originale non esiste o è stato eliminato
-  Future<String> reuseTrip(String originalTripId, String newTripId) async {
-    return transaction(() async {
-      final originalTrip = await getTripById(originalTripId);
-      if (originalTrip == null) {
-        throw Exception('Trip $originalTripId not found');
-      }
-
-      final now = DateTime.now();
-      final newTrip = TripsCompanion.insert(
-        id: newTripId,
-        name: originalTrip.name,
-        description: Value(originalTrip.description),
-        legs: Value(_legsWithoutDates(originalTrip.legs)),
-        destinationHouseId: Value(originalTrip.destinationHouseId),
-        locationPlaceId: Value(originalTrip.locationPlaceId),
-        locationDisplayName: Value(originalTrip.locationDisplayName),
-        locationName: Value(originalTrip.locationName),
-        locationCity: Value(originalTrip.locationCity),
-        locationState: Value(originalTrip.locationState),
-        locationCountry: Value(originalTrip.locationCountry),
-        locationType: Value(originalTrip.locationType),
-        locationLat: Value(originalTrip.locationLat),
-        locationLon: Value(originalTrip.locationLon),
-        isSaved: const Value(false),
-        createdAt: now,
-        updatedAt: now,
-      );
-      await insertTrip(newTrip);
-
-      final originalItems = await getTripItemsByTripId(originalTripId);
-      if (originalItems.isNotEmpty) {
-        final copiedItems = originalItems.map((item) {
-          return TripItemEntriesCompanion.insert(
-            id: item.id,
-            tripId: newTripId,
-            name: item.name,
-            category: item.category,
-            quantity: Value(item.quantity),
-            originHouseId: Value(item.originHouseId),
-            isChecked: const Value(false),
-          );
-        }).toList();
-
-        await insertMultipleTripItems(copiedItems);
-      }
-
-      final originalLuggageLinks = await (select(
-        tripLuggageEntries,
-      )..where((t) => t.tripId.equals(originalTripId))).get();
-      if (originalLuggageLinks.isNotEmpty) {
-        await batch((batch) {
-          batch.insertAll(
-            tripLuggageEntries,
-            originalLuggageLinks
-                .map(
-                  (link) => TripLuggageEntriesCompanion.insert(
-                    tripId: newTripId,
-                    luggageId: link.luggageId,
-                  ),
-                )
-                .toList(),
-          );
-        });
+      if (reuse) {
+        final originalLuggageLinks = await (select(
+          tripLuggageEntries,
+        )..where((t) => t.tripId.equals(originalTripId))).get();
+        if (originalLuggageLinks.isNotEmpty) {
+          await batch((batch) {
+            batch.insertAll(
+              tripLuggageEntries,
+              originalLuggageLinks
+                  .map(
+                    (link) => TripLuggageEntriesCompanion.insert(
+                      tripId: newTripId,
+                      luggageId: link.luggageId,
+                    ),
+                  )
+                  .toList(),
+            );
+          });
+        }
       }
 
       return newTripId;
