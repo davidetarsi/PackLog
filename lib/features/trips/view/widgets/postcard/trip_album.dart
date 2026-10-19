@@ -53,6 +53,9 @@ class TripAlbum extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      // Esplicito: la lista resta trascinabile anche se più corta della vista,
+      // così il RefreshIndicator che la avvolge scatta sempre.
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: padding ?? EdgeInsets.symmetric(horizontal: context.spacingMd),
       children: [
         for (final group in groups) ...[
@@ -232,7 +235,7 @@ class _AlbumStamp extends StatelessWidget {
           PostageStamp(
             size: Size(width, height),
             child: Padding(
-              padding: EdgeInsets.only(right: waveWidth),
+              padding: EdgeInsets.only(right: cancelled ? waveWidth : 0),
               child: content,
             ),
           ),

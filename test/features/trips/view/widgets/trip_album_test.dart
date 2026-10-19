@@ -34,6 +34,11 @@ Finder _cards() => find.byWidgetPredicate(
 
 late AssetLoader _assetLoader;
 
+Widget _maybeRefresh(Future<void> Function()? onRefresh, Widget child) =>
+    onRefresh == null
+    ? child
+    : RefreshIndicator(onRefresh: onRefresh, child: child);
+
 Future<void> _pump(
   WidgetTester tester, {
   required List<TripAlbumGroup> groups,
@@ -43,6 +48,7 @@ Future<void> _pump(
   ValueChanged<TripModel>? onReuse,
   String Function(TripModel)? destinationOf,
   Size size = const Size(390, 800),
+  Future<void> Function()? onRefresh,
 }) async {
   // La scala responsive dipende dalla larghezza della vista: si fissa a 390.
   tester.view.physicalSize = size;
@@ -68,13 +74,16 @@ Future<void> _pump(
               child: SizedBox(
                 width: size.width,
                 height: size.height,
-                child: TripAlbum(
-                  groups: groups,
-                  cancelledStamps: cancelledStamps,
-                  destinationOf: destinationOf ?? (trip) => trip.name,
-                  onTap: onTap ?? (_) {},
-                  onLongPress: onLongPress ?? (_) {},
-                  onReuse: onReuse ?? (_) {},
+                child: _maybeRefresh(
+                  onRefresh,
+                  TripAlbum(
+                    groups: groups,
+                    cancelledStamps: cancelledStamps,
+                    destinationOf: destinationOf ?? (trip) => trip.name,
+                    onTap: onTap ?? (_) {},
+                    onLongPress: onLongPress ?? (_) {},
+                    onReuse: onReuse ?? (_) {},
+                  ),
                 ),
               ),
             ),
@@ -162,6 +171,18 @@ void main() {
     expect(held.map((t) => t.id), ['firenze']);
   });
 
+  testWidgets('tap su Riusa chiama solo onReuse, non onTap', (tester) async {
+    final reused = <TripModel>[];
+    final tapped = <TripModel>[];
+    await _pump(tester, groups: groups, onTap: tapped.add, onReuse: reused.add);
+
+    await tester.tap(find.byKey(const Key('album_reuse_lisbona')));
+    await tester.pumpAndSettle();
+
+    expect(reused.map((t) => t.id), ['lisbona']);
+    expect(tapped, isEmpty);
+  });
+
   testWidgets('con cancelledStamps c è un timbro annullato per cartolina', (
     tester,
   ) async {
@@ -234,5 +255,47 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.textContaining('Baita dei nonni'), findsOneWidget);
+  });
+
+  testWidgets(
+    'album corto dentro RefreshIndicator: il trascinamento aggiorna',
+    (tester) async {
+      var refreshes = 0;
+      await _pump(
+        tester,
+        groups: [
+          TripAlbumGroup('2026', [lisbona]),
+        ],
+        onRefresh: () async {
+          refreshes++;
+        },
+      );
+
+      expect(
+        tester.widget<ListView>(find.byType(ListView)).physics,
+        isA<AlwaysScrollableScrollPhysics>(),
+      );
+
+      await tester.drag(find.byType(TripAlbum), const Offset(0, 300));
+      await tester.pumpAndSettle();
+
+      expect(refreshes, 1);
+    },
+  );
+
+  testWidgets('senza timbro annullato il francobollo è centrato', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      groups: [
+        TripAlbumGroup('2026', [lisbona]),
+      ],
+      cancelledStamps: false,
+    );
+
+    final stamp = tester.getRect(find.byType(PostageStamp).first);
+    final day = tester.getCenter(find.text('20'));
+    expect(day.dx, closeTo(stamp.center.dx, 0.5));
   });
 }
