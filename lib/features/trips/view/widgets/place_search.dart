@@ -70,6 +70,11 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
   /// quindi il filtro vale per tutta la durata e non per una sola notifica.
   bool _writingChoice = false;
 
+  /// Ultimo testo visto. Il controller notifica anche quando cambia solo la
+  /// selezione (un tocco che mette il cursore): quelle notifiche non sono
+  /// modifiche del testo e vanno ignorate.
+  late String _lastText = _controller.text;
+
   @override
   void initState() {
     super.initState();
@@ -90,9 +95,12 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
   void _onFocusChanged() => setState(() {});
 
   void _onTextChanged() {
+    final text = _controller.text;
+    if (text == _lastText) return;
+    _lastText = text;
     if (_writingChoice) return;
 
-    widget.onTextChanged?.call(_controller.text);
+    widget.onTextChanged?.call(text);
 
     _debounceTimer?.cancel();
     final query = _controller.text.trim();

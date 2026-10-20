@@ -138,7 +138,11 @@ class _TripLegSheetState extends State<_TripLegSheet> {
             }),
             onTextChanged: (text) => setState(() {
               _location = text;
-              _picked = null;
+              // Il tocco sul campo notifica anche con lo stesso testo: un
+              // luogo scelto decade solo se il testo cambia davvero.
+              if (_picked != null && text != _picked!.displayName) {
+                _picked = null;
+              }
             }),
           ),
           SizedBox(height: context.spacingMd),

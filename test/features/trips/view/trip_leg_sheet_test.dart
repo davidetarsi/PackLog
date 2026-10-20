@@ -6,21 +6,37 @@ import 'package:pack_log/features/trips/model/trip_leg.dart';
 import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
 import 'package:pack_log/features/trips/view/widgets/trip_leg_sheet.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
+import 'package:pack_log/shared/model/location_type.dart';
 import 'package:pack_log/shared/services/location_search_service.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
-/// Servizio dei luoghi senza rete: la ricerca non trova nulla. Il foglio
+/// Servizio dei luoghi senza rete: restituisce sempre [results]. Il foglio
 /// costruisce `LocationAutocompleteField`, che lo legge dal provider.
 class _FakeLocationSearchService extends LocationSearchService {
+  _FakeLocationSearchService([this.results = const []]);
+
+  final List<LocationSuggestionModel> results;
+
   @override
   Future<List<LocationSuggestionModel>> search(
     String query, {
     required String lang,
-  }) async => const [];
+  }) async => results;
 }
+
+final _lucca = LocationSuggestionModel(
+  placeId: 'lucca',
+  displayName: 'Lucca, Italia',
+  name: 'Lucca',
+  city: 'Lucca',
+  country: 'Italia',
+  locationType: LocationType.city,
+  lat: 43.8429,
+  lon: 10.5027,
+);
 
 late AssetLoader _assetLoader;
 
@@ -54,8 +70,9 @@ Future<void> _tapDay(WidgetTester tester, DateTime day) async {
 /// reali e il servizio dei luoghi finto.
 Future<void> _pumpHost(
   WidgetTester tester,
-  Future<void> Function(BuildContext context) open,
-) async {
+  Future<void> Function(BuildContext context) open, {
+  List<LocationSuggestionModel> suggestions = const [],
+}) async {
   await tester.pumpWidget(
     EasyLocalization(
       supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
@@ -67,7 +84,7 @@ Future<void> _pumpHost(
       child: ProviderScope(
         overrides: [
           locationSearchServiceProvider.overrideWithValue(
-            _FakeLocationSearchService(),
+            _FakeLocationSearchService(suggestions),
           ),
         ],
         child: Builder(
@@ -254,6 +271,50 @@ void main() {
         expect(captured!.lat, isNull);
         expect(captured!.lon, isNull);
         expect(captured!.country, isNull);
+        expect(captured!.houseId, isNull);
+      },
+    );
+
+    testWidgets(
+      'scegliendo un suggerimento porta le sue coordinate e toglie la casa, '
+      'anche se poi si tocca di nuovo il campo',
+      (tester) async {
+        // Il tocco sul campo muove solo il cursore: non deve annullare il
+        // luogo appena scelto, altrimenti il salvataggio perde le coordinate.
+        TripLeg? captured;
+        final initial = TripLeg(
+          id: 'leg-con-casa',
+          locationDisplayName: 'Siena',
+          lat: 43.318,
+          lon: 11.330,
+          country: 'Italia',
+          houseId: 'casa-siena',
+          from: _daysFromToday(7),
+          to: _daysFromToday(9),
+        );
+        await _pumpHost(tester, (context) async {
+          captured = await showTripLegSheet(context, initial: initial);
+        }, suggestions: [_lucca]);
+
+        await tester.enterText(locationField(), 'Lucca');
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pumpAndSettle();
+        // Il testo 'Lucca' sta anche nel campo: si tocca la riga di lista.
+        await tester.tap(find.widgetWithText(InkWell, 'Lucca'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(locationField());
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('trip_leg_sheet_save')));
+        await tester.pumpAndSettle();
+
+        expect(captured, isNotNull);
+        expect(captured!.id, 'leg-con-casa');
+        expect(captured!.locationDisplayName, 'Lucca, Italia');
+        expect(captured!.lat, 43.8429);
+        expect(captured!.lon, 10.5027);
+        expect(captured!.country, 'Italia');
         expect(captured!.houseId, isNull);
       },
     );

@@ -271,6 +271,31 @@ void main() {
     });
 
     testWidgets(
+      'in modifica, toccare il campo "Dove?" senza scrivere non spegne il salvataggio',
+      (tester) async {
+        // Il tocco mette solo il cursore: il controller notifica, ma il testo
+        // è lo stesso e il posto iniziale deve restare valido.
+        await _pumpHost(tester, (context) async {
+          await showStopSheet(
+            context,
+            start: _daysFromToday(7),
+            previousName: 'Lisbona',
+            initial: DraftStop(
+              place: DraftPlace.house(id: 'h1', name: 'Casa Milano'),
+              end: _daysFromToday(10),
+            ),
+          );
+        });
+
+        expect(_saveWidget(tester).onPressed, isNotNull);
+        await tester.tap(find.byType(TextField));
+        await tester.pump();
+
+        expect(_saveWidget(tester).onPressed, isNotNull);
+      },
+    );
+
+    testWidgets(
       'in modifica il salvataggio parte dal posto e dalla fine iniziali',
       (tester) async {
         final end = _daysFromToday(10);

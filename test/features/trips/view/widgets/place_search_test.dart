@@ -208,6 +208,11 @@ void main() {
 
       // La scelta scrive il nome nel campo, ma non è una modifica digitata.
       expect(texts, beforePick);
+
+      // Un tocco sul campo muove solo il cursore: non è una modifica.
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      expect(texts, beforePick);
       expect(afterTyping.last, 'MA');
     },
   );
