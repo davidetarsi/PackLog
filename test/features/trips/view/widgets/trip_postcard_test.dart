@@ -196,7 +196,7 @@ void main() {
       );
 
       expect(
-        find.descendant(of: _stampKey, matching: find.text('9')),
+        find.descendant(of: _stampKey, matching: find.text('-9')),
         findsOneWidget,
       );
       expect(

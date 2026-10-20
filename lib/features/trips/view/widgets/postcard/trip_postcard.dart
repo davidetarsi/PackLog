@@ -171,7 +171,7 @@ class _StampContent extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            '$days',
+            '-$days',
             style: tt.headlineLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           Text(
