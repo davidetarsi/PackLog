@@ -224,7 +224,6 @@
     "items_to_bring": "Items to bring",
     "delete": "Delete Trip",
     "welcome_title": "Ready for your\nnext adventure?",
-    "more_items": "+{} more",
     "no_trips": "No trips",
     "no_trips_subtitle": "Create your first trip",
     "no_trips_tap_hint": "Tap to create a new trip",
@@ -254,15 +253,14 @@
     "filter_upcoming": "Upcoming",
     "filter_past": "Past",
     "filter_saved": "Saved",
-    "next_trip": "Next trip",
     "upcoming": "Upcoming",
     "active": "Active",
     "completed": "Completed",
     "saved": "Saved",
     "no_upcoming": "No upcoming trips",
-    "no_past": "No past trips",
+    "no_past": "Your past trips will show up here",
     "no_saved": "No saved trips",
-    "progress": "{} ready ({}%)",
+    "no_saved_hint": "Long-press a trip and choose Save to reuse it",
     "delete_confirmation": "Are you sure you want to delete \"{}\"?",
     "confirm_all_arrived": "Confirm all arrived",
     "all_items_confirmed": "All items confirmed",
@@ -284,7 +282,40 @@
     "leg_location_required": "The stop is missing a place",
     "destination_benefit": "With a destination home, the things you pack show up there as temporary while you are away.",
     "no_items_in_named_house": "No items in {house}",
-    "destination_house_hint": "Going to one of your homes? Choose “House”: the things you pack will show up there as temporary."
+    "destination_house_hint": "Going to one of your homes? Choose “House”: the things you pack will show up there as temporary.",
+    "postcard": {
+      "greetings": "Greetings from",
+      "days_label": {"one": "day", "other": "days"},
+      "today": "today",
+      "traveling": "travelling",
+      "no_date": "to be decided",
+      "postmark_brand": "PACKLOG",
+      "ready_count": "{} of {} packed",
+      "missing": {"one": "{} left", "other": "{} left"},
+      "all_packed": "all packed",
+      "empty_title": "Empty suitcase",
+      "empty_sub": "no items",
+      "cta_prepare": "Pack your suitcase",
+      "cta_ready": "Suitcase ready",
+      "cta_continue": "Keep packing"
+    },
+    "itinerary": {
+      "departure": "Outbound",
+      "transfer": "Transfer",
+      "return": "Return",
+      "nights": {"one": "{} night", "other": "{} nights"},
+      "more_stops": {"one": "+{} stop", "other": "+{} stops"}
+    },
+    "pile": {
+      "position": "{} of {}",
+      "semantics": "Trip {} of {}: {}",
+      "next": "Next trip",
+      "previous": "Previous trip"
+    },
+    "album": {
+      "reuse": "Reuse",
+      "saved_group": "To reuse"
+    }
   },
   "common": {
     "save": "Save",
@@ -351,7 +382,6 @@
     "list_type": "list",
     "items_count": "{} items",
     "items_selected": "{} selected",
-    "items_ready": "{}/{} ready ({}%)",
     "available_quantity": "Available: {}",
     "from": "From",
     "no_items_in_category": "No items in \"{}\"",
@@ -395,7 +425,6 @@
     "invalid_house_id": "Invalid house ID",
     "invalid_trip_id": "Invalid trip ID",
     "feature_disabled": "This feature is not available in this version.",
-    "no_trips": "No trips",
     "no_items": "No items to save",
     "target_house_id_not_set": "Target house ID not set. Unable to save items."
   },

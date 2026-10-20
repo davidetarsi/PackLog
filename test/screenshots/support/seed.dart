@@ -285,12 +285,6 @@ Future<void> seed(ProviderContainer c, SeedLevel level) async {
       luggages: [cabin, backpack],
       legs: [
         TripLeg(
-          id: 'leg-lisbona',
-          locationDisplayName: 'Lisbona, Portogallo',
-          from: _day(10),
-          to: _day(13),
-        ),
-        TripLeg(
           id: 'leg-sintra',
           locationDisplayName: 'Sintra, Portogallo',
           from: _day(13),

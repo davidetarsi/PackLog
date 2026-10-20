@@ -13,3 +13,4 @@ export 'cta_reserved_space.dart';
 export 'error_empty_theme_extension.dart';
 export 'nav_bar_spacing.dart';
 export 'semantic_colors.dart';
+export 'surface_colors.dart';

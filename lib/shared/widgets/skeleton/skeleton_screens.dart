@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../constants/app_constants.dart';
 import '../../theme/app_spacing.dart';
+import '../../theme/nav_bar_spacing.dart';
 import 'skeleton_shimmer.dart';
 import 'skeleton_tiles.dart';
 
@@ -43,8 +44,9 @@ class SkeletonItemsBody extends StatelessWidget {
   }
 }
 
-/// Skeleton per la lista dei viaggi (TripsScreen).
-/// Riempie il tab body, include header e pill tabs placeholder.
+/// Skeleton della tab Viaggi (TripsScreen): solo la sagoma della cartolina in
+/// cima, che riempie l'altezza disponibile. I filtri sono reali e sempre
+/// visibili sopra, quindi non si ripetono qui.
 class SkeletonTripsBody extends StatelessWidget {
   const SkeletonTripsBody({super.key});
 
@@ -52,33 +54,14 @@ class SkeletonTripsBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return SkeletonShimmer(
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.spacingMd,
-          vertical: context.spacingSm,
+        padding: EdgeInsets.only(
+          left: context.spacingMd,
+          right: context.spacingMd,
+          bottom: context.navBarReservedHeight + context.spacingLg,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Titolo
-            SkeletonBox(width: 180, height: 28),
-            SizedBox(height: context.spacingMd),
-            // Pill tabs
-            Center(
-              child: SkeletonBox(
-                width: 280,
-                height: 36,
-                borderRadius: AppConstants.pillBorderRadius,
-              ),
-            ),
-            SizedBox(height: context.spacingLg),
-            // Hero card (prossimo viaggio)
-            const SkeletonTripCard(isHero: true),
-            SizedBox(height: context.spacingSm),
-            // Due compact cards
-            const SkeletonTripCard(),
-            SizedBox(height: context.spacingSm),
-            const SkeletonTripCard(),
-          ],
+        child: const SkeletonBox(
+          width: double.infinity,
+          height: double.infinity,
         ),
       ),
     );

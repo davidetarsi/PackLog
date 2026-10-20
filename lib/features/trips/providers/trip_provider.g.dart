@@ -6,7 +6,7 @@ part of 'trip_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$tripNotifierHash() => r'c5831ac401f18f313ae415ac14e86e7c21539f16';
+String _$tripNotifierHash() => r'e9828917cb5220634c35f665a31ef74ce9e62838';
 
 /// See also [TripNotifier].
 @ProviderFor(TripNotifier)

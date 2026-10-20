@@ -224,7 +224,6 @@
     "items_to_bring": "Oggetti da portare",
     "delete": "Elimina viaggio",
     "welcome_title": "Pronto per la tua\nprossima avventura?",
-    "more_items": "+{} altri",
     "no_trips": "Nessun viaggio",
     "no_trips_subtitle": "Crea il tuo primo viaggio",
     "no_trips_tap_hint": "Tocca per creare un nuovo viaggio",
@@ -254,15 +253,14 @@
     "filter_upcoming": "Prossimi",
     "filter_past": "Passati",
     "filter_saved": "Salvati",
-    "next_trip": "Prossimo viaggio",
     "upcoming": "In programma",
     "active": "In corso",
     "completed": "Completati",
     "saved": "Salvati",
     "no_upcoming": "Nessun viaggio in programma",
-    "no_past": "Nessun viaggio passato",
+    "no_past": "Qui troverai i viaggi fatti",
     "no_saved": "Nessun viaggio salvato",
-    "progress": "{} pronti ({}%)",
+    "no_saved_hint": "Tieni premuto un viaggio e scegli Salva per riusarlo",
     "delete_confirmation": "Sei sicuro di voler eliminare \"{}\"?",
     "confirm_all_arrived": "Conferma tutto arrivato",
     "all_items_confirmed": "Tutti gli oggetti confermati",
@@ -284,7 +282,40 @@
     "leg_location_required": "Manca il luogo della tappa",
     "destination_benefit": "Con una casa di destinazione, gli oggetti che porti compaiono lì come temporanei mentre sei via.",
     "no_items_in_named_house": "Nessun oggetto in {house}",
-    "destination_house_hint": "Vai in una delle tue case? Scegli «Casa»: gli oggetti che porti compariranno lì come temporanei."
+    "destination_house_hint": "Vai in una delle tue case? Scegli «Casa»: gli oggetti che porti compariranno lì come temporanei.",
+    "postcard": {
+      "greetings": "Saluti da",
+      "days_label": {"one": "giorno", "other": "giorni"},
+      "today": "oggi",
+      "traveling": "in viaggio",
+      "no_date": "da decidere",
+      "postmark_brand": "PACKLOG",
+      "ready_count": "{} di {} pronti",
+      "missing": {"one": "manca {}", "other": "mancano {}"},
+      "all_packed": "tutto in valigia",
+      "empty_title": "Valigia vuota",
+      "empty_sub": "nessun oggetto",
+      "cta_prepare": "Prepara la valigia",
+      "cta_ready": "Valigia pronta",
+      "cta_continue": "Continua a preparare"
+    },
+    "itinerary": {
+      "departure": "Andata",
+      "transfer": "Spostamento",
+      "return": "Ritorno",
+      "nights": {"one": "{} notte", "other": "{} notti"},
+      "more_stops": {"one": "+{} tappa", "other": "+{} tappe"}
+    },
+    "pile": {
+      "position": "{} di {}",
+      "semantics": "Viaggio {} di {}: {}",
+      "next": "Viaggio successivo",
+      "previous": "Viaggio precedente"
+    },
+    "album": {
+      "reuse": "Riusa",
+      "saved_group": "Da riusare"
+    }
   },
   "common": {
     "save": "Salva",
@@ -351,7 +382,6 @@
     "list_type": "lista",
     "items_count": "{} oggetti",
     "items_selected": "{} selezionati",
-    "items_ready": "{} / {} pronti",
     "available_quantity": "Disponibili: {}",
     "from": "Da",
     "no_items_in_category": "Nessun oggetto in \"{}\"",
@@ -395,7 +425,6 @@
     "invalid_house_id": "ID casa non valido",
     "invalid_trip_id": "ID viaggio non valido",
     "feature_disabled": "Questa funzionalità non è disponibile in questa versione.",
-    "no_trips": "Nessun viaggio",
     "no_items": "Nessun oggetto da salvare",
     "target_house_id_not_set": "ID casa non impostato. Impossibile salvare gli oggetti."
   },

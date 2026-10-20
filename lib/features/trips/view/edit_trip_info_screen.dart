@@ -6,6 +6,7 @@ import '../model/trip_form_validation.dart';
 import '../model/trip_leg.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
+import '../../../core/monitoring/monitoring_service.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
@@ -20,7 +21,16 @@ import 'widgets/trip_legs_section.dart';
 class EditTripInfoScreen extends ConsumerStatefulWidget {
   final String tripId;
 
-  const EditTripInfoScreen({super.key, required this.tripId});
+  /// Se `true`, uscire senza un salvataggio riuscito elimina il viaggio.
+  /// Serve al flusso "Riusa": la copia nasce senza date e, se l'utente la
+  /// abbandona, non deve restare in lista.
+  final bool discardOnExit;
+
+  const EditTripInfoScreen({
+    super.key,
+    required this.tripId,
+    this.discardOnExit = false,
+  });
 
   @override
   ConsumerState<EditTripInfoScreen> createState() => _EditTripInfoScreenState();
@@ -29,6 +39,7 @@ class EditTripInfoScreen extends ConsumerStatefulWidget {
 class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _saved = false;
   TripModel? _trip;
 
   // Dati modificabili
@@ -119,9 +130,34 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
+        // Prima del pop: il PopScope non deve scambiare questa chiusura per
+        // un'uscita senza salvare.
+        _saved = true;
         context.pop();
       }
     }
+  }
+
+  /// Chiamato quando la schermata si chiude (Indietro di sistema o AppBar).
+  /// Con `discardOnExit` e senza un salvataggio riuscito elimina la copia.
+  void _onPopInvoked(bool didPop, Object? result) {
+    if (!didPop || _saved) return;
+
+    // Catturati prima della chiusura: il callback d'errore può arrivare dopo il
+    // dispose, quando `ref` non è più utilizzabile.
+    final notifier = ref.read(tripNotifierProvider.notifier);
+    final monitoring = ref.read(monitoringServiceProvider);
+    notifier
+        .deleteTrip(widget.tripId)
+        .catchError(
+          (Object error, StackTrace stack) =>
+              monitoring.captureException(error, stackTrace: stack),
+        );
+  }
+
+  Widget _guardExit(Widget child) {
+    if (!widget.discardOnExit) return child;
+    return PopScope(onPopInvokedWithResult: _onPopInvoked, child: child);
   }
 
   @override
@@ -139,77 +175,79 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
       tripsAsync: tripsAsync,
       isHydrated: _trip != null,
     );
-    if (placeholder != null) return placeholder;
+    if (placeholder != null) return _guardExit(placeholder);
 
-    return StickyCtaScaffold(
-      appBar: AppBar(title: Text('trips.edit_info'.tr())),
-      // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
-      // StickyCtaScaffold inserisce come discendente di `body` — serve un
-      // context interno a questo subtree, non quello del metodo build
-      // esterno (che sta sopra lo scope e non lo vedrebbe mai).
-      body: Builder(
-        builder: (context) => Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.all(
-              context.spacingMd,
-            ).copyWith(bottom: context.spacingMd + context.ctaReservedHeight),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TripInfoForm(
-                  initialName: _name,
-                  initialDescription: _description,
-                  initialDepartureDateTime: _departureDateTime,
-                  initialReturnDateTime: _returnDateTime,
-                  initialDestinationHouseId: _destinationHouseId,
-                  initialDestinationLocation: _destinationLocation,
-                  onChanged:
-                      ({
-                        description,
-                        departureDateTime,
-                        returnDateTime,
-                        destinationHouseId,
-                        destinationLocation,
-                        destinationName,
-                        name,
-                      }) {
-                        setState(() {
-                          _description = description;
-                          _departureDateTime = departureDateTime;
-                          _returnDateTime = returnDateTime;
-                          _destinationHouseId = destinationHouseId;
-                          _destinationLocation = destinationLocation;
-                          _destinationName = destinationName;
-                          _name = name;
-                        });
-                      },
-                ),
+    return _guardExit(
+      StickyCtaScaffold(
+        appBar: AppBar(title: Text('trips.edit_info'.tr())),
+        // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
+        // StickyCtaScaffold inserisce come discendente di `body` — serve un
+        // context interno a questo subtree, non quello del metodo build
+        // esterno (che sta sopra lo scope e non lo vedrebbe mai).
+        body: Builder(
+          builder: (context) => Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.all(
+                context.spacingMd,
+              ).copyWith(bottom: context.spacingMd + context.ctaReservedHeight),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TripInfoForm(
+                    initialName: _name,
+                    initialDescription: _description,
+                    initialDepartureDateTime: _departureDateTime,
+                    initialReturnDateTime: _returnDateTime,
+                    initialDestinationHouseId: _destinationHouseId,
+                    initialDestinationLocation: _destinationLocation,
+                    onChanged:
+                        ({
+                          description,
+                          departureDateTime,
+                          returnDateTime,
+                          destinationHouseId,
+                          destinationLocation,
+                          destinationName,
+                          name,
+                        }) {
+                          setState(() {
+                            _description = description;
+                            _departureDateTime = departureDateTime;
+                            _returnDateTime = returnDateTime;
+                            _destinationHouseId = destinationHouseId;
+                            _destinationLocation = destinationLocation;
+                            _destinationName = destinationName;
+                            _name = name;
+                          });
+                        },
+                  ),
 
-                SizedBox(height: context.spacingLg),
+                  SizedBox(height: context.spacingLg),
 
-                // Stesso trattamento che ha in add_trip_screen: senza questa
-                // sezione una tappa aggiunta in creazione non si potrebbe più
-                // correggere né rimuovere, perché il dettaglio viaggio porta
-                // qui e non a /trips/:id/edit.
-                TripLegsSection(
-                  legs: _legs,
-                  onChanged: (legs) => setState(() => _legs = legs),
-                ),
-              ],
+                  // Stesso trattamento che ha in add_trip_screen: senza questa
+                  // sezione una tappa aggiunta in creazione non si potrebbe più
+                  // correggere né rimuovere, perché il dettaglio viaggio porta
+                  // qui e non a /trips/:id/edit.
+                  TripLegsSection(
+                    legs: _legs,
+                    onChanged: (legs) => setState(() => _legs = legs),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      bottomContent: UniversalActionBar(
-        // Key sulla pill: il test tocca il bottone senza dipendere dal testo
-        // tradotto.
-        primaryButtonKey: const Key('edit_trip_info_save'),
-        primaryLabel: 'common.save_changes'.tr(),
-        primaryIcon: Icons.save,
-        onPrimaryPressed: _isLoading ? null : _saveChanges,
-        isLoading: _isLoading,
+        bottomContent: UniversalActionBar(
+          // Key sulla pill: il test tocca il bottone senza dipendere dal testo
+          // tradotto.
+          primaryButtonKey: const Key('edit_trip_info_save'),
+          primaryLabel: 'common.save_changes'.tr(),
+          primaryIcon: Icons.save,
+          onPrimaryPressed: _isLoading ? null : _saveChanges,
+          isLoading: _isLoading,
+        ),
       ),
     );
   }

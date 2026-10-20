@@ -195,6 +195,24 @@ class DriftTripRepository implements TripRepository {
   }
 
   @override
+  Future<String> reuseTrip(String tripId) async {
+    final newTripId = const Uuid().v4();
+
+    final result = await _dbService.executeAtomicWithRetry(
+      () => _dao.reuseTrip(tripId, newTripId),
+      operationName: 'reuseTrip($tripId)',
+      config: RetryConfig.criticalConfig,
+    );
+
+    if (!result.success) {
+      throw EntitySaveException('reuseTrip($tripId)', cause: result.error);
+    }
+
+    debugPrint('[TripRepo] Viaggio riusato: $tripId -> $newTripId');
+    return newTripId;
+  }
+
+  @override
   Future<void> setTripItemChecked(
     String tripId,
     String itemId,

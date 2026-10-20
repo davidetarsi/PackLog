@@ -21,6 +21,7 @@ import 'package:pack_log/features/ai_input/model/ai_failure_reason.dart';
 import 'package:pack_log/features/ai_input/model/ai_import_state.dart';
 import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
 import 'package:pack_log/features/tour/model/onboarding_state.dart';
+import 'package:pack_log/features/trips/providers/trip_provider.dart';
 
 import 'support/fakes.dart';
 import 'support/fonts.dart';
@@ -88,6 +89,15 @@ Future<void> _tripDetail(
 ]) async {
   await app.go('/trips');
   await app.push('/trips/$id');
+}
+
+/// Scorre la pila dei viaggi Prossimi di una cartolina verso sinistra.
+Future<void> _swipePile(ScreenshotApp app) async {
+  await app.tester.drag(
+    find.byKey(const Key('postcard_pile')),
+    const Offset(-330, 0),
+  );
+  await app.settle();
 }
 
 Future<void> _openManageSheet(ScreenshotApp app) async {
@@ -854,11 +864,40 @@ final flows = <Flow>[
       'prossimi',
       route: '/trips',
       source: _trips,
-      description: 'Tab "Prossimi": card hero del viaggio in corso + griglia.',
+      description:
+          'Tab "Prossimi": cartolina in cima (viaggio in corso) con la pila dietro.',
       steps: (app) => app.go('/trips'),
     ),
     Scenario(
       3,
+      'viaggi',
+      'prossimi-scorrimento',
+      route: '/trips',
+      source: 'lib/features/trips/view/widgets/postcard/postcard_pile.dart',
+      description:
+          'Prossimi dopo uno scorrimento: seconda cartolina (Lisbona, tappa '
+          'Sintra, due bagagli).',
+      steps: (app) async {
+        await app.go('/trips');
+        await _swipePile(app);
+      },
+    ),
+    Scenario(
+      4,
+      'viaggi',
+      'prossimi-valigia-vuota',
+      route: '/trips',
+      source: 'lib/features/trips/view/widgets/postcard/postcard_pile.dart',
+      description:
+          'Prossimi, secondo scorrimento: Torino, senza oggetti né bagagli.',
+      steps: (app) async {
+        await app.go('/trips');
+        await _swipePile(app);
+        await _swipePile(app);
+      },
+    ),
+    Scenario(
+      5,
       'viaggi',
       'passati',
       route: '/trips',
@@ -870,7 +909,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      4,
+      6,
       'viaggi',
       'salvati',
       route: '/trips',
@@ -882,19 +921,45 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      5,
+      7,
       'viaggi',
       'menu-contestuale',
       route: '/trips',
       source: 'lib/shared/widgets/entity_context_menu.dart',
-      description: 'Long press su un viaggio: copia / salva / elimina.',
+      description:
+          'Pressione lunga sulla cartolina in cima: copia / salva / elimina.',
       steps: (app) async {
         await app.go('/trips');
-        await app.longPress(find.text('Lisbona, Portogallo').first);
+        await app.longPress(find.byKey(const Key('postcard_pile_top')));
       },
     ),
     Scenario(
-      6,
+      8,
+      'viaggi',
+      'prossimi-vuoto',
+      route: '/trips',
+      source: _trips,
+      description:
+          'Prossimi senza viaggi in corso o futuri: solo i passati restano. '
+          'Lo stato si ottiene eliminando i viaggi futuri dal repository.',
+      steps: (app) async {
+        await app.go('/trips');
+        await app.tester.runAsync(() async {
+          final notifier = app.container.read(tripNotifierProvider.notifier);
+          for (final id in [
+            kActiveTripId,
+            kUpcomingTripId,
+            kEmptyTripId,
+            kSavedTripId,
+          ]) {
+            await notifier.deleteTrip(id);
+          }
+        });
+        await app.settle();
+      },
+    ),
+    Scenario(
+      9,
       'crea',
       'foglio-da-viaggi',
       route: '/trips',
