@@ -307,7 +307,8 @@
     },
     "new": {
       "step_trip": "Trip",
-      "step_suitcase": "Suitcase"
+      "step_suitcase": "Suitcase",
+      "when": "When?"
     },
     "pile": {
       "position": "{} of {}",

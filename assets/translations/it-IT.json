@@ -307,7 +307,8 @@
     },
     "new": {
       "step_trip": "Viaggio",
-      "step_suitcase": "Valigia"
+      "step_suitcase": "Valigia",
+      "when": "Quando?"
     },
     "pile": {
       "position": "{} di {}",
