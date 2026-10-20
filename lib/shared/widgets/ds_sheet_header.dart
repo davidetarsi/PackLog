@@ -13,8 +13,8 @@ class DsSheetHeader extends StatelessWidget {
   final String title;
   final VoidCallback? onClose;
 
-  /// Azioni dopo la "x", come il menu ⋯ della scheda oggetto. Solo con
-  /// [onClose].
+  /// Azioni prima della "x", che resta all'estrema destra: come il menu ⋯ della
+  /// scheda oggetto. Solo con [onClose].
   final List<Widget> actions;
 
   const DsSheetHeader({
@@ -53,6 +53,7 @@ class DsSheetHeader extends StatelessWidget {
                         ),
                       ),
                     ),
+                    ...actions,
                     IconButton(
                       key: const Key('sheet_close'),
                       icon: const Icon(Icons.close),
@@ -61,7 +62,6 @@ class DsSheetHeader extends StatelessWidget {
                       ).closeButtonTooltip,
                       onPressed: onClose,
                     ),
-                    ...actions,
                   ],
                 ),
         ),
