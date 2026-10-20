@@ -148,6 +148,70 @@ void main() {
     expect(_houseRow('h1'), findsNothing);
   });
 
+  testWidgets('initialText mostra il nome iniziale nel campo', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          houseNotifierProvider.overrideWith(() => _FakeHouseNotifier(_houses)),
+          locationSearchServiceProvider.overrideWithValue(service),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: PlaceSearch(onSelected: (_) {}, initialText: 'Casa Milano'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Casa Milano'), findsOneWidget);
+  });
+
+  testWidgets(
+    'onTextChanged riceve ogni testo digitato, ma non la scelta di un posto',
+    (tester) async {
+      final texts = <String>[];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            houseNotifierProvider.overrideWith(
+              () => _FakeHouseNotifier(_houses),
+            ),
+            locationSearchServiceProvider.overrideWithValue(service),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: PlaceSearch(onSelected: (_) {}, onTextChanged: texts.add),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'MA');
+      await tester.pump();
+      // enterText svuota il campo prima di scrivere: l'ultimo valore è il
+      // testo digitato.
+      expect(texts.last, 'MA');
+      final afterTyping = [...texts];
+
+      await tester.enterText(find.byType(TextField), 'MAR');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      expect(texts.last, 'MAR');
+      final beforePick = [...texts];
+
+      await tester.tap(_placeRow(0));
+      await tester.pump();
+
+      // La scelta scrive il nome nel campo, ma non è una modifica digitata.
+      expect(texts, beforePick);
+      expect(afterTyping.last, 'MA');
+    },
+  );
+
   testWidgets('tocco su un luogo chiama onSelected con DraftPlace.location', (
     tester,
   ) async {

@@ -311,7 +311,14 @@
       "when": "Quando?",
       "where_hint": "Una tua casa o una città",
       "your_homes": "Le tue case",
-      "places": "Luoghi"
+      "places": "Luoghi",
+      "stop_new": "Nuova tappa",
+      "stop_edit": "Modifica tappa",
+      "where_stop": "Dove?",
+      "stop_hint": "Parti da {} {}. Il ritorno diventa {}.",
+      "stop_add": "Aggiungi tappa",
+      "stop_save": "Salva tappa",
+      "stop_remove": "Elimina tappa"
     },
     "pile": {
       "position": "{} di {}",

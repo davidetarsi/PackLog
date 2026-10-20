@@ -32,14 +32,23 @@ class PlaceSearch extends ConsumerStatefulWidget {
   const PlaceSearch({
     super.key,
     required this.onSelected,
+    this.onTextChanged,
     this.hintText,
+    this.initialText,
     this.autofocus = false,
   });
 
   final ValueChanged<DraftPlace> onSelected;
 
+  /// Chiamata a ogni modifica digitata del testo. Non scatta per la scelta di
+  /// un posto: quella passa da [onSelected].
+  final ValueChanged<String>? onTextChanged;
+
   /// Se null, il testo di default è `trips.new.where_hint`.
   final String? hintText;
+
+  /// Testo del campo all'apertura, per modificare un posto già scelto.
+  final String? initialText;
 
   final bool autofocus;
 
@@ -48,15 +57,18 @@ class PlaceSearch extends ConsumerStatefulWidget {
 }
 
 class _PlaceSearchState extends ConsumerState<PlaceSearch> {
-  final TextEditingController _controller = TextEditingController();
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialText,
+  );
   final FocusNode _focusNode = FocusNode();
 
   Timer? _debounceTimer;
   List<LocationSuggestionModel> _places = const [];
 
-  /// Impostato quando il testo viene cambiato dalla scelta, così la lista non
-  /// rilancia la ricerca sul nome appena scelto.
-  bool _ignoreNextChange = false;
+  /// Vero mentre la scelta scrive il nome nel campo. Il controller notifica
+  /// più volte durante quella scrittura (anche per la selezione del testo),
+  /// quindi il filtro vale per tutta la durata e non per una sola notifica.
+  bool _writingChoice = false;
 
   @override
   void initState() {
@@ -78,10 +90,9 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
   void _onFocusChanged() => setState(() {});
 
   void _onTextChanged() {
-    if (_ignoreNextChange) {
-      _ignoreNextChange = false;
-      return;
-    }
+    if (_writingChoice) return;
+
+    widget.onTextChanged?.call(_controller.text);
 
     _debounceTimer?.cancel();
     final query = _controller.text.trim();
@@ -111,8 +122,12 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
   void _select(DraftPlace place, String text) {
     _debounceTimer?.cancel();
     if (_controller.text != text) {
-      _ignoreNextChange = true;
-      _controller.text = text;
+      _writingChoice = true;
+      try {
+        _controller.text = text;
+      } finally {
+        _writingChoice = false;
+      }
     }
     _focusNode.unfocus();
     setState(() => _places = const []);
