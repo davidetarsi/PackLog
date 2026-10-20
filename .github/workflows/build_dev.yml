@@ -3,6 +3,14 @@ name: 🛠️ Build DEV
 on:
   push:
     branches: [ "develop" ]
+    # Niente APK se il push cambia solo cose che non entrano nell'app
+    # (backend Supabase, documentazione, test): sarebbe identico al precedente.
+    # Basta un file fuori da questi percorsi per avviare la build.
+    paths-ignore:
+      - "supabase/**"
+      - "docs/**"
+      - "test/**"
+      - "**/*.md"
   # Avvio manuale dalla tab Actions (es. per rimandare l'ultima build).
   workflow_dispatch:
 
