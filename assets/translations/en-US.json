@@ -254,7 +254,7 @@
       "itinerary_empty": "Pick where and when: your itinerary shows up here.",
       "stops_tip": "Visiting more than one city? Add a stop for each: you'll get the weather for every stop.",
       "name": "Trip name",
-      "name_hint": "We took it from your destination: change it if you like.",
+      "name_hint": "Taken from your destination: change it if you like.",
       "next": "Next: pack your suitcase",
       "later": "Pack later",
       "where_missing": "Choose where you're going: we need it for the weather too.",

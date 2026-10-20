@@ -8,11 +8,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/dialog_helpers.dart';
-import '../../../shared/theme/app_spacing.dart';
-import '../../../shared/theme/surface_colors.dart';
+import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_link_button.dart';
 import '../../../shared/widgets/ds_steps.dart';
+import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../houses/providers/house_provider.dart';
 import '../model/trip_draft.dart';
@@ -211,38 +211,42 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
         if (didPop || _saving) return;
         _confirmDiscard();
       },
-      child: Scaffold(
+      // Stesso scaffold degli altri form con CTA in fondo: i bottoni restano
+      // fissi sotto il contenuto e, con la tastiera aperta, restano sotto la
+      // tastiera invece di salire con essa. Due righe (bottone e link) e uno
+      // sfondo pieno, perché il link non va letto sopra il testo che scorre.
+      child: StickyCtaScaffold(
         appBar: AppBar(title: Text('trips.new.title'.tr())),
-        body: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  context.spacingMd,
-                  context.spacingSm,
-                  context.spacingMd,
-                  context.spacingLg,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    DsSteps(
-                      labels: [
-                        'trips.new.step_trip'.tr(),
-                        'trips.new.step_suitcase'.tr(),
-                      ],
-                      current: 0,
-                    ),
-                    _buildWhere(context),
-                    _buildWhen(context),
-                    _buildItinerary(context, houseNames),
-                    _buildName(context),
-                  ],
-                ),
-              ),
+        ctaHeightOverride:
+            StickyCtaScaffold.standardHeight(context) +
+            kMinInteractiveDimension,
+        ctaBackgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        bottomContent: _buildBottomBar(context),
+        body: Builder(
+          builder: (context) => SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              context.spacingMd,
+              context.spacingSm,
+              context.spacingMd,
+              context.spacingLg + context.ctaReservedHeight,
             ),
-            _buildBottomBar(context),
-          ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DsSteps(
+                  labels: [
+                    'trips.new.step_trip'.tr(),
+                    'trips.new.step_suitcase'.tr(),
+                  ],
+                  current: 0,
+                ),
+                _buildWhere(context),
+                _buildWhen(context),
+                _buildItinerary(context, houseNames),
+                _buildName(context),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -454,35 +458,24 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
   }
 
   Widget _buildBottomBar(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          context.spacingMd,
-          context.spacingSm,
-          context.spacingMd,
-          context.spacingSm,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        DsButton(
+          key: const Key('new_trip_next'),
+          label: 'trips.new.next'.tr(),
+          icon: Icons.arrow_forward,
+          expand: true,
+          isLoading: _saving,
+          onPressed: _draft.canSave ? () => _save(goToPacking: true) : null,
+          onDisabledTap: _showMissing,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DsButton(
-              key: const Key('new_trip_next'),
-              label: 'trips.new.next'.tr(),
-              icon: Icons.arrow_forward,
-              expand: true,
-              isLoading: _saving,
-              onPressed: _draft.canSave ? () => _save(goToPacking: true) : null,
-              onDisabledTap: _showMissing,
-            ),
-            DsLinkButton(
-              key: const Key('new_trip_later'),
-              label: 'trips.new.later'.tr(),
-              onPressed: _onLater,
-            ),
-          ],
+        DsLinkButton(
+          key: const Key('new_trip_later'),
+          label: 'trips.new.later'.tr(),
+          onPressed: _onLater,
         ),
-      ),
+      ],
     );
   }
 }

@@ -9,6 +9,7 @@ import '../../../shared/helpers/design_system.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/create_sheet.dart';
 import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_link_button.dart';
 import '../../../shared/widgets/ds_picker_sheet.dart';
@@ -259,63 +260,48 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         if (didPop || _saving) return;
         _confirmDiscard();
       },
-      child: Scaffold(
+      child: StickyCtaScaffold(
         appBar: AppBar(title: Text('trips.pack.title'.tr())),
-        body: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(
-                  context.spacingMd,
-                  context.spacingSm,
-                  context.spacingMd,
-                  context.spacingLg,
-                ),
-                children: [
-                  if (widget.fromNewTrip)
-                    Padding(
-                      padding: EdgeInsets.only(bottom: context.spacingMd),
-                      child: DsSteps(
-                        labels: [
-                          'trips.new.step_trip'.tr(),
-                          'trips.new.step_suitcase'.tr(),
-                        ],
-                        current: 1,
-                      ),
-                    ),
-                  PackSummaryLine(
-                    trip: trip,
-                    destinationHouseName: destinationHouseName,
-                    houseNames: {for (final h in houses) h.id: h.displayName},
+        bottomContent: DsButton(
+          label: count == 0
+              ? 'trips.pack.done'.tr()
+              : 'trips.pack.done_count'.plural(count),
+          icon: Icons.check,
+          expand: true,
+          isLoading: _saving,
+          onPressed: _save,
+        ),
+        body: Builder(
+          builder: (context) => ListView(
+            padding: EdgeInsets.fromLTRB(
+              context.spacingMd,
+              context.spacingSm,
+              context.spacingMd,
+              context.spacingLg + context.ctaReservedHeight,
+            ),
+            children: [
+              if (widget.fromNewTrip)
+                Padding(
+                  padding: EdgeInsets.only(bottom: context.spacingMd),
+                  child: DsSteps(
+                    labels: [
+                      'trips.new.step_trip'.tr(),
+                      'trips.new.step_suitcase'.tr(),
+                    ],
+                    current: 1,
                   ),
-                  TripSectionTitle('trips.pack.luggages'.tr()),
-                  _luggageSection(context, house),
-                  TripSectionTitle('trips.pack.items'.tr()),
-                  _itemsBlock(context, housesAsync),
-                ],
-              ),
-            ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  context.spacingMd,
-                  context.spacingSm,
-                  context.spacingMd,
-                  context.spacingSm,
                 ),
-                child: DsButton(
-                  label: count == 0
-                      ? 'trips.pack.done'.tr()
-                      : 'trips.pack.done_count'.plural(count),
-                  icon: Icons.check,
-                  expand: true,
-                  isLoading: _saving,
-                  onPressed: _save,
-                ),
+              PackSummaryLine(
+                trip: trip,
+                destinationHouseName: destinationHouseName,
+                houseNames: {for (final h in houses) h.id: h.displayName},
               ),
-            ),
-          ],
+              TripSectionTitle('trips.pack.luggages'.tr()),
+              _luggageSection(context, house),
+              TripSectionTitle('trips.pack.items'.tr()),
+              _itemsBlock(context, housesAsync),
+            ],
+          ),
         ),
       ),
     );
