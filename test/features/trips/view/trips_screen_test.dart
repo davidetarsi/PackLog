@@ -154,11 +154,14 @@ void main() {
     ).thenAnswer((_) async {});
   });
 
-  Future<void> pumpScreen(
+  /// Monta la schermata su [location] e restituisce il router, per navigare
+  /// mentre la schermata è già montata.
+  Future<GoRouter> pumpScreen(
     WidgetTester tester, {
     required List<TripModel> trips,
     List<HouseModel> houses = const [],
     Future<List<TripModel>>? tripsFuture,
+    String location = '/trips',
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -189,7 +192,7 @@ void main() {
     await container.read(houseNotifierProvider.future);
 
     final router = GoRouter(
-      initialLocation: '/trips',
+      initialLocation: location,
       routes: [
         GoRoute(path: '/trips', builder: (_, _) => const TripsScreen()),
         GoRoute(
@@ -251,7 +254,14 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
       }
     }
+    return router;
   }
+
+  /// Cartolina in cima della pila che mostra il viaggio di nome [name].
+  Finder topCard(String name) => find.descendant(
+    of: find.byKey(const Key('postcard_pile_top')),
+    matching: find.text(name),
+  );
 
   Future<void> tapFilter(WidgetTester tester, String label) async {
     await tester.tap(find.text(label));
@@ -285,6 +295,90 @@ void main() {
         find.descendant(of: top, matching: find.text('Viaggio a marzo')),
         findsNothing,
       );
+    });
+
+    testWidgets('focus sulla rotta mette in cima il terzo prossimo viaggio', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        trips: [_soon, _later, _active],
+        location: '/trips?focus=future-2',
+      );
+
+      expect(topCard('Viaggio a luglio'), findsWidgets);
+      expect(topCard('Viaggio in corso'), findsNothing);
+    });
+
+    testWidgets(
+      'focus arrivato in ritardo, dopo il caricamento, mette in cima il viaggio',
+      (tester) async {
+        final completer = Completer<List<TripModel>>();
+        await pumpScreen(
+          tester,
+          trips: const [],
+          tripsFuture: completer.future,
+          location: '/trips?focus=future-2',
+        );
+
+        completer.complete([_soon, _later, _active]);
+        await tester.pumpAndSettle();
+
+        expect(topCard('Viaggio a luglio'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'focus su una rotta già aperta, da Passati, passa su Prossimi',
+      (tester) async {
+        final router = await pumpScreen(
+          tester,
+          trips: [_soon, _later, _active, _past],
+        );
+        await tapFilter(tester, 'Passati');
+        expect(find.byType(TripAlbum), findsOneWidget);
+
+        router.go('/trips?focus=future-2');
+        await tester.pumpAndSettle();
+
+        expect(find.byType(TripAlbum), findsNothing);
+        expect(topCard('Viaggio a luglio'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'il focus già portato in cima non riporta la pila indietro dopo uno swipe',
+      (tester) async {
+        final router = await pumpScreen(
+          tester,
+          trips: [_soon, _later, _active],
+          location: '/trips?focus=future-2',
+        );
+        await tester.drag(
+          find.byKey(const Key('postcard_pile')),
+          const Offset(300, 0),
+        );
+        await tester.pumpAndSettle();
+        expect(topCard('Viaggio a marzo'), findsWidgets);
+
+        router.go('/trips?focus=future-2');
+        await tester.pumpAndSettle();
+
+        expect(topCard('Viaggio a marzo'), findsWidgets);
+        expect(topCard('Viaggio a luglio'), findsNothing);
+      },
+    );
+
+    testWidgets('focus su un id che non è tra i prossimi non sposta la pila', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        trips: [_soon, _later, _active],
+        location: '/trips?focus=non-esiste',
+      );
+
+      expect(topCard('Viaggio in corso'), findsWidgets);
     });
 
     testWidgets(

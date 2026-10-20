@@ -34,6 +34,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required int itemCount,
   IndexedWidgetBuilder? itemBuilder,
+  int initialIndex = 0,
 }) async {
   await tester.pumpWidget(
     EasyLocalization(
@@ -56,6 +57,7 @@ Future<void> _pump(
                 height: 640,
                 child: PostcardPile(
                   itemCount: itemCount,
+                  initialIndex: initialIndex,
                   itemBuilder: itemBuilder ?? (_, i) => Text('card $i'),
                   semanticLabel: (i) => 'Viaggio ${i + 1}',
                 ),
@@ -218,5 +220,36 @@ void main() {
     final transform = tester.widget<Transform>(_topFinder);
     // Elemento [1][0] della matrice: seno dell'angolo, zero a riposo.
     expect(transform.transform.storage[1], 0);
+  });
+
+  testWidgets('con initialIndex parte dalla cartolina indicata', (
+    tester,
+  ) async {
+    await _pump(tester, itemCount: 4, initialIndex: 2);
+
+    expect(find.text('card 2'), findsOneWidget);
+    expect(find.text('card 0'), findsNothing);
+    expect(find.text('3 di 4'), findsOneWidget);
+  });
+
+  testWidgets('initialIndex fuori intervallo parte dalla prima', (
+    tester,
+  ) async {
+    await _pump(tester, itemCount: 3, initialIndex: 5);
+
+    expect(find.text('card 0'), findsOneWidget);
+    expect(find.text('1 di 3'), findsOneWidget);
+  });
+
+  testWidgets('uno swipe dopo initialIndex prosegue dalla cartolina iniziale', (
+    tester,
+  ) async {
+    await _pump(tester, itemCount: 4, initialIndex: 2);
+
+    await tester.drag(_pileFinder, const Offset(-300, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('card 3'), findsOneWidget);
+    expect(find.text('4 di 4'), findsOneWidget);
   });
 }
