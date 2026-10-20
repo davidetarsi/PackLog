@@ -79,12 +79,14 @@ void main() {
     await app.finish();
   });
 
-  testWidgets('azioni a destra: chiusura prima del menu', (tester) async {
+  testWidgets('la x sta all estrema destra, con il menu alla sua sinistra', (
+    tester,
+  ) async {
     final app = await openCalzini(tester);
 
     expect(
-      tester.getCenter(find.byKey(const Key('sheet_close'))).dx,
-      lessThan(tester.getCenter(find.byKey(const Key('item_sheet_menu'))).dx),
+      tester.getCenter(find.byKey(const Key('item_sheet_menu'))).dx,
+      lessThan(tester.getCenter(find.byKey(const Key('sheet_close'))).dx),
     );
     await app.finish();
   });

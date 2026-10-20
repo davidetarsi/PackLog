@@ -114,6 +114,69 @@ void main() {
     expect(find.text('card 1'), findsNothing);
   });
 
+  testWidgets(
+    'trascinando a destra la precedente rientra e quella in cima scende',
+    (tester) async {
+      // È il movimento contrario di quando si avanza: là la cartolina in cima
+      // esce a sinistra e la successiva sale; qui la in cima scende nella pila
+      // (senza spostarsi di lato) e la precedente rientra da sinistra.
+      await _pump(tester, itemCount: 3, initialIndex: 1);
+
+      final gesture = await tester.startGesture(tester.getCenter(_pileFinder));
+      await gesture.moveBy(const Offset(150, 0));
+      await tester.pump();
+
+      final top = _topMatrix(tester);
+      expect(top.storage[12], 0, reason: 'la cartolina in cima non scivola');
+      expect(top.storage[13], greaterThan(0), reason: 'scende nella pila');
+      expect(top.storage[1], isNot(0), reason: 'prende l inclinazione');
+
+      final previousLeft = tester.getTopLeft(find.text('card 0')).dx;
+      final topLeft = tester.getTopLeft(find.text('card 1')).dx;
+      expect(previousLeft, lessThan(topLeft));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(find.text('card 0'), findsOneWidget);
+      expect(find.text('card 1'), findsNothing);
+      expect(_topMatrix(tester).storage[13], 0);
+      expect(_topMatrix(tester).storage[1], 0);
+    },
+  );
+
+  testWidgets('a destra con il dito a metà, la cartolina in cima è a metà '
+      'della discesa', (tester) async {
+    await _pump(tester, itemCount: 3, initialIndex: 1);
+
+    final gesture = await tester.startGesture(tester.getCenter(_pileFinder));
+    await gesture.moveBy(const Offset(100, 0));
+    await tester.pump();
+    final early = _topMatrix(tester).storage[13];
+    await gesture.moveBy(const Offset(150, 0));
+    await tester.pump();
+    final later = _topMatrix(tester).storage[13];
+
+    expect(later, greaterThan(early));
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('sul primo elemento il trascinamento a destra non scende', (
+    tester,
+  ) async {
+    await _pump(tester, itemCount: 3);
+
+    final gesture = await tester.startGesture(tester.getCenter(_pileFinder));
+    await gesture.moveBy(const Offset(150, 0));
+    await tester.pump();
+
+    // Nessuna precedente: la cartolina segue il dito con resistenza.
+    expect(_topMatrix(tester).storage[13], 0);
+    expect(_topMatrix(tester).storage[12], greaterThan(0));
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('sull ultimo elemento lo swipe a sinistra non avanza', (
     tester,
   ) async {

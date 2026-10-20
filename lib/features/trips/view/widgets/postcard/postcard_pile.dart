@@ -10,9 +10,11 @@ import 'postcard_parts.dart';
 /// Pila di cartoline da sfogliare orizzontalmente.
 ///
 /// La cartolina in cima è dritta a riposo; sotto si intravedono al massimo due
-/// fogli di carta vuoti. Trascinando la cartolina cambia leggermente
-/// inclinazione. Il rilascio avanza o torna indietro oltre una soglia di
-/// spostamento o di velocità, altrimenti la cartolina torna al centro.
+/// fogli di carta vuoti. Trascinando verso sinistra la cartolina esce e quella
+/// sotto sale al suo posto; verso destra è il movimento contrario: la
+/// precedente rientra dall'alto e quella in cima scende nella pila. Il
+/// rilascio avanza o torna indietro oltre una soglia di spostamento o di
+/// velocità, altrimenti la cartolina torna al centro.
 ///
 /// Richiede un'altezza vincolata dal genitore: le cartoline occupano lo spazio
 /// sopra l'indicatore dei puntini.
@@ -191,14 +193,18 @@ class _PostcardPileState extends State<PostcardPile>
         (_levelTilts[lower + 1] - _levelTilts[lower]) * (level - lower);
   }
 
+  /// Un livello della pila. [layerKey] lo lega alla cartolina di cui fa parte,
+  /// così scorrendo un livello resta lo stesso elemento e non si ricostruisce.
   static Widget _pose({
     Key? key,
+    required Key layerKey,
     required double dx,
     required double dy,
     required double angle,
     required Widget child,
   }) {
     return Positioned.fill(
+      key: layerKey,
       child: Transform(
         key: key,
         alignment: Alignment.center,
@@ -277,41 +283,53 @@ class _PostcardPileState extends State<PostcardPile>
   Widget _buildPile(BuildContext context, int index, double spacing) {
     final count = widget.itemCount;
     // Quanto la cartolina successiva è già salita verso la cima (0..1).
-    final progress = _hasNext && _dx < 0 && _width > 0
+    final forward = _hasNext && _dx < 0 && _width > 0
         ? (-_dx / _width).clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    // Quanto la precedente è già rientrata (0..1): è il movimento contrario,
+    // e la cartolina in cima scende di un livello mentre rientra.
+    final backward = _hasPrevious && _dx > 0 && _width > 0
+        ? (_dx / _width).clamp(0.0, 1.0).toDouble()
         : 0.0;
 
     final layers = <Widget>[
       if (index + 2 < count)
         _pose(
+          layerKey: ValueKey('layer-${index + 2}'),
           dx: 0,
-          dy: spacing * (2 - progress),
-          angle: _levelTilt(2 - progress),
-          child: const PostcardPaper(),
+          dy: spacing * (2 - forward + backward),
+          angle: _levelTilt(2 - forward + backward),
+          // Tornando indietro il foglio più in basso esce dalla pila.
+          child: Opacity(opacity: 1 - backward, child: const PostcardPaper()),
         ),
       if (index + 1 < count)
         _pose(
+          layerKey: ValueKey('layer-${index + 1}'),
           dx: 0,
-          dy: spacing * (1 - progress),
-          angle: _levelTilt(1 - progress),
-          child: progress > 0
+          dy: spacing * (1 - forward + backward),
+          angle: _levelTilt(1 - forward + backward),
+          child: forward > 0
               ? _item(context, index + 1)
               : const PostcardPaper(),
         ),
-      if (_dx > 0 && _hasPrevious)
+      // La cartolina in cima: segue il dito, oppure scende nella pila mentre
+      // rientra la precedente.
+      _pose(
+        key: const Key('postcard_pile_top'),
+        layerKey: ValueKey('layer-$index'),
+        dx: backward > 0 ? 0 : _dx,
+        dy: spacing * backward,
+        angle: backward > 0 ? _levelTilt(backward) : _tiltFor(_dx),
+        child: _item(context, index),
+      ),
+      if (backward > 0)
         _pose(
+          layerKey: ValueKey('layer-${index - 1}'),
           dx: _dx - _width,
           dy: 0,
           angle: _tiltFor(_dx - _width),
           child: _item(context, index - 1),
         ),
-      _pose(
-        key: const Key('postcard_pile_top'),
-        dx: _dx,
-        dy: 0,
-        angle: _tiltFor(_dx),
-        child: _item(context, index),
-      ),
     ];
 
     return Padding(
