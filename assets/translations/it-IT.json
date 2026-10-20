@@ -318,7 +318,22 @@
       "stop_hint": "Parti da {} {}. Il ritorno diventa {}.",
       "stop_add": "Aggiungi tappa",
       "stop_save": "Salva tappa",
-      "stop_remove": "Elimina tappa"
+      "stop_remove": "Elimina tappa",
+      "title": "Nuovo viaggio",
+      "where": "Dove vai?",
+      "itinerary": "Itinerario",
+      "itinerary_empty": "Scegli meta e date: qui compare il tuo itinerario.",
+      "stops_tip": "Visiti più città? Aggiungi una tappa per ognuna: avrai il meteo di ogni tappa.",
+      "name": "Nome del viaggio",
+      "name_hint": "L'abbiamo preso dalla meta: cambialo se vuoi.",
+      "next": "Avanti: prepara la valigia",
+      "later": "Prepara la valigia più tardi",
+      "where_missing": "Scegli dove vai: serve anche per il meteo.",
+      "when_missing": "Scegli andata e ritorno.",
+      "stop_no_nights": "{} finisce prima di iniziare: controlla le date.",
+      "discard_title": "Lasciare il nuovo viaggio?",
+      "discard_message": "Quello che hai inserito andrà perso.",
+      "where_clear": "Togli la meta"
     },
     "pile": {
       "position": "{} di {}",

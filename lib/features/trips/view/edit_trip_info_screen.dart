@@ -226,10 +226,10 @@ class _EditTripInfoScreenState extends ConsumerState<EditTripInfoScreen> {
 
                   SizedBox(height: context.spacingLg),
 
-                  // Stesso trattamento che ha in add_trip_screen: senza questa
-                  // sezione una tappa aggiunta in creazione non si potrebbe più
-                  // correggere né rimuovere, perché il dettaglio viaggio porta
-                  // qui e non a /trips/:id/edit.
+                  // Le tappe si creano anche in "Nuovo viaggio": senza questa
+                  // sezione una tappa aggiunta lì non si potrebbe più correggere
+                  // né rimuovere, perché il dettaglio viaggio porta qui e non a
+                  // /trips/:id/edit.
                   TripLegsSection(
                     legs: _legs,
                     onChanged: (legs) => setState(() => _legs = legs),

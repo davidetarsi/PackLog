@@ -318,7 +318,22 @@
       "stop_hint": "Leaving {} on {}. You'll be back on {}.",
       "stop_add": "Add stop",
       "stop_save": "Save stop",
-      "stop_remove": "Remove stop"
+      "stop_remove": "Remove stop",
+      "title": "New trip",
+      "where": "Where are you going?",
+      "itinerary": "Itinerary",
+      "itinerary_empty": "Pick where and when: your itinerary shows up here.",
+      "stops_tip": "Visiting more than one city? Add a stop for each: you'll get the weather for every stop.",
+      "name": "Trip name",
+      "name_hint": "We took it from your destination: change it if you like.",
+      "next": "Next: pack your suitcase",
+      "later": "Pack later",
+      "where_missing": "Choose where you're going: we need it for the weather too.",
+      "when_missing": "Choose your dates.",
+      "stop_no_nights": "{} ends before it starts: check the dates.",
+      "discard_title": "Leave this new trip?",
+      "discard_message": "What you've entered will be lost.",
+      "where_clear": "Remove destination"
     },
     "pile": {
       "position": "{} of {}",

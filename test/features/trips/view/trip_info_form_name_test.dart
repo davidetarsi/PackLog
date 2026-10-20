@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pack_log/features/trips/view/trip_info_form.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 
-/// Genitore stateful che replica `add_trip_screen`/`edit_trip_info_screen`: a
+/// Genitore stateful che replica `edit_trip_info_screen`: a
 /// ogni onChanged fa setState e **ripassa il nome al form come initialName**.
 /// Un harness che si limita a registrare l'ultimo nome emesso non ricostruisce
 /// mai il form, quindi non esercita `didUpdateWidget` — ed è lì che vivono i

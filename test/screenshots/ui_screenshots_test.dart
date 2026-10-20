@@ -123,7 +123,7 @@ const _houses = 'lib/features/houses/view/houses_screen.dart';
 const _houseDetailSrc = 'lib/features/houses/view/house_detail_screen.dart';
 const _trips = 'lib/features/trips/view/trips_screen.dart';
 const _tripDetailSrc = 'lib/features/trips/view/trip_detail_screen.dart';
-const _addTrip = 'lib/features/trips/view/add_trip_screen.dart';
+const _addTrip = 'lib/features/trips/view/new_trip_screen.dart';
 const _profile = 'lib/features/profile/view/profile_screen.dart';
 const _aiResults = 'lib/features/ai_input/view/ai_results_screen.dart';
 
