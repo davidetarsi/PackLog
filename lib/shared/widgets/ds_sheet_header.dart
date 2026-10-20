@@ -3,16 +3,26 @@ import 'package:flutter/material.dart';
 import '../theme/app_spacing.dart';
 import 'ds_bottom_sheet_handle.dart';
 
-/// Testata dei bottom sheet senza form: handle, titolo, divisore.
+/// Testata dei bottom sheet: handle, titolo, divisore.
 ///
-/// I sheet con form hanno la loro testata in [StandardBottomSheetLayout], con
-/// il bottone chiudi. Questa serve ai sheet di scelta ([DsPickerSheet]) e di
-/// azioni, che si chiudono toccando un'opzione.
+/// La usano i sheet di scelta ([DsPickerSheet]) e di azioni, che si chiudono
+/// toccando un'opzione, e i fogli con campi del nuovo disegno (tappa, scheda
+/// oggetto), che passano [onClose]. Il vecchio [StandardBottomSheetLayout] ha
+/// la sua testata.
 class DsSheetHeader extends StatelessWidget {
   final String title;
   final VoidCallback? onClose;
 
-  const DsSheetHeader({super.key, required this.title, this.onClose});
+  /// Azioni dopo la "x", come il menu ⋯ della scheda oggetto. Solo con
+  /// [onClose].
+  final List<Widget> actions;
+
+  const DsSheetHeader({
+    super.key,
+    required this.title,
+    this.onClose,
+    this.actions = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +61,7 @@ class DsSheetHeader extends StatelessWidget {
                       ).closeButtonTooltip,
                       onPressed: onClose,
                     ),
+                    ...actions,
                   ],
                 ),
         ),

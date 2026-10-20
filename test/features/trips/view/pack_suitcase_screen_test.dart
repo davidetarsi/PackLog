@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +15,8 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/repositories/house_repository.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/items/services/category_infer_service.dart';
+import 'package:pack_log/features/spaces/repositories/space_repository.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
@@ -35,6 +39,8 @@ class MockHouseRepository extends Mock implements HouseRepository {}
 class MockItemRepository extends Mock implements ItemRepository {}
 
 class MockLuggageRepository extends Mock implements LuggageRepository {}
+
+class MockSpaceRepository extends Mock implements SpaceRepository {}
 
 class MockTripLifecycleService extends Mock implements TripLifecycleService {}
 
@@ -138,6 +144,7 @@ void main() {
   late MockHouseRepository houseRepo;
   late MockItemRepository itemRepo;
   late MockLuggageRepository luggageRepo;
+  late MockSpaceRepository spaceRepo;
   late MockTripLifecycleService lifecycle;
   late MockCoreAnalyticsService analytics;
   late MockSyncOrchestrator sync;
@@ -146,6 +153,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
     registerFallbackValue(_trip());
+    registerFallbackValue(_maglietta);
   });
 
   setUp(() {
@@ -153,6 +161,7 @@ void main() {
     houseRepo = MockHouseRepository();
     itemRepo = MockItemRepository();
     luggageRepo = MockLuggageRepository();
+    spaceRepo = MockSpaceRepository();
     lifecycle = MockTripLifecycleService();
     analytics = MockCoreAnalyticsService();
     sync = MockSyncOrchestrator();
@@ -163,6 +172,7 @@ void main() {
     when(() => lifecycle.computeNextStatusChange(any())).thenReturn(null);
     when(() => sync.requestSync()).thenReturn(null);
     when(() => tripRepo.updateTrip(any())).thenAnswer((_) async {});
+    when(() => spaceRepo.getSpacesByHouseId(any())).thenAnswer((_) async => []);
   });
 
   /// Stub dei repository per una schermata. Le case e gli oggetti sono quelli
@@ -174,14 +184,23 @@ void main() {
     List<LuggageModel> luggages = const [],
   }) {
     final storedTrip = trip ?? _trip();
+    // Copia modificabile: un oggetto creato dalla valigia torna nel reload.
+    final stored = {
+      for (final entry in items.entries) entry.key: [...entry.value],
+    };
     when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [storedTrip]);
     when(
       () => houseRepo.getAllHouses(),
     ).thenAnswer((_) async => houses ?? [_milano]);
     when(() => itemRepo.getItemsByHouseId(any())).thenAnswer(
-      (invocation) async =>
-          items[invocation.positionalArguments.first as String] ?? const [],
+      (invocation) async => [
+        ...?stored[invocation.positionalArguments.first as String],
+      ],
     );
+    when(() => itemRepo.addItem(any())).thenAnswer((invocation) async {
+      final item = invocation.positionalArguments.first as ItemModel;
+      stored.putIfAbsent(item.houseId, () => []).add(item);
+    });
     when(() => luggageRepo.getAllLuggages()).thenAnswer((_) async => luggages);
     when(
       () => luggageRepo.getLuggagesByHouseId(any()),
@@ -226,6 +245,11 @@ void main() {
           houseRepositoryProvider.overrideWithValue(houseRepo),
           itemRepositoryProvider.overrideWithValue(itemRepo),
           luggageRepositoryProvider.overrideWithValue(luggageRepo),
+          spaceRepositoryProvider.overrideWithValue(spaceRepo),
+          // Senza dizionario: nessuna categoria proposta, si crea in Varie.
+          categoryInferServiceProvider.overrideWith(
+            (ref) => Completer<CategoryInferService>().future,
+          ),
           tripLifecycleServiceProvider.overrideWithValue(lifecycle),
           coreAnalyticsServiceProvider.overrideWithValue(analytics),
           syncOrchestratorProvider.overrideWithValue(sync),
@@ -716,9 +740,11 @@ void main() {
   });
 
   group('PackSuitcaseScreen — casa senza oggetti', () {
-    testWidgets('mostra lo stato vuoto senza azioni', (tester) async {
-      // Qui si sceglie cosa portare: scansione e aggiunta a mano
-      // porterebbero fuori dalla valigia.
+    testWidgets('mostra lo stato vuoto senza azioni, con l aiuto', (
+      tester,
+    ) async {
+      // Qui si sceglie cosa portare: scansione e pagina "Aggiungi"
+      // porterebbero fuori dalla valigia. Si crea dalla ricerca.
       arrange();
       await pumpPack(tester);
 
@@ -726,12 +752,137 @@ void main() {
       final empty = tester.widget<DsEmptyState>(find.byType(DsEmptyState));
       expect(empty.ctaLabel, isNull);
       expect(empty.linkLabel, isNull);
+      expect(
+        empty.subtitle,
+        'Scrivilo nella ricerca qui sopra per aggiungerlo.',
+      );
+    });
+
+    testWidgets('scrivendo nella ricerca compare "Aggiungi"', (tester) async {
+      arrange();
+      await pumpPack(tester);
+
+      await tester.enterText(find.byType(TextField), 'Ciabatte');
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DsEmptyState), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('pack_add_row')),
+          matching: find.text(
+            'Aggiungi «Ciabatte» in Casa Milano',
+            findRichText: true,
+          ),
+        ),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('PackSuitcaseScreen — aggiungere dalla ricerca', () {
+    Finder addRow() => find.byKey(const Key('pack_add_row'));
+
+    testWidgets('ricerca senza risultati: solo la riga "Aggiungi"', (
+      tester,
+    ) async {
+      arrange(
+        items: {
+          'h1': [_spazzolino],
+        },
+      );
+      await pumpPack(tester);
+
+      await tester.enterText(find.byType(TextField), 'Ciab');
+      await tester.pumpAndSettle();
+
+      expect(addRow(), findsOneWidget);
+      expect(find.byType(PackItemRow), findsNothing);
+    });
+
+    testWidgets('il grassetto cade sul nome cercato, anche di una lettera', (
+      tester,
+    ) async {
+      arrange();
+      await pumpPack(tester);
+
+      // "g" è anche dentro "Aggiungi": in grassetto va solo il nome.
+      await tester.enterText(find.byType(TextField), 'g');
+      await tester.pumpAndSettle();
+
+      // Anche le icone sono RichText: si prende quello della frase.
+      final rich = tester
+          .widgetList<RichText>(
+            find.descendant(of: addRow(), matching: find.byType(RichText)),
+          )
+          .singleWhere((r) => r.text.toPlainText().startsWith('Aggiungi'));
+      final bold = <String>[];
+      rich.text.visitChildren((span) {
+        if (span is TextSpan &&
+            span.style?.fontWeight == FontWeight.w700 &&
+            span.text != null) {
+          bold.add(span.text!);
+        }
+        return true;
+      });
+      expect(bold, ['g']);
+      expect(rich.text.toPlainText(), 'Aggiungi «g» in Casa Milano');
+    });
+
+    testWidgets('risultati senza nome esatto: la riga sta in fondo', (
+      tester,
+    ) async {
+      arrange(
+        items: {
+          'h1': [_maglietta, _spazzolino],
+        },
+      );
+      await pumpPack(tester);
+
+      await tester.enterText(find.byType(TextField), 'Magl');
+      await tester.pumpAndSettle();
+
+      expect(addRow(), findsOneWidget);
+      expect(
+        tester.getTopLeft(addRow()).dy,
+        greaterThan(tester.getBottomLeft(rowOf('Maglietta')).dy),
+      );
+    });
+
+    testWidgets('con meno di tre lettere e dei risultati niente riga', (
+      tester,
+    ) async {
+      arrange(
+        items: {
+          'h1': [_maglietta],
+        },
+      );
+      await pumpPack(tester);
+
+      await tester.enterText(find.byType(TextField), 'Ma');
+      await tester.pumpAndSettle();
+
+      expect(rowOf('Maglietta'), findsOneWidget);
+      expect(addRow(), findsNothing);
+    });
+
+    testWidgets('con il nome esatto la riga non compare', (tester) async {
+      arrange(
+        items: {
+          'h1': [_maglietta],
+        },
+      );
+      await pumpPack(tester);
+
+      await tester.enterText(find.byType(TextField), ' maglietta ');
+      await tester.pumpAndSettle();
+
+      expect(rowOf('Maglietta'), findsOneWidget);
+      expect(addRow(), findsNothing);
     });
 
     testWidgets(
-      'con casa non vuota ma ricerca senza risultati non offre l azione',
+      'la riga apre "Nuovo oggetto" col nome scritto, anche se parziale',
       (tester) async {
-        // La risposta alla ricerca vuota è cambiare la ricerca, non creare.
         arrange(
           items: {
             'h1': [_spazzolino],
@@ -739,12 +890,70 @@ void main() {
         );
         await pumpPack(tester);
 
-        await tester.enterText(find.byType(TextField), 'zzz');
+        await tester.enterText(find.byType(TextField), 'Ciab');
+        await tester.pumpAndSettle();
+        await tester.tap(addRow());
         await tester.pumpAndSettle();
 
-        expect(find.text('Nessun oggetto trovato'), findsOneWidget);
-        expect(find.byKey(const Key('trip_items_empty_add')), findsNothing);
+        expect(find.text('Nuovo oggetto'), findsOneWidget);
+        final name = tester.widget<TextFormField>(
+          find.byKey(const Key('item_sheet_name')),
+        );
+        expect(name.controller!.text, 'Ciab');
+        expect(find.text('Lo trovi anche in Casa Milano.'), findsOneWidget);
+        expect(find.text('Aggiungi e metti in valigia'), findsOneWidget);
       },
     );
+
+    testWidgets('aggiungendo, l oggetto nasce nella casa ed entra in valigia', (
+      tester,
+    ) async {
+      arrange(
+        items: {
+          'h1': [_spazzolino],
+        },
+      );
+      await pumpPack(tester);
+
+      await tester.enterText(find.byType(TextField), 'Ciabatte');
+      await tester.pumpAndSettle();
+      await tester.tap(addRow());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('item_sheet_save')));
+      await tester.pumpAndSettle();
+
+      final created =
+          verify(() => itemRepo.addItem(captureAny())).captured.single
+              as ItemModel;
+      expect(created.name, 'Ciabatte');
+      expect(created.houseId, 'h1');
+      expect(created.category, ItemCategory.varie);
+
+      expect(find.text('Nuovo oggetto'), findsNothing);
+      expect(checkboxOf(tester, 'Ciabatte').value, isTrue);
+      expect(addRow(), findsNothing);
+      expect(find.text('Fatto · 1 oggetto'), findsOneWidget);
+
+      await tester.tap(find.text('Fatto · 1 oggetto'));
+      await tester.pumpAndSettle();
+      final item = savedTrip().items.single;
+      expect(item.id, created.id);
+      expect(item.originHouseId, 'h1');
+    });
+
+    testWidgets('chiudendo il foglio non si crea niente', (tester) async {
+      arrange();
+      await pumpPack(tester);
+
+      await tester.enterText(find.byType(TextField), 'Ciabatte');
+      await tester.pumpAndSettle();
+      await tester.tap(addRow());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('sheet_close')));
+      await tester.pumpAndSettle();
+
+      verifyNever(() => itemRepo.addItem(any()));
+      expect(addRow(), findsOneWidget);
+    });
   });
 }

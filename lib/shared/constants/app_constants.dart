@@ -47,6 +47,10 @@ class AppConstants {
   /// Altezza fissa per tab filtri compatti (raro).
   static const double pillTabCompact = 32.0;
 
+  /// Altezza della riga delle 4 categorie (pillole con icona e nome), come
+  /// gli elementi della barra in basso della casa.
+  static const double categoryRowHeight = 50.0;
+
   // ── AI Import ────────────────────────────────────────────────────────────────
 
   /// Width of score label column in AI result cards.

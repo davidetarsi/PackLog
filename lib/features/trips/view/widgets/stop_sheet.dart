@@ -10,8 +10,8 @@ import '../../model/trip_draft.dart';
 import '../../model/trip_postcard.dart';
 import 'place_search.dart';
 import 'trip_dates_sheet.dart';
-import 'trip_field.dart';
-import 'trip_section_title.dart';
+import '../../../../shared/widgets/ds_field.dart';
+import '../../../../shared/widgets/ds_section_title.dart';
 
 /// Altezza massima del foglio, in frazione dello schermo: la testata resta
 /// sempre visibile sopra il contenuto che scorre.
@@ -153,7 +153,7 @@ class _StopSheetState extends State<_StopSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        TripSectionTitle('trips.new.where_stop'.tr()),
+                        DsSectionTitle('trips.new.where_stop'.tr()),
                         PlaceSearch(
                           key: const Key('stop_sheet_place'),
                           initialText: widget.initial?.place.name,
@@ -164,8 +164,8 @@ class _StopSheetState extends State<_StopSheet> {
                             if (_place != null) setState(() => _place = null);
                           },
                         ),
-                        TripSectionTitle('trips.new.when'.tr()),
-                        TripFieldBox(
+                        DsSectionTitle('trips.new.when'.tr()),
+                        DsFieldBox(
                           key: const Key('stop_sheet_dates'),
                           icon: Icons.calendar_today_outlined,
                           onTap: _pickEnd,

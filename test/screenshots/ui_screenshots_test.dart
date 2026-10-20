@@ -675,7 +675,9 @@ final flows = <Flow>[
       'modifica',
       source: 'lib/features/items/view/item_sheet.dart',
       description:
-          'Tocco su un oggetto: nome come titolo, righe Categoria / Quantità / Spazio, solo Salva arancio.',
+          'Tocco su un oggetto: la scheda oggetto in modifica, la stessa della '
+          'creazione. Nome in un campo, categorie su una riga (scelta piena), '
+          'quantità e spazio accanto all\'etichetta, Dettagli con la nota.',
       steps: (app) async {
         await _houseDetail(app);
         await app.tap(find.text('Maglione di lana'));
@@ -1352,6 +1354,69 @@ final flows = <Flow>[
     ),
     Scenario(
       10,
+      'valigia',
+      'ricerca-senza-esito',
+      route: '/trips/:id/edit-items',
+      source: _packSrc,
+      description:
+          'Ricerca di un oggetto che nella casa non c\'è: al posto dei '
+          'risultati la riga "Aggiungi «Ciabatte» in Casa Milano".',
+      steps: (app) async {
+        await _tripDetail(app);
+        await app.tap(_text('trips.edit_items'));
+        await app.enterText(find.byType(TextField).first, 'Ciabatte');
+      },
+    ),
+    Scenario(
+      11,
+      'valigia',
+      'ricerca-con-esiti',
+      route: '/trips/:id/edit-items',
+      source: _packSrc,
+      description:
+          'Ricerca con risultati ma nessuno con quel nome esatto: la riga '
+          '"Aggiungi" sta in fondo, dopo gli oggetti trovati.',
+      steps: (app) async {
+        await _tripDetail(app);
+        await app.tap(_text('trips.edit_items'));
+        await app.enterText(find.byType(TextField).first, 'Mag');
+      },
+    ),
+    Scenario(
+      12,
+      'valigia',
+      'nuovo-oggetto',
+      route: '/trips/:id/edit-items',
+      source: 'lib/features/items/view/item_sheet.dart',
+      description:
+          'Toccando "Aggiungi": la scheda oggetto in creazione, col nome '
+          'scritto nella ricerca e la categoria proposta (bordata). In fondo '
+          '"Lo trovi anche in Casa Milano." e "Aggiungi e metti in valigia".',
+      steps: (app) async {
+        await _tripDetail(app);
+        await app.tap(_text('trips.edit_items'));
+        await app.enterText(find.byType(TextField).first, 'Ciabatte');
+        await app.tap(find.byKey(const Key('pack_add_row')));
+      },
+    ),
+    Scenario(
+      13,
+      'valigia',
+      'casa-vuota',
+      route: '/trips/:id/edit-items',
+      source: _packSrc,
+      description:
+          'Casa senza oggetti: stato vuoto senza azioni, con l\'aiuto '
+          '"Scrivilo nella ricerca qui sopra per aggiungerlo."',
+      steps: (app) async {
+        await _tripDetail(app);
+        await app.tap(_text('trips.edit_items'));
+        await app.tap(find.widgetWithText(PackPill, 'Casa Milano'));
+        await app.tap(find.widgetWithText(ListTile, 'Monolocale Torino'));
+      },
+    ),
+    Scenario(
+      14,
       'dettaglio-viaggio',
       'non-trovato',
       route: '/trips/:id',

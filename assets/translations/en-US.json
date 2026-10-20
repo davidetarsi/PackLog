@@ -62,13 +62,11 @@
     "category": "Category",
     "category_label": "Category",
     "description": "Description",
-    "description_label": "Description",
     "quantity": "Quantity",
     "space_label": "Space",
     "select_space": "Select a space",
     "add_note": "Add a note",
     "move_to_house": "Move to another house",
-    "select_category": "Choose a category",
     "select_items": "Select items",
     "selected_count": {
       "one": "{} selected",
@@ -88,7 +86,11 @@
     "add_to_trip_success": "{} items added to {}",
     "rapid_fire_hint": "Add item...",
     "already_here": "Already at home",
-    "added_now": "Added now"
+    "added_now": "Added now",
+    "name_label": "Name",
+    "new_item": "New item",
+    "edit_item": "Edit item",
+    "details_label": "Details"
   },
   "categories": {
     "vestiti": "Clothes",
@@ -163,6 +165,10 @@
       "add_luggages": "Add luggage",
       "items": "What you're bringing",
       "search_hint": "Search your items",
+      "add_item": "Add “{}” to {}",
+      "add_and_pack": "Add and pack",
+      "also_in_house": "You’ll also find it in {}.",
+      "empty_house_hint": "Type it in the search above to add it.",
       "from": "From",
       "done": "Done",
       "done_count": {"one": "Done · {} item", "other": "Done · {} items"},
