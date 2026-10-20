@@ -216,6 +216,45 @@ void main() {
           .toList();
       expect(places, ['Lisbona', 'Sintra', 'Cascais']);
     });
+
+    test('sortLegs false mantiene l ordine della catena', () {
+      // Catena con una tappa che finisce prima di iniziare: per data
+      // Cascais verrebbe prima di Sintra, ma le righe seguono la catena.
+      final trip = makeTrip(
+        't7',
+        departure: DateTime(2026, 10, 10),
+        returnAt: DateTime(2026, 10, 16),
+        destination: lisbona,
+        legs: [
+          makeLeg(
+            'sintra',
+            'Sintra, Portogallo',
+            from: DateTime(2026, 10, 15),
+            to: DateTime(2026, 10, 14),
+          ),
+          makeLeg(
+            'cascais',
+            'Cascais, Portogallo',
+            from: DateTime(2026, 10, 14),
+            to: DateTime(2026, 10, 16),
+          ),
+        ],
+      );
+
+      final sorted = buildItinerary(trip, destination: 'Lisbona');
+      final chain = buildItinerary(
+        trip,
+        destination: 'Lisbona',
+        sortLegs: false,
+      );
+
+      List<String?> places(List<ItineraryEntry> entries) => entries
+          .where((e) => e.kind == ItineraryKind.place)
+          .map((e) => e.name)
+          .toList();
+      expect(places(sorted), ['Lisbona', 'Cascais', 'Sintra']);
+      expect(places(chain), ['Lisbona', 'Sintra', 'Cascais']);
+    });
   });
 
   group('buildItinerary con case', () {

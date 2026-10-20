@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +25,7 @@ import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/model/location_type.dart';
 import 'package:pack_log/shared/services/location_search_service.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_button.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
@@ -50,6 +53,12 @@ final _houses = [
   HouseModel(
     id: 'h2',
     name: 'Casa al mare',
+    createdAt: DateTime(2026),
+    updatedAt: DateTime(2026),
+  ),
+  HouseModel(
+    id: 'h3',
+    name: 'Casa in montagna',
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
   ),
@@ -108,6 +117,47 @@ Future<void> _pickHouse(WidgetTester tester, String id) async {
   await tester.tap(_placeField);
   await tester.pump();
   await tester.tap(find.byKey(Key('place_search_house_$id')));
+  await tester.pumpAndSettle();
+}
+
+DateTime _day(int day) => DateTime(_nextMonth.year, _nextMonth.month, day);
+
+/// Il campo place della tappa aperta nel foglio.
+Finder get _stopPlaceField => find.descendant(
+  of: find.byKey(const Key('stop_sheet_place')),
+  matching: find.byType(TextField),
+);
+
+/// Aggiunge una tappa in coda dalla sua riga: casa e giorno di fine.
+Future<void> _addStop(
+  WidgetTester tester, {
+  required String houseId,
+  required int endDay,
+}) async {
+  await tester.ensureVisible(find.byKey(const Key('new_trip_add_stop')));
+  await tester.tap(find.byKey(const Key('new_trip_add_stop')));
+  await tester.pumpAndSettle();
+  await tester.tap(_stopPlaceField);
+  await tester.pump();
+  await tester.tap(find.byKey(Key('place_search_house_$houseId')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('stop_sheet_dates')));
+  await tester.pumpAndSettle();
+  await _tapDay(tester, _day(endDay));
+  await tester.tap(find.text('Conferma'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('stop_sheet_save')));
+  await tester.pumpAndSettle();
+}
+
+/// Cambia la fine della meta: il foglio ha il range completo, quindi il primo
+/// tocco riparte dalla partenza e il secondo sceglie il ritorno.
+Future<void> _moveDestinationEnd(WidgetTester tester, DateTime end) async {
+  await tester.tap(find.byKey(const Key('new_trip_dates')));
+  await tester.pumpAndSettle();
+  await _tapDay(tester, _departure);
+  await _tapDay(tester, end);
+  await tester.tap(find.text('Conferma date'));
   await tester.pumpAndSettle();
 }
 
@@ -380,6 +430,193 @@ void main() {
       await tester.pumpAndSettle();
       await _pickHouse(tester, 'h1');
       expect(_nameText(tester), 'Weekend');
+    });
+  });
+
+  group('NewTripScreen — tappe', () {
+    testWidgets('Aggiungi tappa mette la riga in coda all\'itinerario', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await _addStop(tester, houseId: 'h2', endDay: 14);
+
+      expect(find.text('Casa al mare'), findsOneWidget);
+      expect(find.text('trips.new.stops_tip'), findsNothing);
+    });
+
+    testWidgets('tocco su una tappa apre la sua modifica', (tester) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      await _addStop(tester, houseId: 'h2', endDay: 14);
+
+      await tester.tap(find.text('Casa al mare'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Modifica tappa'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(_stopPlaceField).controller!.text,
+        'Casa al mare',
+      );
+    });
+
+    testWidgets('modificare la tappa dalla riga cambia il posto', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      await _addStop(tester, houseId: 'h2', endDay: 14);
+
+      await tester.tap(find.text('Casa al mare'));
+      await tester.pumpAndSettle();
+      await tester.tap(_stopPlaceField);
+      await tester.pump();
+      await tester.enterText(_stopPlaceField, 'Casa in');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('place_search_house_h3')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('stop_sheet_save')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Casa in montagna'), findsOneWidget);
+      expect(find.text('Casa al mare'), findsNothing);
+    });
+
+    testWidgets(
+      'con le date fuori ordine la riga toccata è la tappa giusta e la elimina',
+      (tester) async {
+        await pumpScreen(tester);
+        await _pickHouse(tester, 'h1');
+        await _pickDates(tester);
+        await _addStop(tester, houseId: 'h2', endDay: 14);
+        await _addStop(tester, houseId: 'h3', endDay: 16);
+
+        // La meta finisce il 15: la tappa B ("Casa al mare") finisce il 14,
+        // prima di iniziare. Per data C verrebbe prima di B, ma le righe
+        // restano nell'ordine della catena: A, B, C.
+        await _moveDestinationEnd(tester, _day(15));
+        final mare = tester.getTopLeft(find.text('Casa al mare')).dy;
+        final montagna = tester.getTopLeft(find.text('Casa in montagna')).dy;
+        expect(mare, lessThan(montagna));
+
+        await tester.tap(find.text('Casa in montagna'));
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<TextField>(_stopPlaceField).controller!.text,
+          'Casa in montagna',
+        );
+
+        await tester.tap(find.byKey(const Key('stop_sheet_remove')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Casa in montagna'), findsNothing);
+        expect(find.text('Casa al mare'), findsOneWidget);
+      },
+    );
+
+    testWidgets('una tappa a zero notti blocca Avanti e Più tardi', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      await _addStop(tester, houseId: 'h2', endDay: 14);
+
+      // La meta finisce il 14, come la tappa che parte da lì: zero notti.
+      await _moveDestinationEnd(tester, _day(14));
+
+      expect(
+        find.text('Casa al mare finisce prima di iniziare: controlla le date.'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<DsButton>(find.byKey(const Key('new_trip_next')))
+            .onPressed,
+        isNull,
+      );
+
+      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('new_trip_later')));
+      await tester.pumpAndSettle();
+
+      verifyNever(() => tripRepo.addTrip(any()));
+    });
+
+    testWidgets('Più tardi a modulo vuoto mostra i due messaggi', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_later')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Scegli dove vai: serve anche per il meteo.'),
+        findsOneWidget,
+      );
+      expect(find.text('Scegli andata e ritorno.'), findsOneWidget);
+      verifyNever(() => tripRepo.addTrip(any()));
+    });
+
+    testWidgets('un salvataggio che fallisce riabilita il bottone', (
+      tester,
+    ) async {
+      when(() => tripRepo.addTrip(any())).thenThrow(Exception('offline'));
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      // Durante il salvataggio il bottone gira: niente pumpAndSettle finché
+      // il dialogo d'errore non chiude, altrimenti lo spinner non si ferma mai.
+      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Errore di salvataggio'), findsOneWidget);
+
+      await tester.tap(find.text('Annulla'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nuovo viaggio'), findsOneWidget);
+      expect(
+        tester
+            .widget<DsButton>(find.byKey(const Key('new_trip_next')))
+            .isLoading,
+        isFalse,
+      );
+
+      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      verify(() => tripRepo.addTrip(any())).called(2);
+    });
+
+    testWidgets('durante il salvataggio il back non esce né chiede conferma', (
+      tester,
+    ) async {
+      final saving = Completer<void>();
+      when(() => tripRepo.addTrip(any())).thenAnswer((_) => saving.future);
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.pump();
+      await tester.tap(find.byType(BackButton));
+      await tester.pump();
+
+      expect(find.text('Lasciare il nuovo viaggio?'), findsNothing);
+      expect(find.text('Nuovo viaggio'), findsOneWidget);
+
+      saving.complete();
+      await tester.pumpAndSettle();
+      final trip = savedTrip();
+      expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
     });
   });
 }

@@ -103,13 +103,30 @@ class _ItineraryRow extends StatelessWidget {
   }
 
   Widget _content(BuildContext context, TextTheme tt, ColorScheme cs) {
+    final Widget body;
+    if (!_isPlace) {
+      body = _transferContent(context, tt, cs);
+    } else {
+      final place = _placeContent(context, tt, cs);
+      // Una tappa toccabile mostra la freccia: si apre per modificarla.
+      body = onTap == null
+          ? place
+          : Row(
+              children: [
+                Expanded(child: place),
+                Icon(
+                  Icons.chevron_right,
+                  size: context.iconSizeSm,
+                  color: cs.onSurfaceVariant,
+                ),
+              ],
+            );
+    }
     return Padding(
       padding: EdgeInsets.symmetric(
         vertical: _isPlace ? context.spacingSm : context.spacingXs,
       ),
-      child: _isPlace
-          ? _placeContent(context, tt, cs)
-          : _transferContent(context, tt, cs),
+      child: body,
     );
   }
 

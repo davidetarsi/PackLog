@@ -103,11 +103,17 @@ String _legName(TripLeg leg, Map<String, String> houseNames) {
 /// Con più di [maxPlaces] luoghi mostra il primo e l'ultimo, e riassume le
 /// tappe centrali con una riga `moreStops`. [houseNames] mappa l'id di una casa
 /// al suo nome: una tappa che è una casa mostra quel nome, intero.
+///
+/// Di default le tappe datate si ordinano per inizio (la cartolina). Con
+/// [sortLegs] false l'ordine è quello di [TripModel.legs]: la catena del passo
+/// 1, dove una tappa può finire prima di iniziare e l'ordine per data non è
+/// quello in cui le righe vanno mostrate e toccate.
 List<ItineraryEntry> buildItinerary(
   TripModel trip, {
   required String destination,
   int maxPlaces = 3,
   Map<String, String> houseNames = const {},
+  bool sortLegs = true,
 }) {
   assert(maxPlaces >= 2);
 
@@ -115,14 +121,19 @@ List<ItineraryEntry> buildItinerary(
   final returnAt = trip.returnDateTime;
 
   final legs = trip.legs;
-  // A parità di partenza vale l'ordine d'ingresso: List.sort non è stabile.
-  final datedEntries =
-      legs.indexed.where((entry) => entry.$2.from != null).toList()
-        ..sort((a, b) {
-          final byFrom = a.$2.from!.compareTo(b.$2.from!);
-          return byFrom != 0 ? byFrom : a.$1.compareTo(b.$1);
-        });
-  final dated = [for (final (_, leg) in datedEntries) leg];
+  final dated = <TripLeg>[];
+  if (sortLegs) {
+    // A parità di partenza vale l'ordine d'ingresso: List.sort non è stabile.
+    final datedEntries =
+        legs.indexed.where((entry) => entry.$2.from != null).toList()
+          ..sort((a, b) {
+            final byFrom = a.$2.from!.compareTo(b.$2.from!);
+            return byFrom != 0 ? byFrom : a.$1.compareTo(b.$1);
+          });
+    dated.addAll([for (final (_, leg) in datedEntries) leg]);
+  } else {
+    dated.addAll(legs.where((leg) => leg.from != null));
+  }
   final undated = legs.where((leg) => leg.from == null);
 
   final stops = [...dated, ...undated];

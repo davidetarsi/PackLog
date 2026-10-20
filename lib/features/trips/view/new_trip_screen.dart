@@ -203,9 +203,11 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
 
     return PopScope(
       // Il modulo con qualcosa scritto chiede conferma prima di uscire.
-      canPop: !_draft.hasUserInput,
+      // Durante il salvataggio il back non fa nulla: né uscita né dialogo.
+      canPop: !_saving && !_draft.hasUserInput,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _confirmDiscard();
+        if (didPop || _saving) return;
+        _confirmDiscard();
       },
       child: Scaffold(
         appBar: AppBar(title: Text('trips.new.title'.tr())),
@@ -317,35 +319,32 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionTitle('trips.new.when'.tr()),
-        InkWell(
+        _FieldBox(
           key: const Key('new_trip_dates'),
+          hasError: showError,
           onTap: _pickDates,
-          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          child: _FieldBox(
-            hasError: showError,
-            child: Row(
-              children: [
-                Icon(
-                  Icons.calendar_today_outlined,
-                  size: context.iconSizeMd,
-                  color: cs.onSurfaceVariant,
+          child: Row(
+            children: [
+              Icon(
+                Icons.calendar_today_outlined,
+                size: context.iconSizeMd,
+                color: cs.onSurfaceVariant,
+              ),
+              SizedBox(width: context.spacingMd),
+              Expanded(
+                child: Text(
+                  value ?? 'common.tap_to_set_dates'.tr(),
+                  style: value == null
+                      ? tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant)
+                      : tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                SizedBox(width: context.spacingMd),
-                Expanded(
-                  child: Text(
-                    value ?? 'common.tap_to_set_dates'.tr(),
-                    style: value == null
-                        ? tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant)
-                        : tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-                  ),
+              ),
+              if (value != null && nights != null)
+                Text(
+                  'trips.itinerary.nights'.plural(nights),
+                  style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
                 ),
-                if (value != null && nights != null)
-                  Text(
-                    'trips.itinerary.nights'.plural(nights),
-                    style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
         if (showError) _FieldError('trips.new.when_missing'.tr()),
@@ -369,43 +368,45 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
             style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           )
         else ...[
-          Container(
-            padding: EdgeInsets.all(context.spacingMd),
-            decoration: BoxDecoration(
-              color: context.groupSurface,
-              borderRadius: BorderRadius.circular(
-                AppConstants.cardBorderRadius,
+          Material(
+            color: context.groupSurface,
+            borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: EdgeInsets.all(context.spacingMd),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TripItineraryView(
+                    // Tutte le tappe, senza il riassunto "+N tappe": qui ognuna
+                    // si tocca per modificarla.
+                    entries: buildItinerary(
+                      _draft.toTripModel(id: _draftTripId, now: DateTime.now()),
+                      destination: _draft.destination!.shortName,
+                      maxPlaces: math.max(2, stops.length),
+                      houseNames: houseNames,
+                      // La catena del passo 1 è la verità: le righe seguono
+                      // l'ordine delle tappe, anche se una finisce prima di iniziare.
+                      sortLegs: false,
+                    ),
+                    onPlaceTap: _editStop,
+                    firstTappablePlace: 1,
+                  ),
+                  SizedBox(height: context.spacingSm),
+                  DsLinkButton(
+                    key: const Key('new_trip_add_stop'),
+                    label: 'trips.new.stop_add'.tr(),
+                    onPressed: _addStop,
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(left: context.spacingSm),
+                    child: Text(
+                      'trips.new.stops_tip'.tr(),
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TripItineraryView(
-                  // Tutte le tappe, senza il riassunto "+N tappe": qui ognuna
-                  // si tocca per modificarla.
-                  entries: buildItinerary(
-                    _draft.toTripModel(id: _draftTripId, now: DateTime.now()),
-                    destination: _draft.destination!.shortName,
-                    maxPlaces: math.max(2, stops.length),
-                    houseNames: houseNames,
-                  ),
-                  onPlaceTap: _editStop,
-                  firstTappablePlace: 1,
-                ),
-                SizedBox(height: context.spacingSm),
-                DsLinkButton(
-                  key: const Key('new_trip_add_stop'),
-                  label: 'trips.new.stop_add'.tr(),
-                  onPressed: _addStop,
-                ),
-                Padding(
-                  padding: EdgeInsets.only(left: context.spacingSm),
-                  child: Text(
-                    'trips.new.stops_tip'.tr(),
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ),
-              ],
             ),
           ),
           for (final index in (_draft.stopsWithoutNights.toList()..sort()))
@@ -533,28 +534,42 @@ class _SectionTitle extends StatelessWidget {
 /// Riquadro di un campo compilato, sulla superficie dei gruppi. Con
 /// [hasError] il bordo è del colore di errore.
 class _FieldBox extends StatelessWidget {
-  const _FieldBox({super.key, required this.child, this.hasError = false});
+  const _FieldBox({
+    super.key,
+    required this.child,
+    this.hasError = false,
+    this.onTap,
+  });
 
   final Widget child;
   final bool hasError;
 
+  /// Il tocco sta dentro la superficie, così il ripple si vede sul campo.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacingMd,
-        vertical: context.spacingXs,
-      ),
-      decoration: BoxDecoration(
-        color: context.groupSurface,
+    return Material(
+      color: context.groupSurface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-        border: Border.all(
+        side: BorderSide(
           color: hasError ? cs.error : cs.outlineVariant,
           width: hasError ? 1.5 : 1,
         ),
       ),
-      child: child,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacingMd,
+            vertical: context.spacingXs,
+          ),
+          child: child,
+        ),
+      ),
     );
   }
 }
