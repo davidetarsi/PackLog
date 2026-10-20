@@ -38,6 +38,17 @@ DateTime _day(int offset) {
   return DateTime(now.year, now.month, now.day).add(Duration(days: offset));
 }
 
+/// Coordinate dei luoghi del seed: servono al meteo della pagina valigia.
+const _coords = {
+  'Milano': (45.4642, 9.19),
+  'Riccione': (43.9998, 12.6559),
+  'Courmayeur': (45.7969, 6.9690),
+  'Lisbona': (38.7223, -9.1393),
+  'Sintra': (38.7980, -9.3900),
+  'Firenze': (43.7696, 11.2558),
+  'Barcellona': (41.3874, 2.1686),
+};
+
 LocationSuggestionModel _place(String name, {String? country}) =>
     LocationSuggestionModel(
       placeId: 'place-$name',
@@ -45,6 +56,8 @@ LocationSuggestionModel _place(String name, {String? country}) =>
       name: name,
       city: name,
       country: country,
+      lat: _coords[name]?.$1,
+      lon: _coords[name]?.$2,
     );
 
 /// Popola il DB passando dai repository veri, così le righe hanno esattamente
@@ -289,6 +302,9 @@ Future<void> seed(ProviderContainer c, SeedLevel level) async {
           locationDisplayName: 'Sintra, Portogallo',
           from: _day(13),
           to: _day(15),
+          lat: _coords['Sintra']!.$1,
+          lon: _coords['Sintra']!.$2,
+          country: 'Portogallo',
         ),
       ],
       createdAt: stamp,

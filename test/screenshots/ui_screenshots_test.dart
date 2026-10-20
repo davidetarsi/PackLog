@@ -22,6 +22,7 @@ import 'package:pack_log/features/ai_input/model/ai_import_state.dart';
 import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
 import 'package:pack_log/features/tour/model/onboarding_state.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
+import 'package:pack_log/features/trips/services/trip_weather_service.dart';
 import 'package:pack_log/features/trips/view/widgets/pack/pack_parts.dart';
 import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
 import 'package:pack_log/shared/widgets/quantity_stepper.dart';
@@ -92,6 +93,12 @@ Future<void> _tripDetail(
 ]) async {
   await app.go('/trips');
   await app.push('/trips/$id');
+}
+
+/// Apre la pagina valigia di un viaggio, sopra la tab Viaggi.
+Future<void> _pack(ScreenshotApp app, String id) async {
+  await app.go('/trips');
+  await app.push('/trips/$id/edit-items');
 }
 
 /// Scorre la pila dei viaggi Prossimi di una cartolina verso sinistra.
@@ -222,6 +229,8 @@ const _placeSearchSrc = 'lib/features/trips/view/widgets/place_search.dart';
 const _stopSheetSrc = 'lib/features/trips/view/widgets/stop_sheet.dart';
 const _datesSheetSrc = 'lib/features/trips/view/widgets/trip_dates_sheet.dart';
 const _packSrc = 'lib/features/trips/view/pack_suitcase_screen.dart';
+const _packWeatherSrc =
+    'lib/features/trips/view/widgets/pack/pack_weather.dart';
 const _profile = 'lib/features/profile/view/profile_screen.dart';
 const _aiResults = 'lib/features/ai_input/view/ai_results_screen.dart';
 
@@ -1423,6 +1432,46 @@ final flows = <Flow>[
       source: _tripDetailSrc,
       description: 'Id inesistente.',
       steps: (app) => _tripDetail(app, 'viaggio-che-non-esiste'),
+    ),
+    Scenario(
+      15,
+      'valigia',
+      'meteo-previsione',
+      route: '/trips/:id/edit-items',
+      source: _packWeatherSrc,
+      description:
+          'Viaggio in corso verso una casa: il meteo della casa dai giorni '
+          'che restano, con la previsione e "Aggiorna".',
+      steps: (app) => _pack(app, kActiveTripId),
+    ),
+    Scenario(
+      16,
+      'valigia',
+      'meteo-tetto',
+      route: '/trips/:id/edit-items',
+      source: _packWeatherSrc,
+      description:
+          'Tetto giornaliero del meteo finito e nessuna copia: al posto delle '
+          'tappe il messaggio discreto, senza "Aggiorna".',
+      setup: AppSetup(
+        extraOverrides: [
+          tripWeatherServiceProvider.overrideWithValue(
+            FakeTripWeatherCapReached(),
+          ),
+        ],
+      ),
+      steps: (app) => _pack(app, kUpcomingTripId),
+    ),
+    Scenario(
+      17,
+      'valigia',
+      'meteo-non-disponibile',
+      route: '/trips/:id/edit-items',
+      source: _packWeatherSrc,
+      description:
+          'Viaggio verso una casa senza località: il meteo non si può '
+          'chiedere e la sezione lo dice.',
+      steps: (app) => _pack(app, kEmptyTripId),
     ),
   ]),
 
