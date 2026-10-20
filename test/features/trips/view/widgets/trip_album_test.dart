@@ -223,7 +223,8 @@ void main() {
     expect(find.text('20'), findsOneWidget);
     expect(find.text('AGO 26'), findsOneWidget);
     expect(find.text('5 notti'), findsOneWidget);
-    expect(find.text('Saluti da'), findsOneWidget);
+    expect(find.text('Lisbona'), findsOneWidget);
+    expect(find.text('Saluti da'), findsNothing);
     expect(find.text('Riusa'), findsOneWidget);
   });
 

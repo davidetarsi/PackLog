@@ -24,11 +24,15 @@ class TripPostcard extends StatelessWidget {
 
   final ValueChanged<PostcardCta> onCta;
 
+  /// Nomi delle case per id: una tappa che è una casa li mostra interi.
+  final Map<String, String> houseNames;
+
   const TripPostcard({
     super.key,
     required this.trip,
     required this.destination,
     required this.onCta,
+    this.houseNames = const {},
   });
 
   @override
@@ -37,10 +41,9 @@ class TripPostcard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final stamp = stampFor(trip, DateTime.now());
     final cta = ctaFor(trip);
-    final name = trip.name.trim();
-    final showName =
-        name.isNotEmpty &&
-        name.toLowerCase() != destination.trim().toLowerCase();
+    final title = postcardTitle(trip, destination: destination);
+    final showDestination =
+        destination.trim().toLowerCase() != title.toLowerCase();
 
     return PostcardPaper(
       child: Column(
@@ -54,14 +57,7 @@ class TripPostcard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'trips.postcard.greetings'.tr(),
-                      style: tt.titleMedium?.copyWith(
-                        fontStyle: FontStyle.italic,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    Text(
-                      destination,
+                      title,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: tt.headlineLarge?.copyWith(
@@ -69,9 +65,9 @@ class TripPostcard extends StatelessWidget {
                         height: 1.05,
                       ),
                     ),
-                    if (showName)
+                    if (showDestination)
                       Text(
-                        name,
+                        destination,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: tt.bodyMedium?.copyWith(
@@ -89,7 +85,11 @@ class TripPostcard extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               child: TripItineraryView(
-                entries: buildItinerary(trip, destination: destination),
+                entries: buildItinerary(
+                  trip,
+                  destination: destination,
+                  houseNames: houseNames,
+                ),
               ),
             ),
           ),
@@ -179,7 +179,7 @@ class _StampContent extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            '$days',
+            '-$days',
             style: tt.headlineLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           Text(

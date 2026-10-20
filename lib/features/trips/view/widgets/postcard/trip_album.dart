@@ -89,8 +89,8 @@ class TripAlbum extends StatelessWidget {
   }
 }
 
-/// Cartolina piccola: francobollo in alto a destra, saluti, meta, notti e
-/// l'azione per riusare il viaggio in basso.
+/// Cartolina piccola: francobollo in alto a destra, nome del viaggio, notti
+/// e l'azione per riusare il viaggio in basso.
 class _AlbumPostcard extends StatelessWidget {
   final TripModel trip;
   final String destination;
@@ -138,14 +138,7 @@ class _AlbumPostcard extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              'trips.postcard.greetings'.tr(),
-              style: tt.labelMedium?.copyWith(
-                fontStyle: FontStyle.italic,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-            Text(
-              destination,
+              postcardTitle(trip, destination: destination),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: tt.titleLarge?.copyWith(

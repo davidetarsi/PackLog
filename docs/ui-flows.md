@@ -45,6 +45,9 @@ passando dai repository veri (`support/seed.dart`). Nessuna modifica a `lib/`.
   `MyApp` aggiungendo `fontFamily: 'sans-serif'` al titolo (su Android è
   comunque Roboto). Se `MyApp` cambia, va riallineato `_ScreenshotMaterialApp`.
 - Animazioni, transizioni e tastiera non compaiono: sono foto statiche.
+- La ricerca dei luoghi (Geoapify, `LocationSearchService`) è sostituita da
+  un fake con tre città fisse (Lisbona, Sintra, Siviglia) filtrate sul nome:
+  niente rete nei test.
 
 ## Dati di esempio
 
@@ -172,29 +175,63 @@ date marcati "Riusa".
 | 7 | Menu contestuale | `shared/widgets/entity_context_menu.dart` | pressione lunga sulla cartolina in cima | ✓ copia / salva / elimina |
 | 8 | Prossimi vuoto | `trips_screen.dart` | filtro Prossimi quando restano solo viaggi passati | ✓ "Nessun viaggio in programma" con "Nuovo viaggio". Lo stato si ottiene eliminando i viaggi futuri nello scenario |
 | 9 | Foglio Crea | `shared/widgets/create_sheet.dart` | Crea, dalla tab Viaggi (Nuovo viaggio in cima) | ✓ |
+| 10 | Prossimi dopo il passo 1 | `trips_screen.dart` (`?focus=`), `widgets/postcard/postcard_pile.dart` | passo 1 compilato (Siviglia) e "Prepara la valigia più tardi" | ✓ Siviglia in cima alla pila, valigia vuota |
 
 Non catturati: stato di errore del caricamento; il tap sulla cartolina porta
 al dettaglio viaggio (flusso 09).
 
-### 08 · Creazione viaggio (wizard 2 passi)
+### 08 · Creazione viaggio: passo 1
+
+Il nuovo viaggio è un passo solo, in ordine di itinerario
+(`features/trips/view/new_trip_screen.dart`, rotta `/new-trip`): "Dove vai?"
+(campo unico per le case e i luoghi, `widgets/place_search.dart`), "Quando?"
+(foglio delle date, `widgets/trip_dates_sheet.dart` con `widgets/trip_calendar.dart`),
+"Itinerario" (`widgets/postcard/trip_itinerary_view.dart`, con le tappe da
+aggiungere nel foglio `widgets/stop_sheet.dart`) e "Nome del viaggio", che
+segue la meta finché non lo si scrive a mano. Le uscite sono due: "Avanti:
+prepara la valigia" (arancio, porta al passo 2 = pagina valigia del flusso 09,
+con `?from=new`) e "Prepara la valigia più tardi" (link, torna alla tab Viaggi
+con `?focus=<id>`). Entrambe salvano solo con meta e date e senza tappe a zero
+notti. Con una meta scelta, Indietro chiede conferma.
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1-4 | Nuovo viaggio, passo 1 | `features/trips/view/add_trip_screen.dart`, `trip_info_form.dart` | Crea → Nuovo viaggio, o CTA nei Viaggi | ✓ vuoto, ✓ errore di validazione, ✓ destinazione "Casa", ✓ picker casa |
-| 5 | Selezione date | `features/trips/view/trip_date_range_screen.dart` | tap sulle date | ✓ |
-| 6 | Nuova tappa (sheet) | `features/trips/view/widgets/trip_leg_sheet.dart` | Aggiungi tappa | ✓ |
-| — | Passo 2: oggetti e bagagli | `add_trip_screen.dart` (`_buildItemsStep`), `trip_items_selector.dart` | Avanti con passo 1 valido | **non catturato**: serve compilare date e destinazione via UI |
-| — | Suggerimenti località | `shared/widgets/location_autocomplete_field.dart` | digitando la destinazione | **non catturato**: chiama Geoapify |
+| 1 | Passo 1 vuoto | `new_trip_screen.dart` | tab Viaggi → Nuovo viaggio (o Crea) | ✓ vuoto, "Avanti" spento |
+| 2 | "Dove vai?" con le case | `widgets/place_search.dart` | tocco sul campo | ✓ "Le tue case · 4" sotto il campo |
+| 3 | Passo 1 compilato | `new_trip_screen.dart` | meta Lisbona e date dal 10 al 13 | ✓ itinerario con andata, tappa e ritorno; "Avanti" acceso |
+| 4 | Foglio "Nuova tappa" vuoto | `widgets/stop_sheet.dart` | "Aggiungi tappa" | ✓ "Aggiungi tappa" spento |
+| 5 | Foglio "Nuova tappa" compilato | `widgets/stop_sheet.dart` | Sintra scelta, fine il 15 | ✓ "Parti da Lisbona … Il ritorno diventa …" |
+| 6 | Due tappe | `new_trip_screen.dart` | foglio 5 salvato | ✓ Lisbona, spostamento, Sintra, ritorno |
+| 7 | Dati mancanti | `new_trip_screen.dart` | "Avanti" a modulo vuoto | ✓ campo meta e campo date in errore, messaggio sotto ciascuno, nessuno snackbar |
+| 8 | Tappa a zero notti | `new_trip_screen.dart` | Sintra finisce il giorno in cui finisce la meta | ✓ "Sintra finisce prima di iniziare", "Avanti" spento |
+| 9 | Foglio delle date | `widgets/trip_dates_sheet.dart` | tocco su "Quando?" | ✓ calendario, "Conferma date" spento |
 
-### 09 · Dettaglio viaggio
+Non catturati: stato di salvataggio in corso e errore di salvataggio (dialog
+di riprova); lista dei luoghi mentre si scrive; modifica e rimozione di una
+tappa esistente; dialog di uscita con modifiche non salvate.
+
+### 09 · Dettaglio viaggio e pagina valigia
+
+La pagina valigia (`features/trips/view/pack_suitcase_screen.dart`, rotta
+`/trips/:id/edit-items`) sostituisce "Modifica oggetti" della vecchia
+versione: riepilogo, bagagli a pillola, ricerca, selettore "Da" della casa e
+oggetti della casa divisi per categoria, con quantità. Il salvataggio è
+esplicito, con "Fatto". Con `?from=new` mostra l'indicatore dei passi in cima.
+Non esistono più il wizard a due passi né `edit_trip_items_screen.dart`.
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
 | 1-3 | Dettaglio viaggio | `features/trips/view/trip_detail_screen.dart` | tap su un viaggio | ✓ checklist, ✓ in corso, ✓ senza oggetti |
 | 4 | Conferma eliminazione | `trip_detail_screen.dart` | cestino | ✓ |
 | 5 | Modifica info | `features/trips/view/edit_trip_info_screen.dart` | matita | ✓ |
-| 6 | Modifica oggetti | `features/trips/view/edit_trip_items_screen.dart` | "Modifica oggetti" | ✓ |
-| 7 | Viaggio non trovato | `trip_detail_screen.dart` | link a viaggio eliminato | ✓ |
+| 6 | Pagina valigia da "Modifica oggetti" | `pack_suitcase_screen.dart` | "Modifica oggetti" | ✓ senza indicatore dei passi |
+| 7 | Pagina valigia dal passo 1 | `pack_suitcase_screen.dart` (`fromNewTrip`) | "Avanti: prepara la valigia" al passo 1 | ✓ indicatore con "Viaggio" fatto e "Valigia" attivo, "Fatto" senza numero |
+| 8 | Valigia con scelte e quantità | `pack_suitcase_screen.dart` | bagaglio "Valigia grande" in più, "Calzini" da 7 a 6 | ✓ "Fatto · 11 oggetti" |
+| 9 | Dopo un cambio casa | `pack_suitcase_screen.dart`, `widgets/pack/pack_parts.dart` | pillola "Da" → "Casa al mare" nel selettore | ✓ oggetti di Casa al mare, selezione del viaggio invariata |
+| 10 | Viaggio non trovato | `trip_detail_screen.dart` | link a viaggio eliminato | ✓ |
+
+Non catturati: foglio di selezione della casa aperto; dialog di uscita con
+modifiche non salvate; errore di salvataggio della valigia.
 
 ### 10 · Profilo
 
@@ -267,13 +304,13 @@ stimato.
    - "Gestisci casa" (`houses/view/house_manage_sheet.dart:20`) non ha né handle
      né titolo, a differenza dei form con `StandardBottomSheetLayout`.
    **Risolto** nella PR #20.
-8. **Selettore bagagli con `FilterChip`** (`trips/view/add_trip_screen.dart:482`)
+8. **Selettore bagagli con `FilterChip`** (`trips/view/add_trip_screen.dart:482`, file poi rimosso)
    mentre il resto dell'app usa `AppPillTab` per scelte a pillola.
    **Risolto** nella PR #20.
 9. **Altezze delle pill tab diverse fra schermate.** `height: 40` fisso nel
    dettaglio casa (`house_detail_screen.dart:738`), nel dettaglio viaggio
    (`trips/view/trip_detail_screen.dart:113`) e nel selettore oggetti
-   (`trips/view/trip_items_selector.dart:162`, `:203`); default altrove (tab
+   (`trips/view/trip_items_selector.dart:162`, `:203`, file poi rimosso); default altrove (tab
    Viaggi).
    **Risolto** nella PR #20.
 10. **Valori numerici fissi fuori dai token**, ad esempio:

@@ -19,6 +19,10 @@ import 'postcard_parts.dart';
 class PostcardPile extends StatefulWidget {
   final int itemCount;
 
+  /// Cartolina con cui la pila si apre. Vale solo alla creazione dello stato:
+  /// se è fuori intervallo la pila parte dalla prima.
+  final int initialIndex;
+
   /// Costruisce la cartolina in posizione [index]. Chiamato solo per la
   /// cartolina in cima, e per quella che sale durante lo scorrimento.
   final IndexedWidgetBuilder itemBuilder;
@@ -29,6 +33,7 @@ class PostcardPile extends StatefulWidget {
   const PostcardPile({
     super.key,
     required this.itemCount,
+    this.initialIndex = 0,
     required this.itemBuilder,
     required this.semanticLabel,
   });
@@ -84,6 +89,8 @@ class _PostcardPileState extends State<PostcardPile>
   @override
   void initState() {
     super.initState();
+    final initial = widget.initialIndex;
+    _index = initial >= 0 && initial < widget.itemCount ? initial : 0;
     _controller = AnimationController(vsync: this, duration: _animationDuration)
       ..addListener(_onTick)
       ..addStatusListener(_onStatus);

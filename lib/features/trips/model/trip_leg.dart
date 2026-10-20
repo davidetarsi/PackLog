@@ -7,10 +7,11 @@ part 'trip_leg.g.dart';
 
 /// Tappa intermedia di un viaggio.
 ///
-/// È un promemoria, non una destinazione operativa: conserva solo il nome del
-/// luogo e le date. Niente `placeId`, coordinate o [LocationType], perché
-/// nessuna logica dell'app li legge. Vivono serializzate nel blob JSON
-/// `trips.legs`, quindi aggiungere campi in futuro non costa una migrazione.
+/// È un promemoria, non una destinazione operativa: conserva il nome del
+/// luogo e le date. [lat], [lon], [country] e [houseId] sono facoltativi:
+/// [houseId] identifica una casa salvata, le coordinate descrivono il luogo.
+/// Vivono serializzate nel blob JSON `trips.legs`: i campi facoltativi non
+/// richiedono migrazione, e i JSON scritti prima di averli restano leggibili.
 @freezed
 class TripLeg with _$TripLeg {
   const factory TripLeg({
@@ -18,6 +19,10 @@ class TripLeg with _$TripLeg {
     @JsonKey(name: 'location_display_name') required String locationDisplayName,
     @JsonKey(fromJson: _dateFromJson, toJson: _dateToJson) DateTime? from,
     @JsonKey(fromJson: _dateFromJson, toJson: _dateToJson) DateTime? to,
+    @JsonKey(name: 'lat') double? lat,
+    @JsonKey(name: 'lon') double? lon,
+    @JsonKey(name: 'country') String? country,
+    @JsonKey(name: 'house_id') String? houseId,
   }) = _TripLeg;
 
   factory TripLeg.fromJson(Map<String, dynamic> json) =>

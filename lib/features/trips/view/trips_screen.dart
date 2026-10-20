@@ -42,6 +42,44 @@ class TripsScreen extends ConsumerStatefulWidget {
 class _TripsScreenState extends ConsumerState<TripsScreen> {
   TripFilterTab _selectedTab = TripFilterTab.upcoming;
 
+  /// Viaggio chiesto dalla rotta (`/trips?focus=<id>`), da portare in cima
+  /// alla pila appena compare tra i prossimi.
+  String? _focusId;
+
+  /// Ultimo focus già portato in cima: un focus uguale non riporta la pila
+  /// indietro dopo uno scorrimento.
+  String? _focusApplied;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final focus = GoRouterState.of(context).uri.queryParameters['focus'];
+    if (focus != null) _focusId = focus;
+  }
+
+  /// Indice in [upcoming] del viaggio da portare in cima, se il focus non è
+  /// ancora applicato e il viaggio è tra i prossimi. Null altrimenti.
+  int? _pendingFocusIndex(List<TripModel> upcoming) {
+    final focus = _focusId;
+    if (focus == null || focus == _focusApplied) return null;
+    final index = upcoming.indexWhere((trip) => trip.id == focus);
+    return index < 0 ? null : index;
+  }
+
+  /// Dopo il frame in cui la pila si apre sul focus, il focus è applicato: la
+  /// tab e lo scorrimento tornano liberi.
+  void _applyFocusAfterFrame() {
+    final focus = _focusId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || focus == null || focus != _focusId) return;
+      if (focus == _focusApplied) return;
+      setState(() {
+        _focusApplied = focus;
+        _selectedTab = TripFilterTab.upcoming;
+      });
+    });
+  }
+
   Future<void> _handleTripLongPress(TripModel trip) async {
     final action = await showEntityContextMenu(
       context: context,
@@ -121,6 +159,15 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     };
     final colorScheme = Theme.of(context).colorScheme;
 
+    final loadedTrips = tripsAsync.valueOrNull;
+    final focusIndex = loadedTrips == null
+        ? null
+        : _pendingFocusIndex(upcomingTrips(loadedTrips));
+    if (focusIndex != null) _applyFocusAfterFrame();
+    final activeTab = focusIndex == null
+        ? _selectedTab
+        : TripFilterTab.upcoming;
+
     return ShellTabScaffold(
       body: Column(
         children: [
@@ -128,7 +175,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
           Center(
             child: AppPillTab<TripFilterTab>(
               items: TripFilterTab.values,
-              selectedItem: _selectedTab,
+              selectedItem: activeTab,
               getLabel: (tab) => tab.label,
               onSelected: (tab) => setState(() => _selectedTab = tab),
               selectedColor: colorScheme.onSurface,
@@ -139,7 +186,13 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
           Expanded(
             child: tripsAsync.when(
               skipLoadingOnReload: true,
-              data: (trips) => _buildContent(context, trips, houseNames),
+              data: (trips) => _buildContent(
+                context,
+                trips,
+                houseNames,
+                tab: activeTab,
+                focusIndex: focusIndex,
+              ),
               loading: () => const SkeletonTripsBody(),
               error: (error, stack) => RefreshIndicator(
                 onRefresh: () => ref.refresh(tripNotifierProvider.future),
@@ -164,8 +217,10 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   Widget _buildContent(
     BuildContext context,
     List<TripModel> trips,
-    Map<String, String> houseNames,
-  ) {
+    Map<String, String> houseNames, {
+    required TripFilterTab tab,
+    required int? focusIndex,
+  }) {
     if (trips.isEmpty) {
       return _buildScrollableEmpty(
         context,
@@ -179,7 +234,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       );
     }
 
-    switch (_selectedTab) {
+    switch (tab) {
       case TripFilterTab.upcoming:
         final upcoming = upcomingTrips(trips);
         if (upcoming.isEmpty) {
@@ -194,7 +249,12 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
             ),
           );
         }
-        return _buildPile(context, upcoming, houseNames);
+        return _buildPile(
+          context,
+          upcoming,
+          houseNames,
+          focusIndex: focusIndex,
+        );
 
       case TripFilterTab.past:
         final past = pastTrips(trips);
@@ -241,8 +301,12 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   Widget _buildPile(
     BuildContext context,
     List<TripModel> upcoming,
-    Map<String, String> houseNames,
-  ) {
+    Map<String, String> houseNames, {
+    required int? focusIndex,
+  }) {
+    // La chiave cambia solo quando un focus viene applicato, così la pila si
+    // ricrea con [initialIndex] e non a ogni rebuild.
+    final pileFocus = focusIndex != null ? _focusId : _focusApplied;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         context.spacingMd,
@@ -251,12 +315,17 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
         context.navBarReservedHeight + context.spacingLg,
       ),
       child: PostcardPile(
+        key: ValueKey('postcard_pile_$pileFocus'),
         itemCount: upcoming.length,
+        initialIndex: focusIndex ?? 0,
         semanticLabel: (index) => 'trips.pile.semantics'.tr(
           args: [
             '${index + 1}',
             '${upcoming.length}',
-            _destinationOf(upcoming[index], houseNames),
+            postcardTitle(
+              upcoming[index],
+              destination: _destinationOf(upcoming[index], houseNames),
+            ),
           ],
         ),
         itemBuilder: (context, index) {
@@ -267,6 +336,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
             child: TripPostcard(
               trip: trip,
               destination: _destinationOf(trip, houseNames),
+              houseNames: houseNames,
               onCta: (cta) => _onPileCta(trip, cta),
             ),
           );

@@ -38,7 +38,10 @@ import 'package:pack_log/features/tour/model/onboarding_state.dart';
 import 'package:pack_log/features/tour/providers/post_login_onboarding_provider.dart';
 import 'package:pack_log/features/tour/repositories/i_onboarding_repository.dart';
 import 'package:pack_log/features/tour/repositories/shared_prefs_onboarding_repository.dart';
+import 'package:pack_log/shared/model/location_suggestion_model.dart';
+import 'package:pack_log/shared/model/location_type.dart';
 import 'package:pack_log/shared/providers/connectivity_provider.dart';
+import 'package:pack_log/shared/services/location_search_service.dart';
 
 import 'seed.dart';
 
@@ -134,6 +137,38 @@ class _MemoryOnboardingRepository implements IOnboardingRepository {
   Future<String?> loadDefaultHouseId() async => _defaultHouse;
   @override
   Future<void> saveDefaultHouseId(String? id) async => _defaultHouse = id;
+}
+
+/// Ricerca di luoghi senza rete: tre città fisse, filtrate sul nome.
+class _FakeLocationSearch extends LocationSearchService {
+  static final _places = [
+    for (final (name, country, lat, lon) in const [
+      ('Lisbona', 'Portogallo', 38.7223, -9.1393),
+      ('Sintra', 'Portogallo', 38.7980, -9.3900),
+      ('Siviglia', 'Spagna', 37.3891, -5.9845),
+    ])
+      LocationSuggestionModel(
+        placeId: 'fake-$name',
+        displayName: '$name, $country',
+        name: name,
+        city: name,
+        country: country,
+        locationType: LocationType.city,
+        lat: lat,
+        lon: lon,
+      ),
+  ];
+
+  @override
+  Future<List<LocationSuggestionModel>> search(
+    String query, {
+    required String lang,
+  }) async {
+    final q = query.trim().toLowerCase();
+    return _places
+        .where((place) => place.name!.toLowerCase().contains(q))
+        .toList();
+  }
 }
 
 class _MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
@@ -236,6 +271,8 @@ class ScreenshotApp {
           AppAnalyticsService(null, consent: ConsentService()),
         ),
         syncOrchestratorProvider.overrideWithValue(sync),
+        // Niente Geoapify nei test: la ricerca delle mete è finta.
+        locationSearchServiceProvider.overrideWithValue(_FakeLocationSearch()),
         connectivityNotifierProvider.overrideWith(_OnlineConnectivity.new),
         totalUnsyncedCountProvider.overrideWith(
           (ref) async => setup.unsyncedChanges,
