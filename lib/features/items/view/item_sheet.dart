@@ -169,8 +169,10 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   /// Categoria dedotta dal nome, solo nella creazione e finché l'utente non
   /// ne sceglie una. [service] è `null` finché il dizionario non è pronto.
   ItemCategory? _inferredCategory(CategoryInferService? service) {
-    if (!_isNew || _chosenCategory != null) return null;
-    return service?.infer(_nameController.text.trim()).category;
+    final name = _nameController.text.trim();
+    // Senza nome non si propone niente, come nella pagina "Aggiungi".
+    if (!_isNew || _chosenCategory != null || name.isEmpty) return null;
+    return service?.infer(name).category;
   }
 
   /// Nella creazione, toccare la pillola già scelta torna alla proposta, come
@@ -338,173 +340,189 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     );
     final footnote = widget.footnote;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppConstants.modalBorderRadius),
-          ),
+    // Durante il salvataggio il foglio non si chiude: chi l'ha aperto aspetta
+    // l'oggetto creato.
+    return PopScope(
+      canPop: !_isSaving,
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
         ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DsSheetHeader(
-                title: _isNew ? 'items.new_item'.tr() : 'items.edit_item'.tr(),
-                onClose: () => Navigator.pop(context),
-                actions: [
-                  if (!_isNew)
-                    PopupMenuButton<_ItemMenu>(
-                      key: const Key('item_sheet_menu'),
-                      icon: const Icon(Icons.more_horiz),
-                      onSelected: (choice) => switch (choice) {
-                        _ItemMenu.move => _moveToHouse(),
-                        _ItemMenu.delete => _delete(),
-                      },
-                      itemBuilder: (_) => [
-                        PopupMenuItem(
-                          value: _ItemMenu.move,
-                          child: Text('items.move_to_house'.tr()),
-                        ),
-                        PopupMenuItem(
-                          value: _ItemMenu.delete,
-                          child: Text(
-                            'common.delete'.tr(),
-                            style: TextStyle(color: cs.error),
+        child: Container(
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppConstants.modalBorderRadius),
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DsSheetHeader(
+                  title: _isNew
+                      ? 'items.new_item'.tr()
+                      : 'items.edit_item'.tr(),
+                  onClose: () => Navigator.pop(context),
+                  actions: [
+                    if (!_isNew)
+                      PopupMenuButton<_ItemMenu>(
+                        key: const Key('item_sheet_menu'),
+                        icon: const Icon(Icons.more_horiz),
+                        onSelected: (choice) => switch (choice) {
+                          _ItemMenu.move => _moveToHouse(),
+                          _ItemMenu.delete => _delete(),
+                        },
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: _ItemMenu.move,
+                            child: Text('items.move_to_house'.tr()),
                           ),
-                        ),
-                      ],
+                          PopupMenuItem(
+                            value: _ItemMenu.delete,
+                            child: Text(
+                              'common.delete'.tr(),
+                              style: TextStyle(color: cs.error),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      context.spacingMd,
+                      0,
+                      context.spacingMd,
+                      context.spacingMd,
                     ),
-                ],
-              ),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    context.spacingMd,
-                    0,
-                    context.spacingMd,
-                    context.spacingMd,
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        DsSectionTitle('items.name_label'.tr()),
-                        TextFormField(
-                          key: const Key('item_sheet_name'),
-                          controller: _nameController,
-                          minLines: 1,
-                          maxLines: 3,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: dsFieldDecoration(context),
-                          // Ridisegna la proposta di categoria.
-                          onChanged: (_) => setState(() {}),
-                          validator: (v) => v == null || v.trim().isEmpty
-                              ? 'common.name_required_validation'.tr()
-                              : null,
-                        ),
-                        DsSectionTitle('items.category_label'.tr()),
-                        SizedBox(
-                          key: const Key('item_sheet_category'),
-                          height: context.responsive(
-                            AppConstants.categoryRowHeight,
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          DsSectionTitle('items.name_label'.tr()),
+                          TextFormField(
+                            key: const Key('item_sheet_name'),
+                            controller: _nameController,
+                            minLines: 1,
+                            maxLines: 3,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: dsFieldDecoration(context),
+                            // Ridisegna la proposta di categoria.
+                            onChanged: (_) => setState(() {}),
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? 'common.name_required_validation'.tr()
+                                : null,
                           ),
-                          child: Row(
-                            children: [
-                              for (final category in ItemCategory.values) ...[
-                                if (category != ItemCategory.values.first)
-                                  SizedBox(width: context.spacingXs),
-                                Expanded(
-                                  child: CategoryPill(
-                                    category: category,
-                                    pillState: _pillState(category, inferred),
-                                    onTap: () => _tapCategory(category),
+                          DsSectionTitle('items.category_label'.tr()),
+                          SizedBox(
+                            key: const Key('item_sheet_category'),
+                            height: context.responsive(
+                              AppConstants.categoryRowHeight,
+                            ),
+                            child: Row(
+                              children: [
+                                for (final category in ItemCategory.values) ...[
+                                  if (category != ItemCategory.values.first)
+                                    SizedBox(width: context.spacingXs),
+                                  Expanded(
+                                    child: CategoryPill(
+                                      category: category,
+                                      pillState: _pillState(category, inferred),
+                                      onTap: () => _tapCategory(category),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          _InlineField(
+                            label: 'items.quantity'.tr(),
+                            child: QuantityStepper(
+                              value: _quantity,
+                              minValue: 1,
+                              // Neutro: nella scheda l'arancio è del bottone e
+                              // della categoria scelta.
+                              accentColor: cs.onSurface,
+                              onChanged: (v) => setState(() => _quantity = v),
+                            ),
+                          ),
+                          if (spaces.isNotEmpty || _spaceId != null)
+                            _InlineField(
+                              label: 'items.space_label'.tr(),
+                              child: InkWell(
+                                key: const Key('item_sheet_space'),
+                                borderRadius: BorderRadius.circular(
+                                  AppConstants.inputBorderRadius,
+                                ),
+                                onTap: () => _pickSpace(spaces),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: context.spacingSm,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          spaceName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: textTheme.bodyLarge,
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.chevron_right,
+                                        size: context.iconSizeMd,
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        _InlineField(
-                          label: 'items.quantity'.tr(),
-                          child: QuantityStepper(
-                            value: _quantity,
-                            minValue: 1,
-                            // Neutro: nella scheda l'arancio è del bottone e
-                            // della categoria scelta.
-                            accentColor: cs.onSurface,
-                            onChanged: (v) => setState(() => _quantity = v),
-                          ),
-                        ),
-                        if (spaces.isNotEmpty || _spaceId != null)
-                          _InlineField(
-                            label: 'items.space_label'.tr(),
-                            child: InkWell(
-                              key: const Key('item_sheet_space'),
-                              borderRadius: BorderRadius.circular(
-                                AppConstants.inputBorderRadius,
                               ),
-                              onTap: () => _pickSpace(spaces),
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: context.spacingSm,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(spaceName, style: textTheme.bodyLarge),
-                                    Icon(
-                                      Icons.chevron_right,
-                                      size: context.iconSizeMd,
-                                      color: cs.onSurfaceVariant,
-                                    ),
-                                  ],
+                            ),
+                          DsSectionTitle('items.details_label'.tr()),
+                          TextFormField(
+                            key: const Key('item_sheet_note'),
+                            controller: _noteController,
+                            minLines: 1,
+                            maxLines: 4,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: dsFieldDecoration(
+                              context,
+                              hintText: 'items.add_note'.tr(),
+                            ),
+                          ),
+                          if (footnote != null)
+                            Padding(
+                              padding: EdgeInsets.only(top: context.spacingMd),
+                              child: Text(
+                                footnote,
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: cs.onSurfaceVariant,
                                 ),
                               ),
                             ),
+                          SizedBox(height: context.spacingLg),
+                          DsButton(
+                            key: const Key('item_sheet_save'),
+                            label: widget.submitLabel ?? 'common.save'.tr(),
+                            icon: widget.submitIcon,
+                            expand: true,
+                            isLoading: _isSaving,
+                            onPressed: _save,
                           ),
-                        DsSectionTitle('items.details_label'.tr()),
-                        TextFormField(
-                          key: const Key('item_sheet_note'),
-                          controller: _noteController,
-                          minLines: 1,
-                          maxLines: 4,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: dsFieldDecoration(
-                            context,
-                            hintText: 'items.add_note'.tr(),
-                          ),
-                        ),
-                        if (footnote != null)
-                          Padding(
-                            padding: EdgeInsets.only(top: context.spacingMd),
-                            child: Text(
-                              footnote,
-                              style: textTheme.bodySmall?.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        SizedBox(height: context.spacingLg),
-                        DsButton(
-                          key: const Key('item_sheet_save'),
-                          label: widget.submitLabel ?? 'common.save'.tr(),
-                          icon: widget.submitIcon,
-                          expand: true,
-                          isLoading: _isSaving,
-                          onPressed: _save,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -526,10 +544,13 @@ class _InlineField extends StatelessWidget {
       padding: EdgeInsets.only(top: context.spacingLg),
       child: Row(
         children: [
+          Text(label, style: DsSectionTitle.textStyle(context)),
+          SizedBox(width: context.spacingMd),
+          // Il controllo sta a destra e, se è lungo (il nome di uno spazio),
+          // si stringe lui: l'etichetta resta intera.
           Expanded(
-            child: Text(label, style: DsSectionTitle.textStyle(context)),
+            child: Align(alignment: Alignment.centerRight, child: child),
           ),
-          child,
         ],
       ),
     );

@@ -62,13 +62,11 @@
     "category": "Category",
     "category_label": "Category",
     "description": "Description",
-    "description_label": "Description",
     "quantity": "Quantity",
     "space_label": "Space",
     "select_space": "Select a space",
     "add_note": "Add a note",
     "move_to_house": "Move to another house",
-    "select_category": "Choose a category",
     "select_items": "Select items",
     "selected_count": {
       "one": "{} selected",

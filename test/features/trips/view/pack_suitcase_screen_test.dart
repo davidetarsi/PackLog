@@ -799,6 +799,35 @@ void main() {
       expect(find.byType(PackItemRow), findsNothing);
     });
 
+    testWidgets('il grassetto cade sul nome cercato, anche di una lettera', (
+      tester,
+    ) async {
+      arrange();
+      await pumpPack(tester);
+
+      // "g" è anche dentro "Aggiungi": in grassetto va solo il nome.
+      await tester.enterText(find.byType(TextField), 'g');
+      await tester.pumpAndSettle();
+
+      // Anche le icone sono RichText: si prende quello della frase.
+      final rich = tester
+          .widgetList<RichText>(
+            find.descendant(of: addRow(), matching: find.byType(RichText)),
+          )
+          .singleWhere((r) => r.text.toPlainText().startsWith('Aggiungi'));
+      final bold = <String>[];
+      rich.text.visitChildren((span) {
+        if (span is TextSpan &&
+            span.style?.fontWeight == FontWeight.w700 &&
+            span.text != null) {
+          bold.add(span.text!);
+        }
+        return true;
+      });
+      expect(bold, ['g']);
+      expect(rich.text.toPlainText(), 'Aggiungi «g» in Casa Milano');
+    });
+
     testWidgets('risultati senza nome esatto: la riga sta in fondo', (
       tester,
     ) async {

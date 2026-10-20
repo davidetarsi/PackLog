@@ -511,8 +511,8 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     final query = _query.toLowerCase();
     final addRow = PackAddRow(
       key: const Key('pack_add_row'),
-      label: 'trips.pack.add_item'.tr(args: [_query, house.displayName]),
       name: _query,
+      houseName: house.displayName,
       onTap: () => _addFromSearch(house),
     );
 

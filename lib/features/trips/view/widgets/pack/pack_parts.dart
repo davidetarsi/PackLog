@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
@@ -148,40 +149,41 @@ class PackItemRow extends StatelessWidget {
 }
 
 /// Riga "+ Aggiungi «nome» in Casa": crea dalla ricerca un oggetto che nella
-/// casa non c'è. Il nome cercato è in grassetto dentro [label], che è già
-/// tradotto.
+/// casa non c'è. Il nome cercato è in grassetto.
 class PackAddRow extends StatelessWidget {
-  /// Testo intero della riga, con [name] dentro.
-  final String label;
-
-  /// Nome cercato, messo in evidenza nella riga.
+  /// Nome cercato.
   final String name;
+  final String houseName;
   final VoidCallback onTap;
 
   const PackAddRow({
     super.key,
-    required this.label,
     required this.name,
+    required this.houseName,
     required this.onTap,
   });
+
+  /// Segnaposto del nome nella frase tradotta: si spezza lì, così il
+  /// grassetto cade sul nome anche se le stesse lettere sono altrove.
+  static const _nameMark = '\u0000';
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final at = label.indexOf(name);
-    final text = at < 0
-        ? TextSpan(text: label)
-        : TextSpan(
-            children: [
-              TextSpan(text: label.substring(0, at)),
-              TextSpan(
-                text: name,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              TextSpan(text: label.substring(at + name.length)),
-            ],
-          );
+    final parts = 'trips.pack.add_item'
+        .tr(args: [_nameMark, houseName])
+        .split(_nameMark);
+    final text = TextSpan(
+      children: [
+        TextSpan(text: parts.first),
+        TextSpan(
+          text: name,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        TextSpan(text: parts.skip(1).join()),
+      ],
+    );
 
     return Material(
       color: context.groupSurface,

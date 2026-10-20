@@ -221,6 +221,14 @@ void main() {
       await app.finish();
     });
 
+    testWidgets('senza nome nessuna categoria proposta', (tester) async {
+      final (:app, result: _) = await openNew(tester);
+      for (final category in ItemCategory.values) {
+        expect(pillOf(tester, category), CategoryPillState.inactive);
+      }
+      await app.finish();
+    });
+
     testWidgets('senza nome non crea', (tester) async {
       final (:app, result: _) = await openNew(tester);
       await app.tap(find.byKey(const Key('item_sheet_save')));
