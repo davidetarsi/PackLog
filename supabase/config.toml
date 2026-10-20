@@ -434,3 +434,15 @@ entrypoint = "./functions/openai-proxy/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/openai-proxy/*.html" ]
+
+[functions.pack-trip]
+enabled = true
+verify_jwt = true
+import_map = "./functions/pack-trip/deno.json"
+entrypoint = "./functions/pack-trip/index.ts"
+
+[functions.trip-weather]
+enabled = true
+verify_jwt = true
+import_map = "./functions/trip-weather/deno.json"
+entrypoint = "./functions/trip-weather/index.ts"
