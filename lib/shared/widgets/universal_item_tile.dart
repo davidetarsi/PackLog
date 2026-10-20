@@ -77,7 +77,7 @@ class UniversalItemTile extends StatelessWidget {
   /// dell'oggetto l'unico accento.
   ///
   /// **Non si applica** quando il chiamante passa [borderColor]: in quel caso
-  /// il bordo è semantico (selezione in `TripItemsSelector`) e la tile resta
+  /// il bordo è semantico (per esempio una selezione) e la tile resta
   /// un contenitore riquadrato.
   final bool dense;
 

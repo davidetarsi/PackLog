@@ -1108,7 +1108,7 @@ final flows = <Flow>[
       'modifica-oggetti-viaggio',
       'default',
       route: '/trips/:id/edit-items',
-      source: 'lib/features/trips/view/edit_trip_items_screen.dart',
+      source: 'lib/features/trips/view/pack_suitcase_screen.dart',
       description: 'Selezione degli oggetti da portare.',
       steps: (app) async {
         await _tripDetail(app);

@@ -11,9 +11,11 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/repositories/house_repository.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/luggages/model/luggage_model.dart';
+import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
-import 'package:pack_log/features/trips/view/edit_trip_items_screen.dart';
+import 'package:pack_log/features/trips/view/pack_suitcase_screen.dart';
 import 'package:pack_log/features/trips/view/widgets/trip_edit_placeholder.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_empty_state.dart';
@@ -24,6 +26,8 @@ class MockTripRepository extends Mock implements TripRepository {}
 class MockHouseRepository extends Mock implements HouseRepository {}
 
 class MockItemRepository extends Mock implements ItemRepository {}
+
+class MockLuggageRepository extends Mock implements LuggageRepository {}
 
 /// Le schermate di modifica copiano il viaggio in uno stato locale: finché
 /// quella copia non esiste devono mostrare qualcosa. Prima mostravano sempre
@@ -119,6 +123,7 @@ void main() {
       final tripRepo = MockTripRepository();
       final houseRepo = MockHouseRepository();
       final itemRepo = MockItemRepository();
+      final luggageRepo = MockLuggageRepository();
       final trips = Completer<List<TripModel>>();
 
       when(() => tripRepo.getAllTrips()).thenAnswer((_) => trips.future);
@@ -128,6 +133,9 @@ void main() {
       when(
         () => itemRepo.getItemsByHouseId(any()),
       ).thenAnswer((_) async => <ItemModel>[]);
+      when(
+        () => luggageRepo.getAllLuggages(),
+      ).thenAnswer((_) async => <LuggageModel>[]);
 
       await tester.pumpWidget(
         EasyLocalization(
@@ -141,13 +149,14 @@ void main() {
                 tripRepositoryProvider.overrideWithValue(tripRepo),
                 houseRepositoryProvider.overrideWithValue(houseRepo),
                 itemRepositoryProvider.overrideWithValue(itemRepo),
+                luggageRepositoryProvider.overrideWithValue(luggageRepo),
               ],
               child: MaterialApp(
                 theme: AppTheme.light,
                 locale: context.locale,
                 supportedLocales: context.supportedLocales,
                 localizationsDelegates: context.localizationDelegates,
-                home: const EditTripItemsScreen(tripId: 'trip-1'),
+                home: const PackSuitcaseScreen(tripId: 'trip-1'),
               ),
             ),
           ),
@@ -169,7 +178,7 @@ void main() {
         findsNothing,
         reason: 'il viaggio è arrivato: la schermata deve costruirsi',
       );
-      expect(find.byType(EditTripItemsScreen), findsOneWidget);
+      expect(find.byType(PackSuitcaseScreen), findsOneWidget);
     },
   );
 }
