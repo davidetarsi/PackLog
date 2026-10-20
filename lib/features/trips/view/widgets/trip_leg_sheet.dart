@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../shared/helpers/snack_bar_helper.dart';
+import '../../../../shared/model/location_suggestion_model.dart';
 import '../../../../shared/theme/theme.dart';
 import '../../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../../shared/widgets/standard_bottom_sheet_layout.dart';
@@ -38,6 +39,10 @@ class _TripLegSheetState extends State<_TripLegSheet> {
   late DateTime? _from = widget.initial?.from;
   late DateTime? _to = widget.initial?.to;
 
+  /// Luogo scelto dalla ricerca in questa sessione. Null se il testo è
+  /// stato scritto a mano o non è cambiato.
+  LocationSuggestionModel? _picked;
+
   bool get _canSave => _location.trim().isNotEmpty;
 
   Future<void> _pickDates() async {
@@ -61,14 +66,32 @@ class _TripLegSheetState extends State<_TripLegSheet> {
       AppSnackBar.showError(context, 'trips.leg_location_required'.tr());
       return;
     }
-    Navigator.pop(
-      context,
-      TripLeg(
-        id: widget.initial?.id ?? const Uuid().v4(),
-        locationDisplayName: _location.trim(),
-        from: _from,
-        to: _to,
-      ),
+    Navigator.pop(context, _buildLeg());
+  }
+
+  /// Costruisce la tappa partendo da quella in modifica, così i campi che il
+  /// form non mostra (coordinate, paese, casa) non si perdono.
+  TripLeg _buildLeg() {
+    final name = _location.trim();
+    final initial = widget.initial;
+    final picked = _picked;
+    final base =
+        initial ?? TripLeg(id: const Uuid().v4(), locationDisplayName: name);
+    // Coordinate, paese e casa descrivono il luogo: restano finché il luogo
+    // non cambia, cioè se non è stato scelto un luogo nuovo e il nome è lo
+    // stesso.
+    final placeChanged =
+        initial == null ||
+        picked != null ||
+        name != initial.locationDisplayName;
+    return base.copyWith(
+      locationDisplayName: name,
+      from: _from,
+      to: _to,
+      lat: placeChanged ? picked?.lat : base.lat,
+      lon: placeChanged ? picked?.lon : base.lon,
+      country: placeChanged ? picked?.country : base.country,
+      houseId: placeChanged ? null : base.houseId,
     );
   }
 
@@ -109,9 +132,14 @@ class _TripLegSheetState extends State<_TripLegSheet> {
             key: const Key('trip_leg_sheet_location'),
             initialValue: widget.initial?.locationDisplayName,
             hintText: 'trips.destination_hint'.tr(),
-            onLocationSelected: (location) =>
-                setState(() => _location = location.displayName),
-            onTextChanged: (text) => setState(() => _location = text),
+            onLocationSelected: (location) => setState(() {
+              _location = location.displayName;
+              _picked = location;
+            }),
+            onTextChanged: (text) => setState(() {
+              _location = text;
+              _picked = null;
+            }),
           ),
           SizedBox(height: context.spacingMd),
           Text(
