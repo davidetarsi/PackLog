@@ -52,6 +52,14 @@ String? _nonEmpty(String? value) {
   return value;
 }
 
+/// Titolo della cartolina: il nome del viaggio. Quando l'utente non lo scrive
+/// la creazione ci mette la meta, quindi c'è quasi sempre; se manca si usa
+/// [destination].
+String postcardTitle(TripModel trip, {required String destination}) {
+  final name = trip.name.trim();
+  return name.isNotEmpty ? name : destination;
+}
+
 /// Nome della destinazione mostrato sulla cartolina.
 ///
 /// Ordine: nome della casa (intero), città, parte prima della virgola della

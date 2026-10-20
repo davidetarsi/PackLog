@@ -110,6 +110,41 @@ void main() {
     _assetLoader = MemoryAssetLoader(readAppTranslations());
   });
 
+  group('intestazione', () {
+    testWidgets('il titolo è il nome del viaggio, la meta sta sotto', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        trip: _trip(name: 'Weekend al mare'),
+        destination: 'Casa al mare',
+      );
+
+      expect(find.text('Weekend al mare'), findsOneWidget);
+      expect(find.text('Casa al mare'), findsWidgets);
+      expect(find.text('Saluti da'), findsNothing);
+    });
+
+    testWidgets('se nome e meta coincidono la meta non si ripete', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        trip: _trip(name: 'Milano'),
+        destination: 'Milano',
+      );
+
+      expect(find.text('Milano'), findsWidgets);
+      expect(
+        find.descendant(
+          of: find.byType(TripPostcard),
+          matching: find.text('Milano'),
+        ),
+        findsNWidgets(2), // titolo + luogo nell'itinerario
+      );
+    });
+  });
+
   group('itinerario', () {
     testWidgets('Lisbona con una tappa a Sintra mostra cinque righe', (
       tester,

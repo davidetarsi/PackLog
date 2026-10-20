@@ -284,7 +284,6 @@
     "no_items_in_named_house": "No items in {house}",
     "destination_house_hint": "Going to one of your homes? Choose “House”: the things you pack will show up there as temporary.",
     "postcard": {
-      "greetings": "Greetings from",
       "days_label": {"one": "day", "other": "days"},
       "today": "today",
       "traveling": "travelling",

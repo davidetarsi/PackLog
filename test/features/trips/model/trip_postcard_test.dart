@@ -236,6 +236,20 @@ void main() {
     });
   });
 
+  group('postcardTitle', () {
+    test('usa il nome del viaggio', () {
+      final trip = makeTrip('t1', destination: lisbona);
+
+      expect(postcardTitle(trip, destination: 'Lisbona'), 'Trip t1');
+    });
+
+    test('senza nome usa la meta', () {
+      final trip = makeTrip('t2').copyWith(name: '  ');
+
+      expect(postcardTitle(trip, destination: 'Lisbona'), 'Lisbona');
+    });
+  });
+
   group('tripDestinationName', () {
     test('usa il nome intero della casa senza tagli', () {
       final trip = makeTrip('d1', destination: lisbona);

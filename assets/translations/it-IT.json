@@ -284,7 +284,6 @@
     "no_items_in_named_house": "Nessun oggetto in {house}",
     "destination_house_hint": "Vai in una delle tue case? Scegli «Casa»: gli oggetti che porti compariranno lì come temporanei.",
     "postcard": {
-      "greetings": "Saluti da",
       "days_label": {"one": "giorno", "other": "giorni"},
       "today": "oggi",
       "traveling": "in viaggio",

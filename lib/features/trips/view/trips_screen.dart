@@ -256,7 +256,10 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
           args: [
             '${index + 1}',
             '${upcoming.length}',
-            _destinationOf(upcoming[index], houseNames),
+            postcardTitle(
+              upcoming[index],
+              destination: _destinationOf(upcoming[index], houseNames),
+            ),
           ],
         ),
         itemBuilder: (context, index) {
