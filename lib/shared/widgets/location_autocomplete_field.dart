@@ -1,22 +1,21 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../config/app_config.dart';
 import '../constants/app_constants.dart';
 import '../helpers/snack_bar_helper.dart';
 import '../model/model.dart';
+import '../services/location_search_service.dart';
 import '../theme/app_spacing.dart';
 
 /// Widget riutilizzabile per l'autocomplete delle località.
-/// Usa l'API Geoapify per cercare città, regioni e stati.
+/// Usa l'API Geoapify, tramite [locationSearchServiceProvider], per cercare
+/// città, regioni e stati.
 ///
 /// I suggerimenti appaiono dalla terza lettera digitata.
-class LocationAutocompleteField extends StatefulWidget {
+class LocationAutocompleteField extends ConsumerStatefulWidget {
   /// Valore iniziale del campo
   final String? initialValue;
 
@@ -66,11 +65,12 @@ class LocationAutocompleteField extends StatefulWidget {
   });
 
   @override
-  State<LocationAutocompleteField> createState() =>
+  ConsumerState<LocationAutocompleteField> createState() =>
       _LocationAutocompleteFieldState();
 }
 
-class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
+class _LocationAutocompleteFieldState
+    extends ConsumerState<LocationAutocompleteField> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final LayerLink _layerLink = LayerLink();
@@ -145,7 +145,9 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
     });
 
     try {
-      final suggestions = await _fetchLocationSuggestions(query);
+      final suggestions = await ref
+          .read(locationSearchServiceProvider)
+          .search(query, lang: context.locale.languageCode);
 
       if (!mounted) return;
 
@@ -159,7 +161,7 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       } else {
         _removeOverlay();
       }
-    } on _GeocodeRateLimitException {
+    } on GeocodeRateLimitException {
       if (!mounted) return;
       setState(() {
         _suggestions = [];
@@ -180,74 +182,6 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
         _isLoading = false;
       });
       _removeOverlay();
-    }
-  }
-
-  Future<List<LocationSuggestionModel>> _fetchLocationSuggestions(
-    String query,
-  ) async {
-    final uri = Uri.parse('${AppConfig.supabaseUrl}/functions/v1/geocode-proxy')
-        .replace(
-          queryParameters: {
-            'text': query,
-            'lang': context.locale.languageCode.substring(0, 2),
-            'limit': '15',
-            'bias': 'countrycode:none',
-          },
-        );
-
-    // Il proxy esegue `getUser(token)` per il rate-limit per-utente: serve
-    // il JWT dell'utente loggato, non l'anon key. L'auth gate del router
-    // garantisce che chiunque possa raggiungere questo widget sia loggato;
-    // in caso edge di sessione scaduta tra il check e qui, ritorniamo
-    // suggestion vuoti senza errori — l'utente proverà a digitare ancora.
-    final jwt = Supabase.instance.client.auth.currentSession?.accessToken;
-    if (jwt == null) return [];
-
-    try {
-      final response = await http.get(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $jwt',
-          'apikey': AppConfig.supabaseAnonKey,
-        },
-      );
-
-      if (response.statusCode == 429) {
-        throw const _GeocodeRateLimitException();
-      }
-
-      if (response.statusCode != 200) {
-        throw Exception('Errore HTTP Geoapify: ${response.statusCode}');
-      }
-
-      final json = jsonDecode(response.body) as Map<String, dynamic>;
-      final geoapifyResponse = GeoapifyResponseModel.fromJson(json);
-
-      final suggestions = geoapifyResponse.features
-          .map(
-            (feature) => LocationSuggestionModel.fromGeoapifyFeature(feature),
-          )
-          .where((s) => s.displayName.isNotEmpty)
-          // ARCHITECTURE CHOICE: Filtro applicativo per garantire solo macro-aree.
-          // Scartiamo tutto ciò che finisce nel bucket 'other' (strade, ristoranti, etc.)
-          .where((s) => s.locationType != LocationType.other)
-          .toList();
-
-      final seen = <String>{};
-      final uniqueSuggestions = <LocationSuggestionModel>[];
-
-      for (final suggestion in suggestions) {
-        if (seen.add(suggestion.deduplicationKey)) {
-          uniqueSuggestions.add(suggestion);
-        }
-      }
-
-      return uniqueSuggestions.take(5).toList();
-    } catch (e) {
-      // In produzione, loggare l'errore su Crashlytics/Sentry, non stamparlo solo in console
-      debugPrint('[LocationAutocompleteField] Errore API: $e');
-      rethrow;
     }
   }
 
@@ -489,10 +423,4 @@ class _LocationAutocompleteFieldState extends State<LocationAutocompleteField> {
       ),
     );
   }
-}
-
-/// Sentinella interna: distingue il 429 del rate-limit dagli altri errori
-/// così da poter mostrare un messaggio specifico in `_searchLocations`.
-class _GeocodeRateLimitException implements Exception {
-  const _GeocodeRateLimitException();
 }

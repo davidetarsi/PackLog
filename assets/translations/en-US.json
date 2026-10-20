@@ -308,7 +308,10 @@
     "new": {
       "step_trip": "Trip",
       "step_suitcase": "Suitcase",
-      "when": "When?"
+      "when": "When?",
+      "where_hint": "One of your homes or a city",
+      "your_homes": "Your homes",
+      "places": "Places"
     },
     "pile": {
       "position": "{} of {}",

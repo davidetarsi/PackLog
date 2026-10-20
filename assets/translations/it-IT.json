@@ -308,7 +308,10 @@
     "new": {
       "step_trip": "Viaggio",
       "step_suitcase": "Valigia",
-      "when": "Quando?"
+      "when": "Quando?",
+      "where_hint": "Una tua casa o una città",
+      "your_homes": "Le tue case",
+      "places": "Luoghi"
     },
     "pile": {
       "position": "{} di {}",
