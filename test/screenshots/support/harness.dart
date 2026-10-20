@@ -40,6 +40,8 @@ import 'package:pack_log/features/tour/repositories/i_onboarding_repository.dart
 import 'package:pack_log/features/tour/repositories/shared_prefs_onboarding_repository.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/model/location_type.dart';
+import 'package:pack_log/features/items/model/italian_dictionary.dart';
+import 'package:pack_log/features/items/services/category_infer_service.dart';
 import 'package:pack_log/shared/providers/connectivity_provider.dart';
 import 'package:pack_log/shared/services/location_search_service.dart';
 
@@ -289,6 +291,11 @@ class ScreenshotApp {
         ),
         gptUsageProvider.overrideWith(
           (ref) async => const GptUsageModel(usageCount: 12, usageCap: 30),
+        ),
+        // Il dizionario remoto passa da Supabase, che qui non c'è: si usa
+        // quello incluso nell'app, come fa l'app quando il remoto non risponde.
+        categoryInferServiceProvider.overrideWith(
+          (ref) async => CategoryInferService(ItalianDictionary()),
         ),
         ...setup.extraOverrides,
       ],

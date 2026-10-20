@@ -22,8 +22,8 @@ import 'widgets/place_search.dart';
 import 'widgets/postcard/trip_itinerary_view.dart';
 import 'widgets/stop_sheet.dart';
 import 'widgets/trip_dates_sheet.dart';
-import 'widgets/trip_field.dart';
-import 'widgets/trip_section_title.dart';
+import '../../../shared/widgets/ds_field.dart';
+import '../../../shared/widgets/ds_section_title.dart';
 
 /// Id provvisorio per l'itinerario: la bozza non è ancora un viaggio salvato.
 const _draftTripId = 'draft';
@@ -260,7 +260,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       key: _whereKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TripSectionTitle('trips.new.where'.tr()),
+        DsSectionTitle('trips.new.where'.tr()),
         if (place == null)
           PlaceSearch(
             key: const Key('new_trip_place_search'),
@@ -268,7 +268,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
             onSelected: (chosen) => _update(_draft.withDestination(chosen)),
           )
         else
-          TripFieldBox(
+          DsFieldBox(
             key: const Key('new_trip_destination'),
             icon: place.houseId == null
                 ? Icons.place_outlined
@@ -313,8 +313,8 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       key: _whenKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TripSectionTitle('trips.new.when'.tr()),
-        TripFieldBox(
+        DsSectionTitle('trips.new.when'.tr()),
+        DsFieldBox(
           key: const Key('new_trip_dates'),
           icon: Icons.calendar_today_outlined,
           hasError: showError,
@@ -353,7 +353,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       key: _itineraryKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TripSectionTitle('trips.new.itinerary'.tr()),
+        DsSectionTitle('trips.new.itinerary'.tr()),
         if (stops.isEmpty)
           Text(
             'trips.new.itinerary_empty'.tr(),
@@ -423,7 +423,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TripSectionTitle('trips.new.name'.tr()),
+        DsSectionTitle('trips.new.name'.tr()),
         TextField(
           key: const Key('new_trip_name'),
           controller: _nameController,

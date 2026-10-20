@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 
-import '../../../../shared/constants/app_constants.dart';
-import '../../../../shared/theme/app_spacing.dart';
-import '../../../../shared/theme/surface_colors.dart';
+import '../constants/app_constants.dart';
+import '../theme/app_spacing.dart';
+import '../theme/surface_colors.dart';
 
 OutlineInputBorder _border(Color color, double width) => OutlineInputBorder(
   borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
   borderSide: BorderSide(color: color, width: width),
 );
 
-/// Decorazione dei campi del viaggio: la meta, la tappa e le date.
+/// Decorazione dei campi di testo dei fogli e delle pagine con un modulo: la
+/// meta, la tappa, le date, il nome e la nota di un oggetto.
 ///
 /// È l'unica fonte dell'altezza dei campi: il campo di ricerca e il riquadro
-/// delle date ([TripFieldBox]) la usano entrambi, quindi sono alti uguale.
+/// delle date ([DsFieldBox]) la usano entrambi, quindi sono alti uguale.
 /// L'altezza viene dal padding verticale `spacingMd` attorno al contenuto.
-InputDecoration tripFieldDecoration(
+InputDecoration dsFieldDecoration(
   BuildContext context, {
   bool hasError = false,
   String? hintText,
@@ -42,10 +43,10 @@ InputDecoration tripFieldDecoration(
 }
 
 /// Riquadro di un campo compilato, sulla superficie dei gruppi, alto come il
-/// campo di ricerca perché ne condivide la [tripFieldDecoration]. Con
+/// campo di ricerca perché ne condivide la [dsFieldDecoration]. Con
 /// [hasError] il bordo è del colore di errore.
-class TripFieldBox extends StatelessWidget {
-  const TripFieldBox({
+class DsFieldBox extends StatelessWidget {
+  const DsFieldBox({
     super.key,
     required this.icon,
     required this.child,
@@ -71,7 +72,7 @@ class TripFieldBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final decoration = tripFieldDecoration(
+    final decoration = dsFieldDecoration(
       context,
       prefixIcon: Icon(
         icon,

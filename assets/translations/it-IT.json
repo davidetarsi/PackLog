@@ -88,7 +88,11 @@
     "add_to_trip_success": "{} oggetti aggiunti a {}",
     "rapid_fire_hint": "Aggiungi oggetto...",
     "already_here": "Già in casa",
-    "added_now": "Aggiunti ora"
+    "added_now": "Aggiunti ora",
+    "name_label": "Nome",
+    "new_item": "Nuovo oggetto",
+    "edit_item": "Modifica oggetto",
+    "details_label": "Dettagli"
   },
   "categories": {
     "vestiti": "Vestiti",
@@ -163,6 +167,10 @@
       "add_luggages": "Aggiungi bagagli",
       "items": "Cosa porti",
       "search_hint": "Cerca negli oggetti",
+      "add_item": "Aggiungi «{}» in {}",
+      "add_and_pack": "Aggiungi e metti in valigia",
+      "also_in_house": "Lo trovi anche in {}.",
+      "empty_house_hint": "Scrivilo nella ricerca qui sopra per aggiungerlo.",
       "from": "Da",
       "done": "Fatto",
       "done_count": {"one": "Fatto · {} oggetto", "other": "Fatto · {} oggetti"},

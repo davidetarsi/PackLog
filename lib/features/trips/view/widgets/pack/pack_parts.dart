@@ -146,3 +146,69 @@ class PackItemRow extends StatelessWidget {
     );
   }
 }
+
+/// Riga "+ Aggiungi «nome» in Casa": crea dalla ricerca un oggetto che nella
+/// casa non c'è. Il nome cercato è in grassetto dentro [label], che è già
+/// tradotto.
+class PackAddRow extends StatelessWidget {
+  /// Testo intero della riga, con [name] dentro.
+  final String label;
+
+  /// Nome cercato, messo in evidenza nella riga.
+  final String name;
+  final VoidCallback onTap;
+
+  const PackAddRow({
+    super.key,
+    required this.label,
+    required this.name,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final at = label.indexOf(name);
+    final text = at < 0
+        ? TextSpan(text: label)
+        : TextSpan(
+            children: [
+              TextSpan(text: label.substring(0, at)),
+              TextSpan(
+                text: name,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              TextSpan(text: label.substring(at + name.length)),
+            ],
+          );
+
+    return Material(
+      color: context.groupSurface,
+      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.all(context.spacingMd),
+          child: Row(
+            children: [
+              Icon(
+                Icons.add_circle_outline,
+                size: context.iconSizeMd,
+                color: cs.onSurface,
+              ),
+              SizedBox(width: context.spacingMd),
+              Expanded(child: Text.rich(text, style: tt.bodyLarge)),
+              Icon(
+                Icons.chevron_right,
+                size: context.iconSizeMd,
+                color: cs.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -18,6 +18,7 @@ import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../houses/model/house_model.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../items/model/item_model.dart';
+import '../../items/view/item_sheet.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/repositories/item_repository.dart';
 import '../../luggages/model/luggage_model.dart';
@@ -28,7 +29,11 @@ import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_parts.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/trip_edit_placeholder.dart';
-import 'widgets/trip_section_title.dart';
+import '../../../shared/widgets/ds_section_title.dart';
+
+/// Lettere della ricerca da cui, se ci sono risultati, compare anche la riga
+/// "Aggiungi". Senza risultati compare subito.
+const _kAddRowMinChars = 3;
 
 /// Prepara la valigia di un viaggio: riepilogo, bagagli e oggetti.
 ///
@@ -66,11 +71,20 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   /// Casa scelta dal selettore; `null` finché non se ne sceglie una.
   String? _pickedHouseId;
 
-  /// Testo della ricerca, in minuscolo.
+  /// Campo della ricerca: dopo un'aggiunta ci si scrive il nome creato.
+  final _searchController = TextEditingController();
+
+  /// Testo della ricerca, senza spazi ai lati.
   String _query = '';
 
   /// Vero mentre il viaggio si salva: il bottone resta del suo colore.
   bool _saving = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   /// Copia il viaggio nello stato modificabile, una volta sola.
   ///
@@ -158,6 +172,31 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     final chosen = _items[itemId];
     if (chosen == null) return;
     setState(() => _items[itemId] = chosen.copyWith(quantity: quantity));
+  }
+
+  /// Crea nella casa mostrata l'oggetto cercato e lo mette in valigia. La
+  /// ricerca passa al nome creato, così l'oggetto si vede già scelto.
+  Future<void> _addFromSearch(HouseModel house) async {
+    final created = await showNewItemSheet(
+      context,
+      houseId: house.id,
+      initialName: _query,
+      submitLabel: 'trips.pack.add_and_pack'.tr(),
+      submitIcon: Icons.luggage_outlined,
+      footnote: 'trips.pack.also_in_house'.tr(args: [house.displayName]),
+    );
+    if (created == null || !mounted) return;
+    _searchController.text = created.name;
+    setState(() {
+      _query = created.name;
+      _items[created.id] = TripItem(
+        id: created.id,
+        name: created.name,
+        category: created.category,
+        quantity: created.quantity ?? 1,
+        originHouseId: house.id,
+      );
+    });
   }
 
   void _toggleLuggage(LuggageModel luggage) {
@@ -295,9 +334,9 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
                 destinationHouseName: destinationHouseName,
                 houseNames: {for (final h in houses) h.id: h.displayName},
               ),
-              TripSectionTitle('trips.pack.luggages'.tr()),
+              DsSectionTitle('trips.pack.luggages'.tr()),
               _luggageSection(context, house),
-              TripSectionTitle('trips.pack.items'.tr()),
+              DsSectionTitle('trips.pack.items'.tr()),
               _itemsBlock(context, housesAsync),
             ],
           ),
@@ -396,8 +435,8 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextField(
-          onChanged: (value) =>
-              setState(() => _query = value.trim().toLowerCase()),
+          controller: _searchController,
+          onChanged: (value) => setState(() => _query = value.trim()),
           decoration: InputDecoration(
             hintText: 'trips.pack.search_hint'.tr(),
             prefixIcon: Icon(
@@ -459,41 +498,52 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     );
   }
 
-  /// Gli oggetti della casa divisi per categoria, in ordine canonico. Una casa
-  /// senza oggetti offre di crearne; una ricerca senza esiti no.
+  /// Gli oggetti della casa divisi per categoria, in ordine canonico.
+  ///
+  /// Con una ricerca la riga "Aggiungi «nome»" crea l'oggetto che manca: da
+  /// sola se non c'è nessun risultato, in fondo se ci sono risultati ma
+  /// nessuno con quel nome esatto (da [_kAddRowMinChars] lettere).
   Widget _itemGroups(
     BuildContext context,
     HouseModel house,
     List<ItemModel> items,
   ) {
-    if (items.isEmpty) {
+    final query = _query.toLowerCase();
+    final addRow = PackAddRow(
+      key: const Key('pack_add_row'),
+      label: 'trips.pack.add_item'.tr(args: [_query, house.displayName]),
+      name: _query,
+      onTap: () => _addFromSearch(house),
+    );
+
+    if (items.isEmpty && query.isEmpty) {
       return Padding(
         padding: EdgeInsets.symmetric(vertical: context.spacingLg),
         // Qui si sceglie cosa portare, non si riempie la casa: niente
-        // scansione né aggiunta a mano, che porterebbero fuori dal flusso.
+        // scansione né pagina "Aggiungi". Un oggetto che manca si crea dalla
+        // ricerca, senza uscire dalla valigia.
         child: DsEmptyState(
           icon: Icons.inventory_2_outlined,
           title: 'common.no_items_in_house'.tr(),
+          subtitle: 'trips.pack.empty_house_hint'.tr(),
         ),
       );
     }
 
-    final visible = _query.isEmpty
+    final visible = query.isEmpty
         ? items
-        : items.where((i) => i.name.toLowerCase().contains(_query)).toList();
+        : items.where((i) => i.name.toLowerCase().contains(query)).toList();
     if (visible.isEmpty) {
       return Padding(
-        padding: EdgeInsets.symmetric(vertical: context.spacingLg),
-        child: Center(
-          child: Text(
-            'items.no_search_results'.tr(),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
+        padding: EdgeInsets.only(top: context.spacingMd),
+        child: addRow,
       );
     }
+    // Sotto i risultati la riga compare da qualche lettera in su: con una o
+    // due si sta ancora cercando, non scrivendo il nome di un oggetto nuovo.
+    final showAddRow =
+        query.length >= _kAddRowMinChars &&
+        !items.any((i) => i.name.trim().toLowerCase() == query);
 
     final selection = _items;
     return Column(
@@ -527,6 +577,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
               ),
             ),
           ],
+        if (showAddRow) ...[SizedBox(height: context.spacingMd), addRow],
       ],
     );
   }
