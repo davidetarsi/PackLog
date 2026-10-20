@@ -26,6 +26,12 @@ export const MAX_CAPI_SCAN = 12;
 export const SOGLIA_DUBBIO = 0.8;
 /** I campi che l'utente vede come etichette (ingombro e copertura mai). */
 export const CAMPI_VISIBILI = ["subCategory", "warmth", "waterResistance", "formality"];
+/** La scala del calore e' quella degli armadi del banco, su cui il generatore e'
+ *  tarato. Due casi strutturali li fissa il codice: maglioni, felpe e pile sono
+ *  uno strato medio (calore almeno 3), e cosi' T-shirt e polo a maniche lunghe. */
+export const CALORE_STRATO_MEDIO = 3;
+export const SOTTOCAT_STRATO_MEDIO = new Set(["Sweater", "Hoodie", "Sweatshirt", "Fleece"]);
+export const SOTTOCAT_MANICA_LUNGA_MEDIA = new Set(["T-Shirt", "Polo"]);
 /** Essenziali e oggetti non vestiti: niente etichette, quindi niente dubbi. */
 export const CATEGORIE_SENZA_ETICHETTE = new Set(["Essentials", NON_CAPO]);
 
@@ -33,11 +39,21 @@ const RIGHE_CAMPI = `- "baseColor": string ({colore})
 - "pattern": string (ONE OF: "Solid", "Striped", "Plaid", "Graphic", "Logo", "Floral", "Other")
 - "coverage": string (ONE OF: "Short-sleeve", "Long-sleeve", "Sleeveless", "Shorts", "Full-length", "Cropped", "N/A"; tops, dresses and jackets use the sleeve length, a coat is "Long-sleeve"; "Shorts", "Full-length", "Cropped" only for trousers, shorts and skirts; shoes, accessories and essentials "N/A")
 - "fit": string (ONE OF: "Skinny", "Regular", "Oversize", "N/A")
-- "warmth": integer (1 to 5: 1=canottiera/sandali, 2=t-shirt/sneakers, 3=felpa/jeans, 4=cappotto/stivali, 5=piumino/scarponi)
-- "formality": string (ONE OF: "Loungewear", "Casual", "Smart Casual", "Business", "Formal")
+- "warmth": integer (1 to 5, how warm it keeps you:
+  1 = only for hot weather: anything in linen, shorts and bermuda, short-sleeve or sun shirts, silk blouses, tank tops, summer dresses, swimwear, sandals, flip-flops, espadrilles, short socks, underwear, bags, belts, jewelry, watches, sunglasses, caps, light scarves
+  2 = light, any season: t-shirts, polos, cotton shirts (also elegant ones), light summer jeans, cargo and trekking trousers, leggings, sneakers, loafers, dress shoes, windbreakers, light rain jackets, denim jackets, cotton pajamas
+  3 = medium: long-sleeve t-shirts and polos, flannel or checked shirts, sweatshirts, hoodies, sweatpants, jeans, chinos, tailored trousers, blazers, cardigans, fleece, thermal tops, softshells, hardshells, trench coats, padded vests, ankle boots
+  4 = warm: wool sweaters, wool coats, heavy fleece, light down jackets, leather boots, hiking boots, wool or hiking socks, wool hats, wool gloves, wool scarves, thermal bottoms, ski pants
+  5 = very warm: winter down jackets, parkas, chunky mountain sweaters, ski jackets, ski gloves, snow boots)
+- "formality": string (ONE OF:
+  "Loungewear" = for home and sport, not for going out: pajamas, sweatpants, underwear, pool slides, flip-flops, technical or running t-shirts, sport shorts, sport leggings, base layers, sport swimsuits, running shoes, sport accessories
+  "Casual" = everyday: t-shirts, cotton shorts and bermuda, jeans, cargo and trekking trousers, hoodies, sweatshirts, fleece, parkas, sneakers, sandals, swimwear, caps
+  "Smart Casual" = neat but not office: polos, linen shirts, chinos, knit sweaters, cardigans, trench coats, loafers, ankle boots, leather belts, simple watches and jewelry
+  "Business" = office: cotton dress shirts, tailored trousers, blazers, wool coats, brown dress shoes, work bags
+  "Formal" = ceremonies and elegant evenings: shirts sold as elegant, suit jackets and trousers, long black coats, black dress shoes, heels, evening bags, fine jewelry)
 - "activityTags": array of 1-3 strings (ONLY from: ["Everyday", "Office", "Beach", "Swimming", "Hiking", "Sport", "Formal", "Lounge"])
-- "waterResistance": integer (0 = gets wet in the rain, 1 = resists light rain, 2 = waterproof)
-- "bulk": integer (1 = folds small like a t-shirt, 2 = medium like jeans or sneakers, 3 = bulky like a coat or boots)`;
+- "waterResistance": integer (0 = gets wet in the rain: cotton, linen, wool coats, fleece, normal shoes; 1 = resists light rain: windbreakers, softshells, down jackets, trench coats, padded vests, trekking trousers, trail shoes, leather boots; 2 = waterproof: rain jackets, hardshells, parkas, waterproof trousers, ski clothes, rubber boots, hiking boots, umbrellas)
+- "bulk": integer (1 = folds small: t-shirts, shirts, polos, shorts, skirts, leggings, linen or light trousers, thin packable jackets, underwear, accessories; 2 = medium: jeans, chinos, sweaters, hoodies, fleece, blazers, sneakers, loafers, dress shoes; 3 = bulky: coats, trench coats, winter down jackets, boots, hiking and snow boots, ski clothes)`;
 
 const CATEGORIE_PROMPT = tassonomia.CATEGORIE.map((c) => `"${c}"`).join(", ");
 
@@ -169,6 +185,10 @@ export function normalizza(grezzo: unknown, nome?: string | null): Normalizzata 
   const w = intero(g.warmth, 1, 5);
   if (w === null) corretti.push("warmth");
   m.warmth = w ?? 3;
+  if (m.warmth < CALORE_STRATO_MEDIO && (SOTTOCAT_STRATO_MEDIO.has(sub)
+    || (SOTTOCAT_MANICA_LUNGA_MEDIA.has(sub) && m.coverage === "Long-sleeve"))) {
+    m.warmth = CALORE_STRATO_MEDIO;
+  }
   const f = scelta(g.formality, FORMALITA);
   if (f === null) corretti.push("formality");
   m.formality = f ?? "Casual";
