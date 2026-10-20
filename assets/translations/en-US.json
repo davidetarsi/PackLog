@@ -305,6 +305,10 @@
       "nights": {"one": "{} night", "other": "{} nights"},
       "more_stops": {"one": "+{} stop", "other": "+{} stops"}
     },
+    "new": {
+      "step_trip": "Trip",
+      "step_suitcase": "Suitcase"
+    },
     "pile": {
       "position": "{} of {}",
       "semantics": "Trip {} of {}: {}",

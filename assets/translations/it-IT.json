@@ -305,6 +305,10 @@
       "nights": {"one": "{} notte", "other": "{} notti"},
       "more_stops": {"one": "+{} tappa", "other": "+{} tappe"}
     },
+    "new": {
+      "step_trip": "Viaggio",
+      "step_suitcase": "Valigia"
+    },
     "pile": {
       "position": "{} di {}",
       "semantics": "Viaggio {} di {}: {}",
