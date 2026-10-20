@@ -218,6 +218,91 @@ void main() {
     });
   });
 
+  group('buildItinerary con case', () {
+    test('tappa con casa: mostra il nome della casa, intero', () {
+      final trip = makeTrip(
+        'h1',
+        departure: DateTime(2026, 10, 10, 9),
+        returnAt: DateTime(2026, 10, 20, 8),
+        destination: lisbona,
+        legs: [
+          TripLeg(
+            id: 'casa',
+            locationDisplayName: 'Via Roma, Cagliari, Italia',
+            houseId: 'h1',
+            from: DateTime(2026, 10, 12),
+          ),
+        ],
+      );
+
+      final entries = buildItinerary(
+        trip,
+        destination: 'Lisbona',
+        houseNames: {'h1': 'Casa al mare, Sardegna'},
+      );
+
+      final names = entries
+          .where((e) => e.kind == ItineraryKind.place)
+          .map((e) => e.name)
+          .toList();
+      expect(names, ['Lisbona', 'Casa al mare, Sardegna']);
+    });
+
+    test('tappa con casa senza mappa: usa legPlaceName', () {
+      final trip = makeTrip(
+        'h2',
+        departure: DateTime(2026, 10, 10, 9),
+        returnAt: DateTime(2026, 10, 20, 8),
+        destination: lisbona,
+        legs: [
+          TripLeg(
+            id: 'casa',
+            locationDisplayName: 'Via Roma, Cagliari, Italia',
+            houseId: 'h1',
+            from: DateTime(2026, 10, 12),
+          ),
+        ],
+      );
+
+      final entries = buildItinerary(trip, destination: 'Lisbona');
+
+      final names = entries
+          .where((e) => e.kind == ItineraryKind.place)
+          .map((e) => e.name)
+          .toList();
+      expect(names, ['Lisbona', 'Via Roma']);
+    });
+
+    test('casa non presente nella mappa: usa legPlaceName', () {
+      final trip = makeTrip(
+        'h3',
+        departure: DateTime(2026, 10, 10, 9),
+        returnAt: DateTime(2026, 10, 20, 8),
+        destination: lisbona,
+        legs: [
+          TripLeg(
+            id: 'casa',
+            locationDisplayName: 'Sintra, Portogallo',
+            houseId: 'sconosciuta',
+            from: DateTime(2026, 10, 12),
+          ),
+        ],
+      );
+
+      final entries = buildItinerary(
+        trip,
+        destination: 'Lisbona',
+        houseNames: {'h1': 'Casa al mare'},
+      );
+
+      final names = entries
+          .where((e) => e.kind == ItineraryKind.place)
+          .map((e) => e.name)
+          .toList();
+      expect(names, ['Lisbona', 'Sintra']);
+    });
+  });
+
   group('ItineraryEntry', () {
     test('uguaglianza per valore', () {
       const a = ItineraryEntry(kind: ItineraryKind.moreStops, hiddenStops: 2);

@@ -270,6 +270,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
             child: TripPostcard(
               trip: trip,
               destination: _destinationOf(trip, houseNames),
+              houseNames: houseNames,
               onCta: (cta) => _onPileCta(trip, cta),
             ),
           );

@@ -24,11 +24,15 @@ class TripPostcard extends StatelessWidget {
 
   final ValueChanged<PostcardCta> onCta;
 
+  /// Nomi delle case per id: una tappa che è una casa li mostra interi.
+  final Map<String, String> houseNames;
+
   const TripPostcard({
     super.key,
     required this.trip,
     required this.destination,
     required this.onCta,
+    this.houseNames = const {},
   });
 
   @override
@@ -81,7 +85,11 @@ class TripPostcard extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               child: TripItineraryView(
-                entries: buildItinerary(trip, destination: destination),
+                entries: buildItinerary(
+                  trip,
+                  destination: destination,
+                  houseNames: houseNames,
+                ),
               ),
             ),
           ),

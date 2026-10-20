@@ -90,14 +90,24 @@ int? nightsBetween(DateTime? from, DateTime? to) {
   return end.difference(start).inDays;
 }
 
+/// Nome di una tappa: il nome della casa se la tappa ne ha una presente in
+/// [houseNames], altrimenti [legPlaceName].
+String _legName(TripLeg leg, Map<String, String> houseNames) {
+  final houseId = leg.houseId;
+  final house = houseId == null ? null : _nonEmpty(houseNames[houseId]);
+  return house ?? legPlaceName(leg);
+}
+
 /// Itinerario della cartolina: righe Andata, luoghi, spostamenti e Ritorno.
 ///
 /// Con più di [maxPlaces] luoghi mostra il primo e l'ultimo, e riassume le
-/// tappe centrali con una riga `moreStops`.
+/// tappe centrali con una riga `moreStops`. [houseNames] mappa l'id di una casa
+/// al suo nome: una tappa che è una casa mostra quel nome, intero.
 List<ItineraryEntry> buildItinerary(
   TripModel trip, {
   required String destination,
   int maxPlaces = 3,
+  Map<String, String> houseNames = const {},
 }) {
   assert(maxPlaces >= 2);
 
@@ -127,7 +137,7 @@ List<ItineraryEntry> buildItinerary(
     for (final leg in stops)
       ItineraryEntry(
         kind: ItineraryKind.place,
-        name: legPlaceName(leg),
+        name: _legName(leg, houseNames),
         from: leg.from,
         to: leg.to,
       ),
