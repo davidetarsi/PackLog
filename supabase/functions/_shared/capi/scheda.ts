@@ -51,7 +51,15 @@ const RIGHE_CAMPI = `- "baseColor": string ({colore})
   "Smart Casual" = neat but not office: polos, linen shirts, chinos, knit sweaters, cardigans, trench coats, loafers, ankle boots, leather belts, simple watches and jewelry
   "Business" = office: cotton dress shirts, tailored trousers, blazers, wool coats, brown dress shoes, work bags
   "Formal" = ceremonies and elegant evenings: shirts sold as elegant, suit jackets and trousers, long black coats, black dress shoes, heels, evening bags, fine jewelry)
-- "activityTags": array of 1-3 strings (ONLY from: ["Everyday", "Office", "Beach", "Swimming", "Hiking", "Sport", "Formal", "Lounge"])
+- "activityTags": array of 1-3 strings (ONLY from: ["Everyday", "Office", "Beach", "Swimming", "Hiking", "Sport", "Formal", "Lounge"]): ALL the uses the item is meant for, not only the main one:
+  "Everyday" = worn in town on normal days (NOT for items meant only for the office, elegant evenings, sport, the beach or home)
+  "Office" = fit for an office: polos, chinos, wool sweaters, cotton dress shirts, blazers, tailored trousers, coats and trench coats, loafers, ankle boots, dress shoes, leather belts, watches
+  "Formal" = elegant evenings and ceremonies: cotton or elegant dress shirts, suits, tailored trousers, wool coats, dress shoes, heels, fine jewelry, evening bags
+  "Beach" = seaside and hot holidays: anything in linen, light cotton summer trousers, bermuda, tank tops, short-sleeve summer shirts, summer dresses, sandals, flip-flops, swimwear
+  "Swimming" = worn in the water or at the pool: swimwear, water shoes, pool slides, wetsuits
+  "Hiking" = trekking and mountains: trekking trousers, hiking boots, trail shoes, technical fleece, base layers, windbreakers, rain jackets, light down jackets, wool or trekking socks
+  "Sport" = sport and running: technical t-shirts, running shorts and shoes, sport leggings, base layers, ski clothes
+  "Lounge" = at home: pajamas, sweatpants, hoodies, robes
 - "waterResistance": integer (0 = gets wet in the rain: cotton, linen, wool coats, fleece, normal shoes; 1 = resists light rain: windbreakers, softshells, down jackets, trench coats, padded vests, trekking trousers, trail shoes, leather boots; 2 = waterproof: rain jackets, hardshells, parkas, waterproof trousers, ski clothes, rubber boots, hiking boots, umbrellas)
 - "bulk": integer (1 = folds small: t-shirts, shirts, polos, shorts, skirts, leggings, linen or light trousers, thin packable jackets, underwear, accessories; 2 = medium: jeans, chinos, sweaters, hoodies, fleece, blazers, sneakers, loafers, dress shoes; 3 = bulky: coats, trench coats, winter down jackets, boots, hiking and snow boots, ski clothes)`;
 
