@@ -10,21 +10,48 @@ import '../../../model/trip_postcard.dart';
 class TripItineraryView extends StatelessWidget {
   final List<ItineraryEntry> entries;
 
-  const TripItineraryView({super.key, required this.entries});
+  /// Tocco su una riga di luogo, con il suo indice tra i soli luoghi (0 è la
+  /// meta). Null: le righe non reagiscono al tocco.
+  final ValueChanged<int>? onPlaceTap;
+
+  /// Primo luogo toccabile: i luoghi prima di questo indice restano righe
+  /// normali, senza ripple. Nel passo 1 la meta (0) si cambia altrove.
+  final int firstTappablePlace;
+
+  const TripItineraryView({
+    super.key,
+    required this.entries,
+    this.onPlaceTap,
+    this.firstTappablePlace = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final tap = onPlaceTap;
+    var placeCount = 0;
+    final rows = <Widget>[];
+    for (final (i, entry) in entries.indexed) {
+      final placeIndex = entry.kind == ItineraryKind.place
+          ? placeCount++
+          : null;
+      rows.add(
+        _ItineraryRow(
+          key: ValueKey('itinerary_row_$i'),
+          entry: entry,
+          isFirst: i == 0,
+          isLast: i == entries.length - 1,
+          onTap:
+              tap == null ||
+                  placeIndex == null ||
+                  placeIndex < firstTappablePlace
+              ? null
+              : () => tap(placeIndex),
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final (i, entry) in entries.indexed)
-          _ItineraryRow(
-            key: ValueKey('itinerary_row_$i'),
-            entry: entry,
-            isFirst: i == 0,
-            isLast: i == entries.length - 1,
-          ),
-      ],
+      children: rows,
     );
   }
 }
@@ -33,12 +60,14 @@ class _ItineraryRow extends StatelessWidget {
   final ItineraryEntry entry;
   final bool isFirst;
   final bool isLast;
+  final VoidCallback? onTap;
 
   const _ItineraryRow({
     super.key,
     required this.entry,
     required this.isFirst,
     required this.isLast,
+    this.onTap,
   });
 
   bool get _isPlace =>
@@ -67,19 +96,29 @@ class _ItineraryRow extends StatelessWidget {
             ),
           ),
           SizedBox(width: context.spacingMd),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                vertical: _isPlace ? context.spacingSm : context.spacingXs,
-              ),
-              child: _isPlace
-                  ? _placeContent(context, tt, cs)
-                  : _transferContent(context, tt, cs),
-            ),
-          ),
+          Expanded(child: _withTap(_content(context, tt, cs))),
         ],
       ),
     );
+  }
+
+  Widget _content(BuildContext context, TextTheme tt, ColorScheme cs) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: _isPlace ? context.spacingSm : context.spacingXs,
+      ),
+      child: _isPlace
+          ? _placeContent(context, tt, cs)
+          : _transferContent(context, tt, cs),
+    );
+  }
+
+  /// Solo le righe toccabili hanno un InkWell: senza tocco il contenuto resta
+  /// com'è, anche fuori da un Material.
+  Widget _withTap(Widget content) {
+    final tap = onTap;
+    if (tap == null) return content;
+    return InkWell(onTap: tap, child: content);
   }
 
   Widget _marker(BuildContext context) {

@@ -36,6 +36,7 @@ class PlaceSearch extends ConsumerStatefulWidget {
     this.hintText,
     this.initialText,
     this.autofocus = false,
+    this.hasError = false,
   });
 
   final ValueChanged<DraftPlace> onSelected;
@@ -51,6 +52,9 @@ class PlaceSearch extends ConsumerStatefulWidget {
   final String? initialText;
 
   final bool autofocus;
+
+  /// Bordo in colore di errore, quando il campo è obbligatorio e manca.
+  final bool hasError;
 
   @override
   ConsumerState<PlaceSearch> createState() => _PlaceSearchState();
@@ -73,11 +77,15 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
   /// Ultimo testo visto. Il controller notifica anche quando cambia solo la
   /// selezione (un tocco che mette il cursore): quelle notifiche non sono
   /// modifiche del testo e vanno ignorate.
-  late String _lastText = _controller.text;
+  late String _lastText;
 
   @override
   void initState() {
     super.initState();
+    // Inizializzato qui e non alla dichiarazione: un valore pigro, letto per la
+    // prima volta dopo una modifica, coinciderebbe con il testo nuovo e il
+    // primo tasto verrebbe scartato.
+    _lastText = _controller.text;
     _controller.addListener(_onTextChanged);
     _focusNode.addListener(_onFocusChanged);
   }
@@ -184,8 +192,14 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
               vertical: context.spacingMd,
             ),
             border: _border(cs.outlineVariant, 1),
-            enabledBorder: _border(cs.outlineVariant, 1),
-            focusedBorder: _border(cs.onSurface, 1.5),
+            enabledBorder: _border(
+              widget.hasError ? cs.error : cs.outlineVariant,
+              widget.hasError ? 1.5 : 1,
+            ),
+            focusedBorder: _border(
+              widget.hasError ? cs.error : cs.onSurface,
+              1.5,
+            ),
           ),
         ),
         if (showResults && matchingHouses.isNotEmpty) ...[

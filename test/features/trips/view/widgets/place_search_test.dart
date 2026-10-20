@@ -237,4 +237,64 @@ void main() {
     expect(captured!.location, _places.first);
     expect(_placeRow(0), findsNothing);
   });
+
+  testWidgets('con autofocus il primo tasto arriva a onTextChanged', (
+    tester,
+  ) async {
+    final texts = <String>[];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          houseNotifierProvider.overrideWith(() => _FakeHouseNotifier(_houses)),
+          locationSearchServiceProvider.overrideWithValue(service),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: PlaceSearch(
+              onSelected: (_) {},
+              onTextChanged: texts.add,
+              autofocus: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Nessun tocco prima: il campo ha già il focus per autofocus, e la prima
+    // lettera arriva dalla tastiera come nell'app.
+    expect(tester.testTextInput.hasAnyClients, isTrue);
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: 'M',
+        selection: TextSelection.collapsed(offset: 1),
+      ),
+    );
+    await tester.pump();
+
+    expect(texts, ['M']);
+  });
+
+  testWidgets('hasError colora il bordo del campo di errore', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          houseNotifierProvider.overrideWith(() => _FakeHouseNotifier(_houses)),
+          locationSearchServiceProvider.overrideWithValue(service),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(useMaterial3: true),
+          home: Scaffold(body: PlaceSearch(onSelected: (_) {}, hasError: true)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    final border = field.decoration!.enabledBorder! as OutlineInputBorder;
+    final errorColor = Theme.of(
+      tester.element(find.byType(TextField)),
+    ).colorScheme.error;
+    expect(border.borderSide.color, errorColor);
+  });
 }

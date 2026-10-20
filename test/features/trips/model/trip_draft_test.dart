@@ -286,4 +286,56 @@ void main() {
       expect(trip.name, 'Lisbona');
     });
   });
+
+  group('TripDraft rimuovere la meta', () {
+    test('toglie la meta e le sue tappe, e le date restano in attesa', () {
+      final draft = TripDraft.empty()
+          .withDestination(lisbona())
+          .withFirstDates(o29, d(3))
+          .addStop(sintra(), d(5))
+          .clearDestination();
+
+      expect(draft.hasDestination, isFalse);
+      expect(draft.stops, isEmpty);
+      expect(draft.departure, o29);
+      expect(draft.returnDate, d(3));
+      expect(draft.canSave, isFalse);
+    });
+
+    test('il nome proposto si svuota, quello scritto a mano resta', () {
+      final proposed = TripDraft.empty()
+          .withDestination(lisbona())
+          .clearDestination();
+      expect(proposed.name, '');
+      expect(proposed.nameEdited, isFalse);
+
+      final edited = TripDraft.empty()
+          .withDestination(lisbona())
+          .withName('Weekend')
+          .clearDestination();
+      expect(edited.name, 'Weekend');
+    });
+
+    test('una nuova meta riprende le date rimaste in attesa', () {
+      final draft = TripDraft.empty()
+          .withDestination(lisbona())
+          .withFirstDates(o29, d(3))
+          .clearDestination()
+          .withDestination(porto());
+
+      expect(draft.name, 'Porto');
+      expect(draft.stops.single.end, d(3));
+      expect(draft.canSave, isTrue);
+    });
+
+    test('senza meta non cambia nulla', () {
+      final draft = TripDraft.empty().withFirstDates(o29, d(1));
+
+      final cleared = draft.clearDestination();
+
+      expect(cleared.hasDestination, isFalse);
+      expect(cleared.departure, o29);
+      expect(cleared.returnDate, d(1));
+    });
+  });
 }

@@ -128,6 +128,21 @@ class TripDraft {
     );
   }
 
+  /// Toglie la meta. Ogni tappa parte dalla precedente e la prima è la meta,
+  /// quindi senza meta vanno via anche le tappe successive. Le date restano
+  /// come date in attesa (la fine della vecchia meta). Il nome proposto si
+  /// svuota, quello scritto a mano resta.
+  TripDraft clearDestination() {
+    if (destination == null) return this;
+    final keptEnd = stops.isEmpty ? pendingEnd : stops.first.end;
+    return _copy(
+      clearDestinationPlace: true,
+      name: nameEdited ? name : '',
+      stops: const [],
+      pendingEnd: keptEnd,
+    );
+  }
+
   /// Imposta partenza e fine della prima tappa ("Quando?").
   TripDraft withFirstDates(DateTime start, DateTime end) {
     final s = _dayOf(start);
@@ -240,11 +255,14 @@ class TripDraft {
     bool? nameEdited,
     DateTime? pendingEnd,
     bool clearPendingEnd = false,
+    bool clearDestinationPlace = false,
   }) {
     return TripDraft._(
       departure: departure ?? this.departure,
       stops: List.unmodifiable(stops ?? this.stops),
-      destination: destination ?? this.destination,
+      destination: clearDestinationPlace
+          ? null
+          : (destination ?? this.destination),
       name: name ?? this.name,
       nameEdited: nameEdited ?? this.nameEdited,
       pendingEnd: clearPendingEnd ? null : (pendingEnd ?? this.pendingEnd),
