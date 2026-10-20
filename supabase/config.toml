@@ -435,6 +435,12 @@ entrypoint = "./functions/openai-proxy/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/openai-proxy/*.html" ]
 
+[functions.item-metadata]
+enabled = true
+verify_jwt = true
+import_map = "./functions/item-metadata/deno.json"
+entrypoint = "./functions/item-metadata/index.ts"
+
 [functions.pack-trip]
 enabled = true
 verify_jwt = true
