@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pack_log/shared/widgets/ds_button.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
@@ -296,6 +297,19 @@ void main() {
           as TripModel;
 
   group('PackSuitcaseScreen — struttura', () {
+    testWidgets('con la tastiera aperta "Fatto" non sale', (tester) async {
+      arrange();
+      await pumpPack(tester);
+      final done = find.byType(DsButton).last;
+      final before = tester.getTopLeft(done);
+
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(done).dy, before.dy);
+    });
+
     testWidgets('con fromNewTrip mostra l indicatore dei passi', (
       tester,
     ) async {

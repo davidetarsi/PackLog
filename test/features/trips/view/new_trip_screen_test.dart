@@ -313,6 +313,20 @@ void main() {
 
       expect(when.height, where.height);
     });
+
+    testWidgets('con la tastiera aperta i bottoni non salgono', (tester) async {
+      // Come negli altri form con CTA in fondo (StickyCtaScaffold): la
+      // tastiera copre i bottoni invece di spingerli sopra di sé.
+      await pumpScreen(tester);
+      final before = tester.getTopLeft(find.byKey(const Key('new_trip_next')));
+
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+
+      final after = tester.getTopLeft(find.byKey(const Key('new_trip_next')));
+      expect(after.dy, before.dy);
+    });
   });
 
   group('NewTripScreen — uscita', () {
