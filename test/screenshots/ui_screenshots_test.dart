@@ -22,6 +22,9 @@ import 'package:pack_log/features/ai_input/model/ai_import_state.dart';
 import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
 import 'package:pack_log/features/tour/model/onboarding_state.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
+import 'package:pack_log/features/trips/view/widgets/pack/pack_parts.dart';
+import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
+import 'package:pack_log/shared/widgets/quantity_stepper.dart';
 
 import 'support/fakes.dart';
 import 'support/fonts.dart';
@@ -117,6 +120,97 @@ class _SyncingForever extends Syncing {
   bool build() => true;
 }
 
+// ── Nuovo viaggio ────────────────────────────────────────────────────────────
+
+/// Mese prossimo: sempre nel futuro, e il calendario va scorso fino a lì.
+final _nextMonth = DateTime(DateTime.now().year, DateTime.now().month + 1);
+
+DateTime _nextMonthDay(int day) =>
+    DateTime(_nextMonth.year, _nextMonth.month, day);
+
+Finder _placeField() => _fieldIn('new_trip_place_search');
+
+/// Il campo di testo dentro un widget con quella chiave.
+Finder _fieldIn(String key) =>
+    find.descendant(of: find.byKey(Key(key)), matching: find.byType(TextField));
+
+Future<void> _openNewTrip(ScreenshotApp app) async {
+  await app.go('/trips');
+  await app.push('/new-trip');
+}
+
+/// Scrive [query] nel campo della meta o della tappa e sceglie il primo luogo.
+Future<void> _searchPlace(ScreenshotApp app, Finder field, String query) async {
+  await app.tap(field);
+  await app.enterText(field, query);
+  await app.tap(find.byKey(const Key('place_search_location_0')));
+}
+
+/// Tocca un giorno del calendario, scorrendolo se fuori schermo.
+Future<void> _tapCalendarDay(ScreenshotApp app, DateTime day) async {
+  final tester = app.tester;
+  final finder = find.byKey(
+    ValueKey('trip_calendar_day_${DateFormat('yyyy-MM-dd').format(day)}'),
+  );
+  await tester.scrollUntilVisible(
+    finder,
+    50,
+    scrollable: find.descendant(
+      of: find.byType(TripCalendar),
+      matching: find.byType(Scrollable),
+    ),
+  );
+  await tester.ensureVisible(finder);
+  await app.tap(finder);
+}
+
+/// Foglio "Quando?": il primo tocco riparte dalla partenza, il secondo sceglie
+/// il ritorno.
+Future<void> _pickTripDates(
+  ScreenshotApp app, {
+  required DateTime departure,
+  required DateTime end,
+}) async {
+  await app.tap(find.byKey(const Key('new_trip_dates')));
+  await _tapCalendarDay(app, departure);
+  await _tapCalendarDay(app, end);
+  await app.tap(_text('trips.confirm_dates'));
+}
+
+/// Passo 1 compilato: Lisbona come meta, dal 10 al 13 del mese prossimo.
+Future<void> _fillStep1(ScreenshotApp app) async {
+  await _openNewTrip(app);
+  await _searchPlace(app, _placeField(), 'Lisbona');
+  await _pickTripDates(
+    app,
+    departure: _nextMonthDay(10),
+    end: _nextMonthDay(13),
+  );
+}
+
+Future<void> _openStopSheet(ScreenshotApp app) async {
+  await app.tester.ensureVisible(find.byKey(const Key('new_trip_add_stop')));
+  await app.tap(find.byKey(const Key('new_trip_add_stop')));
+}
+
+Future<void> _fillStopPlace(ScreenshotApp app, String query) =>
+    _searchPlace(app, _fieldIn('stop_sheet_place'), query);
+
+/// Foglio "Fino a quando?" della tappa.
+Future<void> _fillStopEnd(ScreenshotApp app, DateTime end) async {
+  await app.tap(find.byKey(const Key('stop_sheet_dates')));
+  await _tapCalendarDay(app, end);
+  await app.tap(find.text('Conferma'));
+}
+
+/// Aggiunge in coda la tappa Sintra, finita il giorno [end].
+Future<void> _addSintraStop(ScreenshotApp app, {required DateTime end}) async {
+  await _openStopSheet(app);
+  await _fillStopPlace(app, 'Sintra');
+  await _fillStopEnd(app, end);
+  await app.tap(find.byKey(const Key('stop_sheet_save')));
+}
+
 // ── Flussi ───────────────────────────────────────────────────────────────────
 
 const _houses = 'lib/features/houses/view/houses_screen.dart';
@@ -124,6 +218,10 @@ const _houseDetailSrc = 'lib/features/houses/view/house_detail_screen.dart';
 const _trips = 'lib/features/trips/view/trips_screen.dart';
 const _tripDetailSrc = 'lib/features/trips/view/trip_detail_screen.dart';
 const _addTrip = 'lib/features/trips/view/new_trip_screen.dart';
+const _placeSearchSrc = 'lib/features/trips/view/widgets/place_search.dart';
+const _stopSheetSrc = 'lib/features/trips/view/widgets/stop_sheet.dart';
+const _datesSheetSrc = 'lib/features/trips/view/widgets/trip_dates_sheet.dart';
+const _packSrc = 'lib/features/trips/view/pack_suitcase_screen.dart';
 const _profile = 'lib/features/profile/view/profile_screen.dart';
 const _aiResults = 'lib/features/ai_input/view/ai_results_screen.dart';
 
@@ -968,90 +1066,161 @@ final flows = <Flow>[
           'Crea dalla tab Viaggi: Nuovo viaggio sale sopra Nuova casa.',
       steps: (app) => _openCreateSheet(app, '/trips'),
     ),
+    Scenario(
+      10,
+      'viaggi',
+      'dopo-passo-1',
+      route: '/trips',
+      source: 'lib/features/trips/view/new_trip_screen.dart',
+      description:
+          'Passo 1 compilato (Siviglia) e "Prepara la valigia più tardi": la '
+          'pila si apre sul viaggio appena creato, in cima.',
+      steps: (app) async {
+        await _openNewTrip(app);
+        await _searchPlace(app, _placeField(), 'Siviglia');
+        await _pickTripDates(
+          app,
+          departure: _nextMonthDay(20),
+          end: _nextMonthDay(23),
+        );
+        await app.tap(find.byKey(const Key('new_trip_later')));
+      },
+    ),
   ]),
 
-  Flow('08-nuovo-viaggio', 'Creazione viaggio (wizard 2 passi)', [
+  Flow('08-nuovo-viaggio', 'Creazione viaggio: passo 1 in ordine di itinerario', [
     Scenario(
       1,
       'nuovo-viaggio',
-      'passo1-vuoto',
+      'vuoto',
       route: '/new-trip',
       source: _addTrip,
       description:
-          'Passo 1: nome, destinazione (default "Altra località"), date, tappe.',
+          'Passo 1 appena aperto: "Dove vai?", "Quando?", itinerario vuoto, '
+          'nome del viaggio, "Avanti" spento.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/new-trip');
+        await _openNewTrip(app);
       },
     ),
     Scenario(
       2,
       'nuovo-viaggio',
-      'passo1-errore',
+      'dove-vai-case',
       route: '/new-trip',
-      source: _addTrip,
-      description: '"Avanti" senza dati: snackbar di validazione.',
+      source: _placeSearchSrc,
+      description:
+          'Tocco su "Dove vai?": le case in cima alla lista, poi i luoghi '
+          'quando si scrive.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/new-trip');
-        await app.tap(_text('common.next'), frames: 4);
-      },
-    ),
-    Scenario(
-      4,
-      'nuovo-viaggio',
-      'scelta-casa',
-      route: '/new-trip',
-      source: 'lib/shared/widgets/ds_picker_sheet.dart',
-      description: 'Picker della casa di destinazione.',
-      steps: (app) async {
-        await app.go('/trips');
-        await app.push('/new-trip');
-        await app.tap(_text('common.destination_house'));
-        await app.tap(_text('common.none_selected'));
+        await _openNewTrip(app);
+        await app.tap(_placeField());
       },
     ),
     Scenario(
       3,
       'nuovo-viaggio',
-      'destinazione-casa',
+      'compilato-una-tappa',
       route: '/new-trip',
-      source: 'lib/features/trips/view/trip_info_form.dart',
-      description: 'Destinazione "Casa": selettore di una delle proprie case.',
+      source: _addTrip,
+      description:
+          'Meta Lisbona e date: l\'itinerario ha la tappa di arrivo e il '
+          'ritorno calcolato, "Avanti" acceso.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/new-trip');
-        await app.tap(_text('common.destination_house'));
+        await _fillStep1(app);
+      },
+    ),
+    Scenario(
+      4,
+      'tappa-nuova',
+      'foglio-vuoto',
+      route: '/new-trip',
+      source: _stopSheetSrc,
+      description:
+          'Foglio "Nuova tappa" appena aperto, con la partenza dalla meta.',
+      steps: (app) async {
+        await _fillStep1(app);
+        await _openStopSheet(app);
       },
     ),
     Scenario(
       5,
-      'date-viaggio',
-      'calendario',
-      source: 'lib/features/trips/view/trip_date_range_screen.dart',
-      description: 'Selezione date (pagina a schermo intero).',
+      'tappa-nuova',
+      'foglio-compilato',
+      route: '/new-trip',
+      source: _stopSheetSrc,
+      description:
+          'Foglio con Sintra scelta e "Fino a quando?" impostato: la riga dice '
+          'il ritorno e il numero di notti.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/new-trip');
-        await app.tap(_text('common.tap_to_set_dates'));
+        await _fillStep1(app);
+        await _openStopSheet(app);
+        await _fillStopPlace(app, 'Sintra');
+        await _fillStopEnd(app, _nextMonthDay(15));
       },
     ),
     Scenario(
       6,
-      'tappa',
-      'nuova',
-      source: 'lib/features/trips/view/widgets/trip_leg_sheet.dart',
-      description: 'Sheet "Aggiungi tappa".',
+      'nuovo-viaggio',
+      'due-tappe',
+      route: '/new-trip',
+      source: _addTrip,
+      description:
+          'Due tappe: Lisbona e Sintra, poi il ritorno in fondo alla catena. '
+          '"Aggiungi tappa" resta in fondo all\'itinerario.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/new-trip');
-        await app.tester.ensureVisible(_text('trips.leg_add'));
-        await app.tap(_text('trips.leg_add'));
+        await _fillStep1(app);
+        await _addSintraStop(app, end: _nextMonthDay(15));
+      },
+    ),
+    Scenario(
+      7,
+      'nuovo-viaggio',
+      'dati-mancanti',
+      route: '/new-trip',
+      source: _addTrip,
+      description:
+          'Tocco su "Avanti" a modulo vuoto: il campo "Dove vai?" e il campo '
+          'delle date si colorano di errore, con il messaggio sotto ciascuno.',
+      steps: (app) async {
+        await _openNewTrip(app);
+        await app.tap(find.byKey(const Key('new_trip_next')));
+      },
+    ),
+    Scenario(
+      8,
+      'tappa',
+      'zero-notti',
+      route: '/new-trip',
+      source: _addTrip,
+      description:
+          'La meta finisce il giorno in cui finisce la tappa: la tappa ha zero '
+          'notti, il messaggio la segnala e "Avanti" è spento.',
+      steps: (app) async {
+        await _fillStep1(app);
+        await _addSintraStop(app, end: _nextMonthDay(15));
+        await _pickTripDates(
+          app,
+          departure: _nextMonthDay(10),
+          end: _nextMonthDay(15),
+        );
+      },
+    ),
+    Scenario(
+      9,
+      'date-viaggio',
+      'foglio-date',
+      source: _datesSheetSrc,
+      description:
+          'Foglio "Quando?" a schermo quasi intero, con il calendario del mese '
+          'prossimo e "Conferma date" spento.',
+      steps: (app) async {
+        await _openNewTrip(app);
+        await app.tap(find.byKey(const Key('new_trip_dates')));
       },
     ),
   ]),
 
-  Flow('09-dettaglio-viaggio', 'Dettaglio viaggio: checklist e modifica', [
+  Flow('09-dettaglio-viaggio', 'Dettaglio viaggio e pagina valigia', [
     Scenario(
       1,
       'dettaglio-viaggio',
@@ -1105,11 +1274,13 @@ final flows = <Flow>[
     ),
     Scenario(
       6,
-      'modifica-oggetti-viaggio',
-      'default',
+      'valigia',
+      'da-modifica-oggetti',
       route: '/trips/:id/edit-items',
-      source: 'lib/features/trips/view/pack_suitcase_screen.dart',
-      description: 'Selezione degli oggetti da portare.',
+      source: _packSrc,
+      description:
+          'Pagina valigia aperta da "Modifica oggetti": riepilogo, bagagli, '
+          'ricerca e oggetti della casa proposta. Senza indicatore dei passi.',
       steps: (app) async {
         await _tripDetail(app);
         await app.tap(_text('trips.edit_items'));
@@ -1117,6 +1288,62 @@ final flows = <Flow>[
     ),
     Scenario(
       7,
+      'valigia',
+      'dal-passo-1',
+      route: '/trips/:id/edit-items',
+      source: _packSrc,
+      description:
+          'Passo 2 di "Nuovo viaggio" appena salvato il passo 1: indicatore dei '
+          'passi con "Viaggio" fatto, "Valigia" attivo, "Fatto" a zero oggetti.',
+      steps: (app) async {
+        await _fillStep1(app);
+        await app.tap(find.byKey(const Key('new_trip_next')));
+      },
+    ),
+    Scenario(
+      8,
+      'valigia',
+      'con-scelte',
+      route: '/trips/:id/edit-items',
+      source: _packSrc,
+      description:
+          'Valigia con scelte e quantità: un bagaglio in più e la quantità di '
+          '"Calzini" diminuita di uno. "Fatto" dice quanti oggetti.',
+      steps: (app) async {
+        await _tripDetail(app);
+        await app.tap(_text('trips.edit_items'));
+        await app.tap(find.text('Valigia grande'));
+        // Calzini è a 7: il "+" è spento al massimo della casa, il "-" no. Si
+        // toglie un capo senza deselezionare la riga.
+        final calzini = find.byWidgetPredicate(
+          (w) => w is QuantityStepper && w.value == 7,
+        );
+        await app.tap(
+          find.descendant(
+            of: calzini.first,
+            matching: find.byIcon(Icons.remove_circle_outline),
+          ),
+        );
+      },
+    ),
+    Scenario(
+      9,
+      'valigia',
+      'dopo-cambio-casa',
+      route: '/trips/:id/edit-items',
+      source: _packSrc,
+      description:
+          'Dopo aver scelto un\'altra casa dal selettore "Da": gli oggetti '
+          'della nuova casa, la selezione del viaggio resta.',
+      steps: (app) async {
+        await _tripDetail(app);
+        await app.tap(_text('trips.edit_items'));
+        await app.tap(find.widgetWithText(PackPill, 'Casa Milano'));
+        await app.tap(find.text('Casa al mare'));
+      },
+    ),
+    Scenario(
+      10,
       'dettaglio-viaggio',
       'non-trovato',
       route: '/trips/:id',
