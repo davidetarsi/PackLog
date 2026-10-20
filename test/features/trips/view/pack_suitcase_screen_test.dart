@@ -716,27 +716,16 @@ void main() {
   });
 
   group('PackSuitcaseScreen — casa senza oggetti', () {
-    testWidgets('offre di creare un oggetto nella casa mostrata', (
-      tester,
-    ) async {
-      // Senza questa azione, creare un viaggio da una casa vuota finisce in un
-      // vicolo cieco: la pagina dice che non c'è niente e non offre una strada.
+    testWidgets('mostra lo stato vuoto senza azioni', (tester) async {
+      // Qui si sceglie cosa portare: scansione e aggiunta a mano
+      // porterebbero fuori dalla valigia.
       arrange();
       await pumpPack(tester);
 
-      expect(find.byKey(const Key('trip_items_empty_add')), findsOneWidget);
       expect(find.byType(DsEmptyState), findsOneWidget);
-    });
-
-    testWidgets('con oggetti presenti non mostra l azione', (tester) async {
-      arrange(
-        items: {
-          'h1': [_spazzolino],
-        },
-      );
-      await pumpPack(tester);
-
-      expect(find.byKey(const Key('trip_items_empty_add')), findsNothing);
+      final empty = tester.widget<DsEmptyState>(find.byType(DsEmptyState));
+      expect(empty.ctaLabel, isNull);
+      expect(empty.linkLabel, isNull);
     });
 
     testWidgets(

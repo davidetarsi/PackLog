@@ -156,7 +156,16 @@ class _ItineraryRow extends StatelessWidget {
         shape: BoxShape.circle,
         color: context.groupSurface,
       ),
-      child: Icon(_icon, size: context.iconSizeSm, color: cs.onSurfaceVariant),
+      // L'aereo dello spostamento punta in basso, verso il ritorno: la linea
+      // dell'itinerario scende dall'andata al ritorno.
+      child: RotatedBox(
+        quarterTurns: entry.kind == ItineraryKind.transfer ? 2 : 0,
+        child: Icon(
+          _icon,
+          size: context.iconSizeSm,
+          color: cs.onSurfaceVariant,
+        ),
+      ),
     );
   }
 

@@ -15,7 +15,6 @@ import '../../../shared/widgets/ds_link_button.dart';
 import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/ds_steps.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
-import '../../ai_input/helpers/start_ai_scan.dart';
 import '../../houses/model/house_model.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../items/model/item_model.dart';
@@ -470,15 +469,11 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     if (items.isEmpty) {
       return Padding(
         padding: EdgeInsets.symmetric(vertical: context.spacingLg),
+        // Qui si sceglie cosa portare, non si riempie la casa: niente
+        // scansione né aggiunta a mano, che porterebbero fuori dal flusso.
         child: DsEmptyState(
           icon: Icons.inventory_2_outlined,
           title: 'common.no_items_in_house'.tr(),
-          ctaLabel: 'create_sheet.ai_scan'.tr(),
-          ctaIcon: Icons.auto_awesome,
-          ctaKey: const Key('trip_items_empty_add'),
-          onCta: () => startAiScan(context, ref, house.id),
-          linkLabel: 'create_sheet.manual_link'.tr(),
-          onLink: () => context.push('/houses/${house.id}?add=manual'),
         ),
       );
     }

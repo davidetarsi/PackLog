@@ -168,6 +168,36 @@ void main() {
       expect(find.text('Sintra'), findsOneWidget);
       expect(find.text('Lisbona'), findsWidgets);
     });
+
+    testWidgets('l aereo dello spostamento punta in basso', (tester) async {
+      // Andata e ritorno hanno le loro icone; tra due tappe l'aereo segue
+      // la linea dell'itinerario, che scende verso il ritorno.
+      final trip = _trip(
+        departure: DateTime(2026, 10, 28),
+        returnAt: DateTime(2026, 11, 2),
+        legs: [
+          TripLeg(
+            id: 'sintra',
+            locationDisplayName: 'Sintra, Portogallo',
+            from: DateTime(2026, 10, 31),
+            to: DateTime(2026, 11, 2),
+          ),
+        ],
+      );
+
+      await _pump(tester, trip: trip);
+
+      final plane = find.ancestor(
+        of: find.byIcon(Icons.flight),
+        matching: find.byType(RotatedBox),
+      );
+      expect(tester.widget<RotatedBox>(plane).quarterTurns, 2);
+      final takeoff = find.ancestor(
+        of: find.byIcon(Icons.flight_takeoff),
+        matching: find.byType(RotatedBox),
+      );
+      expect(tester.widget<RotatedBox>(takeoff).quarterTurns, 0);
+    });
   });
 
   group('francobollo', () {
