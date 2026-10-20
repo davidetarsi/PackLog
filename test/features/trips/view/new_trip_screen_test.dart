@@ -299,6 +299,22 @@ void main() {
   TripModel savedTrip() =>
       verify(() => tripRepo.addTrip(captureAny())).captured.single as TripModel;
 
+  group('NewTripScreen — campi', () {
+    testWidgets('"Quando?" è alto come il campo "Dove vai?"', (tester) async {
+      await pumpScreen(tester);
+
+      final where = tester.getSize(
+        find.descendant(
+          of: find.byKey(const Key('new_trip_place_search')),
+          matching: find.byType(TextField),
+        ),
+      );
+      final when = tester.getSize(find.byKey(const Key('new_trip_dates')));
+
+      expect(when.height, where.height);
+    });
+  });
+
   group('NewTripScreen — uscita', () {
     testWidgets('a modulo vuoto il tocco su Avanti mostra i due errori', (
       tester,

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
-import '../../../../shared/theme/surface_colors.dart';
 import '../../../../shared/widgets/ds_button.dart';
 import '../../../../shared/widgets/ds_link_button.dart';
 import '../../../../shared/widgets/ds_sheet_header.dart';
@@ -11,6 +10,8 @@ import '../../model/trip_draft.dart';
 import '../../model/trip_postcard.dart';
 import 'place_search.dart';
 import 'trip_dates_sheet.dart';
+import 'trip_field.dart';
+import 'trip_section_title.dart';
 
 /// Altezza massima del foglio, in frazione dello schermo: la testata resta
 /// sempre visibile sopra il contenuto che scorre.
@@ -152,8 +153,7 @@ class _StopSheetState extends State<_StopSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _SectionLabel('trips.new.where_stop'.tr()),
-                        SizedBox(height: context.spacingXs),
+                        TripSectionTitle('trips.new.where_stop'.tr()),
                         PlaceSearch(
                           key: const Key('stop_sheet_place'),
                           initialText: widget.initial?.place.name,
@@ -164,60 +164,39 @@ class _StopSheetState extends State<_StopSheet> {
                             if (_place != null) setState(() => _place = null);
                           },
                         ),
-                        SizedBox(height: context.spacingLg),
-                        _SectionLabel('trips.new.when'.tr()),
-                        SizedBox(height: context.spacingXs),
-                        InkWell(
+                        TripSectionTitle('trips.new.when'.tr()),
+                        TripFieldBox(
                           key: const Key('stop_sheet_dates'),
+                          icon: Icons.calendar_today_outlined,
                           onTap: _pickEnd,
-                          borderRadius: BorderRadius.circular(
-                            AppConstants.inputBorderRadius,
-                          ),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: context.spacingMd,
-                              vertical: context.spacingMd,
-                            ),
-                            decoration: BoxDecoration(
-                              color: context.groupSurface,
-                              borderRadius: BorderRadius.circular(
-                                AppConstants.inputBorderRadius,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  end == null
+                                      ? 'common.tap_to_set_dates'.tr()
+                                      : '${_formatDay(context, widget.start)}'
+                                            ' – '
+                                            '${_formatDay(context, end)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: tt.bodyLarge?.copyWith(
+                                    color: end == null
+                                        ? cs.onSurfaceVariant
+                                        : cs.onSurface,
+                                  ),
+                                ),
                               ),
-                              border: Border.all(color: cs.outlineVariant),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.calendar_today_outlined,
-                                  size: context.iconSizeMd,
-                                  color: cs.onSurfaceVariant,
-                                ),
-                                SizedBox(width: context.spacingMd),
-                                Expanded(
-                                  child: Text(
-                                    end == null
-                                        ? 'common.tap_to_set_dates'.tr()
-                                        : '${_formatDay(context, widget.start)}'
-                                              ' – '
-                                              '${_formatDay(context, end)}',
-                                    style: tt.bodyLarge?.copyWith(
-                                      color: end == null
-                                          ? cs.onSurfaceVariant
-                                          : cs.onSurface,
-                                    ),
+                              if (end != null)
+                                Text(
+                                  'trips.itinerary.nights'.plural(
+                                    nightsBetween(widget.start, end) ?? 0,
+                                  ),
+                                  style: tt.labelLarge?.copyWith(
+                                    color: cs.onSurfaceVariant,
                                   ),
                                 ),
-                                if (end != null)
-                                  Text(
-                                    'trips.itinerary.nights'.plural(
-                                      nightsBetween(widget.start, end) ?? 0,
-                                    ),
-                                    style: tt.labelLarge?.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                    ),
-                                  ),
-                              ],
-                            ),
+                            ],
                           ),
                         ),
                         // Il ritorno è la fine dell'ultima tappa: vale solo
@@ -276,22 +255,6 @@ class _StopSheetState extends State<_StopSheet> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String text;
-
-  const _SectionLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     );
   }

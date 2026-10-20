@@ -22,6 +22,8 @@ import 'widgets/place_search.dart';
 import 'widgets/postcard/trip_itinerary_view.dart';
 import 'widgets/stop_sheet.dart';
 import 'widgets/trip_dates_sheet.dart';
+import 'widgets/trip_field.dart';
+import 'widgets/trip_section_title.dart';
 
 /// Id provvisorio per l'itinerario: la bozza non è ancora un viaggio salvato.
 const _draftTripId = 'draft';
@@ -254,7 +256,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       key: _whereKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionTitle('trips.new.where'.tr()),
+        TripSectionTitle('trips.new.where'.tr()),
         if (place == null)
           PlaceSearch(
             key: const Key('new_trip_place_search'),
@@ -262,39 +264,28 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
             onSelected: (chosen) => _update(_draft.withDestination(chosen)),
           )
         else
-          _FieldBox(
+          TripFieldBox(
             key: const Key('new_trip_destination'),
-            child: Row(
-              children: [
-                Icon(
-                  place.houseId == null
-                      ? Icons.place_outlined
-                      : Icons.home_outlined,
-                  size: context.iconSizeMd,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                SizedBox(width: context.spacingMd),
-                Expanded(
-                  child: Text(
-                    place.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  key: const Key('new_trip_clear_destination'),
-                  tooltip: 'trips.new.where_clear'.tr(),
-                  icon: Icon(
-                    Icons.close,
-                    size: context.iconSizeSm,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  onPressed: () => _update(_draft.clearDestination()),
-                ),
-              ],
+            icon: place.houseId == null
+                ? Icons.place_outlined
+                : Icons.home_outlined,
+            suffixIcon: IconButton(
+              key: const Key('new_trip_clear_destination'),
+              tooltip: 'trips.new.where_clear'.tr(),
+              icon: Icon(
+                Icons.close,
+                size: context.iconSizeSm,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              onPressed: () => _update(_draft.clearDestination()),
+            ),
+            child: Text(
+              place.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
         if (showError) _FieldError('trips.new.where_missing'.tr()),
@@ -318,22 +309,19 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       key: _whenKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionTitle('trips.new.when'.tr()),
-        _FieldBox(
+        TripSectionTitle('trips.new.when'.tr()),
+        TripFieldBox(
           key: const Key('new_trip_dates'),
+          icon: Icons.calendar_today_outlined,
           hasError: showError,
           onTap: _pickDates,
           child: Row(
             children: [
-              Icon(
-                Icons.calendar_today_outlined,
-                size: context.iconSizeMd,
-                color: cs.onSurfaceVariant,
-              ),
-              SizedBox(width: context.spacingMd),
               Expanded(
                 child: Text(
                   value ?? 'common.tap_to_set_dates'.tr(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: value == null
                       ? tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant)
                       : tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
@@ -361,7 +349,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       key: _itineraryKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionTitle('trips.new.itinerary'.tr()),
+        TripSectionTitle('trips.new.itinerary'.tr()),
         if (stops.isEmpty)
           Text(
             'trips.new.itinerary_empty'.tr(),
@@ -431,7 +419,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionTitle('trips.new.name'.tr()),
+        TripSectionTitle('trips.new.name'.tr()),
         TextField(
           key: const Key('new_trip_name'),
           controller: _nameController,
@@ -507,72 +495,6 @@ OutlineInputBorder _inputBorder(Color color, double width) =>
       borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       borderSide: BorderSide(color: color, width: width),
     );
-
-/// Titolo di sezione: una domanda in grande e grassetto.
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        top: context.spacingLg,
-        bottom: context.spacingSm,
-      ),
-      child: Text(
-        text,
-        style: Theme.of(
-          context,
-        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-      ),
-    );
-  }
-}
-
-/// Riquadro di un campo compilato, sulla superficie dei gruppi. Con
-/// [hasError] il bordo è del colore di errore.
-class _FieldBox extends StatelessWidget {
-  const _FieldBox({
-    super.key,
-    required this.child,
-    this.hasError = false,
-    this.onTap,
-  });
-
-  final Widget child;
-  final bool hasError;
-
-  /// Il tocco sta dentro la superficie, così il ripple si vede sul campo.
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: context.groupSurface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-        side: BorderSide(
-          color: hasError ? cs.error : cs.outlineVariant,
-          width: hasError ? 1.5 : 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: context.spacingMd,
-            vertical: context.spacingXs,
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
 
 /// Messaggio sotto un campo mancante, in colore di errore.
 class _FieldError extends StatelessWidget {

@@ -28,6 +28,7 @@ import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_parts.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/trip_edit_placeholder.dart';
+import 'widgets/trip_section_title.dart';
 
 /// Prepara la valigia di un viaggio: riepilogo, bagagli e oggetti.
 ///
@@ -287,9 +288,9 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
                     destinationHouseName: destinationHouseName,
                     houseNames: {for (final h in houses) h.id: h.displayName},
                   ),
-                  PackSectionTitle('trips.pack.luggages'.tr()),
+                  TripSectionTitle('trips.pack.luggages'.tr()),
                   _luggageSection(context, house),
-                  PackSectionTitle('trips.pack.items'.tr()),
+                  TripSectionTitle('trips.pack.items'.tr()),
                   _itemsBlock(context, housesAsync),
                 ],
               ),

@@ -6,29 +6,6 @@ import '../../../../../shared/widgets/quantity_stepper.dart';
 import '../../../../items/model/item_model.dart';
 import '../../../model/trip_model.dart';
 
-/// Titolo di una sezione della valigia: "Bagagli", "Cosa porti".
-class PackSectionTitle extends StatelessWidget {
-  final String text;
-
-  const PackSectionTitle(this.text, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        top: context.spacingLg,
-        bottom: context.spacingSm,
-      ),
-      child: Text(
-        text,
-        style: Theme.of(
-          context,
-        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-      ),
-    );
-  }
-}
-
 /// Pillola neutra della valigia: bagagli e casa. Se scelta prende la superficie
 /// `surfaceContainerHigh`, il contorno `onSurface` e la spunta; altrimenti
 /// contorno `outlineVariant` e l'icona. Niente arancio: lo porta solo "Fatto".
@@ -92,7 +69,8 @@ class PackPill extends StatelessWidget {
 
 /// Riga di un oggetto della casa mostrata: casella, nome e, se l'oggetto è
 /// scelto e ha più di un pezzo disponibile, lo stepper (minimo 1, massimo il
-/// disponibile in casa). Il tocco sulla riga spunta o toglie l'oggetto.
+/// disponibile in casa). Il tocco sulla riga spunta o toglie l'oggetto; con lo
+/// stepper visibile vale solo sull'area di casella e nome.
 class PackItemRow extends StatelessWidget {
   final ItemModel item;
 
@@ -116,37 +94,54 @@ class PackItemRow extends StatelessWidget {
     final chosen = selected;
     final available = item.quantity ?? 1;
 
-    return InkWell(
-      onTap: onToggle,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.spacingSm,
-          vertical: context.spacingXs,
-        ),
-        child: Row(
-          children: [
-            Checkbox(value: chosen != null, onChanged: (_) => onToggle()),
-            SizedBox(width: context.spacingXs),
-            Expanded(
-              child: Text(
-                item.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: tt.bodyLarge?.copyWith(
-                  color: chosen != null ? cs.onSurface : cs.onSurfaceVariant,
-                ),
-              ),
+    final label = Row(
+      children: [
+        Checkbox(value: chosen != null, onChanged: (_) => onToggle()),
+        SizedBox(width: context.spacingXs),
+        Expanded(
+          child: Text(
+            item.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: tt.bodyLarge?.copyWith(
+              color: chosen != null ? cs.onSurface : cs.onSurfaceVariant,
             ),
-            if (chosen != null && available > 1)
-              QuantityStepper(
-                value: chosen.quantity,
-                minValue: 1,
-                maxValue: available,
-                accentColor: cs.onSurface,
-                onChanged: onQuantityChanged,
-              ),
-          ],
+          ),
         ),
+      ],
+    );
+
+    final showStepper = chosen != null && available > 1;
+    final padding = EdgeInsets.symmetric(
+      horizontal: context.spacingSm,
+      vertical: context.spacingXs,
+    );
+
+    // Senza stepper tutta la riga spunta. Con lo stepper spunta solo l'area di
+    // casella e nome: un tocco accanto ai pulsanti non deve togliere l'oggetto
+    // e perdere la quantità.
+    if (!showStepper) {
+      return InkWell(
+        onTap: onToggle,
+        child: Padding(padding: padding, child: label),
+      );
+    }
+
+    return Padding(
+      padding: padding,
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(onTap: onToggle, child: label),
+          ),
+          QuantityStepper(
+            value: chosen.quantity,
+            minValue: 1,
+            maxValue: available,
+            accentColor: cs.onSurface,
+            onChanged: onQuantityChanged,
+          ),
+        ],
       ),
     );
   }

@@ -4,17 +4,16 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/constants/house_icons.dart';
 import '../../../../shared/model/model.dart';
 import '../../../../shared/services/location_search_service.dart';
 import '../../../../shared/theme/app_spacing.dart';
-import '../../../../shared/theme/surface_colors.dart';
 import '../../../../shared/widgets/ds_group_header.dart';
 import '../../../../shared/widgets/ds_settings.dart';
 import '../../../houses/model/house_model.dart';
 import '../../../houses/providers/house_provider.dart';
 import '../../model/trip_draft.dart';
+import 'trip_field.dart';
 
 /// Caratteri minimi prima di cercare luoghi: come [LocationAutocompleteField].
 const int _minCharsForPlaces = 3;
@@ -112,9 +111,9 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
 
     _debounceTimer?.cancel();
     final query = _controller.text.trim();
-    setState(() {
-      if (query.length < _minCharsForPlaces) _places = const [];
-    });
+    // I luoghi mostrati sono della ricerca precedente: durante l'attesa non
+    // devono restare sotto il testo nuovo.
+    setState(() => _places = const []);
     if (query.length < _minCharsForPlaces) return;
 
     _debounceTimer = Timer(_placesDebounce, () => _searchPlaces(query));
@@ -150,11 +149,6 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
     widget.onSelected(place);
   }
 
-  OutlineInputBorder _border(Color color, double width) => OutlineInputBorder(
-    borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-    borderSide: BorderSide(color: color, width: width),
-  );
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -178,27 +172,14 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
           focusNode: _focusNode,
           autofocus: widget.autofocus,
           textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(
+          decoration: tripFieldDecoration(
+            context,
+            hasError: widget.hasError,
             hintText: widget.hintText ?? 'trips.new.where_hint'.tr(),
             prefixIcon: Icon(
               Icons.search,
               size: context.iconSizeMd,
               color: cs.onSurfaceVariant,
-            ),
-            filled: true,
-            fillColor: context.groupSurface,
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: context.spacingMd,
-              vertical: context.spacingMd,
-            ),
-            border: _border(cs.outlineVariant, 1),
-            enabledBorder: _border(
-              widget.hasError ? cs.error : cs.outlineVariant,
-              widget.hasError ? 1.5 : 1,
-            ),
-            focusedBorder: _border(
-              widget.hasError ? cs.error : cs.onSurface,
-              1.5,
             ),
           ),
         ),

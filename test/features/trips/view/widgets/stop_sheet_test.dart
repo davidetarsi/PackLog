@@ -49,9 +49,10 @@ class _Result {
   StopSheetResult? value;
 }
 
-DateTime _daysFromToday(int days) {
+/// Un giorno del mese prossimo: i test non dipendono da che giorno è oggi.
+DateTime _nextMonthDay(int day) {
   final now = DateTime.now();
-  return DateTime(now.year, now.month, now.day + days);
+  return DateTime(now.year, now.month + 1, day);
 }
 
 Finder _dayFinder(DateTime day) => find.byKey(
@@ -141,13 +142,33 @@ void main() {
   });
 
   group('showStopSheet', () {
+    testWidgets('"Quando?" è alto come il campo del posto', (tester) async {
+      await _pumpHost(tester, (context) async {
+        await showStopSheet(
+          context,
+          start: _nextMonthDay(7),
+          previousName: 'Lisbona',
+        );
+      });
+
+      final place = tester.getSize(
+        find.descendant(
+          of: find.byKey(const Key('stop_sheet_place')),
+          matching: find.byType(TextField),
+        ),
+      );
+      final when = tester.getSize(find.byKey(const Key('stop_sheet_dates')));
+
+      expect(when.height, place.height);
+    });
+
     testWidgets('senza posto né fine il bottone di salvataggio è spento', (
       tester,
     ) async {
       await _pumpHost(tester, (context) async {
         await showStopSheet(
           context,
-          start: _daysFromToday(7),
+          start: _nextMonthDay(7),
           previousName: 'Lisbona',
         );
       });
@@ -161,7 +182,7 @@ void main() {
       await _pumpHost(tester, (context) async {
         await showStopSheet(
           context,
-          start: _daysFromToday(7),
+          start: _nextMonthDay(7),
           previousName: 'Lisbona',
         );
       });
@@ -179,8 +200,8 @@ void main() {
     ) async {
       // Il campo mostra un testo nuovo: il posto scelto non è più quello
       // che l'utente vede, quindi il bottone non deve salvarlo.
-      final start = _daysFromToday(7);
-      final end = _daysFromToday(9);
+      final start = _nextMonthDay(7);
+      final end = _nextMonthDay(9);
       final result = _Result();
 
       await _pumpHost(tester, (context) async {
@@ -210,8 +231,8 @@ void main() {
     testWidgets(
       'con posto e fine scelti restituisce StopSaved con quella fine',
       (tester) async {
-        final start = _daysFromToday(7);
-        final end = _daysFromToday(9);
+        final start = _nextMonthDay(7);
+        final end = _nextMonthDay(9);
         final result = _Result();
 
         await _pumpHost(tester, (context) async {
@@ -248,7 +269,7 @@ void main() {
     testWidgets('in modifica "Elimina tappa" restituisce StopRemoved', (
       tester,
     ) async {
-      final start = _daysFromToday(7);
+      final start = _nextMonthDay(7);
       final result = _Result();
 
       await _pumpHost(tester, (context) async {
@@ -258,7 +279,7 @@ void main() {
           previousName: 'Lisbona',
           initial: DraftStop(
             place: DraftPlace.house(id: 'h1', name: 'Casa Milano'),
-            end: _daysFromToday(10),
+            end: _nextMonthDay(10),
           ),
         );
       });
@@ -278,11 +299,11 @@ void main() {
         await _pumpHost(tester, (context) async {
           await showStopSheet(
             context,
-            start: _daysFromToday(7),
+            start: _nextMonthDay(7),
             previousName: 'Lisbona',
             initial: DraftStop(
               place: DraftPlace.house(id: 'h1', name: 'Casa Milano'),
-              end: _daysFromToday(10),
+              end: _nextMonthDay(10),
             ),
           );
         });
@@ -298,13 +319,13 @@ void main() {
     testWidgets(
       'in modifica il salvataggio parte dal posto e dalla fine iniziali',
       (tester) async {
-        final end = _daysFromToday(10);
+        final end = _nextMonthDay(10);
         final result = _Result();
 
         await _pumpHost(tester, (context) async {
           result.value = await showStopSheet(
             context,
-            start: _daysFromToday(7),
+            start: _nextMonthDay(7),
             previousName: 'Lisbona',
             initial: DraftStop(
               place: DraftPlace.house(id: 'h1', name: 'Casa Milano'),

@@ -18,9 +18,12 @@ import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
 import 'package:pack_log/features/trips/view/pack_suitcase_screen.dart';
+import 'package:pack_log/features/trips/view/widgets/pack/pack_parts.dart';
+import 'package:pack_log/features/luggages/view/luggages_management_screen.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_empty_state.dart';
 import 'package:pack_log/shared/widgets/ds_steps.dart';
+import 'package:pack_log/shared/widgets/quantity_stepper.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
@@ -179,6 +182,9 @@ void main() {
           items[invocation.positionalArguments.first as String] ?? const [],
     );
     when(() => luggageRepo.getAllLuggages()).thenAnswer((_) async => luggages);
+    when(
+      () => luggageRepo.getLuggagesByHouseId(any()),
+    ).thenAnswer((_) async => luggages);
   }
 
   Future<void> pumpPack(WidgetTester tester, {bool fromNewTrip = false}) async {
@@ -247,9 +253,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// La riga di un oggetto: l'unico InkWell che la contiene.
+  /// La riga di un oggetto.
   Finder rowOf(String name) =>
-      find.ancestor(of: find.text(name), matching: find.byType(InkWell));
+      find.ancestor(of: find.text(name), matching: find.byType(PackItemRow));
 
   Checkbox checkboxOf(WidgetTester tester, String name) => tester.widget(
     find.descendant(of: rowOf(name), matching: find.byType(Checkbox)),
@@ -474,6 +480,103 @@ void main() {
       expect(add.onPressed, isNull);
     });
 
+    testWidgets(
+      'un tocco sul numero o a lato dello stepper non toglie l oggetto',
+      (tester) async {
+        arrange(
+          trip: _trip(items: [_tripItem(_maglietta, quantity: 2)]),
+          items: {
+            'h1': [_maglietta],
+          },
+        );
+        await pumpPack(tester);
+        expect(checkboxOf(tester, 'Maglietta').value, isTrue);
+
+        // Il numero tra i due pulsanti.
+        await tester.tap(
+          find.descendant(of: rowOf('Maglietta'), matching: find.text('2')),
+        );
+        await tester.pumpAndSettle();
+        expect(checkboxOf(tester, 'Maglietta').value, isTrue);
+
+        // Il margine della riga a destra dello stepper.
+        final row = tester.getRect(rowOf('Maglietta'));
+        final stepper = tester.getRect(find.byType(QuantityStepper));
+        await tester.tapAt(
+          Offset((stepper.right + row.right) / 2, row.center.dy),
+        );
+        await tester.pumpAndSettle();
+        expect(checkboxOf(tester, 'Maglietta').value, isTrue);
+
+        // Sopra lo stepper, nel margine verticale della riga.
+        await tester.tapAt(
+          Offset(stepper.center.dx, (row.top + stepper.top) / 2),
+        );
+        await tester.pumpAndSettle();
+        expect(checkboxOf(tester, 'Maglietta').value, isTrue);
+
+        await tapText(tester, 'Fatto · 1 oggetto');
+        expect(savedTrip().items.single.quantity, 2);
+      },
+    );
+
+    testWidgets('un tocco sul nome toglie anche un oggetto con lo stepper', (
+      tester,
+    ) async {
+      arrange(
+        trip: _trip(items: [_tripItem(_maglietta, quantity: 2)]),
+        items: {
+          'h1': [_maglietta],
+        },
+      );
+      await pumpPack(tester);
+
+      await tapText(tester, 'Maglietta');
+
+      expect(checkboxOf(tester, 'Maglietta').value, isFalse);
+    });
+
+    testWidgets(
+      'salvando, un oggetto nuovo della casa mostrata ha quantità 1, non spuntato e la casa d origine',
+      (tester) async {
+        arrange(
+          houses: [_milano, _mare],
+          items: {
+            'h1': [_maglietta],
+            'h2': [_calzini],
+          },
+        );
+        await pumpPack(tester);
+
+        await tapText(tester, 'Maglietta');
+        await tapText(tester, 'Fatto · 1 oggetto');
+
+        final item = savedTrip().items.single;
+        expect(item.id, 'i-maglietta');
+        expect(item.quantity, 1);
+        expect(item.isChecked, isFalse);
+        expect(item.originHouseId, 'h1');
+      },
+    );
+
+    testWidgets('togliendo un oggetto già nel viaggio, "Fatto" lo rimuove', (
+      tester,
+    ) async {
+      arrange(
+        trip: _trip(items: [_tripItem(_maglietta), _tripItem(_spazzolino)]),
+        items: {
+          'h1': [_maglietta, _spazzolino],
+        },
+      );
+      await pumpPack(tester);
+
+      await tapText(tester, 'Maglietta');
+      expect(checkboxOf(tester, 'Maglietta').value, isFalse);
+      await tapText(tester, 'Fatto · 1 oggetto');
+
+      expect(savedTrip().items.map((i) => i.id), ['i-spazzolino']);
+    });
+
     testWidgets('lo stepper non compare per gli oggetti in quantità singola', (
       tester,
     ) async {
@@ -509,6 +612,17 @@ void main() {
   });
 
   group('PackSuitcaseScreen — bagagli e salvataggio', () {
+    testWidgets('"Aggiungi bagagli" apre il foglio di gestione dei bagagli', (
+      tester,
+    ) async {
+      arrange();
+      await pumpPack(tester);
+
+      await tapText(tester, 'Aggiungi bagagli');
+
+      expect(find.byType(LuggagesManagementSheet), findsOneWidget);
+    });
+
     testWidgets('i bagagli scelti si salvano in luggages', (tester) async {
       arrange(luggages: [_luggage('l1', 'Zaino'), _luggage('l2', 'Trolley')]);
       await pumpPack(tester);

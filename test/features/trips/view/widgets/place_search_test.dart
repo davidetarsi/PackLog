@@ -129,6 +129,31 @@ void main() {
     },
   );
 
+  testWidgets(
+    'cambiando il testo i luoghi della ricerca precedente spariscono subito',
+    (tester) async {
+      await pumpSearch(tester, onSelected: (_) {});
+
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'mar');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      expect(_placeRow(0), findsOneWidget);
+
+      // Un tasto in più: durante l'attesa non devono restare i luoghi di "mar".
+      await tester.enterText(find.byType(TextField), 'mars');
+      await tester.pump();
+
+      expect(_placeRow(0), findsNothing);
+
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+
+      expect(_placeRow(0), findsOneWidget);
+    },
+  );
+
   testWidgets('tocco su una casa chiama onSelected con DraftPlace.house', (
     tester,
   ) async {

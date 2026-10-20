@@ -200,7 +200,7 @@ Future<void> _fillStopPlace(ScreenshotApp app, String query) =>
 Future<void> _fillStopEnd(ScreenshotApp app, DateTime end) async {
   await app.tap(find.byKey(const Key('stop_sheet_dates')));
   await _tapCalendarDay(app, end);
-  await app.tap(find.text('Conferma'));
+  await app.tap(_text('common.confirm'));
 }
 
 /// Aggiunge in coda la tappa Sintra, finita il giorno [end].
@@ -1084,6 +1084,14 @@ final flows = <Flow>[
           end: _nextMonthDay(23),
         );
         await app.tap(find.byKey(const Key('new_trip_later')));
+        // Il viaggio appena creato è la cartolina in cima alla pila.
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('postcard_pile_top')),
+            matching: find.text('Siviglia'),
+          ),
+          findsWidgets,
+        );
       },
     ),
   ]),

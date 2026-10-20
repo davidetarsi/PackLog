@@ -18,9 +18,11 @@ class _Result<T> {
   T? value;
 }
 
-DateTime _daysFromToday(int days) {
+/// Un giorno del mese prossimo: i test non dipendono da che giorno è oggi, e
+/// il giorno toccato non cade mai nel mese prima di quello visibile.
+DateTime _nextMonthDay(int day) {
   final now = DateTime.now();
-  return DateTime(now.year, now.month, now.day + days);
+  return DateTime(now.year, now.month + 1, day);
 }
 
 Finder _dayFinder(DateTime day) => find.byKey(
@@ -99,8 +101,8 @@ void main() {
   group('showTripRangeSheet', () {
     testWidgets('restituisce le due date toccate', (tester) async {
       final result = _Result<TripDateRange>();
-      final departure = _daysFromToday(7);
-      final ret = _daysFromToday(10);
+      final departure = _nextMonthDay(7);
+      final ret = _nextMonthDay(10);
 
       await _pumpHost(tester, (context) async {
         result.value = await showTripRangeSheet(context);
@@ -123,7 +125,7 @@ void main() {
         await showTripRangeSheet(context);
       });
 
-      await _tapDay(tester, _daysFromToday(7));
+      await _tapDay(tester, _nextMonthDay(7));
 
       expect(_confirmButton(tester).onPressed, isNull);
     });
@@ -132,8 +134,8 @@ void main() {
       tester,
     ) async {
       final result = _Result<TripDateRange>();
-      final departure = _daysFromToday(7);
-      final ret = _daysFromToday(9);
+      final departure = _nextMonthDay(7);
+      final ret = _nextMonthDay(9);
 
       await _pumpHost(tester, (context) async {
         result.value = await showTripRangeSheet(
@@ -156,13 +158,13 @@ void main() {
     testWidgets('un giorno fino alla partenza compresa non cambia niente', (
       tester,
     ) async {
-      final start = _daysFromToday(7);
+      final start = _nextMonthDay(7);
 
       await _pumpHost(tester, (context) async {
         await showTripEndSheet(context, start: start);
       });
 
-      await _tapDay(tester, _daysFromToday(3));
+      await _tapDay(tester, _nextMonthDay(3));
       await _tapDay(tester, start);
 
       expect(_confirmButton(tester).onPressed, isNull);
@@ -171,14 +173,14 @@ void main() {
     testWidgets('toccare un giorno dopo la partenza e confermare restituisce '
         'quella data', (tester) async {
       final result = _Result<DateTime>();
-      final start = _daysFromToday(7);
-      final end = _daysFromToday(12);
+      final start = _nextMonthDay(7);
+      final end = _nextMonthDay(12);
 
       await _pumpHost(tester, (context) async {
         result.value = await showTripEndSheet(context, start: start);
       });
 
-      await _tapDay(tester, _daysFromToday(3));
+      await _tapDay(tester, _nextMonthDay(3));
       await _tapDay(tester, end);
       await tester.tap(find.text('Conferma'));
       await tester.pumpAndSettle();
@@ -190,8 +192,8 @@ void main() {
       tester,
     ) async {
       final result = _Result<DateTime>();
-      final start = _daysFromToday(7);
-      final end = _daysFromToday(9);
+      final start = _nextMonthDay(7);
+      final end = _nextMonthDay(9);
 
       await _pumpHost(tester, (context) async {
         result.value = await showTripEndSheet(context, start: start);
@@ -200,7 +202,7 @@ void main() {
       await _tapDay(tester, end);
       // Nel foglio di intervallo questo tocco riscriverebbe la partenza: qui
       // deve essere ignorato e la fine scelta deve restare.
-      await _tapDay(tester, _daysFromToday(3));
+      await _tapDay(tester, _nextMonthDay(3));
       await tester.tap(find.text('Conferma'));
       await tester.pumpAndSettle();
 
