@@ -3,6 +3,7 @@
 
 /* eslint-disable */
 
+export const ACCESSORI_SEPARATI: any = true;
 export const ACTIVITY_TAGS: any = new Set(["Beach", "Everyday", "Formal", "Hiking", "Lounge", "Office", "Sport", "Swimming"]);
 export const ANNI_STORICI: any = 5;
 export const ATTIVITA_ALL_APERTO: any = new Set(["alpinismo", "cammino", "campeggio", "escursioni in quota", "escursioni leggere", "fotografia naturalistica", "immersioni", "mare", "safari", "sci", "trekking"]);

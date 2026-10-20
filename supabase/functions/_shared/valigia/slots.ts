@@ -223,6 +223,20 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   const cultoCaldo = rc.cultoLeggero(tempMax);
   const tagDi = new Map(items.map((g) => [g.id, g.activity_tags]));
   let slots: Slot[] = parseJsonBlock(testoModello);
+  // Un bisogno di accessori con piu' sottocategorie (cappello o sciarpa) diventa
+  // un bisogno per sottocategoria: due funzioni diverse, non un capo solo.
+  if (K.ACCESSORI_SEPARATI) {
+    const separati: Slot[] = [];
+    for (const x of slots) {
+      const subsX = x !== null && typeof x === "object" && !Array.isArray(x) ? x.subCategories : null;
+      if (Array.isArray(subsX) && subsX.length > 1 && x.category === "Accessory") {
+        for (const sub of subsX) separati.push({ ...x, subCategories: [sub], slot: `${ps(x.slot)} (${ps(sub)})` });
+      } else {
+        separati.push(x);
+      }
+    }
+    slots = separati;
+  }
   const prima = slots.length;
   const attViaggio = a.attivita_viaggio != null ? a.attivita_viaggio : (attivita || []);
   segnaCapiDaNeve(items, [...attViaggio, ...(attivita || [])]);
