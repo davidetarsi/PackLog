@@ -11,6 +11,7 @@
 //     --foto CARTELLA_JPG --armadio ARMADIO.json --uscita confronto.json [--luna gpt-6-luna] [--ripeti 1]
 //
 // ARMADIO.json: la lista dei capi come la legge pack-trip, [{ id, name, category, ai_metadata }, ...].
+// test/armadio_prova.json e' l'armadio da 197 capi del bench (inventory_cache.json), gia' in questo formato.
 import { parseArgs } from "node:util";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { extname, join } from "node:path";
