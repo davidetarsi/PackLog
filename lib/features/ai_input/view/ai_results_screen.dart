@@ -529,7 +529,11 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     List<ItemModel>? items,
     ClothingAnalysisResult result,
   ) =>
-      items?.any((item) => item.category == aiItemCategory(result.category)) ??
+      items?.any(
+        (item) =>
+            item.category ==
+            aiItemCategory(result.category, appCategory: result.appCategory),
+      ) ??
       false;
 
   String? _linkedName(String? id, List<ItemModel>? items) {

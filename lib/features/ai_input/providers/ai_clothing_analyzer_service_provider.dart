@@ -11,7 +11,7 @@ part 'ai_clothing_analyzer_service_provider.g.dart';
 @Riverpod(keepAlive: true)
 AiClothingAnalyzerService aiClothingAnalyzerService(Ref ref) {
   return AiClothingAnalyzerService(
-    proxyUrl: '${AppConfig.supabaseUrl}/functions/v1/openai-proxy',
+    proxyUrl: '${AppConfig.supabaseUrl}/functions/v1/item-metadata',
     anonKey: AppConfig.supabaseAnonKey,
     analytics: ref.watch(coreAnalyticsServiceProvider),
     monitoring: ref.watch(monitoringServiceProvider),

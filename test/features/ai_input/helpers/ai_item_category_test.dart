@@ -27,5 +27,21 @@ void main() {
     test('keeps legacy fallback to vestiti for unknown categories', () {
       expect(aiItemCategory('Unknown AI category'), ItemCategory.vestiti);
     });
+
+    test('the app category from item-metadata wins over the AI category', () {
+      expect(
+        aiItemCategory('Not Clothing', appCategory: 'toiletries'),
+        ItemCategory.toiletries,
+      );
+      expect(
+        aiItemCategory('Upper Body', appCategory: 'elettronica'),
+        ItemCategory.elettronica,
+      );
+      // Un valore sconosciuto torna alla regola sulla categoria inglese.
+      expect(
+        aiItemCategory('Accessory', appCategory: 'boh'),
+        ItemCategory.varie,
+      );
+    });
   });
 }

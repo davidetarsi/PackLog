@@ -1,6 +1,23 @@
+import 'package:flutter/foundation.dart';
+
 /// Alias usato dal service per chiarire che ogni istanza rappresenta
 /// un singolo capo d'abbigliamento identificato nell'immagine.
 typedef ClothingItem = ClothingAnalysisResult;
+
+/// I campi della scheda che la UI legge e modifica; gli altri finiscono in
+/// [ClothingAnalysisResult.extras].
+const _knownKeys = {
+  'name',
+  'category',
+  'subCategory',
+  'baseColor',
+  'pattern',
+  'coverage',
+  'fit',
+  'warmth',
+  'formality',
+  'activityTags',
+};
 
 class ClothingAnalysisResult {
   final String name;
@@ -14,6 +31,14 @@ class ClothingAnalysisResult {
   final String formality;
   final List<String> activityTags;
 
+  /// Categoria dell'app decisa da `item-metadata` (vestiti, varie,
+  /// toiletries, elettronica); null con le risposte che non la danno.
+  final String? appCategory;
+
+  /// Gli altri campi della scheda (waterResistance, bulk, notClothingKind...):
+  /// la UI non li mostra, ma restano in `items.ai_metadata` per la valigia.
+  final Map<String, dynamic> extras;
+
   const ClothingAnalysisResult({
     required this.name,
     required this.category,
@@ -25,7 +50,22 @@ class ClothingAnalysisResult {
     required this.warmth,
     required this.formality,
     required this.activityTags,
+    this.appCategory,
+    this.extras = const {},
   });
+
+  /// Un elemento di `items` nella risposta di `item-metadata`:
+  /// `{ metadata, app_category, dubbi }`.
+  factory ClothingAnalysisResult.fromItemMetadata(Map<String, dynamic> json) {
+    final metadata = json['metadata'];
+    final base = ClothingAnalysisResult.fromJson(
+      metadata is Map<String, dynamic> ? metadata : const {},
+    );
+    final appCategory = json['app_category'];
+    return appCategory is String
+        ? base.copyWith(appCategory: appCategory)
+        : base;
+  }
 
   factory ClothingAnalysisResult.fromJson(Map<String, dynamic> json) {
     return ClothingAnalysisResult(
@@ -41,6 +81,10 @@ class ClothingAnalysisResult {
       activityTags: (json['activityTags'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
+      extras: {
+        for (final entry in json.entries)
+          if (!_knownKeys.contains(entry.key)) entry.key: entry.value,
+      },
     );
   }
 
@@ -55,6 +99,8 @@ class ClothingAnalysisResult {
     int? warmth,
     String? formality,
     List<String>? activityTags,
+    String? appCategory,
+    Map<String, dynamic>? extras,
   }) {
     return ClothingAnalysisResult(
       name: name ?? this.name,
@@ -67,6 +113,8 @@ class ClothingAnalysisResult {
       warmth: warmth ?? this.warmth,
       formality: formality ?? this.formality,
       activityTags: activityTags ?? this.activityTags,
+      appCategory: appCategory ?? this.appCategory,
+      extras: extras ?? this.extras,
     );
   }
 
@@ -118,6 +166,7 @@ class ClothingAnalysisResult {
     'warmth': warmth,
     'formality': formality,
     'activityTags': activityTags,
+    ...extras,
   };
 
   @override
@@ -145,6 +194,8 @@ class ClothingAnalysisResult {
     for (var i = 0; i < activityTags.length; i++) {
       if (activityTags[i] != other.activityTags[i]) return false;
     }
+    if (appCategory != other.appCategory) return false;
+    if (!mapEquals(extras, other.extras)) return false;
     return true;
   }
 
@@ -160,5 +211,7 @@ class ClothingAnalysisResult {
     warmth,
     formality,
     Object.hashAll(activityTags),
+    appCategory,
+    Object.hashAll(extras.keys),
   );
 }

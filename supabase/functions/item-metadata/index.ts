@@ -10,7 +10,8 @@
 // app_category: items.category (vestiti, varie, toiletries, elettronica);
 // dubbi: etichette da chiedere ("?"), [] = niente da chiedere.
 //
-// Sostituisce openai-proxy, che resta finche' l'app non passa a questa funzione.
+// Lo scan dell'app passa da qui; openai-proxy resta per le versioni gia'
+// installate, che lo chiamano ancora (stessi crediti, stessi errori).
 // La foto consuma un credito AI (quota mensile + crediti extra, come la valigia);
 // il nome no: costa pochissimo e ha solo un limite giornaliero contro gli abusi,
 // che l'app non mostra.

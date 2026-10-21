@@ -1,5 +1,5 @@
 // openai-proxy: lo scan delle foto per le app gia' installate (quelle nuove
-// passeranno a item-metadata). Il nome resta per compatibilita': il modello
+// chiamano item-metadata). Da togliere quando non riceve piu' chiamate. Il nome resta per compatibilita': il modello
 // ora e' Claude Haiku 5.5, ma la risposta ha ancora la busta di OpenAI
 // ({ choices: [{ message: { content } }] }), che e' quella che l'app legge.
 // Ogni foto consuma un credito AI (quota mensile + crediti extra).

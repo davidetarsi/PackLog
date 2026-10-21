@@ -74,7 +74,10 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
         );
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final sameCategory = aiItemCategory(widget.scanned.category);
+    final sameCategory = aiItemCategory(
+      widget.scanned.category,
+      appCategory: widget.scanned.appCategory,
+    );
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: context.screenHeight),
