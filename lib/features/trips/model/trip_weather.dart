@@ -124,6 +124,7 @@ class StopWeather {
     this.rainMm,
     this.windMaxKmh,
     this.uvMax,
+    this.forecastDays = const [],
   });
 
   final String name;
@@ -145,6 +146,11 @@ class StopWeather {
   final double? windMaxKmh;
   final double? uvMax;
 
+  /// I giorni della tappa che cadono nei prossimi 7, con le fasce orarie.
+  /// Vuoto oltre, o se il dettaglio non è arrivato: allora la tappa non si
+  /// apre.
+  final List<DayWeather> forecastDays;
+
   int get days => _daysBetween(from, to) + 1;
 
   Map<String, dynamic> toJson() => {
@@ -159,6 +165,7 @@ class StopWeather {
     'rain_mm': rainMm,
     'wind_max_kmh': windMaxKmh,
     'uv_max': uvMax,
+    'forecast_days': [for (final day in forecastDays) day.toJson()],
   };
 
   factory StopWeather.fromJson(Map<String, dynamic> json) => StopWeather(
@@ -173,6 +180,115 @@ class StopWeather {
     rainMm: _double(json['rain_mm']),
     windMaxKmh: _double(json['wind_max_kmh']),
     uvMax: _double(json['uv_max']),
+    forecastDays: [
+      for (final day in json['forecast_days'] as List? ?? const [])
+        DayWeather.fromJson(day as Map<String, dynamic>),
+    ],
+  );
+}
+
+/// Ore di una fascia: il giorno ne ha sei, 0-4, 4-8, … 20-24.
+const kBandHours = 4;
+
+/// Una fascia di quattro ore di un giorno di previsione.
+class BandWeather {
+  const BandWeather({
+    required this.startHour,
+    this.code,
+    this.temp,
+    this.rainProbability,
+    this.rainMm,
+    this.windKmh,
+  });
+
+  /// Ora di inizio: 0, 4, 8, 12, 16 o 20.
+  final int startHour;
+
+  /// Codice WMO più severo della fascia.
+  final int? code;
+
+  /// Temperatura media della fascia, in °C.
+  final double? temp;
+
+  /// Probabilità di pioggia più alta della fascia, in %.
+  final int? rainProbability;
+  final double? rainMm;
+  final double? windKmh;
+
+  int get endHour => startHour + kBandHours;
+
+  Map<String, dynamic> toJson() => {
+    'da': startHour,
+    'codice': code,
+    'temp_media': temp,
+    'prob_pioggia': rainProbability,
+    'pioggia_mm': rainMm,
+    'vento_kmh': windKmh,
+  };
+
+  /// Dalla fascia di `trip-weather`: la cache usa la stessa forma.
+  factory BandWeather.fromJson(Map<String, dynamic> json) => BandWeather(
+    startHour: (json['da'] as num).toInt(),
+    code: (json['codice'] as num?)?.toInt(),
+    temp: _double(json['temp_media']),
+    rainProbability: (json['prob_pioggia'] as num?)?.round(),
+    rainMm: _double(json['pioggia_mm']),
+    windKmh: _double(json['vento_kmh']),
+  );
+}
+
+/// Un giorno di previsione: il riepilogo e le sei fasce.
+class DayWeather {
+  const DayWeather({
+    required this.date,
+    this.code,
+    this.tempMin,
+    this.tempMax,
+    this.rainProbability,
+    this.rainMm,
+    this.windMaxKmh,
+    this.uvMax,
+    this.bands = const [],
+  });
+
+  final DateTime date;
+
+  /// Codice WMO del giorno (il più severo, come lo dà Open-Meteo).
+  final int? code;
+  final double? tempMin;
+  final double? tempMax;
+  final int? rainProbability;
+  final double? rainMm;
+  final double? windMaxKmh;
+  final double? uvMax;
+  final List<BandWeather> bands;
+
+  Map<String, dynamic> toJson() => {
+    'data': _isoDay(date),
+    'codice': code,
+    'temp_min': tempMin,
+    'temp_max': tempMax,
+    'prob_pioggia': rainProbability,
+    'pioggia_mm': rainMm,
+    'vento_max_kmh': windMaxKmh,
+    'uv_max': uvMax,
+    'fasce': [for (final band in bands) band.toJson()],
+  };
+
+  /// Dal giorno di `trip-weather`: la cache usa la stessa forma.
+  factory DayWeather.fromJson(Map<String, dynamic> json) => DayWeather(
+    date: _parseDay(json['data'] as String),
+    code: (json['codice'] as num?)?.toInt(),
+    tempMin: _double(json['temp_min']),
+    tempMax: _double(json['temp_max']),
+    rainProbability: (json['prob_pioggia'] as num?)?.round(),
+    rainMm: _double(json['pioggia_mm']),
+    windMaxKmh: _double(json['vento_max_kmh']),
+    uvMax: _double(json['uv_max']),
+    bands: [
+      for (final band in json['fasce'] as List? ?? const [])
+        BandWeather.fromJson(band as Map<String, dynamic>),
+    ],
   );
 }
 
@@ -240,8 +356,7 @@ class TripWeather {
       stops: [
         for (var i = 0; i < perStop.length; i++)
           _stopFromResponse(
-            (perStop[i] as Map<String, dynamic>)['meteo']
-                as Map<String, dynamic>,
+            perStop[i] as Map<String, dynamic>,
             request.stops[i],
           ),
       ],
@@ -250,9 +365,10 @@ class TripWeather {
 }
 
 StopWeather _stopFromResponse(
-  Map<String, dynamic> meteo,
+  Map<String, dynamic> perStop,
   WeatherStopRequest stop,
 ) {
+  final meteo = perStop['meteo'] as Map<String, dynamic>;
   // "previsione" oppure "storico N anni".
   final fonte = meteo['fonte'] as String? ?? '';
   return StopWeather(
@@ -269,6 +385,11 @@ StopWeather _stopFromResponse(
     rainMm: _double(meteo['pioggia_totale_mm']),
     windMaxKmh: _double(meteo['vento_max_kmh']),
     uvMax: _double(meteo['uv_max']),
+    // Manca finché la funzione non lo manda: la tappa resta senza dettaglio.
+    forecastDays: [
+      for (final day in perStop['dettaglio'] as List? ?? const [])
+        DayWeather.fromJson(day as Map<String, dynamic>),
+    ],
   );
 }
 

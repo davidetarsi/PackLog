@@ -54,12 +54,76 @@ class FakeTripWeather extends TripWeatherService {
       fetchedAt: today.add(const Duration(hours: 9, minutes: 30)),
       stops: [
         for (final stop in request.stops)
-          _stop(stop, forecast: stop.to.difference(today).inDays <= 14),
+          _stop(
+            stop,
+            forecast: stop.to.difference(today).inDays <= 14,
+            today: today,
+          ),
       ],
     );
   }
 
-  StopWeather _stop(WeatherStopRequest stop, {required bool forecast}) {
+  /// Codici WMO e probabilità di pioggia delle sei fasce, a giro per giorno:
+  /// sereno, pioggia il pomeriggio, poco nuvoloso.
+  static const _bandCodes = [
+    [0, 1, 2, 2, 3, 0],
+    [3, 3, 61, 63, 61, 3],
+    [0, 0, 1, 1, 2, 0],
+  ];
+  static const _bandRain = [
+    [0, 0, 5, 10, 10, 5],
+    [20, 30, 70, 85, 60, 30],
+    [0, 0, 0, 5, 10, 5],
+  ];
+
+  /// I giorni della tappa nei prossimi 7, come li manda la funzione.
+  List<DayWeather> _days(
+    WeatherStopRequest stop,
+    double min,
+    double max, {
+    required DateTime today,
+  }) {
+    final last = today.add(const Duration(days: 6));
+    return [
+      for (var i = 0; i < stop.days; i++)
+        if (!stop.from.add(Duration(days: i)).isAfter(last))
+          _day(stop.from.add(Duration(days: i)), i % 3, min, max),
+    ];
+  }
+
+  DayWeather _day(DateTime date, int kind, double min, double max) {
+    // Fresco di notte, il massimo nel primo pomeriggio.
+    final temps = [min, min + 1, (min + max) / 2, max, max - 2, min + 2];
+    final codes = _bandCodes[kind];
+    final rain = _bandRain[kind];
+    return DayWeather(
+      date: date,
+      code: codes.reduce((a, b) => a > b ? a : b),
+      tempMin: min,
+      tempMax: max,
+      rainProbability: rain.reduce((a, b) => a > b ? a : b),
+      rainMm: kind == 1 ? 3.5 : 0,
+      windMaxKmh: kind == 1 ? 32 : 18,
+      uvMax: 5,
+      bands: [
+        for (var b = 0; b < 6; b++)
+          BandWeather(
+            startHour: b * kBandHours,
+            code: codes[b],
+            temp: temps[b],
+            rainProbability: rain[b],
+            rainMm: rain[b] > 50 ? 1.2 : 0,
+            windKmh: 12,
+          ),
+      ],
+    );
+  }
+
+  StopWeather _stop(
+    WeatherStopRequest stop, {
+    required bool forecast,
+    required DateTime today,
+  }) {
     final (min, max, rainShare, wind) =
         _table[stop.name] ?? (12.0, 20.0, 0.3, 20.0);
     return StopWeather(
@@ -74,6 +138,7 @@ class FakeTripWeather extends TripWeatherService {
       rainMm: rainShare * stop.days * 4,
       windMaxKmh: wind,
       uvMax: 6,
+      forecastDays: _days(stop, min, max, today: today),
     );
   }
 }

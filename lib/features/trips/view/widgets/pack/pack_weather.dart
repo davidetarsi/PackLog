@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
@@ -51,6 +52,7 @@ class PackWeatherSection extends ConsumerWidget {
       ),
       data: (state) => switch (state) {
         TripWeatherReady(:final weather) => _WeatherCard(
+          tripId: tripId,
           weather: weather,
           onRefresh: notifier.refresh,
         ),
@@ -78,8 +80,13 @@ class PackWeatherSection extends ConsumerWidget {
 }
 
 class _WeatherCard extends StatelessWidget {
-  const _WeatherCard({required this.weather, required this.onRefresh});
+  const _WeatherCard({
+    required this.tripId,
+    required this.weather,
+    required this.onRefresh,
+  });
 
+  final String tripId;
   final TripWeather weather;
   final VoidCallback onRefresh;
 
@@ -93,7 +100,13 @@ class _WeatherCard extends StatelessWidget {
             children: [
               for (var i = 0; i < weather.stops.length; i++) ...[
                 if (i > 0) const Divider(height: 1),
-                _StopRow(stop: weather.stops[i]),
+                _StopRow(
+                  stop: weather.stops[i],
+                  // Con i giorni di previsione la tappa apre il dettaglio.
+                  onTap: weather.stops[i].forecastDays.isEmpty
+                      ? null
+                      : () => context.push('/trips/$tripId/weather?stop=$i'),
+                ),
               ],
             ],
           ),
@@ -132,9 +145,10 @@ class _WeatherCard extends StatelessWidget {
 
 /// Una tappa: icona del tempo, nome e dettagli, minime e massime a destra.
 class _StopRow extends StatelessWidget {
-  const _StopRow({required this.stop});
+  const _StopRow({required this.stop, this.onTap});
 
   final StopWeather stop;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +157,7 @@ class _StopRow extends StatelessWidget {
     final min = stop.tempMin;
     final max = stop.tempMax;
 
-    return Padding(
+    final row = Padding(
       padding: EdgeInsets.all(context.spacingMd),
       child: Row(
         children: [
@@ -179,9 +193,18 @@ class _StopRow extends StatelessWidget {
               style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
           ],
+          if (onTap != null) ...[
+            SizedBox(width: context.spacingXs),
+            Icon(
+              Icons.chevron_right,
+              size: context.iconSizeSm,
+              color: cs.onSurfaceVariant,
+            ),
+          ],
         ],
       ),
     );
+    return onTap == null ? row : InkWell(onTap: onTap, child: row);
   }
 
   /// "29 ott – 1 nov · 2 giorni di pioggia · vento fino a 45 km/h".

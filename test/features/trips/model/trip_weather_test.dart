@@ -376,6 +376,54 @@ void main() {
       expect(weather.signature, request.signature);
     });
 
+    test('legge i giorni e le fasce del dettaglio', () {
+      final conDettaglio =
+          jsonDecode(jsonEncode(response)) as Map<String, dynamic>;
+      ((conDettaglio['geo'] as Map)['per_tappa'] as List)[0]['dettaglio'] = [
+        {
+          'data': '2026-10-30',
+          'codice': 61,
+          'temp_min': 14.2,
+          'temp_max': 21.6,
+          'prob_pioggia': 80,
+          'pioggia_mm': 2.5,
+          'vento_max_kmh': 33.0,
+          'uv_max': 5.5,
+          'fasce': [
+            for (var h = 0; h < 24; h += 4)
+              {
+                'da': h,
+                'codice': h == 12 ? 61 : 1,
+                'temp_media': 15.0 + h / 4,
+                'prob_pioggia': h == 12 ? 80 : 10,
+                'pioggia_mm': h == 12 ? 2.5 : 0,
+                'vento_kmh': 12.0,
+              },
+          ],
+        },
+      ];
+      final weather = TripWeather.fromResponse(
+        conDettaglio,
+        request: request,
+        fetchedAt: DateTime(2026, 10, 20, 9, 30),
+      );
+      final lisbona = weather.stops.first;
+      expect(lisbona.forecastDays, hasLength(1));
+      final day = lisbona.forecastDays.single;
+      expect(day.date, DateTime(2026, 10, 30));
+      expect(day.rainProbability, 80);
+      expect(day.bands.map((b) => (b.startHour, b.endHour)).last, (20, 24));
+      expect(day.bands[3].code, 61);
+      expect(day.bands[3].temp, 18.0);
+      // Sintra non ha il dettaglio: non si apre.
+      expect(weather.stops[1].forecastDays, isEmpty);
+
+      final back = TripWeather.fromJson(
+        jsonDecode(jsonEncode(weather.toJson())) as Map<String, dynamic>,
+      );
+      expect(back.toJson(), weather.toJson());
+    });
+
     test('tappe diverse dalla richiesta: errore', () {
       expect(
         () => TripWeather.fromResponse(

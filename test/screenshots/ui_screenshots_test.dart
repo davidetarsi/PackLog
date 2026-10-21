@@ -1473,6 +1473,20 @@ final flows = <Flow>[
           'chiedere e la sezione lo dice.',
       steps: (app) => _pack(app, kEmptyTripId),
     ),
+    Scenario(
+      18,
+      'meteo',
+      'dettaglio-tappa',
+      route: '/trips/:id/weather',
+      source: 'lib/features/trips/view/trip_weather_screen.dart',
+      description:
+          'Toccando la tappa con la previsione: i giorni che restano, ognuno '
+          'con il riepilogo e le sei fasce di quattro ore.',
+      steps: (app) async {
+        await _pack(app, kActiveTripId);
+        await app.tap(find.text('Casa al mare').last);
+      },
+    ),
   ]),
 
   Flow('10-profilo', 'Tab Profilo: impostazioni e account', [
