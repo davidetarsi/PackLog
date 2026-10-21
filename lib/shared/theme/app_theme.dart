@@ -228,6 +228,33 @@ class AppTheme {
         ),
       ),
 
+      // === Checkbox Theme ===
+      // Spuntata: bordo e spunta arancioni, senza riempimento. Come le
+      // pillole delle categorie, la selezione si vede senza blocchi pieni:
+      // l'arancio pieno resta all'azione principale dello schermo.
+      checkboxTheme: CheckboxThemeData(
+        fillColor: const WidgetStatePropertyAll(Colors.transparent),
+        checkColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled)
+              ? colorScheme.onSurface.withValues(alpha: 0.38)
+              : colorScheme.primary,
+        ),
+        side: WidgetStateBorderSide.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return BorderSide(
+              color: colorScheme.onSurface.withValues(alpha: 0.38),
+              width: 2,
+            );
+          }
+          return BorderSide(
+            color: states.contains(WidgetState.selected)
+                ? colorScheme.primary
+                : colorScheme.onSurfaceVariant,
+            width: 2,
+          );
+        }),
+      ),
+
       // === List Tile Theme ===
       listTileTheme: const ListTileThemeData(
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
