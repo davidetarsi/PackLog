@@ -28,6 +28,7 @@ import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_parts.dart';
 import 'widgets/pack/pack_summary_line.dart';
+import 'widgets/pack/pack_weather.dart';
 import 'widgets/trip_edit_placeholder.dart';
 import '../../../shared/widgets/ds_section_title.dart';
 
@@ -334,6 +335,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
                 destinationHouseName: destinationHouseName,
                 houseNames: {for (final h in houses) h.id: h.displayName},
               ),
+              PackWeatherSection(tripId: trip.id),
               DsSectionTitle('trips.pack.luggages'.tr()),
               _luggageSection(context, house),
               DsSectionTitle('trips.pack.items'.tr()),

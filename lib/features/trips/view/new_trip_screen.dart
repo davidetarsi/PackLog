@@ -18,6 +18,7 @@ import '../../houses/providers/house_provider.dart';
 import '../model/trip_draft.dart';
 import '../model/trip_postcard.dart';
 import '../providers/trip_provider.dart';
+import '../providers/trip_weather_provider.dart';
 import 'widgets/place_search.dart';
 import 'widgets/postcard/trip_itinerary_view.dart';
 import 'widgets/stop_sheet.dart';
@@ -179,6 +180,9 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     }
 
     if (goToPacking) {
+      // Il meteo parte con "Avanti": la pagina valigia trova la richiesta già
+      // in corso, o la cache se il viaggio ce l'ha già.
+      ref.read(tripWeatherNotifierProvider(trip.id));
       router.go('/trips');
       router.push('/trips/${trip.id}/edit-items?from=new');
     } else {
