@@ -11,7 +11,10 @@ import '../../core/analytics/analytics_service.dart';
 import '../../core/analytics/core_analytics_service.dart';
 import '../../core/consent/consent_provider.dart';
 import '../../core/monitoring/monitoring_service.dart';
+import '../../features/items/providers/item_metadata_service_provider.dart';
+import '../../features/items/providers/item_provider.dart';
 import '../../features/promo/providers/promo_code_provider.dart';
+import '../sync/sync_provider.dart';
 import 'auth_repository.dart';
 import 'auth_state.dart';
 import 'supabase_auth_repository.dart';
@@ -55,6 +58,7 @@ class AuthNotifier extends _$AuthNotifier {
         ref.read(analyticsServiceProvider).identifyUser(userId);
         unawaited(_flushConsentToRemote());
         unawaited(_redeemPendingPromo());
+        unawaited(_backfillItemMetadata());
       case Unauthenticated():
         ref.read(monitoringServiceProvider).clearUser();
         ref.read(analyticsServiceProvider).clearUser();
@@ -113,6 +117,22 @@ class AuthNotifier extends _$AuthNotifier {
       ref.read(pendingPromoOutcomeProvider.notifier).report(result);
     } catch (e) {
       debugPrint('[Auth] codice promo non attivato (riprovo al login): $e');
+    }
+  }
+
+  /// Completa in background la scheda degli oggetti che non ce l'hanno
+  /// (aggiunti offline o prima di `item-metadata`). Gli errori restano dentro:
+  /// l'accesso non deve mai dipendere da questo.
+  Future<void> _backfillItemMetadata() async {
+    try {
+      final houses = await ref.read(itemMetadataBackfillProvider).run();
+      if (houses.isEmpty) return;
+      for (final houseId in houses) {
+        ref.invalidate(itemNotifierProvider(houseId));
+      }
+      ref.read(syncOrchestratorProvider).requestSync();
+    } catch (e) {
+      debugPrint('[Auth] recupero schede non partito: $e');
     }
   }
 

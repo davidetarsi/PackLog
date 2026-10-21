@@ -12,8 +12,9 @@
 --    usa), promo_redemptions (un codice per account, entro
 --    promo_redeem_window_days dall'iscrizione).
 -- 4. I nomi dei capi (item-metadata dal nome) restano fuori dal tetto AI: hanno
---    il loro limite giornaliero contro gli abusi, item_name_daily_cap, che
---    l'app non mostra.
+--    il loro limite giornaliero contro gli abusi, item_name_daily_cap (150:
+--    ogni oggetto aggiunto a mano chiede la sua scheda, e l'app ne recupera
+--    fino a 30 al giorno per quelli rimasti senza), che l'app non mostra.
 --
 -- Un codice nuovo si aggiunge a mano, per esempio:
 --   INSERT INTO public.promo_codes (code, channel, credits, valid_days, max_redemptions)
@@ -26,7 +27,7 @@ INSERT INTO public.app_config (key, value) VALUES
   ('ai_monthly_cap', '30'),
   ('ai_window_days', '30'),
   ('promo_redeem_window_days', '7'),
-  ('item_name_daily_cap', '50')
+  ('item_name_daily_cap', '150')
 ON CONFLICT (key) DO NOTHING;
 
 -- pack-trip non ha piu' un tetto suo: consuma i crediti AI.

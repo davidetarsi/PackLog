@@ -27,7 +27,7 @@ import {
 
 // Un nome costa circa due decimi di millesimo di dollaro (Claude + Jev): il
 // tetto difende dagli abusi. Predefinito: riga 'item_name_daily_cap' di public.app_config.
-const TETTO_NOMI_GIORNALIERO = 50;
+const TETTO_NOMI_GIORNALIERO = 150;
 // ~6 MB di base64 (~4,5 MB di immagine), come openai-proxy.
 const MAX_IMMAGINE_BASE64 = 6 * 1024 * 1024;
 
