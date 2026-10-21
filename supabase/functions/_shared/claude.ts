@@ -41,7 +41,7 @@ export function claudeHttp(chiave: string, fetchFn?: typeof fetch, timeoutMs = 1
       });
     } catch (e) {
       if (e instanceof Anthropic.APIError) {
-        throw new ErroreModello(`${MODELLO}: ${e.status ?? "-"} ${e.message.slice(0, 300)}`, e.status);
+        throw new ErroreModello(`${MODELLO}: ${e.message.slice(0, 300)}`, e.status);
       }
       throw e;
     }
