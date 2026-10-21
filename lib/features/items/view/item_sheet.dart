@@ -271,8 +271,9 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     setState(() => _isSaving = true);
     final ok = await ErrorRetryDialog.executeWithRetry(
       context: context,
-      operation: () =>
-          ref.read(itemNotifierProvider(widget.houseId).notifier).addItem(item),
+      operation: () => ref
+          .read(itemNotifierProvider(widget.houseId).notifier)
+          .addItem(item, categoryChosen: _chosenCategory != null),
       errorTitle: 'errors.save_error'.tr(),
       errorMessage: 'errors.create_item_failed'.tr(),
     );
