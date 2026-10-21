@@ -14,6 +14,7 @@ import '../../../features/houses/providers/house_provider.dart';
 import '../../../features/tour/providers/post_login_onboarding_provider.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../providers/gpt_usage_provider.dart';
+import '../../promo/view/promo_code_sheet.dart';
 import '../../../shared/config/app_config.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
@@ -472,32 +473,69 @@ class _GptUsageTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final gptUsageAsync = ref.watch(gptUsageProvider);
 
+    final smallText = Theme.of(context).textTheme.bodySmall;
+    final dateFormat = DateFormat.MMMd();
+
     return gptUsageAsync.when(
-      data: (usage) => ListTile(
-        leading: const Icon(Icons.auto_awesome_outlined),
-        title: Text('profile.ai_usage_title'.tr()),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: context.spacingXs),
-            LinearProgressIndicator(
-              value: usage.progress,
-              backgroundColor: Theme.of(
-                context,
-              ).colorScheme.surfaceContainerHighest,
-              color: Theme.of(context).colorScheme.primary,
-              borderRadius: BorderRadius.circular(4),
+      data: (usage) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.auto_awesome_outlined),
+            title: Text('profile.ai_usage_title'.tr()),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(height: context.spacingXs),
+                LinearProgressIndicator(
+                  value: usage.progress,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest,
+                  color: Theme.of(context).colorScheme.primary,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                SizedBox(height: context.spacingXs),
+                Text(
+                  'profile.ai_usage_subtitle'.tr(
+                    args: [
+                      usage.usageCount.toString(),
+                      usage.usageCap.toString(),
+                    ],
+                  ),
+                  style: smallText,
+                ),
+                if (usage.resetsAt != null)
+                  Text(
+                    'profile.ai_usage_resets'.tr(
+                      args: [dateFormat.format(usage.resetsAt!)],
+                    ),
+                    style: smallText,
+                  ),
+                if (usage.bonusAvailable > 0 && usage.bonusExpiresAt != null)
+                  Text(
+                    'profile.ai_usage_bonus'.tr(
+                      args: [
+                        usage.bonusAvailable.toString(),
+                        dateFormat.format(usage.bonusExpiresAt!),
+                      ],
+                    ),
+                    key: const Key('profile_ai_bonus'),
+                    style: smallText,
+                  ),
+              ],
             ),
-            SizedBox(height: context.spacingXs),
-            Text(
-              'profile.ai_usage_subtitle'.tr(
-                args: [usage.usageCount.toString(), usage.usageCap.toString()],
-              ),
-              style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (usage.canRedeemPromo)
+            ListTile(
+              key: const Key('profile_promo_code'),
+              leading: const Icon(Icons.confirmation_number_outlined),
+              title: Text('promo.link'.tr()),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showPromoCodeSheet(context, redeemNow: true),
             ),
-          ],
-        ),
+        ],
       ),
       loading: () => ListTile(
         leading: const Icon(Icons.auto_awesome_outlined),

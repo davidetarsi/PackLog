@@ -1,6 +1,7 @@
 // item-metadata: la scheda dei capi per l'app, dal nome (aggiunta a mano) o da
-// una foto (scan). GPT riempie la scheda, il codice la pulisce (valori ammessi,
-// categoria dalla sottocategoria), Jev controlla i campi che l'utente vede.
+// una foto (scan). Claude Haiku 5.5 riempie la scheda, il codice la pulisce
+// (valori ammessi, categoria dalla sottocategoria), Jev controlla i campi che
+// l'utente vede.
 // Porting di scheda_capo.py del bench (oracolo in _shared/capi/test).
 //
 // POST { name: "pantaloni da trekking decathlon" }  oppure  { image_base64 }
@@ -9,18 +10,23 @@
 // app_category: items.category (vestiti, varie, toiletries, elettronica);
 // dubbi: etichette da chiedere ("?"), [] = niente da chiedere.
 //
-// Sostituisce openai-proxy, che resta finche' l'app non passa a questa funzione:
-// la foto consuma lo stesso tetto (users.gpt_usage_cap).
+// Sostituisce openai-proxy, che resta finche' l'app non passa a questa funzione.
+// La foto consuma un credito AI (quota mensile + crediti extra, come la valigia);
+// il nome no: costa pochissimo e ha solo un limite giornaliero contro gli abusi,
+// che l'app non mostra.
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
-import { openaiScheda, RispostaIlleggibile, schedaDaNome, schedeDaFoto } from "../_shared/capi/analisi.ts";
+import { RispostaIlleggibile, schedaDaNome, schedeDaFoto } from "../_shared/capi/analisi.ts";
 import { pulisciNome } from "../_shared/capi/scheda.ts";
+import { claudeHttp, type Contenuto } from "../_shared/claude.ts";
 import { jevHttp } from "../_shared/valigia/jev.ts";
-import { consumaUso, corpo, CORS_HEADERS, errore, json, tetto, utente } from "../_shared/servizi.ts";
+import {
+  consumaCreditoAi, consumaUso, corpo, CORS_HEADERS, errore, json, restituisciCreditoAi, tetto, utente,
+} from "../_shared/servizi.ts";
 
-// Un nome costa circa due decimi di millesimo di dollaro (GPT + Jev): il tetto
-// difende dagli abusi. Predefinito: riga 'item_name_daily_cap' di public.app_config.
-const TETTO_NOMI_GIORNALIERO = 200;
+// Un nome costa circa due decimi di millesimo di dollaro (Claude + Jev): il
+// tetto difende dagli abusi. Predefinito: riga 'item_name_daily_cap' di public.app_config.
+const TETTO_NOMI_GIORNALIERO = 50;
 // ~6 MB di base64 (~4,5 MB di immagine), come openai-proxy.
 const MAX_IMMAGINE_BASE64 = 6 * 1024 * 1024;
 
@@ -31,18 +37,13 @@ if (!supabaseUrl || !serviceKey) {
 }
 const db = createClient(supabaseUrl, serviceKey);
 
-/** Errore di OpenAI -> risposta: il 429 di OpenAI diventa 503, per non
+/** Errore del modello -> risposta: il 429 di Anthropic diventa 503, per non
  *  confonderlo col tetto dell'utente (429). */
 function erroreModello(e: unknown, tipo: string): Response {
   console.error(`[item-metadata] ${tipo}:`, (e as Error).message);
   if (e instanceof RispostaIlleggibile) return errore(502, "Unreadable AI response");
   const status = (e as { status?: number }).status;
   return errore(status === 429 ? 503 : 502, "AI upstream error");
-}
-
-async function restituisciUsoGpt(userId: string) {
-  const { error } = await db.rpc("decrement_gpt_usage", { p_user_id: userId });
-  if (error) console.error("[item-metadata] COUNTER_ROLLBACK_FAILED:", error.message);
 }
 
 Deno.serve(async (req) => {
@@ -54,10 +55,14 @@ Deno.serve(async (req) => {
   const b = await corpo(req, MAX_IMMAGINE_BASE64 + 1024);
   if (b instanceof Response) return b;
 
-  const chiaveOpenai = Deno.env.get("OPENAI_KEY");
-  if (!chiaveOpenai) return errore(500, "OPENAI_KEY not configured");
+  const chiaveClaude = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!chiaveClaude) return errore(500, "ANTHROPIC_API_KEY not configured");
   const chiaveJev = Deno.env.get("TYPESAFE_API_KEY");
-  const servizi = { gpt: openaiScheda(chiaveOpenai), jev: chiaveJev ? jevHttp(chiaveJev) : null };
+  const claude = claudeHttp(chiaveClaude);
+  const servizi = {
+    modello: async (contenuto: unknown, maxTokens: number) => (await claude(contenuto as Contenuto, maxTokens)).testo,
+    jev: chiaveJev ? jevHttp(chiaveJev) : null,
+  };
 
   const conNome = "name" in b, conFoto = "image_base64" in b;
   if (conNome === conFoto) return errore(400, "Send exactly one of 'name' or 'image_base64'");
@@ -80,19 +85,15 @@ Deno.serve(async (req) => {
   const immagine = b.image_base64;
   if (typeof immagine !== "string" || !immagine.length) return errore(400, "'image_base64' must be a non-empty string");
   if (immagine.length > MAX_IMMAGINE_BASE64) return errore(413, "Image too large");
-  // Lo stesso tetto a vita di openai-proxy (atomico, lato SQL).
-  const { data: permesso, error } = await db.rpc("increment_gpt_usage", { p_user_id: u.id });
-  if (error) {
-    console.error("[item-metadata] increment_gpt_usage RPC error:", error.message, error.code);
-    return errore(500, "Usage check failed");
-  }
-  if (!permesso) return errore(429, "GPT usage limit reached");
+  const consumo = await consumaCreditoAi(db, u.id);
+  if (consumo instanceof Response) return consumo;
+  if (!consumo) return errore(429, "AI usage limit reached");
   try {
     const r = await schedeDaFoto(immagine, servizi);
     for (const n of r.note_tecniche) console.warn("[item-metadata]", n);
     return json(200, r);
   } catch (e) {
-    await restituisciUsoGpt(u.id);
+    await restituisciCreditoAi(db, u.id, consumo);
     return erroreModello(e, "image");
   }
 });

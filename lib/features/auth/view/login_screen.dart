@@ -14,6 +14,8 @@ import '../../../shared/helpers/exception_message.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/ds_link_button.dart';
+import '../../promo/view/promo_code_sheet.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -206,7 +208,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
 
-                AppSpacing.gapMd,
+                AppSpacing.gapSm,
+                DsLinkButton(
+                  key: const Key('login_promo_code'),
+                  label: 'promo.link'.tr(),
+                  onPressed: () =>
+                      showPromoCodeSheet(context, redeemNow: false),
+                ),
+
+                AppSpacing.gapSm,
                 _ConsentRow(
                   value: _consentGiven,
                   onChanged: _onConsentChanged,

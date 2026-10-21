@@ -1,12 +1,13 @@
-// Prova dal vivo del giro intero con GPT, Jev e Open-Meteo veri (costa: solo
-// con l'ok di Davide). Le chiavi arrivano dall'ambiente (OPENAI_KEY,
+// Prova dal vivo del giro intero con Claude, Jev e Open-Meteo veri (costa: solo
+// con l'ok di Davide). Le chiavi arrivano dall'ambiente (ANTHROPIC_API_KEY,
 // TYPESAFE_API_KEY), mai stampate: lanciarla con prova_dal_vivo.py del bench.
 // Scrive per ogni viaggio cio' che serve a rigiocarlo nel bench Python.
 // Uso: node test/prova_dal_vivo.ts USCITA.json
 import { readFileSync, writeFileSync } from "node:fs";
 import type { RigaArmadio } from "../capo.ts";
 import { climaViaggio, type Servizi } from "../../clima/meteo.ts";
-import { conRiprova, generaValigia, openaiHttp, scenarioDaApp } from "../genera.ts";
+import { claudeHttp } from "../../claude.ts";
+import { conRiprova, generaValigia, MAX_TOKENS_VALIGIA, scenarioDaApp } from "../genera.ts";
 import { validaViaggio } from "../ingresso.ts";
 import { jevHttp } from "../jev.ts";
 
@@ -48,6 +49,7 @@ const VIAGGI: [string, string, unknown][] = [
     bagaglio: "valigia grande", alloggio: "hotel" }],
 ];
 
+const claude = claudeHttp(process.env.ANTHROPIC_API_KEY!);
 const out: unknown[] = [];
 for (const [id, armadio, corpo] of VIAGGI) {
   const righe: RigaArmadio[] = JSON.parse(readFileSync(BENCH + armadio, "utf8"));
@@ -55,14 +57,14 @@ for (const [id, armadio, corpo] of VIAGGI) {
   const t0 = Date.now();
   const r = await generaValigia(scenarioDaApp(v), righe, {
     clima: () => climaViaggio(v.data_inizio, v.giorni, v.destinazione ?? null, v.tappe ?? null, meteo),
-    modello: conRiprova(openaiHttp(process.env.OPENAI_KEY!)),
+    modello: conRiprova((p) => claude(p, MAX_TOKENS_VALIGIA)),
     jev: jevHttp(process.env.TYPESAFE_API_KEY!),
   });
   const ms = Date.now() - t0;
   const s = r.valigia;
   console.log(`${id}: ${ms} ms, ${r.meteo.fonte}, min ${r.meteo.temp_min_media} max ${r.meteo.temp_max_media}; `
     + `${s.ideali.length} ideali, ${s.ripieghi.length} ripieghi, ${s.essenziali.length} essenziali, `
-    + `${(s.mancanti ?? []).length} mancanti; token ${r.uso?.prompt_tokens}+${r.uso?.completion_tokens}; `
+    + `${(s.mancanti ?? []).length} mancanti; token ${r.uso?.input_tokens}+${r.uso?.output_tokens}; `
     + `Jev: ${Object.keys(r.diagnostica.jev.profili_capi ?? {}).length} profili, `
     + `${Object.keys(r.diagnostica.jev.voti_scarpe ?? {}).length} scarpe, `
     + `${Object.keys(r.diagnostica.jev.scarti_capi ?? {}).length} capi, classi ${r.diagnostica.jev.classi_viaggio ? "si" : "no"}`

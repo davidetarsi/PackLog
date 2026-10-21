@@ -383,8 +383,10 @@
     "copy_success": "\"{}\" copiato con successo"
   },
   "profile": {
-    "ai_usage_title": "Analisi AI",
-    "ai_usage_subtitle": "{} / {} scan disponibili",
+    "ai_usage_title": "Usi AI",
+    "ai_usage_subtitle": "{} / {} usati questo mese",
+    "ai_usage_resets": "Si rinnovano il {}",
+    "ai_usage_bonus": "+{} usi in regalo, validi fino al {}",
     "logout_confirm_title": "Esci dall'account?",
     "logout_confirm_body": "Sei sicuro di voler disconnetterti?",
     "logout_warning_title": "Modifiche non sincronizzate",
@@ -451,7 +453,7 @@
     "items_count": {"one": "{} capo", "other": "{} capi"},
     "items_identified": {"one": "1 capo identificato", "other": "{} capi identificati"},
     "items_found_so_far": "{} capi trovati finora",
-    "limit_reached": "Hai esaurito le scansioni AI disponibili.",
+    "limit_reached": "Hai esaurito gli usi AI di questo mese.",
     "loading": "Caricamento…",
     "loading_progress": "Analisi immagine {} di {}…",
     "no_house_selected": "Nessuna casa selezionata",
@@ -548,5 +550,22 @@
     "new_house_hint": "Un altro posto dove tieni le tue cose",
     "new_trip": "Nuovo viaggio",
     "new_trip_hint": "Destinazione, date e cosa portare"
+  },
+  "promo": {
+    "link": "Hai un codice promo?",
+    "sheet_title": "Codice promo",
+    "description": "Scrivi il codice che hai ricevuto: ti regala usi AI in più.",
+    "description_login": "Scrivi il codice che hai ricevuto: lo attiviamo appena entri con Google.",
+    "hint": "Es. AMICI",
+    "activate": "Attiva",
+    "saved_for_login": "Codice salvato: lo attiviamo appena entri.",
+    "redeemed": "Codice attivato: +{} usi AI in regalo, validi fino al {}.",
+    "error_empty": "Scrivi il codice.",
+    "error_invalid_code": "Codice non valido.",
+    "error_expired": "Questo codice è scaduto.",
+    "error_exhausted": "Questo codice non è più disponibile.",
+    "error_already_redeemed": "Hai già usato un codice promo.",
+    "error_too_late": "I codici promo valgono solo nei primi giorni dopo l'iscrizione.",
+    "error_generic": "Non siamo riusciti ad attivare il codice. Riprova."
   }
 }

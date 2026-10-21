@@ -1,5 +1,13 @@
+// openai-proxy: lo scan delle foto per le app gia' installate (quelle nuove
+// passeranno a item-metadata). Il nome resta per compatibilita': il modello
+// ora e' Claude Haiku 5.5, ma la risposta ha ancora la busta di OpenAI
+// ({ choices: [{ message: { content } }] }), che e' quella che l'app legge.
+// Ogni foto consuma un credito AI (quota mensile + crediti extra).
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
+import { claudeHttp } from "../_shared/claude.ts";
+import { bloccoImmagine } from "../_shared/immagine.ts";
+import { consumaCreditoAi, restituisciCreditoAi } from "../_shared/servizi.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -13,10 +21,9 @@ const CORS_HEADERS = {
 // costo / modello / output deve vivere QUI, non nel body. Il proxy accetta dal
 // client SOLO l'immagine; tutto il resto è fisso.
 
-const OPENAI_MODEL = "gpt-4o-mini";
-const OPENAI_MAX_TOKENS = 1500;
-const OPENAI_TEMPERATURE = 0.0;
-const OPENAI_IMAGE_DETAIL = "high";
+// Il ragionamento di Claude Haiku 5.5 rientra in max_tokens (con gpt-4o-mini
+// erano 1500).
+const MAX_TOKENS = 4000;
 
 // Limite difensivo sul payload immagine: ~6 MB di base64 ≈ ~4.5 MB di binario.
 // `image_picker` lato client comprime già a quality 80 → tipicamente sotto 1 MB.
@@ -107,115 +114,35 @@ Deno.serve(async (req) => {
     return errorResponse(413, "Image too large");
   }
 
-  // 3. Atomic cap check + increment (TOCTOU-safe via SQL function)
-  console.log("[proxy] calling increment_gpt_usage");
-  const { data: allowed, error: rpcError } = await supabaseAdmin.rpc(
-    "increment_gpt_usage",
-    { p_user_id: user.id },
-  );
-  if (rpcError) {
-    console.error(
-      "[proxy] increment_gpt_usage RPC error:",
-      rpcError.message,
-      rpcError.code,
-    );
-    return errorResponse(500, "Usage check failed");
-  }
-  console.log("[proxy] increment_gpt_usage returned:", allowed);
-  if (!allowed) return errorResponse(429, "GPT usage limit reached");
+  // 3. Un credito AI, atomico lato SQL (quota mensile, poi crediti extra).
+  const consumo = await consumaCreditoAi(supabaseAdmin, user.id);
+  if (consumo instanceof Response) return consumo;
+  if (!consumo) return errorResponse(429, "AI usage limit reached");
 
-  // 4. Build the OpenAI payload server-side. Il body al client non è mai
-  //    inoltrato — solo l'immagine viene riusata.
-  const apiKey = Deno.env.get("OPENAI_KEY");
+  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) {
-    console.error("[proxy] DECREMENT reason: OPENAI_KEY not configured");
-    const { error: decrementError } = await supabaseAdmin.rpc(
-      "decrement_gpt_usage",
-      { p_user_id: user.id },
-    );
-    if (decrementError) {
-      console.error(
-        "[proxy] COUNTER_ROLLBACK_FAILED:",
-        decrementError.message,
-      );
-    }
-    return errorResponse(500, "OPENAI_KEY not configured");
+    console.error("[proxy] REFUND reason: ANTHROPIC_API_KEY not configured");
+    await restituisciCreditoAi(supabaseAdmin, user.id, consumo);
+    return errorResponse(500, "ANTHROPIC_API_KEY not configured");
   }
 
-  const openAiBody = JSON.stringify({
-    model: OPENAI_MODEL,
-    max_tokens: OPENAI_MAX_TOKENS,
-    temperature: OPENAI_TEMPERATURE,
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: SYSTEM_PROMPT },
-          {
-            type: "image_url",
-            image_url: {
-              url: `data:image/png;base64,${imageBase64}`,
-              detail: OPENAI_IMAGE_DETAIL,
-            },
-          },
-        ],
-      },
-    ],
-  });
-
+  // 4. Il messaggio si costruisce qui: dal client arriva solo l'immagine.
   try {
-    const response = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: openAiBody,
-      },
+    const { testo } = await claudeHttp(apiKey)(
+      [bloccoImmagine(imageBase64), { type: "text", text: SYSTEM_PROMPT }],
+      MAX_TOKENS,
     );
-
-    console.log("[proxy] OpenAI status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(
-        "[proxy] DECREMENT reason: OpenAI non-2xx",
-        response.status,
-        errorText.slice(0, 200),
-      );
-      const { error: decrementError } = await supabaseAdmin.rpc(
-        "decrement_gpt_usage",
-        { p_user_id: user.id },
-      );
-      if (decrementError) {
-        console.error(
-          "[proxy] COUNTER_ROLLBACK_FAILED:",
-          decrementError.message,
-        );
-      }
-      // Map OpenAI 429 (API rate limit) to 503 to avoid confusion with the
-      // user's usage cap (our 429)
-      const mappedStatus = response.status === 429 ? 503 : response.status;
-      return errorResponse(mappedStatus, `OpenAI error: ${errorText}`);
-    }
-
-    const data = await response.text();
-    console.log("[proxy] success, response length:", data.length);
-    return new Response(data, {
-      status: response.status,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-    });
+    console.log("[proxy] success, response length:", testo.length);
+    return new Response(
+      JSON.stringify({ choices: [{ message: { role: "assistant", content: testo } }] }),
+      { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+    );
   } catch (error) {
-    console.error("[proxy] DECREMENT reason: fetch exception:", error);
-    const { error: decrementError } = await supabaseAdmin.rpc(
-      "decrement_gpt_usage",
-      { p_user_id: user.id },
-    );
-    if (decrementError) {
-      console.error("[proxy] COUNTER_ROLLBACK_FAILED:", decrementError.message);
-    }
-    return errorResponse(500, "Network error communicating with AI provider");
+    console.error("[proxy] REFUND reason: model error:", (error as Error).message);
+    await restituisciCreditoAi(supabaseAdmin, user.id, consumo);
+    // Il 429 di Anthropic diventa 503, per non confonderlo col tetto
+    // dell'utente (il nostro 429).
+    const status = (error as { status?: number }).status;
+    return errorResponse(status === 429 ? 503 : 502, "AI upstream error");
   }
 });

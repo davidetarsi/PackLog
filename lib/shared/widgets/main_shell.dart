@@ -6,7 +6,12 @@ import 'package:go_router/go_router.dart';
 import '../../core/analytics/core_analytics_service.dart';
 import '../../features/ai_input/helpers/start_ai_scan.dart';
 import '../../features/houses/helpers/create_house_flow.dart';
+import '../../features/profile/providers/gpt_usage_provider.dart';
+import '../../features/promo/model/promo_redeem_result.dart';
+import '../../features/promo/providers/promo_code_provider.dart';
+import '../../features/promo/view/promo_code_sheet.dart';
 import '../../features/tour/tour_keys.dart';
+import '../helpers/snack_bar_helper.dart';
 import '../theme/app_spacing.dart';
 import 'create_sheet.dart';
 import 'ds_floating_bar.dart';
@@ -56,9 +61,32 @@ class MainShell extends ConsumerWidget {
     }
   }
 
+  /// L'esito del codice promo scritto al login, attivato dopo l'accesso:
+  /// la shell è la prima schermata con una snackbar a disposizione. Si legge
+  /// con `watch` e non con `listen` perché l'esito può arrivare prima che la
+  /// shell esista (per esempio durante l'onboarding).
+  void _showPendingPromoOutcome(BuildContext context, WidgetRef ref) {
+    final outcome = ref.watch(pendingPromoOutcomeProvider);
+    if (outcome == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      ref.read(pendingPromoOutcomeProvider.notifier).clear();
+      switch (outcome) {
+        case PromoRedeemed():
+          ref.invalidate(gptUsageProvider);
+          AppSnackBar.showSuccess(context, promoRedeemedMessage(outcome));
+        case PromoRejected(:final reason):
+          AppSnackBar.showError(context, reason.messageKey.tr());
+        case PromoFailed():
+          AppSnackBar.showError(context, 'promo.error_generic'.tr());
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final onHouses = navigationShell.currentIndex == _housesBranch;
+    _showPendingPromoOutcome(context, ref);
 
     return Scaffold(
       extendBody: true,

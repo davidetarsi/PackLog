@@ -11,6 +11,7 @@ import '../../core/analytics/analytics_service.dart';
 import '../../core/analytics/core_analytics_service.dart';
 import '../../core/consent/consent_provider.dart';
 import '../../core/monitoring/monitoring_service.dart';
+import '../../features/promo/providers/promo_code_provider.dart';
 import 'auth_repository.dart';
 import 'auth_state.dart';
 import 'supabase_auth_repository.dart';
@@ -53,6 +54,7 @@ class AuthNotifier extends _$AuthNotifier {
         ref.read(monitoringServiceProvider).identifyUser(userId);
         ref.read(analyticsServiceProvider).identifyUser(userId);
         unawaited(_flushConsentToRemote());
+        unawaited(_redeemPendingPromo());
       case Unauthenticated():
         ref.read(monitoringServiceProvider).clearUser();
         ref.read(analyticsServiceProvider).clearUser();
@@ -95,6 +97,19 @@ class AuthNotifier extends _$AuthNotifier {
         '[Auth] flush consenso fallito (riprovo al prossimo login): $e',
       );
     }
+  }
+
+  /// Attiva il codice promo scritto sulla schermata di login.
+  ///
+  /// Come il consenso, il codice arriva prima che l'utente esista su
+  /// Supabase: la RPC richiede `auth.uid()`, quindi si attiva al primo
+  /// accesso utile. L'esito va a [PendingPromoOutcome], che la shell mostra.
+  /// Se la richiesta non arriva il codice resta salvato e si riprova al login
+  /// successivo.
+  Future<void> _redeemPendingPromo() async {
+    final result = await ref.read(promoCodeServiceProvider).redeemPending();
+    if (result == null) return;
+    ref.read(pendingPromoOutcomeProvider.notifier).report(result);
   }
 
   /// Emette `logout` alla transizione Authenticated → Unauthenticated.
