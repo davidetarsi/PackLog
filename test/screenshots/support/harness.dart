@@ -42,9 +42,11 @@ import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/model/location_type.dart';
 import 'package:pack_log/features/items/model/italian_dictionary.dart';
 import 'package:pack_log/features/items/services/category_infer_service.dart';
+import 'package:pack_log/features/trips/services/trip_weather_service.dart';
 import 'package:pack_log/shared/providers/connectivity_provider.dart';
 import 'package:pack_log/shared/services/location_search_service.dart';
 
+import 'fakes.dart';
 import 'seed.dart';
 
 /// Telefono di riferimento: Pixel 7 in dp, con status bar e barra gesti.
@@ -275,6 +277,8 @@ class ScreenshotApp {
         syncOrchestratorProvider.overrideWithValue(sync),
         // Niente Geoapify nei test: la ricerca delle mete è finta.
         locationSearchServiceProvider.overrideWithValue(_FakeLocationSearch()),
+        // Niente Open-Meteo nei test: il meteo della valigia è finto.
+        tripWeatherServiceProvider.overrideWithValue(FakeTripWeather()),
         connectivityNotifierProvider.overrideWith(_OnlineConnectivity.new),
         totalUnsyncedCountProvider.overrideWith(
           (ref) async => setup.unsyncedChanges,
