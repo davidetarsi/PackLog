@@ -1265,7 +1265,7 @@ final flows = <Flow>[
       'senza-oggetti',
       route: '/trips/:id',
       source: _tripDetailSrc,
-      description: 'Viaggio senza oggetti: CTA "Aggiungi vestiti".',
+      description: 'Viaggio senza oggetti: CTA "Prepara la valigia".',
       steps: (app) => _tripDetail(app, kEmptyTripId),
     ),
     Scenario(
@@ -1273,10 +1273,11 @@ final flows = <Flow>[
       'viaggio',
       'conferma-eliminazione',
       source: _tripDetailSrc,
-      description: 'Dialog di eliminazione viaggio.',
+      description: 'Dialog di eliminazione viaggio, dal menu ⋮.',
       steps: (app) async {
         await _tripDetail(app);
-        await app.tap(_icon(Icons.delete_outline));
+        await app.tap(find.byKey(const Key('trip_detail_menu')));
+        await app.tap(_text('common.delete'));
       },
     ),
     Scenario(
@@ -1288,7 +1289,7 @@ final flows = <Flow>[
       description: 'Modifica nome, destinazione, date e tappe.',
       steps: (app) async {
         await _tripDetail(app);
-        await app.tap(_icon(Icons.edit_outlined));
+        await app.tap(find.byKey(const Key('trip_detail_summary')));
       },
     ),
     Scenario(
@@ -1298,11 +1299,11 @@ final flows = <Flow>[
       route: '/trips/:id/edit-items',
       source: _packSrc,
       description:
-          'Pagina valigia aperta da "Modifica oggetti": riepilogo, bagagli, '
+          'Pagina valigia aperta da "Modifica valigia": riepilogo, bagagli, '
           'ricerca e oggetti della casa proposta. Senza indicatore dei passi.',
       steps: (app) async {
         await _tripDetail(app);
-        await app.tap(_text('trips.edit_items'));
+        await app.tap(find.byKey(const Key('trip_detail_cta')));
       },
     ),
     Scenario(
@@ -1330,7 +1331,7 @@ final flows = <Flow>[
           '"Calzini" diminuita di uno. "Fatto" dice quanti oggetti.',
       steps: (app) async {
         await _tripDetail(app);
-        await app.tap(_text('trips.edit_items'));
+        await app.tap(find.byKey(const Key('trip_detail_cta')));
         await app.tap(find.text('Valigia grande'));
         // Calzini è a 7: il "+" è spento al massimo della casa, il "-" no. Si
         // toglie un capo senza deselezionare la riga.
@@ -1356,7 +1357,7 @@ final flows = <Flow>[
           'della nuova casa, la selezione del viaggio resta.',
       steps: (app) async {
         await _tripDetail(app);
-        await app.tap(_text('trips.edit_items'));
+        await app.tap(find.byKey(const Key('trip_detail_cta')));
         await app.tap(find.widgetWithText(PackPill, 'Casa Milano'));
         await app.tap(find.text('Casa al mare'));
       },
@@ -1372,7 +1373,7 @@ final flows = <Flow>[
           'risultati la riga "Aggiungi «Ciabatte» in Casa Milano".',
       steps: (app) async {
         await _tripDetail(app);
-        await app.tap(_text('trips.edit_items'));
+        await app.tap(find.byKey(const Key('trip_detail_cta')));
         await app.enterText(find.byType(TextField).first, 'Ciabatte');
       },
     ),
@@ -1387,7 +1388,7 @@ final flows = <Flow>[
           '"Aggiungi" sta in fondo, dopo gli oggetti trovati.',
       steps: (app) async {
         await _tripDetail(app);
-        await app.tap(_text('trips.edit_items'));
+        await app.tap(find.byKey(const Key('trip_detail_cta')));
         await app.enterText(find.byType(TextField).first, 'Mag');
       },
     ),
@@ -1403,7 +1404,7 @@ final flows = <Flow>[
           '"Lo trovi anche in Casa Milano." e "Aggiungi e metti in valigia".',
       steps: (app) async {
         await _tripDetail(app);
-        await app.tap(_text('trips.edit_items'));
+        await app.tap(find.byKey(const Key('trip_detail_cta')));
         await app.enterText(find.byType(TextField).first, 'Ciabatte');
         await app.tap(find.byKey(const Key('pack_add_row')));
       },
@@ -1419,7 +1420,7 @@ final flows = <Flow>[
           '"Scrivilo nella ricerca qui sopra per aggiungerlo."',
       steps: (app) async {
         await _tripDetail(app);
-        await app.tap(_text('trips.edit_items'));
+        await app.tap(find.byKey(const Key('trip_detail_cta')));
         await app.tap(find.widgetWithText(PackPill, 'Casa Milano'));
         await app.tap(find.widgetWithText(ListTile, 'Monolocale Torino'));
       },
