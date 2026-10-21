@@ -12,6 +12,7 @@ import '../../../features/ai_input/providers/ai_import_notifier.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
+import '../../ai_input/helpers/start_ai_scan.dart';
 import '../../ai_input/view/widgets/image_source_sheet.dart';
 import '../providers/post_login_onboarding_provider.dart';
 
@@ -57,6 +58,8 @@ class _AiOnboardingIntroScreenState
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 80,
+      maxWidth: kAiScanMaxImageSide,
+      maxHeight: kAiScanMaxImageSide,
     );
     if (picked == null || !mounted) return;
     _startProcessing([File(picked.path)]);
@@ -66,6 +69,8 @@ class _AiOnboardingIntroScreenState
     final picked = await ImagePicker().pickImage(
       source: ImageSource.camera,
       imageQuality: 80,
+      maxWidth: kAiScanMaxImageSide,
+      maxHeight: kAiScanMaxImageSide,
     );
     if (picked == null || !mounted) return;
     _startProcessing([File(picked.path)]);

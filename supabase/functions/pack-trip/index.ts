@@ -1,6 +1,6 @@
 // pack-trip: la valigia di un viaggio dall'armadio di una casa dell'utente.
 // Porting del generatore del bench (AI-checklist-test-script, verificato con
-// gli oracoli in _shared/*/test): una chiamata a gpt-4o-mini, Jev in parallelo
+// gli oracoli in _shared/*/test): una chiamata a Claude Haiku 5.5, Jev in parallelo
 // (profilo dei capi, voti, classificazione del viaggio), il meteo del viaggio,
 // poi il codice sceglie i capi e spiega perche'.
 //
@@ -14,16 +14,17 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
 import { climaViaggio } from "../_shared/clima/meteo.ts";
-import { conRiprova, generaValigia, openaiHttp, scenarioDaApp } from "../_shared/valigia/genera.ts";
+import { claudeHttp } from "../_shared/claude.ts";
+import { conRiprova, generaValigia, MAX_TOKENS_VALIGIA, scenarioDaApp } from "../_shared/valigia/genera.ts";
 import { IngressoNonValido, validaViaggio } from "../_shared/valigia/ingresso.ts";
 import { jevHttp, MODELLO as MODELLO_JEV, type ProfiloNoto } from "../_shared/valigia/jev.ts";
 import type { RigaArmadio } from "../_shared/valigia/capo.ts";
-import { consumaUso, corpo, CORS_HEADERS, errore, json, serviziMeteo, tetto, utente } from "../_shared/servizi.ts";
+import {
+  consumaCreditoAi, corpo, CORS_HEADERS, errore, json, restituisciCreditoAi, serviziMeteo, utente,
+} from "../_shared/servizi.ts";
 
-// Una valigia costa circa un decimo di centesimo (gpt-4o-mini + Jev): il
-// tetto difende dagli abusi, non dal costo normale.
-// Predefinito: si cambia con la riga 'pack_trip_daily_cap' di public.app_config.
-const TETTO_GIORNALIERO = 30;
+// Una valigia consuma un credito AI, come una foto: quota mensile
+// (ai_monthly_cap di public.app_config), poi i crediti extra dei codici promo.
 const MAX_CAPI = 400;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -43,8 +44,8 @@ Deno.serve(async (req) => {
   const b = await corpo(req);
   if (b instanceof Response) return b;
 
-  const chiaveOpenai = Deno.env.get("OPENAI_KEY");
-  if (!chiaveOpenai) return errore(500, "OPENAI_KEY not configured");
+  const chiaveClaude = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!chiaveClaude) return errore(500, "ANTHROPIC_API_KEY not configured");
   const chiaveJev = Deno.env.get("TYPESAFE_API_KEY");
 
   if (typeof b.house_id !== "string" || !UUID.test(b.house_id)) return errore(400, "'house_id' non valido");
@@ -69,10 +70,9 @@ Deno.serve(async (req) => {
   if (!righe?.length) return errore(422, "Wardrobe is empty");
   if (righe.length > MAX_CAPI) return errore(422, `Wardrobe too large (max ${MAX_CAPI} items)`);
 
-  const ok = await consumaUso(db, u.id, "pack-trip",
-    await tetto(db, "pack_trip_daily_cap", TETTO_GIORNALIERO), 60 * 24);
-  if (ok instanceof Response) return ok;
-  if (!ok) return errore(429, "Packing rate limit reached");
+  const consumo = await consumaCreditoAi(db, u.id);
+  if (consumo instanceof Response) return consumo;
+  if (!consumo) return errore(429, "AI usage limit reached");
 
   // I profili Jev gia' calcolati: valgono finche' la scheda del capo non cambia.
   const profiliNoti: Record<string, ProfiloNoto> = {};
@@ -83,17 +83,19 @@ Deno.serve(async (req) => {
     for (const p of data ?? []) profiliNoti[p.item_id] = { scheda: p.card, risposte: p.answers };
   }
 
+  const claude = claudeHttp(chiaveClaude);
   let r;
   try {
     r = await generaValigia(scenarioDaApp(viaggio), righe as RigaArmadio[], {
       clima: () => climaViaggio(viaggio.data_inizio, viaggio.giorni, viaggio.destinazione ?? null,
         viaggio.tappe ?? null, serviziMeteo(db, Deno.env.get("OPEN_METEO_API_KEY") || undefined)),
-      modello: conRiprova(openaiHttp(chiaveOpenai)),
+      modello: conRiprova((prompt) => claude(prompt, MAX_TOKENS_VALIGIA)),
       jev: chiaveJev ? jevHttp(chiaveJev) : null,
       profiliNoti,
     });
   } catch (e) {
     console.error("[pack-trip]", (e as Error).message);
+    await restituisciCreditoAi(db, u.id, consumo);
     return errore(502, "Packing upstream error");
   }
 

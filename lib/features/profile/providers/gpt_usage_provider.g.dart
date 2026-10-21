@@ -6,7 +6,7 @@ part of 'gpt_usage_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$gptUsageHash() => r'05de8504459e6b5f7af945f4def1386f92906abc';
+String _$gptUsageHash() => r'1e77cd6ed9df689333f00240a1c7d2bb6492015e';
 
 /// See also [gptUsage].
 @ProviderFor(gptUsage)

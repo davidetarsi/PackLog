@@ -13,6 +13,12 @@ import '../view/widgets/image_source_sheet.dart';
 /// Numero massimo di immagini selezionabili per scansione.
 const kAiScanMaxPhotos = 5;
 
+/// Lato lungo massimo, in pixel, delle foto mandate all'AI. Più grande non
+/// aiuta a riconoscere i capi ma costa token (il modello paga l'immagine a
+/// pixel) e rallenta l'upload; 1568 è il lato oltre il quale Claude
+/// riduce comunque l'immagine.
+const kAiScanMaxImageSide = 1568.0;
+
 BuildContext? _activeAiScanContext;
 Object? _activeAiScanOperation;
 
@@ -58,6 +64,8 @@ Future<void> startAiScan(
       if (source == ImageSource.gallery) {
         final picked = await picker.pickMultiImage(
           imageQuality: 80,
+          maxWidth: kAiScanMaxImageSide,
+          maxHeight: kAiScanMaxImageSide,
           limit: kAiScanMaxPhotos,
         );
         files = [
@@ -67,6 +75,8 @@ Future<void> startAiScan(
         final picked = await picker.pickImage(
           source: ImageSource.camera,
           imageQuality: 80,
+          maxWidth: kAiScanMaxImageSide,
+          maxHeight: kAiScanMaxImageSide,
         );
         files = picked == null ? const [] : [File(picked.path)];
       }

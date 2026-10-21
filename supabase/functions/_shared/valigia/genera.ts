@@ -47,7 +47,7 @@ export function scenarioDaApp(v: ViaggioApp): Record_ {
   return sc;
 }
 
-export interface Uso { prompt_tokens?: number; completion_tokens?: number; [k: string]: unknown }
+export type Uso = Record<string, unknown>;
 export type ChiediModello = (prompt: string) => Promise<{ testo: string; uso?: Uso }>;
 
 export interface Servizi {
@@ -111,28 +111,11 @@ export async function generaValigia(sc: Record_, righe: RigaArmadio[], s: Serviz
   };
 }
 
-// ── Il modello: chiamata vera a OpenAI (chiave lato server) ─────────────────
+// ── Il modello: la chiamata vera e' in ../claude.ts ─────────────────────────
 
-export const MODELLO_OPENAI = "gpt-4o-mini";
-export const MAX_TOKENS = 2500;
-export const TEMPERATURA = 0.2;
-
-export function openaiHttp(chiave: string, fetchFn: typeof fetch = fetch, timeoutMs = 120000): ChiediModello {
-  return async (prompt) => {
-    const r = await fetchFn("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${chiave}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: MODELLO_OPENAI, messages: [{ role: "user", content: prompt }],
-        max_tokens: MAX_TOKENS, temperature: TEMPERATURA,
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (r.status >= 400) throw new Error(`${MODELLO_OPENAI}: ${r.status} ${(await r.text()).slice(0, 300)}`);
-    const d = await r.json();
-    return { testo: d.choices[0].message.content, uso: { ...(d.usage ?? {}), model: MODELLO_OPENAI } };
-  };
-}
+/** Tetto di uscita della valigia: il ragionamento di Claude Haiku 5.5 rientra
+ *  in max_tokens (con gpt-4o-mini erano 2500). */
+export const MAX_TOKENS_VALIGIA = 8000;
 
 /** Una risposta del modello che non e' un JSON leggibile si richiede una volta. */
 export function conRiprova(chiedi: ChiediModello, tentativi = 2): ChiediModello {

@@ -1,6 +1,7 @@
-// Cio' che serve alle Edge Functions del generatore (pack-trip, trip-weather):
-// risposte HTTP, utente dal JWT, limite d'uso per utente, Open-Meteo con la
-// cache in tabella. Il client Supabase e' passato da fuori (service role).
+// Cio' che serve alle Edge Functions (pack-trip, trip-weather, item-metadata,
+// openai-proxy): risposte HTTP, utente dal JWT, limiti d'uso per utente,
+// crediti AI, Open-Meteo con la cache in tabella. Il client Supabase e' passato
+// da fuori (service role).
 import type { Risposta, Servizi } from "./clima/meteo.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -51,6 +52,27 @@ export async function consumaUso(db: Db, userId: string, tipo: string, tetto: nu
     return errore(500, "Rate-limit check failed");
   }
   return !!data;
+}
+
+/** Da dove e' stato preso un credito AI (consume_ai_credit), da ridare con
+ *  restituisciCreditoAi se la chiamata al modello fallisce. */
+export type ConsumoAi = { source: "monthly" } | { source: "bonus"; grant_id: string };
+
+/** Un credito AI (foto o valigia): prima la quota mensile, poi i crediti extra
+ *  dei codici promo. null se non ne restano (-> 429). */
+export async function consumaCreditoAi(db: Db, userId: string): Promise<ConsumoAi | null | Response> {
+  const { data, error } = await db.rpc("consume_ai_credit", { p_user_id: userId, p_now: new Date().toISOString() });
+  if (error) {
+    console.error("[ai] consume_ai_credit RPC error:", error.message, error.code);
+    return errore(500, "Usage check failed");
+  }
+  return data ?? null;
+}
+
+/** Ridà il credito di una chiamata al modello fallita. */
+export async function restituisciCreditoAi(db: Db, userId: string, consumo: ConsumoAi): Promise<void> {
+  const { error } = await db.rpc("refund_ai_credit", { p_user_id: userId, p_consumo: consumo });
+  if (error) console.error("[ai] COUNTER_ROLLBACK_FAILED:", error.message);
 }
 
 const attesa = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));

@@ -81,13 +81,16 @@ jobs:
           echo "App version is $VERSION, dev build $DEV_VERSION"
           echo "DEV_VERSION=$DEV_VERSION" >> $GITHUB_ENV
 
+      # Il progetto Supabase DEV (secret DEV_SUPABASE_URL / DEV_SUPABASE_ANON_KEY),
+      # separato da PROD che usa release_prod.yml. Finché i due secret non
+      # esistono l'APK resta su quelli di PROD (SUPABASE_URL / SUPABASE_ANON_KEY).
       - name: 🏗️ Build DEV APK
         run: |
           flutter build apk --flavor dev --target lib/main_dev.dart --target-platform android-arm64 \
             --build-name=${{ env.DEV_VERSION }} \
             --build-number=${{ github.run_number }} \
-            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
+            --dart-define=SUPABASE_URL=${{ secrets.DEV_SUPABASE_URL || secrets.SUPABASE_URL }} \
+            --dart-define=SUPABASE_ANON_KEY=${{ secrets.DEV_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }} \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
             --dart-define=AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }} \
             --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }} \

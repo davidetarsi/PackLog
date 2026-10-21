@@ -170,6 +170,8 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       final picked = await picker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 80,
+        maxWidth: kAiScanMaxImageSide,
+        maxHeight: kAiScanMaxImageSide,
       );
       if (picked == null || !mounted) return;
       await notifier.processFiles([File(picked.path)]);
@@ -177,6 +179,8 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     }
     final pickedFiles = await picker.pickMultiImage(
       imageQuality: 80,
+      maxWidth: kAiScanMaxImageSide,
+      maxHeight: kAiScanMaxImageSide,
       limit: remainingSlots,
     );
     if (pickedFiles.isEmpty || !mounted) return;
@@ -189,6 +193,8 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.camera,
       imageQuality: 80,
+      maxWidth: kAiScanMaxImageSide,
+      maxHeight: kAiScanMaxImageSide,
     );
     if (picked == null || !mounted) return;
     await ref.read(aiImportNotifierProvider.notifier).processFiles([
@@ -523,7 +529,11 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     List<ItemModel>? items,
     ClothingAnalysisResult result,
   ) =>
-      items?.any((item) => item.category == aiItemCategory(result.category)) ??
+      items?.any(
+        (item) =>
+            item.category ==
+            aiItemCategory(result.category, appCategory: result.appCategory),
+      ) ??
       false;
 
   String? _linkedName(String? id, List<ItemModel>? items) {

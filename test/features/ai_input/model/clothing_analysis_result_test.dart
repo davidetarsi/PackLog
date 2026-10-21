@@ -94,6 +94,34 @@ void main() {
       final restored = ClothingAnalysisResult.fromJson(original.toJson());
       expect(restored, original);
     });
+
+    test('unknown fields survive the round-trip in extras', () {
+      final json = {..._fullJson(), 'waterResistance': 2, 'bulk': 3};
+      final result = ClothingAnalysisResult.fromJson(json);
+      expect(result.extras, {'waterResistance': 2, 'bulk': 3});
+      expect(result.toJson(), json);
+    });
+  });
+
+  group('fromItemMetadata()', () {
+    test('reads the metadata and the app category', () {
+      final result = ClothingAnalysisResult.fromItemMetadata({
+        'metadata': {..._fullJson(), 'bulk': 2},
+        'app_category': 'vestiti',
+        'dubbi': [],
+      });
+      expect(result.name, 'Jeans slim');
+      expect(result.appCategory, 'vestiti');
+      expect(result.extras, {'bulk': 2});
+      // app_category non finisce in items.ai_metadata.
+      expect(result.toJson().containsKey('app_category'), isFalse);
+    });
+
+    test('a missing metadata falls back to the defaults', () {
+      final result = ClothingAnalysisResult.fromItemMetadata({'items': 1});
+      expect(result.name, 'Sconosciuto');
+      expect(result.appCategory, isNull);
+    });
   });
 
   // ── Equality and hashCode ─────────────────────────────────────────────────────

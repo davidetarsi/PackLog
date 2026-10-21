@@ -150,7 +150,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
     try {
       await ref
           .read(itemNotifierProvider(widget.houseId).notifier)
-          .addItem(item);
+          .addItem(item, categoryChosen: _forcedCategory != null);
 
       _textController.clear();
       widget.onTextChanged?.call('');
