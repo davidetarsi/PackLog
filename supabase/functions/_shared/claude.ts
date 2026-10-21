@@ -3,9 +3,11 @@
 // resto del codice riceve una funzione `(contenuto, max_tokens) -> testo`, cosi'
 // i test girano con un modello finto.
 //
-// Haiku 5.5 rifiuta temperature/top_p diversi dal predefinito (400) e pensa
-// prima di rispondere: effort "low" tiene corto il ragionamento, e i token del
-// ragionamento rientrano in max_tokens, per questo i tetti sono larghi.
+// Haiku 5.5 rifiuta temperature/top_p diversi dal predefinito (400) e di base
+// pensa prima di rispondere. Qui il ragionamento e' spento (ammesso a effort
+// "low"): nel confronto con GPT-6 Luna (ottobre 2026, test/confronto_modelli.ts)
+// la valigia costava il 40% in meno e arrivava in meta' tempo, a qualita' pari.
+// I tetti di max_tokens restano larghi per chi lo riaccende (ragiona = true).
 import Anthropic from "@anthropic-ai/sdk";
 
 export const MODELLO = "claude-haiku-5-5";
@@ -28,9 +30,9 @@ export class ErroreModello extends Error {
   }
 }
 
-/** Con `ragiona` false il modello risponde senza ragionare prima (thinking
- *  disabilitato, ammesso a effort basso): meno token in uscita. */
-export function claudeHttp(chiave: string, fetchFn?: typeof fetch, timeoutMs = 120000, ragiona = true): ChiediClaude {
+/** Con `ragiona` true il modello ragiona prima di rispondere (piu' token in
+ *  uscita, piu' lento); di base no. */
+export function claudeHttp(chiave: string, fetchFn?: typeof fetch, timeoutMs = 120000, ragiona = false): ChiediClaude {
   const client = new Anthropic({ apiKey: chiave, fetch: fetchFn, timeout: timeoutMs, maxRetries: 1 });
   return async (contenuto, maxTokens) => {
     let m: Anthropic.Message;

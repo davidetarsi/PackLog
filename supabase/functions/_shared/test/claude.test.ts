@@ -17,7 +17,7 @@ const messaggio = (content: unknown[], stop_reason = "end_turn") => ({
   usage: { input_tokens: 10, output_tokens: 5 },
 });
 
-test("niente temperature, effort basso, il testo senza il ragionamento", async () => {
+test("niente temperature, effort basso, ragionamento spento, solo il testo", async () => {
   const inviati: unknown[] = [];
   const chiedi = claudeHttp("k", fetchFinto(200, messaggio([
     { type: "thinking", thinking: "", signature: "s" },
@@ -28,15 +28,15 @@ test("niente temperature, effort basso, il testo senza il ragionamento", async (
   assert.equal(r.testo, "[1,2]");
   assert.equal(r.uso.input_tokens, 10);
   assert.deepEqual(inviati, [{
-    model: "claude-haiku-5-5", max_tokens: 2000, output_config: { effort: "low" },
+    model: "claude-haiku-5-5", max_tokens: 2000, output_config: { effort: "low" }, thinking: { type: "disabled" },
     messages: [{ role: "user", content: "ciao" }],
   }]);
 });
 
-test("senza ragionamento: thinking disabilitato nella richiesta", async () => {
+test("con ragionamento: niente thinking nella richiesta (adattivo, il predefinito)", async () => {
   const inviati: unknown[] = [];
-  await claudeHttp("k", fetchFinto(200, messaggio([{ type: "text", text: "ok" }]), inviati), 1000, false)("x", 10);
-  assert.deepEqual((inviati[0] as Record<string, unknown>).thinking, { type: "disabled" });
+  await claudeHttp("k", fetchFinto(200, messaggio([{ type: "text", text: "ok" }]), inviati), 1000, true)("x", 10);
+  assert.equal("thinking" in (inviati[0] as Record<string, unknown>), false);
 });
 
 test("rifiuto, risposta vuota ed errore HTTP diventano ErroreModello", async () => {
