@@ -230,7 +230,9 @@ class TripWeather {
   }) {
     final perStop = (json['geo'] as Map<String, dynamic>)['per_tappa'] as List;
     if (perStop.length != request.stops.length) {
-      throw const FormatException('trip-weather: tappe diverse dalla richiesta');
+      throw const FormatException(
+        'trip-weather: tappe diverse dalla richiesta',
+      );
     }
     return TripWeather(
       signature: request.signature,

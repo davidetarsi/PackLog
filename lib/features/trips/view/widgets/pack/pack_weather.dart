@@ -21,6 +21,9 @@ const _kColdMaxC = 3.0;
 const _kRainyShare = 0.5;
 const _kCloudyShare = 0.2;
 
+/// Durata del giro dell'icona "Aggiorna".
+const _kRefreshSpin = Duration(milliseconds: 600);
+
 /// Sezione "Meteo" della pagina valigia: una riga per tappa con temperature e
 /// pioggia, e sotto da dove viene il meteo con "Aggiorna".
 ///
@@ -244,11 +247,26 @@ class _WeatherLoading extends StatelessWidget {
 
 /// Riga di testo secondario con "Aggiorna" a destra, se c'è: sotto le tappe
 /// dice da dove viene il meteo, da sola è il messaggio discreto al loro posto.
-class _WeatherFooter extends StatelessWidget {
+class _WeatherFooter extends StatefulWidget {
   const _WeatherFooter({required this.text, this.onRefresh});
 
   final String text;
   final VoidCallback? onRefresh;
+
+  @override
+  State<_WeatherFooter> createState() => _WeatherFooterState();
+}
+
+class _WeatherFooterState extends State<_WeatherFooter> {
+  /// Giri dell'icona: uno a ogni tocco. Anche quando il meteo è fresco e non si
+  /// richiede, il giro dice che il tocco è arrivato; l'ora resta quella vera
+  /// dei dati.
+  double _turns = 0;
+
+  void _refresh() {
+    setState(() => _turns += 1);
+    widget.onRefresh?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -261,19 +279,23 @@ class _WeatherFooter extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              text,
+              widget.text,
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
-          if (onRefresh != null)
+          if (widget.onRefresh != null)
             IconButton(
               key: const Key('pack_weather_refresh'),
               tooltip: 'trips.weather.refresh'.tr(),
-              onPressed: onRefresh,
-              icon: Icon(
-                Icons.refresh,
-                size: context.iconSizeSm,
-                color: cs.onSurfaceVariant,
+              onPressed: _refresh,
+              icon: AnimatedRotation(
+                turns: _turns,
+                duration: _kRefreshSpin,
+                child: Icon(
+                  Icons.refresh,
+                  size: context.iconSizeSm,
+                  color: cs.onSurfaceVariant,
+                ),
               ),
             ),
         ],
