@@ -107,9 +107,13 @@ class AuthNotifier extends _$AuthNotifier {
   /// Se la richiesta non arriva il codice resta salvato e si riprova al login
   /// successivo.
   Future<void> _redeemPendingPromo() async {
-    final result = await ref.read(promoCodeServiceProvider).redeemPending();
-    if (result == null) return;
-    ref.read(pendingPromoOutcomeProvider.notifier).report(result);
+    try {
+      final result = await ref.read(promoCodeServiceProvider).redeemPending();
+      if (result == null) return;
+      ref.read(pendingPromoOutcomeProvider.notifier).report(result);
+    } catch (e) {
+      debugPrint('[Auth] codice promo non attivato (riprovo al login): $e');
+    }
   }
 
   /// Emette `logout` alla transizione Authenticated → Unauthenticated.
