@@ -28,7 +28,9 @@ export class ErroreModello extends Error {
   }
 }
 
-export function claudeHttp(chiave: string, fetchFn?: typeof fetch, timeoutMs = 120000): ChiediClaude {
+/** Con `ragiona` false il modello risponde senza ragionare prima (thinking
+ *  disabilitato, ammesso a effort basso): meno token in uscita. */
+export function claudeHttp(chiave: string, fetchFn?: typeof fetch, timeoutMs = 120000, ragiona = true): ChiediClaude {
   const client = new Anthropic({ apiKey: chiave, fetch: fetchFn, timeout: timeoutMs, maxRetries: 1 });
   return async (contenuto, maxTokens) => {
     let m: Anthropic.Message;
@@ -37,6 +39,7 @@ export function claudeHttp(chiave: string, fetchFn?: typeof fetch, timeoutMs = 1
         model: MODELLO,
         max_tokens: maxTokens,
         output_config: { effort: EFFORT },
+        ...(ragiona ? {} : { thinking: { type: "disabled" as const } }),
         messages: [{ role: "user", content: contenuto }],
       });
     } catch (e) {

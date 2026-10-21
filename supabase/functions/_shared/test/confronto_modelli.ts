@@ -1,4 +1,5 @@
-// Confronto Claude Haiku 5.5 / GPT-6 Luna sulle due chiamate che costano:
+// Confronto Claude Haiku 5.5 (con e senza ragionamento) / GPT-6 Luna sulle due
+// chiamate che costano:
 // lo scan di una foto (prompt di item-metadata) e la valigia (pack-trip). Jev
 // non dipende dal modello: di base resta fuori; con --jev (e TYPESAFE_API_KEY)
 // entra nella valigia, chiesto una volta sola per viaggio e dato uguale a tutti
@@ -55,10 +56,14 @@ const jev: ChiediJev | null = jevVero
   }
   : null;
 
+// Le varianti a confronto: Claude con e senza ragionamento, Luna.
+const CLAUDE_SENZA = `${MODELLO_CLAUDE} senza ragionamento`;
+
 // $ per milione di token (listino ottobre 2026, prompt sotto 100k): da
 // ricontrollare sulle pagine dei prezzi prima di trarre conclusioni.
 const PREZZI: Record<string, { in: number; out: number }> = {
   [MODELLO_CLAUDE]: { in: 0.10, out: 0.50 },
+  [CLAUDE_SENZA]: { in: 0.10, out: 0.50 },
   [arg.luna!]: { in: 0.10, out: 0.50 },
 };
 
@@ -73,18 +78,20 @@ interface Chiamata {
 type Contenuto = { testo: string } | { testo: string; immagineBase64: string };
 type Chiedi = (c: Contenuto, maxTokens: number) => Promise<Chiamata>;
 
-const claude = claudeHttp(chiaveClaude);
-const chiediClaude: Chiedi = async (c, maxTokens) => {
-  const t0 = Date.now();
-  const contenuto = "immagineBase64" in c
-    ? [bloccoImmagine(c.immagineBase64), { type: "text" as const, text: c.testo }]
-    : c.testo;
-  const r = await claude(contenuto, maxTokens);
-  return {
-    modello: MODELLO_CLAUDE, testo: r.testo, ms: Date.now() - t0,
-    ingresso: Number(r.uso.input_tokens ?? 0), uscita: Number(r.uso.output_tokens ?? 0),
+function chiediClaude(nome: string, ragiona: boolean): Chiedi {
+  const claude = claudeHttp(chiaveClaude!, undefined, 120000, ragiona);
+  return async (c, maxTokens) => {
+    const t0 = Date.now();
+    const contenuto = "immagineBase64" in c
+      ? [bloccoImmagine(c.immagineBase64), { type: "text" as const, text: c.testo }]
+      : c.testo;
+    const r = await claude(contenuto, maxTokens);
+    return {
+      modello: nome, testo: r.testo, ms: Date.now() - t0,
+      ingresso: Number(r.uso.input_tokens ?? 0), uscita: Number(r.uso.output_tokens ?? 0),
+    };
   };
-};
+}
 
 // Luna con lo stesso compito: ragionamento basso come effort "low" di Claude,
 // immagine in dettaglio alto come lo scan di oggi.
@@ -113,7 +120,11 @@ const chiediLuna: Chiedi = async (c, maxTokens) => {
   };
 };
 
-const MODELLI: Chiedi[] = [chiediClaude, chiediLuna];
+const MODELLI: [string, Chiedi][] = [
+  [MODELLO_CLAUDE, chiediClaude(MODELLO_CLAUDE, true)],
+  [CLAUDE_SENZA, chiediClaude(CLAUDE_SENZA, false)],
+  [arg.luna!, chiediLuna],
+];
 const costo = (c: Chiamata) => (c.ingresso * PREZZI[c.modello].in + c.uscita * PREZZI[c.modello].out) / 1e6;
 
 async function prova(chiedi: Chiedi, c: Contenuto, maxTokens: number, nome: string): Promise<Chiamata> {
@@ -131,8 +142,7 @@ if (arg.foto) {
   for (const f of file) {
     const immagineBase64 = btoa(Array.from(readFileSync(join(arg.foto, f)), (b) => String.fromCharCode(b)).join(""));
     for (let i = 0; i < Number(arg.ripeti); i++) {
-      for (const [n, chiedi] of MODELLI.entries()) {
-        const nome = n === 0 ? MODELLO_CLAUDE : arg.luna!;
+      for (const [nome, chiedi] of MODELLI) {
         const r = await prova(chiedi, { testo: promptScan(), immagineBase64 }, MAX_TOKENS_FOTO, nome);
         const capi = leggiJson(r.testo);
         foto.push({ file: f, ...r, costo: costo(r), capi: Array.isArray(capi) ? capi.length : capi ? 1 : 0, risposta: capi ?? r.testo });
@@ -188,8 +198,7 @@ if (arg.armadio) {
   for (const [id, corpo] of VIAGGI) {
     const v = validaViaggio(corpo, new Date().toISOString().slice(0, 10));
     for (let i = 0; i < Number(arg.ripeti); i++) {
-      for (const [n, chiedi] of MODELLI.entries()) {
-        const nome = n === 0 ? MODELLO_CLAUDE : arg.luna!;
+      for (const [nome, chiedi] of MODELLI) {
         let chiamata: Chiamata | undefined;
         try {
           const r = await generaValigia(scenarioDaApp(v), righe, {
@@ -218,7 +227,7 @@ if (arg.armadio) {
 // ── Riepilogo ───────────────────────────────────────────────────────────────
 function riepilogo(righe: any[]) {
   const per: Record<string, any> = {};
-  for (const m of [MODELLO_CLAUDE, arg.luna!]) {
+  for (const [m] of MODELLI) {
     const ok = righe.filter((r) => r.modello === m && !r.errore);
     const media = (k: string) => ok.length ? ok.reduce((a, r) => a + r[k], 0) / ok.length : 0;
     per[m] = {

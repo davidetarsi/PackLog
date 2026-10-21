@@ -33,6 +33,12 @@ test("niente temperature, effort basso, il testo senza il ragionamento", async (
   }]);
 });
 
+test("senza ragionamento: thinking disabilitato nella richiesta", async () => {
+  const inviati: unknown[] = [];
+  await claudeHttp("k", fetchFinto(200, messaggio([{ type: "text", text: "ok" }]), inviati), 1000, false)("x", 10);
+  assert.deepEqual((inviati[0] as Record<string, unknown>).thinking, { type: "disabled" });
+});
+
 test("rifiuto, risposta vuota ed errore HTTP diventano ErroreModello", async () => {
   await assert.rejects(claudeHttp("k", fetchFinto(200, messaggio([], "refusal"), []))("x", 10), ErroreModello);
   await assert.rejects(claudeHttp("k", fetchFinto(200, messaggio([], "max_tokens"), []))("x", 10), /nessun testo/);
