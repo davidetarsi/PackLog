@@ -1,6 +1,8 @@
 // Confronto Claude Haiku 5.5 / GPT-6 Luna sulle due chiamate che costano:
-// lo scan di una foto (prompt di item-metadata) e la valigia (pack-trip, senza
-// Jev, che e' uguale per tutti e due). Per ogni chiamata: token, costo, tempo e
+// lo scan di una foto (prompt di item-metadata) e la valigia (pack-trip). Jev
+// non dipende dal modello: di base resta fuori; con --jev (e TYPESAFE_API_KEY)
+// entra nella valigia, chiesto una volta sola per viaggio e dato uguale a tutti
+// e due i modelli, cosi' la differenza resta solo quella del modello. Per ogni chiamata: token, costo, tempo e
 // risposta, per confrontare anche la qualita'. COSTA (pochi centesimi): le
 // chiavi arrivano dall'ambiente, mai stampate.
 //
@@ -8,7 +10,7 @@
 //   ANTHROPIC_API_KEY=... OPENAI_KEY=... deno run --allow-net --allow-read --allow-write --allow-env \
 //     --config supabase/functions/item-metadata/deno.json \
 //     supabase/functions/_shared/test/confronto_modelli.ts \
-//     --foto CARTELLA_JPG --armadio ARMADIO.json --uscita confronto.json [--luna gpt-6-luna] [--ripeti 1]
+//     --foto CARTELLA_JPG --armadio ARMADIO.json --uscita confronto.json [--luna gpt-6-luna] [--ripeti 1] [--jev]
 //
 // ARMADIO.json: la lista dei capi come la legge pack-trip, [{ id, name, category, ai_metadata }, ...].
 // test/armadio_prova.json e' l'armadio da 197 capi del bench (inventory_cache.json), gia' in questo formato.
@@ -23,6 +25,7 @@ import { climaViaggio, type Servizi } from "../clima/meteo.ts";
 import { generaValigia, MAX_TOKENS_VALIGIA, scenarioDaApp } from "../valigia/genera.ts";
 import { validaViaggio } from "../valigia/ingresso.ts";
 import type { RigaArmadio } from "../valigia/capo.ts";
+import { type ChiediJev, jevHttp } from "../valigia/jev.ts";
 
 const { values: arg } = parseArgs({
   options: {
@@ -31,11 +34,26 @@ const { values: arg } = parseArgs({
     uscita: { type: "string", default: "confronto.json" },
     luna: { type: "string", default: "gpt-6-luna" },
     ripeti: { type: "string", default: "1" },
+    jev: { type: "boolean", default: false },
   },
 });
 const chiaveClaude = Deno.env.get("ANTHROPIC_API_KEY"), chiaveOpenai = Deno.env.get("OPENAI_KEY");
 if (!chiaveClaude || !chiaveOpenai) throw new Error("ANTHROPIC_API_KEY e OPENAI_KEY nell'ambiente");
 if (!arg.foto && !arg.armadio) throw new Error("serve --foto, --armadio o tutti e due");
+const chiaveJev = Deno.env.get("TYPESAFE_API_KEY");
+if (arg.jev && !chiaveJev) throw new Error("--jev vuole TYPESAFE_API_KEY nell'ambiente");
+
+// Jev con la memoria: la stessa domanda sullo stesso stato si paga una volta e
+// torna identica per tutti e due i modelli.
+const memoriaJev = new Map<string, ReturnType<ChiediJev>>();
+const jevVero = arg.jev ? jevHttp(chiaveJev!) : null;
+const jev: ChiediJev | null = jevVero
+  ? (stato, domande) => {
+    const k = JSON.stringify([stato, domande]);
+    if (!memoriaJev.has(k)) memoriaJev.set(k, jevVero(stato, domande));
+    return memoriaJev.get(k)!;
+  }
+  : null;
 
 // $ per milione di token (listino ottobre 2026, prompt sotto 100k): da
 // ricontrollare sulle pagine dei prezzi prima di trarre conclusioni.
@@ -180,7 +198,7 @@ if (arg.armadio) {
               chiamata = await chiedi({ testo: prompt }, MAX_TOKENS_VALIGIA);
               return { testo: chiamata.testo };
             },
-            jev: null,
+            jev,
           });
           const s = r.valigia;
           const nomi = (xs: any[] = []) => xs.map((x) => x?.name ?? x?.nome ?? x);
