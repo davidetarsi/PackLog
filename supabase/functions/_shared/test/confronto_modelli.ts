@@ -11,7 +11,13 @@
 //   ANTHROPIC_API_KEY=... OPENAI_KEY=... deno run --allow-net --allow-read --allow-write --allow-env \
 //     --config supabase/functions/item-metadata/deno.json \
 //     supabase/functions/_shared/test/confronto_modelli.ts \
-//     --foto CARTELLA_JPG --armadio ARMADIO.json --uscita confronto.json [--luna gpt-6-luna] [--ripeti 1] [--jev]
+//     --foto CARTELLA_JPG --armadio ARMADIO.json --uscita confronto.json [--ripeti 1] [--jev]
+//     [--openai gpt-6-luna|gpt-4o-mini] [--solo claude,claude-senza,openai]
+//
+// --openai sceglie il modello OpenAI (predefinito gpt-6-luna; gpt-4o-mini e'
+// quello di prima, chiamato come lo chiamava l'app). --solo fa girare solo
+// alcune varianti, per esempio `--openai gpt-4o-mini --solo openai`; serve
+// solo la chiave dei modelli scelti.
 //
 // ARMADIO.json: la lista dei capi come la legge pack-trip, [{ id, name, category, ai_metadata }, ...].
 // test/armadio_prova.json e' l'armadio da 197 capi del bench (inventory_cache.json), gia' in questo formato.
@@ -33,13 +39,23 @@ const { values: arg } = parseArgs({
     foto: { type: "string" },
     armadio: { type: "string" },
     uscita: { type: "string", default: "confronto.json" },
-    luna: { type: "string", default: "gpt-6-luna" },
+    openai: { type: "string" },
+    luna: { type: "string" },
+    solo: { type: "string", default: "claude,claude-senza,openai" },
     ripeti: { type: "string", default: "1" },
     jev: { type: "boolean", default: false },
   },
 });
+// --luna resta come nome vecchio di --openai.
+const MODELLO_OPENAI = arg.openai ?? arg.luna ?? "gpt-6-luna";
+const scelti = new Set(arg.solo!.split(",").map((x) => x.trim()));
+for (const x of scelti) {
+  if (!["claude", "claude-senza", "openai"].includes(x)) throw new Error(`--solo: variante sconosciuta '${x}'`);
+}
+const conClaude = scelti.has("claude") || scelti.has("claude-senza");
 const chiaveClaude = Deno.env.get("ANTHROPIC_API_KEY"), chiaveOpenai = Deno.env.get("OPENAI_KEY");
-if (!chiaveClaude || !chiaveOpenai) throw new Error("ANTHROPIC_API_KEY e OPENAI_KEY nell'ambiente");
+if (conClaude && !chiaveClaude) throw new Error("ANTHROPIC_API_KEY nell'ambiente");
+if (scelti.has("openai") && !chiaveOpenai) throw new Error("OPENAI_KEY nell'ambiente");
 if (!arg.foto && !arg.armadio) throw new Error("serve --foto, --armadio o tutti e due");
 const chiaveJev = Deno.env.get("TYPESAFE_API_KEY");
 if (arg.jev && !chiaveJev) throw new Error("--jev vuole TYPESAFE_API_KEY nell'ambiente");
@@ -61,10 +77,17 @@ const CLAUDE_SENZA = `${MODELLO_CLAUDE} senza ragionamento`;
 
 // $ per milione di token (listino ottobre 2026, prompt sotto 100k): da
 // ricontrollare sulle pagine dei prezzi prima di trarre conclusioni.
+const LISTINO_OPENAI: Record<string, { in: number; out: number }> = {
+  "gpt-6-luna": { in: 0.10, out: 0.50 },
+  "gpt-4o-mini": { in: 0.15, out: 0.60 },
+};
+if (scelti.has("openai") && !LISTINO_OPENAI[MODELLO_OPENAI]) {
+  throw new Error(`prezzo di ${MODELLO_OPENAI} sconosciuto: aggiungilo a LISTINO_OPENAI`);
+}
 const PREZZI: Record<string, { in: number; out: number }> = {
   [MODELLO_CLAUDE]: { in: 0.10, out: 0.50 },
   [CLAUDE_SENZA]: { in: 0.10, out: 0.50 },
-  [arg.luna!]: { in: 0.10, out: 0.50 },
+  [MODELLO_OPENAI]: LISTINO_OPENAI[MODELLO_OPENAI],
 };
 
 interface Chiamata {
@@ -73,6 +96,8 @@ interface Chiamata {
   ingresso: number;
   uscita: number;
   ms: number;
+  /** La risposta e' finita contro max_tokens (tagliata). */
+  troncata?: boolean;
   errore?: string;
 }
 type Contenuto = { testo: string } | { testo: string; immagineBase64: string };
@@ -87,15 +112,18 @@ function chiediClaude(nome: string, ragiona: boolean): Chiedi {
       : c.testo;
     const r = await claude(contenuto, maxTokens);
     return {
-      modello: nome, testo: r.testo, ms: Date.now() - t0,
+      modello: nome, testo: r.testo, ms: Date.now() - t0, troncata: r.uso.stop_reason === "max_tokens",
       ingresso: Number(r.uso.input_tokens ?? 0), uscita: Number(r.uso.output_tokens ?? 0),
     };
   };
 }
 
-// Luna con lo stesso compito: ragionamento basso come effort "low" di Claude,
-// immagine in dettaglio alto come lo scan di oggi.
-const chiediLuna: Chiedi = async (c, maxTokens) => {
+// OpenAI con lo stesso compito, immagine in dettaglio alto come lo scan.
+// Luna (modello che ragiona): ragionamento basso come effort "low" di Claude.
+// gpt-4o-mini (non ragiona): max_tokens e temperature come li usava l'app,
+// 0 per la foto e 0,2 per la valigia.
+const ragionaOpenai = !MODELLO_OPENAI.startsWith("gpt-4");
+const chiediOpenai: Chiedi = async (c, maxTokens) => {
   const t0 = Date.now();
   const content = "immagineBase64" in c
     ? [
@@ -107,23 +135,26 @@ const chiediLuna: Chiedi = async (c, maxTokens) => {
     method: "POST",
     headers: { Authorization: `Bearer ${chiaveOpenai}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: arg.luna, messages: [{ role: "user", content }],
-      max_completion_tokens: maxTokens, reasoning_effort: "low",
+      model: MODELLO_OPENAI, messages: [{ role: "user", content }],
+      ...(ragionaOpenai
+        ? { max_completion_tokens: maxTokens, reasoning_effort: "low" }
+        : { max_tokens: maxTokens, temperature: "immagineBase64" in c ? 0 : 0.2 }),
     }),
     signal: AbortSignal.timeout(120000),
   });
-  if (r.status >= 400) throw new Error(`${arg.luna}: ${r.status} ${(await r.text()).slice(0, 300)}`);
+  if (r.status >= 400) throw new Error(`${MODELLO_OPENAI}: ${r.status} ${(await r.text()).slice(0, 300)}`);
   const d = await r.json();
   return {
-    modello: arg.luna!, testo: d.choices[0].message.content ?? "", ms: Date.now() - t0,
+    modello: MODELLO_OPENAI, testo: d.choices[0].message.content ?? "", ms: Date.now() - t0,
+    troncata: d.choices[0].finish_reason === "length",
     ingresso: d.usage?.prompt_tokens ?? 0, uscita: d.usage?.completion_tokens ?? 0,
   };
 };
 
 const MODELLI: [string, Chiedi][] = [
-  [MODELLO_CLAUDE, chiediClaude(MODELLO_CLAUDE, true)],
-  [CLAUDE_SENZA, chiediClaude(CLAUDE_SENZA, false)],
-  [arg.luna!, chiediLuna],
+  ...(scelti.has("claude") ? [[MODELLO_CLAUDE, chiediClaude(MODELLO_CLAUDE, true)] as [string, Chiedi]] : []),
+  ...(scelti.has("claude-senza") ? [[CLAUDE_SENZA, chiediClaude(CLAUDE_SENZA, false)] as [string, Chiedi]] : []),
+  ...(scelti.has("openai") ? [[MODELLO_OPENAI, chiediOpenai] as [string, Chiedi]] : []),
 ];
 const costo = (c: Chiamata) => (c.ingresso * PREZZI[c.modello].in + c.uscita * PREZZI[c.modello].out) / 1e6;
 
@@ -232,6 +263,7 @@ function riepilogo(righe: any[]) {
     const media = (k: string) => ok.length ? ok.reduce((a, r) => a + r[k], 0) / ok.length : 0;
     per[m] = {
       chiamate: righe.filter((r) => r.modello === m).length, errori: righe.filter((r) => r.modello === m && r.errore).length,
+      troncate: righe.filter((r) => r.modello === m && r.troncata).length,
       token_ingresso_medi: Math.round(media("ingresso")), token_uscita_medi: Math.round(media("uscita")),
       costo_medio_usd: Number(media("costo").toFixed(6)), ms_medi: Math.round(media("ms")),
     };
