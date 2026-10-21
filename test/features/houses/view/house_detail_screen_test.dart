@@ -367,11 +367,11 @@ void main() {
     },
   );
 
-  testWidgets('dal ⋯: Seleziona oggetti apre la selezione vuota', (
+  testWidgets('dal ⋮: Seleziona oggetti apre la selezione vuota', (
     tester,
   ) async {
     final app = await openHome(tester);
-    await app.tap(find.byIcon(Icons.more_horiz));
+    await app.tap(find.byIcon(Icons.more_vert));
     await app.tap(find.text('Seleziona oggetti'));
 
     final move = tester.widget<DsBarItem>(
@@ -441,12 +441,12 @@ void main() {
     tester,
   ) async {
     final app = await openHome(tester);
-    // "⋯" è salito nell'intestazione: un solo bottone in tutta la schermata.
-    expect(find.byIcon(Icons.more_horiz), findsOneWidget);
+    // "⋮" è salito nell'intestazione: un solo bottone in tutta la schermata.
+    expect(find.byIcon(Icons.more_vert), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(AppBar),
-        matching: find.byIcon(Icons.more_horiz),
+        matching: find.byIcon(Icons.more_vert),
       ),
       findsOneWidget,
     );
@@ -455,14 +455,14 @@ void main() {
     await app.finish();
   });
 
-  testWidgets('toccando il campo la lista sparisce, e con lei 🔍 e ⋯', (
+  testWidgets('toccando il campo la lista sparisce, e con lei 🔍 e ⋮', (
     tester,
   ) async {
     final app = await openHome(tester);
     await app.tap(rapidFire());
     expect(find.text('Vestiti · 7'), findsNothing);
     expect(find.byKey(const Key('house_search')), findsNothing);
-    expect(find.byIcon(Icons.more_horiz), findsNothing);
+    expect(find.byIcon(Icons.more_vert), findsNothing);
     await app.finish();
   });
 

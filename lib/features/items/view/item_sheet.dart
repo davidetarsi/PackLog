@@ -11,7 +11,7 @@ import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_field.dart';
 import '../../../shared/widgets/ds_picker_sheet.dart';
-import '../../../shared/widgets/ds_section_title.dart';
+import '../../../shared/widgets/ds_field_label.dart';
 import '../../../shared/widgets/ds_sheet_header.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/quantity_stepper.dart';
@@ -74,7 +74,7 @@ enum _ItemMenu { move, delete }
 /// Le categorie sono le pillole della pagina "Aggiungi" della casa: bordata è
 /// la proposta dedotta dal nome, piena la scelta dell'utente. Nella modifica
 /// la categoria dell'oggetto è già una scelta. Spostare in un'altra casa ed
-/// eliminare stanno nel "⋯", solo nella modifica.
+/// eliminare stanno nel "⋮", solo nella modifica.
 class ItemSheet extends ConsumerStatefulWidget {
   final String houseId;
 
@@ -127,6 +127,18 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   bool _isSaving = false;
 
   bool get _isNew => widget.itemId == null;
+
+  /// In modifica: qualcosa è diverso dall'oggetto salvato.
+  bool get _isDirty {
+    final item = _item();
+    if (item == null) return false;
+    final note = _noteController.text.trim();
+    return _nameController.text.trim() != item.name ||
+        note != (item.description ?? '') ||
+        (_chosenCategory ?? item.category) != item.category ||
+        _quantity != (item.quantity ?? 1) ||
+        _spaceId != item.spaceId;
+  }
 
   ItemModel? _item() =>
       (ref.read(itemNotifierProvider(widget.houseId)).valueOrNull ??
@@ -370,7 +382,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                     if (!_isNew)
                       PopupMenuButton<_ItemMenu>(
                         key: const Key('item_sheet_menu'),
-                        icon: const Icon(Icons.more_horiz),
+                        icon: const Icon(Icons.more_vert),
                         onSelected: (choice) => switch (choice) {
                           _ItemMenu.move => _moveToHouse(),
                           _ItemMenu.delete => _delete(),
@@ -405,7 +417,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          DsSectionTitle('items.name_label'.tr()),
+                          DsFieldLabel('items.name_label'.tr()),
                           TextFormField(
                             key: const Key('item_sheet_name'),
                             controller: _nameController,
@@ -419,7 +431,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                                 ? 'common.name_required_validation'.tr()
                                 : null,
                           ),
-                          DsSectionTitle('items.category_label'.tr()),
+                          DsFieldLabel('items.category_label'.tr()),
                           SizedBox(
                             key: const Key('item_sheet_category'),
                             height: context.responsive(
@@ -486,7 +498,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                                 ),
                               ),
                             ),
-                          DsSectionTitle('items.details_label'.tr()),
+                          DsFieldLabel('items.details_label'.tr()),
                           TextFormField(
                             key: const Key('item_sheet_note'),
                             controller: _noteController,
@@ -497,6 +509,8 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                               context,
                               hintText: 'items.add_note'.tr(),
                             ),
+                            // Ridisegna "Salva", attivo solo con una modifica.
+                            onChanged: (_) => setState(() {}),
                           ),
                           if (footnote != null)
                             Padding(
@@ -515,7 +529,9 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                             icon: widget.submitIcon,
                             expand: true,
                             isLoading: _isSaving,
-                            onPressed: _save,
+                            // In modifica, a riposo il foglio non ha arancio
+                            // pieno: "Salva" si accende alla prima modifica.
+                            onPressed: _isNew || _isDirty ? _save : null,
                           ),
                         ],
                       ),
@@ -531,7 +547,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   }
 }
 
-/// Etichetta come [DsSectionTitle] con il controllo sulla stessa riga, a
+/// Etichetta come [DsFieldLabel] con il controllo sulla stessa riga, a
 /// destra: per i valori brevi (quantità, spazio) che non chiedono un campo.
 class _InlineField extends StatelessWidget {
   final String label;
@@ -542,10 +558,10 @@ class _InlineField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(top: context.spacingLg),
+      padding: EdgeInsets.only(top: context.spacingSm),
       child: Row(
         children: [
-          Text(label, style: DsSectionTitle.textStyle(context)),
+          Text(label, style: DsFieldLabel.textStyle(context)),
           SizedBox(width: context.spacingMd),
           // Il controllo sta a destra e, se è lungo (il nome di uno spazio),
           // si stringe lui: l'etichetta resta intera.

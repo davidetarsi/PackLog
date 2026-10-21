@@ -692,7 +692,7 @@ class _HouseNormalAppBar extends StatelessWidget
   final VoidCallback onSearchSubmitted;
   final VoidCallback onSearchClose;
 
-  /// La pagina "aggiungi" è aperta: niente 🔍 né ⋯, la freccia la chiude.
+  /// La pagina "aggiungi" è aperta: niente 🔍 né ⋮, la freccia la chiude.
   final bool isAdding;
   final VoidCallback onCloseAdding;
   final VoidCallback onManage;
@@ -797,7 +797,7 @@ class _HouseNormalAppBar extends StatelessWidget
                 onPressed: onSearchOpen,
               ),
               IconButton(
-                icon: const Icon(Icons.more_horiz),
+                icon: const Icon(Icons.more_vert),
                 tooltip: 'houses.manage_sheet_title'.tr(),
                 onPressed: onManage,
               ),
@@ -945,7 +945,7 @@ class _AddPage extends ConsumerWidget {
 }
 
 /// Bottom action bar in modalità normale: campo rapid-fire (sinistra) e
-/// scansione AI (destra). "⋯" e ricerca stanno nell'intestazione.
+/// scansione AI (destra). "⋮" e ricerca stanno nell'intestazione.
 class _HouseNormalActionBar extends StatelessWidget {
   final String houseId;
   final VoidCallback onAiScan;

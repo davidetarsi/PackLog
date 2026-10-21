@@ -105,7 +105,7 @@ Future<void> _swipePile(ScreenshotApp app) async {
 
 Future<void> _openManageSheet(ScreenshotApp app) async {
   await _houseDetail(app);
-  await app.tap(_icon(Icons.more_horiz));
+  await app.tap(_icon(Icons.more_vert));
 }
 
 Future<void> _emitAi(ScreenshotApp app, AiImportState state) async {
@@ -689,7 +689,7 @@ final flows = <Flow>[
       'menu',
       source: 'lib/features/items/view/item_sheet.dart',
       description:
-          'Menu ⋯ della scheda: Sposta in un\'altra casa ed Elimina (rosso).',
+          'Menu ⋮ della scheda: Sposta in un\'altra casa ed Elimina (rosso).',
       steps: (app) async {
         await _houseDetail(app);
         await app.tap(find.text('Maglione di lana'));

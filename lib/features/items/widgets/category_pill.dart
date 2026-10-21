@@ -31,13 +31,16 @@ class CategoryPill extends StatelessWidget {
         backgroundColor = colorScheme.surfaceContainerLow;
         foregroundColor = colorScheme.onSurfaceVariant;
         borderColor = Colors.transparent;
+      // Proposta dall'app: solo il contorno, si legge come un suggerimento.
       case CategoryPillState.inferred:
-        backgroundColor = categoryColor.withValues(alpha: 0.1);
+        backgroundColor = Colors.transparent;
         foregroundColor = categoryColor;
-        borderColor = categoryColor;
+        borderColor = categoryColor.withValues(alpha: 0.6);
+      // Scelta: fondo tenue, mai pieno. L'arancio pieno resta all'azione
+      // principale dello schermo (regola "un solo arancio").
       case CategoryPillState.forced:
-        backgroundColor = categoryColor;
-        foregroundColor = colorScheme.onPrimary;
+        backgroundColor = categoryColor.withValues(alpha: 0.18);
+        foregroundColor = categoryColor;
         borderColor = categoryColor;
     }
 
