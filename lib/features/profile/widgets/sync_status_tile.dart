@@ -4,74 +4,69 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/helpers/exception_message.dart';
+import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/ds_settings.dart';
 import 'sync_details_dialog.dart';
 
-/// Tile in Profilo che mostra quante modifiche locali sono ancora in attesa
-/// di essere pushate al cloud e offre un pulsante "Riprova" per forzare un
-/// nuovo giro di [SyncOrchestrator.requestSync].
+/// Riga del Profilo con lo stato della sincronizzazione: quante modifiche
+/// locali aspettano ancora il cloud, con "Riprova ora" per forzare un nuovo
+/// giro di [SyncOrchestrator.requestSync].
+///
+/// Sta in un [DsSettingsGroup] come le altre righe. Quando è tutto a posto la
+/// nuvola è grigia: è un'informazione, non un'azione. Il colore arriva solo
+/// quando c'è qualcosa da fare.
 class SyncStatusTile extends ConsumerWidget {
   const SyncStatusTile({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final totalUnsyncedAsync = ref.watch(totalUnsyncedCountProvider);
     final isPushInProgress = ref.watch(syncPushInProgressProvider);
+    final spinner = SizedBox.square(
+      dimension: context.iconSizeSm,
+      child: const CircularProgressIndicator(strokeWidth: 2),
+    );
 
     return totalUnsyncedAsync.when(
       // skipLoadingOnReload mantiene il valore precedente durante i reload
       // (es. dopo onProcessQueueComplete) evitando qualsiasi flash.
       skipLoadingOnReload: true,
-      loading: () => ListTile(
-        leading: const Icon(Icons.cloud_sync_outlined),
-        title: Text('profile.sync_status_title'.tr()),
-        trailing: const SizedBox(
-          width: 18,
-          height: 18,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
+      loading: () => DsSettingsRow(
+        label: 'profile.sync_status_title'.tr(),
+        trailing: spinner,
       ),
-      error: (e, _) => ListTile(
-        leading: Icon(
-          Icons.cloud_off_outlined,
-          color: Theme.of(context).colorScheme.error,
-        ),
-        title: Text('profile.sync_status_title'.tr()),
-        subtitle: Text(exceptionMessage(e)),
+      error: (e, _) => DsSettingsRow(
+        label: 'profile.sync_status_title'.tr(),
+        subtitle: exceptionMessage(e),
+        trailing: Icon(Icons.cloud_off_outlined, color: cs.error),
       ),
       data: (totalUnsynced) {
-        final synced = totalUnsynced == 0;
-
-        final Widget? trailing = switch ((synced, isPushInProgress)) {
-          (true, _) => null,
-          (false, true) => const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
+        if (totalUnsynced == 0) {
+          return DsSettingsRow(
+            label: 'profile.sync_status_title'.tr(),
+            subtitle: 'profile.sync_status_synced'.tr(),
+            trailing: Icon(
+              Icons.cloud_done_outlined,
+              size: context.iconSizeSm,
+              color: cs.onSurfaceVariant,
+            ),
+          );
+        }
+        return DsSettingsRow(
+          label: 'profile.sync_status_title'.tr(),
+          subtitle: 'profile.sync_status_pending'.tr(
+            args: [totalUnsynced.toString()],
           ),
-          (false, false) => TextButton(
-            onPressed: () =>
-                ref.read(syncOrchestratorProvider).requestForcedSync(),
-            child: Text('profile.sync_status_retry'.tr()),
-          ),
-        };
-
-        return ListTile(
-          leading: Icon(
-            synced ? Icons.cloud_done_outlined : Icons.cloud_upload_outlined,
-            color: synced
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.tertiary,
-          ),
-          title: Text('profile.sync_status_title'.tr()),
-          subtitle: Text(
-            synced
-                ? 'profile.sync_status_synced'.tr()
-                : 'profile.sync_status_pending'.tr(
-                    args: [totalUnsynced.toString()],
-                  ),
-          ),
-          trailing: trailing,
-          onTap: synced ? null : () => SyncDetailsDialog.show(context),
+          trailing: isPushInProgress
+              ? spinner
+              : TextButton.icon(
+                  onPressed: () =>
+                      ref.read(syncOrchestratorProvider).requestForcedSync(),
+                  icon: const Icon(Icons.cloud_upload_outlined),
+                  label: Text('profile.sync_status_retry'.tr()),
+                ),
+          onTap: () => SyncDetailsDialog.show(context),
         );
       },
     );

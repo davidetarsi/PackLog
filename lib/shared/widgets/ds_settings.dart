@@ -42,9 +42,11 @@ class DsSettingsGroup extends StatelessWidget {
 
 /// Riga di un [DsSettingsGroup]: etichetta a sinistra; a destra un
 /// controllo ([trailing]) oppure il valore corrente ([value]) con la freccia
-/// se la riga apre una scelta.
+/// se la riga apre una scelta. [subtitle] è una spiegazione breve sotto
+/// l'etichetta, per le righe che da sole non si capiscono.
 class DsSettingsRow extends StatelessWidget {
   final String label;
+  final String? subtitle;
   final String? value;
   final Widget? trailing;
   final VoidCallback? onTap;
@@ -52,6 +54,7 @@ class DsSettingsRow extends StatelessWidget {
   const DsSettingsRow({
     super.key,
     required this.label,
+    this.subtitle,
     this.value,
     this.trailing,
     this.onTap,
@@ -97,10 +100,17 @@ class DsSettingsRow extends StatelessWidget {
                 ),
               ));
 
+    final subtitle = this.subtitle;
     return ListTile(
       minTileHeight: context.responsive(56),
       contentPadding: EdgeInsets.symmetric(horizontal: context.spacingMd),
       title: Text(label, style: textTheme.bodyLarge),
+      subtitle: subtitle == null
+          ? null
+          : Text(
+              subtitle,
+              style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
       trailing: end,
       onTap: onTap,
     );

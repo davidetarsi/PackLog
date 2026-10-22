@@ -417,8 +417,10 @@
     "copy_success": "\"{}\" copied successfully"
   },
   "profile": {
+    "section_preferences": "Preferences",
+    "section_account": "Account",
     "ai_usage_title": "AI uses",
-    "ai_usage_subtitle": "{} / {} used this month",
+    "ai_usage_subtitle": "{} of {} used this month",
     "ai_usage_resets": "Renews on {}",
     "ai_usage_bonus": "+{} free uses, valid until {}",
     "logout_confirm_title": "Sign out?",
@@ -427,7 +429,7 @@
     "logout_warning_body": "You have {} local changes not yet uploaded to the cloud. What do you want to do?",
     "logout_sync_first": "Sync then sign out",
     "logout_force": "Sign out anyway",
-    "sync_status_title": "Sync status",
+    "sync_status_title": "Sync",
     "sync_status_synced": "All synced",
     "sync_status_pending": "{} pending changes",
     "sync_status_retry": "Retry now",
@@ -451,14 +453,14 @@
     "theme_dark": "Dark",
     "theme_system": "System",
     "about": "About",
-    "about_section_title": "About",
+    "about_section_title": "Help & info",
     "feedback": "Report bugs or send suggestions",
     "feedback_subtitle": "Open the Google Form",
     "view_project": "View project",
     "view_project_subtitle": "GitHub repository",
     "open_link_error": "Cannot open the link",
     "analytics_title": "Usage statistics",
-    "analytics_subtitle": "Help us improve the app with anonymous usage data. You can turn this off at any time."
+    "analytics_subtitle": "Anonymous data that helps us improve the app"
   },
   "ai_import": {
     "already_here_title": "Already in {}?",

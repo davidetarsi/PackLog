@@ -417,8 +417,10 @@
     "copy_success": "\"{}\" copiato con successo"
   },
   "profile": {
+    "section_preferences": "Preferenze",
+    "section_account": "Account",
     "ai_usage_title": "Usi AI",
-    "ai_usage_subtitle": "{} / {} usati questo mese",
+    "ai_usage_subtitle": "{} di {} usati questo mese",
     "ai_usage_resets": "Si rinnovano il {}",
     "ai_usage_bonus": "+{} usi in regalo, validi fino al {}",
     "logout_confirm_title": "Esci dall'account?",
@@ -427,7 +429,7 @@
     "logout_warning_body": "Hai {} modifiche locali non ancora caricate sul cloud. Cosa vuoi fare?",
     "logout_sync_first": "Sincronizza ed esci",
     "logout_force": "Esci comunque",
-    "sync_status_title": "Stato sincronizzazione",
+    "sync_status_title": "Sincronizzazione",
     "sync_status_synced": "Tutto sincronizzato",
     "sync_status_pending": "{} modifiche in attesa",
     "sync_status_retry": "Riprova ora",
@@ -451,14 +453,14 @@
     "theme_dark": "Scuro",
     "theme_system": "Sistema",
     "about": "Info",
-    "about_section_title": "About",
+    "about_section_title": "Aiuto e info",
     "feedback": "Segnala errori o invia suggerimenti",
     "feedback_subtitle": "Apri il questionario Google",
     "view_project": "Visualizza progetto",
     "view_project_subtitle": "Repository GitHub",
     "open_link_error": "Impossibile aprire il link",
     "analytics_title": "Statistiche d'uso",
-    "analytics_subtitle": "Aiutaci a migliorare l'app con dati anonimi sull'utilizzo. Puoi disattivarle in qualsiasi momento."
+    "analytics_subtitle": "Dati anonimi che ci aiutano a migliorare l'app"
   },
   "ai_import": {
     "already_here_title": "C'è già in {}?",
