@@ -158,6 +158,15 @@
     "other": "Altro"
   },
   "trips": {
+    "detail": {
+      "edit_trip": "Modifica viaggio",
+      "duplicate": "Duplica",
+      "save": "Aggiungi ai salvati",
+      "unsave": "Togli dai salvati",
+      "edit_suitcase": "Modifica valigia",
+      "packed_count": "{} di {} in valigia",
+      "duplicated": "Viaggio duplicato"
+    },
     "pack": {
       "title": "Prepara la valigia",
       "luggages": "Bagagli",

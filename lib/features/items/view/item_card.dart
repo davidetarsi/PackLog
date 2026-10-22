@@ -126,7 +126,6 @@ class ItemCard extends ConsumerWidget {
             onChanged: (_) => ref
                 .read(itemSelectionNotifierProvider.notifier)
                 .toggleItem(item.id),
-            activeColor: colorScheme.primary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           )
         : null;

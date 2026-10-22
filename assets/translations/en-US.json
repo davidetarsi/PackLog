@@ -158,6 +158,15 @@
     "other": "Other"
   },
   "trips": {
+    "detail": {
+      "edit_trip": "Edit trip",
+      "duplicate": "Duplicate",
+      "save": "Add to saved",
+      "unsave": "Remove from saved",
+      "edit_suitcase": "Edit suitcase",
+      "packed_count": "{} of {} packed",
+      "duplicated": "Trip duplicated"
+    },
     "pack": {
       "title": "Pack your suitcase",
       "luggages": "Luggage",

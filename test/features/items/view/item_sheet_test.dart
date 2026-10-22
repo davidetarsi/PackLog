@@ -8,6 +8,7 @@ import 'package:pack_log/features/items/view/item_sheet.dart';
 import 'package:pack_log/features/items/widgets/category_pill.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../screenshots/support/harness.dart';
@@ -88,6 +89,25 @@ void main() {
       tester.getCenter(find.byKey(const Key('item_sheet_menu'))).dx,
       lessThan(tester.getCenter(find.byKey(const Key('sheet_close'))).dx),
     );
+    await app.finish();
+  });
+
+  testWidgets('in modifica "Salva" si accende solo con una modifica', (
+    tester,
+  ) async {
+    final app = await openCalzini(tester);
+    VoidCallback? onSave() => tester
+        .widget<DsButton>(find.byKey(const Key('item_sheet_save')))
+        .onPressed;
+
+    expect(onSave(), isNull);
+    await app.tap(find.text('Varie'));
+    expect(onSave(), isNotNull);
+    // Tornando com'era si spegne di nuovo.
+    await app.tap(find.text('Vestiti'));
+    expect(onSave(), isNull);
+    await app.enterText(find.byKey(const Key('item_sheet_note')), 'Di lana');
+    expect(onSave(), isNotNull);
     await app.finish();
   });
 

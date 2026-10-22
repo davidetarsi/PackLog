@@ -13,7 +13,7 @@ class DsSheetHeader extends StatelessWidget {
   final String title;
   final VoidCallback? onClose;
 
-  /// Azioni prima della "x", che resta all'estrema destra: come il menu ⋯ della
+  /// Azioni prima della "x", che resta all'estrema destra: come il menu ⋮ della
   /// scheda oggetto. Solo con [onClose].
   final List<Widget> actions;
 
