@@ -14,6 +14,7 @@ import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/ds_error_state.dart';
 import '../../../shared/widgets/ds_picker_sheet.dart';
+import '../../../shared/widgets/ds_settings.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../houses/model/house_model.dart';
@@ -620,9 +621,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                   state.photoGroups.expand((g) => g.results).length.toString(),
                 ],
               ),
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: colorScheme.primary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ],
@@ -769,41 +770,58 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
             photoIndex: gi + 1,
             itemCount: state.photoGroups[gi].results.length,
           ),
-          if (gi < _controllers.length)
-            for (var ii = 0; ii < state.photoGroups[gi].results.length; ii++)
-              if (ii < _controllers[gi].length)
-                Padding(
-                  padding: EdgeInsets.only(bottom: context.spacingMd),
-                  child: AiResultCard(
-                    key: ValueKey('ai_result_${gi}_$ii'),
-                    item: state.photoGroups[gi].results[ii],
-                    controller: _controllers[gi][ii],
-                    onNameChanged: (value) =>
-                        notifier.updateItemName(gi, ii, value),
-                    included: !state.photoGroups[gi].excluded.contains(ii),
-                    onIncludedChanged: (included) =>
-                        notifier.setIncluded(gi, ii, included),
-                    isLinked: state.photoGroups[gi].linkedItemIds.containsKey(
-                      ii,
-                    ),
-                    linkedItemName: _linkedName(
-                      state.photoGroups[gi].linkedItemIds[ii],
-                      existingItems,
-                    ),
-                    onUnlink:
-                        state.photoGroups[gi].linkedItemIds.containsKey(ii)
-                        ? () => notifier.unlink(gi, ii)
-                        : null,
-                    onAlreadyHere:
-                        _hasSameCategory(
-                          existingItems,
-                          state.photoGroups[gi].results[ii],
-                        )
-                        ? () => _openAlreadyHere(state, gi, ii)
-                        : null,
-                    enabled: !state.isLoading,
-                  ),
-                ),
+          // I capi di una foto in un blocco, come gli oggetti nelle categorie
+          // della casa.
+          if (gi < _controllers.length &&
+              state.photoGroups[gi].results.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: context.spacingSm),
+              child: DsSettingsGroup(
+                children: [
+                  for (
+                    var ii = 0;
+                    ii < state.photoGroups[gi].results.length;
+                    ii++
+                  )
+                    if (ii < _controllers[gi].length)
+                      Padding(
+                        padding: EdgeInsets.only(right: context.spacingXs),
+                        child: AiResultCard(
+                          key: ValueKey('ai_result_${gi}_$ii'),
+                          item: state.photoGroups[gi].results[ii],
+                          controller: _controllers[gi][ii],
+                          onNameChanged: (value) =>
+                              notifier.updateItemName(gi, ii, value),
+                          included: !state.photoGroups[gi].excluded.contains(
+                            ii,
+                          ),
+                          onIncludedChanged: (included) =>
+                              notifier.setIncluded(gi, ii, included),
+                          isLinked: state.photoGroups[gi].linkedItemIds
+                              .containsKey(ii),
+                          linkedItemName: _linkedName(
+                            state.photoGroups[gi].linkedItemIds[ii],
+                            existingItems,
+                          ),
+                          onUnlink:
+                              state.photoGroups[gi].linkedItemIds.containsKey(
+                                ii,
+                              )
+                              ? () => notifier.unlink(gi, ii)
+                              : null,
+                          onAlreadyHere:
+                              _hasSameCategory(
+                                existingItems,
+                                state.photoGroups[gi].results[ii],
+                              )
+                              ? () => _openAlreadyHere(state, gi, ii)
+                              : null,
+                          enabled: !state.isLoading,
+                        ),
+                      ),
+                ],
+              ),
+            ),
           if (state.photoGroups[gi].results.isEmpty)
             Padding(
               padding: EdgeInsets.symmetric(vertical: context.spacingMd),

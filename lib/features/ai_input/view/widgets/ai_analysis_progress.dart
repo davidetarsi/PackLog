@@ -3,6 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../../../shared/constants/app_constants.dart';
+import '../../../../shared/theme/app_spacing.dart';
+
 /// Barra di avanzamento ibrida per l'analisi AI.
 ///
 /// **Perché non è né determinata né indeterminata.**
@@ -109,6 +112,16 @@ class _AiAnalysisProgressState extends State<AiAnalysisProgress>
 
   @override
   Widget build(BuildContext context) {
-    return LinearProgressIndicator(value: _value, minHeight: 6);
+    // Neutra come le altre barre dell'app: è un'attesa, non un'azione.
+    final cs = Theme.of(context).colorScheme;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+      child: LinearProgressIndicator(
+        value: _value,
+        minHeight: context.spacingXs,
+        backgroundColor: cs.surfaceContainerHighest,
+        color: cs.onSurface,
+      ),
+    );
   }
 }

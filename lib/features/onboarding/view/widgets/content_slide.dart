@@ -80,7 +80,9 @@ class _ContentSlideState extends State<ContentSlide> {
         ),
       );
     } else {
-      visual = Icon(widget.icon, size: 80, color: colorScheme.primary);
+      // Solo finché il video non è pronto: grigia, per non fare da secondo
+      // arancio accanto al bottone.
+      visual = Icon(widget.icon, size: 80, color: colorScheme.onSurfaceVariant);
     }
 
     return Padding(

@@ -65,10 +65,11 @@ class AiPhotoGroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = context.responsive(88);
+    // Miniatura piccola: è il riferimento del gruppo, toccandola si apre.
+    final size = context.responsive(56);
     final radius = BorderRadius.circular(AppConstants.cardBorderRadius);
     return Padding(
-      padding: EdgeInsets.only(top: context.spacingMd),
+      padding: EdgeInsets.only(top: context.spacingLg),
       child: Row(
         children: [
           Material(

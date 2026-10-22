@@ -10,7 +10,6 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../features/ai_input/providers/ai_import_notifier.dart';
 import '../../../shared/theme/app_spacing.dart';
-import '../../../shared/widgets/circular_action_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../ai_input/helpers/start_ai_scan.dart';
 import '../../ai_input/view/widgets/image_source_sheet.dart';
@@ -90,22 +89,38 @@ class _AiOnboardingIntroScreenState
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    // Stessa forma delle slide di benvenuto: "Salta" in alto a destra, testo
+    // al centro, un solo bottone pieno in fondo.
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: EdgeInsets.only(right: context.spacingSm),
+                child: TextButton(
+                  key: const Key('ai_intro_skip'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: colorScheme.onSurfaceVariant,
+                  ),
+                  onPressed: _handleSkip,
+                  child: Text('onboarding_tour.ai_intro.skip'.tr()),
+                ),
+              ),
+            ),
             const Spacer(),
             Icon(
-              Icons.auto_awesome,
+              Icons.auto_awesome_outlined,
               size: context.iconSizeHero,
-              color: colorScheme.primary,
+              color: colorScheme.onSurfaceVariant,
             ),
             SizedBox(height: context.spacingLg),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: context.spacingLg),
               child: Text(
                 'onboarding_tour.ai_intro.title'.tr(),
-                style: textTheme.headlineSmall,
+                style: textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),
             ),
@@ -114,7 +129,7 @@ class _AiOnboardingIntroScreenState
               padding: EdgeInsets.symmetric(horizontal: context.spacingLg),
               child: Text(
                 'onboarding_tour.ai_intro.body'.tr(),
-                style: textTheme.bodyMedium?.copyWith(
+                style: textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
@@ -127,13 +142,6 @@ class _AiOnboardingIntroScreenState
                 primaryLabel: 'onboarding_tour.ai_intro.cta'.tr(),
                 primaryIcon: Icons.photo_camera_outlined,
                 onPrimaryPressed: _showSourceSheet,
-                rightAction: Tooltip(
-                  message: 'onboarding_tour.ai_intro.skip'.tr(),
-                  child: CircularActionButton(
-                    icon: Icons.close,
-                    onPressed: _handleSkip,
-                  ),
-                ),
               ),
             ),
             SizedBox(height: context.spacingMd),
