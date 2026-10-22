@@ -104,6 +104,15 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
       subtitle: 'create_sheet.new_trip_hint'.tr(),
       onTap: () => _choose(CreateAction.newTrip),
     );
+    // La valigia preparata dall'AI non c'è ancora: la riga c'è già, spenta,
+    // con "In arrivo", così il posto nella UI è pronto.
+    const aiSuitcase = _CreateRow(
+      key: Key('create_ai_suitcase'),
+      icon: Icons.auto_awesome_outlined,
+      titleKey: 'create_sheet.ai_suitcase',
+      subtitleKey: 'create_sheet.ai_suitcase_hint',
+      comingSoon: true,
+    );
 
     return Padding(
       padding: EdgeInsets.only(bottom: AppConstants.bottomSheetBottomPadding),
@@ -144,7 +153,9 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
             )
           else
             SizedBox(height: context.spacingMd),
-          ...(widget.fromTrips ? [newTrip, newHouse] : [newHouse, newTrip]),
+          ...(widget.fromTrips
+              ? [newTrip, aiSuitcase, newHouse]
+              : [newHouse, newTrip, aiSuitcase]),
         ],
       ),
     );
@@ -289,29 +300,45 @@ class _AiScanCard extends StatelessWidget {
 
 class _CreateRow extends StatelessWidget {
   final IconData icon;
-  final String title;
-  final String subtitle;
+  final String? title;
+  final String? subtitle;
+
+  /// Chiavi di traduzione al posto di [title]/[subtitle], per le righe
+  /// costanti.
+  final String? titleKey;
+  final String? subtitleKey;
   final bool emphasized;
-  final VoidCallback onTap;
+
+  /// Funzione non ancora disponibile: riga spenta con "In arrivo".
+  final bool comingSoon;
+  final VoidCallback? onTap;
 
   const _CreateRow({
     super.key,
     required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
+    this.title,
+    this.subtitle,
+    this.titleKey,
+    this.subtitleKey,
+    this.onTap,
     this.emphasized = false,
+    this.comingSoon = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final accent = emphasized
+    final textTheme = Theme.of(context).textTheme;
+    final muted = colorScheme.onSurface.withValues(alpha: 0.38);
+    final accent = comingSoon
+        ? muted
+        : emphasized
         ? colorScheme.primary
         : colorScheme.onSurfaceVariant;
 
     return ListTile(
-      onTap: onTap,
+      onTap: comingSoon ? null : onTap,
+      enabled: !comingSoon,
       leading: Container(
         padding: EdgeInsets.all(context.spacingSm),
         decoration: BoxDecoration(
@@ -321,10 +348,30 @@ class _CreateRow extends StatelessWidget {
         child: Icon(icon, color: accent),
       ),
       title: Text(
-        title,
+        title ?? titleKey!.tr(),
         style: emphasized ? TextStyle(color: colorScheme.primary) : null,
       ),
-      subtitle: Text(subtitle),
+      subtitle: Text(subtitle ?? subtitleKey!.tr()),
+      trailing: comingSoon
+          ? Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacingSm,
+                vertical: context.spacingXs,
+              ),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(
+                  AppConstants.pillBorderRadius,
+                ),
+              ),
+              child: Text(
+                'common.coming_soon'.tr(),
+                style: textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            )
+          : null,
     );
   }
 }

@@ -22,7 +22,6 @@ import '../../features/profile/view/profile_screen.dart';
 import '../../features/trips/view/trips_screen.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/new_trip_screen.dart';
-import '../../features/trips/view/edit_trip_info_screen.dart';
 import '../../features/trips/view/pack_suitcase_screen.dart';
 import '../../features/trips/view/trip_weather_screen.dart';
 import '../../features/ai_input/view/ai_results_screen.dart';
@@ -256,7 +255,8 @@ GoRouter appRouter(Ref ref) {
           if (id == null || id.isEmpty) {
             return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
           }
-          return EditTripInfoScreen(
+          // Stessa pagina del nuovo viaggio, in modifica.
+          return NewTripScreen(
             tripId: id,
             discardOnExit: state.uri.queryParameters['reuse'] == '1',
           );

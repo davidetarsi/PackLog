@@ -160,6 +160,10 @@
     "other": "Other"
   },
   "trips": {
+    "edit": {
+      "discard_title": "Leave without saving?",
+      "discard_message": "Your changes to the trip will be lost."
+    },
     "detail": {
       "edit_trip": "Edit trip",
       "duplicate": "Duplicate",
@@ -170,6 +174,7 @@
       "duplicated": "Trip duplicated"
     },
     "pack": {
+      "ai_coming_soon": "The AI-packed suitcase is coming soon",
       "title": "Pack your suitcase",
       "luggages": "Luggage",
       "no_luggages": "You have no luggage yet.",
@@ -318,6 +323,7 @@
     }
   },
   "common": {
+    "coming_soon": "Coming soon",
     "save": "Save",
     "save_changes": "Save changes",
     "cancel": "Cancel",
@@ -580,7 +586,9 @@
     "new_house": "New house",
     "new_house_hint": "Another place where you keep your things",
     "new_trip": "New trip",
-    "new_trip_hint": "Destination, dates and what to pack"
+    "new_trip_hint": "Destination, dates and what to pack",
+    "ai_suitcase": "AI suitcase",
+    "ai_suitcase_hint": "Packs for you based on destination, weather and length"
   },
   "promo": {
     "link": "Have a promo code?",

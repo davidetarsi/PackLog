@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/design_system.dart';
@@ -300,7 +301,27 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         _confirmDiscard();
       },
       child: StickyCtaScaffold(
-        appBar: AppBar(title: Text('trips.pack.title'.tr())),
+        appBar: AppBar(
+          title: Text('trips.pack.title'.tr()),
+          actions: [
+            // Posto pronto per la valigia preparata dall'AI: grigio finché
+            // la funzione non c'è, e il tocco lo dice.
+            IconButton(
+              key: const Key('pack_ai_suitcase'),
+              tooltip: 'trips.pack.ai_coming_soon'.tr(),
+              icon: Icon(
+                Icons.auto_awesome_outlined,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.38),
+              ),
+              onPressed: () => AppSnackBar.showInfo(
+                context,
+                'trips.pack.ai_coming_soon'.tr(),
+              ),
+            ),
+          ],
+        ),
         bottomContent: DsButton(
           label: count == 0
               ? 'trips.pack.done'.tr()

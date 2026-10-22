@@ -160,6 +160,10 @@
     "other": "Altro"
   },
   "trips": {
+    "edit": {
+      "discard_title": "Uscire senza salvare?",
+      "discard_message": "Le modifiche al viaggio andranno perse."
+    },
     "detail": {
       "edit_trip": "Modifica viaggio",
       "duplicate": "Duplica",
@@ -170,6 +174,7 @@
       "duplicated": "Viaggio duplicato"
     },
     "pack": {
+      "ai_coming_soon": "La valigia preparata dall’AI è in arrivo",
       "title": "Prepara la valigia",
       "luggages": "Bagagli",
       "no_luggages": "Non hai ancora bagagli.",
@@ -318,6 +323,7 @@
     }
   },
   "common": {
+    "coming_soon": "In arrivo",
     "save": "Salva",
     "save_changes": "Salva modifiche",
     "cancel": "Annulla",
@@ -580,7 +586,9 @@
     "new_house": "Nuova casa",
     "new_house_hint": "Un altro posto dove tieni le tue cose",
     "new_trip": "Nuovo viaggio",
-    "new_trip_hint": "Destinazione, date e cosa portare"
+    "new_trip_hint": "Destinazione, date e cosa portare",
+    "ai_suitcase": "Valigia con AI",
+    "ai_suitcase_hint": "Ti prepara la valigia in base a meta, meteo e durata"
   },
   "promo": {
     "link": "Hai un codice promo?",
