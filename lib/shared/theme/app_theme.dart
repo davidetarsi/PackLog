@@ -255,6 +255,27 @@ class AppTheme {
         }),
       ),
 
+      // === Switch Theme ===
+      // Interruttori neutri: acceso = traccia del colore del testo (bianca
+      // sul tema scuro, quasi nera sul chiaro) con pallino del colore della
+      // pagina. L'arancio pieno resta alla CTA principale.
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) &&
+                  !states.contains(WidgetState.disabled)
+              ? colorScheme.surface
+              : null,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) &&
+                  !states.contains(WidgetState.disabled)
+              ? colorScheme.onSurface
+              : null,
+        ),
+      ),
+
       // === List Tile Theme ===
       listTileTheme: const ListTileThemeData(
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),

@@ -279,7 +279,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           .setThemeMode(mode),
                     ),
                   ),
-                  const _AnalyticsToggleTile(),
                 ],
               ),
 
@@ -333,6 +332,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     trailing: externalIcon,
                     onTap: () => _launchUrl(context, AppConfig.githubUrl),
                   ),
+                  // In fondo, non in Preferenze: va lasciato a disposizione
+                  // (GDPR art. 7 e 21, "raccolta facoltativa" nel Data safety
+                  // di Play) ma non serve in vista. Attivo di default.
+                  const _AnalyticsToggleTile(),
                   DsSettingsRow(label: 'common.version'.tr(), value: version),
                 ],
               ),

@@ -460,7 +460,7 @@
     "view_project_subtitle": "GitHub repository",
     "open_link_error": "Cannot open the link",
     "analytics_title": "Usage statistics",
-    "analytics_subtitle": "Anonymous data that helps us improve the app"
+    "analytics_subtitle": "Usage data that helps us improve the app"
   },
   "ai_import": {
     "already_here_title": "Already in {}?",
