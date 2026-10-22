@@ -11,7 +11,6 @@ import '../../../shared/theme/theme.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/entity_action_handler.dart';
-import '../../../shared/widgets/ds_badge.dart';
 import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
@@ -144,159 +143,107 @@ class _HouseCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final statsAsync = ref.watch(houseStatsProvider(house.id));
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final stats = ref.watch(houseStatsProvider(house.id)).valueOrNull;
+    final place = house.name.trim().isNotEmpty
+        ? house.locationDisplayName ?? house.description
+        : null;
+    final statsLine = stats == null
+        ? null
+        : [
+            'houses.total_items'.tr(args: [stats.totalItems.toString()]),
+            if (stats.hasItemsInTrip) 'houses.badge_in_trip'.tr(),
+            if (stats.hasTemporaryItems) 'houses.badge_guest'.tr(),
+          ].join(' · ');
+    final radius = BorderRadius.circular(AppConstants.cardBorderRadius);
 
-    return Card(
-      margin: EdgeInsets.symmetric(
+    // Blocco come i gruppi del resto dell'app: superficie appena diversa,
+    // niente bordo né divisori. Icona e puntina grigie: in questa pagina
+    // l'arancio è solo di Crea.
+    return Padding(
+      padding: EdgeInsets.symmetric(
         horizontal: context.spacingMd,
-        vertical: context.spacingSm,
+        vertical: context.spacingXs,
       ),
-      elevation: 0,
-      color: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-        side: BorderSide(
-          color: colorScheme.outlineVariant,
-          width: /* house.isPrimary ? 1.5 : */ 1,
-        ),
-      ),
-      child: Stack(
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-            onTap: () {
-              context.push('/houses/${house.id}');
-            },
-            onLongPress: () => _onLongPress(context, ref),
-            child: Padding(
-              padding: EdgeInsets.all(context.spacingMd),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+      child: Material(
+        color: context.groupSurface,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.push('/houses/${house.id}'),
+          onLongPress: () => _onLongPress(context, ref),
+          child: Padding(
+            padding: EdgeInsets.all(context.spacingMd),
+            child: Row(
+              children: [
+                Container(
+                  padding: context.cardPaddingDense,
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest,
+                    borderRadius: radius,
+                  ),
+                  child: Icon(
+                    HouseIcons.getIcon(house.iconName),
+                    color: cs.onSurfaceVariant,
+                    size: context.iconSizeMd,
+                  ),
+                ),
+                SizedBox(width: context.spacingMd),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: context.cardPaddingDense,
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer,
-                          borderRadius: context.responsiveBorderRadius(
-                            AppConstants.cardBorderRadius,
-                          ),
-                        ),
-                        child: Icon(
-                          HouseIcons.getIcon(house.iconName),
-                          color: house.isPrimary
-                              ? colorScheme.primary
-                              : colorScheme.onPrimaryContainer,
-                          size: context.iconSizeMd,
-                        ),
-                      ),
-                      SizedBox(width: context.spacingMd),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
                               house.displayName,
-                              style: Theme.of(context).textTheme.titleLarge,
+                              style: tt.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (house.name.trim().isNotEmpty &&
-                                (house.locationDisplayName != null ||
-                                    house.description != null)) ...[
-                              SizedBox(height: context.spacingXs),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.location_on_outlined,
-                                    size: context.iconSizeSm,
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                  SizedBox(width: context.spacingXs),
-                                  Expanded(
-                                    child: Text(
-                                      house.locationDisplayName ??
-                                          house.description!,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.copyWith(
-                                            color: colorScheme.onSurfaceVariant,
-                                          ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                          ),
+                          // push_pin = casa principale (il segnalibro è dei
+                          // viaggi salvati).
+                          if (house.isPrimary) ...[
+                            SizedBox(width: context.spacingXs),
+                            Icon(
+                              Icons.push_pin_outlined,
+                              key: const Key('house_primary_pin'),
+                              size: context.iconSizeSm,
+                              color: cs.onSurfaceVariant,
+                            ),
                           ],
-                        ),
+                        ],
                       ),
+                      if (place != null)
+                        Text(
+                          place,
+                          style: tt.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      if (statsLine != null)
+                        Text(
+                          statsLine,
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                     ],
                   ),
-
-                  // Divider
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-                    child: Divider(
-                      height: 1,
-                      color: colorScheme.outlineVariant,
-                    ),
-                  ),
-
-                  // Stats row
-                  statsAsync.when(
-                    skipLoadingOnReload: true,
-                    data: (stats) => Row(
-                      children: [
-                        Icon(
-                          Icons.inventory_2_outlined,
-                          size: context.iconSizeSm,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        SizedBox(width: context.spacingXs),
-                        Text(
-                          'houses.total_items'.tr(
-                            args: [stats.totalItems.toString()],
-                          ),
-                          style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(color: colorScheme.onSurfaceVariant),
-                        ),
-                        const Spacer(),
-                        if (stats.hasItemsInTrip)
-                          DsStatusBadge(
-                            type: DsStatusBadgeType.onTrip,
-                            label: 'houses.badge_in_trip'.tr(),
-                          ),
-                        if (stats.hasItemsInTrip && stats.hasTemporaryItems)
-                          AppSpacing.hGapSm,
-                        if (stats.hasTemporaryItems)
-                          DsStatusBadge(
-                            type: DsStatusBadgeType.temporary,
-                            label: 'houses.badge_guest'.tr(),
-                          ),
-                      ],
-                    ),
-                    loading: () => const SizedBox(height: 20),
-                    error: (error, stackTrace) => const SizedBox(height: 20),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-
-          // Badge principale in alto a destra (stile bookmark/salvato)
-          if (house.isPrimary)
-            // push_pin = "casa principale/fissata" — non bookmark (riservato ai viaggi salvati)
-            Positioned(
-              top: 0,
-              right: 12,
-              child: Icon(Icons.push_pin, size: 20, color: colorScheme.primary),
-            ),
-        ],
+        ),
       ),
     );
   }

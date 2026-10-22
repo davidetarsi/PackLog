@@ -35,8 +35,10 @@
     "no_houses_subtitle": "Aggiungi la tua prima casa",
     "no_houses_title": "Nessuna casa presente",
     "name_label": "Nome",
-    "location_label": "Località *",
-    "location_hint": "Cerca città, regione o stato...",
+    "name_hint": "Es. Casa al mare",
+    "name_help": "Se lo lasci vuoto, la casa si chiama come il luogo.",
+    "where_label": "Dove si trova?",
+    "location_hint": "Città, regione o paese",
     "primary_house_set": "\"{}\" è ora la casa principale",
     "total_items": "{} oggetti salvati",
     "badge_in_trip": "In viaggio",
@@ -563,7 +565,8 @@
     "ai_save_tooltip": "Li salviamo in una casa nuova, «Casa». Subito dopo potrai darle il nome e il luogo giusti."
   },
   "location_search": {
-    "rate_limit_reached": "Troppe ricerche di località, riprova tra qualche minuto."
+    "rate_limit_reached": "Troppe ricerche di località, riprova tra qualche minuto.",
+    "no_results": "Nessun luogo trovato. Prova con il nome di una città."
   },
   "create_sheet": {
     "title": "Crea",

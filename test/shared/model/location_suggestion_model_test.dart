@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/model/location_type.dart';
+import 'package:pack_log/shared/model/geoapify_response_model.dart';
 
 /// Unit tests for LocationSuggestionModel domain logic.
 ///
@@ -381,6 +382,50 @@ void main() {
         reason:
             'Current implementation creates same key for same name+country+type',
       );
+    });
+  });
+
+  group('fromGeoapifyProperties', () {
+    // "Milano": Geoapify restituisce anche la provincia, con state = Lombardia.
+    // Prima diventava una regione chiamata "Lombardia", messa per prima.
+    test('la provincia viene scartata (tipo other)', () {
+      final s = LocationSuggestionModel.fromGeoapifyProperties(
+        GeoapifyPropertiesModel(
+          resultType: 'county',
+          name: 'Milano',
+          county: 'Milano',
+          state: 'Lombardia',
+          country: 'Italia',
+        ),
+      );
+      expect(s.locationType, LocationType.other);
+    });
+
+    test('la città resta una città col suo nome', () {
+      final s = LocationSuggestionModel.fromGeoapifyProperties(
+        GeoapifyPropertiesModel(
+          resultType: 'city',
+          name: 'Milano',
+          city: 'Milano',
+          state: 'Lombardia',
+          country: 'Italia',
+        ),
+      );
+      expect(s.locationType, LocationType.city);
+      expect(s.name, 'Milano');
+      expect(s.displayName, 'Milano, Italia');
+    });
+
+    test('una località senza città non diventa la sua regione', () {
+      final s = LocationSuggestionModel.fromGeoapifyProperties(
+        GeoapifyPropertiesModel(
+          resultType: 'locality',
+          name: 'Cervinia',
+          state: "Valle d'Aosta",
+          country: 'Italia',
+        ),
+      );
+      expect(s.locationType, isNot(LocationType.state));
     });
   });
 }

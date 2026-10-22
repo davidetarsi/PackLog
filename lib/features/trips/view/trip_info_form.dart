@@ -636,7 +636,6 @@ class _TripInfoFormState extends ConsumerState<TripInfoForm> {
           Expanded(
             child: LocationAutocompleteField(
               initialValue: _destinationLocation?.displayName,
-              labelText: null,
               hintText: 'trips.destination_hint'.tr(),
               hintStyle: TextStyle(
                 color: colorScheme.onSurface.withValues(alpha: 0.38),

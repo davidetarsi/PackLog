@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pack_log/shared/widgets/location_autocomplete_field.dart';
 import 'package:pack_log/features/trips/view/trip_info_form.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 
@@ -100,7 +101,13 @@ String _nameFieldText(WidgetTester tester) =>
 /// Testo sotto le 3 lettere: resta sotto `minCharsForSearch` e non innesca la
 /// ricerca via HTTP di LocationAutocompleteField.
 Future<void> _changeDestination(WidgetTester tester, String value) async {
-  await tester.enterText(find.byType(TextFormField), value);
+  await tester.enterText(
+    find.descendant(
+      of: find.byType(LocationAutocompleteField),
+      matching: find.byType(TextField),
+    ),
+    value,
+  );
   await tester.pump();
 }
 

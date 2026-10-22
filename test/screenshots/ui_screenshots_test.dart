@@ -471,6 +471,25 @@ final flows = <Flow>[
         await app.tap(find.text('houses.new_house_row'.tr()));
       },
     ),
+    Scenario(
+      7,
+      'casa-form',
+      'ricerca-luogo',
+      source: 'lib/shared/widgets/location_autocomplete_field.dart',
+      description: 'Ricerca del luogo: risultati sotto il campo.',
+      steps: (app) async {
+        await app.go('/');
+        await app.tap(find.text('houses.new_house_row'.tr()));
+        await app.tester.enterText(
+          find.descendant(
+            of: find.byKey(const Key('house_sheet_location')),
+            matching: find.byType(TextField),
+          ),
+          'Lis',
+        );
+        await app.settle();
+      },
+    ),
   ]),
 
   Flow('04-dettaglio-casa', 'Dettaglio casa: inventario e gestione', [

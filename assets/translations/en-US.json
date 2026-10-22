@@ -35,8 +35,10 @@
     "no_houses_subtitle": "Add your first house",
     "no_houses_title": "No houses yet",
     "name_label": "Name",
-    "location_label": "Location *",
-    "location_hint": "Search for city, region or state...",
+    "name_hint": "E.g. Beach house",
+    "name_help": "Leave it empty to name the house after the place.",
+    "where_label": "Where is it?",
+    "location_hint": "City, region or country",
     "primary_house_set": "\"{}\" is now the primary house",
     "total_items": "{} items saved",
     "badge_in_trip": "On trip",
@@ -563,7 +565,8 @@
     "ai_save_tooltip": "We save them in a new house, “Home”. Right after, you can give it the right name and place."
   },
   "location_search": {
-    "rate_limit_reached": "Too many location searches, please try again in a few minutes."
+    "rate_limit_reached": "Too many location searches, please try again in a few minutes.",
+    "no_results": "No places found. Try the name of a city."
   },
   "create_sheet": {
     "title": "Create",
