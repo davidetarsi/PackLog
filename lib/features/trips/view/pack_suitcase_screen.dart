@@ -25,6 +25,7 @@ import '../../items/repositories/item_repository.dart';
 import '../../luggages/model/luggage_model.dart';
 import '../../luggages/providers/luggage_provider.dart';
 import '../../luggages/view/add_edit_luggage_screen.dart';
+import '../../luggages/view/luggages_management_sheet.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_parts.dart';
@@ -285,7 +286,6 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     final trip = _trip!;
     final housesAsync = ref.watch(houseNotifierProvider);
     final houses = housesAsync.valueOrNull ?? const <HouseModel>[];
-    final house = _houseFor(houses);
     final destinationHouseName = houses
         .where((h) => h.id == trip.destinationHouseId)
         .firstOrNull
@@ -358,7 +358,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
               ),
               PackWeatherSection(tripId: trip.id),
               DsSectionTitle('trips.pack.luggages'.tr()),
-              _luggageSection(context, house),
+              _luggageSection(context),
               DsSectionTitle('trips.pack.items'.tr()),
               _itemsBlock(context, housesAsync),
             ],
@@ -368,13 +368,13 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     );
   }
 
-  Widget _luggageSection(BuildContext context, HouseModel? house) {
-    final luggagesAsync = ref.watch(allLuggagesProvider);
+  Widget _luggageSection(BuildContext context) {
+    final luggagesAsync = ref.watch(luggageNotifierProvider);
 
     return luggagesAsync.when(
       data: (luggages) {
         if (luggages.isEmpty) {
-          return _noLuggages(context, house);
+          return _noLuggages(context);
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,19 +392,36 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
                   ),
               ],
             ),
-            if (house != null) _newLuggageLink(house),
+            _newLuggageLink(),
+            DsLinkButton(
+              key: const Key('pack_manage_luggages'),
+              icon: Icons.edit_outlined,
+              label: 'luggages.manage'.tr(),
+              onPressed: () async {
+                await showLuggagesManagementSheet(context);
+                if (!mounted) return;
+                final current = ref.read(luggageNotifierProvider).valueOrNull;
+                if (current == null) return;
+                setState(() {
+                  _luggages = {
+                    for (final l in current)
+                      if (_luggages.containsKey(l.id)) l.id: l,
+                  };
+                });
+              },
+            ),
           ],
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => DsErrorState(
         error: error,
-        onRetry: () => ref.invalidate(allLuggagesProvider),
+        onRetry: () => ref.invalidate(luggageNotifierProvider),
       ),
     );
   }
 
-  Widget _noLuggages(BuildContext context, HouseModel? house) {
+  Widget _noLuggages(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -415,18 +432,17 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
           'trips.pack.no_luggages'.tr(),
           style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
         ),
-        // I bagagli appartengono a una casa: senza casa non c'è dove crearli.
-        if (house != null) _newLuggageLink(house),
+        _newLuggageLink(),
       ],
     );
   }
 
-  Widget _newLuggageLink(HouseModel house) => DsLinkButton(
+  Widget _newLuggageLink() => DsLinkButton(
     key: const Key('pack_new_luggage'),
     icon: Icons.add,
     label: 'luggages.add_new'.tr(),
     onPressed: () async {
-      final created = await showAddEditLuggageSheet(context, houseId: house.id);
+      final created = await showAddEditLuggageSheet(context);
       if (created != null && mounted) {
         setState(() => _luggages[created.id] = created);
       }

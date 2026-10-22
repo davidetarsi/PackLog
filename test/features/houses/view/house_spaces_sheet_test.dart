@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
+import 'package:pack_log/features/houses/view/house_spaces_sheet.dart';
+import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/spaces/model/space_model.dart';
 import 'package:pack_log/features/spaces/providers/space_provider.dart';
@@ -53,35 +55,46 @@ void main() {
       setup: setup,
     );
     await app.push('/houses/$houseId');
-    await app.push('/houses/$houseId/storage');
+    showHouseSpacesSheet(
+      tester.element(find.byType(Scaffold).last),
+      houseId: houseId,
+    );
+    await app.settle();
     return app;
   }
 
-  testWidgets(
-    'il menu mantiene Modifica casa e apre una sola pagina per spazi e bagagli',
-    (tester) async {
-      final app = await ScreenshotApp.start(tester, theme: ShotTheme.dark);
-      await app.push('/houses/$kHomeId');
-      await app.tap(find.byIcon(Icons.more_vert));
-      expect(find.text('Modifica casa'), findsOneWidget);
-      await app.tap(find.text('Spazi e bagagli'));
-      expect(find.byKey(const Key('house_storage')), findsOneWidget);
-      expect(find.text('Spazi · 3'), findsOneWidget);
-      expect(find.text('Bagagli · 3'), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('storage_space_space-armadio')),
-          matching: find.text('5 oggetti'),
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('Trolley cabina'), findsOneWidget);
-      app.router.pop();
-      await app.settle();
-      expect(find.text('Casa Milano'), findsWidgets);
-      await app.finish();
-    },
-  );
+  Future<ScreenshotApp> openLuggages(WidgetTester tester) async {
+    final app = await ScreenshotApp.start(tester, theme: ShotTheme.dark);
+    await app.go('/trips');
+    await app.push('/trips/$kUpcomingTripId/edit-items');
+    await tester.ensureVisible(find.byKey(const Key('pack_manage_luggages')));
+    await app.tap(find.byKey(const Key('pack_manage_luggages')));
+    return app;
+  }
+
+  testWidgets('il menu mantiene Modifica casa e apre Spazi come bottom sheet', (
+    tester,
+  ) async {
+    final app = await ScreenshotApp.start(tester, theme: ShotTheme.dark);
+    await app.push('/houses/$kHomeId');
+    await app.tap(find.byIcon(Icons.more_vert));
+    expect(find.text('Modifica casa'), findsOneWidget);
+    await app.tap(find.text('Spazi'));
+    expect(find.byKey(const Key('house_spaces')), findsOneWidget);
+    expect(find.text('Spazi · 3'), findsOneWidget);
+    expect(find.text('Bagagli · 3'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('storage_space_space-armadio')),
+        matching: find.text('5 oggetti'),
+      ),
+      findsOneWidget,
+    );
+    await app.tap(find.byKey(const Key('sheet_close')).last);
+    await app.settle();
+    expect(find.text('Casa Milano'), findsWidgets);
+    await app.finish();
+  });
 
   testWidgets(
     'creazione, rinomina e annullamento dello spazio persistono correttamente',
@@ -108,7 +121,7 @@ void main() {
         isNull,
       );
       await app.enterText(find.byKey(const Key('space_sheet_name')), 'Garage');
-      await app.tap(find.byKey(const Key('sheet_close')));
+      await app.tap(find.byKey(const Key('sheet_close')).last);
       expect(find.text('Ripostiglio'), findsOneWidget);
       expect(find.text('Garage'), findsNothing);
       await app.tap(find.text('Ripostiglio'));
@@ -155,7 +168,7 @@ void main() {
   testWidgets('bagaglio personalizzato richiede litri validi e si salva', (
     tester,
   ) async {
-    final app = await openStorage(tester, houseId: kEmptyHouseId);
+    final app = await openLuggages(tester);
     await app.tap(find.byKey(const Key('storage_add_luggage')));
     await app.enterText(
       find.byKey(const Key('luggage_sheet_name')),
@@ -172,14 +185,25 @@ void main() {
     );
     await app.enterText(find.byKey(const Key('luggage_sheet_volume')), '35');
     await app.tap(find.byKey(const Key('luggage_sheet_save')));
-    expect(find.text('Zaino trekking'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('luggages_management')),
+        matching: find.text('Zaino trekking'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('35 L'), findsOneWidget);
+    final bags = await tester.runAsync(
+      () => app.container.read(luggageNotifierProvider.future),
+    );
+    expect(
+      bags!.singleWhere((l) => l.name == 'Zaino trekking').houseId,
+      isNull,
+    );
     await app.finish();
   });
 
-  testWidgets('errore di lettura recuperabile senza nascondere i bagagli', (
-    tester,
-  ) async {
+  testWidgets('errore di lettura degli spazi recuperabile', (tester) async {
     var fail = true;
     final app = await openStorage(
       tester,
@@ -195,7 +219,6 @@ void main() {
       find.text('Non è stato possibile caricare i dati. Riprova.'),
       findsOneWidget,
     );
-    expect(find.text('Trolley cabina'), findsOneWidget);
     fail = false;
     await app.tap(find.text('Riprova'));
     expect(
@@ -265,7 +288,7 @@ void main() {
   testWidgets(
     'rinomina e cancellazione di un bagaglio aggiornano anche i viaggi già caricati',
     (tester) async {
-      final app = await openStorage(tester);
+      final app = await openLuggages(tester);
       final initialTrips = await tester.runAsync(
         () => app.container.read(tripNotifierProvider.future),
       );
@@ -302,9 +325,43 @@ void main() {
         isEmpty,
       );
       final luggages = await tester.runAsync(
-        () => app.container.read(luggageNotifierProvider(kHomeId).future),
+        () => app.container.read(luggageNotifierProvider.future),
       );
       expect(luggages!.any((l) => l.id == 'lug-cabina'), isFalse);
+      await app.finish();
+    },
+  );
+
+  testWidgets(
+    'eliminare un bagaglio selezionato dalla gestione non lo salva nel viaggio',
+    (tester) async {
+      final app = await openLuggages(tester);
+      await app.tap(find.byKey(const Key('storage_luggage_lug-cabina')));
+      await app.tap(find.byKey(const Key('luggage_sheet_menu')));
+      await app.tap(find.text('Elimina bagaglio'));
+      await app.tap(find.text('Elimina'));
+      await app.tap(find.byKey(const Key('sheet_close')).last);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is PackPill && w.label == 'Trolley cabina',
+        ),
+        findsNothing,
+      );
+      await app.tap(
+        find.byWidgetPredicate(
+          (w) => w is DsButton && w.label.startsWith('Fatto'),
+        ),
+      );
+      final trips = await tester.runAsync(
+        () => app.container.read(tripNotifierProvider.future),
+      );
+      expect(
+        trips!
+            .firstWhere((t) => t.id == kUpcomingTripId)
+            .luggages
+            .any((l) => l.id == 'lug-cabina'),
+        isFalse,
+      );
       await app.finish();
     },
   );
@@ -313,13 +370,13 @@ void main() {
     tester,
   ) async {
     final app = await openStorage(tester);
-    final context = tester.element(find.byKey(const Key('house_storage')));
+    final context = tester.element(find.byKey(const Key('house_spaces')));
     showAddEditSpaceSheet(context, houseId: kHomeId, spaceId: 'missing');
     await app.settle();
     expect(find.text('Spazio non trovato'), findsOneWidget);
     expect(find.byKey(const Key('space_sheet_name')), findsNothing);
-    await app.tap(find.byKey(const Key('sheet_close')));
-    showAddEditLuggageSheet(context, houseId: kHomeId, luggageId: 'missing');
+    await app.tap(find.byKey(const Key('sheet_close')).last);
+    showAddEditLuggageSheet(context, luggageId: 'missing');
     await app.settle();
     expect(find.text('Bagaglio non trovato'), findsOneWidget);
     expect(find.byKey(const Key('luggage_sheet_name')), findsNothing);
@@ -357,18 +414,42 @@ void main() {
         trips!
             .firstWhere((t) => t.id == kUpcomingTripId)
             .luggages
-            .any((l) => l.name == 'Zaino trekking'),
+            .any((l) => l.name == 'Zaino trekking' && l.houseId == null),
         isTrue,
       );
       await app.finish();
     },
   );
 
-  testWidgets('casa non trovata offre un ritorno alla lista', (tester) async {
+  testWidgets(
+    'eliminare una casa conserva i bagagli e aggiorna la lista globale già caricata',
+    (tester) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.dark);
+      final before = await tester.runAsync(
+        () => app.container.read(luggageNotifierProvider.future),
+      );
+      expect(before!.singleWhere((l) => l.id == 'lug-cabina').houseId, kHomeId);
+      await tester.runAsync(
+        () => app.container
+            .read(houseNotifierProvider.notifier)
+            .deleteHouse(kHomeId),
+      );
+      final after = await tester.runAsync(
+        () => app.container.read(luggageNotifierProvider.future),
+      );
+      expect(after!.map((l) => l.id), unorderedEquals(before.map((l) => l.id)));
+      expect(after.singleWhere((l) => l.id == 'lug-cabina').houseId, isNull);
+      await app.finish();
+    },
+  );
+
+  testWidgets('casa non trovata permette di chiudere il foglio', (
+    tester,
+  ) async {
     final app = await openStorage(tester, houseId: 'missing');
     expect(find.byKey(const Key('storage_not_found')), findsOneWidget);
-    await app.tap(find.byKey(const Key('storage_go_home')));
-    expect(find.byKey(const Key('house_storage')), findsNothing);
+    await app.tap(find.byKey(const Key('sheet_close')).last);
+    expect(find.byKey(const Key('house_spaces')), findsNothing);
     await app.finish();
   });
 }

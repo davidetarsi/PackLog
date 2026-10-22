@@ -659,6 +659,13 @@ void main() {
       expect(find.byType(AddEditLuggageSheet), findsOneWidget);
     });
 
+    testWidgets('si possono creare bagagli anche senza case', (tester) async {
+      arrange(houses: []);
+      await pumpPack(tester);
+      await tapText(tester, 'Nuovo bagaglio');
+      expect(find.byType(AddEditLuggageSheet), findsOneWidget);
+    });
+
     testWidgets('la creazione resta accessibile quando ci sono già bagagli', (
       tester,
     ) async {

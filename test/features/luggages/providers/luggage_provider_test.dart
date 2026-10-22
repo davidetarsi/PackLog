@@ -67,7 +67,7 @@ void main() {
         updatedAt: DateTime(2026),
       );
       when(
-        () => mockRepository.getLuggagesByHouseId('h-1'),
+        () => mockRepository.getAllLuggages(),
       ).thenAnswer((_) async => [stored]);
       when(
         () => mockRepository.getLuggagesByTripId('t-1'),
@@ -86,9 +86,9 @@ void main() {
         )).single.name,
         'Zaino',
       );
-      await container.read(luggageNotifierProvider('h-1').future);
+      await container.read(luggageNotifierProvider.future);
       await container
-          .read(luggageNotifierProvider('h-1').notifier)
+          .read(luggageNotifierProvider.notifier)
           .updateLuggage(stored.copyWith(name: 'Zaino nuovo'));
       expect(
         (await container.read(
@@ -103,15 +103,15 @@ void main() {
     'eliminazione rifiutata dal repository resta un errore recuperabile',
     () async {
       when(
-        () => mockRepository.getLuggagesByHouseId('h-1'),
+        () => mockRepository.getAllLuggages(),
       ).thenAnswer((_) async => <LuggageModel>[]);
       when(
         () => mockRepository.deleteLuggage('missing'),
       ).thenAnswer((_) async => false);
-      await container.read(luggageNotifierProvider('h-1').future);
+      await container.read(luggageNotifierProvider.future);
       await expectLater(
         container
-            .read(luggageNotifierProvider('h-1').notifier)
+            .read(luggageNotifierProvider.notifier)
             .deleteLuggage('missing'),
         throwsA(isA<AppDatabaseException>()),
       );
@@ -131,31 +131,25 @@ void main() {
         updatedAt: DateTime(2026),
       );
       var reads = 0;
-      when(() => mockRepository.getLuggagesByHouseId('h-1')).thenAnswer((
-        _,
-      ) async {
+      when(() => mockRepository.getAllLuggages()).thenAnswer((_) async {
         if (reads++ > 0) throw const EntityLoadException('reload');
         return <LuggageModel>[];
       });
       when(() => mockRepository.addLuggage(any())).thenAnswer((_) async {});
-      await container.read(luggageNotifierProvider('h-1').future);
+      await container.read(luggageNotifierProvider.future);
       await expectLater(
-        container
-            .read(luggageNotifierProvider('h-1').notifier)
-            .addLuggage(model),
+        container.read(luggageNotifierProvider.notifier).addLuggage(model),
         completes,
       );
-      expect(container.read(luggageNotifierProvider('h-1')).requireValue, [
-        model,
-      ]);
+      expect(container.read(luggageNotifierProvider).requireValue, [model]);
       verify(() => mockRepository.addLuggage(model)).called(1);
       verify(() => mockSync.requestSync()).called(1);
     },
   );
 
-  group('LuggageNotifier - Family by houseId (P2 #12)', () {
-    test('build only loads luggages for the requested houseId', () async {
-      when(() => mockRepository.getLuggagesByHouseId('h-1')).thenAnswer(
+  group('LuggageNotifier - elenco globale', () {
+    test('build carica bagagli senza filtro per casa', () async {
+      when(() => mockRepository.getAllLuggages()).thenAnswer(
         (_) async => [
           LuggageModel(
             id: 'l-1',
@@ -168,24 +162,21 @@ void main() {
         ],
       );
 
-      final result = await container.read(
-        luggageNotifierProvider('h-1').future,
-      );
+      final result = await container.read(luggageNotifierProvider.future);
 
       expect(result, hasLength(1));
       expect(result.first.houseId, equals('h-1'));
-      verify(() => mockRepository.getLuggagesByHouseId('h-1')).called(1);
-      verifyNever(() => mockRepository.getAllLuggages());
+      verify(() => mockRepository.getAllLuggages()).called(1);
     });
 
     test(
       'addLuggage rethrows when repository fails (and preserves previous AsyncData)',
       () async {
         when(
-          () => mockRepository.getLuggagesByHouseId('h-1'),
+          () => mockRepository.getAllLuggages(),
         ).thenAnswer((_) async => <LuggageModel>[]);
 
-        final provider = luggageNotifierProvider('h-1');
+        final provider = luggageNotifierProvider;
         await container.read(provider.future);
 
         final newLuggage = LuggageModel(
@@ -214,7 +205,7 @@ void main() {
     );
   });
 
-  group('allLuggagesProvider (cross-house list for trip selection)', () {
+  group('luggageNotifierProvider (cross-house list for trip selection)', () {
     test('returns the full luggages list via getAllLuggages', () async {
       when(() => mockRepository.getAllLuggages()).thenAnswer(
         (_) async => [
@@ -228,7 +219,6 @@ void main() {
           ),
           LuggageModel(
             id: 'l-b',
-            houseId: 'h-2',
             name: 'B',
             sizeType: LuggageSize.holdBaggage,
             createdAt: DateTime.now(),
@@ -237,9 +227,9 @@ void main() {
         ],
       );
 
-      final result = await container.read(allLuggagesProvider.future);
+      final result = await container.read(luggageNotifierProvider.future);
       expect(result, hasLength(2));
-      expect(result.map((l) => l.houseId).toSet(), equals({'h-1', 'h-2'}));
+      expect(result.map((l) => l.houseId).toSet(), equals({'h-1', null}));
     });
   });
 }

@@ -149,7 +149,7 @@
     "size_label": "Size",
     "volume_label": "Volume in liters",
     "luggage_deleted": "Luggage \"{}\" deleted",
-    "manage": "Edit luggages"
+    "manage": "Manage luggage"
   },
   "house_icons": {
     "home": "Home",

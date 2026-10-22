@@ -605,12 +605,12 @@ final flows = <Flow>[
       10,
       'spazi',
       'elenco',
-      source: 'lib/features/houses/view/house_storage_screen.dart',
+      source: 'lib/features/houses/view/house_spaces_sheet.dart',
       description:
-          'Pagina unica per spazi e bagagli, con conteggi e creazione.',
+          'Bottom sheet degli spazi della casa, con conteggi e creazione.',
       steps: (app) async {
         await _openManageSheet(app);
-        await app.tap(_text('storage.title'));
+        await app.tap(_text('spaces.title'));
       },
     ),
     Scenario(
@@ -618,10 +618,14 @@ final flows = <Flow>[
       'bagagli',
       'elenco',
       source: 'lib/features/luggages/view/add_edit_luggage_screen.dart',
-      description: 'Modifica bagaglio dalla pagina di gestione unica.',
+      description: 'Modifica bagaglio dalla gestione globale nel viaggio.',
       steps: (app) async {
-        await _openManageSheet(app);
-        await app.tap(_text('storage.title'));
+        await app.go('/trips');
+        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await app.tester.ensureVisible(
+          find.byKey(const Key('pack_manage_luggages')),
+        );
+        await app.tap(find.byKey(const Key('pack_manage_luggages')));
         await app.tap(find.byKey(const Key('storage_luggage_lug-cabina')));
       },
     ),
@@ -1627,23 +1631,24 @@ final flows = <Flow>[
       1,
       'gestione',
       'elenco',
-      source: 'lib/features/houses/view/house_storage_screen.dart',
-      description: 'Spazi e bagagli della casa, conteggi e creazione.',
+      source: 'lib/features/houses/view/house_spaces_sheet.dart',
+      description: 'Bottom sheet degli spazi della casa, conteggi e creazione.',
       steps: (app) async {
         await _houseDetail(app);
-        await app.push('/houses/$kHomeId/storage');
+        await app.tap(_icon(Icons.more_vert));
+        await app.tap(_text('spaces.title'));
       },
     ),
     Scenario(
       2,
       'gestione',
       'vuota',
-      source: 'lib/features/houses/view/house_storage_screen.dart',
-      description:
-          'Entrambi i gruppi vuoti mantengono accessibile la creazione.',
+      source: 'lib/features/houses/view/house_spaces_sheet.dart',
+      description: 'Una casa senza spazi mantiene accessibile la creazione.',
       steps: (app) async {
         await _houseDetail(app, kEmptyHouseId);
-        await app.push('/houses/$kEmptyHouseId/storage');
+        await app.tap(_icon(Icons.more_vert));
+        await app.tap(_text('spaces.title'));
       },
     ),
     Scenario(
@@ -1655,7 +1660,8 @@ final flows = <Flow>[
           'Modifica spazio: nome, icona e Salva spento fino alla modifica.',
       steps: (app) async {
         await _houseDetail(app);
-        await app.push('/houses/$kHomeId/storage');
+        await app.tap(_icon(Icons.more_vert));
+        await app.tap(_text('spaces.title'));
         await app.tap(find.byKey(const Key('storage_space_space-armadio')));
       },
     ),
@@ -1666,8 +1672,12 @@ final flows = <Flow>[
       source: 'lib/features/luggages/view/add_edit_luggage_screen.dart',
       description: 'Modifica bagaglio: nome, taglia e menu eliminazione.',
       steps: (app) async {
-        await _houseDetail(app);
-        await app.push('/houses/$kHomeId/storage');
+        await app.go('/trips');
+        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await app.tester.ensureVisible(
+          find.byKey(const Key('pack_manage_luggages')),
+        );
+        await app.tap(find.byKey(const Key('pack_manage_luggages')));
         await app.tap(find.byKey(const Key('storage_luggage_lug-cabina')));
       },
     ),
@@ -1678,9 +1688,12 @@ final flows = <Flow>[
       source: 'lib/features/luggages/view/add_edit_luggage_screen.dart',
       description: 'Nuovo bagaglio personalizzato con volume in litri.',
       steps: (app) async {
-        await _houseDetail(app, kEmptyHouseId);
-        await app.push('/houses/$kEmptyHouseId/storage');
-        await app.tap(find.byKey(const Key('storage_add_luggage')));
+        await app.go('/trips');
+        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await app.tester.ensureVisible(
+          find.byKey(const Key('pack_new_luggage')),
+        );
+        await app.tap(find.byKey(const Key('pack_new_luggage')));
         await app.enterText(
           find.byKey(const Key('luggage_sheet_name')),
           'Zaino trekking',
@@ -1723,6 +1736,35 @@ final flows = <Flow>[
           find.byKey(const Key('promo_sheet_field')),
           'PACKLOG',
         );
+      },
+    ),
+    Scenario(
+      8,
+      'bagagli',
+      'gestione-globale',
+      source: 'lib/features/luggages/view/luggages_management_sheet.dart',
+      description:
+          'Bagagli dell’utente gestibili dal viaggio, indipendenti dalle case.',
+      steps: (app) async {
+        await app.go('/trips');
+        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await app.tester.ensureVisible(
+          find.byKey(const Key('pack_manage_luggages')),
+        );
+        await app.tap(find.byKey(const Key('pack_manage_luggages')));
+      },
+    ),
+    Scenario(
+      9,
+      'bagagli',
+      'selezione-viaggio',
+      source: 'lib/features/trips/view/pack_suitcase_screen.dart',
+      description: 'Selezione, creazione e gestione dei bagagli nella valigia.',
+      steps: (app) async {
+        await app.go('/trips');
+        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await app.tester.ensureVisible(_text('trips.pack.luggages'));
+        await app.settle();
       },
     ),
   ]),

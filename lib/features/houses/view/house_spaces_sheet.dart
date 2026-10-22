@@ -1,68 +1,66 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/ds_form_sheet.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_settings.dart';
 import '../providers/house_provider.dart';
 import '../../items/providers/item_provider.dart';
-import '../../luggages/providers/luggage_provider.dart';
-import '../../luggages/view/add_edit_luggage_screen.dart';
 import '../../spaces/providers/space_provider.dart';
 import '../../spaces/view/add_edit_space_screen.dart';
 
-/// Gestione unica degli spazi e dei bagagli di una casa.
-class HouseStorageScreen extends ConsumerWidget {
-  const HouseStorageScreen({super.key, required this.houseId});
+/// Gli spazi appartengono alla casa e si gestiscono senza lasciare il dettaglio.
+Future<void> showHouseSpacesSheet(
+  BuildContext context, {
+  required String houseId,
+}) => showDsFormSheet<void>(
+  context,
+  builder: (_) => HouseSpacesSheet(houseId: houseId),
+);
+
+class HouseSpacesSheet extends ConsumerWidget {
+  const HouseSpacesSheet({super.key, required this.houseId});
   final String houseId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      key: const Key('house_storage'),
-      appBar: AppBar(title: Text('storage.title'.tr())),
-      body: SafeArea(
-        child: ref
-            .watch(houseNotifierProvider)
-            .when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) =>
-                  _error(error, () => ref.invalidate(houseNotifierProvider)),
-              data: (houses) {
-                final house = houses.where((h) => h.id == houseId).firstOrNull;
-                if (house == null) {
-                  return DsEmptyState(
-                    key: const Key('storage_not_found'),
-                    icon: Icons.home_outlined,
-                    title: 'houses.house_not_found'.tr(),
-                    linkLabel: 'storage.go_home'.tr(),
-                    linkKey: const Key('storage_go_home'),
-                    onLink: () => context.go('/'),
-                  );
-                }
-                return ListView(
-                  padding: EdgeInsets.all(context.spacingMd),
-                  children: [
-                    Text(
-                      house.displayName,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    _spaces(context, ref),
-                    SizedBox(height: context.spacingLg),
-                    _luggages(context, ref),
-                  ],
-                );
-              },
-            ),
-      ),
-    );
-  }
+  Widget build(BuildContext context, WidgetRef ref) => DsFormSheet(
+    key: const Key('house_spaces'),
+    title: 'spaces.title'.tr(),
+    child: ref
+        .watch(houseNotifierProvider)
+        .when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) =>
+              _error(error, () => ref.invalidate(houseNotifierProvider)),
+          data: (houses) {
+            final house = houses.where((h) => h.id == houseId).firstOrNull;
+            if (house == null) {
+              return DsEmptyState(
+                key: const Key('storage_not_found'),
+                icon: Icons.home_outlined,
+                title: 'houses.house_not_found'.tr(),
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  house.displayName,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                _spaces(context, ref),
+              ],
+            );
+          },
+        ),
+  );
 
   Widget _error(Object error, VoidCallback onRetry) => Padding(
     padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -140,48 +138,5 @@ class HouseStorageScreen extends ConsumerWidget {
                 );
               },
             ),
-      );
-
-  Widget _luggages(BuildContext context, WidgetRef ref) => ref
-      .watch(luggageNotifierProvider(houseId))
-      .when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _error(
-          error,
-          () => ref.invalidate(luggageNotifierProvider(houseId)),
-        ),
-        data: (luggages) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DsGroupHeader(label: 'luggages.title'.tr(), count: luggages.length),
-            DsSettingsGroup(
-              children: [
-                for (final luggage in luggages)
-                  DsSettingsRow(
-                    key: Key('storage_luggage_${luggage.id}'),
-                    leading: Icon(
-                      Icons.luggage_outlined,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    label: luggage.name,
-                    subtitle: luggage.sizeDescription,
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => showAddEditLuggageSheet(
-                      context,
-                      houseId: houseId,
-                      luggageId: luggage.id,
-                    ),
-                  ),
-                DsSettingsRow(
-                  key: const Key('storage_add_luggage'),
-                  leading: const Icon(Icons.add),
-                  label: 'luggages.add_new'.tr(),
-                  onTap: () =>
-                      showAddEditLuggageSheet(context, houseId: houseId),
-                ),
-              ],
-            ),
-          ],
-        ),
       );
 }

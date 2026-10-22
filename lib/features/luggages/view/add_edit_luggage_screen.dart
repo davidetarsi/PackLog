@@ -16,16 +16,14 @@ import '../providers/luggage_provider.dart';
 
 Future<LuggageModel?> showAddEditLuggageSheet(
   BuildContext context, {
-  required String houseId,
   String? luggageId,
 }) => showDsFormSheet<LuggageModel>(
   context,
-  builder: (_) => AddEditLuggageSheet(houseId: houseId, luggageId: luggageId),
+  builder: (_) => AddEditLuggageSheet(luggageId: luggageId),
 );
 
 class AddEditLuggageSheet extends ConsumerStatefulWidget {
-  const AddEditLuggageSheet({super.key, required this.houseId, this.luggageId});
-  final String houseId;
+  const AddEditLuggageSheet({super.key, this.luggageId});
   final String? luggageId;
 
   @override
@@ -86,7 +84,6 @@ class _AddEditLuggageSheetState extends ConsumerState<AddEditLuggageSheet> {
           )
         : LuggageModel(
             id: const Uuid().v4(),
-            houseId: widget.houseId,
             name: _name.text.trim(),
             sizeType: _size,
             volumeLiters: _size == LuggageSize.custom
@@ -98,7 +95,7 @@ class _AddEditLuggageSheetState extends ConsumerState<AddEditLuggageSheet> {
             updatedAt: now,
           );
     setState(() => _busy = true);
-    final notifier = ref.read(luggageNotifierProvider(widget.houseId).notifier);
+    final notifier = ref.read(luggageNotifierProvider.notifier);
     final saved = await ErrorRetryDialog.executeWithRetry(
       context: context,
       operation: () => existing != null
@@ -130,9 +127,8 @@ class _AddEditLuggageSheetState extends ConsumerState<AddEditLuggageSheet> {
     setState(() => _busy = true);
     final deleted = await ErrorRetryDialog.executeWithRetry(
       context: context,
-      operation: () => ref
-          .read(luggageNotifierProvider(widget.houseId).notifier)
-          .deleteLuggage(entity.id),
+      operation: () =>
+          ref.read(luggageNotifierProvider.notifier).deleteLuggage(entity.id),
       errorTitle: 'common.error'.tr(),
       errorMessage: 'errors.delete_luggage_failed'.tr(args: [entity.name]),
     );
@@ -149,15 +145,14 @@ class _AddEditLuggageSheetState extends ConsumerState<AddEditLuggageSheet> {
 
   @override
   Widget build(BuildContext context) => ref
-      .watch(luggageNotifierProvider(widget.houseId))
+      .watch(luggageNotifierProvider)
       .when(
         loading: () => _sheet(const Center(child: CircularProgressIndicator())),
         error: (error, _) => _sheet(
           DsErrorState(
             error: error,
             message: 'storage.load_failed'.tr(),
-            onRetry: () =>
-                ref.invalidate(luggageNotifierProvider(widget.houseId)),
+            onRetry: () => ref.invalidate(luggageNotifierProvider),
           ),
         ),
         data: (entities) {

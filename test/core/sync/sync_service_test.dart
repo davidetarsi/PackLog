@@ -265,7 +265,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: 'fk-luggage',
-            houseId: 'fk-house',
+            houseId: Value('fk-house'),
             name: 'Zaino',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),
@@ -1108,7 +1108,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: 'l-wipe',
-            houseId: 'h-wipe',
+            houseId: Value('h-wipe'),
             name: 'Zaino',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: now,
@@ -1419,7 +1419,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: 'l-push',
-          houseId: 'h-parent',
+          houseId: Value('h-parent'),
           name: 'Valigia Grande',
           sizeType: LuggageSize.holdBaggage,
           createdAt: DateTime.now(),
@@ -1450,6 +1450,45 @@ void main() {
       expect(capturedData, isNotNull, reason: 'upsertLuggage must be called');
       expect(capturedData!['id'], equals('l-push'));
       expect(capturedData!['house_id'], equals('h-parent'));
+      expect(capturedData!['name'], equals('Valigia Grande'));
+      expect(capturedData!['size_type'], equals('holdBaggage'));
+    });
+
+    test('processQueue pushes a luggage without a house', () async {
+      await database.luggagesDao.insertLuggage(
+        LuggagesCompanion.insert(
+          id: 'l-push',
+          name: 'Valigia Grande',
+          sizeType: LuggageSize.holdBaggage,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      Map<String, dynamic>? capturedData;
+      when(
+        () => mockRemote.fetchLuggageById(
+          'l-push',
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockRemote.upsertLuggage(
+          any(),
+          sentryTrace: any(named: 'sentryTrace'),
+        ),
+      ).thenAnswer((invocation) async {
+        capturedData =
+            invocation.positionalArguments[0] as Map<String, dynamic>;
+        return DateTime.utc(2026, 1, 1);
+      });
+
+      await syncService.processQueue();
+
+      expect(capturedData, isNotNull, reason: 'upsertLuggage must be called');
+      expect(capturedData!['id'], equals('l-push'));
+      expect(capturedData!.containsKey('house_id'), isTrue);
+      expect(capturedData!['house_id'], isNull);
       expect(capturedData!['name'], equals('Valigia Grande'));
       expect(capturedData!['size_type'], equals('holdBaggage'));
     });
@@ -1512,7 +1551,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: 'l-1',
-            houseId: 'h-parent',
+            houseId: Value('h-parent'),
             name: 'Zaino',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: t1,
@@ -1611,7 +1650,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: 'l-a',
-            houseId: 'h-parent',
+            houseId: Value('h-parent'),
             name: 'Zaino',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),
@@ -1661,33 +1700,25 @@ void main() {
     );
 
     test(
-      'fullPull restores trip↔luggage junction from remote luggage_ids',
+      'fullPull restores global luggage and its trip link without any house',
       () async {
         final t1 = DateTime(2026, 5, 1, 8, 0).toUtc();
 
-        // Local has the house and the luggage that will be referenced.
-        await database.housesDao.insertHouse(
-          HousesCompanion.insert(
-            id: 'h-parent',
-            name: 'House',
-            createdAt: t1,
-            updatedAt: t1,
-            syncStatus: const Value(SyncStatus.synced),
-          ),
-        );
-        await database.luggagesDao.insertLuggage(
-          LuggagesCompanion.insert(
-            id: 'l-a',
-            houseId: 'h-parent',
-            name: 'Zaino',
-            sizeType: LuggageSize.cabinBaggage,
-            createdAt: t1,
-            updatedAt: t1,
-            syncStatus: const Value(SyncStatus.synced),
-          ),
-        );
-
         stubEmptyFetches();
+        when(() => mockRemote.fetchAllLuggagesByUserId('user-1')).thenAnswer(
+          (_) async => [
+            {
+              'id': 'l-a',
+              'user_id': 'user-1',
+              'house_id': null,
+              'name': 'Zaino',
+              'size_type': 'cabinBaggage',
+              'created_at': t1.toIso8601String(),
+              'updated_at': t1.toIso8601String(),
+              'is_deleted': false,
+            },
+          ],
+        );
         when(() => mockRemote.fetchAllTripsByUserId('user-1')).thenAnswer(
           (_) async => [
             {
@@ -1725,6 +1756,8 @@ void main() {
         );
         expect(luggagesForTrip, hasLength(1));
         expect(luggagesForTrip.first.id, equals('l-a'));
+        expect(luggagesForTrip.first.houseId, isNull);
+        expect(await database.housesDao.getAllHouses(), isEmpty);
       },
     );
   });

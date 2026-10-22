@@ -192,7 +192,7 @@ abstract final class SyncSerializers {
     return LuggagesCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
-      houseId: Value(r['house_id'] as String),
+      houseId: Value(r['house_id'] as String?),
       name: Value(r['name'] as String),
       sizeType: Value(parseLuggageSize(r['size_type'])),
       volumeLiters: Value(r['volume_liters'] as int?),

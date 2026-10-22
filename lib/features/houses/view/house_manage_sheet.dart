@@ -1,9 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/ds_sheet_header.dart';
 import 'add_edit_house_screen.dart';
+import 'house_spaces_sheet.dart';
 
 /// Shows the "manage house" bottom sheet.
 ///
@@ -48,10 +48,10 @@ Future<void> showHouseManageSheet(
             ),
             ListTile(
               leading: const Icon(Icons.meeting_room_outlined),
-              title: Text('storage.title'.tr()),
+              title: Text('spaces.title'.tr()),
               onTap: () {
                 Navigator.pop(sheetContext);
-                context.push('/houses/$houseId/storage');
+                showHouseSpacesSheet(context, houseId: houseId);
               },
             ),
             ListTile(

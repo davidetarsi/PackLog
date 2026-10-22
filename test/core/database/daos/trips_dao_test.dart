@@ -48,7 +48,7 @@ void main() {
         final luggageId = 'test-luggage-1';
         final luggageCompanion = LuggagesCompanion.insert(
           id: luggageId,
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Test Suitcase',
           sizeType: LuggageSize.holdBaggage,
           createdAt: DateTime.now(),
@@ -60,7 +60,7 @@ void main() {
         final luggage2Id = 'test-luggage-2';
         final luggage2Companion = LuggagesCompanion.insert(
           id: luggage2Id,
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Test Backpack',
           sizeType: LuggageSize.smallBackpack,
           createdAt: DateTime.now(),
@@ -289,7 +289,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: luggageId,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'PK Test Luggage',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),
@@ -702,7 +702,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: lugId,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Luggage $lugId',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),
@@ -768,7 +768,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: luggage1Id,
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Luggage 1',
           sizeType: LuggageSize.smallBackpack,
           createdAt: DateTime.now(),
@@ -779,7 +779,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: luggage2Id,
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Luggage 2',
           sizeType: LuggageSize.holdBaggage,
           createdAt: DateTime.now(),
@@ -932,7 +932,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: lug1Id,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Batch Luggage 1',
             sizeType: LuggageSize.smallBackpack,
             createdAt: now,
@@ -943,7 +943,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: lug2Id,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Batch Luggage 2',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: now,
@@ -954,7 +954,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: lug3Id,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Batch Luggage 3',
             sizeType: LuggageSize.holdBaggage,
             createdAt: now,
@@ -1204,7 +1204,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: 'dup-lug-1',
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Dup Luggage',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),
@@ -1251,7 +1251,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: 'reuse-lug-1',
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Reuse Luggage',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),

@@ -94,10 +94,10 @@ class HousesDao extends DatabaseAccessor<AppDatabase>
     return count > 0;
   }
 
-  /// Soft-delete di una casa con cascade manuale su Items, Spaces e Luggages.
+  /// Soft-delete di una casa con cascade su Items/Spaces e distacco dei bagagli.
   ///
   /// Sostituisce la DELETE fisica (con CASCADE SQLite) con una transazione
-  /// che imposta [isDeleted = true] sulla casa e su tutti i record dipendenti
+  /// che imposta [isDeleted = true] sulla casa, sugli oggetti e sugli spazi
   /// non già eliminati. Il database mantiene le righe per consentire la
   /// propagazione al cloud prima della purga definitiva.
   Future<int> deleteHouse(String id) async {
@@ -126,14 +126,15 @@ class HousesDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
-      // Cascade soft-delete: bagagli della casa (con syncStatus per propagare al cloud)
+      // I bagagli appartengono all'utente: si staccano dalla casa rimossa,
+      // conservando ID, dati e associazioni ai viaggi. Una sola query bulk.
       await (update(
         luggages,
       )..where((l) => l.houseId.equals(id) & l.isDeleted.equals(false))).write(
         LuggagesCompanion(
-          isDeleted: const Value(true),
-          syncStatus: const Value(SyncStatus.pendingUpdate),
+          houseId: const Value(null),
           updatedAt: Value(now),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
         ),
       );
 

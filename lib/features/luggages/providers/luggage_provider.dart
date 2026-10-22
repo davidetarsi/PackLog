@@ -10,11 +10,7 @@ import '../../trips/providers/trip_provider.dart';
 
 part 'luggage_provider.g.dart';
 
-/// Notifier family per i bagagli di una specifica casa.
-///
-/// Pattern allineato a [ItemNotifier]: una sola sorgente di verità per
-/// casa, le mutazioni ricaricano la lista filtrata e si propagano
-/// automaticamente ai consumer senza bisogno di `ref.invalidate` manuali.
+/// Unica lista dei bagagli dell’utente, indipendente dalle case.
 @Riverpod(keepAlive: true)
 class LuggageNotifier extends _$LuggageNotifier
     with SyncedCrudNotifier<LuggageModel> {
@@ -22,18 +18,14 @@ class LuggageNotifier extends _$LuggageNotifier
   CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
 
   @override
-  Future<List<LuggageModel>> build(String houseId) =>
-      _repo.getLuggagesByHouseId(houseId);
+  Future<List<LuggageModel>> build() {
+    ref.watch(syncTriggerProvider);
+    return ref.watch(luggageRepositoryProvider).getAllLuggages();
+  }
 
   @override
   void onMutationSuccess(List<LuggageModel> updated) {
     ref.read(syncOrchestratorProvider).requestSync();
-    // `mutate` ricarica solo la lista di *questa* casa. [allLuggagesProvider]
-    // è una vista globale keepAlive che osserva il solo repository — che non
-    // cambia mai — quindi senza questa riga resterebbe ferma alla prima
-    // lettura: un bagaglio eliminato ricompariva nel selettore del form
-    // viaggio finché non si riavviava l'app.
-    ref.invalidate(allLuggagesProvider);
     // Nome e soft-delete devono riflettersi anche nei viaggi già in cache.
     if (ref.exists(tripNotifierProvider)) {
       ref.invalidate(tripNotifierProvider);
@@ -47,7 +39,7 @@ class LuggageNotifier extends _$LuggageNotifier
       ...previous.where((l) => l.id != model.id),
       model,
     ],
-    reload: () => _repo.getLuggagesByHouseId(houseId),
+    reload: () => _repo.getAllLuggages(),
     rethrowOnly: true,
     onSuccess: (_) => _analytics.trackLuggageCreated(size: model.sizeType.name),
   );
@@ -57,7 +49,7 @@ class LuggageNotifier extends _$LuggageNotifier
     committedState: (previous) => [
       for (final l in previous) l.id == model.id ? model : l,
     ],
-    reload: () => _repo.getLuggagesByHouseId(houseId),
+    reload: () => _repo.getAllLuggages(),
     rethrowOnly: true,
   );
 
@@ -68,38 +60,17 @@ class LuggageNotifier extends _$LuggageNotifier
       }
     },
     committedState: (previous) => previous.where((l) => l.id != id).toList(),
-    reload: () => _repo.getLuggagesByHouseId(houseId),
+    reload: () => _repo.getAllLuggages(),
     rethrowOnly: true,
   );
 
   Future<void> refresh() => mutate(
     operation: () async {},
-    reload: () => _repo.getLuggagesByHouseId(houseId),
+    reload: () => _repo.getAllLuggages(),
     showLoading: true,
     // refresh() è wired a ErrorState.onRetry (VoidCallback) — niente rethrow.
     rethrowOnError: false,
   );
-}
-
-// Nota: l'ex [luggagesByHouseProvider] è stato eliminato — la stessa funzione
-// è ora servita da [luggageNotifierProvider] con la signature family
-// `(String houseId)`. Eliminato anche il bisogno di
-// `ref.invalidate(luggageNotifierProvider(...))` dopo le mutazioni.
-
-/// Lista globale di tutti i bagagli (cross-casa). Usata dal selector
-/// nel form di creazione viaggio, dove l'utente può scegliere bagagli
-/// da qualunque casa.
-///
-/// Le mutazioni locali la invalidano da [LuggageNotifier.onMutationSuccess];
-/// qui si osserva il trigger di sync per coprire l'altra sorgente di
-/// cambiamento, il pull remoto — stesso motivo per cui lo osserva
-/// `ItemNotifier.build`. Senza, essendo `keepAlive`, resterebbe ferma alla
-/// prima lettura per tutta la vita del processo.
-@Riverpod(keepAlive: true)
-Future<List<LuggageModel>> allLuggages(Ref ref) async {
-  ref.watch(syncTriggerProvider);
-  final repository = ref.watch(luggageRepositoryProvider);
-  return repository.getAllLuggages();
 }
 
 /// Family provider per ottenere i bagagli di un viaggio.
@@ -109,11 +80,4 @@ Future<List<LuggageModel>> allLuggages(Ref ref) async {
 Future<List<LuggageModel>> luggagesByTrip(Ref ref, String tripId) async {
   final repository = ref.watch(luggageRepositoryProvider);
   return repository.getLuggagesByTripId(tripId);
-}
-
-/// Provider per contare i bagagli di una casa.
-@riverpod
-Future<int> luggageCountByHouse(Ref ref, String houseId) async {
-  final repository = ref.watch(luggageRepositoryProvider);
-  return repository.countLuggagesByHouse(houseId);
 }
