@@ -15,7 +15,9 @@ import '../../../shared/widgets/ds_steps.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../houses/providers/house_provider.dart';
+import '../../../core/monitoring/monitoring_service.dart';
 import '../model/trip_draft.dart';
+import '../model/trip_model.dart';
 import '../model/trip_postcard.dart';
 import '../providers/trip_provider.dart';
 import '../providers/trip_weather_provider.dart';
@@ -23,6 +25,7 @@ import 'widgets/place_search.dart';
 import 'widgets/postcard/trip_itinerary_view.dart';
 import 'widgets/stop_sheet.dart';
 import 'widgets/trip_dates_sheet.dart';
+import 'widgets/trip_edit_placeholder.dart';
 import '../../../shared/widgets/ds_field.dart';
 import '../../../shared/widgets/ds_section_title.dart';
 
@@ -36,8 +39,19 @@ const _missingScrollDuration = Duration(milliseconds: 300);
 
 /// Passo 1 di "Nuovo viaggio": meta, date, tappe e nome. Salva solo con meta,
 /// date e nessuna tappa a zero notti.
+///
+/// Con [tripId] è la modifica di un viaggio esistente: stessa pagina, senza i
+/// passi, con un solo "Salva" che si accende dopo un cambiamento.
 class NewTripScreen extends ConsumerStatefulWidget {
-  const NewTripScreen({super.key});
+  const NewTripScreen({super.key, this.tripId, this.discardOnExit = false});
+
+  /// Viaggio da modificare; null per un viaggio nuovo.
+  final String? tripId;
+
+  /// Se `true`, uscire senza un salvataggio riuscito elimina il viaggio.
+  /// Serve al flusso "Riusa": la copia nasce senza date e, se l'utente la
+  /// abbandona, non deve restare in lista.
+  final bool discardOnExit;
 
   @override
   ConsumerState<NewTripScreen> createState() => _NewTripScreenState();
@@ -52,6 +66,17 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
 
   /// Dopo un tocco su un bottone spento: i campi mancanti si colorano.
   bool _showErrors = false;
+
+  /// In modifica: il viaggio com'era all'apertura.
+  TripModel? _original;
+
+  /// In modifica: l'utente ha cambiato qualcosa.
+  bool _edited = false;
+
+  /// In modifica: salvato con successo, l'uscita non elimina nulla.
+  bool _savedOk = false;
+
+  bool get _isEdit => widget.tripId != null;
 
   final GlobalKey _whereKey = GlobalKey();
   final GlobalKey _whenKey = GlobalKey();
@@ -74,7 +99,10 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
   /// Cambia la bozza e riallinea il campo nome: segue la meta finché il nome
   /// non è stato scritto a mano.
   void _update(TripDraft next) {
-    setState(() => _draft = next);
+    setState(() {
+      _draft = next;
+      _edited = true;
+    });
     final text = _draft.nameEdited
         ? _draft.name
         : (_draft.destination?.shortName ?? '');
@@ -190,11 +218,74 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     }
   }
 
+  /// In modifica: riporta i cambiamenti sul viaggio, che conserva oggetti,
+  /// bagagli, nota e tutto il resto.
+  Future<void> _saveEdit() async {
+    final original = _original;
+    if (_saving || original == null) return;
+    setState(() => _saving = true);
+    final draftTrip = _draft.toTripModel(id: original.id, now: DateTime.now());
+    final updated = original.copyWith(
+      name: draftTrip.name,
+      departureDateTime: draftTrip.departureDateTime,
+      returnDateTime: draftTrip.returnDateTime,
+      destinationHouseId: draftTrip.destinationHouseId,
+      destinationLocation: draftTrip.destinationLocation,
+      legs: draftTrip.legs,
+      updatedAt: draftTrip.updatedAt,
+    );
+    final saved = await ErrorRetryDialog.executeWithRetry(
+      context: context,
+      operation: () =>
+          ref.read(tripNotifierProvider.notifier).updateTrip(updated),
+      errorTitle: 'errors.save_error'.tr(),
+      errorMessage: 'errors.save_trip_failed'.tr(),
+    );
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (saved) {
+      // Prima del pop: l'uscita non va scambiata per un abbandono.
+      _savedOk = true;
+      context.pop();
+    }
+  }
+
+  /// La pagina si è chiusa: con "Riusa" e senza salvataggio la copia va via.
+  void _onClosed() {
+    if (!_isEdit || !widget.discardOnExit || _savedOk) return;
+    // Catturati prima: il callback d'errore può arrivare dopo il dispose.
+    final notifier = ref.read(tripNotifierProvider.notifier);
+    final monitoring = ref.read(monitoringServiceProvider);
+    notifier
+        .deleteTrip(widget.tripId!)
+        .catchError(
+          (Object error, StackTrace stack) =>
+              monitoring.captureException(error, stackTrace: stack),
+        );
+  }
+
+  /// Copia il viaggio nella bozza, una volta sola: un sync che rimpiazza la
+  /// lista non deve sovrascrivere ciò che l'utente sta modificando. Nessun
+  /// `setState`: siamo dentro il build che legge questi campi subito dopo.
+  void _hydrate(TripModel trip, Map<String, String> houseNames) {
+    if (_original != null) return;
+    _original = trip;
+    _draft = TripDraft.fromTrip(
+      trip,
+      houseName: houseNames[trip.destinationHouseId],
+    );
+    _nameController.text = _draft.name;
+  }
+
   Future<void> _confirmDiscard() async {
     final leave = await DialogHelpers.showConfirmation(
       context: context,
-      title: 'trips.new.discard_title'.tr(),
-      message: 'trips.new.discard_message'.tr(),
+      title: _isEdit
+          ? 'trips.edit.discard_title'.tr()
+          : 'trips.new.discard_title'.tr(),
+      message: _isEdit
+          ? 'trips.edit.discard_message'.tr()
+          : 'trips.new.discard_message'.tr(),
       isDestructive: true,
     );
     if (leave && mounted) context.pop();
@@ -207,12 +298,41 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       for (final house in houses) house.id: house.displayName,
     };
 
+    if (_isEdit) {
+      final tripsAsync = ref.watch(tripNotifierProvider);
+      final trip = tripsAsync.valueOrNull
+          ?.where((t) => t.id == widget.tripId)
+          .firstOrNull;
+      if (trip != null) _hydrate(trip, houseNames);
+      final placeholder = tripEditPlaceholder(
+        context: context,
+        ref: ref,
+        title: 'trips.detail.edit_trip'.tr(),
+        tripsAsync: tripsAsync,
+        isHydrated: _original != null,
+      );
+      if (placeholder != null) {
+        return PopScope(
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) _onClosed();
+          },
+          child: placeholder,
+        );
+      }
+    }
+
+    final hasChanges = _isEdit ? _edited : _draft.hasUserInput;
+
     return PopScope(
-      // Il modulo con qualcosa scritto chiede conferma prima di uscire.
-      // Durante il salvataggio il back non fa nulla: né uscita né dialogo.
-      canPop: !_saving && !_draft.hasUserInput,
+      // Il modulo con qualcosa scritto (o cambiato) chiede conferma prima di
+      // uscire. Durante il salvataggio il back non fa nulla.
+      canPop: !_saving && !hasChanges,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop || _saving) return;
+        if (didPop) {
+          _onClosed();
+          return;
+        }
+        if (_saving) return;
         _confirmDiscard();
       },
       // Stesso scaffold degli altri form con CTA in fondo: i bottoni restano
@@ -220,10 +340,16 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       // tastiera invece di salire con essa. Due righe (bottone e link) e uno
       // sfondo pieno, perché il link non va letto sopra il testo che scorre.
       child: StickyCtaScaffold(
-        appBar: AppBar(title: Text('trips.new.title'.tr())),
-        ctaHeightOverride:
-            StickyCtaScaffold.standardHeight(context) +
-            kMinInteractiveDimension,
+        appBar: AppBar(
+          title: Text(
+            _isEdit ? 'trips.detail.edit_trip'.tr() : 'trips.new.title'.tr(),
+          ),
+        ),
+        // Il nuovo viaggio ha bottone e link; la modifica solo il bottone.
+        ctaHeightOverride: _isEdit
+            ? null
+            : StickyCtaScaffold.standardHeight(context) +
+                  kMinInteractiveDimension,
         ctaBackgroundColor: Theme.of(context).scaffoldBackgroundColor,
         bottomContent: _buildBottomBar(context),
         body: Builder(
@@ -237,13 +363,14 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DsSteps(
-                  labels: [
-                    'trips.new.step_trip'.tr(),
-                    'trips.new.step_suitcase'.tr(),
-                  ],
-                  current: 0,
-                ),
+                if (!_isEdit)
+                  DsSteps(
+                    labels: [
+                      'trips.new.step_trip'.tr(),
+                      'trips.new.step_suitcase'.tr(),
+                    ],
+                    current: 0,
+                  ),
                 _buildWhere(context),
                 _buildWhen(context),
                 _buildItinerary(context, houseNames),
@@ -462,6 +589,16 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
   }
 
   Widget _buildBottomBar(BuildContext context) {
+    if (_isEdit) {
+      return DsButton(
+        key: const Key('edit_trip_save'),
+        label: 'common.save'.tr(),
+        expand: true,
+        isLoading: _saving,
+        onPressed: _draft.canSave && _edited ? _saveEdit : null,
+        onDisabledTap: _draft.canSave ? null : _showMissing,
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

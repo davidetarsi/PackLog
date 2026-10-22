@@ -62,6 +62,77 @@ class TripDraft {
 
   const TripDraft.empty() : this._();
 
+  /// Bozza di un viaggio esistente, per modificarlo con la stessa pagina del
+  /// nuovo viaggio. [houseName] è il nome della casa di destinazione, se lo è.
+  ///
+  /// La catena delle tappe si ricostruisce dalle date salvate: la meta finisce
+  /// dove parte la prima tappa, ogni tappa dove parte la successiva, l'ultima
+  /// al ritorno. Se mancano date (es. la copia di "Riusa") restano meta e nome
+  /// senza tappe.
+  factory TripDraft.fromTrip(TripModel trip, {String? houseName}) {
+    final houseId = trip.destinationHouseId;
+    final loc = trip.destinationLocation;
+    final DraftPlace? destination = houseId != null
+        ? DraftPlace.house(
+            id: houseId,
+            name: houseName ?? loc?.displayName ?? trip.name,
+          )
+        : loc != null && loc.displayName.trim().isNotEmpty
+        ? DraftPlace.location(loc)
+        : null;
+
+    final departure = trip.departureDateTime == null
+        ? null
+        : _dayOf(trip.departureDateTime!);
+    final ret = trip.returnDateTime == null
+        ? null
+        : _dayOf(trip.returnDateTime!);
+
+    final legs = [...trip.legs]
+      ..sort(
+        (a, b) =>
+            (a.from ?? DateTime(9999)).compareTo(b.from ?? DateTime(9999)),
+      );
+
+    var stops = <DraftStop>[];
+    DateTime? pendingEnd;
+    if (destination != null && departure != null && ret != null) {
+      DateTime? endAt(int i) {
+        // Fine della tappa i (0 = meta): l'inizio della successiva, o il
+        // ritorno per l'ultima.
+        if (i == legs.length) return ret;
+        final next = legs[i].from ?? legs[i].to;
+        return next == null ? null : _dayOf(next);
+      }
+
+      final chain = <DraftStop>[];
+      var complete = true;
+      for (var i = 0; i <= legs.length; i++) {
+        final end = endAt(i);
+        if (end == null) {
+          complete = false;
+          break;
+        }
+        final place = i == 0 ? destination : _placeOfLeg(legs[i - 1]);
+        chain.add(DraftStop(place: place, end: end));
+      }
+      stops = complete ? chain : [DraftStop(place: destination, end: ret)];
+    } else if (ret != null) {
+      pendingEnd = ret;
+    }
+
+    return TripDraft._(
+      departure: departure,
+      stops: List.unmodifiable(stops),
+      destination: destination,
+      name: trip.name,
+      nameEdited:
+          trip.name.trim().isNotEmpty &&
+          trip.name.trim() != destination?.shortName,
+      pendingEnd: pendingEnd,
+    );
+  }
+
   /// Data di partenza del viaggio.
   final DateTime? departure;
 
@@ -271,3 +342,15 @@ class TripDraft {
 }
 
 DateTime _dayOf(DateTime value) => DateTime(value.year, value.month, value.day);
+
+DraftPlace _placeOfLeg(TripLeg leg) => leg.houseId != null
+    ? DraftPlace.house(id: leg.houseId!, name: leg.locationDisplayName)
+    : DraftPlace.location(
+        LocationSuggestionModel(
+          placeId: '',
+          displayName: leg.locationDisplayName,
+          lat: leg.lat,
+          lon: leg.lon,
+          country: leg.country,
+        ),
+      );

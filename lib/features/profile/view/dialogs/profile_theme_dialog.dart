@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../shared/theme/app_spacing.dart';
 import '../../widgets/theme_tile.dart';
 
 Future<void> showProfileThemeDialog(
@@ -26,7 +25,6 @@ Future<void> showProfileThemeDialog(
               Navigator.of(dialogContext).pop();
             },
           ),
-          AppSpacing.gapSm,
           ThemeTile(
             mode: ThemeMode.dark,
             title: 'settings.theme_dark'.tr(),
@@ -37,7 +35,6 @@ Future<void> showProfileThemeDialog(
               Navigator.of(dialogContext).pop();
             },
           ),
-          AppSpacing.gapSm,
           ThemeTile(
             mode: ThemeMode.system,
             title: 'settings.theme_system'.tr(),

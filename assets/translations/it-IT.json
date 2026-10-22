@@ -10,11 +10,11 @@
     "cancelled": "Accesso annullato.",
     "sign_out": "Esci",
     "sign_out_failed": "Errore durante la disconnessione",
-    "consent_prefix": "Continuando accetto la ",
+    "consent_prefix": "Continuando accetti i ",
     "consent_privacy": "Privacy Policy",
-    "consent_separator": " e i ",
+    "consent_separator": " e dichiari di aver letto la ",
     "consent_terms": "Termini di Servizio",
-    "consent_required": "Devi accettare Privacy Policy e Termini di Servizio per continuare"
+    "consent_suffix": "."
   },
   "navigation": {
     "houses": "Case",
@@ -35,8 +35,10 @@
     "no_houses_subtitle": "Aggiungi la tua prima casa",
     "no_houses_title": "Nessuna casa presente",
     "name_label": "Nome",
-    "location_label": "Località *",
-    "location_hint": "Cerca città, regione o stato...",
+    "name_hint": "Es. Casa al mare",
+    "name_help": "Se lo lasci vuoto, la casa si chiama come il luogo.",
+    "where_label": "Dove si trova?",
+    "location_hint": "Città, regione o paese",
     "primary_house_set": "\"{}\" è ora la casa principale",
     "total_items": "{} oggetti salvati",
     "badge_in_trip": "In viaggio",
@@ -158,6 +160,10 @@
     "other": "Altro"
   },
   "trips": {
+    "edit": {
+      "discard_title": "Uscire senza salvare?",
+      "discard_message": "Le modifiche al viaggio andranno perse."
+    },
     "detail": {
       "edit_trip": "Modifica viaggio",
       "duplicate": "Duplica",
@@ -168,6 +174,7 @@
       "duplicated": "Viaggio duplicato"
     },
     "pack": {
+      "ai_coming_soon": "La valigia preparata dall’AI è in arrivo",
       "title": "Prepara la valigia",
       "luggages": "Bagagli",
       "no_luggages": "Non hai ancora bagagli.",
@@ -316,6 +323,7 @@
     }
   },
   "common": {
+    "coming_soon": "In arrivo",
     "save": "Salva",
     "save_changes": "Salva modifiche",
     "cancel": "Annulla",
@@ -417,8 +425,10 @@
     "copy_success": "\"{}\" copiato con successo"
   },
   "profile": {
+    "section_preferences": "Preferenze",
+    "section_account": "Account",
     "ai_usage_title": "Usi AI",
-    "ai_usage_subtitle": "{} / {} usati questo mese",
+    "ai_usage_subtitle": "{} di {} usati questo mese",
     "ai_usage_resets": "Si rinnovano il {}",
     "ai_usage_bonus": "+{} usi in regalo, validi fino al {}",
     "logout_confirm_title": "Esci dall'account?",
@@ -427,7 +437,7 @@
     "logout_warning_body": "Hai {} modifiche locali non ancora caricate sul cloud. Cosa vuoi fare?",
     "logout_sync_first": "Sincronizza ed esci",
     "logout_force": "Esci comunque",
-    "sync_status_title": "Stato sincronizzazione",
+    "sync_status_title": "Sincronizzazione",
     "sync_status_synced": "Tutto sincronizzato",
     "sync_status_pending": "{} modifiche in attesa",
     "sync_status_retry": "Riprova ora",
@@ -458,7 +468,7 @@
     "view_project_subtitle": "Repository GitHub",
     "open_link_error": "Impossibile aprire il link",
     "analytics_title": "Statistiche d'uso",
-    "analytics_subtitle": "Aiutaci a migliorare l'app con dati anonimi sull'utilizzo. Puoi disattivarle in qualsiasi momento."
+    "analytics_subtitle": "Dati d'uso che ci aiutano a migliorare l'app"
   },
   "ai_import": {
     "already_here_title": "C'è già in {}?",
@@ -527,7 +537,7 @@
       "title": "I tuoi viaggi",
       "description": "Crea un viaggio e seleziona gli oggetti da portare. Durante il viaggio li ritrovi automaticamente segnati come \"in viaggio\"."
     },
-    "default_house_name": "Casa di prova",
+    "default_house_name": "Casa",
     "skip": "Salta",
     "complete_failed": "Non è stato possibile salvare. Riprova."
   },
@@ -535,28 +545,20 @@
     "relaunch_title": "Ripeti il tour",
     "relaunch_subtitle": "Rivedi le funzioni principali di Pack Log",
     "step_counter": "{current} / {total}",
-    "skip": "Salta",
+    "skip": "Salta il tour",
     "next": "Avanti",
-    "finish": "Inizia",
-    "house_tooltip": {
-      "title": "Crea la tua prima casa",
-      "body": "Tocca «Nuova casa» in fondo all'elenco per aggiungere la tua prima casa."
-    },
-    "default_house_tooltip": {
-      "title": "Apri la Casa di prova",
-      "body": "I tuoi oggetti AI sono nella 'Casa di prova'. Toccala per aprirla e spostarli dove vuoi."
-    },
-    "move_items_tooltip": {
-      "title": "Sposta gli oggetti",
-      "body": "Tieni premuto su un oggetto per selezionarlo, seleziona quelli che vuoi spostare, poi tocca Sposta."
+    "finish": "Fatto",
+    "house_detail_tooltip": {
+      "title": "Ecco i tuoi capi",
+      "body": "Sono nella casa appena creata. Tocca il nome in alto per darle un nome e dire dove si trova."
     },
     "create_trip_tooltip": {
-      "title": "Crea il tuo primo viaggio",
-      "body": "Tocca Crea e scegli «Nuovo viaggio» per creare il tuo primo viaggio."
+      "title": "Tutto parte da Crea",
+      "body": "Da qui aggiungi viaggi, nuove case e altre scansioni AI. Prova a creare il tuo primo viaggio."
     },
     "trip_creation_tooltip": {
-      "title": "Organizza il tuo viaggio",
-      "body": "Qui puoi aggiungere una destinazione, le date e scegliere gli oggetti da portare. Ogni viaggio ha la sua checklist."
+      "title": "Il tuo primo viaggio",
+      "body": "Scegli destinazione e date: poi ti proponiamo cosa mettere in valigia, in base a meteo e durata."
     }
   },
   "onboarding_tour": {
@@ -566,10 +568,11 @@
       "cta": "Scatta o carica una foto",
       "skip": "Salta"
     },
-    "ai_save_tooltip": "Salveremo questi oggetti in una nuova casa 'Casa di prova'. Potrai spostarli quando vuoi."
+    "ai_save_tooltip": "Li salviamo in una casa nuova, «Casa». Subito dopo potrai darle il nome e il luogo giusti."
   },
   "location_search": {
-    "rate_limit_reached": "Troppe ricerche di località, riprova tra qualche minuto."
+    "rate_limit_reached": "Troppe ricerche di località, riprova tra qualche minuto.",
+    "no_results": "Nessun luogo trovato. Prova con il nome di una città."
   },
   "create_sheet": {
     "title": "Crea",
@@ -583,7 +586,9 @@
     "new_house": "Nuova casa",
     "new_house_hint": "Un altro posto dove tieni le tue cose",
     "new_trip": "Nuovo viaggio",
-    "new_trip_hint": "Destinazione, date e cosa portare"
+    "new_trip_hint": "Destinazione, date e cosa portare",
+    "ai_suitcase": "Valigia con AI",
+    "ai_suitcase_hint": "Ti prepara la valigia in base a meta, meteo e durata"
   },
   "promo": {
     "link": "Hai un codice promo?",

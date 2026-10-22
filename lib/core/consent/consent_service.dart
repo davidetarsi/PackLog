@@ -53,7 +53,7 @@ class ConsentService {
   /// consenso questo valore è irrilevante.
   bool get analyticsEnabled => _analyticsEnabled;
 
-  /// Istante in cui la casella è stata spuntata (t0). Da usare per il flush
+  /// Istante del tocco su "Accedi con Google" (t0). Da usare per il flush
   /// remoto: il registro deve riportare quando il consenso è stato prestato,
   /// non quando è stato trasmesso.
   DateTime? get givenAt => _givenAt;

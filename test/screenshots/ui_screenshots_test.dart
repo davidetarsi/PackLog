@@ -275,37 +275,14 @@ final flows = <Flow>[
     Scenario(
       4,
       'login',
-      'consenso-mancante',
-      route: '/login',
-      source: 'lib/features/auth/view/login_screen.dart',
-      description: 'Login con Google, checkbox privacy non spuntata.',
-      setup: const AppSetup(authenticated: false, seed: SeedLevel.empty),
-      steps: (app) async {},
-    ),
-    Scenario(
-      5,
-      'login',
-      'errore-consenso',
+      'default',
       route: '/login',
       source: 'lib/features/auth/view/login_screen.dart',
       description:
-          'Tap su "Accedi con Google" senza consenso: snackbar di errore.',
+          'Login con Google; sotto, l\'avviso che continuare vale come '
+          'accettazione dei Termini.',
       setup: const AppSetup(authenticated: false, seed: SeedLevel.empty),
-      steps: (app) async {
-        await app.tap(_text('login.sign_in_google'), frames: 4);
-      },
-    ),
-    Scenario(
-      6,
-      'login',
-      'consenso-dato',
-      route: '/login',
-      source: 'lib/features/auth/view/login_screen.dart',
-      description: 'Checkbox spuntata, CTA abilitata.',
-      setup: const AppSetup(authenticated: false, seed: SeedLevel.empty),
-      steps: (app) async {
-        await app.tap(find.byType(Checkbox));
-      },
+      steps: (app) async {},
     ),
   ]),
 
@@ -381,6 +358,52 @@ final flows = <Flow>[
     ),
   ]),
 
+  Flow('02b-tour', 'Tour dopo la prova AI: tre suggerimenti', [
+    Scenario(
+      1,
+      'tour',
+      'casa-creata',
+      route: '/houses/:id',
+      source: 'lib/features/tour/widgets/tour_trigger_wrapper.dart',
+      description: 'Dentro la casa creata dalla prova AI: tocca il nome.',
+      setup: const AppSetup(
+        tourStep: OnboardingStep.houseDetailTooltip,
+        tourHouseId: kHomeId,
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.settle(frames: 30);
+      },
+    ),
+    Scenario(
+      2,
+      'tour',
+      'crea',
+      route: '/',
+      source: 'lib/features/tour/controllers/tour_orchestrator.dart',
+      description: 'Sul bottone Crea: viaggi, case e scansioni partono da qui.',
+      setup: const AppSetup(tourStep: OnboardingStep.createTripTooltip),
+      steps: (app) async {
+        await app.go('/');
+        await app.settle(frames: 30);
+      },
+    ),
+    Scenario(
+      3,
+      'tour',
+      'nuovo-viaggio',
+      route: '/new-trip',
+      source: 'lib/features/tour/widgets/tour_trigger_wrapper.dart',
+      description: 'Nel nuovo viaggio: destinazione, date, poi la valigia.',
+      setup: const AppSetup(tourStep: OnboardingStep.tripCreationTooltip),
+      steps: (app) async {
+        await app.go('/');
+        await app.push('/new-trip');
+        await app.settle(frames: 30);
+      },
+    ),
+  ]),
+
   Flow('03-case', 'Tab Case: elenco e creazione', [
     Scenario(
       1,
@@ -446,6 +469,25 @@ final flows = <Flow>[
       steps: (app) async {
         await app.go('/');
         await app.tap(find.text('houses.new_house_row'.tr()));
+      },
+    ),
+    Scenario(
+      7,
+      'casa-form',
+      'ricerca-luogo',
+      source: 'lib/shared/widgets/location_autocomplete_field.dart',
+      description: 'Ricerca del luogo: risultati sotto il campo.',
+      steps: (app) async {
+        await app.go('/');
+        await app.tap(find.text('houses.new_house_row'.tr()));
+        await app.tester.enterText(
+          find.descendant(
+            of: find.byKey(const Key('house_sheet_location')),
+            matching: find.byType(TextField),
+          ),
+          'Lis',
+        );
+        await app.settle();
       },
     ),
   ]),

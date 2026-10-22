@@ -98,6 +98,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   padding: EdgeInsets.only(right: context.spacingSm),
                   child: TextButton(
                     key: const Key('onboarding_skip'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant,
+                    ),
                     onPressed: _isCompleting
                         ? null
                         : () => _handleComplete(skipped: true),
@@ -150,7 +155,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             _DotsIndicator(
               count: 3,
               currentIndex: _currentPage,
-              activeColor: Theme.of(context).colorScheme.primary,
+              // Neutri: l'arancio di questa pagina è solo il bottone.
+              activeColor: Theme.of(context).colorScheme.onSurface,
               inactiveColor: Theme.of(context).colorScheme.outlineVariant,
             ),
             SizedBox(height: context.spacingMd),

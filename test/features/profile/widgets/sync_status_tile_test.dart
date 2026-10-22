@@ -38,7 +38,7 @@ void main() {
 
     expect(find.byIcon(Icons.cloud_done_outlined), findsOneWidget);
     // No retry button when synced.
-    expect(find.byType(TextButton), findsNothing);
+    expect(find.bySubtype<TextButton>(), findsNothing);
   });
 
   testWidgets('shows pending count and retry button when there are changes', (
@@ -54,7 +54,7 @@ void main() {
 
     expect(find.byIcon(Icons.cloud_upload_outlined), findsOneWidget);
     expect(
-      find.byType(TextButton),
+      find.bySubtype<TextButton>(),
       findsOneWidget,
       reason: 'retry button must be visible when there are pending changes',
     );
@@ -94,13 +94,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tapped via the leading icon rather than the ListTile's bounding-box
-      // center: with an unresolved (raw-key) translation the trailing retry
-      // TextButton renders wide enough to visually cover the ListTile's
-      // geometric center in this test harness, which would make a
-      // center-point tap land on the retry button's onPressed instead of the
-      // tile's own onTap.
-      await tester.tap(find.byIcon(Icons.cloud_upload_outlined));
+      // Si tocca l'etichetta, non il centro della riga: a destra c'è il
+      // bottone "Riprova", che ha un suo onPressed.
+      await tester.tap(find.text('profile.sync_status_title'.tr()));
       await tester.pumpAndSettle();
 
       expect(find.byType(AlertDialog), findsOneWidget);

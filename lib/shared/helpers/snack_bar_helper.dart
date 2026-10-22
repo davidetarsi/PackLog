@@ -61,6 +61,19 @@ class AppSnackBar {
     );
   }
 
+  /// Mostra uno SnackBar **informativo**, neutro (`inverseSurface`).
+  ///
+  /// Usare per avvisi che non sono né un successo né un problema
+  /// (es. "funzione in arrivo").
+  static void showInfo(BuildContext context, String message) {
+    _show(
+      context: context,
+      message: message,
+      backgroundColor: Theme.of(context).colorScheme.inverseSurface,
+      textColor: Theme.of(context).colorScheme.onInverseSurface,
+    );
+  }
+
   // ── Internal ────────────────────────────────────────────────────────────────
 
   static void _show({

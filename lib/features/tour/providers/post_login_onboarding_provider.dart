@@ -16,7 +16,7 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     final hasExistingHouses = await repo.loadHasExistingHouses();
     final defaultHouseId = await repo.loadDefaultHouseId();
     return OnboardingState(
-      step: step,
+      step: step.current,
       skippedAi: skippedAi,
       hasExistingHouses: hasExistingHouses,
       defaultHouseId: defaultHouseId,
@@ -31,11 +31,13 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
       await repo.saveStep(OnboardingStep.done);
       state = AsyncData(current.copyWith(step: OnboardingStep.done));
     } else {
-      await repo.saveStep(OnboardingStep.houseTooltip);
+      // Il router porta dentro la casa appena creata, dove scatta il primo
+      // tip: darle un nome e un luogo veri.
+      await repo.saveStep(OnboardingStep.houseDetailTooltip);
       await repo.saveDefaultHouseId(defaultHouseId);
       state = AsyncData(
         current.copyWith(
-          step: OnboardingStep.houseTooltip,
+          step: OnboardingStep.houseDetailTooltip,
           defaultHouseId: defaultHouseId,
         ),
       );
@@ -50,7 +52,7 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
   /// disponibile "Ripeti il tour" dal Profilo.
   ///
   /// `skippedAi` continua a essere persistito per distinguere questa uscita
-  /// dal completamento naturale (analytics) — vedi anche [_nextStep].
+  /// dal completamento naturale (analytics).
   Future<void> skipAi() async {
     final current = state.valueOrNull;
     if (current == null) return;
@@ -107,21 +109,9 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
   }
 
   static OnboardingStep _nextStep(OnboardingState s) {
-    return switch (s.step) {
-      // Il ramo `skippedAi` non è più raggiungibile dal flusso corrente
-      // ([skipAi] va dritto a `done`), ma va tenuto per lo stato LEGACY: un
-      // utente che ha premuto Salta con una build precedente ha in
-      // SharedPreferences `step=houseTooltip` + `skippedAi=true`. Senza questo
-      // ramo finirebbe su `defaultHouseTooltip` ("Apri la Casa di prova"), un
-      // tip che punta a una casa che nel suo caso non esiste.
-      OnboardingStep.houseTooltip =>
-        s.skippedAi
-            ? OnboardingStep.createTripTooltip
-            : OnboardingStep.defaultHouseTooltip,
-      OnboardingStep.defaultHouseTooltip => OnboardingStep.moveItemsTooltip,
-      OnboardingStep.moveItemsTooltip => OnboardingStep.createTripTooltip,
+    return switch (s.step.current) {
+      OnboardingStep.houseDetailTooltip => OnboardingStep.createTripTooltip,
       OnboardingStep.createTripTooltip => OnboardingStep.tripCreationTooltip,
-      OnboardingStep.tripCreationTooltip => OnboardingStep.done,
       _ => OnboardingStep.done,
     };
   }

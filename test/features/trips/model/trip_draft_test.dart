@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/trips/model/trip_draft.dart';
+import 'package:pack_log/features/trips/model/trip_leg.dart';
+import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/model/trip_postcard.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 
@@ -336,6 +338,99 @@ void main() {
       expect(cleared.hasDestination, isFalse);
       expect(cleared.departure, o29);
       expect(cleared.returnDate, d(1));
+    });
+  });
+
+  group('TripDraft.fromTrip', () {
+    final milano = LocationSuggestionModel(
+      placeId: 'm',
+      displayName: 'Milano, Italia',
+      city: 'Milano',
+    );
+
+    TripModel trip({
+      List<TripLeg> legs = const [],
+      String name = 'Milano',
+      DateTime? departure,
+      DateTime? ret,
+      String? houseId,
+    }) => TripModel(
+      id: 't',
+      name: name,
+      departureDateTime: departure,
+      returnDateTime: ret,
+      destinationHouseId: houseId,
+      destinationLocation: houseId == null ? milano : null,
+      legs: legs,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    test('ricostruisce la catena: la meta finisce dove parte la tappa', () {
+      final draft = TripDraft.fromTrip(
+        trip(
+          departure: DateTime(2026, 5, 1),
+          ret: DateTime(2026, 5, 8),
+          legs: [
+            TripLeg(
+              id: 'l',
+              locationDisplayName: 'Como',
+              from: DateTime(2026, 5, 4),
+              to: DateTime(2026, 5, 8),
+            ),
+          ],
+        ),
+      );
+      expect(draft.stops.length, 2);
+      expect(draft.stops[0].end, DateTime(2026, 5, 4));
+      expect(draft.stops[1].place.name, 'Como');
+      expect(draft.returnDate, DateTime(2026, 5, 8));
+      expect(draft.canSave, isTrue);
+    });
+
+    test('salvare senza cambiare nulla riporta le stesse date e tappe', () {
+      final original = trip(
+        departure: DateTime(2026, 5, 1),
+        ret: DateTime(2026, 5, 8),
+        legs: [
+          TripLeg(
+            id: 'l',
+            locationDisplayName: 'Como',
+            from: DateTime(2026, 5, 4),
+            to: DateTime(2026, 5, 8),
+          ),
+        ],
+      );
+      final back = TripDraft.fromTrip(
+        original,
+      ).toTripModel(id: 't', now: DateTime(2026));
+      expect(back.name, 'Milano');
+      expect(back.departureDateTime, original.departureDateTime);
+      expect(back.returnDateTime, original.returnDateTime);
+      expect(back.legs.single.from, DateTime(2026, 5, 4));
+      expect(back.legs.single.to, DateTime(2026, 5, 8));
+      expect(back.destinationLocation, milano);
+    });
+
+    test('senza date (copia di Riusa): meta e nome, nessuna tappa', () {
+      final draft = TripDraft.fromTrip(trip());
+      expect(draft.hasDestination, isTrue);
+      expect(draft.stops, isEmpty);
+      expect(draft.hasDates, isFalse);
+    });
+
+    test('un nome diverso dalla meta conta come scritto a mano', () {
+      expect(TripDraft.fromTrip(trip(name: 'Lavoro')).nameEdited, isTrue);
+      expect(TripDraft.fromTrip(trip()).nameEdited, isFalse);
+    });
+
+    test('meta casa: usa il nome della casa', () {
+      final draft = TripDraft.fromTrip(
+        trip(houseId: 'h1', name: 'Baita'),
+        houseName: 'Baita',
+      );
+      expect(draft.destination?.houseId, 'h1');
+      expect(draft.destination?.name, 'Baita');
     });
   });
 }

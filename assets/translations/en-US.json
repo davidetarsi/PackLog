@@ -10,11 +10,11 @@
     "cancelled": "Sign-in cancelled.",
     "sign_out": "Sign out",
     "sign_out_failed": "Error during sign out",
-    "consent_prefix": "By continuing I accept the ",
+    "consent_prefix": "By continuing you accept the ",
     "consent_privacy": "Privacy Policy",
-    "consent_separator": " and the ",
+    "consent_separator": " and confirm you have read the ",
     "consent_terms": "Terms of Service",
-    "consent_required": "You must accept the Privacy Policy and Terms of Service to continue"
+    "consent_suffix": "."
   },
   "navigation": {
     "houses": "Houses",
@@ -35,8 +35,10 @@
     "no_houses_subtitle": "Add your first house",
     "no_houses_title": "No houses yet",
     "name_label": "Name",
-    "location_label": "Location *",
-    "location_hint": "Search for city, region or state...",
+    "name_hint": "E.g. Beach house",
+    "name_help": "Leave it empty to name the house after the place.",
+    "where_label": "Where is it?",
+    "location_hint": "City, region or country",
     "primary_house_set": "\"{}\" is now the primary house",
     "total_items": "{} items saved",
     "badge_in_trip": "On trip",
@@ -158,6 +160,10 @@
     "other": "Other"
   },
   "trips": {
+    "edit": {
+      "discard_title": "Leave without saving?",
+      "discard_message": "Your changes to the trip will be lost."
+    },
     "detail": {
       "edit_trip": "Edit trip",
       "duplicate": "Duplicate",
@@ -168,6 +174,7 @@
       "duplicated": "Trip duplicated"
     },
     "pack": {
+      "ai_coming_soon": "The AI-packed suitcase is coming soon",
       "title": "Pack your suitcase",
       "luggages": "Luggage",
       "no_luggages": "You have no luggage yet.",
@@ -316,6 +323,7 @@
     }
   },
   "common": {
+    "coming_soon": "Coming soon",
     "save": "Save",
     "save_changes": "Save changes",
     "cancel": "Cancel",
@@ -417,8 +425,10 @@
     "copy_success": "\"{}\" copied successfully"
   },
   "profile": {
+    "section_preferences": "Preferences",
+    "section_account": "Account",
     "ai_usage_title": "AI uses",
-    "ai_usage_subtitle": "{} / {} used this month",
+    "ai_usage_subtitle": "{} of {} used this month",
     "ai_usage_resets": "Renews on {}",
     "ai_usage_bonus": "+{} free uses, valid until {}",
     "logout_confirm_title": "Sign out?",
@@ -427,7 +437,7 @@
     "logout_warning_body": "You have {} local changes not yet uploaded to the cloud. What do you want to do?",
     "logout_sync_first": "Sync then sign out",
     "logout_force": "Sign out anyway",
-    "sync_status_title": "Sync status",
+    "sync_status_title": "Sync",
     "sync_status_synced": "All synced",
     "sync_status_pending": "{} pending changes",
     "sync_status_retry": "Retry now",
@@ -458,7 +468,7 @@
     "view_project_subtitle": "GitHub repository",
     "open_link_error": "Cannot open the link",
     "analytics_title": "Usage statistics",
-    "analytics_subtitle": "Help us improve the app with anonymous usage data. You can turn this off at any time."
+    "analytics_subtitle": "Usage data that helps us improve the app"
   },
   "ai_import": {
     "already_here_title": "Already in {}?",
@@ -527,7 +537,7 @@
       "title": "Your trips",
       "description": "Create a trip and select the items to bring. During the trip, they're automatically marked as \"travelling\"."
     },
-    "default_house_name": "Demo House",
+    "default_house_name": "Home",
     "skip": "Skip",
     "complete_failed": "Couldn't save. Please try again."
   },
@@ -535,28 +545,20 @@
     "relaunch_title": "Replay tour",
     "relaunch_subtitle": "Review Pack Log's main features",
     "step_counter": "{current} / {total}",
-    "skip": "Skip",
+    "skip": "Skip tour",
     "next": "Next",
-    "finish": "Let's go",
-    "house_tooltip": {
-      "title": "Create your first home",
-      "body": "Tap \"New house\" at the bottom of the list to add your first house."
-    },
-    "default_house_tooltip": {
-      "title": "Open the Demo House",
-      "body": "Your AI items are in 'Demo House'. Tap it to open and move them wherever you like."
-    },
-    "move_items_tooltip": {
-      "title": "Move items",
-      "body": "Long-press an item to select it, select the ones you want to move, then tap Move."
+    "finish": "Done",
+    "house_detail_tooltip": {
+      "title": "Here are your clothes",
+      "body": "They are in the house we just created. Tap the name at the top to rename it and say where it is."
     },
     "create_trip_tooltip": {
-      "title": "Create your first trip",
-      "body": "Tap Create and choose \"New trip\" to create your first trip."
+      "title": "Everything starts from Create",
+      "body": "From here you add trips, new houses and more AI scans. Try creating your first trip."
     },
     "trip_creation_tooltip": {
-      "title": "Plan your trip",
-      "body": "Add a destination, dates, and choose what to pack. Every trip gets its own checklist."
+      "title": "Your first trip",
+      "body": "Pick destination and dates: then we suggest what to pack, based on weather and length."
     }
   },
   "onboarding_tour": {
@@ -566,10 +568,11 @@
       "cta": "Take or upload a photo",
       "skip": "Skip"
     },
-    "ai_save_tooltip": "We'll save these items in a new 'Demo House'. You can move them whenever you like."
+    "ai_save_tooltip": "We save them in a new house, “Home”. Right after, you can give it the right name and place."
   },
   "location_search": {
-    "rate_limit_reached": "Too many location searches, please try again in a few minutes."
+    "rate_limit_reached": "Too many location searches, please try again in a few minutes.",
+    "no_results": "No places found. Try the name of a city."
   },
   "create_sheet": {
     "title": "Create",
@@ -583,7 +586,9 @@
     "new_house": "New house",
     "new_house_hint": "Another place where you keep your things",
     "new_trip": "New trip",
-    "new_trip_hint": "Destination, dates and what to pack"
+    "new_trip_hint": "Destination, dates and what to pack",
+    "ai_suitcase": "AI suitcase",
+    "ai_suitcase_hint": "Packs for you based on destination, weather and length"
   },
   "promo": {
     "link": "Have a promo code?",

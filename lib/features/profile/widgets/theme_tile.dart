@@ -25,47 +25,19 @@ class ThemeTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-      child: Container(
-        padding: EdgeInsets.all(context.spacingMd),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: isSelected
-                ? colorScheme.primary
-                : colorScheme.outlineVariant,
-            width: isSelected ? 2 : 1,
-          ),
-          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          color: isSelected
-              ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-              : null,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 32,
-              color: isSelected
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant,
-            ),
-            SizedBox(width: context.spacingMd),
-            Expanded(
-              child: Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  // 16px selected +1 = w600
-                  color: isSelected ? colorScheme.primary : null,
-                ),
-              ),
-            ),
-            if (isSelected)
-              Icon(Icons.check_circle, color: colorScheme.primary),
-          ],
-        ),
+    // Riga leggera come quelle dei moduli: la scelta corrente ha solo la
+    // spunta arancione, senza bordo né sfondo colorato.
+    return ListTile(
+      contentPadding: EdgeInsets.symmetric(horizontal: context.spacingSm),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
       ),
+      leading: Icon(icon, color: colorScheme.onSurfaceVariant),
+      title: Text(title, style: Theme.of(context).textTheme.bodyLarge),
+      trailing: isSelected
+          ? Icon(Icons.check, color: colorScheme.primary)
+          : null,
+      onTap: onTap,
     );
   }
 }

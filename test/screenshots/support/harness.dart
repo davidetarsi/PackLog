@@ -80,6 +80,9 @@ class AppSetup {
   final bool onboardingCompleted;
   final bool authenticated;
   final OnboardingStep tourStep;
+
+  /// Casa creata dalla prova AI (`defaultHouseId` del tour).
+  final String? tourHouseId;
   final SeedLevel seed;
   final int unsyncedChanges;
   final List<Override> extraOverrides;
@@ -88,6 +91,7 @@ class AppSetup {
     this.onboardingCompleted = true,
     this.authenticated = true,
     this.tourStep = OnboardingStep.done,
+    this.tourHouseId,
     this.seed = SeedLevel.full,
     this.unsyncedChanges = 0,
     this.extraOverrides = const [],
@@ -118,7 +122,7 @@ class _FakeAuthRepository implements AuthRepository {
 }
 
 class _MemoryOnboardingRepository implements IOnboardingRepository {
-  _MemoryOnboardingRepository(this._step);
+  _MemoryOnboardingRepository(this._step, this._defaultHouse);
 
   OnboardingStep _step;
   bool _skipped = false;
@@ -268,7 +272,7 @@ class ScreenshotApp {
         appDatabaseProvider.overrideWithValue(db),
         authRepositoryProvider.overrideWithValue(_FakeAuthRepository(auth)),
         onboardingRepositoryProvider.overrideWithValue(
-          _MemoryOnboardingRepository(setup.tourStep),
+          _MemoryOnboardingRepository(setup.tourStep, setup.tourHouseId),
         ),
         // Consenso mai caricato → gate fail-closed: nessun evento parte.
         analyticsServiceProvider.overrideWithValue(

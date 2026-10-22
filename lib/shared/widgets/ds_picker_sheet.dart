@@ -110,7 +110,7 @@ class DsPickerSheet<T> extends StatelessWidget {
 
                     return ListTile(
                       leading: iconData != null
-                          ? Icon(iconData, color: cs.primary)
+                          ? Icon(iconData, color: cs.onSurfaceVariant)
                           : null,
                       title: Text(getLabel(item)),
                       subtitle: subtitle != null ? Text(subtitle) : null,

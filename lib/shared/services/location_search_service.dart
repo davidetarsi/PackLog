@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
 import '../model/model.dart';
+import 'location_ranking.dart';
 
 part 'location_search_service.g.dart';
 
@@ -84,7 +85,7 @@ class LocationSearchService {
         }
       }
 
-      return uniqueSuggestions.take(5).toList();
+      return rankLocationSuggestions(query, uniqueSuggestions).take(5).toList();
     } on GeocodeRateLimitException {
       rethrow;
     } catch (e) {

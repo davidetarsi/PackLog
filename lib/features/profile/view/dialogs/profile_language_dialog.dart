@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../shared/theme/app_spacing.dart';
 import '../../widgets/language_tile.dart';
 
 Future<void> showProfileLanguageDialog(BuildContext context) {
@@ -22,7 +21,6 @@ Future<void> showProfileLanguageDialog(BuildContext context) {
               if (dialogContext.mounted) Navigator.of(dialogContext).pop();
             },
           ),
-          AppSpacing.gapSm,
           LanguageTile(
             locale: const Locale('en', 'US'),
             title: 'English',

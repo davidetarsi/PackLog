@@ -10,6 +10,7 @@ import '../../../../shared/services/location_search_service.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/ds_group_header.dart';
 import '../../../../shared/widgets/ds_settings.dart';
+import '../../../../shared/widgets/location_result_row.dart';
 import '../../../houses/model/house_model.dart';
 import '../../../houses/providers/house_provider.dart';
 import '../../model/trip_draft.dart';
@@ -228,7 +229,7 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
                 DsSettingsGroup(
                   children: [
                     for (final (i, place) in _places.indexed)
-                      _PlaceRow(
+                      LocationResultRow(
                         key: Key('place_search_location_$i'),
                         place: place,
                         onTap: () => _select(
@@ -258,22 +259,6 @@ class _HouseRow extends StatelessWidget {
     return _ResultRow(
       icon: HouseIcons.getIcon(house.iconName),
       label: house.displayName,
-      onTap: onTap,
-    );
-  }
-}
-
-class _PlaceRow extends StatelessWidget {
-  const _PlaceRow({super.key, required this.place, required this.onTap});
-
-  final LocationSuggestionModel place;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return _ResultRow(
-      icon: Icons.place_outlined,
-      label: place.displayName,
       onTap: onTap,
     );
   }
