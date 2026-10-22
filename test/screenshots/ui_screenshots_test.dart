@@ -275,37 +275,14 @@ final flows = <Flow>[
     Scenario(
       4,
       'login',
-      'consenso-mancante',
-      route: '/login',
-      source: 'lib/features/auth/view/login_screen.dart',
-      description: 'Login con Google, checkbox privacy non spuntata.',
-      setup: const AppSetup(authenticated: false, seed: SeedLevel.empty),
-      steps: (app) async {},
-    ),
-    Scenario(
-      5,
-      'login',
-      'errore-consenso',
+      'default',
       route: '/login',
       source: 'lib/features/auth/view/login_screen.dart',
       description:
-          'Tap su "Accedi con Google" senza consenso: snackbar di errore.',
+          'Login con Google; sotto, l\'avviso che continuare vale come '
+          'accettazione dei Termini.',
       setup: const AppSetup(authenticated: false, seed: SeedLevel.empty),
-      steps: (app) async {
-        await app.tap(_text('login.sign_in_google'), frames: 4);
-      },
-    ),
-    Scenario(
-      6,
-      'login',
-      'consenso-dato',
-      route: '/login',
-      source: 'lib/features/auth/view/login_screen.dart',
-      description: 'Checkbox spuntata, CTA abilitata.',
-      setup: const AppSetup(authenticated: false, seed: SeedLevel.empty),
-      steps: (app) async {
-        await app.tap(find.byType(Checkbox));
-      },
+      steps: (app) async {},
     ),
   ]),
 

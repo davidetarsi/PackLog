@@ -10,11 +10,11 @@
     "cancelled": "Sign-in cancelled.",
     "sign_out": "Sign out",
     "sign_out_failed": "Error during sign out",
-    "consent_prefix": "By continuing I accept the ",
+    "consent_prefix": "By continuing you accept the ",
     "consent_privacy": "Privacy Policy",
-    "consent_separator": " and the ",
+    "consent_separator": " and confirm you have read the ",
     "consent_terms": "Terms of Service",
-    "consent_required": "You must accept the Privacy Policy and Terms of Service to continue"
+    "consent_suffix": "."
   },
   "navigation": {
     "houses": "Houses",
@@ -453,7 +453,7 @@
     "theme_dark": "Dark",
     "theme_system": "System",
     "about": "About",
-    "about_section_title": "Help & info",
+    "about_section_title": "About",
     "feedback": "Report bugs or send suggestions",
     "feedback_subtitle": "Open the Google Form",
     "view_project": "View project",
