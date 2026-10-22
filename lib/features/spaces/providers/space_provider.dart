@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
+import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/space_model.dart';
 import '../repositories/space_repository.dart';
@@ -29,6 +30,10 @@ class SpaceNotifier extends _$SpaceNotifier
 
   Future<void> addSpace(SpaceModel model) => mutate(
     operation: () => _repo.addSpace(model),
+    committedState: (previous) => [
+      ...previous.where((s) => s.id != model.id),
+      model,
+    ],
     reload: () => _repo.getSpacesByHouseId(houseId),
     rethrowOnly: true,
     onSuccess: (_) =>
@@ -37,12 +42,20 @@ class SpaceNotifier extends _$SpaceNotifier
 
   Future<void> updateSpace(SpaceModel model) => mutate(
     operation: () => _repo.updateSpace(model),
+    committedState: (previous) => [
+      for (final s in previous) s.id == model.id ? model : s,
+    ],
     reload: () => _repo.getSpacesByHouseId(houseId),
     rethrowOnly: true,
   );
 
   Future<void> deleteSpace(String id) => mutate(
-    operation: () => _repo.deleteSpace(id),
+    operation: () async {
+      if (!await _repo.deleteSpace(id)) {
+        throw EntitySaveException('deleteSpace($id)');
+      }
+    },
+    committedState: (previous) => previous.where((s) => s.id != id).toList(),
     reload: () => _repo.getSpacesByHouseId(houseId),
     rethrowOnly: true,
   );

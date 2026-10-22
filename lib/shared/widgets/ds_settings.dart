@@ -46,6 +46,7 @@ class DsSettingsGroup extends StatelessWidget {
 /// l'etichetta, per le righe che da sole non si capiscono.
 class DsSettingsRow extends StatelessWidget {
   final String label;
+  final Widget? leading;
   final String? subtitle;
   final String? value;
   final Widget? trailing;
@@ -54,6 +55,7 @@ class DsSettingsRow extends StatelessWidget {
   const DsSettingsRow({
     super.key,
     required this.label,
+    this.leading,
     this.subtitle,
     this.value,
     this.trailing,
@@ -102,6 +104,7 @@ class DsSettingsRow extends StatelessWidget {
 
     final subtitle = this.subtitle;
     return ListTile(
+      leading: leading,
       minTileHeight: context.responsive(56),
       contentPadding: EdgeInsets.symmetric(horizontal: context.spacingMd),
       title: Text(label, style: textTheme.bodyLarge),

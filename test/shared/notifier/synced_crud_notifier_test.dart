@@ -44,6 +44,7 @@ class _TestNotifier extends AsyncNotifier<List<int>>
     FutureOr<void> Function(List<int> updated)? onSuccess,
     bool rethrowOnError = true,
     bool rethrowOnly = false,
+    List<int> Function(List<int>)? committedState,
   }) {
     return mutate(
       operation: () async {
@@ -61,6 +62,7 @@ class _TestNotifier extends AsyncNotifier<List<int>>
       onSuccess: onSuccess,
       rethrowOnError: rethrowOnError,
       rethrowOnly: rethrowOnly,
+      committedState: committedState,
     );
   }
 }
@@ -79,6 +81,38 @@ void main() {
   tearDown(() {
     container.dispose();
   });
+
+  test(
+    'reload fallito può usare il risultato noto della scrittura confermata',
+    () async {
+      await container.read(_testProvider.future);
+      final notifier = container.read(_testProvider.notifier);
+      notifier.reloadResult = [1, 2];
+      await notifier.runMutation();
+      notifier.failReload = true;
+      await notifier.runMutation(
+        committedState: (previous) => [...previous, 3],
+      );
+      expect(container.read(_testProvider).requireValue, [1, 2, 3]);
+      expect(notifier.lastSuccessHookArgument, [1, 2, 3]);
+      expect(notifier.errorHookCalls, 0);
+    },
+  );
+
+  test(
+    'fallback di reload non trasforma una scrittura fallita in successo',
+    () async {
+      await container.read(_testProvider.future);
+      final notifier = container.read(_testProvider.notifier)
+        ..failOperation = true;
+      await expectLater(
+        notifier.runMutation(rethrowOnly: true, committedState: (_) => [3]),
+        throwsException,
+      );
+      expect(container.read(_testProvider).requireValue, isEmpty);
+      expect(notifier.successHookCalls, 0);
+    },
+  );
 
   group('SyncedCrudNotifier - happy path', () {
     test('updates state to AsyncData with reload result on success', () async {

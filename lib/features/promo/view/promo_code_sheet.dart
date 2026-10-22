@@ -5,7 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/ds_field.dart';
-import '../../../shared/widgets/standard_bottom_sheet_layout.dart';
+import '../../../shared/widgets/ds_form_sheet.dart';
+import '../../../shared/widgets/ds_field_label.dart';
 import '../../profile/providers/gpt_usage_provider.dart';
 import '../model/promo_redeem_result.dart';
 import '../providers/promo_code_provider.dart';
@@ -19,10 +20,8 @@ Future<void> showPromoCodeSheet(
   BuildContext context, {
   required bool redeemNow,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
+  return showDsFormSheet<void>(
+    context,
     builder: (_) => _PromoCodeSheet(redeemNow: redeemNow),
   );
 }
@@ -56,44 +55,51 @@ class _PromoCodeSheetState extends ConsumerState<_PromoCodeSheet> {
   }
 
   Future<void> _submit() async {
+    if (_isLoading) return;
     final code = _controller.text.trim();
     if (code.isEmpty) {
       setState(() => _errorKey = 'promo.error_empty');
       return;
     }
     final service = ref.read(promoCodeServiceProvider);
-    final messenger = ScaffoldMessenger.of(context);
-
-    if (!widget.redeemNow) {
-      await service.savePending(code);
-      if (!mounted) return;
-      Navigator.pop(context);
-      AppSnackBar.showSuccess(context, 'promo.saved_for_login'.tr());
-      return;
-    }
-
     setState(() {
       _isLoading = true;
       _errorKey = null;
     });
-    final result = await service.redeem(code);
-    if (!mounted) return;
-    switch (result) {
-      case PromoRedeemed():
-        ref.invalidate(gptUsageProvider);
+    try {
+      if (!widget.redeemNow) {
+        await service.savePending(code);
+        if (!mounted) return;
+        AppSnackBar.showSuccess(context, 'promo.saved_for_login'.tr());
+        setState(() => _isLoading = false);
         Navigator.pop(context);
-        messenger.hideCurrentSnackBar();
-        AppSnackBar.showSuccess(context, promoRedeemedMessage(result));
-      case PromoRejected(:final reason):
-        setState(() {
-          _isLoading = false;
-          _errorKey = reason.messageKey;
-        });
-      case PromoFailed():
-        setState(() {
-          _isLoading = false;
-          _errorKey = 'promo.error_generic';
-        });
+        return;
+      }
+      final result = await service.redeem(code);
+      if (!mounted) return;
+      switch (result) {
+        case PromoRedeemed():
+          ref.invalidate(gptUsageProvider);
+          AppSnackBar.showSuccess(context, promoRedeemedMessage(result));
+          setState(() => _isLoading = false);
+          Navigator.pop(context);
+        case PromoRejected(:final reason):
+          setState(() {
+            _isLoading = false;
+            _errorKey = reason.messageKey;
+          });
+        case PromoFailed():
+          setState(() {
+            _isLoading = false;
+            _errorKey = 'promo.error_generic';
+          });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorKey = 'promo.error_generic';
+      });
     }
   }
 
@@ -102,13 +108,12 @@ class _PromoCodeSheetState extends ConsumerState<_PromoCodeSheet> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return StandardBottomSheetLayout(
+    return DsFormSheet(
       title: 'promo.sheet_title'.tr(),
-      onCancel: () => Navigator.pop(context),
-      onSave: _submit,
-      isLoading: _isLoading,
-      saveLabel: 'promo.activate'.tr(),
-      saveButtonKey: const Key('promo_sheet_activate'),
+      onSubmit: _controller.text.trim().isNotEmpty ? _submit : null,
+      isBusy: _isLoading,
+      actionLabel: 'promo.activate'.tr(),
+      actionKey: const Key('promo_sheet_activate'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -121,6 +126,7 @@ class _PromoCodeSheetState extends ConsumerState<_PromoCodeSheet> {
             ),
           ),
           AppSpacing.gapMd,
+          DsFieldLabel('promo.code_label'.tr()),
           TextField(
             key: const Key('promo_sheet_field'),
             controller: _controller,
@@ -129,7 +135,7 @@ class _PromoCodeSheetState extends ConsumerState<_PromoCodeSheet> {
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _submit(),
             onChanged: (_) {
-              if (_errorKey != null) setState(() => _errorKey = null);
+              setState(() => _errorKey = null);
             },
             decoration: dsFieldDecoration(
               context,

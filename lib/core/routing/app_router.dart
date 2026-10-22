@@ -18,6 +18,7 @@ import '../../features/auth/view/login_screen.dart';
 import '../../features/houses/view/houses_screen.dart';
 import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
+import '../../features/houses/view/house_storage_screen.dart';
 import '../../features/profile/view/profile_screen.dart';
 import '../../features/trips/view/trips_screen.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
@@ -209,6 +210,13 @@ GoRouter appRouter(Ref ref) {
             ),
           );
         },
+      ),
+      GoRoute(
+        path: '/houses/:id/storage',
+        name: 'house-storage',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            HouseStorageScreen(houseId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/houses/:id/ai-import/results',

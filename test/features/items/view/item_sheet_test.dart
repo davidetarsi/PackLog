@@ -80,6 +80,39 @@ void main() {
     await app.finish();
   });
 
+  testWidgets(
+    'crea il primo spazio dalla scheda e lo seleziona senza salvare prima l’oggetto',
+    (tester) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+      await app.push('/houses/$kSeaHouseId');
+      await app.tap(find.text('Infradito'));
+      await app.tap(find.byKey(const Key('item_sheet_space')));
+      await app.tap(find.byKey(const Key('picker_create_space')));
+      await app.enterText(
+        find.byKey(const Key('space_sheet_name')),
+        'Armadio mare',
+      );
+      await app.tap(find.byKey(const Key('space_sheet_save')));
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('item_sheet_space')),
+          matching: find.text('Armadio mare'),
+        ),
+        findsOneWidget,
+      );
+      await app.tap(find.byKey(const Key('item_sheet_save')));
+      await app.tap(find.text('Infradito'));
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('item_sheet_space')),
+          matching: find.text('Armadio mare'),
+        ),
+        findsOneWidget,
+      );
+      await app.finish();
+    },
+  );
+
   testWidgets('la x sta all estrema destra, con il menu alla sua sinistra', (
     tester,
   ) async {

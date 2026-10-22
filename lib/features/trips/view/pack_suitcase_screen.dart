@@ -24,7 +24,7 @@ import '../../items/providers/item_provider.dart';
 import '../../items/repositories/item_repository.dart';
 import '../../luggages/model/luggage_model.dart';
 import '../../luggages/providers/luggage_provider.dart';
-import '../../luggages/view/luggages_management_screen.dart';
+import '../../luggages/view/add_edit_luggage_screen.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_parts.dart';
@@ -376,17 +376,23 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         if (luggages.isEmpty) {
           return _noLuggages(context, house);
         }
-        return Wrap(
-          spacing: context.spacingSm,
-          runSpacing: context.spacingSm,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final luggage in luggages)
-              PackPill(
-                label: luggage.name,
-                icon: Icons.luggage_outlined,
-                selected: _luggages.containsKey(luggage.id),
-                onTap: () => _toggleLuggage(luggage),
-              ),
+            Wrap(
+              spacing: context.spacingSm,
+              runSpacing: context.spacingSm,
+              children: [
+                for (final luggage in luggages)
+                  PackPill(
+                    label: luggage.name,
+                    icon: Icons.luggage_outlined,
+                    selected: _luggages.containsKey(luggage.id),
+                    onTap: () => _toggleLuggage(luggage),
+                  ),
+              ],
+            ),
+            if (house != null) _newLuggageLink(house),
           ],
         );
       },
@@ -410,15 +416,22 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
           style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
         ),
         // I bagagli appartengono a una casa: senza casa non c'è dove crearli.
-        if (house != null)
-          DsLinkButton(
-            label: 'trips.pack.add_luggages'.tr(),
-            onPressed: () =>
-                showLuggagesManagementSheet(context, houseId: house.id),
-          ),
+        if (house != null) _newLuggageLink(house),
       ],
     );
   }
+
+  Widget _newLuggageLink(HouseModel house) => DsLinkButton(
+    key: const Key('pack_new_luggage'),
+    icon: Icons.add,
+    label: 'luggages.add_new'.tr(),
+    onPressed: () async {
+      final created = await showAddEditLuggageSheet(context, houseId: house.id);
+      if (created != null && mounted) {
+        setState(() => _luggages[created.id] = created);
+      }
+    },
+  );
 
   Widget _itemsBlock(
     BuildContext context,

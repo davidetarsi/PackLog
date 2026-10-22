@@ -47,7 +47,7 @@
     "permanent_items_count": "{} oggetti nella casa",
     "temporary_items_count": "{} oggetti in viaggio",
     "manage_sheet_title": "Gestisci casa",
-    "edit_info": "Modifica info",
+    "edit_info": "Modifica casa",
     "house_not_found": "Casa non trovata",
     "house_not_found_message": "La casa richiesta non è stata trovata.",
     "back_to_houses": "Torna alla lista case",
@@ -106,6 +106,12 @@
     "hold_baggage": "Bagaglio da Stiva",
     "custom": "Personalizzato"
   },
+  "storage": {
+    "title": "Spazi e bagagli",
+    "load_failed": "Non è stato possibile caricare i dati. Riprova.",
+    "go_home": "Torna alle case",
+    "item_count": {"one": "{} oggetto", "other": "{} oggetti"}
+  },
   "spaces": {
     "title": "Spazi",
     "add": "Spazio",
@@ -120,7 +126,8 @@
     "name_label": "Nome *",
     "name_hint": "Es. Armadio Camera, Garage...",
     "select_icon": "Seleziona un'icona (opzionale)",
-    "delete_warning": "Gli oggetti in questo spazio torneranno al Default della casa",
+    "delete_warning": "Gli oggetti restano nella casa, senza spazio.",
+    "not_found": "Spazio non trovato",
     "space_deleted": "Spazio \"{}\" eliminato"
   },
   "luggages": {
@@ -139,6 +146,9 @@
     "volume_hint": "Es. 45",
     "volume_required_for_custom": "Il volume è obbligatorio per bagagli personalizzati",
     "delete_warning": "Questo bagaglio verrà rimosso da tutti i viaggi associati",
+    "not_found": "Bagaglio non trovato",
+    "size_label": "Taglia",
+    "volume_label": "Volume in litri",
     "luggage_deleted": "Bagaglio \"{}\" eliminato"
   },
   "house_icons": {
@@ -591,6 +601,7 @@
     "ai_suitcase_hint": "Ti prepara la valigia in base a meta, meteo e durata"
   },
   "promo": {
+    "code_label": "Codice promo",
     "link": "Hai un codice promo?",
     "sheet_title": "Codice promo",
     "description": "Scrivi il codice che hai ricevuto: ti regala usi AI in più.",

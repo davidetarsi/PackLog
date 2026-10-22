@@ -8,7 +8,7 @@ import '../theme/app_spacing.dart';
 /// Struttura: `[DsSheetHeader] → ListView` di opzioni.
 /// Toccare un'opzione chiude il sheet e restituisce il valore.
 ///
-/// Distinto da [StandardBottomSheetLayout] (usato per form di entità):
+/// Distinto da [DsFormSheet] (usato per form di entità):
 /// qui non c'è action bar finale, basta toccare per confermare.
 ///
 /// Uso tipico:
@@ -31,6 +31,7 @@ class DsPickerSheet<T> extends StatelessWidget {
   final IconData? Function(T)? getIcon;
   final T? selected;
   final ValueChanged<T> onSelected;
+  final Widget? footer;
 
   const DsPickerSheet({
     super.key,
@@ -41,6 +42,7 @@ class DsPickerSheet<T> extends StatelessWidget {
     this.getSubtitle,
     this.getIcon,
     this.selected,
+    this.footer,
   });
 
   /// Mostra il picker sheet e restituisce il valore selezionato (null se
@@ -53,6 +55,7 @@ class DsPickerSheet<T> extends StatelessWidget {
     String? Function(T)? getSubtitle,
     IconData? Function(T)? getIcon,
     T? selected,
+    Widget Function(BuildContext)? footerBuilder,
   }) {
     return showModalBottomSheet<T>(
       context: context,
@@ -65,6 +68,7 @@ class DsPickerSheet<T> extends StatelessWidget {
         getSubtitle: getSubtitle,
         getIcon: getIcon,
         selected: selected,
+        footer: footerBuilder?.call(sheetContext),
         onSelected: (item) => Navigator.pop(sheetContext, item),
       ),
     );
@@ -122,6 +126,7 @@ class DsPickerSheet<T> extends StatelessWidget {
                   },
                 ),
               ),
+            if (footer != null) footer!,
             AppSpacing.gapSm,
           ],
         ),

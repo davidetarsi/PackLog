@@ -22,7 +22,7 @@ export 'ds_steps.dart';
 export 'location_autocomplete_field.dart';
 export 'main_shell.dart';
 export 'quantity_stepper.dart';
-export 'standard_bottom_sheet_layout.dart';
+export 'ds_form_sheet.dart';
 export 'status_icon_overlay.dart';
 export 'sticky_cta_scaffold.dart';
 export 'trip_info_badges.dart';

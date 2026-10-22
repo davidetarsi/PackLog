@@ -80,7 +80,10 @@ class DriftSpaceRepository implements SpaceRepository {
       debugPrint(
         '[SpaceRepo] Errore caricando spazi per casa: ${result.error}',
       );
-      return [];
+      throw EntityLoadException(
+        'getSpacesByHouseId($houseId)',
+        cause: result.error,
+      );
     }
 
     return result.data!.map(_toModel).toList();

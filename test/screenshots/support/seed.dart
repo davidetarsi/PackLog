@@ -115,9 +115,9 @@ Future<void> seed(ProviderContainer c, SeedLevel level) async {
 
   // ── Spazi ───────────────────────────────────────────────────────────────
   final spaceDefs = {
-    'space-armadio': ('Armadio camera', 'checkroom'),
-    'space-cassettiera': ('Cassettiera', 'inventory_2'),
-    'space-bagno': ('Bagno', 'bathtub'),
+    'space-armadio': ('Armadio camera', 'door_sliding'),
+    'space-cassettiera': ('Cassettiera', 'storage'),
+    'space-bagno': ('Bagno', 'bathroom'),
   };
   for (final e in spaceDefs.entries) {
     await spaces.addSpace(

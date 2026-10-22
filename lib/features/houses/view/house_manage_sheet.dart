@@ -1,9 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/ds_sheet_header.dart';
-import '../../luggages/view/luggages_management_screen.dart';
-import '../../spaces/view/spaces_management_screen.dart';
 import 'add_edit_house_screen.dart';
 
 /// Shows the "manage house" bottom sheet.
@@ -48,12 +47,15 @@ Future<void> showHouseManageSheet(
               },
             ),
             ListTile(
-              leading: Icon(
-                Icons.push_pin,
-                color: isPrimary
-                    ? null
-                    : Theme.of(sheetContext).colorScheme.primary,
-              ),
+              leading: const Icon(Icons.meeting_room_outlined),
+              title: Text('storage.title'.tr()),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                context.push('/houses/$houseId/storage');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.push_pin_outlined),
               title: Text('houses.set_as_primary'.tr()),
               enabled: !isPrimary,
               onTap: isPrimary
@@ -62,23 +64,6 @@ Future<void> showHouseManageSheet(
                       Navigator.pop(sheetContext);
                       onSetPrimary();
                     },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.meeting_room),
-              title: Text('spaces.manage'.tr()),
-              onTap: () async {
-                Navigator.pop(sheetContext);
-                await showSpacesManagementSheet(context, houseId: houseId);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.luggage),
-              title: Text('luggages.manage'.tr()),
-              onTap: () async {
-                Navigator.pop(sheetContext);
-                await showLuggagesManagementSheet(context, houseId: houseId);
-              },
             ),
             const Divider(height: 1),
             ListTile(

@@ -27,7 +27,11 @@ abstract class LuggageRepository {
   Future<bool> init();
   Future<void> addLuggage(LuggageModel model);
   Future<LuggageModel> getLuggageById(String id);
+
+  /// Propaga gli errori di lettura; una lista vuota indica assenza di bagagli.
   Future<List<LuggageModel>> getAllLuggages();
+
+  /// Propaga gli errori di lettura; una lista vuota indica assenza di bagagli.
   Future<List<LuggageModel>> getLuggagesByHouseId(String houseId);
   Future<bool> deleteLuggage(String id);
   Future<void> updateLuggage(LuggageModel model);

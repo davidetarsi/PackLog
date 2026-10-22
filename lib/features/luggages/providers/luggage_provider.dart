@@ -2,9 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
+import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/luggage_model.dart';
 import '../repositories/luggage_repository.dart';
+import '../../trips/providers/trip_provider.dart';
 
 part 'luggage_provider.g.dart';
 
@@ -32,10 +34,19 @@ class LuggageNotifier extends _$LuggageNotifier
     // lettura: un bagaglio eliminato ricompariva nel selettore del form
     // viaggio finché non si riavviava l'app.
     ref.invalidate(allLuggagesProvider);
+    // Nome e soft-delete devono riflettersi anche nei viaggi già in cache.
+    if (ref.exists(tripNotifierProvider)) {
+      ref.invalidate(tripNotifierProvider);
+    }
+    ref.invalidate(luggagesByTripProvider);
   }
 
   Future<void> addLuggage(LuggageModel model) => mutate(
     operation: () => _repo.addLuggage(model),
+    committedState: (previous) => [
+      ...previous.where((l) => l.id != model.id),
+      model,
+    ],
     reload: () => _repo.getLuggagesByHouseId(houseId),
     rethrowOnly: true,
     onSuccess: (_) => _analytics.trackLuggageCreated(size: model.sizeType.name),
@@ -43,12 +54,20 @@ class LuggageNotifier extends _$LuggageNotifier
 
   Future<void> updateLuggage(LuggageModel model) => mutate(
     operation: () => _repo.updateLuggage(model),
+    committedState: (previous) => [
+      for (final l in previous) l.id == model.id ? model : l,
+    ],
     reload: () => _repo.getLuggagesByHouseId(houseId),
     rethrowOnly: true,
   );
 
   Future<void> deleteLuggage(String id) => mutate(
-    operation: () => _repo.deleteLuggage(id),
+    operation: () async {
+      if (!await _repo.deleteLuggage(id)) {
+        throw EntitySaveException('deleteLuggage($id)');
+      }
+    },
+    committedState: (previous) => previous.where((l) => l.id != id).toList(),
     reload: () => _repo.getLuggagesByHouseId(houseId),
     rethrowOnly: true,
   );
