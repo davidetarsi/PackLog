@@ -279,6 +279,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
           keyTarget: tourKeys.infoCardTarget,
           shape: ShapeLightFocus.Circle,
           radius: 1,
+          paddingFocus: 0,
           contents: [
             TargetContent(
               align: ContentAlign.bottom,
@@ -308,7 +309,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                         alignment: Alignment.centerRight,
                         child: FilledButton(
                           onPressed: () => controller.next(),
-                          child: Text('tour.finish'.tr()),
+                          child: Text('common.ok'.tr()),
                         ),
                       ),
                     ],

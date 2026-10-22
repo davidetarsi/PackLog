@@ -529,7 +529,7 @@
       "title": "Your trips",
       "description": "Create a trip and select the items to bring. During the trip, they're automatically marked as \"travelling\"."
     },
-    "default_house_name": "Demo House",
+    "default_house_name": "Home",
     "skip": "Skip",
     "complete_failed": "Couldn't save. Please try again."
   },
@@ -537,28 +537,20 @@
     "relaunch_title": "Replay tour",
     "relaunch_subtitle": "Review Pack Log's main features",
     "step_counter": "{current} / {total}",
-    "skip": "Skip",
+    "skip": "Skip tour",
     "next": "Next",
-    "finish": "Let's go",
-    "house_tooltip": {
-      "title": "Create your first home",
-      "body": "Tap \"New house\" at the bottom of the list to add your first house."
-    },
-    "default_house_tooltip": {
-      "title": "Open the Demo House",
-      "body": "Your AI items are in 'Demo House'. Tap it to open and move them wherever you like."
-    },
-    "move_items_tooltip": {
-      "title": "Move items",
-      "body": "Long-press an item to select it, select the ones you want to move, then tap Move."
+    "finish": "Done",
+    "house_detail_tooltip": {
+      "title": "Here are your clothes",
+      "body": "They are in the house we just created. Tap the name at the top to rename it and say where it is."
     },
     "create_trip_tooltip": {
-      "title": "Create your first trip",
-      "body": "Tap Create and choose \"New trip\" to create your first trip."
+      "title": "Everything starts from Create",
+      "body": "From here you add trips, new houses and more AI scans. Try creating your first trip."
     },
     "trip_creation_tooltip": {
-      "title": "Plan your trip",
-      "body": "Add a destination, dates, and choose what to pack. Every trip gets its own checklist."
+      "title": "Your first trip",
+      "body": "Pick destination and dates: then we suggest what to pack, based on weather and length."
     }
   },
   "onboarding_tour": {
@@ -568,7 +560,7 @@
       "cta": "Take or upload a photo",
       "skip": "Skip"
     },
-    "ai_save_tooltip": "We'll save these items in a new 'Demo House'. You can move them whenever you like."
+    "ai_save_tooltip": "We save them in a new house, “Home”. Right after, you can give it the right name and place."
   },
   "location_search": {
     "rate_limit_reached": "Too many location searches, please try again in a few minutes."

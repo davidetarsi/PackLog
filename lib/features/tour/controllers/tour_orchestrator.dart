@@ -9,10 +9,11 @@ import '../providers/post_login_onboarding_provider.dart';
 import '../tour_keys.dart';
 import '../widgets/tour_step_content.dart';
 
-/// Wraps [MainShell] and shows overlay tooltips for the three steps
-/// whose targets live in the shell: [houseTooltip], [defaultHouseTooltip],
-/// and [createTripTooltip]. The remaining steps ([moveItemsTooltip] and
-/// [tripCreationTooltip]) are handled by [TourTriggerWrapper] in the router.
+/// Wraps [MainShell] and shows the tour tip whose target lives in the shell:
+/// [OnboardingStep.createTripTooltip] on the Crea button. The other steps
+/// ([OnboardingStep.houseDetailTooltip] and
+/// [OnboardingStep.tripCreationTooltip]) are handled by [TourTriggerWrapper]
+/// in the router.
 class PostLoginOnboardingListener extends ConsumerStatefulWidget {
   final Widget child;
   const PostLoginOnboardingListener({super.key, required this.child});
@@ -90,11 +91,8 @@ class _PostLoginOnboardingListenerState
     return widget.child;
   }
 
-  bool _isListenerStep(OnboardingStep step) {
-    return step == OnboardingStep.houseTooltip ||
-        step == OnboardingStep.defaultHouseTooltip ||
-        step == OnboardingStep.createTripTooltip;
-  }
+  bool _isListenerStep(OnboardingStep step) =>
+      step == OnboardingStep.createTripTooltip;
 
   Future<void> _showTooltip(
     BuildContext context,
@@ -124,18 +122,6 @@ class _PostLoginOnboardingListenerState
 
     final cfg = _stepConfig(onboarding.step);
 
-    // Il bersaglio di houseTooltip è la riga "Nuova casa" in fondo alla
-    // lista: va portata in vista prima di calcolarne la posizione.
-    final targetContext = cfg.key.currentContext;
-    if (targetContext != null) {
-      await Scrollable.ensureVisible(
-        targetContext,
-        alignment: 0.5,
-        duration: const Duration(milliseconds: 200),
-      );
-      if (!context.mounted) return;
-    }
-
     TutorialCoachMark(
       targets: [
         TargetFocus(
@@ -150,15 +136,13 @@ class _PostLoginOnboardingListenerState
           enableTargetTab: cfg.isSpotlight,
           contents: [
             TargetContent(
-              align:
-                  cfg.align ??
-                  (cfg.isSpotlight ? ContentAlign.top : ContentAlign.bottom),
+              align: cfg.isSpotlight ? ContentAlign.top : ContentAlign.bottom,
               builder: (ctx, controller) {
                 return TourStepContent(
                   title: cfg.title,
                   body: cfg.body,
-                  stepIndex: 0,
-                  totalSteps: 1,
+                  stepIndex: (onboarding.step.tourStepIndex ?? 1) - 1,
+                  totalSteps: kTourLength,
                   onSkip: () {
                     controller.skip();
                     // Chiude l'intero tour, non solo lo step corrente — vedi
@@ -173,7 +157,7 @@ class _PostLoginOnboardingListenerState
                     controller.next();
                     advance();
                   },
-                  isLastStep: true,
+                  isLastStep: onboarding.step.tourStepIndex == kTourLength,
                 );
               },
             ),
@@ -191,19 +175,6 @@ class _PostLoginOnboardingListenerState
 
   _StepConfig _stepConfig(OnboardingStep step) {
     return switch (step) {
-      OnboardingStep.houseTooltip => _StepConfig(
-        key: tourKeys.newHouseRow,
-        title: 'tour.house_tooltip.title'.tr(),
-        body: 'tour.house_tooltip.body'.tr(),
-        isSpotlight: true,
-      ),
-      OnboardingStep.defaultHouseTooltip => _StepConfig(
-        key: tourKeys.infoCardTarget,
-        title: 'tour.default_house_tooltip.title'.tr(),
-        body: 'tour.default_house_tooltip.body'.tr(),
-        isSpotlight: false,
-        align: ContentAlign.top,
-      ),
       OnboardingStep.createTripTooltip => _StepConfig(
         key: tourKeys.primaryAction,
         title: 'tour.create_trip_tooltip.title'.tr(),
@@ -220,13 +191,11 @@ class _StepConfig {
   final String title;
   final String body;
   final bool isSpotlight;
-  final ContentAlign? align;
 
   const _StepConfig({
     required this.key,
     required this.title,
     required this.body,
     required this.isSpotlight,
-    this.align,
   });
 }

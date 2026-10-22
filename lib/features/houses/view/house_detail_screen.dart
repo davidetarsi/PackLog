@@ -16,16 +16,15 @@ import '../../items/providers/item_provider.dart';
 import '../../items/providers/item_selection_provider.dart';
 import '../../items/widgets/rapid_fire_input.dart';
 import '../../tour/tour_keys.dart';
+import 'add_edit_house_screen.dart';
+import '../../../shared/constants/app_constants.dart';
 import '../../trips/providers/trip_items_status_provider.dart';
 import '../../trips/model/trip_model.dart';
 import '../../trips/providers/trip_provider.dart';
 import '../../trips/view/trip_picker_sheet.dart';
 import '../../spaces/model/space_model.dart';
 import '../../spaces/providers/space_provider.dart';
-import '../../tour/model/onboarding_state.dart';
-import '../../tour/providers/post_login_onboarding_provider.dart';
 import 'house_manage_sheet.dart';
-import '../../../shared/constants/house_icons.dart';
 import '../../../shared/widgets/ds_contextual_app_bar.dart';
 import '../../items/view/bulk_move_sheet.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -359,18 +358,6 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
             args: [count.toString(), destinationName],
           ),
         );
-        final onboardingState = ref
-            .read(postLoginOnboardingProvider)
-            .valueOrNull;
-        if (onboardingState?.step == OnboardingStep.moveItemsTooltip &&
-            widget.houseId == onboardingState?.defaultHouseId) {
-          // Pop first so MainShell + primaryAction are visible before the tooltip fires.
-          context.pop();
-          await Future.delayed(const Duration(milliseconds: 400));
-          if (mounted) {
-            await ref.read(postLoginOnboardingProvider.notifier).advance();
-          }
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -519,7 +506,8 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
               switchDuration: _kModeSwitchDuration,
               normalAppBar: _HouseNormalAppBar(
                 houseName: house.displayName,
-                houseIcon: HouseIcons.getIcon(house.iconName),
+                onEditHouse: () =>
+                    showAddEditHouseSheet(context, houseId: widget.houseId),
                 searchController: _search == null ? null : _searchController,
                 searchFocusNode: _searchFocus,
                 onSearchOpen: _openSearch,
@@ -591,7 +579,6 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                           houseName: house.displayName,
                           selectedSpaceId: _spaceFilter,
                           searchQuery: _search,
-                          firstGroupKey: tourKeys.houseItemsAnchor,
                           onSearchResultOpened: (position) =>
                               _analytics.trackSearchResultTapped(
                                 context: 'house',
@@ -682,7 +669,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
 class _HouseNormalAppBar extends StatelessWidget
     implements PreferredSizeWidget {
   final String houseName;
-  final IconData houseIcon;
+
+  /// Tocco sul nome: apre la modifica di nome, luogo e icona.
+  final VoidCallback onEditHouse;
 
   /// Non nullo quando la ricerca è aperta: l'intestazione diventa il campo.
   final TextEditingController? searchController;
@@ -699,7 +688,7 @@ class _HouseNormalAppBar extends StatelessWidget
 
   const _HouseNormalAppBar({
     required this.houseName,
-    required this.houseIcon,
+    required this.onEditHouse,
     required this.searchController,
     required this.searchFocusNode,
     required this.onSearchOpen,
@@ -716,7 +705,6 @@ class _HouseNormalAppBar extends StatelessWidget
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final controller = searchController;
 
     if (controller != null) {
@@ -778,14 +766,17 @@ class _HouseNormalAppBar extends StatelessWidget
               icon: const Icon(Icons.arrow_back),
               onPressed: () => context.popOrGo('/'),
             ),
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Neutra: è il contesto, non un'azione.
-          Icon(houseIcon, color: colorScheme.onSurfaceVariant),
-          AppSpacing.hGapSm,
-          Flexible(child: Text(houseName, overflow: TextOverflow.ellipsis)),
-        ],
+      // Solo il nome, senza icona: l'icona serve a distinguere le case nella
+      // lista, qui si sa già dove si è. Toccarlo apre la modifica, come
+      // "Modifica info" nel menu ⋮.
+      title: InkWell(
+        key: tourKeys.houseTitle,
+        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+        onTap: isAdding ? null : onEditHouse,
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: context.spacingXs),
+          child: Text(houseName, overflow: TextOverflow.ellipsis),
+        ),
       ),
       actions: isAdding
           ? null

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/analytics/analytics_service.dart';
-import '../../houses/providers/house_provider.dart';
 import '../model/onboarding_state.dart';
 import '../providers/post_login_onboarding_provider.dart';
 import '../tour_keys.dart';
@@ -12,10 +11,10 @@ import 'tour_step_content.dart';
 /// Wraps a screen and fires a single-target [TutorialCoachMark] card once
 /// when [triggerStep] matches the current onboarding step.
 ///
-/// For [OnboardingStep.moveItemsTooltip], pass [houseId] — the tooltip fires
-/// only when [houseId] matches [OnboardingState.defaultHouseId].
-/// For [OnboardingStep.tripCreationTooltip], set [advancesOnOk] = true so
-/// tapping "Ok"/"Next" calls [PostLoginOnboarding.advance].
+/// For [OnboardingStep.houseDetailTooltip], pass [houseId] — the tooltip
+/// fires only when [houseId] matches [OnboardingState.defaultHouseId].
+/// Set [advancesOnOk] = true so tapping "Next" calls
+/// [PostLoginOnboarding.advance].
 class TourTriggerWrapper extends ConsumerStatefulWidget {
   final Widget child;
   final OnboardingStep triggerStep;
@@ -32,12 +31,9 @@ class TourTriggerWrapper extends ConsumerStatefulWidget {
   /// alla cima dello schermo, perché "top" spingerebbe la card fuori vista.
   final ContentAlign? align;
 
-  /// Se true, il tip non scatta finché non esistono almeno 2 case.
-  ///
-  /// Usato da [OnboardingStep.moveItemsTooltip]: insegna a spostare oggetti
-  /// verso un'altra casa, ma se esiste solo la casa di prova creata
-  /// dall'onboarding AI non c'è ancora una destinazione valida.
-  final bool requiresMultipleHouses;
+  /// Se non nullo, toccare l'elemento evidenziato fa avanzare il tour e poi
+  /// esegue questa azione (es. apre la modifica della casa).
+  final VoidCallback? onTargetTap;
 
   const TourTriggerWrapper({
     super.key,
@@ -50,7 +46,7 @@ class TourTriggerWrapper extends ConsumerStatefulWidget {
     this.keyTarget,
     this.isSpotlight = false,
     this.align,
-    this.requiresMultipleHouses = false,
+    this.onTargetTap,
   });
 
   @override
@@ -64,6 +60,10 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
   /// widget scatta anch'esso su una route appena montata (house-detail,
   /// new-trip), quindi è esposto alla stessa finestra di transizione.
   static const _routeTransitionSettleDelay = Duration(milliseconds: 350);
+
+  /// Il bersaglio può non essere ancora montato (es. la casa appena creata
+  /// arriva dal provider un attimo dopo): si riprova qualche volta.
+  static const _targetRetries = 10;
 
   @override
   void initState() {
@@ -80,13 +80,24 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
     if (widget.houseId != null && widget.houseId != onboarding.defaultHouseId) {
       return;
     }
-    if (widget.requiresMultipleHouses) {
-      final houses = ref.read(houseNotifierProvider).valueOrNull;
-      if (houses == null || houses.length < 2) return;
-    }
     _shown = true;
+    _showWhenTargetReady(onboarding, _targetRetries);
+  }
+
+  void _showWhenTargetReady(OnboardingState onboarding, int retriesLeft) {
     Future.delayed(_routeTransitionSettleDelay, () {
-      if (mounted) _showCoachMark(onboarding);
+      if (!mounted) return;
+      final target = widget.keyTarget;
+      if (target != null && target.currentContext == null) {
+        if (retriesLeft > 0) {
+          _showWhenTargetReady(onboarding, retriesLeft - 1);
+        } else {
+          // Senza bersaglio niente tip: si riproverà alla prossima apertura.
+          _shown = false;
+        }
+        return;
+      }
+      _showCoachMark(onboarding);
     });
   }
 
@@ -109,7 +120,10 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
               ? ShapeLightFocus.RRect
               : ShapeLightFocus.Circle,
           radius: widget.isSpotlight ? 8.0 : 1.0,
-          enableTargetTab: false,
+          // Senza spotlight il bersaglio è un punto invisibile al centro: niente
+          // alone attorno, altrimenti resta un pallino chiaro sulla pagina.
+          paddingFocus: widget.isSpotlight ? 10 : 0,
+          enableTargetTab: widget.onTargetTap != null,
           contents: [
             TargetContent(
               align:
@@ -119,8 +133,8 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
                 return TourStepContent(
                   title: widget.title,
                   body: widget.body,
-                  stepIndex: 0,
-                  totalSteps: 1,
+                  stepIndex: (onboarding.step.tourStepIndex ?? 1) - 1,
+                  totalSteps: kTourLength,
                   onSkip: () {
                     controller.skip();
                     // Chiude l'intero tour, non solo lo step corrente — vedi
@@ -141,7 +155,7 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
                       notifier.advance();
                     }
                   },
-                  isLastStep: true,
+                  isLastStep: onboarding.step.tourStepIndex == kTourLength,
                 );
               },
             ),
@@ -152,6 +166,16 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
       opacityShadow: 0.8,
       hideSkip: true,
       pulseEnable: widget.isSpotlight,
+      onClickTarget: widget.onTargetTap == null
+          ? null
+          : (_) {
+              analytics.logEvent(
+                'onboarding_step_advanced',
+                properties: stepProps,
+              );
+              notifier.advance();
+              widget.onTargetTap!();
+            },
     ).show(context: context);
   }
 

@@ -529,7 +529,7 @@
       "title": "I tuoi viaggi",
       "description": "Crea un viaggio e seleziona gli oggetti da portare. Durante il viaggio li ritrovi automaticamente segnati come \"in viaggio\"."
     },
-    "default_house_name": "Casa di prova",
+    "default_house_name": "Casa",
     "skip": "Salta",
     "complete_failed": "Non è stato possibile salvare. Riprova."
   },
@@ -537,28 +537,20 @@
     "relaunch_title": "Ripeti il tour",
     "relaunch_subtitle": "Rivedi le funzioni principali di Pack Log",
     "step_counter": "{current} / {total}",
-    "skip": "Salta",
+    "skip": "Salta il tour",
     "next": "Avanti",
-    "finish": "Inizia",
-    "house_tooltip": {
-      "title": "Crea la tua prima casa",
-      "body": "Tocca «Nuova casa» in fondo all'elenco per aggiungere la tua prima casa."
-    },
-    "default_house_tooltip": {
-      "title": "Apri la Casa di prova",
-      "body": "I tuoi oggetti AI sono nella 'Casa di prova'. Toccala per aprirla e spostarli dove vuoi."
-    },
-    "move_items_tooltip": {
-      "title": "Sposta gli oggetti",
-      "body": "Tieni premuto su un oggetto per selezionarlo, seleziona quelli che vuoi spostare, poi tocca Sposta."
+    "finish": "Fatto",
+    "house_detail_tooltip": {
+      "title": "Ecco i tuoi capi",
+      "body": "Sono nella casa appena creata. Tocca il nome in alto per darle un nome e dire dove si trova."
     },
     "create_trip_tooltip": {
-      "title": "Crea il tuo primo viaggio",
-      "body": "Tocca Crea e scegli «Nuovo viaggio» per creare il tuo primo viaggio."
+      "title": "Tutto parte da Crea",
+      "body": "Da qui aggiungi viaggi, nuove case e altre scansioni AI. Prova a creare il tuo primo viaggio."
     },
     "trip_creation_tooltip": {
-      "title": "Organizza il tuo viaggio",
-      "body": "Qui puoi aggiungere una destinazione, le date e scegliere gli oggetti da portare. Ogni viaggio ha la sua checklist."
+      "title": "Il tuo primo viaggio",
+      "body": "Scegli destinazione e date: poi ti proponiamo cosa mettere in valigia, in base a meteo e durata."
     }
   },
   "onboarding_tour": {
@@ -568,7 +560,7 @@
       "cta": "Scatta o carica una foto",
       "skip": "Salta"
     },
-    "ai_save_tooltip": "Salveremo questi oggetti in una nuova casa 'Casa di prova'. Potrai spostarli quando vuoi."
+    "ai_save_tooltip": "Li salviamo in una casa nuova, «Casa». Subito dopo potrai darle il nome e il luogo giusti."
   },
   "location_search": {
     "rate_limit_reached": "Troppe ricerche di località, riprova tra qualche minuto."

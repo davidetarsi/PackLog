@@ -61,7 +61,6 @@ void main() {
     body: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        SizedBox(key: tourKeys.newHouseRow, width: 48, height: 48),
         SizedBox(key: tourKeys.tripsTab, width: 48, height: 48),
         SizedBox(key: tourKeys.primaryAction, width: 48, height: 48),
       ],
@@ -100,11 +99,11 @@ void main() {
         () => analytics.logEvent(any(), properties: any(named: 'properties')),
       ).thenAnswer((_) async {});
 
-      // moveItemsTooltip non è uno step del listener: nulla scatta all'avvio.
+      // houseDetailTooltip non è uno step del listener: nulla scatta all'avvio.
       final container = ProviderContainer(
         overrides: [
           onboardingRepositoryProvider.overrideWithValue(
-            repoAt(OnboardingStep.moveItemsTooltip),
+            repoAt(OnboardingStep.houseDetailTooltip),
           ),
           analyticsServiceProvider.overrideWithValue(analytics),
         ],
@@ -129,7 +128,7 @@ void main() {
       expect(find.text('house detail'), findsOneWidget);
 
       // Il TourTriggerWrapper della route avanza lo step:
-      // moveItemsTooltip -> createTripTooltip, che È uno step del listener.
+      // houseDetailTooltip -> createTripTooltip, che È uno step del listener.
       await container.read(postLoginOnboardingProvider.notifier).advance();
       await settleTooltip(tester);
 
@@ -167,7 +166,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         onboardingRepositoryProvider.overrideWithValue(
-          repoAt(OnboardingStep.houseTooltip),
+          repoAt(OnboardingStep.createTripTooltip),
         ),
         analyticsServiceProvider.overrideWithValue(analytics),
       ],

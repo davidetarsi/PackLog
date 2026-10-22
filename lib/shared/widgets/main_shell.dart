@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/analytics/core_analytics_service.dart';
 import '../../features/ai_input/helpers/start_ai_scan.dart';
-import '../../features/houses/helpers/create_house_flow.dart';
+import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/profile/providers/gpt_usage_provider.dart';
 import '../../features/promo/model/promo_redeem_result.dart';
 import '../../features/promo/providers/promo_code_provider.dart';
@@ -54,7 +54,7 @@ class MainShell extends ConsumerWidget {
         context.push('/houses/${choice.houseId}?add=manual');
       case CreateAction.newHouse:
         analytics.trackCreateSheetChoice(choice: 'new_house', tab: tab);
-        await createHouseWithTourAdvance(context, ref);
+        await showAddEditHouseSheet(context);
       case CreateAction.newTrip:
         analytics.trackCreateSheetChoice(choice: 'new_trip', tab: tab);
         context.push('/new-trip');

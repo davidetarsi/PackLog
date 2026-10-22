@@ -1,24 +1,23 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/ds_dashed_box.dart';
-import '../../helpers/create_house_flow.dart';
+import '../add_edit_house_screen.dart';
 
 /// Riga tratteggiata "nuova casa".
 ///
 /// In fondo alla lista è un'azione rara, quindi neutra. Nello stato vuoto
 /// ([emphasized]) è l'unica azione possibile: bordo e testo arancio, e
 /// l'etichetta "Aggiungi la tua prima casa".
-class NewHouseRow extends ConsumerWidget {
+class NewHouseRow extends StatelessWidget {
   final bool emphasized;
 
   const NewHouseRow({super.key, this.emphasized = false});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final foreground = emphasized
         ? colorScheme.primary
@@ -37,7 +36,7 @@ class NewHouseRow extends ConsumerWidget {
         color: emphasized ? colorScheme.primary : colorScheme.outlineVariant,
         child: InkWell(
           borderRadius: radius,
-          onTap: () => createHouseWithTourAdvance(context, ref),
+          onTap: () => showAddEditHouseSheet(context),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: context.responsive(72)),
             child: Center(

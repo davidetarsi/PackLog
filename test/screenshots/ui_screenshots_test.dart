@@ -358,6 +358,52 @@ final flows = <Flow>[
     ),
   ]),
 
+  Flow('02b-tour', 'Tour dopo la prova AI: tre suggerimenti', [
+    Scenario(
+      1,
+      'tour',
+      'casa-creata',
+      route: '/houses/:id',
+      source: 'lib/features/tour/widgets/tour_trigger_wrapper.dart',
+      description: 'Dentro la casa creata dalla prova AI: tocca il nome.',
+      setup: const AppSetup(
+        tourStep: OnboardingStep.houseDetailTooltip,
+        tourHouseId: kHomeId,
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.settle(frames: 30);
+      },
+    ),
+    Scenario(
+      2,
+      'tour',
+      'crea',
+      route: '/',
+      source: 'lib/features/tour/controllers/tour_orchestrator.dart',
+      description: 'Sul bottone Crea: viaggi, case e scansioni partono da qui.',
+      setup: const AppSetup(tourStep: OnboardingStep.createTripTooltip),
+      steps: (app) async {
+        await app.go('/');
+        await app.settle(frames: 30);
+      },
+    ),
+    Scenario(
+      3,
+      'tour',
+      'nuovo-viaggio',
+      route: '/new-trip',
+      source: 'lib/features/tour/widgets/tour_trigger_wrapper.dart',
+      description: 'Nel nuovo viaggio: destinazione, date, poi la valigia.',
+      setup: const AppSetup(tourStep: OnboardingStep.tripCreationTooltip),
+      steps: (app) async {
+        await app.go('/');
+        await app.push('/new-trip');
+        await app.settle(frames: 30);
+      },
+    ),
+  ]),
+
   Flow('03-case', 'Tab Case: elenco e creazione', [
     Scenario(
       1,

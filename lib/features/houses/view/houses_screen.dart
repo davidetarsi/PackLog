@@ -17,7 +17,6 @@ import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
 import '../../../shared/widgets/refreshable_empty_state.dart';
 import '../../../shared/widgets/tab_header.dart';
-import '../../tour/tour_keys.dart';
 import 'widgets/new_house_row.dart';
 
 class HousesScreen extends ConsumerStatefulWidget {
@@ -55,13 +54,7 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
                     onRefresh: () => ref.refresh(houseNotifierProvider.future),
                     icon: Icons.home_outlined,
                     title: 'houses.no_houses_title'.tr(),
-                    // Stessa chiave del tour della riga in fondo alla lista:
-                    // le due non sono mai a schermo insieme, e così il tip
-                    // "Crea la tua prima casa" ha sempre un bersaglio.
-                    action: NewHouseRow(
-                      key: tourKeys.newHouseRow,
-                      emphasized: true,
-                    ),
+                    action: const NewHouseRow(emphasized: true),
                   );
                 }
 
@@ -89,7 +82,7 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
                     itemCount: sortedHouses.length + 1,
                     itemBuilder: (context, index) {
                       if (index == sortedHouses.length) {
-                        return NewHouseRow(key: tourKeys.newHouseRow);
+                        return const NewHouseRow();
                       }
                       final house = sortedHouses[index];
                       return _HouseCard(house: house);

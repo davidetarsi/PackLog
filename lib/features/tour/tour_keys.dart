@@ -11,12 +11,7 @@ class _TourKeys {
   /// [OnboardingStep.createTripTooltip].
   final primaryAction = GlobalKey();
 
-  /// Riga "Nuova casa" (in fondo alla lista, o nello stato vuoto). Target di
-  /// [OnboardingStep.houseTooltip].
-  final newHouseRow = GlobalKey();
-
-  /// Etichetta del primo gruppo della lista in [HouseDetailScreen] (o lo
-  /// stato vuoto, se la casa non ha oggetti). Target di
-  /// [OnboardingStep.moveItemsTooltip].
-  final houseItemsAnchor = GlobalKey();
+  /// Nome della casa nell'AppBar di [HouseDetailScreen]. Target di
+  /// [OnboardingStep.houseDetailTooltip].
+  final houseTitle = GlobalKey();
 }

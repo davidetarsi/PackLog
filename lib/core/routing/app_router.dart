@@ -16,6 +16,7 @@ import '../auth/auth_provider.dart';
 import '../auth/auth_state.dart';
 import '../../features/auth/view/login_screen.dart';
 import '../../features/houses/view/houses_screen.dart';
+import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
 import '../../features/profile/view/profile_screen.dart';
 import '../../features/trips/view/trips_screen.dart';
@@ -113,6 +114,13 @@ GoRouter appRouter(Ref ref) {
         if (postLoginStep != null &&
             postLoginStep != OnboardingStep.aiIntro &&
             isOnAiIntro) {
+          // Dopo la prova AI si entra nella casa appena creata, con i capi
+          // scansionati e il primo tip del tour.
+          final houseId = postLoginAsync.valueOrNull?.defaultHouseId;
+          if (postLoginStep == OnboardingStep.houseDetailTooltip &&
+              houseId != null) {
+            return '/houses/$houseId';
+          }
           return '/';
         }
       }
@@ -183,18 +191,18 @@ GoRouter appRouter(Ref ref) {
             return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
           }
           return TourTriggerWrapper(
-            triggerStep: OnboardingStep.moveItemsTooltip,
+            triggerStep: OnboardingStep.houseDetailTooltip,
             houseId: id,
-            title: 'tour.move_items_tooltip.title'.tr(),
-            body: 'tour.move_items_tooltip.body'.tr(),
-            keyTarget: tourKeys.houseItemsAnchor,
+            title: 'tour.house_detail_tooltip.title'.tr(),
+            body: 'tour.house_detail_tooltip.body'.tr(),
+            keyTarget: tourKeys.houseTitle,
             isSpotlight: true,
-            // Target vicino alla cima dello schermo: la card deve stare
-            // sotto, non sopra (il default per gli step spotlight la
-            // metterebbe fuori vista, sopra l'AppBar).
+            // Target nell'AppBar: la card deve stare sotto, non sopra (il
+            // default per gli step spotlight la metterebbe fuori vista).
             align: ContentAlign.bottom,
             advancesOnOk: true,
-            requiresMultipleHouses: true,
+            // Toccare il nome evidenziato fa quello che il tip suggerisce.
+            onTargetTap: () => showAddEditHouseSheet(context, houseId: id),
             child: HouseDetailScreen(
               houseId: id,
               // `?add=manual` arriva da Crea → "scrivili a mano".
