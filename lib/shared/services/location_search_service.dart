@@ -6,11 +6,40 @@ import 'package:http/http.dart' as http;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../features/houses/model/house_model.dart';
+import '../../features/houses/providers/house_provider.dart';
 import '../config/app_config.dart';
 import '../model/model.dart';
 import 'location_ranking.dart';
 
 part 'location_search_service.g.dart';
+
+/// Roma è il riferimento quando nessuna casa ha coordinate utilizzabili.
+const defaultLocationSearchBias = 'proximity:12.4964,41.9028';
+
+/// Preferisce la casa principale, poi la prima casa localizzata nell'ordine
+/// della lista. Non usa la posizione del dispositivo né filtra i risultati.
+String locationSearchBias(Iterable<HouseModel> houses) {
+  String? firstLocalized;
+  for (final house in houses) {
+    final lat = house.location?.lat;
+    final lon = house.location?.lon;
+    if (lat == null ||
+        lon == null ||
+        !lat.isFinite ||
+        !lon.isFinite ||
+        lat < -90 ||
+        lat > 90 ||
+        lon < -180 ||
+        lon > 180) {
+      continue;
+    }
+    final bias = 'proximity:$lon,$lat';
+    if (house.isPrimary) return bias;
+    firstLocalized ??= bias;
+  }
+  return firstLocalized ?? defaultLocationSearchBias;
+}
 
 /// Il proxy ha risposto 429: il chiamante lo distingue dagli altri errori per
 /// mostrare un messaggio specifico.
@@ -20,6 +49,10 @@ class GeocodeRateLimitException implements Exception {
 
 /// Ricerca di città, regioni e paesi tramite il proxy `geocode-proxy`.
 class LocationSearchService {
+  const LocationSearchService({this.bias = defaultLocationSearchBias});
+
+  final String bias;
+
   /// Suggerimenti per [query] nella lingua [lang] (es. `it`, `en`).
   ///
   /// Lista vuota senza sessione o in caso di errore. Solleva
@@ -34,7 +67,7 @@ class LocationSearchService {
             'text': query,
             'lang': lang.substring(0, 2),
             'limit': '15',
-            'bias': 'countrycode:none',
+            'bias': bias,
           },
         );
 
@@ -97,4 +130,13 @@ class LocationSearchService {
 }
 
 @Riverpod(keepAlive: true)
-LocationSearchService locationSearchService(Ref ref) => LocationSearchService();
+LocationSearchService locationSearchService(Ref ref) {
+  final bias = ref
+      .watch(houseNotifierProvider)
+      .when(
+        data: locationSearchBias,
+        loading: () => defaultLocationSearchBias,
+        error: (_, _) => defaultLocationSearchBias,
+      );
+  return LocationSearchService(bias: bias);
+}

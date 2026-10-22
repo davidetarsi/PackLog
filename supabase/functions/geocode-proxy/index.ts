@@ -1,5 +1,6 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
+import { isValidGeocodeBias } from "./validation.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -82,6 +83,9 @@ Deno.serve(async (req) => {
   // `lang` sanity: codice ISO-639 ~2 char. Più di 8 char è certamente abuso.
   if (lang.length > 8) {
     return errorResponse(400, "'lang' too long");
+  }
+  if (!isValidGeocodeBias(bias)) {
+    return errorResponse(400, "Invalid 'bias': expected proximity:lon,lat");
   }
 
   // 3. Atomic rate-limit check (TOCTOU-safe via SQL function).
