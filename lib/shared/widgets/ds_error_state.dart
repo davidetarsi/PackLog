@@ -1,6 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import '../theme/error_empty_theme_extension.dart';
+import 'ds_empty_state.dart';
 import 'ds_button.dart';
 
 /// Widget standardizzato per stati di errore.
@@ -25,8 +25,11 @@ class DsErrorState extends StatelessWidget {
   /// Callback chiamato quando l'utente preme "Riprova"
   final VoidCallback onRetry;
 
-  /// Messaggio personalizzato (se null, mostra "Errore: $error")
+  /// Spiegazione per l’utente. L’eccezione [error] non viene mai mostrata.
   final String? message;
+
+  /// Titolo comprensibile, senza dettagli dell’eccezione.
+  final String? title;
 
   /// Icona personalizzata (se null, usa Icons.error_outline)
   final IconData? icon;
@@ -55,6 +58,7 @@ class DsErrorState extends StatelessWidget {
     required this.error,
     required this.onRetry,
     this.message,
+    this.title,
     this.icon,
     this.iconColor,
     this.messageStyle,
@@ -65,37 +69,18 @@ class DsErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = context.errorEmptyTheme;
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon ?? Icons.error_outline,
-            size: iconSize ?? theme.errorStateIconSize,
-            color: iconColor ?? theme.errorStateIconColor,
-          ),
-          SizedBox(height: theme.stateSpacingMd),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: theme.stateSpacingMd),
-            child: Text(
-              message ?? '${'common.error_prefix'.tr()} $error',
-              style: messageStyle ?? theme.errorStateMessage,
-              textAlign: TextAlign.center,
-            ),
-          ),
-          if (showRetry) ...[
-            SizedBox(height: theme.stateSpacingMd),
-            DsButton(
-              label: retryLabel ?? theme.errorStateRetryLabel.tr(),
-              icon: Icons.refresh,
-              variant: DsButtonVariant.secondary,
-              onPressed: onRetry,
-            ),
-          ],
-        ],
-      ),
+    return DsEmptyState(
+      scrollable: true,
+      icon: icon ?? Icons.error_outline,
+      iconColor: iconColor,
+      iconSize: iconSize,
+      title: title ?? 'errors.load_failed'.tr(),
+      subtitle: message ?? (showRetry ? 'errors.retry_hint'.tr() : null),
+      subtitleStyle: messageStyle,
+      ctaLabel: showRetry ? retryLabel ?? 'common.retry'.tr() : null,
+      ctaIcon: Icons.refresh,
+      ctaVariant: DsButtonVariant.secondary,
+      onCta: showRetry ? onRetry : null,
     );
   }
 }

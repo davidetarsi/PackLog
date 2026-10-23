@@ -23,6 +23,7 @@ import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_settings.dart';
+import '../../../shared/widgets/ds_inline_error.dart';
 import '../../../shared/widgets/tab_header.dart' show profileInitials;
 import '../services/feedback_url_service.dart';
 import '../widgets/sync_status_tile.dart';
@@ -541,9 +542,9 @@ class _GptUsageGroup extends ConsumerWidget {
         ],
       ),
       loading: () => bar(null),
-      error: (_, _) => Text(
-        'errors.load_failed'.tr(),
-        style: tt.bodySmall?.copyWith(color: cs.error),
+      error: (_, _) => DsInlineError(
+        message: 'profile.ai_usage_load_failed'.tr(),
+        onRetry: () => ref.invalidate(gptUsageProvider),
       ),
     );
 

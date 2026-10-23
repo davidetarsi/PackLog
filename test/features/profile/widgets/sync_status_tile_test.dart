@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/profile/widgets/sync_status_tile.dart';
-import 'package:pack_log/shared/helpers/exception_message.dart';
 
 void main() {
   Widget wrap(Widget child, {required List<Override> overrides}) {
@@ -60,7 +59,7 @@ void main() {
     );
   });
 
-  testWidgets('error state usa exceptionMessage, non e.toString()', (
+  testWidgets('errore di lettura offre Riprova senza dettagli tecnici', (
     tester,
   ) async {
     final err = Exception('raw-technical-detail');
@@ -75,9 +74,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
-    // exceptionMessage(err) è calcolabile qui: dopo pumpWidget la
-    // Localization di easy_localization è inizializzata.
-    expect(find.text(exceptionMessage(err)), findsOneWidget);
+    expect(find.textContaining('raw-technical-detail'), findsNothing);
+    expect(find.text('common.retry'.tr()), findsOneWidget);
   });
 
   testWidgets(

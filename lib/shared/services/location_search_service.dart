@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -47,6 +46,11 @@ class GeocodeRateLimitException implements Exception {
   const GeocodeRateLimitException();
 }
 
+/// Ricerca non completata: non equivale a una risposta senza risultati.
+class GeocodeSearchException implements Exception {
+  const GeocodeSearchException();
+}
+
 /// Ricerca di città, regioni e paesi tramite il proxy `geocode-proxy`.
 class LocationSearchService {
   const LocationSearchService({this.bias = defaultLocationSearchBias});
@@ -55,8 +59,8 @@ class LocationSearchService {
 
   /// Suggerimenti per [query] nella lingua [lang] (es. `it`, `en`).
   ///
-  /// Lista vuota senza sessione o in caso di errore. Solleva
-  /// [GeocodeRateLimitException] solo quando il proxy risponde 429.
+  /// Lista vuota solo se la ricerca non trova luoghi. Gli errori sono
+  /// [GeocodeSearchException] o [GeocodeRateLimitException].
   Future<List<LocationSuggestionModel>> search(
     String query, {
     required String lang,
@@ -71,29 +75,26 @@ class LocationSearchService {
           },
         );
 
-    // Il proxy esegue `getUser(token)` per il rate-limit per-utente: serve
-    // il JWT dell'utente loggato, non l'anon key. L'auth gate del router
-    // garantisce che chiunque possa raggiungere questo widget sia loggato;
-    // in caso edge di sessione scaduta tra il check e qui, ritorniamo
-    // suggestion vuoti senza errori — l'utente proverà a digitare ancora.
     final jwt = Supabase.instance.client.auth.currentSession?.accessToken;
-    if (jwt == null) return [];
+    if (jwt == null) throw const GeocodeSearchException();
 
     try {
-      final response = await http.get(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $jwt',
-          'apikey': AppConfig.supabaseAnonKey,
-        },
-      );
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $jwt',
+              'apikey': AppConfig.supabaseAnonKey,
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 429) {
         throw const GeocodeRateLimitException();
       }
 
       if (response.statusCode != 200) {
-        throw Exception('Errore HTTP Geoapify: ${response.statusCode}');
+        throw const GeocodeSearchException();
       }
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -121,10 +122,8 @@ class LocationSearchService {
       return rankLocationSuggestions(query, uniqueSuggestions).take(5).toList();
     } on GeocodeRateLimitException {
       rethrow;
-    } catch (e) {
-      // In produzione, loggare l'errore su Crashlytics/Sentry, non stamparlo solo in console
-      debugPrint('[LocationSearchService] Errore API: $e');
-      return [];
+    } catch (_) {
+      throw const GeocodeSearchException();
     }
   }
 }

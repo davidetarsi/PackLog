@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/theme/app_spacing.dart';
@@ -39,10 +40,12 @@ class HouseSpacesSheet extends ConsumerWidget {
           data: (houses) {
             final house = houses.where((h) => h.id == houseId).firstOrNull;
             if (house == null) {
-              return DsEmptyState(
+              return DsNotFoundState(
                 key: const Key('storage_not_found'),
                 icon: Icons.home_outlined,
                 title: 'houses.house_not_found'.tr(),
+                actionLabel: 'common.close'.tr(),
+                onAction: () => Navigator.pop(context),
               );
             }
             return Column(
@@ -66,7 +69,7 @@ class HouseSpacesSheet extends ConsumerWidget {
     padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
     child: DsErrorState(
       error: error,
-      message: 'storage.load_failed'.tr(),
+      title: 'storage.load_failed'.tr(),
       onRetry: onRetry,
     ),
   );

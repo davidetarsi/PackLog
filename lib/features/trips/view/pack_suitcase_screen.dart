@@ -714,6 +714,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => DsErrorState(
         error: error,
+        title: 'luggages.load_failed'.tr(),
         onRetry: () => ref.invalidate(luggageNotifierProvider),
       ),
     );
@@ -767,6 +768,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => DsErrorState(
         error: error,
+        title: 'errors.load_houses'.tr(),
         onRetry: () => ref.invalidate(houseNotifierProvider),
       ),
     );
@@ -847,6 +849,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
           ),
           error: (error, _) => DsErrorState(
             error: error,
+            title: 'errors.load_items'.tr(),
             onRetry: () => ref.invalidate(itemNotifierProvider(house.id)),
           ),
         ),

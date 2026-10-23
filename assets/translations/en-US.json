@@ -55,6 +55,7 @@
     "unnamed_house": "Unnamed house"
   },
   "items": {
+    "not_found": "Item not found",
     "add": "Item",
     "this_item": "this item",
     "no_houses_available": "No houses available. Create a house first.",
@@ -132,6 +133,7 @@
     "space_deleted": "Space \"{}\" deleted"
   },
   "luggages": {
+    "load_failed": "Unable to load luggage",
     "title": "Luggages",
     "add": "Luggage",
     "add_new": "New luggage",
@@ -249,6 +251,7 @@
     "missingPlace": "A stop has no place on the map yet: set it to pack with AI."
   }
 },
+    "not_found": "Trip not found",
     "edit": {
       "discard_title": "Leave without saving?",
       "discard_message": "Your changes to the trip will be lost."
@@ -423,6 +426,11 @@
     }
   },
   "common": {
+    "content_unavailable": "This content may have been deleted or may no longer be available.",
+    "page_not_found": "Page not found",
+    "page_unavailable": "Page unavailable",
+    "page_not_found_hint": "This link does not lead to an available page. Return to your houses to continue.",
+    "back_to_trips": "Back to trips",
     "coming_soon": "Coming soon",
     "save": "Save",
     "save_changes": "Save changes",
@@ -484,6 +492,10 @@
     "dates": "Dates"
   },
   "errors": {
+    "retry_hint": "Try again in a moment.",
+    "load_houses": "Unable to load houses",
+    "load_items": "Unable to load items",
+    "load_trips": "Unable to load trips",
     "generic": "An error occurred",
     "save_failed": "Unable to save",
     "save_error": "Save error",
@@ -525,6 +537,8 @@
     "copy_success": "\"{}\" copied successfully"
   },
   "profile": {
+    "ai_usage_load_failed": "Unable to load AI usage",
+    "sync_details_load_failed": "Unable to load sync details",
     "section_preferences": "Preferences",
     "section_account": "Account",
     "ai_usage_title": "AI uses",
@@ -571,6 +585,7 @@
     "analytics_subtitle": "Usage data that helps us improve the app"
   },
   "ai_import": {
+    "error_title": "Scan could not be completed",
     "already_here_title": "Already in {}?",
     "already_here_default_title": "Already at home?",
     "already_here_load_error": "Couldn't load the items in this home. Try again.",
@@ -667,6 +682,7 @@
     "ai_save_tooltip": "We save them in a new house, “Home”. Right after, you can give it the right name and place."
   },
   "location_search": {
+    "failed": "We could not search for places. Try again.",
     "rate_limit_reached": "Too many location searches, please try again in a few minutes.",
     "no_results": "No places found. Try the name of a city."
   },
