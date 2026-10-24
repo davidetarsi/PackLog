@@ -92,35 +92,38 @@ Deno.serve(async (req) => {
   }
 
   const claude = claudeHttp(chiaveClaude);
-  let r;
+  // Tutto quello che succede dopo il consumo, fino alla risposta, sta nel try: se
+  // qualcosa salta, il credito si restituisce e la risposta e' un errore, non una valigia.
+  let risposta: Response;
   try {
-    r = await generaValigia(scenarioDaApp(viaggio), righe as RigaArmadio[], {
+    const r = await generaValigia(scenarioDaApp(viaggio), righe as RigaArmadio[], {
       clima: () => climaViaggio(viaggio.data_inizio, viaggio.giorni, viaggio.destinazione ?? null,
         viaggio.tappe ?? null, serviziMeteo(db, Deno.env.get("OPEN_METEO_API_KEY") || undefined)),
       modello: conRiprova((prompt) => claude(prompt, MAX_TOKENS_VALIGIA)),
       jev: chiaveJev ? jevHttp(chiaveJev) : null,
       profiliNoti,
     });
+
+    const nuovi = Object.entries(r.jev.profili_nuovi).map(([id, p]) => ({
+      item_id: id, user_id: u.id, card: p.scheda, answers: p.risposte, model: MODELLO_JEV,
+      updated_at: new Date().toISOString(),
+    }));
+    if (nuovi.length) {
+      const { error } = await db.from("item_jev_profiles").upsert(nuovi);
+      if (error) console.error("[pack-trip] profiles write:", error.message);
+    }
+    for (const e of r.jev.errori) console.warn("[pack-trip] jev:", e);
+
+    const { raw: _raw, ...valigia } = r.valigia;
+    risposta = json(200, {
+      valigia, motivi: r.motivi, perche: r.perche, geo: r.geo, meteo: r.meteo,
+      note_tecniche: r.jev.errori,
+      ...uscitaApp(r.valigia, r.motivi as { capi: Record<string, any>[]; essenziali: Record<string, any>[] }, salvate),
+    });
   } catch (e) {
     console.error("[pack-trip]", (e as Error).message);
     await restituisciCreditoAi(db, u.id, consumo);
     return errore(502, "Packing upstream error");
   }
-
-  const nuovi = Object.entries(r.jev.profili_nuovi).map(([id, p]) => ({
-    item_id: id, user_id: u.id, card: p.scheda, answers: p.risposte, model: MODELLO_JEV,
-    updated_at: new Date().toISOString(),
-  }));
-  if (nuovi.length) {
-    const { error } = await db.from("item_jev_profiles").upsert(nuovi);
-    if (error) console.error("[pack-trip] profiles write:", error.message);
-  }
-  for (const e of r.jev.errori) console.warn("[pack-trip] jev:", e);
-
-  const { raw: _raw, ...valigia } = r.valigia;
-  return json(200, {
-    valigia, motivi: r.motivi, perche: r.perche, geo: r.geo, meteo: r.meteo,
-    note_tecniche: r.jev.errori,
-    ...uscitaApp(r.valigia, r.motivi as { capi: Record<string, any>[]; essenziali: Record<string, any>[] }, salvate),
-  });
+  return risposta;
 });

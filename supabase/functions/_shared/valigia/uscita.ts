@@ -23,7 +23,71 @@ export interface AvvisoApp {
   cerca: string | null;
 }
 
-const maiuscola = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+// Copy fisso (italiano, niente testo libero dal generatore): ogni frase nasce solo
+// dai campi strutturati del gap (category, subCategories, tipo, tappe, warmth_richiesto,
+// impermeabilita_richiesta, candidato_scartato). Mai la parola "capospalla", mai numeri.
+const NOME_SOTTOCATEGORIA: Record<string, string> = {
+  "T-Shirt": "una maglietta", "Shirt": "una camicia", "Polo": "una polo", "Hoodie": "una felpa con cappuccio",
+  "Sweatshirt": "una felpa", "Sweater": "un maglione", "Tank Top": "una canottiera", "Crop Top": "un top",
+  "Thermal Top": "una maglia termica", "Fleece": "un pile", "Jeans": "un paio di jeans",
+  "Shorts": "un paio di pantaloncini", "Trousers": "un paio di pantaloni", "Leggings": "un paio di leggings",
+  "Skirt": "una gonna", "Sweatpants": "un paio di pantaloni della tuta", "Swimwear": "un costume da bagno",
+  "Thermal Bottoms": "un paio di pantaloni termici", "Ski Pants": "un paio di pantaloni da sci",
+  "Wetsuit": "una muta", "Dress": "un vestito", "Sneakers": "un paio di sneakers", "Sandals": "un paio di sandali",
+  "Boots": "un paio di stivali", "Flip-Flops": "un paio di infradito", "Loafers": "un paio di mocassini",
+  "Dress Shoes": "un paio di scarpe eleganti", "Hiking Boots": "un paio di scarponi da trekking",
+  "Water Shoes": "un paio di scarpe da acqua", "Snow Boots": "un paio di doposci", "Coat": "un cappotto",
+  "Rain Jacket": "una giacca impermeabile", "Down Jacket": "un piumino", "Windbreaker": "una giacca a vento",
+  "Blazer": "un blazer", "Ski Jacket": "una giacca da sci", "Ski Suit": "una tuta da sci",
+  "Casual Jacket": "una giacca casual", "Vest": "un gilet", "Cap/Hat": "un cappello", "Belt": "una cintura",
+  "Bag": "una borsa", "Scarf": "una sciarpa", "Sunglasses": "un paio di occhiali da sole",
+  "Jewelry": "un gioiello", "Watch": "un orologio", "Gloves": "un paio di guanti", "Tie": "una cravatta",
+  "Umbrella": "un ombrello",
+};
+const NOME_CATEGORIA: Record<string, string> = {
+  "Upper Body": "una maglia", "Lower Body": "un paio di pantaloni", "Full Body": "un vestito",
+  "Shoes": "un paio di scarpe", "Outerwear": "una giacca", "Accessory": "un accessorio",
+};
+
+/** Il capo come frase: la prima sottocategoria che conosciamo, altrimenti la categoria, altrimenti "un capo". */
+function nomeCapo(g: Record_): string {
+  const subs: unknown[] = Array.isArray(g.subCategories) ? g.subCategories : [];
+  for (const s of subs) if (typeof s === "string" && NOME_SOTTOCATEGORIA[s]) return NOME_SOTTOCATEGORIA[s];
+  return NOME_CATEGORIA[String(g.category ?? "")] ?? "un capo";
+}
+
+/** "Reykjavik", "Reykjavik e Akureyri", "A, B e C"; senza tappe: il viaggio intero. */
+function perTappe(g: Record_): string {
+  const nomi = (Array.isArray(g.tappe) ? g.tappe : []).map(String).filter((n) => n.trim() !== "");
+  if (!nomi.length) return "per il viaggio";
+  if (nomi.length === 1) return `per ${nomi[0]}`;
+  return `per ${nomi.slice(0, -1).join(", ")} e ${nomi[nomi.length - 1]}`;
+}
+
+/** Il motivo del capo che manca, dai soli campi strutturati. */
+function perMeteo(g: Record_): string {
+  const acqua = Number(g.impermeabilita_richiesta ?? 0) >= 1 || Number(g.requiredWaterResistance ?? 0) >= 1;
+  if (acqua) return "per la pioggia prevista";
+  const v = g.warmth_richiesto;
+  if (Array.isArray(v) && v.length === 2 && Number.isFinite(Number(v[0])) && Number(v[0]) >= 3) return "per il freddo previsto";
+  return "per il meteo previsto";
+}
+
+/** Titolo e corpo di un avviso dai mancanti del generatore: solo copy fisso, mai il testo libero. */
+export function copyMancante(g: Record_): { titolo: string; perche: string } {
+  const capo = nomeCapo(g);
+  const tappe = perTappe(g);
+  if (g.tipo === "quantita_insufficiente") {
+    return { titolo: `Servono più copie di ${capo} ${tappe}`,
+      perche: "Nell'armadio di questa casa ne hai meno di quante ne servono." };
+  }
+  const candidato = typeof g.candidato_scartato === "string" ? g.candidato_scartato.trim() : "";
+  if (g.tipo === "posseduto_ma_inadatto" && candidato) {
+    return { titolo: `Manca ${capo} ${tappe}`, perche: `${candidato} non basta ${perMeteo(g)}.` };
+  }
+  return { titolo: `Manca ${capo} ${tappe}`,
+    perche: "Nell'armadio di questa casa non c'è niente di adatto al meteo previsto." };
+}
 
 /** Capi (uniti per item_id, quantita' sommata, tetto dell'armadio) e avvisi della valigia. */
 export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenziali: Record_[] },
@@ -33,7 +97,9 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
   const uniti = new Map<string, { item: string; quantita: number; in_partenza: boolean; motivo: Record_ }>();
   for (const x of [...motivi.capi, ...motivi.essenziali]) {
     const id = String(x.item_id);
-    const quantita = Number(x.quantita ?? 1);
+    // Quantita' non numerica (o assente) conta come un pezzo.
+    const n = x.quantita == null ? 1 : Number(x.quantita);
+    const quantita = Number.isFinite(n) ? n : 1;
     const corrente = uniti.get(id);
     if (corrente) {
       corrente.quantita += quantita;
@@ -67,11 +133,12 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
   }
 
   for (const g of (valigia.mancanti_canonici ?? []) as Record_[]) {
+    const { titolo, perche } = copyMancante(g);
     avvisi.push({
       codice: String(g.tipo),
       livello: g.priorita === "necessario" ? "importante" : "utile",
-      titolo: maiuscola(String(g.slot ?? "")),
-      perche: String(g.reason ?? ""),
+      titolo,
+      perche,
       cerca: null,
     });
   }
