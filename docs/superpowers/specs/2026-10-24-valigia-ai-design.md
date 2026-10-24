@@ -82,7 +82,7 @@ Altri ingressi:
 
 ### 1. Il foglio "Valigia con AI"
 
-Bottom sheet con `StandardBottomSheetLayout`, come gli altri dell'app.
+Bottom sheet con `showDsFormSheet`/`DsFormSheet`, come gli altri dell'app dopo la PR #49 (che ha tolto `StandardBottomSheetLayout`).
 
 **In cima, valido per tutto il viaggio:**
 - **Da quale casa prendi i vestiti**: pillole con le case dell'utente,
