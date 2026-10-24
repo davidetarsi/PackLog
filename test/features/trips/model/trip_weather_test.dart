@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
+import 'package:pack_log/features/trips/model/pack_trip_request.dart';
 import 'package:pack_log/features/trips/model/trip_leg.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/model/trip_weather.dart';
@@ -350,6 +351,90 @@ void main() {
         ]);
       },
     );
+
+    List<String> keysOf(List<TripLeg> legs) => [
+      for (final stop in _request(
+        planTripWeather(
+          _trip(
+            departure: DateTime(2026, 10, 30),
+            returnAt: DateTime(2026, 11, 6),
+            destination: _place('Lisbona'),
+            legs: legs,
+          ),
+          houses: const [],
+          today: _today,
+        ),
+      ).stops)
+        stop.stopKey,
+    ];
+
+    test('tolleranza: un luogo a 0.004° dalla meta è la meta', () {
+      expect(
+        keysOf([
+          TripLeg(
+            id: 'near',
+            locationDisplayName: 'Lisbona centro, Portogallo',
+            from: DateTime(2026, 11, 2),
+            lat: 38.704,
+            lon: -9.096,
+          ),
+        ]),
+        [kMainStopKey, kMainStopKey],
+      );
+    });
+
+    test('tolleranza: un luogo a 0.05° dalla meta tiene il suo id', () {
+      expect(
+        keysOf([
+          TripLeg(
+            id: 'far',
+            locationDisplayName: 'Sintra, Portogallo',
+            from: DateTime(2026, 11, 2),
+            lat: 38.75,
+            lon: -9.1,
+          ),
+        ]),
+        [kMainStopKey, 'far'],
+      );
+    });
+
+    test('tolleranza: due nomi diversi nello stesso punto condividono la '
+        'prima chiave, una tappa sola nel foglio', () {
+      final plan = _request(
+        planTripWeather(
+          _trip(
+            departure: DateTime(2026, 10, 30),
+            returnAt: DateTime(2026, 11, 6),
+            destination: _place('Lisbona'),
+            legs: [
+              TripLeg(
+                id: 'leg1',
+                locationDisplayName: 'Sintra, Portogallo',
+                from: DateTime(2026, 11, 2),
+                to: DateTime(2026, 11, 3),
+                lat: 38.8,
+                lon: -9.4,
+              ),
+              TripLeg(
+                id: 'leg2',
+                locationDisplayName: 'Cascais, Portogallo',
+                from: DateTime(2026, 11, 4),
+                to: DateTime(2026, 11, 6),
+                lat: 38.801,
+                lon: -9.401,
+              ),
+            ],
+          ),
+          houses: const [],
+          today: _today,
+        ),
+      );
+      expect(plan.stops.map((s) => s.stopKey), [kMainStopKey, 'leg1', 'leg1']);
+      final sheet = aiStopsOf(plan);
+      expect(sheet.map((s) => s.key), [kMainStopKey, 'leg1']);
+      expect(sheet.last.name, 'Sintra');
+      expect(sheet.last.days, 5);
+    });
 
     test('la firma cambia con le date', () {
       TripWeatherRequest plan(DateTime returnAt) => _request(

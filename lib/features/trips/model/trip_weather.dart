@@ -13,9 +13,14 @@ const kWeatherMaxDaysAhead = 730;
 /// Lunghezza massima dei testi accettata dalla funzione.
 const _kMaxText = 80;
 
-/// Chiave della meta nel piano: le tappe usano l'id della tappa del viaggio.
-/// È la chiave con cui la valigia AI legge le risposte di ogni luogo.
+/// Chiave della meta nel piano. Le altre tappe usano l'id del loro primo
+/// periodo (o la chiave del luogo già presente nello stesso punto): è la
+/// chiave con cui la valigia AI legge le risposte di ogni luogo.
 const kMainStopKey = 'main';
+
+/// Due luoghi sono lo stesso se distano non più di questa tolleranza, in
+/// gradi, sia in latitudine sia in longitudine (0.01° ≈ 1 km).
+const kSamePlaceToleranceDegrees = 0.01;
 
 /// Da dove viene il meteo di una tappa: previsione (entro 14 giorni dalla
 /// fine) o media degli anni passati.
@@ -34,8 +39,9 @@ class WeatherStopRequest {
     required this.days,
   });
 
-  /// Il luogo a cui appartiene il periodo: [kMainStopKey] per la meta, l'id
-  /// della tappa per le altre. Non va nel JSON né nella firma del meteo.
+  /// Il luogo a cui appartiene il periodo: [kMainStopKey] per la meta, per le
+  /// altre tappe l'id del primo periodo nello stesso punto. Non va nel JSON
+  /// né nella firma del meteo.
   final String stopKey;
   final String name;
   final String? country;
@@ -102,7 +108,7 @@ class TripWeatherRequest extends TripWeatherPlan {
 
   Map<String, dynamic> toJson() => {
     'trip': {
-      'data_inizio': _isoDay(start),
+      'data_inizio': isoDay(start),
       'tappe': [for (final stop in stops) stop.toJson()],
     },
   };
@@ -163,8 +169,8 @@ class StopWeather {
 
   Map<String, dynamic> toJson() => {
     'name': name,
-    'from': _isoDay(from),
-    'to': _isoDay(to),
+    'from': isoDay(from),
+    'to': isoDay(to),
     'source': source.name,
     'years': years,
     'temp_min': tempMin,
@@ -272,7 +278,7 @@ class DayWeather {
   final List<BandWeather> bands;
 
   Map<String, dynamic> toJson() => {
-    'data': _isoDay(date),
+    'data': isoDay(date),
     'codice': code,
     'temp_min': tempMin,
     'temp_max': tempMax,
@@ -465,10 +471,9 @@ TripWeatherPlan planTripWeather(
     final lon = leg.lon ?? housesById[leg.houseId]?.location?.lon;
     // Lo stesso luogo, in un altro periodo, ha la stessa chiave: nel foglio
     // della valigia AI è una tappa sola.
-    final same = places.where((p) => _samePlace(p, lat, lon));
     places.add(
       _Place(
-        key: same.isEmpty ? leg.id : same.first.key,
+        key: _stopKeyAt(places, lat, lon, leg.id),
         start: _day(leg.from!),
         name:
             housesById[leg.houseId]?.displayName ??
@@ -524,8 +529,29 @@ TripWeatherPlan planTripWeather(
   ]);
 }
 
-bool _samePlace(_Place place, double? lat, double? lon) =>
-    lat != null && lon != null && place.lat == lat && place.lon == lon;
+/// La chiave del primo luogo nello stesso punto, altrimenti [ownKey].
+String _stopKeyAt(
+  List<_Place> places,
+  double? lat,
+  double? lon,
+  String ownKey,
+) {
+  for (final place in places) {
+    if (_samePlace(place, lat, lon)) return place.key;
+  }
+  return ownKey;
+}
+
+/// Coordinate mancanti non combaciano mai: un luogo senza punto resta suo.
+bool _samePlace(_Place place, double? lat, double? lon) {
+  final placeLat = place.lat;
+  final placeLon = place.lon;
+  if (lat == null || lon == null || placeLat == null || placeLon == null) {
+    return false;
+  }
+  return (placeLat - lat).abs() <= kSamePlaceToleranceDegrees &&
+      (placeLon - lon).abs() <= kSamePlaceToleranceDegrees;
+}
 
 /// Il testo prima della virgola: "Sintra, Lisbona, Portogallo" → "Sintra".
 String _shortName(String display) {
@@ -554,7 +580,8 @@ int _daysBetween(DateTime from, DateTime to) => DateTime.utc(
   to.day,
 ).difference(DateTime.utc(from.year, from.month, from.day)).inDays;
 
-String _isoDay(DateTime day) =>
+/// Il giorno come `AAAA-MM-GG`, per il JSON di `trip-weather` e `pack-trip`.
+String isoDay(DateTime day) =>
     '${day.year.toString().padLeft(4, '0')}-'
     '${day.month.toString().padLeft(2, '0')}-'
     '${day.day.toString().padLeft(2, '0')}';

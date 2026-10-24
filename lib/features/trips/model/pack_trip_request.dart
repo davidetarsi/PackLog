@@ -66,7 +66,7 @@ Map<String, dynamic> packTripBody({
   final stops = aiStopsOf(plan);
   final bagaglio = luggageDescription(luggage);
   final trip = <String, dynamic>{
-    'data_inizio': _isoDay(plan.start),
+    'data_inizio': isoDay(plan.start),
     if (bagaglio != null) 'bagaglio': bagaglio,
   };
   if (stops.length == 1) {
@@ -107,8 +107,3 @@ Map<String, dynamic> _answerFields(AiStopAnswers? answers) {
     'lavatrice': answers?.washer ?? false,
   };
 }
-
-String _isoDay(DateTime day) =>
-    '${day.year.toString().padLeft(4, '0')}-'
-    '${day.month.toString().padLeft(2, '0')}-'
-    '${day.day.toString().padLeft(2, '0')}';
