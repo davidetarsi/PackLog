@@ -5,9 +5,11 @@
 // poi il codice sceglie i capi e spiega perche'.
 //
 // POST { house_id, trip: { data_inizio, giorni, destinazione: {nome, paese, lat,
-//   lon} | tappe: [{nome, paese, lat, lon, giorni, attivita}], attivita,
-//   bagaglio, alloggio, lavatrice } }
+//   lon} | tappe: [{nome, paese, lat, lon, giorni, attivita, alloggio, lavatrice}],
+//   attivita, bagaglio, alloggio, lavatrice } }
 //   -> { valigia, motivi, perche, geo, meteo, note_tecniche }
+// Alloggio e lavatrice stanno per tappa (alloggio testo, lavatrice booleano); il
+// viaggio li ricava dalle tappe, o usa i propri se mandati (formato vecchio).
 // valigia: ideali, ripieghi, essenziali, mancanti, ...; motivi: un motivo per
 // capo; perche: la scheda "Perche' queste scelte"; note_tecniche: cio' che non ha
 // risposto (Jev e' un aiuto, la valigia si fa lo stesso).
