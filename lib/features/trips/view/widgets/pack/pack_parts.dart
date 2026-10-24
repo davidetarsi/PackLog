@@ -7,9 +7,9 @@ import '../../../../../shared/widgets/quantity_stepper.dart';
 import '../../../../items/model/item_model.dart';
 import '../../../model/trip_model.dart';
 
-/// Pillola neutra della valigia: bagagli e casa. Se scelta prende la superficie
-/// `surfaceContainerHigh`, il contorno `onSurface` e la spunta; altrimenti
-/// contorno `outlineVariant` e l'icona. Niente arancio: lo porta solo "Fatto".
+/// Pillola neutra della valigia: bagagli e casa. Se scelta ha sfondo
+/// trasparente, bordo e testo `onSurface`; altrimenti bordo `outlineVariant`.
+/// L'icona resta la sua, senza spunta. Niente arancio: lo porta solo "Fatto".
 class PackPill extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -32,7 +32,7 @@ class PackPill extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     return Material(
-      color: selected ? cs.surfaceContainerHigh : Colors.transparent,
+      color: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
         side: BorderSide(color: selected ? cs.onSurface : cs.outlineVariant),
@@ -49,7 +49,7 @@ class PackPill extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                selected ? Icons.check : icon,
+                icon,
                 size: context.iconSizeSm,
                 color: selected ? cs.onSurface : cs.onSurfaceVariant,
               ),
@@ -58,7 +58,9 @@ class PackPill extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: tt.labelLarge,
+                style: tt.labelLarge?.copyWith(
+                  color: selected ? cs.onSurface : null,
+                ),
               ),
             ],
           ),
