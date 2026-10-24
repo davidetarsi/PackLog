@@ -240,14 +240,21 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     }
   }
 
-  /// In modifica: riporta i cambiamenti sul viaggio, che conserva oggetti,
-  /// bagagli, nota e tutto il resto.
+  /// In modifica: riporta i cambiamenti sul viaggio di adesso, che conserva
+  /// oggetti, bagagli, valigia AI, nota e tutto il resto.
   Future<void> _saveEdit() async {
     final original = _original;
     if (_saving || original == null) return;
     setState(() => _saving = true);
     final draftTrip = _draft.toTripModel(id: original.id, now: DateTime.now());
-    final updated = original.copyWith(
+    // Il viaggio com'è adesso nel provider, non la copia di apertura: risposte
+    // AI, oggetti e bagagli salvati nel frattempo non devono sparire.
+    final corrente = ref
+        .read(tripNotifierProvider)
+        .valueOrNull
+        ?.where((t) => t.id == original.id)
+        .firstOrNull;
+    final updated = (corrente ?? original).copyWith(
       name: draftTrip.name,
       departureDateTime: draftTrip.departureDateTime,
       returnDateTime: draftTrip.returnDateTime,

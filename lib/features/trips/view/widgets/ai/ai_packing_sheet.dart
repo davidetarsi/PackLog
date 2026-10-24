@@ -99,8 +99,14 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
     for (final luggage in luggages) {
       if (luggage.id == widget.trip.aiSetup?.luggageId) return luggage;
     }
-    final onTrip = {for (final luggage in widget.trip.luggages) luggage.id};
-    return luggages.where((luggage) => onTrip.contains(luggage.id)).firstOrNull;
+    // Il primo dei bagagli del viaggio, nell'ordine del viaggio, che l'utente ha ancora.
+    for (final onTrip in widget.trip.luggages) {
+      final match = luggages
+          .where((luggage) => luggage.id == onTrip.id)
+          .firstOrNull;
+      if (match != null) return match;
+    }
+    return null;
   }
 
   /// Prima tappa che manca di attività o alloggio, oppure -1.

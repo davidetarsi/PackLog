@@ -249,6 +249,34 @@ void main() {
       expect(result.setup!.stops['main']!.activities, [AiActivity.diving]);
     });
 
+    testWidgets(
+      'il bagaglio preselezionato è il primo del viaggio, non il primo dell elenco',
+      (tester) async {
+        final trolley = LuggageModel(
+          id: 'l2',
+          name: 'Trolley',
+          sizeType: LuggageSize.smallBackpack,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        );
+        final result = _Result();
+        await _pump(
+          tester,
+          plan: _oneStop,
+          result: result,
+          houses: [_milano],
+          // Elenco dell'utente: zaino prima. Viaggio: trolley prima.
+          luggages: [_zaino, trolley],
+          tripLuggages: [trolley, _zaino],
+        );
+
+        await _tap(tester, 'Prepara la valigia');
+        await tester.pumpAndSettle();
+
+        expect(result.setup!.luggageId, 'l2');
+      },
+    );
+
     testWidgets('senza bagagli sul viaggio non si preseleziona niente', (
       tester,
     ) async {

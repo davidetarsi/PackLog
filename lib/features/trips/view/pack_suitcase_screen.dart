@@ -462,7 +462,10 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       ),
     );
     if (!mounted) return;
-    if (proposed == null) {
+    // "La proposta è salva" si dice solo se la scrittura è riuscita.
+    if (!saved) {
+      AppSnackBar.showError(context, 'errors.save_error'.tr());
+    } else if (proposed == null) {
       AppSnackBar.showError(context, 'trips.pack.ai.items_error'.tr());
     }
     setState(() {

@@ -691,6 +691,36 @@ void main() {
     );
 
     testWidgets(
+      'se il salvataggio della proposta fallisce non dice che la proposta è salva',
+      (tester) async {
+        aiOutcome = AiPackingResult(
+          generatedAt: DateTime(2026, 10, 24),
+          houseId: 'h1',
+          proposal: _suitcaseProposal,
+        );
+        arrange(trip: _viaggio(), items: _houseItems);
+        await pumpPack(tester);
+        await tapKey(tester, const Key('pack_ai_suitcase'));
+        await tapInSheet(tester, 'Prepara la valigia');
+
+        // Gli oggetti si leggono, ma la scrittura della valigia fallisce.
+        when(() => tripRepo.updateTrip(any())).thenThrow(Exception('offline'));
+        await tapText(tester, 'Risultato');
+        // La finestra d'errore del salvataggio: si annulla.
+        await tapText(tester, 'Annulla');
+
+        expect(tester.takeException(), isNull);
+        expect(
+          find.text(
+            'Non sono riuscito a leggere gli oggetti della casa: la proposta è salva, ma la valigia non è cambiata.',
+          ),
+          findsNothing,
+        );
+        expect(find.text('Errore di salvataggio'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
       'un capo della proposta non più in casa viene saltato, il resto si salva',
       (tester) async {
         aiOutcome = AiPackingResult(
