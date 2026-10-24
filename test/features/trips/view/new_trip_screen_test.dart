@@ -172,6 +172,14 @@ Future<void> _pickDates(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Vero se la decorazione dipinge con [color] (sfondo o bordo).
+bool _decorationUsesColor(Decoration decoration, Color color) {
+  if (decoration is! BoxDecoration) return false;
+  final border = decoration.border;
+  return decoration.color == color ||
+      (border is Border && border.top.color == color);
+}
+
 void main() {
   late MockTripRepository tripRepo;
   late MockHouseRepository houseRepo;
@@ -348,24 +356,96 @@ void main() {
   });
 
   group('NewTripScreen — valigia con AI', () {
-    testWidgets('nel passo 1 "Prepara con AI" è secondario sotto "Avanti"', (
-      tester,
-    ) async {
+    testWidgets('nel passo 1 "Prepara con AI" è un contorno neutro sotto '
+        '"Avanti"', (tester) async {
       await pumpScreen(tester);
 
-      final ai = tester.widget<DsButton>(
-        find.byKey(const Key('new_trip_prepare_ai')),
-      );
-      expect(ai.variant, DsButtonVariant.secondary);
-      expect(ai.icon, Icons.auto_awesome);
-      expect(ai.label, 'Prepara con AI');
+      final ai = find.byKey(const Key('new_trip_prepare_ai'));
+      final scheme = Theme.of(tester.element(ai)).colorScheme;
+      final style = tester.widget<OutlinedButton>(ai).style!;
+      expect(style.foregroundColor!.resolve({}), scheme.onSurface);
+      expect(style.side!.resolve({})!.color, scheme.outline);
       expect(
-        tester.widget<DsButton>(find.byKey(const Key('new_trip_next'))).variant,
-        DsButtonVariant.primary,
+        find.descendant(of: ai, matching: find.text('Prepara con AI')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: ai, matching: find.byIcon(Icons.auto_awesome)),
+        findsOneWidget,
+      );
+      expect(
+        tester.getSize(ai).height,
+        tester.getSize(find.byKey(const Key('new_trip_next'))).height,
       );
       double y(String key) => tester.getTopLeft(find.byKey(Key(key))).dy;
       expect(y('new_trip_next'), lessThan(y('new_trip_prepare_ai')));
       expect(y('new_trip_prepare_ai'), lessThan(y('new_trip_later')));
+    });
+
+    testWidgets('nel passo 1 solo "Avanti" usa il colore primario', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+
+      final next = find.byKey(const Key('new_trip_next'));
+      final primary = Theme.of(tester.element(next)).colorScheme.primary;
+      // Tutto ciò che sta dentro "Avanti" è suo: il resto della schermata no.
+      final avanti = find
+          .descendant(of: next, matching: find.byWidgetPredicate((_) => true))
+          .evaluate()
+          .followedBy(next.evaluate())
+          .toSet();
+
+      bool usesPrimary(Widget w) {
+        if (w is DsButton) return w.variant == DsButtonVariant.primary;
+        if (w is Text) return w.style?.color == primary;
+        if (w is Icon) return w.color == primary;
+        if (w is Material) return w.color == primary;
+        if (w is ButtonStyleButton) {
+          return w.style?.foregroundColor?.resolve({}) == primary ||
+              w.style?.side?.resolve({})?.color == primary;
+        }
+        if (w is DecoratedBox) {
+          return _decorationUsesColor(w.decoration, primary);
+        }
+        if (w is Container) {
+          return w.color == primary ||
+              (w.decoration != null &&
+                  _decorationUsesColor(w.decoration!, primary));
+        }
+        return false;
+      }
+
+      final others = find
+          .byWidgetPredicate(usesPrimary)
+          .evaluate()
+          .where((e) => !avanti.contains(e))
+          .map((e) => e.widget.runtimeType.toString())
+          .toList();
+      expect(others, isEmpty);
+    });
+
+    testWidgets('doppio tocco su "Prepara con AI" salva una sola volta', (
+      tester,
+    ) async {
+      final saving = Completer<void>();
+      when(() => tripRepo.addTrip(any())).thenAnswer((_) => saving.future);
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pump();
+      saving.complete();
+      await tester.pumpAndSettle();
+
+      // Una sola chiamata: `verify` la consuma, quindi la si legge da lì.
+      final trip =
+          verify(() => tripRepo.addTrip(captureAny())).captured.single
+              as TripModel;
+      expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
+      expect(find.text('ai=1'), findsOneWidget);
     });
 
     testWidgets('"Prepara con AI" salva e apre la valigia con ai=1', (

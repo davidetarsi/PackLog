@@ -638,7 +638,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _prepareAiButton(primary: true),
+          _prepareAiButton(),
           DsLinkButton(
             key: const Key('new_trip_manual'),
             label: 'trips.new.pack_myself'.tr(),
@@ -661,26 +661,51 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
           onDisabledTap: _showMissing,
         ),
         SizedBox(height: context.spacingSm),
-        _prepareAiButton(primary: false),
+        _prepareAiOutlined(context),
         later,
       ],
     );
   }
 
-  /// "Prepara con AI": primario con [NewTripScreen.aiIntent], altrimenti
-  /// secondario sotto "Avanti" (così resta un solo arancio nella schermata).
-  Widget _prepareAiButton({required bool primary}) {
+  /// "Prepara con AI" primario, con [NewTripScreen.aiIntent].
+  Widget _prepareAiButton() {
     return DsButton(
       key: const Key('new_trip_prepare_ai'),
       label: 'trips.new.prepare_with_ai'.tr(),
       icon: Icons.auto_awesome,
-      variant: primary ? DsButtonVariant.primary : DsButtonVariant.secondary,
       expand: true,
-      isLoading: primary && _saving,
+      isLoading: _saving,
       onPressed: _draft.canSave
           ? () => _save(goToPacking: true, withAi: true)
           : null,
       onDisabledTap: _showMissing,
+    );
+  }
+
+  /// "Prepara con AI" sotto "Avanti": contorno neutro, perché l'arancio del
+  /// passo 1 è solo "Avanti" (come la scelta neutra di "Avanti" nel foglio
+  /// valigia). Stessa altezza del bottone primario. Senza campi, il tocco
+  /// mostra gli errori invece di spegnersi.
+  Widget _prepareAiOutlined(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        key: const Key('new_trip_prepare_ai'),
+        onPressed: _draft.canSave
+            ? () => _save(goToPacking: true, withAi: true)
+            : _showMissing,
+        icon: const Icon(Icons.auto_awesome),
+        label: Text('trips.new.prepare_with_ai'.tr()),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: cs.onSurface,
+          minimumSize: Size.fromHeight(context.responsive(56)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+          ),
+          side: BorderSide(color: cs.outline, width: 2),
+        ),
+      ),
     );
   }
 }
