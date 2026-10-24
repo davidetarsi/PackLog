@@ -90,8 +90,8 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
     return proposedPackingHouse(houses, widget.trip);
   }
 
-  /// Il bagaglio scelto, o quello salvato, o il primo del viaggio, o il primo
-  /// dell'utente.
+  /// Il bagaglio scelto, o quello salvato, o il primo del viaggio. Senza
+  /// bagagli sul viaggio non si preseleziona niente.
   LuggageModel? _luggageOf(List<LuggageModel> luggages) {
     for (final luggage in luggages) {
       if (luggage.id == _luggageId) return luggage;
@@ -100,10 +100,7 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
       if (luggage.id == widget.trip.aiSetup?.luggageId) return luggage;
     }
     final onTrip = {for (final luggage in widget.trip.luggages) luggage.id};
-    return luggages
-            .where((luggage) => onTrip.contains(luggage.id))
-            .firstOrNull ??
-        luggages.firstOrNull;
+    return luggages.where((luggage) => onTrip.contains(luggage.id)).firstOrNull;
   }
 
   /// Prima tappa che manca di attività o alloggio, oppure -1.
@@ -304,6 +301,7 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
               ctaLabel: isLast || !_multi
                   ? 'trips.ai.prepare'.tr()
                   : 'trips.ai.next'.tr(args: [_stops[_cur + 1].name]),
+              primary: !_multi || isLast,
               ctaIcon: isLast ? Icons.auto_awesome : null,
               onCta: () => isLast || !_multi
                   ? _prepare(houseList, luggageList)
@@ -486,6 +484,7 @@ class _Footer extends StatelessWidget {
   const _Footer({
     required this.ctaLabel,
     required this.onCta,
+    required this.primary,
     this.ctaIcon,
     this.warning,
     this.back,
@@ -493,6 +492,9 @@ class _Footer extends StatelessWidget {
 
   final String ctaLabel;
   final VoidCallback onCta;
+
+  /// Vero solo per "Prepara la valigia": l'unico bottone arancio del foglio.
+  final bool primary;
   final IconData? ctaIcon;
   final Widget? warning;
   final VoidCallback? back;
@@ -500,6 +502,7 @@ class _Footer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         context.spacingMd,
@@ -521,12 +524,24 @@ class _Footer extends StatelessWidget {
                   child: Text('trips.ai.back'.tr()),
                 ),
               Expanded(
-                child: DsButton(
-                  label: ctaLabel,
-                  icon: ctaIcon,
-                  onPressed: onCta,
-                  expand: true,
-                ),
+                child: primary
+                    ? DsButton(
+                        label: ctaLabel,
+                        icon: ctaIcon,
+                        onPressed: onCta,
+                        expand: true,
+                      )
+                    // "Avanti" non è l'arancio della schermata: contorno neutro.
+                    : OutlinedButton(
+                        onPressed: onCta,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: cs.onSurface,
+                          minimumSize: const Size.fromHeight(52),
+                          shape: const StadiumBorder(),
+                          side: BorderSide(color: cs.outline),
+                        ),
+                        child: Text(ctaLabel, style: tt.titleSmall),
+                      ),
               ),
             ],
           ),

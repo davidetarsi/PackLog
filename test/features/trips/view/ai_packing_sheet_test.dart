@@ -55,9 +55,10 @@ final _zaino = LuggageModel(
   updatedAt: DateTime(2026),
 );
 
-final _trip = TripModel(
+TripModel _trip({List<LuggageModel> luggages = const []}) => TripModel(
   id: 'trip-1',
   name: 'Islanda',
+  luggages: luggages,
   createdAt: DateTime(2026),
   updatedAt: DateTime(2026),
 );
@@ -97,6 +98,7 @@ Future<void> _pump(
   required _Result result,
   List<HouseModel> houses = const [],
   List<LuggageModel> luggages = const [],
+  List<LuggageModel> tripLuggages = const [],
 }) async {
   tester.view.physicalSize = const Size(390, 2600);
   tester.view.devicePixelRatio = 1;
@@ -129,7 +131,7 @@ Future<void> _pump(
                     onPressed: () async {
                       final setup = await showAiPackingSheet(
                         context,
-                        trip: _trip,
+                        trip: _trip(luggages: tripLuggages),
                         plan: plan,
                       );
                       result
@@ -158,6 +160,47 @@ Future<void> _tap(WidgetTester tester, String label) async {
   await tester.pump();
 }
 
+TextStyle _textStyle(WidgetTester tester, String label) =>
+    tester.widget<Text>(find.text(label)).style!;
+
+/// Nessun testo, icona, sfondo o interruttore del foglio è arancio. Con
+/// [skipDsButton] si escludono i discendenti del bottone in fondo.
+void _expectNoPrimaryOutside(
+  WidgetTester tester,
+  Color primary, {
+  bool skipDsButton = false,
+}) {
+  bool insideButton(Element element) {
+    if (!skipDsButton) return false;
+    var found = false;
+    element.visitAncestorElements((ancestor) {
+      if (ancestor.widget is DsButton) found = true;
+      return !found;
+    });
+    return found;
+  }
+
+  for (final text in tester.widgetList<Text>(find.byType(Text))) {
+    if (insideButton(find.byWidget(text).evaluate().single)) continue;
+    expect(text.style?.color, isNot(primary), reason: 'testo "${text.data}"');
+  }
+  for (final icon in tester.widgetList<Icon>(find.byType(Icon))) {
+    if (insideButton(find.byWidget(icon).evaluate().single)) continue;
+    expect(icon.color, isNot(primary), reason: 'icona arancio');
+  }
+  for (final box in tester.widgetList<Container>(find.byType(Container))) {
+    final decoration = box.decoration;
+    if (decoration is! BoxDecoration) continue;
+    if (insideButton(find.byWidget(box).evaluate().single)) continue;
+    expect(decoration.color, isNot(primary), reason: 'sfondo arancio');
+    expect(decoration.border?.top.color, isNot(primary), reason: 'bordo');
+  }
+  for (final switchWidget in tester.widgetList<Switch>(find.byType(Switch))) {
+    expect(switchWidget.activeTrackColor, isNot(primary));
+    expect(switchWidget.activeThumbColor, isNot(primary));
+  }
+}
+
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -174,6 +217,7 @@ void main() {
         result: result,
         houses: [_milano],
         luggages: [_zaino],
+        tripLuggages: [_zaino],
       );
 
       expect(find.textContaining('Tappa 1 di'), findsNothing);
@@ -191,6 +235,7 @@ void main() {
         result: result,
         houses: [_milano],
         luggages: [_zaino],
+        tripLuggages: [_zaino],
       );
 
       await _tap(tester, 'Immersioni e snorkeling');
@@ -201,6 +246,25 @@ void main() {
       expect(result.setup!.houseId, 'h1');
       expect(result.setup!.luggageId, 'l1');
       expect(result.setup!.stops['main']!.activities, [AiActivity.diving]);
+    });
+
+    testWidgets('senza bagagli sul viaggio non si preseleziona niente', (
+      tester,
+    ) async {
+      final result = _Result();
+      await _pump(
+        tester,
+        plan: _oneStop,
+        result: result,
+        houses: [_milano],
+        luggages: [_zaino],
+      );
+
+      await _tap(tester, 'Prepara la valigia');
+      await tester.pumpAndSettle();
+
+      expect(result.setup!.luggageId, isNull);
+      expect(result.setup!.houseId, 'h1');
     });
 
     testWidgets('con due tappe la seconda parte vuota', (tester) async {
@@ -308,7 +372,7 @@ void main() {
       expect(find.byType(DsButton), findsNothing);
     });
 
-    testWidgets('il solo arancio è il bottone in fondo', (tester) async {
+    testWidgets('il solo arancio è Prepara la valigia', (tester) async {
       final result = _Result();
       await _pump(
         tester,
@@ -316,48 +380,47 @@ void main() {
         result: result,
         houses: [_milano],
         luggages: [_zaino],
+        tripLuggages: [_zaino],
       );
-      final cs = Theme.of(tester.element(find.byType(Scaffold))).colorScheme;
-      final primary = cs.primary;
+      final primary = Theme.of(
+        tester.element(find.byType(Scaffold)),
+      ).colorScheme.primary;
 
-      // Testi e icone del foglio, fuori dal bottone in fondo.
-      bool insideButton(Element element) {
-        var found = false;
-        element.visitAncestorElements((ancestor) {
-          if (ancestor.widget is DsButton) found = true;
-          return !found;
-        });
-        return found;
-      }
+      // Primo passo: Avanti non è arancio, e nessun DsButton è nel foglio.
+      expect(find.byType(DsButton), findsNothing);
+      expect(find.text('Avanti: Olanda'), findsOneWidget);
+      _expectNoPrimaryOutside(tester, primary);
+      expect(_textStyle(tester, 'Avanti: Olanda').color, isNot(primary));
 
-      final sheetTexts = tester.widgetList<Text>(find.byType(Text));
-      for (final text in sheetTexts) {
-        final element = find.byWidget(text).evaluate().single;
-        if (insideButton(element)) continue;
-        expect(
-          text.style?.color,
-          isNot(primary),
-          reason: 'testo "${text.data}" arancio',
-        );
-      }
-      for (final icon in tester.widgetList<Icon>(find.byType(Icon))) {
-        final element = find.byWidget(icon).evaluate().single;
-        if (insideButton(element)) continue;
-        expect(icon.color, isNot(primary), reason: 'icona arancio');
-      }
-      for (final box in tester.widgetList<Container>(find.byType(Container))) {
-        final decoration = box.decoration;
-        if (decoration is! BoxDecoration) continue;
-        final element = find.byWidget(box).evaluate().single;
-        if (insideButton(element)) continue;
-        expect(decoration.color, isNot(primary), reason: 'sfondo arancio');
-      }
-      for (final switchWidget in tester.widgetList<Switch>(
-        find.byType(Switch),
-      )) {
-        expect(switchWidget.activeTrackColor, isNot(primary));
-        expect(switchWidget.activeThumbColor, isNot(primary));
-      }
+      // Ultimo passo: l'unico DsButton è "Prepara la valigia", arancio.
+      await _tap(tester, 'Avanti: Olanda');
+      expect(find.byType(DsButton), findsOneWidget);
+      expect(find.text('Prepara la valigia'), findsOneWidget);
+      _expectNoPrimaryOutside(tester, primary, skipDsButton: true);
+      final cta = tester.widget<DsButton>(find.byType(DsButton));
+      expect(cta.label, 'Prepara la valigia');
+      expect(cta.variant, DsButtonVariant.primary);
+    });
+
+    testWidgets('con una tappa l unico DsButton è Prepara la valigia', (
+      tester,
+    ) async {
+      final result = _Result();
+      await _pump(
+        tester,
+        plan: _oneStop,
+        result: result,
+        houses: [_milano],
+        luggages: [_zaino],
+        tripLuggages: [_zaino],
+      );
+      final primary = Theme.of(
+        tester.element(find.byType(Scaffold)),
+      ).colorScheme.primary;
+
+      expect(find.byType(DsButton), findsOneWidget);
+      expect(find.text('Prepara la valigia'), findsOneWidget);
+      _expectNoPrimaryOutside(tester, primary, skipDsButton: true);
     });
   });
 }
