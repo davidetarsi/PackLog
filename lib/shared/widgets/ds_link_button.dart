@@ -11,8 +11,14 @@ import '../theme/app_spacing.dart';
 class DsLinkButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
+  final IconData? icon;
 
-  const DsLinkButton({super.key, required this.label, required this.onPressed});
+  const DsLinkButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21,8 +27,8 @@ class DsLinkButton extends StatelessWidget {
         foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       onPressed: onPressed,
-      icon: Icon(Icons.arrow_forward, size: context.iconSizeSm),
-      iconAlignment: IconAlignment.end,
+      icon: Icon(icon ?? Icons.arrow_forward, size: context.iconSizeSm),
+      iconAlignment: icon == null ? IconAlignment.end : IconAlignment.start,
       label: Text(label),
     );
   }

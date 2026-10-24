@@ -5,6 +5,7 @@ import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/house_model.dart';
+import '../../luggages/providers/luggage_provider.dart';
 import '../repositories/house_repository.dart';
 
 part 'house_provider.g.dart';
@@ -52,7 +53,13 @@ class HouseNotifier extends _$HouseNotifier
     operation: () => _repo.deleteHouse(id),
     reload: _repo.getAllHouses,
     rethrowOnly: true,
-    onSuccess: (_) => _analytics.trackHouseDeleted(),
+    onSuccess: (_) {
+      // Il DAO scollega i bagagli legacy: non lasciare la vecchia casa in cache.
+      if (ref.exists(luggageNotifierProvider)) {
+        ref.invalidate(luggageNotifierProvider);
+      }
+      _analytics.trackHouseDeleted();
+    },
   );
 
   Future<void> refresh() => mutate(

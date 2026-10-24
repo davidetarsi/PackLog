@@ -116,6 +116,9 @@ mixin SyncedCrudNotifier<T> {
   ///   la lista rimane visibile intatta e non appare il flash di errore.
   ///   Ripristina anche l'eventuale `AsyncLoading` intermedio allo stato
   ///   precedente. Quando `true`, `rethrowOnError` è ignorato.
+  /// - [committedState]: ricostruisce la lista nota dopo una scrittura riuscita,
+  ///   se fallisce soltanto il reload. Evita che il chiamante ripeta una
+  ///   scrittura già confermata; non intercetta errori di [operation].
   @protected
   Future<void> mutate({
     required Future<void> Function() operation,
@@ -124,6 +127,7 @@ mixin SyncedCrudNotifier<T> {
     FutureOr<void> Function(List<T> updated)? onSuccess,
     bool rethrowOnError = true,
     bool rethrowOnly = false,
+    List<T> Function(List<T> previous)? committedState,
   }) async {
     // Memorizza lo stato valido attuale prima di qualsiasi modifica
     final previousState = state;
@@ -133,7 +137,13 @@ mixin SyncedCrudNotifier<T> {
     List<T>? freshList;
     final result = await AsyncValue.guard<List<T>>(() async {
       await operation();
-      final fresh = await reload();
+      List<T> fresh;
+      try {
+        fresh = await reload();
+      } catch (_) {
+        if (committedState == null) rethrow;
+        fresh = committedState(previousState.valueOrNull ?? <T>[]);
+      }
       freshList = fresh;
       if (onSuccess != null) await onSuccess(fresh);
       return fresh;

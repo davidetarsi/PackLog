@@ -17,6 +17,8 @@ import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/quantity_stepper.dart';
 import '../../spaces/model/space_model.dart';
 import '../../spaces/providers/space_provider.dart';
+import '../../spaces/view/add_edit_space_screen.dart';
+import '../../../shared/widgets/ds_link_button.dart';
 import '../model/item_model.dart';
 import '../providers/item_provider.dart';
 import '../services/category_infer_service.dart';
@@ -222,6 +224,24 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
       selected: options.firstWhere(
         (o) => o.id == _spaceId,
         orElse: () => options.first,
+      ),
+      footerBuilder: (pickerContext) => DsLinkButton(
+        key: const Key('picker_create_space'),
+        label: 'spaces.add_new'.tr(),
+        icon: Icons.add,
+        onPressed: () async {
+          final created = await showAddEditSpaceSheet(
+            context,
+            houseId: widget.houseId,
+          );
+          if (created != null && pickerContext.mounted) {
+            Navigator.pop(pickerContext, (
+              id: created.id,
+              name: created.name,
+              icon: SpaceIcons.getIcon(created.iconName ?? 'meeting_room'),
+            ));
+          }
+        },
       ),
     );
     if (picked != null && mounted) setState(() => _spaceId = picked.id);
@@ -464,40 +484,39 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                               onChanged: (v) => setState(() => _quantity = v),
                             ),
                           ),
-                          if (spaces.isNotEmpty || _spaceId != null)
-                            _InlineField(
-                              label: 'items.space_label'.tr(),
-                              child: InkWell(
-                                key: const Key('item_sheet_space'),
-                                borderRadius: BorderRadius.circular(
-                                  AppConstants.inputBorderRadius,
+                          _InlineField(
+                            label: 'items.space_label'.tr(),
+                            child: InkWell(
+                              key: const Key('item_sheet_space'),
+                              borderRadius: BorderRadius.circular(
+                                AppConstants.inputBorderRadius,
+                              ),
+                              onTap: () => _pickSpace(spaces),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: context.spacingSm,
                                 ),
-                                onTap: () => _pickSpace(spaces),
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: context.spacingSm,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          spaceName,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: textTheme.bodyLarge,
-                                        ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        spaceName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: textTheme.bodyLarge,
                                       ),
-                                      Icon(
-                                        Icons.chevron_right,
-                                        size: context.iconSizeMd,
-                                        color: cs.onSurfaceVariant,
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                    Icon(
+                                      Icons.chevron_right,
+                                      size: context.iconSizeMd,
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
+                          ),
                           DsFieldLabel('items.details_label'.tr()),
                           TextFormField(
                             key: const Key('item_sheet_note'),

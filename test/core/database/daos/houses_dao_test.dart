@@ -10,7 +10,7 @@ import '../../../helpers/test_database_setup.dart';
 ///
 /// Tests the DAO operations for houses including:
 /// - CRUD operations on houses
-/// - Soft-delete con cascade manuale su items, spaces e luggages
+/// - Soft-delete con cascade su items/spaces e distacco dei bagagli
 /// - Comportamento del filtro isDeleted nei metodi di lettura
 void main() {
   late AppDatabase database;
@@ -208,7 +208,7 @@ void main() {
       expect(space2AfterDelete, equals(null));
     });
 
-    test('should cascade delete luggages when a house is deleted', () async {
+    test('should detach luggages when a house is deleted', () async {
       // === ARRANGE ===
       final houseId = 'test-house-luggage-cascade';
 
@@ -228,7 +228,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: luggage1Id,
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Suitcase',
           sizeType: LuggageSize.holdBaggage,
           createdAt: DateTime.now(),
@@ -239,7 +239,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: luggage2Id,
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Backpack',
           sizeType: LuggageSize.smallBackpack,
           createdAt: DateTime.now(),
@@ -253,23 +253,26 @@ void main() {
       expect(luggagesBeforeDelete, hasLength(2));
 
       // === ACT ===
-      // Soft-delete house: cascade soft-delete ai bagagli
+      // Soft-delete house: detach reusable luggage
       await database.housesDao.deleteHouse(houseId);
 
       // === ASSERT ===
-      // Verify luggages are cascade deleted
+      // Verify luggages no longer reference the house
       final luggagesAfterDelete = await database.luggagesDao.getLuggagesByHouse(
         houseId,
       );
       expect(luggagesAfterDelete, isEmpty);
+      final retained = await database.luggagesDao.getAllLuggages();
+      expect(retained, hasLength(2));
+      expect(retained.every((l) => l.houseId == null && !l.isDeleted), isTrue);
     });
 
     test(
-      'should soft-delete house and cascade to items, spaces, and luggages atomically',
+      'should soft-delete house, items and spaces and detach luggage atomically',
       () async {
         // === ARRANGE ===
         // Scenario completo: casa con items (in spazio e in pool), spazi e bagagli.
-        // Verifica che il soft-delete cascada a tutti i dipendenti in un'unica operazione.
+        // Verifica cascade e distacco dei bagagli in un'unica transazione.
         final houseId = 'test-house-complex-fk';
 
         await database.housesDao.insertHouse(
@@ -320,7 +323,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: 'luggage-complex',
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Travel Bag',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),
@@ -349,7 +352,7 @@ void main() {
         // === ASSERT ===
         expect(deleteResult, equals(1));
 
-        // Casa, items, spazi e bagagli invisibili nelle query di lettura
+        // Casa, items e spazi invisibili; i bagagli non appartengono più alla casa
         expect(await database.housesDao.getHouseById(houseId), equals(null));
         expect(await database.itemsDao.getItemsByHouseId(houseId), isEmpty);
         expect(await database.spacesDao.getSpacesByHouse(houseId), isEmpty);
@@ -358,7 +361,7 @@ void main() {
     );
 
     test(
-      'should mark cascaded spaces and luggages as pendingUpdate for sync',
+      'deleting a house marks spaces for deletion and detaches reusable luggage',
       () async {
         // ARRANGE: house with 1 space and 1 luggage, all synced.
         const houseId = 'h-cascade-sync';
@@ -386,7 +389,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: 'l-cascade',
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Zaino',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: now,
@@ -412,11 +415,12 @@ void main() {
         final luggageRow = await (database.select(
           database.luggages,
         )..where((l) => l.id.equals('l-cascade'))).getSingle();
+        expect(luggageRow.houseId, isNull);
+        expect(luggageRow.isDeleted, isFalse);
         expect(
           luggageRow.syncStatus,
           equals(SyncStatus.pendingUpdate),
-          reason:
-              'cascade must mark the luggage pending so the tombstone propagates',
+          reason: 'detachment must be pending for sync',
         );
       },
     );

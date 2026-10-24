@@ -16,6 +16,23 @@ const Object _unset = Object();
 /// CHECK constraint: `char_length(name) >= 1`), even though the local
 /// schema allows an empty name (city/location shown as fallback in UI).
 void main() {
+  test(
+    'un bagaglio remoto senza casa viene importato senza inventare una casa',
+    () {
+      final companion = SyncSerializers.buildLuggageCompanion({
+        'id': 'global-luggage',
+        'user_id': 'u1',
+        'house_id': null,
+        'name': 'Zaino',
+        'size_type': 'smallBackpack',
+        'created_at': '2026-10-22T10:00:00Z',
+        'updated_at': '2026-10-22T10:00:00Z',
+      }, syncedAt: DateTime.utc(2026, 10, 22));
+      expect(companion.houseId.value, isNull);
+      expect(companion.id.value, 'global-luggage');
+    },
+  );
+
   late AppDatabase database;
 
   setUp(() {

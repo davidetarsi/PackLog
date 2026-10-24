@@ -56,10 +56,10 @@ extension LuggageSizeExtension on LuggageSize {
   }
 }
 
-/// Rappresenta un bagaglio riutilizzabile associato a una casa.
+/// Rappresenta un bagaglio riutilizzabile dell'utente.
 ///
-/// I bagagli sono entità globali che appartengono a una casa specifica
-/// e possono essere riutilizzati in viaggi multipli tramite la junction table.
+/// Può essere riutilizzato in più viaggi. La casa opzionale serve a leggere
+/// i dati precedenti: non determina disponibilità o ciclo di vita del bagaglio.
 @freezed
 class LuggageModel with _$LuggageModel {
   const LuggageModel._();
@@ -67,8 +67,8 @@ class LuggageModel with _$LuggageModel {
   factory LuggageModel({
     required String id,
 
-    /// ID della casa a cui appartiene il bagaglio
-    required String houseId,
+    /// Associazione legacy opzionale, mai richiesta dai moduli dell'app.
+    String? houseId,
 
     /// Nome del bagaglio (es. "Zaino Blu", "Valigia Grande")
     required String name,
@@ -83,7 +83,7 @@ class LuggageModel with _$LuggageModel {
     required DateTime updatedAt,
   }) = _LuggageModel;
 
-  factory LuggageModel.empty(String houseId) {
+  factory LuggageModel.empty([String? houseId]) {
     return LuggageModel(
       id: '',
       houseId: houseId,

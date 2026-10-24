@@ -7,8 +7,7 @@ import 'ds_bottom_sheet_handle.dart';
 ///
 /// La usano i sheet di scelta ([DsPickerSheet]) e di azioni, che si chiudono
 /// toccando un'opzione, e i fogli con campi del nuovo disegno (tappa, scheda
-/// oggetto), che passano [onClose]. Il vecchio [StandardBottomSheetLayout] ha
-/// la sua testata.
+/// oggetto), che passano [onClose], anche attraverso [DsFormSheet].
 class DsSheetHeader extends StatelessWidget {
   final String title;
   final VoidCallback? onClose;

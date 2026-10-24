@@ -24,7 +24,7 @@ import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
 import 'package:pack_log/features/trips/view/pack_suitcase_screen.dart';
 import 'package:pack_log/features/trips/view/widgets/pack/pack_parts.dart';
-import 'package:pack_log/features/luggages/view/luggages_management_screen.dart';
+import 'package:pack_log/features/luggages/view/add_edit_luggage_screen.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_empty_state.dart';
 import 'package:pack_log/shared/widgets/ds_steps.dart';
@@ -378,7 +378,7 @@ void main() {
       await pumpPack(tester);
 
       expect(find.text('Non hai ancora bagagli.'), findsOneWidget);
-      expect(find.text('Aggiungi bagagli'), findsOneWidget);
+      expect(find.text('Nuovo bagaglio'), findsOneWidget);
     });
 
     testWidgets(
@@ -650,15 +650,30 @@ void main() {
   });
 
   group('PackSuitcaseScreen — bagagli e salvataggio', () {
-    testWidgets('"Aggiungi bagagli" apre il foglio di gestione dei bagagli', (
-      tester,
-    ) async {
+    testWidgets('"Nuovo bagaglio" apre direttamente il modulo', (tester) async {
       arrange();
       await pumpPack(tester);
 
-      await tapText(tester, 'Aggiungi bagagli');
+      await tapText(tester, 'Nuovo bagaglio');
 
-      expect(find.byType(LuggagesManagementSheet), findsOneWidget);
+      expect(find.byType(AddEditLuggageSheet), findsOneWidget);
+    });
+
+    testWidgets('si possono creare bagagli anche senza case', (tester) async {
+      arrange(houses: []);
+      await pumpPack(tester);
+      await tapText(tester, 'Nuovo bagaglio');
+      expect(find.byType(AddEditLuggageSheet), findsOneWidget);
+    });
+
+    testWidgets('la creazione resta accessibile quando ci sono già bagagli', (
+      tester,
+    ) async {
+      arrange(luggages: [_luggage('l1', 'Zaino')]);
+      await pumpPack(tester);
+      expect(find.text('Nuovo bagaglio'), findsOneWidget);
+      await tapText(tester, 'Nuovo bagaglio');
+      expect(find.byType(AddEditLuggageSheet), findsOneWidget);
     });
 
     testWidgets('i bagagli scelti si salvano in luggages', (tester) async {

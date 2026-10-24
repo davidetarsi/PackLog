@@ -21,3 +21,11 @@ final class EntityNotFoundException extends AppDatabaseException {
   String toString() =>
       'EntityNotFoundException[$operation]${cause != null ? ': $cause' : ''}';
 }
+
+final class EntityLoadException extends AppDatabaseException {
+  const EntityLoadException(super.operation, {super.cause});
+
+  @override
+  String toString() =>
+      'EntityLoadException[$operation]${cause != null ? ': $cause' : ''}';
+}

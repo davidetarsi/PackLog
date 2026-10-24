@@ -47,7 +47,7 @@
     "permanent_items_count": "{} items in the house",
     "temporary_items_count": "{} items on a trip",
     "manage_sheet_title": "Manage house",
-    "edit_info": "Edit info",
+    "edit_info": "Edit home",
     "house_not_found": "House not found",
     "house_not_found_message": "The requested house was not found.",
     "back_to_houses": "Back to houses",
@@ -106,6 +106,12 @@
     "hold_baggage": "Hold Baggage",
     "custom": "Custom"
   },
+  "storage": {
+    "title": "Spaces and luggage",
+    "load_failed": "Could not load the data. Please try again.",
+    "go_home": "Back to homes",
+    "item_count": {"one": "{} item", "other": "{} items"}
+  },
   "spaces": {
     "title": "Spaces",
     "add": "Space",
@@ -120,7 +126,8 @@
     "name_label": "Name *",
     "name_hint": "E.g. Bedroom Closet, Garage...",
     "select_icon": "Select an icon (optional)",
-    "delete_warning": "Items in this space will return to the house's Default",
+    "delete_warning": "Items stay in the home, without a space.",
+    "not_found": "Space not found",
     "space_deleted": "Space \"{}\" deleted"
   },
   "luggages": {
@@ -138,8 +145,11 @@
     "volume_hint": "E.g. 45",
     "volume_required_for_custom": "Volume is required for custom luggage",
     "delete_warning": "This luggage will be removed from all associated trips",
+    "not_found": "Luggage not found",
+    "size_label": "Size",
+    "volume_label": "Volume in liters",
     "luggage_deleted": "Luggage \"{}\" deleted",
-    "manage": "Edit luggages"
+    "manage": "Manage luggage"
   },
   "house_icons": {
     "home": "Home",
@@ -591,6 +601,7 @@
     "ai_suitcase_hint": "Packs for you based on destination, weather and length"
   },
   "promo": {
+    "code_label": "Promo code",
     "link": "Have a promo code?",
     "sheet_title": "Promo code",
     "description": "Enter the code you received to get extra AI uses.",

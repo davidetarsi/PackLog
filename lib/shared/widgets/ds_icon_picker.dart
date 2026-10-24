@@ -4,7 +4,7 @@ import '../theme/app_spacing.dart';
 import '../theme/surface_colors.dart';
 
 /// Picker icone a griglia 5×N. Sostituisce i layout custom in
-/// [AddEditHouseSheet] (GridView 5xN) e [SpaceFormContent] (Wrap).
+/// [AddEditHouseSheet] e [AddEditSpaceSheet].
 ///
 /// La griglia 5 colonne è coerente con il resto dell'app (es. la palette
 /// colori).
