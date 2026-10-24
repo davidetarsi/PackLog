@@ -313,7 +313,8 @@
         "level_useful": "Utile",
         "warning_search": "Cerca nell'armadio",
         "warning_dismiss": "Ok, capito",
-        "stops_join": "{} e {}"
+        "stops_join": "{} e {}",
+        "items_error": "Non sono riuscito a leggere gli oggetti della casa: la proposta è salva, ma la valigia non è cambiata."
       }
     },
     "weather": {

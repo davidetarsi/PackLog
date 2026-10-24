@@ -313,7 +313,8 @@
         "level_useful": "Useful",
         "warning_search": "Search the wardrobe",
         "warning_dismiss": "Got it",
-        "stops_join": "{} and {}"
+        "stops_join": "{} and {}",
+        "items_error": "I couldn't read the house's items: the proposal is saved, but the suitcase has not changed."
       }
     },
     "weather": {

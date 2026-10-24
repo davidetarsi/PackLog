@@ -425,7 +425,9 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   }
 
   /// La proposta diventa la valigia: oggetti e bagaglio, e si salva subito con
-  /// le risposte. Un oggetto non più in casa viene saltato.
+  /// le risposte. Un oggetto non più in casa viene saltato. Se gli oggetti
+  /// della casa non si leggono, la proposta si salva lo stesso, con i capi e i
+  /// bagagli com'erano.
   Future<void> _adoptResult(
     AiPackingResult result, {
     required AiPackingSetup setup,
@@ -433,17 +435,61 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   }) async {
     final trip = _currentTrip();
     if (trip == null) return;
-    final houseItems = await ref.read(
-      itemNotifierProvider(result.houseId).future,
+
+    Map<String, TripItem>? proposed;
+    try {
+      final houseItems = await ref.read(
+        itemNotifierProvider(result.houseId).future,
+      );
+      if (!mounted) return;
+      proposed = _proposedItems(result, houseItems);
+    } catch (_) {
+      if (!mounted) return;
+    }
+
+    final items = proposed ?? _items;
+    final luggages = luggage == null || proposed == null
+        ? {..._luggages}
+        : {luggage.id: luggage};
+
+    final saved = await _writeTrip(
+      trip.copyWith(
+        items: items.values.toList(),
+        luggages: luggages.values.toList(),
+        aiSetup: setup,
+        aiResult: result,
+        updatedAt: DateTime.now(),
+      ),
     );
     if (!mounted) return;
+    if (proposed == null) {
+      AppSnackBar.showError(context, 'trips.pack.ai.items_error'.tr());
+    }
+    setState(() {
+      _aiResult = result;
+      _items = {...items};
+      _luggages = luggages;
+      // Senza salvataggio riuscito la pagina resta modificata: "Fatto" riprova.
+      if (saved) {
+        _initialItems = {...items};
+        _initialLuggages = {...luggages};
+        _initialAiResult = result;
+      }
+    });
+  }
 
+  /// I capi della proposta, con nome e categoria dell'oggetto di casa. Un
+  /// oggetto non più in casa non entra; la quantità sta tra 1 e i pezzi
+  /// salvati (senza quantità salvata, 1).
+  Map<String, TripItem> _proposedItems(
+    AiPackingResult result,
+    List<ItemModel> houseItems,
+  ) {
     final byId = {for (final item in houseItems) item.id: item};
     final items = <String, TripItem>{};
     for (final proposed in result.proposal) {
       final item = byId[proposed.itemId];
       if (item == null) continue;
-      // Mai più pezzi di quelli salvati; senza quantità salvata è uno.
       final available = item.quantity ?? 1;
       final cap = available < 1 ? 1 : available;
       final quantity = proposed.quantity < 1
@@ -457,29 +503,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         originHouseId: result.houseId,
       );
     }
-    final luggages = luggage == null ? {..._luggages} : {luggage.id: luggage};
-
-    final saved = await _writeTrip(
-      trip.copyWith(
-        items: items.values.toList(),
-        luggages: luggages.values.toList(),
-        aiSetup: setup,
-        aiResult: result,
-        updatedAt: DateTime.now(),
-      ),
-    );
-    if (!mounted) return;
-    setState(() {
-      _aiResult = result;
-      _items = items;
-      _luggages = luggages;
-      // Senza salvataggio riuscito la pagina resta modificata: "Fatto" riprova.
-      if (saved) {
-        _initialItems = {...items};
-        _initialLuggages = {...luggages};
-        _initialAiResult = result;
-      }
-    });
+    return items;
   }
 
   Future<bool> _writeTrip(TripModel trip) => ErrorRetryDialog.executeWithRetry(

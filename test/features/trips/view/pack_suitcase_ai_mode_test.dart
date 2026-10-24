@@ -439,10 +439,7 @@ void main() {
         of: rowOf('Maglietta'),
         matching: find.byIcon(Icons.remove_circle_outline),
       );
-      await Scrollable.ensureVisible(
-        tester.element(minus),
-        alignment: 0.5,
-      );
+      await Scrollable.ensureVisible(tester.element(minus), alignment: 0.5);
       await tester.pumpAndSettle();
       await tester.tap(minus);
       await tester.pumpAndSettle();

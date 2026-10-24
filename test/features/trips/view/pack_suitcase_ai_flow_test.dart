@@ -13,6 +13,7 @@ import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/repositories/house_repository.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/services/category_infer_service.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
@@ -634,5 +635,117 @@ void main() {
       expect(find.text('Non manca niente'), findsOneWidget);
       expect(find.text('Perché queste scelte'), findsOneWidget);
     });
+  });
+
+  /// Apre il foglio dal tocco sull'icona, lo chiude con "Prepara la valigia" e
+  /// torna dalla pagina finta con [aiOutcome].
+  Future<void> generate(WidgetTester tester) async {
+    await tapKey(tester, const Key('pack_ai_suitcase'));
+    await tapInSheet(tester, 'Prepara la valigia');
+    await tapText(tester, 'Risultato');
+  }
+
+  group('valigia AI: esito e casi del risultato', () {
+    testWidgets(
+      'se gli oggetti della casa non si leggono la proposta si salva lo stesso',
+      (tester) async {
+        aiOutcome = AiPackingResult(
+          generatedAt: DateTime(2026, 10, 24),
+          houseId: 'h1',
+          proposal: _suitcaseProposal,
+        );
+        arrange(trip: _viaggio(), items: _houseItems);
+        await pumpPack(tester);
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(PackSuitcaseScreen)),
+        );
+        await tapKey(tester, const Key('pack_ai_suitcase'));
+        await tapInSheet(tester, 'Prepara la valigia');
+
+        // Da qui in poi leggere gli oggetti della casa fallisce.
+        when(
+          () => itemRepo.getItemsByHouseId(any()),
+        ).thenThrow(Exception('offline'));
+        container.invalidate(itemNotifierProvider('h1'));
+        await tester.pump();
+        await tapText(tester, 'Risultato');
+
+        expect(tester.takeException(), isNull);
+        expect(jobs, hasLength(1));
+        final saves = savedTrips();
+        expect(saves.last.aiResult?.proposal, hasLength(4));
+        expect(saves.last.aiSetup?.houseId, 'h1');
+        // Capi e bagagli com'erano: la valigia non è cambiata.
+        expect(saves.last.items, isEmpty);
+        expect(
+          find.text(
+            'Non sono riuscito a leggere gli oggetti della casa: la proposta è salva, ma la valigia non è cambiata.',
+          ),
+          findsOneWidget,
+        );
+
+        // "Fatto" resta utilizzabile e salva la valigia AI.
+        await tapText(tester, 'Fatto');
+        expect(savedTrip().aiResult, isNotNull);
+      },
+    );
+
+    testWidgets(
+      'un capo della proposta non più in casa viene saltato, il resto si salva',
+      (tester) async {
+        aiOutcome = AiPackingResult(
+          generatedAt: DateTime(2026, 10, 24),
+          houseId: 'h1',
+          proposal: [..._suitcaseProposal, _packed('i-fantasma')],
+        );
+        arrange(trip: _viaggio(), items: _houseItems);
+        await pumpPack(tester);
+        await generate(tester);
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('Maglietta'), findsOneWidget);
+        expect(find.text('Scarponi'), findsOneWidget);
+        expect(find.byKey(const Key('pack_remove_i-fantasma')), findsNothing);
+        expect(find.text('Fatto · 4 oggetti'), findsOneWidget);
+
+        final saved = savedTrips().last;
+        expect(
+          saved.items.map((i) => i.id),
+          unorderedEquals([
+            'i-maglietta',
+            'i-boxer',
+            'i-calzino',
+            'i-scarponi',
+          ]),
+        );
+        // La proposta resta quella intera del generatore.
+        expect(saved.aiResult!.proposal, hasLength(5));
+      },
+    );
+
+    testWidgets(
+      'la quantità proposta sale al massimo dei pezzi salvati; senza quantità è uno',
+      (tester) async {
+        aiOutcome = AiPackingResult(
+          generatedAt: DateTime(2026, 10, 24),
+          houseId: 'h1',
+          proposal: [
+            _packed('i-maglietta', quantity: 9), // ne ha 3 salvati
+            _packed('i-boxer', quantity: 4), // ne ha 4: invariato
+            _packed('i-calzino', quantity: 5), // quantità null = 1
+          ],
+        );
+        arrange(trip: _viaggio(), items: _houseItems);
+        await pumpPack(tester);
+        await generate(tester);
+
+        final saved = {
+          for (final item in savedTrips().last.items) item.id: item.quantity,
+        };
+        expect(saved['i-maglietta'], 3);
+        expect(saved['i-boxer'], 4);
+        expect(saved['i-calzino'], 1);
+      },
+    );
   });
 }
