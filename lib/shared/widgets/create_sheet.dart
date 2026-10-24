@@ -12,7 +12,7 @@ import 'ds_link_button.dart';
 import 'ds_picker_sheet.dart';
 import 'ds_sheet_header.dart';
 
-enum CreateAction { aiScan, manualItems, newHouse, newTrip }
+enum CreateAction { aiScan, manualItems, newHouse, newTrip, aiSuitcase }
 
 /// Scelta fatta nel foglio Crea. [houseId] c'è per le azioni sugli oggetti.
 class CreateChoice {
@@ -104,14 +104,12 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
       subtitle: 'create_sheet.new_trip_hint'.tr(),
       onTap: () => _choose(CreateAction.newTrip),
     );
-    // La valigia preparata dall'AI non c'è ancora: la riga c'è già, spenta,
-    // con "In arrivo", così il posto nella UI è pronto.
-    const aiSuitcase = _CreateRow(
-      key: Key('create_ai_suitcase'),
+    final aiSuitcase = _CreateRow(
+      key: const Key('create_ai_suitcase'),
       icon: Icons.auto_awesome_outlined,
       titleKey: 'create_sheet.ai_suitcase',
       subtitleKey: 'create_sheet.ai_suitcase_hint',
-      comingSoon: true,
+      onTap: () => _choose(CreateAction.aiSuitcase),
     );
 
     return Padding(
@@ -308,9 +306,6 @@ class _CreateRow extends StatelessWidget {
   final String? titleKey;
   final String? subtitleKey;
   final bool emphasized;
-
-  /// Funzione non ancora disponibile: riga spenta con "In arrivo".
-  final bool comingSoon;
   final VoidCallback? onTap;
 
   const _CreateRow({
@@ -322,23 +317,17 @@ class _CreateRow extends StatelessWidget {
     this.subtitleKey,
     this.onTap,
     this.emphasized = false,
-    this.comingSoon = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final muted = colorScheme.onSurface.withValues(alpha: 0.38);
-    final accent = comingSoon
-        ? muted
-        : emphasized
+    final accent = emphasized
         ? colorScheme.primary
         : colorScheme.onSurfaceVariant;
 
     return ListTile(
-      onTap: comingSoon ? null : onTap,
-      enabled: !comingSoon,
+      onTap: onTap,
       leading: Container(
         padding: EdgeInsets.all(context.spacingSm),
         decoration: BoxDecoration(
@@ -352,26 +341,6 @@ class _CreateRow extends StatelessWidget {
         style: emphasized ? TextStyle(color: colorScheme.primary) : null,
       ),
       subtitle: Text(subtitle ?? subtitleKey!.tr()),
-      trailing: comingSoon
-          ? Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.spacingSm,
-                vertical: context.spacingXs,
-              ),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(
-                  AppConstants.pillBorderRadius,
-                ),
-              ),
-              child: Text(
-                'common.coming_soon'.tr(),
-                style: textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            )
-          : null,
     );
   }
 }

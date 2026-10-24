@@ -244,7 +244,9 @@ GoRouter appRouter(Ref ref) {
           title: 'tour.trip_creation_tooltip.title'.tr(),
           body: 'tour.trip_creation_tooltip.body'.tr(),
           advancesOnOk: true,
-          child: const NewTripScreen(),
+          child: NewTripScreen(
+            aiIntent: state.uri.queryParameters['ai'] == '1',
+          ),
         ),
       ),
       GoRoute(

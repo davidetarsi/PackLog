@@ -43,7 +43,12 @@ const _missingScrollDuration = Duration(milliseconds: 300);
 /// Con [tripId] è la modifica di un viaggio esistente: stessa pagina, senza i
 /// passi, con un solo "Salva" che si accende dopo un cambiamento.
 class NewTripScreen extends ConsumerStatefulWidget {
-  const NewTripScreen({super.key, this.tripId, this.discardOnExit = false});
+  const NewTripScreen({
+    super.key,
+    this.tripId,
+    this.discardOnExit = false,
+    this.aiIntent = false,
+  });
 
   /// Viaggio da modificare; null per un viaggio nuovo.
   final String? tripId;
@@ -52,6 +57,10 @@ class NewTripScreen extends ConsumerStatefulWidget {
   /// Serve al flusso "Riusa": la copia nasce senza date e, se l'utente la
   /// abbandona, non deve restare in lista.
   final bool discardOnExit;
+
+  /// Viene da "Valigia con AI" (`/new-trip?ai=1`): il primario del passo 1 è
+  /// "Prepara con AI" e la strada manuale diventa un link.
+  final bool aiIntent;
 
   @override
   ConsumerState<NewTripScreen> createState() => _NewTripScreenState();
@@ -184,9 +193,20 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     _save(goToPacking: false);
   }
 
-  /// Salva il viaggio e va dove dice il passo 1. Con un errore il modulo resta
-  /// compilato e la riprova la gestisce [ErrorRetryDialog].
-  Future<void> _save({required bool goToPacking}) async {
+  /// Strada manuale ("Preparo io la valigia"): passo 2 senza AI. È un link,
+  /// quindi non si spegne: senza campi mostra gli errori come il bottone.
+  void _onPackMyself() {
+    if (!_draft.canSave) {
+      _showMissing();
+      return;
+    }
+    _save(goToPacking: true);
+  }
+
+  /// Salva il viaggio e va dove dice il passo 1. Con [withAi] la pagina
+  /// valigia parte con il foglio "Valigia con AI" aperto. Con un errore il
+  /// modulo resta compilato e la riprova la gestisce [ErrorRetryDialog].
+  Future<void> _save({required bool goToPacking, bool withAi = false}) async {
     if (_saving) return;
     setState(() => _saving = true);
 
@@ -212,7 +232,9 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       // in corso, o la cache se il viaggio ce l'ha già.
       ref.read(tripWeatherNotifierProvider(trip.id));
       router.go('/trips');
-      router.push('/trips/${trip.id}/edit-items?from=new');
+      router.push(
+        '/trips/${trip.id}/edit-items?from=new${withAi ? '&ai=1' : ''}',
+      );
     } else {
       router.go('/trips?focus=${trip.id}');
     }
@@ -346,10 +368,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
           ),
         ),
         // Il nuovo viaggio ha bottone e link; la modifica solo il bottone.
-        ctaHeightOverride: _isEdit
-            ? null
-            : StickyCtaScaffold.standardHeight(context) +
-                  kMinInteractiveDimension,
+        ctaHeightOverride: _isEdit ? null : _newTripCtaHeight(context),
         ctaBackgroundColor: Theme.of(context).scaffoldBackgroundColor,
         bottomContent: _buildBottomBar(context),
         body: Builder(
@@ -588,6 +607,16 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     );
   }
 
+  /// Fascia in fondo al passo 1: "Avanti" e "Prepara con AI" (due bottoni) più
+  /// il link "Più tardi"; con [NewTripScreen.aiIntent] un bottone e due link.
+  double _newTripCtaHeight(BuildContext context) =>
+      StickyCtaScaffold.standardHeight(context) +
+      (widget.aiIntent
+          ? kMinInteractiveDimension * 2
+          : context.spacingSm +
+                context.responsive(56) +
+                kMinInteractiveDimension);
+
   Widget _buildBottomBar(BuildContext context) {
     if (_isEdit) {
       return DsButton(
@@ -597,6 +626,26 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
         isLoading: _saving,
         onPressed: _draft.canSave && _edited ? _saveEdit : null,
         onDisabledTap: _draft.canSave ? null : _showMissing,
+      );
+    }
+    final later = DsLinkButton(
+      key: const Key('new_trip_later'),
+      label: 'trips.new.later'.tr(),
+      onPressed: _onLater,
+    );
+
+    if (widget.aiIntent) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _prepareAiButton(primary: true),
+          DsLinkButton(
+            key: const Key('new_trip_manual'),
+            label: 'trips.new.pack_myself'.tr(),
+            onPressed: _onPackMyself,
+          ),
+          later,
+        ],
       );
     }
     return Column(
@@ -611,12 +660,27 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
           onPressed: _draft.canSave ? () => _save(goToPacking: true) : null,
           onDisabledTap: _showMissing,
         ),
-        DsLinkButton(
-          key: const Key('new_trip_later'),
-          label: 'trips.new.later'.tr(),
-          onPressed: _onLater,
-        ),
+        SizedBox(height: context.spacingSm),
+        _prepareAiButton(primary: false),
+        later,
       ],
+    );
+  }
+
+  /// "Prepara con AI": primario con [NewTripScreen.aiIntent], altrimenti
+  /// secondario sotto "Avanti" (così resta un solo arancio nella schermata).
+  Widget _prepareAiButton({required bool primary}) {
+    return DsButton(
+      key: const Key('new_trip_prepare_ai'),
+      label: 'trips.new.prepare_with_ai'.tr(),
+      icon: Icons.auto_awesome,
+      variant: primary ? DsButtonVariant.primary : DsButtonVariant.secondary,
+      expand: true,
+      isLoading: primary && _saving,
+      onPressed: _draft.canSave
+          ? () => _save(goToPacking: true, withAi: true)
+          : null,
+      onDisabledTap: _showMissing,
     );
   }
 }

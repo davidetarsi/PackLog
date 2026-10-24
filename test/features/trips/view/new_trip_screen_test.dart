@@ -153,6 +153,7 @@ Future<void> _addStop(
 /// Cambia la fine della meta: il foglio ha il range completo, quindi il primo
 /// tocco riparte dalla partenza e il secondo sceglie il ritorno.
 Future<void> _moveDestinationEnd(WidgetTester tester, DateTime end) async {
+  await tester.ensureVisible(find.byKey(const Key('new_trip_dates')));
   await tester.tap(find.byKey(const Key('new_trip_dates')));
   await tester.pumpAndSettle();
   await _tapDay(tester, _departure);
@@ -228,8 +229,11 @@ void main() {
   });
 
   /// Monta la schermata sopra una tab finta "/trips", come dalla tab Viaggi:
-  /// il bottone "apri" la spinge con `push`, così Indietro ha dove tornare.
-  Future<void> pumpScreen(WidgetTester tester) async {
+  /// il bottone "apri" spinge [open] con `push`, così Indietro ha dove tornare.
+  Future<void> pumpScreen(
+    WidgetTester tester, {
+    String open = '/new-trip',
+  }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -249,7 +253,7 @@ void main() {
                 const Text('trips-tab'),
                 Text('focus=${state.uri.queryParameters['focus']}'),
                 ElevatedButton(
-                  onPressed: () => context.push('/new-trip'),
+                  onPressed: () => context.push(open),
                   child: const Text('apri'),
                 ),
               ],
@@ -259,13 +263,27 @@ void main() {
         GoRoute(
           path: '/trips/:id/edit-items',
           builder: (_, state) => Scaffold(
-            body: Text(
-              'edit-items ${state.pathParameters['id']} '
-              'from=${state.uri.queryParameters['from']}',
+            body: Column(
+              children: [
+                Text(
+                  'edit-items ${state.pathParameters['id']} '
+                  'from=${state.uri.queryParameters['from']}',
+                ),
+                Text('ai=${state.uri.queryParameters['ai'] ?? 'none'}'),
+              ],
             ),
           ),
         ),
-        GoRoute(path: '/new-trip', builder: (_, _) => const NewTripScreen()),
+        GoRoute(
+          path: '/new-trip',
+          builder: (_, state) =>
+              NewTripScreen(aiIntent: state.uri.queryParameters['ai'] == '1'),
+        ),
+        GoRoute(
+          path: '/trips/:id/edit-info',
+          builder: (_, state) =>
+              NewTripScreen(tripId: state.pathParameters['id']!),
+        ),
       ],
     );
 
@@ -326,6 +344,117 @@ void main() {
 
       final after = tester.getTopLeft(find.byKey(const Key('new_trip_next')));
       expect(after.dy, before.dy);
+    });
+  });
+
+  group('NewTripScreen — valigia con AI', () {
+    testWidgets('nel passo 1 "Prepara con AI" è secondario sotto "Avanti"', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+
+      final ai = tester.widget<DsButton>(
+        find.byKey(const Key('new_trip_prepare_ai')),
+      );
+      expect(ai.variant, DsButtonVariant.secondary);
+      expect(ai.icon, Icons.auto_awesome);
+      expect(ai.label, 'Prepara con AI');
+      expect(
+        tester.widget<DsButton>(find.byKey(const Key('new_trip_next'))).variant,
+        DsButtonVariant.primary,
+      );
+      double y(String key) => tester.getTopLeft(find.byKey(Key(key))).dy;
+      expect(y('new_trip_next'), lessThan(y('new_trip_prepare_ai')));
+      expect(y('new_trip_prepare_ai'), lessThan(y('new_trip_later')));
+    });
+
+    testWidgets('"Prepara con AI" salva e apre la valigia con ai=1', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+
+      final trip = savedTrip();
+      expect(trip.destinationHouseId, 'h1');
+      expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
+      expect(find.text('ai=1'), findsOneWidget);
+    });
+
+    testWidgets('"Prepara con AI" a modulo vuoto mostra gli errori', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Scegli dove vai: serve anche per il meteo.'),
+        findsOneWidget,
+      );
+      verifyNever(() => tripRepo.addTrip(any()));
+    });
+
+    testWidgets('con ai=1 il primario è "Prepara con AI", c\'è il link '
+        '"Preparo io la valigia" e non "Avanti"', (tester) async {
+      await pumpScreen(tester, open: '/new-trip?ai=1');
+
+      expect(find.byKey(const Key('new_trip_next')), findsNothing);
+      expect(find.text('Avanti: prepara la valigia'), findsNothing);
+      expect(
+        tester
+            .widget<DsButton>(find.byKey(const Key('new_trip_prepare_ai')))
+            .variant,
+        DsButtonVariant.primary,
+      );
+      expect(find.text('Preparo io la valigia'), findsOneWidget);
+      double y(String key) => tester.getTopLeft(find.byKey(Key(key))).dy;
+      expect(y('new_trip_prepare_ai'), lessThan(y('new_trip_manual')));
+      expect(y('new_trip_manual'), lessThan(y('new_trip_later')));
+    });
+
+    testWidgets('con ai=1, "Preparo io la valigia" porta al passo 2 senza AI', (
+      tester,
+    ) async {
+      await pumpScreen(tester, open: '/new-trip?ai=1');
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_manual')));
+      await tester.pumpAndSettle();
+
+      final trip = savedTrip();
+      expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
+      expect(find.text('ai=none'), findsOneWidget);
+    });
+
+    testWidgets('in modifica di un viaggio non compaiono i bottoni AI', (
+      tester,
+    ) async {
+      final trip = TripModel(
+        id: 'trip-1',
+        name: 'Toscana',
+        departureDateTime: DateTime(2026, 9, 12),
+        returnDateTime: DateTime(2026, 9, 20),
+        destinationLocation: LocationSuggestionModel(
+          placeId: 'p',
+          displayName: 'Siena, Italia',
+          city: 'Siena',
+        ),
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [trip]);
+
+      await pumpScreen(tester, open: '/trips/trip-1/edit-info');
+
+      expect(find.byKey(const Key('edit_trip_save')), findsOneWidget);
+      expect(find.byKey(const Key('new_trip_prepare_ai')), findsNothing);
+      expect(find.byKey(const Key('new_trip_manual')), findsNothing);
     });
   });
 

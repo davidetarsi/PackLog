@@ -263,7 +263,6 @@
       "duplicated": "Viaggio duplicato"
     },
     "pack": {
-      "ai_coming_soon": "La valigia preparata dall’AI è in arrivo",
       "title": "Prepara la valigia",
       "luggages": "Bagagli",
       "no_luggages": "Non hai ancora bagagli.",
@@ -429,6 +428,8 @@
       "name_hint": "È stato preso dalla meta: cambialo se vuoi.",
       "next": "Avanti: prepara la valigia",
       "later": "Prepara la valigia più tardi",
+      "prepare_with_ai": "Prepara con AI",
+      "pack_myself": "Preparo io la valigia",
       "where_missing": "Scegli dove vai: serve anche per il meteo.",
       "when_missing": "Scegli andata e ritorno.",
       "stop_no_nights": "{} finisce prima di iniziare: controlla le date.",

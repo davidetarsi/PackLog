@@ -263,7 +263,6 @@
       "duplicated": "Trip duplicated"
     },
     "pack": {
-      "ai_coming_soon": "The AI-packed suitcase is coming soon",
       "title": "Pack your suitcase",
       "luggages": "Luggage",
       "no_luggages": "You have no luggage yet.",
@@ -429,6 +428,8 @@
       "name_hint": "Taken from your destination: change it if you like.",
       "next": "Next: pack your suitcase",
       "later": "Pack later",
+      "prepare_with_ai": "Prepare with AI",
+      "pack_myself": "I'll pack it myself",
       "where_missing": "Choose where you're going: we need it for the weather too.",
       "when_missing": "Choose your dates.",
       "stop_no_nights": "{} ends before it starts: check the dates.",
