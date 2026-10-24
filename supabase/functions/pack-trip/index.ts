@@ -7,12 +7,13 @@
 // POST { house_id, trip: { data_inizio, giorni, destinazione: {nome, paese, lat,
 //   lon} | tappe: [{nome, paese, lat, lon, giorni, attivita, alloggio, lavatrice}],
 //   attivita, bagaglio, alloggio, lavatrice } }
-//   -> { valigia, motivi, perche, geo, meteo, note_tecniche }
+//   -> { valigia, motivi, perche, geo, meteo, note_tecniche, capi, avvisi }
 // Alloggio e lavatrice stanno per tappa (alloggio testo, lavatrice booleano); il
 // viaggio li ricava dalle tappe, o usa i propri se mandati (formato vecchio).
 // valigia: ideali, ripieghi, essenziali, mancanti, ...; motivi: un motivo per
 // capo; perche: la scheda "Perche' queste scelte"; note_tecniche: cio' che non ha
-// risposto (Jev e' un aiuto, la valigia si fa lo stesso).
+// risposto (Jev e' un aiuto, la valigia si fa lo stesso); capi e avvisi: l'uscita
+// per l'app (uscita.ts), con il tetto sulle copie che l'utente ha in armadio.
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
 import { climaViaggio } from "../_shared/clima/meteo.ts";
@@ -20,6 +21,7 @@ import { claudeHttp } from "../_shared/claude.ts";
 import { conRiprova, generaValigia, MAX_TOKENS_VALIGIA, scenarioDaApp } from "../_shared/valigia/genera.ts";
 import { IngressoNonValido, validaViaggio } from "../_shared/valigia/ingresso.ts";
 import { jevHttp, MODELLO as MODELLO_JEV, type ProfiloNoto } from "../_shared/valigia/jev.ts";
+import { uscitaApp } from "../_shared/valigia/uscita.ts";
 import type { RigaArmadio } from "../_shared/valigia/capo.ts";
 import {
   consumaCreditoAi, corpo, CORS_HEADERS, errore, json, restituisciCreditoAi, serviziMeteo, utente,
@@ -62,7 +64,7 @@ Deno.serve(async (req) => {
   // L'armadio: i capi della casa scelta, dell'utente, non cancellati. L'ordine
   // conta (a parita' di punteggio vince il primo, come nel bench): fisso.
   const { data: righe, error: errCapi } = await db.from("items")
-    .select("id, name, category, house_id, ai_metadata")
+    .select("id, name, category, house_id, ai_metadata, quantity")
     .eq("user_id", u.id).eq("house_id", b.house_id).eq("is_deleted", false)
     .order("created_at").order("id").limit(MAX_CAPI + 1);
   if (errCapi) {
@@ -71,6 +73,10 @@ Deno.serve(async (req) => {
   }
   if (!righe?.length) return errore(422, "Wardrobe is empty");
   if (righe.length > MAX_CAPI) return errore(422, `Wardrobe too large (max ${MAX_CAPI} items)`);
+  // Quante copie ha l'utente di ogni capo: il tetto dell'uscita per l'app.
+  const salvate = new Map<string, number | null>(
+    righe.map((r: Record<string, any>) => [String(r.id), r.quantity ?? null]),
+  );
 
   const consumo = await consumaCreditoAi(db, u.id);
   if (consumo instanceof Response) return consumo;
@@ -115,5 +121,6 @@ Deno.serve(async (req) => {
   return json(200, {
     valigia, motivi: r.motivi, perche: r.perche, geo: r.geo, meteo: r.meteo,
     note_tecniche: r.jev.errori,
+    ...uscitaApp(r.valigia, r.motivi as { capi: Record<string, any>[]; essenziali: Record<string, any>[] }, salvate),
   });
 });
