@@ -19,6 +19,7 @@ import '../../features/houses/view/houses_screen.dart';
 import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
 import '../../features/profile/view/profile_screen.dart';
+import '../../features/trips/view/ai_packing_wait_screen.dart';
 import '../../features/trips/view/trips_screen.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/new_trip_screen.dart';
@@ -291,6 +292,19 @@ GoRouter appRouter(Ref ref) {
             stopIndex:
                 int.tryParse(state.uri.queryParameters['stop'] ?? '') ?? 0,
           );
+        },
+      ),
+      GoRoute(
+        path: '/trips/:id/ai-packing',
+        name: 'trip-ai-packing',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          final job = state.extra;
+          if (id == null || id.isEmpty || job is! PackTripJob) {
+            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+          }
+          return AiPackingWaitScreen(tripId: id, job: job);
         },
       ),
       GoRoute(

@@ -216,6 +216,30 @@
     "camping": "Campsite",
     "friends": "Friends or family"
   },
+  "wait": {
+    "title": "Packing your suitcase",
+    "subtitle": "{} · {}",
+    "nights": {
+      "one": "{} night",
+      "other": "{} nights"
+    },
+    "step_weather": "Checking the weather in {}",
+    "step_wardrobe": "Choosing from your wardrobe",
+    "step_check": "Checking what is missing",
+    "hint": "This usually takes about ten seconds."
+  },
+  "error": {
+    "credits_title": "You have run out of AI credits",
+    "credits_body": "The suitcase AI credits for this month are used up. You can add more with a promo code from your Profile.",
+    "credits_action": "Go to Profile",
+    "empty_title": "This house has no clothes",
+    "empty_body": "To pack the suitcase we need the clothes in this house's wardrobe. Add some, then try again.",
+    "empty_action": "Add clothes",
+    "too_large_title": "The wardrobe is too large",
+    "too_large_body": "The AI suitcase reads at most 400 items. Remove some from this house to pack it.",
+    "generic_title": "I could not pack the suitcase",
+    "generic_body": "Check your connection and try again."
+  },
   "unavailable": {
     "noDates": "The trip has no dates yet: add them to pack with AI.",
     "past": "The trip is already over: AI packing is for trips under way or ahead.",

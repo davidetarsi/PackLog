@@ -216,6 +216,30 @@
     "camping": "Campeggio",
     "friends": "Da amici o parenti"
   },
+  "wait": {
+    "title": "Preparo la valigia",
+    "subtitle": "{} · {}",
+    "nights": {
+      "one": "{} notte",
+      "other": "{} notti"
+    },
+    "step_weather": "Guardo il meteo di {}",
+    "step_wardrobe": "Scelgo dal tuo armadio",
+    "step_check": "Controllo cosa manca",
+    "hint": "Di solito ci vogliono una decina di secondi."
+  },
+  "error": {
+    "credits_title": "Hai finito i crediti AI",
+    "credits_body": "Per questo mese i crediti della valigia AI sono finiti. Puoi aggiungerne con un codice promo dal Profilo.",
+    "credits_action": "Vai al Profilo",
+    "empty_title": "Questa casa non ha vestiti",
+    "empty_body": "Per preparare la valigia servono i capi dell'armadio di questa casa. Aggiungine qualcuno, poi riprova.",
+    "empty_action": "Aggiungi vestiti",
+    "too_large_title": "L'armadio è troppo grande",
+    "too_large_body": "La valigia AI legge al massimo 400 capi. Togline qualcuno da questa casa per prepararla.",
+    "generic_title": "Non sono riuscito a preparare la valigia",
+    "generic_body": "Controlla la connessione e riprova."
+  },
   "unavailable": {
     "noDates": "Il viaggio non ha ancora le date: aggiungile per preparare la valigia con AI.",
     "past": "Il viaggio è già finito: la valigia con AI si prepara per i viaggi in corso o futuri.",
