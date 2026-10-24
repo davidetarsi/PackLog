@@ -43,10 +43,13 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
     }
   }
 
+  // Un capo tra gli essenziali e' importante anche se il suo motivo principale viene dai capi.
+  const essenziali = new Set(motivi.essenziali.map((x) => String(x.item_id)));
   const capi: CapoApp[] = [];
   const avvisi: Omit<AvvisoApp, "id">[] = [];
   for (const [id, c] of uniti) {
-    const tetto = salvate.get(id) ?? 1;
+    // Zero o negativo nell'armadio conta come una copia: il capo non sparisce.
+    const tetto = Math.max(1, salvate.get(id) ?? 1);
     const quantita = Math.min(c.quantita, tetto);
     capi.push({
       item_id: id, quantita, in_partenza: c.in_partenza,
@@ -55,7 +58,7 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
     if (quantita < c.quantita) {
       avvisi.push({
         codice: CODICE_POCHI,
-        livello: c.motivo.codice === "essenziale" ? "importante" : "utile",
+        livello: c.motivo.codice === "essenziale" || essenziali.has(id) ? "importante" : "utile",
         titolo: `Pochi ${c.item} per questo viaggio`,
         perche: `Ne servirebbero ${c.quantita}, nell'armadio ne hai ${tetto}.`,
         cerca: c.item,

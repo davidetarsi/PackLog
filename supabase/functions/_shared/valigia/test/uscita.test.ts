@@ -33,7 +33,7 @@ test("stesso capo in ideali, ripieghi ed essenziali: una riga con la somma di tu
   assert.equal(tagliato.capi[0].quantita, 5);
   assert.equal(tagliato.avvisi.length, 1);
   assert.equal(tagliato.avvisi[0].perche, "Ne servirebbero 7, nell'armadio ne hai 5.");
-  assert.equal(tagliato.avvisi[0].livello, "utile");
+  assert.equal(tagliato.avvisi[0].livello, "importante"); // e' anche tra gli essenziali
 });
 
 test("capo essenziale tagliato dal tetto: avviso importante", () => {
@@ -50,4 +50,25 @@ test("avvisi dai mancanti: importanti prima", () => {
     { capi: [], essenziali: [] }, new Map());
   assert.deepEqual(r.avvisi.map((a) => [a.id, a.livello, a.titolo]),
     [["assente:0", "importante", "Giacca impermeabile"], ["assente:1", "utile", "Cappello da sole"]]);
+});
+
+test("salvate a 0 o negativo: contano come una copia", () => {
+  const motivi = { capi: [
+      { item_id: "z", item: "Costume", quantita: 2, in_partenza: false, motivo: { codice: "mare", etichetta: "Mare", frase: "m" } }],
+    essenziali: [] };
+  const r = uscitaApp({ mancanti_canonici: [] }, motivi, new Map([["z", 0]]));
+  assert.deepEqual([r.capi[0].item_id, r.capi[0].quantita], ["z", 1]);
+  assert.equal(r.avvisi[0].perche, "Ne servirebbero 2, nell'armadio ne hai 1.");
+  const neg = uscitaApp({ mancanti_canonici: [] }, motivi, new Map([["z", -3]]));
+  assert.equal(neg.capi[0].quantita, 1);
+});
+
+test("capo nei capi e tra gli essenziali, tagliato: avviso importante, motivo del primo", () => {
+  const motivi = { capi: [
+      { item_id: "d", item: "Boxer neri", quantita: 4, in_partenza: false, motivo: { codice: "giorno", etichetta: "Tutti i giorni", frase: "g" } }],
+    essenziali: [{ item_id: "d", item: "Boxer neri", quantita: 2, motivo: { codice: "essenziale", etichetta: "Essenziali", frase: "e" } }] };
+  const r = uscitaApp({ mancanti_canonici: [] }, motivi, new Map([["d", 3]]));
+  assert.deepEqual([r.capi[0].quantita, r.capi[0].motivo.codice], [3, "giorno"]);
+  assert.deepEqual(r.avvisi.map((a) => [a.codice, a.livello, a.perche]),
+    [["pochi_pezzi", "importante", "Ne servirebbero 6, nell'armadio ne hai 3."]]);
 });
