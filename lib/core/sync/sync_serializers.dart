@@ -248,6 +248,14 @@ abstract final class SyncSerializers {
       legs: r['legs'] == null
           ? const Value.absent()
           : Value(jsonEncode(r['legs'])),
+      // Stesse regole di `legs`: `null` non tocca il locale, un oggetto lo
+      // sostituisce.
+      aiPackingSetup: r['ai_packing_setup'] == null
+          ? const Value.absent()
+          : Value(jsonEncode(r['ai_packing_setup'])),
+      aiPackingResult: r['ai_packing_result'] == null
+          ? const Value.absent()
+          : Value(jsonEncode(r['ai_packing_result'])),
       createdAt: Value(DateTime.parse(r['created_at'] as String)),
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
@@ -394,6 +402,20 @@ abstract final class SyncSerializers {
       // Sempre una lista: `null` significherebbe "nessuna informazione" e la
       // rimozione delle tappe non si propagherebbe mai.
       'legs': trip.legs == null ? const <dynamic>[] : jsonDecode(trip.legs!),
+      'ai_packing_setup': _jsonObjectOrNull(trip.aiPackingSetup),
+      'ai_packing_result': _jsonObjectOrNull(trip.aiPackingResult),
     };
+  }
+
+  /// Oggetto JSON salvato nel viaggio, o `null` se manca o è corrotto: un
+  /// dato AI illeggibile non deve bloccare il push di tutto il viaggio.
+  static Object? _jsonObjectOrNull(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
   }
 }

@@ -65,6 +65,12 @@ _$TripModelImpl _$$TripModelImplFromJson(Map<String, dynamic> json) =>
               ?.map((e) => TripLeg.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
+      aiSetup: json['aiSetup'] == null
+          ? null
+          : AiPackingSetup.fromJson(json['aiSetup'] as Map<String, dynamic>),
+      aiResult: json['aiResult'] == null
+          ? null
+          : AiPackingResult.fromJson(json['aiResult'] as Map<String, dynamic>),
       isSaved: json['isSaved'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
@@ -82,6 +88,8 @@ Map<String, dynamic> _$$TripModelImplToJson(_$TripModelImpl instance) =>
       'destinationLocation': instance.destinationLocation,
       'luggages': instance.luggages,
       'legs': instance.legs,
+      'aiSetup': instance.aiSetup,
+      'aiResult': instance.aiResult,
       'isSaved': instance.isSaved,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),

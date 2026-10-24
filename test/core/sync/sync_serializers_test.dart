@@ -217,4 +217,132 @@ void main() {
       expect(companion.legs.value, contains('Siena'));
     });
   });
+
+  group('SyncSerializers - valigia AI', () {
+    Future<Trip> insertAndFetchTrip(TripsCompanion companion) async {
+      await database.tripsDao.insertTrip(companion);
+      return (await database.tripsDao.findTripById(companion.id.value))!;
+    }
+
+    test(
+      'senza dati AI: ai_packing_setup e ai_packing_result sono null',
+      () async {
+        final trip = await insertAndFetchTrip(
+          TripsCompanion.insert(
+            id: 'trip-ai-1',
+            name: 'Weekend',
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+        );
+
+        final json = SyncSerializers.tripToJson(
+          trip,
+          items: [],
+          luggageIds: [],
+        );
+
+        expect(json['ai_packing_setup'], isNull);
+        expect(json['ai_packing_result'], isNull);
+      },
+    );
+
+    test('con dati AI: vanno come oggetti JSON, non come stringhe', () async {
+      final trip = await insertAndFetchTrip(
+        TripsCompanion.insert(
+          id: 'trip-ai-2',
+          name: 'Toscana',
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+          aiPackingSetup: const Value('{"houseId":"h1","stops":{}}'),
+          aiPackingResult: const Value('{"houseId":"h1","proposal":[]}'),
+        ),
+      );
+
+      final json = SyncSerializers.tripToJson(trip, items: [], luggageIds: []);
+
+      expect(json['ai_packing_setup'], isA<Map<String, dynamic>>());
+      expect(json['ai_packing_setup']['houseId'], 'h1');
+      expect(json['ai_packing_result'], isA<Map<String, dynamic>>());
+      expect(json['ai_packing_result']['proposal'], isEmpty);
+    });
+
+    test(
+      'JSON locale corrotto: invia null invece di far fallire il push',
+      () async {
+        final trip = await insertAndFetchTrip(
+          TripsCompanion.insert(
+            id: 'trip-ai-3',
+            name: 'Corrotto',
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+            aiPackingSetup: const Value('{non è json'),
+          ),
+        );
+
+        final json = SyncSerializers.tripToJson(
+          trip,
+          items: [],
+          luggageIds: [],
+        );
+
+        expect(json['ai_packing_setup'], isNull);
+      },
+    );
+  });
+
+  group('SyncSerializers.buildTripCompanion - valigia AI', () {
+    Map<String, dynamic> remotePayload({
+      Object? aiPackingSetup = _unset,
+      Object? aiPackingResult = _unset,
+    }) => {
+      'id': 'trip-1',
+      'name': 'Toscana',
+      'created_at': '2026-09-01T00:00:00.000Z',
+      'updated_at': '2026-09-01T00:00:00.000Z',
+      if (!identical(aiPackingSetup, _unset))
+        'ai_packing_setup': aiPackingSetup,
+      if (!identical(aiPackingResult, _unset))
+        'ai_packing_result': aiPackingResult,
+    };
+
+    test('chiavi assenti: non toccano i dati AI locali', () {
+      final companion = SyncSerializers.buildTripCompanion(
+        remotePayload(),
+        syncedAt: DateTime(2026),
+      );
+
+      expect(companion.aiPackingSetup.present, isFalse);
+      expect(companion.aiPackingResult.present, isFalse);
+    });
+
+    test('ai_packing_result a null: non tocca il dato locale', () {
+      final companion = SyncSerializers.buildTripCompanion(
+        remotePayload(aiPackingResult: null),
+        syncedAt: DateTime(2026),
+      );
+
+      expect(companion.aiPackingResult.present, isFalse);
+    });
+
+    test('ai_packing_result oggetto: salva il JSON', () {
+      final companion = SyncSerializers.buildTripCompanion(
+        remotePayload(aiPackingResult: const {'houseId': 'h1', 'proposal': []}),
+        syncedAt: DateTime(2026),
+      );
+
+      expect(companion.aiPackingResult.present, isTrue);
+      expect(companion.aiPackingResult.value, contains('"houseId":"h1"'));
+    });
+
+    test('ai_packing_setup oggetto: salva il JSON', () {
+      final companion = SyncSerializers.buildTripCompanion(
+        remotePayload(aiPackingSetup: const {'houseId': 'h2', 'stops': {}}),
+        syncedAt: DateTime(2026),
+      );
+
+      expect(companion.aiPackingSetup.present, isTrue);
+      expect(companion.aiPackingSetup.value, contains('"houseId":"h2"'));
+    });
+  });
 }

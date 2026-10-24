@@ -4,6 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../items/model/item_model.dart';
 import '../../luggages/model/luggage_model.dart';
+import 'ai_packing.dart';
 import 'trip_leg.dart';
 
 part 'trip_model.freezed.dart';
@@ -70,6 +71,12 @@ class TripModel with _$TripModel {
 
     /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
     @Default([]) List<TripLeg> legs,
+
+    /// Risposte del foglio della valigia AI. `null` = nessuna informazione.
+    AiPackingSetup? aiSetup,
+
+    /// Valigia proposta dalla valigia AI. `null` = nessuna informazione.
+    AiPackingResult? aiResult,
 
     /// Viaggio salvato/preferito
     @Default(false) bool isSaved,
