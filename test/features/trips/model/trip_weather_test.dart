@@ -292,6 +292,65 @@ void main() {
       );
     });
 
+    test('la chiave della tappa non entra nella firma', () {
+      final request = TripWeatherRequest([
+        WeatherStopRequest(
+          stopKey: 'leg-x',
+          name: 'Lisbona',
+          country: 'Portogallo',
+          lat: 38.7,
+          lon: -9.1,
+          from: DateTime(2026, 10, 30),
+          days: 6,
+        ),
+      ]);
+      expect(
+        request.signature,
+        '{"trip":{"data_inizio":"2026-10-30","tappe":[{"nome":"Lisbona",'
+        '"paese":"Portogallo","lat":38.7,"lon":-9.1,"giorni":6}]}}',
+      );
+    });
+
+    test(
+      'chiavi: meta main, ogni tappa la sua, stesso luogo stessa chiave',
+      () {
+        final plan = _request(
+          planTripWeather(
+            _trip(
+              departure: DateTime(2026, 10, 30),
+              returnAt: DateTime(2026, 11, 6),
+              destination: _place('Lisbona'),
+              legs: [
+                TripLeg(
+                  id: 'leg1',
+                  locationDisplayName: 'Sintra, Portogallo',
+                  from: DateTime(2026, 11, 2),
+                  to: DateTime(2026, 11, 3),
+                  lat: 38.8,
+                  lon: -9.4,
+                ),
+                TripLeg(
+                  id: 'leg2',
+                  locationDisplayName: 'Lisbona, Portogallo',
+                  from: DateTime(2026, 11, 4),
+                  to: DateTime(2026, 11, 6),
+                  lat: 38.7,
+                  lon: -9.1,
+                ),
+              ],
+            ),
+            houses: const [],
+            today: _today,
+          ),
+        );
+        expect(plan.stops.map((s) => s.stopKey), [
+          kMainStopKey,
+          'leg1',
+          kMainStopKey,
+        ]);
+      },
+    );
+
     test('la firma cambia con le date', () {
       TripWeatherRequest plan(DateTime returnAt) => _request(
         planTripWeather(
@@ -318,6 +377,7 @@ void main() {
   group('TripWeather', () {
     final request = TripWeatherRequest([
       WeatherStopRequest(
+        stopKey: kMainStopKey,
         name: 'Lisbona',
         country: 'Portogallo',
         lat: 38.7,
@@ -326,6 +386,7 @@ void main() {
         days: 3,
       ),
       WeatherStopRequest(
+        stopKey: 'leg1',
         name: 'Sintra',
         country: 'Portogallo',
         lat: 38.8,
