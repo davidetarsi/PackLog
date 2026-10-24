@@ -170,6 +170,61 @@
     "other": "Other"
   },
   "trips": {
+"ai": {
+  "title": "AI packing list",
+  "house_title": "Which home do you take clothes from",
+  "luggage_title": "Which luggage are you taking",
+  "new_luggage": "New luggage",
+  "no_luggage": "You have no luggage yet.",
+  "no_houses": "Add a home to pack with AI.",
+  "stop_progress": "Stop {} of {} · {}",
+  "activities_title": "What will you do in {}?",
+  "activities_title_single": "What will you do?",
+  "stay_title": "Where you sleep in {}",
+  "stay_title_single": "Where you sleep",
+  "washer": "There is a washing machine",
+  "washer_sub": "If there is one, you pack fewer clothes",
+  "washer_sub_on": "You pack fewer clothes and wash them there",
+  "copy_from": "Same as {}",
+  "back": "Back",
+  "next": "Next: {}",
+  "prepare": "Pack my suitcase",
+  "incomplete": "{} is still to fill in. The weather is different there: tell us what you will do and where you sleep.",
+  "go_to_stop": "I'll fill it in",
+  "activity": {
+    "city": "Cities and museums",
+    "walks": "Walks and hikes",
+    "trekking": "Trekking",
+    "cammino": "Cammino",
+    "high_mountain": "High mountains",
+    "sea": "Sea",
+    "diving": "Diving and snorkeling",
+    "ski": "Skiing and snow",
+    "camping": "Camping",
+    "work": "Work",
+    "formal_dinner": "Elegant dinner",
+    "wedding": "Wedding",
+    "worship": "Places of worship",
+    "nightlife": "Nightlife",
+    "cycling": "Cycling",
+    "spa": "Spa"
+  },
+  "stay": {
+    "hotel": "Hotel",
+    "apartment": "Apartment",
+    "hostel": "Hostel",
+    "camping": "Campsite",
+    "friends": "Friends or family"
+  },
+  "unavailable": {
+    "noDates": "The trip has no dates yet: add them to pack with AI.",
+    "past": "The trip is already over: AI packing is for trips under way or ahead.",
+    "tooFar": "The trip starts more than two years from now: AI packing works closer to the departure.",
+    "tooLong": "AI packing covers trips up to 60 days. You can pack by hand.",
+    "tooManyStops": "AI packing covers up to 8 stops. You can pack by hand.",
+    "missingPlace": "A stop has no place on the map yet: set it to pack with AI."
+  }
+},
     "edit": {
       "discard_title": "Leave without saving?",
       "discard_message": "Your changes to the trip will be lost."

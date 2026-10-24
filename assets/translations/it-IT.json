@@ -170,6 +170,61 @@
     "other": "Altro"
   },
   "trips": {
+"ai": {
+  "title": "Valigia con AI",
+  "house_title": "Da quale casa prendi i vestiti",
+  "luggage_title": "Con che bagaglio parti",
+  "new_luggage": "Nuovo bagaglio",
+  "no_luggage": "Non hai ancora bagagli.",
+  "no_houses": "Aggiungi una casa per preparare la valigia con AI.",
+  "stop_progress": "Tappa {} di {} · {}",
+  "activities_title": "Cosa farai in {}?",
+  "activities_title_single": "Cosa farai?",
+  "stay_title": "Dove dormi in {}",
+  "stay_title_single": "Dove dormi",
+  "washer": "C'è una lavatrice",
+  "washer_sub": "Se c'è, porti meno vestiti",
+  "washer_sub_on": "Porti meno vestiti e li lavi lì",
+  "copy_from": "Uguale a {}",
+  "back": "Indietro",
+  "next": "Avanti: {}",
+  "prepare": "Prepara la valigia",
+  "incomplete": "{} è ancora da compilare. Ha un meteo diverso: vale la pena dirci cosa farai e dove dormi.",
+  "go_to_stop": "La compilo io",
+  "activity": {
+    "city": "Città e musei",
+    "walks": "Passeggiate ed escursioni",
+    "trekking": "Trekking",
+    "cammino": "Cammino",
+    "high_mountain": "Alta montagna",
+    "sea": "Mare",
+    "diving": "Immersioni e snorkeling",
+    "ski": "Sci e neve",
+    "camping": "Campeggio",
+    "work": "Lavoro",
+    "formal_dinner": "Cena elegante",
+    "wedding": "Matrimonio",
+    "worship": "Luoghi di culto",
+    "nightlife": "Serate e locali",
+    "cycling": "Bicicletta",
+    "spa": "Terme"
+  },
+  "stay": {
+    "hotel": "Hotel",
+    "apartment": "Appartamento",
+    "hostel": "Ostello",
+    "camping": "Campeggio",
+    "friends": "Da amici o parenti"
+  },
+  "unavailable": {
+    "noDates": "Il viaggio non ha ancora le date: aggiungile per preparare la valigia con AI.",
+    "past": "Il viaggio è già finito: la valigia con AI si prepara per i viaggi in corso o futuri.",
+    "tooFar": "Il viaggio parte fra più di due anni: la valigia con AI si prepara più vicino alla partenza.",
+    "tooLong": "La valigia con AI copre viaggi fino a 60 giorni. Puoi prepararla a mano.",
+    "tooManyStops": "La valigia con AI copre fino a 8 tappe. Puoi prepararla a mano.",
+    "missingPlace": "Una tappa non ha ancora una posizione sulla mappa: impostala per preparare la valigia con AI."
+  }
+},
     "edit": {
       "discard_title": "Uscire senza salvare?",
       "discard_message": "Le modifiche al viaggio andranno perse."

@@ -26,6 +26,7 @@ import '../../luggages/model/luggage_model.dart';
 import '../../luggages/providers/luggage_provider.dart';
 import '../../luggages/view/add_edit_luggage_screen.dart';
 import '../../luggages/view/luggages_management_sheet.dart';
+import '../model/ai_availability.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_parts.dart';
@@ -120,17 +121,9 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         if (house.id == picked) return house;
       }
     }
-    return _proposedHouse(houses);
-  }
-
-  /// La casa proposta è la principale. Se la principale è la meta del viaggio,
-  /// la prima altra casa; se non ce n'è un'altra, resta la principale.
-  HouseModel? _proposedHouse(List<HouseModel> houses) {
-    final primary = defaultDestinationHouse(houses);
-    if (primary == null) return null;
-    if (primary.id != _trip?.destinationHouseId) return primary;
-    return houses.where((house) => house.id != primary.id).firstOrNull ??
-        primary;
+    final trip = _trip;
+    if (trip == null) return defaultDestinationHouse(houses);
+    return proposedPackingHouse(houses, trip);
   }
 
   /// Normalizza i [TripItem] con [TripItem.originHouseId] vuoto recuperando la
