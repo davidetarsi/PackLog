@@ -64,7 +64,9 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
   /// Errore da mostrare; null mentre la richiesta è in corso.
   Object? _failure;
 
-  bool _cancelled = false;
+  /// Un'uscita è già partita (pop o push): da qui in poi nessun'altra uscita
+  /// può fare pop, altrimenti chiuderebbe la pagina chiamante.
+  bool _leaving = false;
 
   @override
   void initState() {
@@ -99,32 +101,40 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
     }
     _stopSteps();
 
-    // Annullata: la pagina è già chiusa e non c'è più niente da mostrare.
-    if (_cancelled || !mounted) return;
+    // Annullata o già in uscita: la pagina non deve più fare niente.
+    if (_leaving || !mounted) return;
     ref.invalidate(gptUsageProvider);
 
-    if (result != null) {
-      context.pop<AiPackingResult>(result);
+    final success = result;
+    if (success != null) {
+      _leave(() => context.pop<AiPackingResult>(success));
       return;
     }
     setState(() => _failure = failure);
   }
 
-  void _cancel() {
-    if (_cancelled) return;
-    _cancelled = true;
+  /// Unica porta d'uscita: la prima chiamata vince, le altre non fanno nulla.
+  /// Il flag va impostato prima di qualsiasi pop, anche durante l'animazione
+  /// di chiusura.
+  void _leave(VoidCallback exit) {
+    if (_leaving) return;
+    _leaving = true;
     _stopSteps();
+    exit();
+  }
+
+  void _cancel() => _leave(() {
     _service.cancel();
     ref.invalidate(gptUsageProvider);
     context.pop();
-  }
+  });
 
   /// Chiude questa pagina e apre [location] sopra la pagina che l'ha chiamata.
-  void _leaveFor(String location) {
+  void _leaveFor(String location) => _leave(() {
     final router = GoRouter.of(context);
     context.pop();
     router.push(location);
-  }
+  });
 
   void _startSteps() {
     _stopSteps();
@@ -148,10 +158,17 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
   Widget build(BuildContext context) {
     final failure = _failure;
     return PopScope(
-      // Il tasto indietro durante l'attesa vale come "Annulla".
-      canPop: failure != null,
+      // Il pop lo gestisce sempre la pagina, così passa dalla stessa porta
+      // d'uscita: tasto indietro durante l'attesa = "Annulla", in errore =
+      // "Chiudi".
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _cancel();
+        if (didPop) return;
+        if (failure == null) {
+          _cancel();
+        } else {
+          _leave(() => context.pop());
+        }
       },
       child: Scaffold(
         body: SafeArea(
@@ -266,7 +283,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
         title = 'trips.ai.error.too_large_title'.tr();
         body = 'trips.ai.error.too_large_body'.tr();
         primaryLabel = 'common.close'.tr();
-        primaryAction = () => context.pop();
+        primaryAction = () => _leave(() => context.pop());
         showExit = false;
       default:
         title = 'trips.ai.error.generic_title'.tr();
@@ -301,7 +318,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
         DsButton(label: primaryLabel, onPressed: primaryAction, expand: true),
         if (showExit)
           TextButton(
-            onPressed: () => context.pop(),
+            onPressed: () => _leave(() => context.pop()),
             style: TextButton.styleFrom(
               foregroundColor: colorScheme.onSurface,
               minimumSize: const Size(double.infinity, 48),

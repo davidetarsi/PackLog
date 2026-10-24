@@ -61,6 +61,7 @@ class _FakeService extends PackTripService {
 /// Cosa è successo al route della pagina d'attesa.
 class _Outcome {
   bool popped = false;
+  int completions = 0;
   AiPackingResult? result;
 }
 
@@ -87,25 +88,36 @@ Future<void> _pump(WidgetTester tester) async {
   addTearDown(container.dispose);
 
   final router = GoRouter(
+    initialLocation: '/home',
     routes: [
+      // Radice sotto la casa: un secondo pop della casa si vede (compare la
+      // radice) invece di restare silenzioso.
       GoRoute(
         path: '/',
-        builder: (context, state) => Scaffold(
-          body: Center(
-            child: TextButton(
-              onPressed: () async {
-                final result = await context.push<AiPackingResult>(
-                  '/trips/trip-1/ai-packing',
-                  extra: _job,
-                );
-                _outcome
-                  ..popped = true
-                  ..result = result;
-              },
-              child: const Text('apri'),
+        builder: (context, state) =>
+            const Scaffold(body: Center(child: Text('RADICE'))),
+        routes: [
+          GoRoute(
+            path: 'home',
+            builder: (context, state) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () async {
+                    final result = await context.push<AiPackingResult>(
+                      '/trips/trip-1/ai-packing',
+                      extra: _job,
+                    );
+                    _outcome
+                      ..popped = true
+                      ..completions += 1
+                      ..result = result;
+                  },
+                  child: const Text('apri'),
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
       GoRoute(
         path: '/trips/:id/ai-packing',
@@ -310,6 +322,47 @@ void main() {
 
       expect(_outcome.popped, isTrue);
       expect(_outcome.result, isNull);
+    });
+  });
+
+  group('una sola uscita', () {
+    testWidgets('dopo il successo, Annulla non chiude la pagina chiamante', (
+      tester,
+    ) async {
+      await _pump(tester);
+      _service.last.complete(_result);
+      // Un frame solo: la pagina d'attesa è ancora in uscita. Flutter non
+      // consegna tocchi a una route in uscita, quindi si richiama direttamente
+      // il callback di Annulla, come farebbe un tocco arrivato prima.
+      await tester.pump();
+      final annulla = tester
+          .widget<TextButton>(find.widgetWithText(TextButton, 'Annulla'))
+          .onPressed!;
+      annulla();
+      await _settle(tester);
+
+      expect(_outcome.completions, 1);
+      expect(_outcome.result, same(_result));
+      expect(_service.cancelled, isFalse);
+      expect(find.text('RADICE'), findsNothing);
+      expect(find.text('apri'), findsOneWidget);
+    });
+
+    testWidgets('due Chiudi di fila chiudono una sola volta', (tester) async {
+      await _pump(tester);
+      _service.last.completeError(const PackTripWardrobeTooLargeException());
+      await _settle(tester);
+
+      // Due chiamate dello stesso callback, come due tocchi ravvicinati.
+      final chiudi = tester.widget<DsButton>(find.byType(DsButton)).onPressed!;
+      chiudi();
+      chiudi();
+      await _settle(tester);
+
+      expect(_outcome.completions, 1);
+      expect(_outcome.result, isNull);
+      expect(find.text('RADICE'), findsNothing);
+      expect(find.text('apri'), findsOneWidget);
     });
   });
 }
