@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,10 +30,16 @@ import '../../luggages/view/add_edit_luggage_screen.dart';
 import '../../luggages/view/luggages_management_sheet.dart';
 import '../model/ai_availability.dart';
 import '../model/ai_packing.dart';
+import '../model/pack_trip_request.dart';
 import '../model/trip_model.dart';
+import '../model/trip_postcard.dart';
+import '../model/trip_weather.dart';
 import '../providers/trip_provider.dart';
+import 'ai_packing_wait_screen.dart';
 import 'widgets/ai/ai_home_group.dart';
 import 'widgets/ai/ai_pack_item_sheet.dart';
+import 'widgets/ai/ai_pack_rows.dart';
+import 'widgets/ai/ai_packing_sheet.dart';
 import 'widgets/pack/pack_parts.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
@@ -53,10 +61,14 @@ class PackSuitcaseScreen extends ConsumerStatefulWidget {
   /// Passo 2 del nuovo viaggio: in cima si mostra l'indicatore dei passi.
   final bool fromNewTrip;
 
+  /// Apre subito il foglio della valigia AI.
+  final bool startAi;
+
   const PackSuitcaseScreen({
     super.key,
     required this.tripId,
     this.fromNewTrip = false,
+    this.startAi = false,
   });
 
   @override
@@ -79,8 +91,14 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   Map<String, LuggageModel> _luggages = {};
   Map<String, LuggageModel> _initialLuggages = {};
 
+  /// Valigia AI com'era all'apertura: confronto per "modificato".
+  AiPackingResult? _initialAiResult;
+
   /// Casa scelta dal selettore; `null` finché non se ne sceglie una.
   String? _pickedHouseId;
+
+  /// Il tocco automatico di [PackSuitcaseScreen.startAi] è già partito.
+  bool _startAiScheduled = false;
 
   /// Campo della ricerca: dopo un'aggiunta ci si scrive il nome creato.
   final _searchController = TextEditingController();
@@ -104,10 +122,18 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     if (_trip != null) return;
     _trip = trip;
     _aiResult = trip.aiResult;
+    _initialAiResult = _aiResult;
     _items = {for (final item in trip.items) item.id: item};
     _initialItems = {..._items};
     _luggages = {for (final luggage in trip.luggages) luggage.id: luggage};
     _initialLuggages = {..._luggages};
+  }
+
+  /// Il viaggio com'è adesso nel provider. Le scritture partono da qui, non
+  /// dalla copia presa all'apertura, che non ha le risposte salvate dopo.
+  TripModel? _currentTrip() {
+    final trips = ref.read(tripNotifierProvider).valueOrNull;
+    return trips?.where((t) => t.id == widget.tripId).firstOrNull ?? _trip;
   }
 
   /// Vero se la selezione o i bagagli non sono più quelli di apertura.
@@ -118,7 +144,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     final luggagesChanged =
         _luggages.length != _initialLuggages.length ||
         _luggages.keys.any((id) => !_initialLuggages.containsKey(id));
-    return itemsChanged || luggagesChanged;
+    return itemsChanged || luggagesChanged || _aiResult != _initialAiResult;
   }
 
   /// La casa mostrata in "Cosa porti": quella scelta, altrimenti la proposta.
@@ -295,9 +321,10 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     final normalized = await _normalizeItemOrigins(_items.values.toList());
     if (!mounted) return;
 
-    final updated = trip.copyWith(
+    final updated = (_currentTrip() ?? trip).copyWith(
       items: normalized,
       luggages: _luggages.values.toList(),
+      aiResult: _aiResult,
       updatedAt: DateTime.now(),
     );
 
@@ -314,6 +341,167 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       return;
     }
     context.pop();
+  }
+
+  /// Scrive la ricerca dall'avviso ("Cerca nell'armadio").
+  void _searchFrom(String text) {
+    _searchController.text = text;
+    setState(() => _query = text.trim());
+  }
+
+  /// "Ok, capito": l'avviso esce dalla lista; si salva con "Fatto".
+  void _dismissWarning(String id) {
+    final result = _aiResult;
+    if (result == null || result.dismissedWarnings.contains(id)) return;
+    setState(() {
+      _aiResult = result.copyWith(
+        dismissedWarnings: [...result.dismissedWarnings, id],
+      );
+    });
+  }
+
+  /// Il tocco sull'icona AI: se la valigia ha già capi chiede conferma, poi
+  /// apre il foglio e la pagina d'attesa. Senza coordinate dice il motivo.
+  Future<void> _onAiTap() async {
+    final trip = _currentTrip();
+    if (trip == null || _saving) return;
+    final houses =
+        ref.read(houseNotifierProvider).valueOrNull ?? const <HouseModel>[];
+    final availability = aiAvailabilityOf(
+      trip,
+      houses: houses,
+      today: DateTime.now(),
+    );
+    switch (availability) {
+      case AiUnavailable(:final messageKey):
+        AppSnackBar.showInfo(context, messageKey.tr());
+      case AiAvailable(:final plan):
+        await _prepareAi(trip, plan);
+    }
+  }
+
+  Future<void> _prepareAi(TripModel trip, TripWeatherRequest plan) async {
+    if (_items.isNotEmpty) {
+      final replace = await DialogHelpers.showConfirmation(
+        context: context,
+        title: 'trips.pack.ai.replace_title'.tr(),
+        message: 'trips.pack.ai.replace_message'.tr(),
+        confirmLabel: 'trips.pack.ai.replace_confirm'.tr(),
+        isDestructive: true,
+      );
+      if (!replace || !mounted) return;
+    }
+
+    final setup = await showAiPackingSheet(context, trip: trip, plan: plan);
+    if (setup == null || !mounted) return;
+    final houseId = setup.houseId;
+    if (houseId == null) return;
+
+    // Le risposte si salvano subito: "Rigenera" non le chiede di nuovo.
+    final current = _currentTrip() ?? trip;
+    final saved = await _writeTrip(
+      current.copyWith(aiSetup: setup, updatedAt: DateTime.now()),
+    );
+    if (!saved || !mounted) return;
+
+    final luggage = _luggageById(setup.luggageId);
+    final names = [for (final stop in aiStopsOf(plan)) stop.name];
+    final result = await context.push<AiPackingResult>(
+      '/trips/${trip.id}/ai-packing',
+      extra: PackTripJob(
+        body: packTripBody(
+          plan: plan,
+          setup: setup,
+          houseId: houseId,
+          luggage: luggage,
+        ),
+        houseId: houseId,
+        title: _joinStops(names),
+        nights: nightsBetween(trip.departureDateTime, trip.returnDateTime) ?? 0,
+      ),
+    );
+    if (result == null || !mounted) return;
+    await _adoptResult(result, setup: setup, luggage: luggage);
+  }
+
+  /// La proposta diventa la valigia: oggetti e bagaglio, e si salva subito con
+  /// le risposte. Un oggetto non più in casa viene saltato.
+  Future<void> _adoptResult(
+    AiPackingResult result, {
+    required AiPackingSetup setup,
+    LuggageModel? luggage,
+  }) async {
+    final trip = _currentTrip();
+    if (trip == null) return;
+    final houseItems = await ref.read(
+      itemNotifierProvider(result.houseId).future,
+    );
+    if (!mounted) return;
+
+    final byId = {for (final item in houseItems) item.id: item};
+    final items = <String, TripItem>{};
+    for (final proposed in result.proposal) {
+      final item = byId[proposed.itemId];
+      if (item == null) continue;
+      // Mai più pezzi di quelli salvati; senza quantità salvata è uno.
+      final available = item.quantity ?? 1;
+      final cap = available < 1 ? 1 : available;
+      final quantity = proposed.quantity < 1
+          ? 1
+          : (proposed.quantity > cap ? cap : proposed.quantity);
+      items[item.id] = TripItem(
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        quantity: quantity,
+        originHouseId: result.houseId,
+      );
+    }
+    final luggages = luggage == null ? {..._luggages} : {luggage.id: luggage};
+
+    final saved = await _writeTrip(
+      trip.copyWith(
+        items: items.values.toList(),
+        luggages: luggages.values.toList(),
+        aiSetup: setup,
+        aiResult: result,
+        updatedAt: DateTime.now(),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      _aiResult = result;
+      _items = items;
+      _luggages = luggages;
+      // Senza salvataggio riuscito la pagina resta modificata: "Fatto" riprova.
+      if (saved) {
+        _initialItems = {...items};
+        _initialLuggages = {...luggages};
+        _initialAiResult = result;
+      }
+    });
+  }
+
+  Future<bool> _writeTrip(TripModel trip) => ErrorRetryDialog.executeWithRetry(
+    context: context,
+    operation: () => ref.read(tripNotifierProvider.notifier).updateTrip(trip),
+    errorTitle: 'errors.save_error'.tr(),
+    errorMessage: 'errors.save_trip_items_failed'.tr(),
+  );
+
+  LuggageModel? _luggageById(String? id) {
+    if (id == null) return null;
+    final luggages =
+        ref.read(luggageNotifierProvider).valueOrNull ?? const <LuggageModel>[];
+    return luggages.where((l) => l.id == id).firstOrNull;
+  }
+
+  /// "Islanda e Olanda", "Islanda, Olanda e Francia".
+  String _joinStops(List<String> names) {
+    if (names.length <= 1) return names.join();
+    return 'trips.pack.ai.stops_join'.tr(
+      args: [names.sublist(0, names.length - 1).join(', '), names.last],
+    );
   }
 
   Future<void> _confirmDiscard() async {
@@ -351,6 +539,15 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         .firstOrNull
         ?.displayName;
     final count = _items.length;
+    final aiAvailable =
+        aiAvailabilityOf(trip, houses: houses, today: DateTime.now())
+            is AiAvailable;
+    if (widget.startAi && !_startAiScheduled) {
+      _startAiScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_onAiTap());
+      });
+    }
 
     return PopScope(
       // Con modifiche non salvate il back chiede conferma; durante il
@@ -364,21 +561,21 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         appBar: AppBar(
           title: Text('trips.pack.title'.tr()),
           actions: [
-            // Posto pronto per la valigia preparata dall'AI: grigio finché
-            // la funzione non c'è, e il tocco lo dice.
+            // Grigia se la valigia AI non si può chiedere: il tocco dice perché.
             IconButton(
               key: const Key('pack_ai_suitcase'),
-              tooltip: 'trips.pack.ai_coming_soon'.tr(),
+              tooltip: _aiResult == null
+                  ? 'trips.pack.ai.prepare_button'.tr()
+                  : 'trips.pack.ai.regenerate'.tr(),
               icon: Icon(
                 Icons.auto_awesome_outlined,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.38),
+                color: aiAvailable
+                    ? null
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.38),
               ),
-              onPressed: () => AppSnackBar.showInfo(
-                context,
-                'trips.pack.ai_coming_soon'.tr(),
-              ),
+              onPressed: _onAiTap,
             ),
           ],
         ),
@@ -416,6 +613,15 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
                 destinationHouseName: destinationHouseName,
                 houseNames: {for (final h in houses) h.id: h.displayName},
               ),
+              if (_aiResult case final result?) ...[
+                SizedBox(height: context.spacingMd),
+                AiPackRows(
+                  warnings: result.openWarnings,
+                  reasons: result.reasons,
+                  onSearch: _searchFrom,
+                  onDismiss: _dismissWarning,
+                ),
+              ],
               PackWeatherSection(tripId: trip.id),
               DsSectionTitle('trips.pack.luggages'.tr()),
               _luggageSection(context),

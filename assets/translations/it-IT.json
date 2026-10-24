@@ -297,7 +297,23 @@
           "other": "Dalla casa · {} oggetti"
         },
         "home_subtitle": "Toiletries, elettronica e varie: li scegli tu",
-        "home_add": "Aggiungi"
+        "home_add": "Aggiungi",
+        "prepare_button": "Prepara con AI",
+        "regenerate": "Rigenera",
+        "replace_title": "Vuoi sostituire la valigia?",
+        "replace_message": "I capi che hai in valigia verranno sostituiti da quelli proposti dall'AI.",
+        "replace_confirm": "Sostituisci",
+        "missing_row": "Cosa manca a questo viaggio",
+        "nothing_missing": "Non manca niente",
+        "nothing_missing_hint": "La valigia copre clima e attività",
+        "nothing_missing_sheet": "Non manca niente: la valigia copre il clima e le attività di tutte le tappe.",
+        "reasons_row": "Perché queste scelte",
+        "reasons_none": "Nessun motivo da mostrare.",
+        "level_important": "Importante",
+        "level_useful": "Utile",
+        "warning_search": "Cerca nell'armadio",
+        "warning_dismiss": "Ok, capito",
+        "stops_join": "{} e {}"
       }
     },
     "weather": {

@@ -297,7 +297,23 @@
           "other": "From home · {} items"
         },
         "home_subtitle": "Toiletries, electronics and misc: you choose them",
-        "home_add": "Add"
+        "home_add": "Add",
+        "prepare_button": "Prepare with AI",
+        "regenerate": "Regenerate",
+        "replace_title": "Replace the suitcase?",
+        "replace_message": "The items in the suitcase will be replaced by the ones the AI suggests.",
+        "replace_confirm": "Replace",
+        "missing_row": "What's missing for this trip",
+        "nothing_missing": "Nothing is missing",
+        "nothing_missing_hint": "The suitcase covers weather and activities",
+        "nothing_missing_sheet": "Nothing is missing: the suitcase covers the weather and activities of every stop.",
+        "reasons_row": "Why these choices",
+        "reasons_none": "No reasons to show.",
+        "level_important": "Important",
+        "level_useful": "Useful",
+        "warning_search": "Search the wardrobe",
+        "warning_dismiss": "Got it",
+        "stops_join": "{} and {}"
       }
     },
     "weather": {

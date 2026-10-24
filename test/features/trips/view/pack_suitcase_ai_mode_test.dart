@@ -434,18 +434,17 @@ void main() {
       arrange(trip: _aiTrip(), items: _houseItems);
       await pumpPack(tester);
 
-      await tester.ensureVisible(
-        find.descendant(
-          of: rowOf('Maglietta'),
-          matching: find.byIcon(Icons.remove_circle_outline),
-        ),
+      // Al centro e non al bordo: sotto il bordo c'è la barra del "Fatto".
+      final minus = find.descendant(
+        of: rowOf('Maglietta'),
+        matching: find.byIcon(Icons.remove_circle_outline),
       );
-      await tester.tap(
-        find.descendant(
-          of: rowOf('Maglietta'),
-          matching: find.byIcon(Icons.remove_circle_outline),
-        ),
+      await Scrollable.ensureVisible(
+        tester.element(minus),
+        alignment: 0.5,
       );
+      await tester.pumpAndSettle();
+      await tester.tap(minus);
       await tester.pumpAndSettle();
 
       expect(find.text('Tolto: Maglietta'), findsOneWidget);
