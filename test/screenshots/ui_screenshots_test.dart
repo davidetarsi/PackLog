@@ -227,6 +227,13 @@ Future<void> _addSintraStop(ScreenshotApp app, {required DateTime end}) async {
 
 // ── Valigia AI ───────────────────────────────────────────────────────────────
 
+/// Tocca un widget dopo averlo portato a schermo: nel foglio le pillole
+/// stanno sotto la piega e un tocco fuori schermo non fa nulla.
+Future<void> _tapShown(ScreenshotApp app, Finder finder) async {
+  await app.tester.ensureVisible(finder.first);
+  await app.tap(finder);
+}
+
 /// Apre il foglio "Valigia con AI" dal viaggio: il viaggio ha già oggetti,
 /// quindi prima c'è l'avviso di sostituzione, che si conferma.
 Future<void> _openAiSheet(ScreenshotApp app, String tripId) async {
@@ -1819,10 +1826,11 @@ final flows = <Flow>[
           'dice quale, e chiede se la compili ora.',
       steps: (app) async {
         await _openAiSheet(app, kUpcomingTripId);
-        await app.tap(_text('trips.ai.activity.city'));
-        await app.tap(_text('trips.ai.stay.hotel'));
-        await app.tap(find.text('trips.ai.next'.tr(args: ['Sintra'])));
-        await app.tap(
+        await _tapShown(app, _text('trips.ai.activity.city'));
+        await _tapShown(app, _text('trips.ai.stay.hotel'));
+        await _tapShown(app, find.text('trips.ai.next'.tr(args: ['Sintra'])));
+        await _tapShown(
+          app,
           find.descendant(
             of: find.byType(DsButton),
             matching: _text('trips.ai.prepare'),

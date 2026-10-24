@@ -11,6 +11,7 @@ import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/model/trip_weather.dart';
 import 'package:pack_log/features/trips/providers/trip_weather_provider.dart';
+import 'package:pack_log/features/trips/view/widgets/ai/ai_choice_pill.dart';
 import 'package:pack_log/features/trips/view/widgets/ai/ai_packing_sheet.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
@@ -362,6 +363,58 @@ void main() {
       expect(find.textContaining('è ancora da compilare'), findsNothing);
       expect(result.called, isFalse);
     });
+
+    testWidgets(
+      'Indietro tiene le pillole della tappa 1; la tappa 2 vuota avvisa e '
+      'offre Uguale a',
+      (tester) async {
+        final result = _Result();
+        await _pump(
+          tester,
+          plan: _twoStops,
+          result: result,
+          houses: [_milano],
+          luggages: [_zaino],
+        );
+
+        await _tap(tester, 'Città e musei');
+        await _tap(tester, 'Hotel');
+        await _tap(tester, 'Avanti: Olanda');
+        await _tap(tester, 'Indietro');
+
+        expect(find.text('Tappa 1 di 2 · Islanda'), findsOneWidget);
+        expect(
+          tester
+              .widget<AiChoicePill>(
+                find.widgetWithText(AiChoicePill, 'Città e musei'),
+              )
+              .selected,
+          isTrue,
+        );
+        expect(
+          tester
+              .widget<AiChoicePill>(find.widgetWithText(AiChoicePill, 'Hotel'))
+              .selected,
+          isTrue,
+        );
+
+        await _tap(tester, 'Avanti: Olanda');
+        await _tap(tester, 'Prepara la valigia');
+
+        expect(result.called, isFalse);
+        expect(
+          find.textContaining('Olanda è ancora da compilare'),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('ai_incomplete_warning')),
+            matching: find.text('Uguale a Islanda'),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
 
     testWidgets('senza case niente bottone', (tester) async {
       final result = _Result();

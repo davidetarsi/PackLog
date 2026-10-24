@@ -410,7 +410,7 @@ Future<void> seedValigiaAi(ProviderContainer c) async {
       'Pioggia',
       'Pioggia prevista a Sintra: la indossi in partenza.',
     ),
-    (4, 6, false, 'citta', 'Città', 'Un paio al giorno, più qualche ricambio.'),
+    (4, 7, false, 'citta', 'Città', 'Un paio al giorno: tutti quelli che hai.'),
     (6, 1, false, 'cena', 'Cena', 'Per la cena in un ristorante elegante.'),
     (
       7,
@@ -464,23 +464,20 @@ Future<void> seedValigiaAi(ProviderContainer c) async {
     warnings: const [
       AiWarning(
         id: 'warn-calzini',
-        code: 'calzini',
+        code: 'pochi_pezzi',
         level: AiWarningLevel.important,
-        title: 'Pochi calzini per 6 giorni',
-        why:
-            'Ne hai 7 in casa. Senza lavatrice ti servono un paio al giorno: '
-            'un paio di ricambio in più ti evita la corsa in lavanderia.',
-        search: 'calzini',
+        title: 'Pochi Calzini per questo viaggio',
+        why: "Ne servirebbero 8, nell'armadio ne hai 7.",
+        search: 'Calzini',
       ),
       AiWarning(
         id: 'warn-ombrello',
-        code: 'pioggia',
+        code: 'mancanti_canonici',
         level: AiWarningLevel.useful,
-        title: 'Un ombrello per Sintra',
+        title: 'Un ombrello per la pioggia di Sintra',
         why:
-            'Qui piove un giorno su due. La giacca impermeabile copre il '
-            'busto, ma l\'ombrello ti serve sulle gambe.',
-        search: 'ombrello',
+            "Qui piove un giorno su due. La giacca impermeabile copre il "
+            "busto, ma l'ombrello ti serve sulle gambe.",
       ),
     ],
     reasons: const [
