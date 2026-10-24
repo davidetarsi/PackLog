@@ -82,6 +82,27 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
     return count > 0;
   }
 
+  /// Riempie le colonne AI (setup e risultato) di un viaggio dal sync.
+  ///
+  /// Scrive solo le colonne passate come presenti. Non tocca `updatedAt` né
+  /// `syncStatus`: non è una modifica dell'utente, quindi un viaggio con
+  /// modifiche ancora da inviare resta com'è. Ritorna false se non c'era nulla
+  /// da scrivere.
+  Future<bool> riempiColonneAi(
+    String id, {
+    Value<String?> aiPackingSetup = const Value.absent(),
+    Value<String?> aiPackingResult = const Value.absent(),
+  }) async {
+    if (!aiPackingSetup.present && !aiPackingResult.present) return false;
+    final count = await (update(trips)..where((t) => t.id.equals(id))).write(
+      TripsCompanion(
+        aiPackingSetup: aiPackingSetup,
+        aiPackingResult: aiPackingResult,
+      ),
+    );
+    return count > 0;
+  }
+
   /// Soft-delete di un viaggio con cleanup fisico dei dati snapshot.
   ///
   /// - Elimina fisicamente [TripItemEntries]: sono dati snapshot legati al

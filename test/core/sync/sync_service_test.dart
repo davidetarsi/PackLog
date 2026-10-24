@@ -1083,6 +1083,119 @@ void main() {
     );
   });
 
+  group('SyncService - AI packing sul pull', () {
+    Map<String, dynamic> viaggioRemoto(
+      DateTime updatedAt, {
+      Map<String, dynamic>? setup,
+      Map<String, dynamic>? result,
+    }) {
+      return {
+        'id': 't-ai',
+        'user_id': null,
+        'name': 'Remote name',
+        'description': null,
+        'departure_date_time': null,
+        'return_date_time': null,
+        'destination_house_id': null,
+        'location_place_id': null,
+        'location_display_name': null,
+        'location_name': null,
+        'location_city': null,
+        'location_state': null,
+        'location_country': null,
+        'location_type': null,
+        'location_lat': null,
+        'location_lon': null,
+        'is_saved': false,
+        'created_at': updatedAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+        'is_deleted': false,
+        'ai_packing_setup': ?setup,
+        'ai_packing_result': ?result,
+      };
+    }
+
+    void stubViaggi(List<Map<String, dynamic>> trips) {
+      when(() => mockRemote.fetchAllHousesByUserId(any()))
+          .thenAnswer((_) async => []);
+      when(() => mockRemote.fetchAllSpacesByUserId(any()))
+          .thenAnswer((_) async => []);
+      when(() => mockRemote.fetchAllLuggagesByUserId(any()))
+          .thenAnswer((_) async => []);
+      when(() => mockRemote.fetchAllItemsByUserId(any()))
+          .thenAnswer((_) async => []);
+      when(() => mockRemote.fetchAllTripsByUserId(any()))
+          .thenAnswer((_) async => trips);
+    }
+
+    test(
+      'viaggio modificato offline: riceve il setup e il risultato AI remoti senza toccare il resto',
+      () async {
+        final remoto = DateTime(2026, 5, 1, 8, 0).toUtc();
+        final locale = DateTime(2026, 5, 1, 14, 0).toUtc();
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: 't-ai',
+            name: 'Nome locale',
+            createdAt: remoto,
+            updatedAt: locale,
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+          ),
+        );
+        stubViaggi([
+          viaggioRemoto(
+            remoto,
+            setup: {'giorni': 3},
+            result: {'valigia': 'ok'},
+          ),
+        ]);
+
+        await syncService.fullPull('user-1');
+
+        final trip = await database.tripsDao.findTripById('t-ai');
+        expect(trip!.aiPackingSetup, isNotNull);
+        expect(trip.aiPackingSetup, contains('"giorni":3'));
+        expect(trip.aiPackingResult, contains('"valigia":"ok"'));
+        // Nessun'altra colonna: nome, data di modifica e stato di sync restano.
+        expect(trip.name, equals('Nome locale'));
+        expect(trip.updatedAt.toUtc(), equals(locale));
+        expect(trip.syncStatus, equals(SyncStatus.pendingUpdate));
+      },
+    );
+
+    test(
+      'non sovrascrive un risultato AI gia presente in locale',
+      () async {
+        final remoto = DateTime(2026, 5, 1, 8, 0).toUtc();
+        final locale = DateTime(2026, 5, 1, 14, 0).toUtc();
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: 't-ai',
+            name: 'Nome locale',
+            createdAt: remoto,
+            updatedAt: locale,
+            aiPackingResult: const Value('{"locale":true}'),
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        stubViaggi([
+          viaggioRemoto(
+            remoto,
+            setup: {'giorni': 3},
+            result: {'remoto': true},
+          ),
+        ]);
+
+        await syncService.fullPull('user-1');
+
+        final trip = await database.tripsDao.findTripById('t-ai');
+        expect(trip!.aiPackingResult, equals('{"locale":true}'));
+        // Il setup mancava in locale: quello sì arriva.
+        expect(trip.aiPackingSetup, contains('"giorni":3'));
+      },
+    );
+  });
+
   group('SyncService - account lifecycle', () {
     test(
       'wipeAllUserData clears all local entities (houses → trip entries)',
