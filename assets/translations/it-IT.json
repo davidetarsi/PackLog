@@ -279,7 +279,26 @@
       "done_count": {"one": "Fatto · {} oggetto", "other": "Fatto · {} oggetti"},
       "days_left": {"one": "-{} giorno", "other": "-{} giorni"},
       "discard_title": "Uscire senza salvare?",
-      "discard_message": "Le modifiche alla valigia andranno perse."
+      "discard_message": "Le modifiche alla valigia andranno perse.",
+      "ai": {
+        "note": "Ho scelto i vestiti e l'essenziale per l'igiene. Il resto lo scegli tu: lo trovi in fondo alla valigia.",
+        "search_hint": "Aggiungi dal tuo armadio",
+        "in_departure": "Da indossare in partenza",
+        "in_departure_note": "Da indossare in partenza: è ingombrante e così non occupa spazio in valigia.",
+        "why_title": "Perché è in valigia",
+        "have_count": "Ne hai {} nell'armadio",
+        "quantity": "Quantità",
+        "remove": "Togli dalla valigia",
+        "removed": "Tolto: {}",
+        "added": "Aggiunto: {}",
+        "suitcase_empty": "Nessun oggetto in valigia: cercalo qui sopra.",
+        "home_title": {
+          "one": "Dalla casa · {} oggetto",
+          "other": "Dalla casa · {} oggetti"
+        },
+        "home_subtitle": "Toiletries, elettronica e varie: li scegli tu",
+        "home_add": "Aggiungi"
+      }
     },
     "weather": {
       "title": "Meteo",

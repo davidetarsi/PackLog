@@ -74,32 +74,64 @@ class PackPill extends StatelessWidget {
 /// scelto e ha più di un pezzo disponibile, lo stepper (minimo 1, massimo il
 /// disponibile in casa). Il tocco sulla riga spunta o toglie l'oggetto; con lo
 /// stepper visibile vale solo sull'area di casella e nome.
+///
+/// Con [packedOnly] è la riga della valigia generata: niente casella, il nome
+/// tocca [onOpen] (la scheda), sotto il nome "Da indossare in partenza" se
+/// [inDeparture], a destra × che chiama [onRemove]. Lo stepper scende a 0 e
+/// a 0 chiama [onRemove]. [item] è `null` se l'oggetto non c'è più nella
+/// casa: resta la riga, col nome della voce del viaggio, senza stepper.
 class PackItemRow extends StatelessWidget {
-  final ItemModel item;
+  /// L'oggetto della casa; `null` solo in [packedOnly], se è stato cancellato.
+  final ItemModel? item;
 
   /// La voce del viaggio se l'oggetto è scelto; `null` altrimenti.
   final TripItem? selected;
-  final VoidCallback onToggle;
-  final ValueChanged<int> onQuantityChanged;
+
+  /// Manuale: spunta o toglie l'oggetto.
+  final VoidCallback? onToggle;
+
+  /// Manuale: nuova quantità (sempre almeno 1).
+  final ValueChanged<int>? onQuantityChanged;
+
+  /// Riga della valigia generata: niente casella, × e tocco sul nome.
+  final bool packedOnly;
+
+  /// Da indossare in partenza (solo [packedOnly]).
+  final bool inDeparture;
+
+  /// Toglie dalla valigia (× e stepper a 0). Solo [packedOnly].
+  final VoidCallback? onRemove;
+
+  /// Apre la scheda dell'oggetto; `null` rende il nome inerte.
+  final VoidCallback? onOpen;
 
   const PackItemRow({
     super.key,
-    required this.item,
+    this.item,
     required this.selected,
-    required this.onToggle,
-    required this.onQuantityChanged,
-  });
+    this.onToggle,
+    this.onQuantityChanged,
+    this.packedOnly = false,
+    this.inDeparture = false,
+    this.onRemove,
+    this.onOpen,
+  }) : assert(packedOnly || item != null),
+       assert(packedOnly || (onToggle != null && onQuantityChanged != null)),
+       assert(!packedOnly || selected != null);
 
   @override
   Widget build(BuildContext context) {
+    if (packedOnly) return _packedRow(context);
+
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final item = this.item!;
     final chosen = selected;
     final available = item.quantity ?? 1;
 
     final label = Row(
       children: [
-        Checkbox(value: chosen != null, onChanged: (_) => onToggle()),
+        Checkbox(value: chosen != null, onChanged: (_) => onToggle!()),
         SizedBox(width: context.spacingXs),
         Expanded(
           child: Text(
@@ -142,7 +174,76 @@ class PackItemRow extends StatelessWidget {
             minValue: 1,
             maxValue: available,
             accentColor: cs.onSurface,
-            onChanged: onQuantityChanged,
+            onChanged: onQuantityChanged!,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _packedRow(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final chosen = selected!;
+    final item = this.item;
+    final available = item?.quantity ?? 1;
+    final showStepper = item != null && available > 1;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: context.spacingSm,
+        right: context.spacingXs,
+        top: context.spacingXs,
+        bottom: context.spacingXs,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: onOpen,
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: context.spacingXs),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item?.name ?? chosen.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.bodyLarge?.copyWith(color: cs.onSurface),
+                    ),
+                    if (inDeparture)
+                      Text(
+                        'trips.pack.ai.in_departure'.tr(),
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (showStepper)
+            QuantityStepper(
+              value: chosen.quantity,
+              minValue: 0,
+              maxValue: available,
+              accentColor: cs.onSurface,
+              onChanged: (quantity) {
+                if (quantity <= 0) {
+                  onRemove?.call();
+                } else {
+                  onQuantityChanged?.call(quantity);
+                }
+              },
+            ),
+          IconButton(
+            key: Key('pack_remove_${chosen.id}'),
+            tooltip: 'trips.pack.ai.remove'.tr(),
+            icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+            onPressed: onRemove,
           ),
         ],
       ),

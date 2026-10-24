@@ -27,8 +27,11 @@ import '../../luggages/providers/luggage_provider.dart';
 import '../../luggages/view/add_edit_luggage_screen.dart';
 import '../../luggages/view/luggages_management_sheet.dart';
 import '../model/ai_availability.dart';
+import '../model/ai_packing.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
+import 'widgets/ai/ai_home_group.dart';
+import 'widgets/ai/ai_pack_item_sheet.dart';
 import 'widgets/pack/pack_parts.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
@@ -64,6 +67,10 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   /// Copia del viaggio, presa una volta sola: vedi [_hydrate].
   TripModel? _trip;
 
+  /// Valigia generata dall'AI, presa dal viaggio. Se c'è, la pagina mostra
+  /// solo i capi in valigia e la casa è quella della proposta.
+  AiPackingResult? _aiResult;
+
   /// Oggetti del viaggio, per id. È la selezione: cambiare casa non la tocca.
   Map<String, TripItem> _items = {};
   Map<String, TripItem> _initialItems = {};
@@ -96,6 +103,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   void _hydrate(TripModel trip) {
     if (_trip != null) return;
     _trip = trip;
+    _aiResult = trip.aiResult;
     _items = {for (final item in trip.items) item.id: item};
     _initialItems = {..._items};
     _luggages = {for (final luggage in trip.luggages) luggage.id: luggage};
@@ -170,19 +178,32 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     setState(() => _items[itemId] = chosen.copyWith(quantity: quantity));
   }
 
-  /// Crea nella casa mostrata l'oggetto cercato e lo mette in valigia. La
-  /// ricerca passa al nome creato, così l'oggetto si vede già scelto.
-  Future<void> _addFromSearch(HouseModel house) async {
+  /// Crea nella casa l'oggetto cercato e lo mette in valigia. La ricerca
+  /// passa al nome creato, così l'oggetto si vede già scelto.
+  Future<void> _createInHouse(String houseId, String houseName) async {
     final created = await showNewItemSheet(
       context,
-      houseId: house.id,
+      houseId: houseId,
       initialName: _query,
       submitLabel: 'trips.pack.add_and_pack'.tr(),
       submitIcon: Icons.luggage_outlined,
-      footnote: 'trips.pack.also_in_house'.tr(args: [house.displayName]),
+      footnote: 'trips.pack.also_in_house'.tr(args: [houseName]),
     );
     if (created == null || !mounted) return;
     _searchController.text = created.name;
+    if (_aiResult != null) {
+      setState(() => _query = created.name);
+      _addToSuitcase(
+        TripItem(
+          id: created.id,
+          name: created.name,
+          category: created.category,
+          quantity: created.quantity ?? 1,
+          originHouseId: houseId,
+        ),
+      );
+      return;
+    }
     setState(() {
       _query = created.name;
       _items[created.id] = TripItem(
@@ -190,10 +211,56 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         name: created.name,
         category: created.category,
         quantity: created.quantity ?? 1,
-        originHouseId: house.id,
+        originHouseId: houseId,
       );
     });
   }
+
+  /// Mette in valigia un oggetto della casa (valigia generata) e lo dice con
+  /// "Annulla", che lo toglie di nuovo.
+  void _addToSuitcase(TripItem tripItem) {
+    setState(() => _items[tripItem.id] = tripItem);
+    AppSnackBar.showUndo(
+      context,
+      'trips.pack.ai.added'.tr(args: [tripItem.name]),
+      onUndo: () {
+        if (!mounted) return;
+        setState(() => _items.remove(tripItem.id));
+      },
+    );
+  }
+
+  /// Toglie un capo dalla valigia generata. "Annulla" lo rimette allo stesso
+  /// posto, con la stessa quantità.
+  void _removeFromSuitcase(String itemId) {
+    final removed = _items[itemId];
+    if (removed == null) return;
+    final index = _items.keys.toList().indexOf(itemId);
+    setState(() => _items.remove(itemId));
+    AppSnackBar.showUndo(
+      context,
+      'trips.pack.ai.removed'.tr(args: [removed.name]),
+      onUndo: () {
+        if (!mounted || _items.containsKey(removed.id)) return;
+        setState(() => _items = _insertAt(_items, index, removed));
+      },
+    );
+  }
+
+  /// La scheda di un capo della valigia generata.
+  Future<void> _openAiItem(
+    TripItem tripItem,
+    ItemModel item,
+    AiPackedItem? proposed,
+  ) => showAiPackItemSheet(
+    context,
+    item: _items[tripItem.id] ?? tripItem,
+    available: item.quantity ?? 1,
+    reason: proposed?.reason,
+    inDeparture: proposed?.inDeparture ?? false,
+    onQuantity: (quantity) => _setQuantity(tripItem.id, quantity),
+    onRemove: () => _removeFromSuitcase(tripItem.id),
+  );
 
   void _toggleLuggage(LuggageModel luggage) {
     setState(() {
@@ -446,6 +513,8 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     BuildContext context,
     AsyncValue<List<HouseModel>> housesAsync,
   ) {
+    final result = _aiResult;
+    if (result != null) return _aiItemsBlock(context, housesAsync, result);
     return housesAsync.when(
       data: (houses) {
         final house = _houseFor(houses);
@@ -465,6 +534,33 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     );
   }
 
+  /// Campo della ricerca, uguale nelle due modalità.
+  Widget _searchField(BuildContext context, {required String hint}) {
+    final cs = Theme.of(context).colorScheme;
+    return TextField(
+      controller: _searchController,
+      onChanged: (value) => setState(() => _query = value.trim()),
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(
+          Icons.search,
+          size: context.iconSizeMd,
+          color: cs.onSurfaceVariant,
+        ),
+        filled: true,
+        fillColor: context.groupSurface,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: context.spacingMd,
+          vertical: context.spacingMd,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
   /// Ricerca, "Da" con la casa, e gli oggetti di quella casa.
   Widget _housePanel(
     BuildContext context,
@@ -479,30 +575,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          controller: _searchController,
-          onChanged: (value) => setState(() => _query = value.trim()),
-          decoration: InputDecoration(
-            hintText: 'trips.pack.search_hint'.tr(),
-            prefixIcon: Icon(
-              Icons.search,
-              size: context.iconSizeMd,
-              color: cs.onSurfaceVariant,
-            ),
-            filled: true,
-            fillColor: context.groupSurface,
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: context.spacingMd,
-              vertical: context.spacingMd,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(
-                AppConstants.inputBorderRadius,
-              ),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
+        _searchField(context, hint: 'trips.pack.search_hint'.tr()),
         SizedBox(height: context.spacingMd),
         Row(
           children: [
@@ -543,6 +616,200 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     );
   }
 
+  /// Valigia generata: la casa è quella della proposta, la lista mostra solo i
+  /// capi in valigia, e in fondo ci sono "Dalla casa" e la ricerca.
+  Widget _aiItemsBlock(
+    BuildContext context,
+    AsyncValue<List<HouseModel>> housesAsync,
+    AiPackingResult result,
+  ) {
+    final itemsAsync = ref.watch(itemNotifierProvider(result.houseId));
+    final houses = housesAsync.valueOrNull ?? const <HouseModel>[];
+
+    return itemsAsync.when(
+      data: (items) => _aiPanel(context, result, houses, items),
+      loading: () => Padding(
+        padding: EdgeInsets.symmetric(vertical: context.spacingLg),
+        child: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, _) => DsErrorState(
+        error: error,
+        onRetry: () => ref.invalidate(itemNotifierProvider(result.houseId)),
+      ),
+    );
+  }
+
+  Widget _aiPanel(
+    BuildContext context,
+    AiPackingResult result,
+    List<HouseModel> houses,
+    List<ItemModel> houseItems,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final houseName =
+        houses.where((h) => h.id == result.houseId).firstOrNull?.displayName ??
+        '';
+    final byId = {for (final item in houseItems) item.id: item};
+    final proposal = {for (final p in result.proposal) p.itemId: p};
+    final query = _query.toLowerCase();
+    final packed = _items.values.toList();
+
+    // Ricerca: gli oggetti della casa che non sono in valigia.
+    final results = query.isEmpty
+        ? const <ItemModel>[]
+        : houseItems
+              .where(
+                (i) =>
+                    !_items.containsKey(i.id) &&
+                    i.name.toLowerCase().contains(query),
+              )
+              .toList();
+    // Come la pagina manuale: senza risultati la riga compare subito; con
+    // risultati, da [_kAddRowMinChars] lettere, e mai se il nome esiste già.
+    final hasExact =
+        query.isNotEmpty &&
+        houseItems.any((i) => i.name.trim().toLowerCase() == query);
+    final showAddRow =
+        query.isNotEmpty &&
+        !hasExact &&
+        (results.isEmpty || query.length >= _kAddRowMinChars);
+
+    final home = houseItems
+        .where(
+          (i) =>
+              i.category != ItemCategory.vestiti && !_items.containsKey(i.id),
+        )
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(top: context.spacingXs),
+              child: Icon(
+                Icons.info_outline,
+                size: context.iconSizeSm,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+            SizedBox(width: context.spacingSm),
+            Expanded(
+              child: Text(
+                'trips.pack.ai.note'.tr(),
+                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: context.spacingMd),
+        _searchField(context, hint: 'trips.pack.ai.search_hint'.tr()),
+        if (query.isNotEmpty) ...[
+          SizedBox(height: context.spacingMd),
+          if (results.isNotEmpty)
+            Material(
+              color: context.groupSurface,
+              borderRadius: BorderRadius.circular(
+                AppConstants.cardBorderRadius,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  for (final item in results)
+                    AiWardrobeRow(
+                      key: Key('pack_ai_result_${item.id}'),
+                      name: item.name,
+                      subtitle: item.category.displayName,
+                      onAdd: () => _addToSuitcase(
+                        TripItem(
+                          id: item.id,
+                          name: item.name,
+                          category: item.category,
+                          quantity: 1,
+                          originHouseId: result.houseId,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          if (results.isNotEmpty && showAddRow)
+            SizedBox(height: context.spacingMd),
+          if (showAddRow)
+            PackAddRow(
+              key: const Key('pack_add_row'),
+              name: _query,
+              houseName: houseName,
+              onTap: () => _createInHouse(result.houseId, houseName),
+            ),
+        ],
+        if (packed.isEmpty)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: context.spacingMd),
+            child: Text(
+              'trips.pack.ai.suitcase_empty'.tr(),
+              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+        for (final category in ItemCategory.values)
+          if (packed.any((tripItem) => tripItem.category == category)) ...[
+            DsGroupHeader(
+              label: category.displayName,
+              count: packed.where((t) => t.category == category).length,
+            ),
+            Material(
+              color: context.groupSurface,
+              borderRadius: BorderRadius.circular(
+                AppConstants.cardBorderRadius,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  for (final tripItem in packed.where(
+                    (t) => t.category == category,
+                  ))
+                    PackItemRow(
+                      packedOnly: true,
+                      item: byId[tripItem.id],
+                      selected: tripItem,
+                      inDeparture: proposal[tripItem.id]?.inDeparture ?? false,
+                      onRemove: () => _removeFromSuitcase(tripItem.id),
+                      onOpen: byId[tripItem.id] == null
+                          ? null
+                          : () => _openAiItem(
+                              tripItem,
+                              byId[tripItem.id]!,
+                              proposal[tripItem.id],
+                            ),
+                      onQuantityChanged: (quantity) =>
+                          _setQuantity(tripItem.id, quantity),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        if (home.isNotEmpty) ...[
+          SizedBox(height: context.spacingLg),
+          AiHomeGroup(
+            items: home,
+            onAdd: (item) => _addToSuitcase(
+              TripItem(
+                id: item.id,
+                name: item.name,
+                category: item.category,
+                quantity: 1,
+                originHouseId: result.houseId,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   /// Gli oggetti della casa divisi per categoria, in ordine canonico.
   ///
   /// Con una ricerca la riga "Aggiungi «nome»" crea l'oggetto che manca: da
@@ -558,7 +825,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       key: const Key('pack_add_row'),
       name: _query,
       houseName: house.displayName,
-      onTap: () => _addFromSearch(house),
+      onTap: () => _createInHouse(house.id, house.displayName),
     );
 
     if (items.isEmpty && query.isEmpty) {
@@ -626,4 +893,16 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       ],
     );
   }
+}
+
+/// [items] con [item] rimesso alla posizione [index], come era prima di
+/// essere tolto.
+Map<String, TripItem> _insertAt(
+  Map<String, TripItem> items,
+  int index,
+  TripItem item,
+) {
+  final entries = items.entries.toList()
+    ..insert(index.clamp(0, items.length), MapEntry(item.id, item));
+  return {for (final entry in entries) entry.key: entry.value};
 }

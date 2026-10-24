@@ -279,7 +279,26 @@
       "done_count": {"one": "Done · {} item", "other": "Done · {} items"},
       "days_left": {"one": "-{} day", "other": "-{} days"},
       "discard_title": "Leave without saving?",
-      "discard_message": "Your suitcase changes will be lost."
+      "discard_message": "Your suitcase changes will be lost.",
+      "ai": {
+        "note": "I chose the clothes and the basics for hygiene. The rest is up to you: you'll find it at the bottom of the suitcase.",
+        "search_hint": "Add from your wardrobe",
+        "in_departure": "Wear on departure",
+        "in_departure_note": "Wear on departure: it's bulky, so it takes no space in the suitcase.",
+        "why_title": "Why it's in the suitcase",
+        "have_count": "You have {} in your wardrobe",
+        "quantity": "Quantity",
+        "remove": "Remove from suitcase",
+        "removed": "Removed: {}",
+        "added": "Added: {}",
+        "suitcase_empty": "Nothing in the suitcase yet: search for it above.",
+        "home_title": {
+          "one": "From home · {} item",
+          "other": "From home · {} items"
+        },
+        "home_subtitle": "Toiletries, electronics and misc: you choose them",
+        "home_add": "Add"
+      }
     },
     "weather": {
       "title": "Weather",
