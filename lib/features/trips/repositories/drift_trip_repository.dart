@@ -406,7 +406,8 @@ class DriftTripRepository implements TripRepository {
       final decoded = jsonDecode(raw);
       if (decoded is! Map<String, dynamic>) return null;
       return fromJson(decoded);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[TripRepo] JSON AI corrotto ignorato: $e');
       return null;
     }
   }

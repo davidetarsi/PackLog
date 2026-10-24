@@ -224,28 +224,22 @@ void main() {
       return (await database.tripsDao.findTripById(companion.id.value))!;
     }
 
-    test(
-      'senza dati AI: ai_packing_setup e ai_packing_result sono null',
-      () async {
-        final trip = await insertAndFetchTrip(
-          TripsCompanion.insert(
-            id: 'trip-ai-1',
-            name: 'Weekend',
-            createdAt: DateTime(2026),
-            updatedAt: DateTime(2026),
-          ),
-        );
+    test('senza dati AI: le chiavi sono omesse, non null', () async {
+      final trip = await insertAndFetchTrip(
+        TripsCompanion.insert(
+          id: 'trip-ai-1',
+          name: 'Weekend',
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
 
-        final json = SyncSerializers.tripToJson(
-          trip,
-          items: [],
-          luggageIds: [],
-        );
+      final json = SyncSerializers.tripToJson(trip, items: [], luggageIds: []);
 
-        expect(json['ai_packing_setup'], isNull);
-        expect(json['ai_packing_result'], isNull);
-      },
-    );
+      // Omesse, non `null`: un null nel payload sovrascriverebbe il server.
+      expect(json.containsKey('ai_packing_setup'), isFalse);
+      expect(json.containsKey('ai_packing_result'), isFalse);
+    });
 
     test('con dati AI: vanno come oggetti JSON, non come stringhe', () async {
       final trip = await insertAndFetchTrip(
@@ -268,7 +262,7 @@ void main() {
     });
 
     test(
-      'JSON locale corrotto: invia null invece di far fallire il push',
+      'JSON locale corrotto: omette la chiave invece di far fallire il push',
       () async {
         final trip = await insertAndFetchTrip(
           TripsCompanion.insert(
@@ -286,7 +280,31 @@ void main() {
           luggageIds: [],
         );
 
-        expect(json['ai_packing_setup'], isNull);
+        expect(json.containsKey('ai_packing_setup'), isFalse);
+      },
+    );
+
+    test(
+      'solo ai_packing_result presente: si invia solo quella chiave',
+      () async {
+        final trip = await insertAndFetchTrip(
+          TripsCompanion.insert(
+            id: 'trip-ai-4',
+            name: 'Parziale',
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+            aiPackingResult: const Value('{"houseId":"h1","proposal":[]}'),
+          ),
+        );
+
+        final json = SyncSerializers.tripToJson(
+          trip,
+          items: [],
+          luggageIds: [],
+        );
+
+        expect(json.containsKey('ai_packing_setup'), isFalse);
+        expect(json['ai_packing_result']['houseId'], 'h1');
       },
     );
   });

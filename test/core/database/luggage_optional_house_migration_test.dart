@@ -11,7 +11,7 @@ const _colonneAi = {'ai_packing_setup', 'ai_packing_result'};
 void main() {
   for (final version in [8, 9, 10]) {
     test(
-      'v$version → v11 conserva inventario, viaggi e sync senza bagagli',
+      'v$version → v12 conserva inventario, viaggi e sync senza bagagli',
       () async {
         final directory = await Directory.systemTemp.createTemp(
           'packlog-migration-',
@@ -158,7 +158,7 @@ void main() {
   }
 
   test(
-    'v10 → v11 conserva bagagli, metadati sync e collegamenti ai viaggi',
+    'v10 → v12 conserva bagagli, metadati sync e collegamenti ai viaggi',
     () async {
       final db = AppDatabase.forTesting(
         NativeDatabase.memory(

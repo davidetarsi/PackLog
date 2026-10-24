@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../features/houses/model/house_model.dart';
 import '../../features/items/model/item_model.dart';
@@ -402,9 +403,18 @@ abstract final class SyncSerializers {
       // Sempre una lista: `null` significherebbe "nessuna informazione" e la
       // rimozione delle tappe non si propagherebbe mai.
       'legs': trip.legs == null ? const <dynamic>[] : jsonDecode(trip.legs!),
-      'ai_packing_setup': _jsonObjectOrNull(trip.aiPackingSetup),
-      'ai_packing_result': _jsonObjectOrNull(trip.aiPackingResult),
+      // Chiavi omesse quando il dato manca: upsertTrip è un upsert di una
+      // riga sola, quindi una colonna omessa conserva il valore sul server.
+      // Mandare `null` lo sovrascriverebbe.
+      ..._aiJsonEntry('ai_packing_setup', trip.aiPackingSetup),
+      ..._aiJsonEntry('ai_packing_result', trip.aiPackingResult),
     };
+  }
+
+  /// Una sola chiave AI nel payload, oppure nessuna se il dato manca.
+  static Map<String, Object?> _aiJsonEntry(String key, String? raw) {
+    final value = _jsonObjectOrNull(raw);
+    return value == null ? const {} : {key: value};
   }
 
   /// Oggetto JSON salvato nel viaggio, o `null` se manca o è corrotto: un
@@ -414,7 +424,8 @@ abstract final class SyncSerializers {
     try {
       final decoded = jsonDecode(raw);
       return decoded is Map<String, dynamic> ? decoded : null;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[SyncSerializers] JSON AI corrotto ignorato: $e');
       return null;
     }
   }
