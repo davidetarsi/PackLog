@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/trips/view/widgets/ai/ai_choice_pill.dart';
@@ -91,6 +93,62 @@ void main() {
       },
     );
 
+    testWidgets('due pillole in un Wrap stanno sulla stessa riga', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              child: Wrap(
+                children: [
+                  AiChoicePill(label: 'Mare', selected: false, onTap: () {}),
+                  AiChoicePill(label: 'Montagna', selected: true, onTap: () {}),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final first = tester.getTopLeft(find.text('Mare')).dy;
+      final second = tester.getTopLeft(find.text('Montagna')).dy;
+      expect(second, first);
+    });
+
+    testWidgets('l area toccabile è larga quanto il riquadro, non la riga', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        AiChoicePill(label: 'Mare', selected: false, onTap: () {}),
+      );
+
+      final tappable = find.ancestor(
+        of: find.text('Mare'),
+        matching: find.byType(InkWell),
+      );
+      final tapWidth = tester.getSize(tappable).width;
+      final faceWidth = tester.getSize(_face('Mare')).width;
+      expect(tapWidth, lessThan(200));
+      expect(tapWidth, closeTo(faceWidth, 1));
+    });
+
+    testWidgets('espone un pulsante con lo stato di scelta', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(
+        tester,
+        AiChoicePill(label: 'Mare', selected: true, onTap: () {}),
+      );
+
+      final node = tester.getSemantics(find.text('Mare'));
+      expect(node.flagsCollection.isButton, isTrue);
+      expect(node.flagsCollection.isSelected, ui.Tristate.isTrue);
+      handle.dispose();
+    });
+
     testWidgets('il tocco chiama onTap', (tester) async {
       var taps = 0;
       await _pump(
@@ -120,9 +178,7 @@ void main() {
       expect(find.byIcon(Icons.luggage_outlined), findsOneWidget);
     });
 
-    testWidgets('scelta: sfondo trasparente e bordo onSurface', (
-      tester,
-    ) async {
+    testWidgets('scelta: sfondo trasparente e bordo onSurface', (tester) async {
       await _pump(
         tester,
         const PackPill(
@@ -134,10 +190,12 @@ void main() {
       final cs = AppTheme.light.colorScheme;
 
       final material = tester.widget<Material>(
-        find.ancestor(
-          of: find.text('Bagaglio'),
-          matching: find.byType(Material),
-        ).first,
+        find
+            .ancestor(
+              of: find.text('Bagaglio'),
+              matching: find.byType(Material),
+            )
+            .first,
       );
       expect(material.color, Colors.transparent);
       final shape = material.shape! as RoundedRectangleBorder;
