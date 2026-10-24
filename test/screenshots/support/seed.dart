@@ -7,6 +7,7 @@ import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
 import 'package:pack_log/features/spaces/model/space_model.dart';
 import 'package:pack_log/features/spaces/repositories/space_repository.dart';
+import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_leg.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
@@ -32,6 +33,33 @@ enum SeedLevel {
   /// Utente attivo: tre case, spazi, bagagli, oggetti, viaggi in ogni stato.
   full,
 }
+
+/// Oggetti di casa Milano: indice = id (`item-<indice>`).
+const _homeItemDefs = <(String, ItemCategory, int, String?)>[
+  ('T-shirt bianca', ItemCategory.vestiti, 5, 'space-armadio'),
+  ('Jeans blu', ItemCategory.vestiti, 2, 'space-armadio'),
+  ('Maglione di lana', ItemCategory.vestiti, 1, 'space-armadio'),
+  ('Giacca impermeabile', ItemCategory.vestiti, 1, 'space-armadio'),
+  ('Calzini', ItemCategory.vestiti, 7, 'space-cassettiera'),
+  ('Costume da bagno', ItemCategory.vestiti, 2, 'space-cassettiera'),
+  (
+    'Camicia di lino a maniche lunghe azzurra per le cene eleganti',
+    ItemCategory.vestiti,
+    1,
+    'space-armadio',
+  ),
+  ('Spazzolino', ItemCategory.toiletries, 1, 'space-bagno'),
+  ('Dentifricio', ItemCategory.toiletries, 1, 'space-bagno'),
+  ('Shampoo', ItemCategory.toiletries, 1, 'space-bagno'),
+  ('Crema solare SPF 50', ItemCategory.toiletries, 1, null),
+  ('Caricatore telefono', ItemCategory.elettronica, 2, null),
+  ('Power bank', ItemCategory.elettronica, 1, null),
+  ('Cuffie', ItemCategory.elettronica, 1, null),
+  ('Adattatore presa UK', ItemCategory.elettronica, 1, null),
+  ('Passaporto', ItemCategory.varie, 1, null),
+  ('Occhiali da sole', ItemCategory.varie, 1, null),
+  ('Borraccia', ItemCategory.varie, 1, null),
+];
 
 DateTime _day(int offset) {
   final now = DateTime.now();
@@ -133,34 +161,9 @@ Future<void> seed(ProviderContainer c, SeedLevel level) async {
   }
 
   // ── Oggetti ─────────────────────────────────────────────────────────────
-  final itemDefs = <(String, ItemCategory, int, String?)>[
-    ('T-shirt bianca', ItemCategory.vestiti, 5, 'space-armadio'),
-    ('Jeans blu', ItemCategory.vestiti, 2, 'space-armadio'),
-    ('Maglione di lana', ItemCategory.vestiti, 1, 'space-armadio'),
-    ('Giacca impermeabile', ItemCategory.vestiti, 1, 'space-armadio'),
-    ('Calzini', ItemCategory.vestiti, 7, 'space-cassettiera'),
-    ('Costume da bagno', ItemCategory.vestiti, 2, 'space-cassettiera'),
-    (
-      'Camicia di lino a maniche lunghe azzurra per le cene eleganti',
-      ItemCategory.vestiti,
-      1,
-      'space-armadio',
-    ),
-    ('Spazzolino', ItemCategory.toiletries, 1, 'space-bagno'),
-    ('Dentifricio', ItemCategory.toiletries, 1, 'space-bagno'),
-    ('Shampoo', ItemCategory.toiletries, 1, 'space-bagno'),
-    ('Crema solare SPF 50', ItemCategory.toiletries, 1, null),
-    ('Caricatore telefono', ItemCategory.elettronica, 2, null),
-    ('Power bank', ItemCategory.elettronica, 1, null),
-    ('Cuffie', ItemCategory.elettronica, 1, null),
-    ('Adattatore presa UK', ItemCategory.elettronica, 1, null),
-    ('Passaporto', ItemCategory.varie, 1, null),
-    ('Occhiali da sole', ItemCategory.varie, 1, null),
-    ('Borraccia', ItemCategory.varie, 1, null),
-  ];
   final homeItems = <ItemModel>[];
-  for (var i = 0; i < itemDefs.length; i++) {
-    final (name, cat, qty, space) = itemDefs[i];
+  for (var i = 0; i < _homeItemDefs.length; i++) {
+    final (name, cat, qty, space) = _homeItemDefs[i];
     homeItems.add(
       ItemModel(
         id: 'item-$i',
@@ -368,6 +371,144 @@ Future<void> seed(ProviderContainer c, SeedLevel level) async {
       luggages: [hold],
       createdAt: stamp,
       updatedAt: stamp,
+    ),
+  );
+}
+
+/// Valigia gia generata sul viaggio di Lisbona, come la salva l'app dopo
+/// `pack-trip`: capi e igiene in valigia, un avviso importante, uno utile e
+/// due motivi. Solo gli scenari della valigia AI la chiedono: il viaggio di
+/// Lisbona resta com'e per gli altri flussi.
+Future<void> seedValigiaAi(ProviderContainer c) async {
+  final trips = c.read(tripRepositoryProvider);
+  final trip = await trips.getTripById(kUpcomingTripId);
+
+  // (indice oggetto, pezzi, da indossare in partenza, codice, etichetta, frase)
+  const proposal = <(int, int, bool, String, String, String)>[
+    (
+      0,
+      3,
+      false,
+      'clima',
+      'Clima',
+      'Di giorno si sta sui 20 gradi: tre magliette bastano.',
+    ),
+    (
+      1,
+      1,
+      false,
+      'citta',
+      'Città',
+      'Per camminare per la città, un paio basta.',
+    ),
+    (2, 1, false, 'clima', 'Clima', 'Le sere a Sintra sono fresche.'),
+    (
+      3,
+      1,
+      true,
+      'pioggia',
+      'Pioggia',
+      'Pioggia prevista a Sintra: la indossi in partenza.',
+    ),
+    (4, 6, false, 'citta', 'Città', 'Un paio al giorno, più qualche ricambio.'),
+    (6, 1, false, 'cena', 'Cena', 'Per la cena in un ristorante elegante.'),
+    (
+      7,
+      1,
+      false,
+      'igiene',
+      'Igiene',
+      'Essenziale per l\'igiene di ogni giorno.',
+    ),
+    (
+      8,
+      1,
+      false,
+      'igiene',
+      'Igiene',
+      'Essenziale per l\'igiene di ogni giorno.',
+    ),
+    (
+      10,
+      1,
+      false,
+      'sole',
+      'Sole',
+      'Il sole di Lisbona è forte anche in ottobre.',
+    ),
+  ];
+
+  final packed = [
+    for (final (index, qty, _, _, _, _) in proposal)
+      TripItem(
+        id: 'item-$index',
+        name: _homeItemDefs[index].$1,
+        category: _homeItemDefs[index].$2,
+        quantity: qty,
+        originHouseId: kHomeId,
+      ),
+  ];
+
+  final result = AiPackingResult(
+    generatedAt: DateTime(2026, 10, 20, 18, 30),
+    houseId: kHomeId,
+    proposal: [
+      for (final (index, qty, departure, code, label, sentence) in proposal)
+        AiPackedItem(
+          itemId: 'item-$index',
+          quantity: qty,
+          inDeparture: departure,
+          reason: AiReason(code: code, label: label, sentence: sentence),
+        ),
+    ],
+    warnings: const [
+      AiWarning(
+        id: 'warn-calzini',
+        code: 'calzini',
+        level: AiWarningLevel.important,
+        title: 'Pochi calzini per 6 giorni',
+        why:
+            'Ne hai 7 in casa. Senza lavatrice ti servono un paio al giorno: '
+            'un paio di ricambio in più ti evita la corsa in lavanderia.',
+        search: 'calzini',
+      ),
+      AiWarning(
+        id: 'warn-ombrello',
+        code: 'pioggia',
+        level: AiWarningLevel.useful,
+        title: 'Un ombrello per Sintra',
+        why:
+            'Qui piove un giorno su due. La giacca impermeabile copre il '
+            'busto, ma l\'ombrello ti serve sulle gambe.',
+        search: 'ombrello',
+      ),
+    ],
+    reasons: const [
+      AiReasonPoint(
+        code: 'clima',
+        title: 'Il clima di Lisbona e Sintra',
+        sentences: ['Di giorno si sta sui 20 gradi, la sera si rinfresca.'],
+        items: ['Maglione di lana', 'Giacca impermeabile'],
+      ),
+      AiReasonPoint(
+        code: 'citta',
+        title: 'Città a piedi',
+        sentences: ['Molte ore in piedi: scarpe comode e calzini di ricambio.'],
+        items: ['Jeans blu', 'Calzini'],
+      ),
+    ],
+  );
+
+  await trips.updateTrip(
+    trip.copyWith(
+      items: packed,
+      luggages: [
+        for (final luggage in trip.luggages)
+          if (luggage.id == 'lug-cabina') luggage,
+      ],
+      aiSetup: const AiPackingSetup(houseId: kHomeId, luggageId: 'lug-cabina'),
+      aiResult: result,
+      updatedAt: DateTime(2026, 10, 20, 18, 30),
     ),
   );
 }

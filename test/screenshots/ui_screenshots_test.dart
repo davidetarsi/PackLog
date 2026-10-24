@@ -11,6 +11,8 @@
 /// Output in `build/ui-screenshots/`. Vedi `docs/ui-flows.md`.
 library;
 
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,9 +25,13 @@ import 'package:pack_log/features/ai_input/model/ai_import_state.dart';
 import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
 import 'package:pack_log/features/tour/model/onboarding_state.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
+import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:pack_log/features/trips/services/trip_weather_service.dart';
+import 'package:pack_log/features/trips/view/ai_packing_wait_screen.dart';
+import 'package:pack_log/features/trips/view/widgets/ai/ai_home_group.dart';
 import 'package:pack_log/features/trips/view/widgets/pack/pack_parts.dart';
 import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
+import 'package:pack_log/shared/widgets/ds_button.dart';
 import 'package:pack_log/shared/widgets/quantity_stepper.dart';
 
 import 'support/fakes.dart';
@@ -219,6 +225,16 @@ Future<void> _addSintraStop(ScreenshotApp app, {required DateTime end}) async {
   await app.tap(find.byKey(const Key('stop_sheet_save')));
 }
 
+// ── Valigia AI ───────────────────────────────────────────────────────────────
+
+/// Apre il foglio "Valigia con AI" dal viaggio: il viaggio ha già oggetti,
+/// quindi prima c'è l'avviso di sostituzione, che si conferma.
+Future<void> _openAiSheet(ScreenshotApp app, String tripId) async {
+  await _pack(app, tripId);
+  await app.tap(find.byKey(const Key('pack_ai_suitcase')));
+  await app.tap(_text('trips.pack.ai.replace_confirm'));
+}
+
 // ── Flussi ───────────────────────────────────────────────────────────────────
 
 const _houses = 'lib/features/houses/view/houses_screen.dart';
@@ -234,6 +250,11 @@ const _packWeatherSrc =
     'lib/features/trips/view/widgets/pack/pack_weather.dart';
 const _profile = 'lib/features/profile/view/profile_screen.dart';
 const _aiResults = 'lib/features/ai_input/view/ai_results_screen.dart';
+const _aiSheetSrc = 'lib/features/trips/view/widgets/ai/ai_packing_sheet.dart';
+const _aiWaitSrc = 'lib/features/trips/view/ai_packing_wait_screen.dart';
+const _aiRowsSrc = 'lib/features/trips/view/widgets/ai/ai_pack_rows.dart';
+const _aiHomeSrc = 'lib/features/trips/view/widgets/ai/ai_home_group.dart';
+const _aiItemSrc = 'lib/features/trips/view/widgets/ai/ai_pack_item_sheet.dart';
 
 final flows = <Flow>[
   Flow('01-primo-avvio', 'Primo avvio: onboarding e login', [
@@ -1765,6 +1786,161 @@ final flows = <Flow>[
         await app.push('/trips/$kUpcomingTripId/edit-items');
         await app.tester.ensureVisible(_text('trips.pack.luggages'));
         await app.settle();
+      },
+    ),
+  ]),
+  Flow('valigia-ai', 'Valigia con AI: foglio, attesa e valigia generata', [
+    Scenario(
+      1,
+      'foglio',
+      'una-tappa',
+      source: _aiSheetSrc,
+      description:
+          'Il foglio di un viaggio con una tappa: casa, bagaglio, attività '
+          'e alloggio, senza stepper.',
+      steps: (app) => _openAiSheet(app, kSavedTripId),
+    ),
+    Scenario(
+      2,
+      'foglio',
+      'due-tappe',
+      source: _aiSheetSrc,
+      description:
+          'Il foglio con due tappe: avanzamento in alto e meteo della tappa.',
+      steps: (app) => _openAiSheet(app, kUpcomingTripId),
+    ),
+    Scenario(
+      3,
+      'foglio',
+      'avviso-finale',
+      source: _aiSheetSrc,
+      description:
+          'Prepara la valigia con una tappa ancora da compilare: l\'avviso '
+          'dice quale, e chiede se la compili ora.',
+      steps: (app) async {
+        await _openAiSheet(app, kUpcomingTripId);
+        await app.tap(_text('trips.ai.activity.city'));
+        await app.tap(_text('trips.ai.stay.hotel'));
+        await app.tap(find.text('trips.ai.next'.tr(args: ['Sintra'])));
+        await app.tap(
+          find.descendant(
+            of: find.byType(DsButton),
+            matching: _text('trips.ai.prepare'),
+          ),
+        );
+      },
+    ),
+    Scenario(
+      4,
+      'attesa',
+      'in-corso',
+      source: _aiWaitSrc,
+      description:
+          'Pagina d\'attesa mentre pack-trip prepara la valigia. La risposta '
+          'non arriva mai in questo scenario.',
+      setup: AppSetup(
+        extraOverrides: [
+          packTripServiceProvider.overrideWith(
+            (ref) => HangingPackTripService(),
+          ),
+        ],
+      ),
+      steps: (app) async {
+        await app.go('/trips');
+        unawaited(
+          app.router.push(
+            '/trips/$kUpcomingTripId/ai-packing',
+            extra: const PackTripJob(
+              body: <String, dynamic>{},
+              houseId: kHomeId,
+              title: 'Lisbona e Sintra',
+              nights: 5,
+            ),
+          ),
+        );
+        await app.settle();
+      },
+    ),
+    Scenario(
+      5,
+      'valigia',
+      'generata-con-avvisi',
+      source: _packSrc,
+      description:
+          'Valigia generata: avvisi aperti in cima, capi e igiene in valigia, '
+          'il capo da indossare in partenza segnato.',
+      setup: const AppSetup(aiPacking: true),
+      steps: (app) => _pack(app, kUpcomingTripId),
+    ),
+    Scenario(
+      6,
+      'valigia',
+      'dalla-casa-aperta',
+      source: _aiHomeSrc,
+      description:
+          'Gruppo "Dalla casa" aperto: gli oggetti non di abbigliamento che '
+          'non sono in valigia, da aggiungere con un tocco.',
+      setup: const AppSetup(aiPacking: true),
+      steps: (app) async {
+        await _pack(app, kUpcomingTripId);
+        final header = find.descendant(
+          of: find.byType(AiHomeGroup),
+          matching: find.byType(InkWell),
+        );
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1500),
+        );
+        await app.settle();
+        await app.tap(header);
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1000),
+        );
+        await app.settle();
+        await app.settle();
+      },
+    ),
+    Scenario(
+      7,
+      'scheda-oggetto',
+      'capo-in-partenza',
+      source: _aiItemSrc,
+      description:
+          'Scheda di un capo della valigia AI: pezzi, perché è in valigia e '
+          'Togli dalla valigia.',
+      setup: const AppSetup(aiPacking: true),
+      steps: (app) async {
+        await _pack(app, kUpcomingTripId);
+        await app.tap(find.text('Giacca impermeabile'));
+      },
+    ),
+    Scenario(
+      8,
+      'avvisi',
+      'elenco',
+      source: _aiRowsSrc,
+      description:
+          'Cosa manca: avvisi importanti in ambra e utili, ognuno con "Cerca '
+          'nell\'armadio" e "Ok, capito".',
+      setup: const AppSetup(aiPacking: true),
+      steps: (app) async {
+        await _pack(app, kUpcomingTripId);
+        await app.tap(find.byKey(const Key('pack_row_missing')));
+      },
+    ),
+    Scenario(
+      9,
+      'motivi',
+      'elenco',
+      source: _aiRowsSrc,
+      description:
+          'Perché queste scelte: un punto per clima o attività, con '
+          'i capi collegati.',
+      setup: const AppSetup(aiPacking: true),
+      steps: (app) async {
+        await _pack(app, kUpcomingTripId);
+        await app.tap(find.byKey(const Key('pack_row_reasons')));
       },
     ),
   ]),

@@ -130,8 +130,8 @@ freccia dell'app bar o un tocco fuori chiudono la pagina.
 | 7 | Aggiungi a viaggio | `features/trips/view/trip_picker_sheet.dart` | selezione → In viaggio | ✓ |
 | 8 | Gestisci casa | `features/houses/view/house_manage_sheet.dart` | "⋯" in alto a destra | ✓, con "Seleziona oggetti" in cima |
 | 9 | Modifica casa | `features/houses/view/add_edit_house_screen.dart` | Gestisci → Modifica info | ✓ |
-| 10 | Spazi | `features/spaces/view/spaces_management_screen.dart` | Gestisci → Modifica spazi | ✓. Non catturato: sheet nuovo/modifica spazio |
-| 11 | Bagagli | `features/luggages/view/luggages_management_screen.dart` | Gestisci → Modifica bagagli | ✓. Non catturato: sheet nuovo/modifica bagaglio |
+| 10 | Spazi | `features/houses/view/house_spaces_sheet.dart` | Gestisci → Modifica spazi (foglio, dal #49) | ✓. Non catturato: sheet nuovo/modifica spazio (`spaces/view/add_edit_space_screen.dart`) |
+| 11 | Bagagli | `features/luggages/view/luggages_management_sheet.dart` | Gestisci → Modifica bagagli (foglio; i bagagli sono dell'utente, non della casa, dal #49) | ✓. Non catturato: sheet nuovo/modifica bagaglio (`luggages/view/add_edit_luggage_screen.dart`) |
 | 12 | Conferma eliminazione | `house_detail_screen.dart` | Gestisci → Elimina | ✓ |
 | 13 | Casa non trovata | `house_detail_screen.dart` | link a casa eliminata | ✓ |
 | 14 | Ricerca nella casa | `features/houses/view/house_detail_screen.dart`, `features/items/view/items_screen.dart` | 🔍 in alto, poi testo | ✓ "cal": solo gli oggetti che corrispondono |
@@ -144,9 +144,9 @@ freccia dell'app bar o un tocco fuori chiudono la pagina.
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
-| 1 | Pagina "aggiungi" dalla Crea | `features/houses/view/house_detail_screen.dart` (`_AddPage`) | Crea → scrivili a mano (niente più "+": il campo è già attivo) | ✓ campo attivo, casa nascosta. La creazione di un oggetto passa solo da qui: la scheda oggetto è solo modifica |
-| 2 | Scheda oggetto | `features/items/view/item_sheet.dart` (`ItemSheet`) | tap su un oggetto nel dettaglio casa | ✓ nome come titolo, righe Categoria / Quantità / Spazio, "Aggiungi una nota" grigio, solo "Salva" arancio. Non catturati: picker di categoria e spazio aperti |
-| 3 | Scheda oggetto: menu | `features/items/view/item_sheet.dart` | ⋯ in alto a destra della scheda | ✓ "Sposta in un'altra casa" ed "Elimina" (rosso). Non catturati: sheet di spostamento e conferma di eliminazione |
+| 1 | Pagina "aggiungi" dalla Crea | `features/houses/view/house_detail_screen.dart` (`_AddPage`) | Crea → scrivili a mano (niente più "+": il campo è già attivo) | ✓ campo attivo, casa nascosta. La creazione di un oggetto passa da qui (la stessa scheda `ItemSheet` serve anche per crearlo, dal #42) |
+| 2 | Scheda oggetto | `features/items/view/item_sheet.dart` (`ItemSheet`) | tap su un oggetto nel dettaglio casa, o creazione dalla pagina "aggiungi" | ✓ nome come titolo, righe Categoria / Quantità / Spazio, "Aggiungi una nota" grigio, solo "Salva" arancio. Non catturati: picker di categoria e spazio aperti |
+| 3 | Scheda oggetto: menu | `features/items/view/item_sheet.dart` | ⋮ in alto a destra della scheda, solo in modifica | ✓ "Sposta in un'altra casa" ed "Elimina" (rosso). Non catturati: sheet di spostamento e conferma di eliminazione |
 
 ### 06 · Import AI da dettaglio casa
 
@@ -192,7 +192,9 @@ segue la meta finché non lo si scrive a mano. Le uscite sono due: "Avanti:
 prepara la valigia" (arancio, porta al passo 2 = pagina valigia del flusso 09,
 con `?from=new`) e "Prepara la valigia più tardi" (link, torna alla tab Viaggi
 con `?focus=<id>`). Entrambe salvano solo con meta e date e senza tappe a zero
-notti. Con una meta scelta, Indietro chiede conferma.
+notti. Con una meta scelta, Indietro chiede conferma. Accanto a "Avanti" c'è
+"Prepara con AI" (contorno neutro, non arancio: una sola CTA arancio per
+schermata), che apre la valigia AI (sezione "Valigia con AI" più sotto).
 
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
@@ -215,7 +217,9 @@ tappa esistente; dialog di uscita con modifiche non salvate.
 La pagina valigia (`features/trips/view/pack_suitcase_screen.dart`, rotta
 `/trips/:id/edit-items`) sostituisce "Modifica oggetti" della vecchia
 versione: riepilogo, bagagli a pillola, ricerca, selettore "Da" della casa e
-oggetti della casa divisi per categoria, con quantità. Il salvataggio è
+oggetti della casa divisi per categoria, con quantità, e il meteo per tappa
+(`widgets/pack/pack_weather.dart`, dal #46). I bagagli si gestiscono in un
+foglio (`luggages_management_sheet.dart`). Il salvataggio è
 esplicito, con "Fatto". Con `?from=new` mostra l'indicatore dei passi in cima.
 Non esistono più il wizard a due passi né `edit_trip_items_screen.dart`.
 
@@ -223,7 +227,7 @@ Non esistono più il wizard a due passi né `edit_trip_items_screen.dart`.
 |---|---|---|---|---|
 | 1-3 | Dettaglio viaggio | `features/trips/view/trip_detail_screen.dart` | tap su un viaggio | ✓ checklist, ✓ in corso, ✓ senza oggetti |
 | 4 | Conferma eliminazione | `trip_detail_screen.dart` | cestino | ✓ |
-| 5 | Modifica info | `features/trips/view/edit_trip_info_screen.dart` | matita | ✓ |
+| 5 | Modifica info | `features/trips/view/new_trip_screen.dart` (rotta `/trips/:id/edit-info`, stessa pagina del nuovo viaggio in modifica) | matita | ✓ |
 | 6 | Pagina valigia da "Modifica oggetti" | `pack_suitcase_screen.dart` | "Modifica oggetti" | ✓ senza indicatore dei passi |
 | 7 | Pagina valigia dal passo 1 | `pack_suitcase_screen.dart` (`fromNewTrip`) | "Avanti: prepara la valigia" al passo 1 | ✓ indicatore con "Viaggio" fatto e "Valigia" attivo, "Fatto" senza numero |
 | 8 | Valigia con scelte e quantità | `pack_suitcase_screen.dart` | bagaglio "Valigia grande" in più, "Calzini" da 7 a 6 | ✓ "Fatto · 11 oggetti" |
@@ -251,6 +255,76 @@ modifiche non salvate; errore di salvataggio della valigia.
 
 Non catturati in nessun flusso: i tooltip del tour guidato
 (`features/tour/`, TutorialCoachMark).
+
+### Valigia con AI (`valigia-ai`)
+
+La valigia generata da `pack-trip` (Edge Function, Claude per la scelta dei
+capi, Open-Meteo per il meteo). Flusso completo in
+`docs/superpowers/specs/2026-10-24-valigia-ai-design.md`. Il foglio riusa il
+piano del meteo: stesse tappe, stessi limiti (60 giorni, 8 tappe, coordinate);
+un viaggio che non li rispetta mostra il motivo e non spende un credito
+(`model/ai_availability.dart`).
+
+**Ingressi.**
+- Pagina valigia (`pack_suitcase_screen.dart`): icona a stelle in alto a
+  destra (`pack_ai_suitcase`). Senza valigia AI il tooltip dice "Prepara con
+  AI", con una valigia già generata dice "Rigenera". Se la valigia contiene
+  già oggetti, prima chiede conferma di sostituzione.
+- Nuovo viaggio, passo 1: "Prepara con AI" accanto ad "Avanti"
+  (`new_trip_screen.dart`, `new_trip_prepare_ai`).
+- Foglio Crea (`shared/widgets/create_sheet.dart`, `CreateAction.aiSuitcase`):
+  "Valigia con AI", nell'ordine della tab da cui si apre.
+
+**Foglio "Valigia con AI"** (`widgets/ai/ai_packing_sheet.dart`).
+- Da quale casa prendi i vestiti: pillole, con la casa principale preselezionata
+  (la prima altra casa se il viaggio ha la principale come meta).
+- Con che bagaglio parti: pillole dei bagagli del viaggio. Senza bagagli sul
+  viaggio non si preseleziona niente; "Nuovo bagaglio" lo crea al volo.
+- Per tappa (solo con più tappe): avanzamento "Tappa 2 di 2 · Sintra", barre,
+  meteo della tappa. Con una tappa, niente stepper.
+- Per tappa: pillole delle attività (almeno una), pillole dell'alloggio (una),
+  riga "C'è una lavatrice". Dalla seconda tappa, se la tappa è vuota compare
+  "Uguale a <tappa>", che copia dalla più vicina già compilata.
+- "Avanti: <tappa>" è neutro; "Prepara la valigia" è l'unico arancio. Con una
+  tappa incompleta, il primo tocco mostra l'avviso "<tappa> è ancora da
+  compilare" con "La compilo io"; il secondo prepara comunque.
+- Non salva niente: restituisce le risposte, che il chiamante salva sul viaggio
+  prima della generazione (così "Rigenera" non le chiede di nuovo).
+
+**Attesa** (`ai_packing_wait_screen.dart`, rotta `/trips/:id/ai-packing`, con
+`PackTripJob` come `extra`). Titolo "Preparo la valigia", sottotitolo con le
+tappe e le notti, tre passi a tempo (meteo, armadio, controllo) e "Annulla".
+Errori con la loro uscita: crediti finiti (porta al Profilo), armadio vuoto
+(porta ad aggiungere vestiti), armadio troppo grande (400 capi), errore
+generico con riprova. Tasto indietro = Annulla.
+
+| # | Schermata | Sorgente | Come ci si arriva | Stati |
+|---|---|---|---|---|
+| 1 | Foglio, una tappa | `widgets/ai/ai_packing_sheet.dart` | icona a stelle, viaggio con una tappa, conferma di sostituzione | ✓ |
+| 2 | Foglio, due tappe | idem | come sopra, Lisbona con Sintra | ✓ avanzamento e meteo della tappa |
+| 3 | Foglio, avviso finale | idem | "Prepara la valigia" con una tappa incompleta | ✓ avviso sulla tappa da compilare, "La compilo io" |
+| 4 | Attesa | `ai_packing_wait_screen.dart` | foglio compilato | ✓ primo passo. La risposta non arriva nello scenario (servizio finto che non termina) |
+| 5 | Valigia generata con avvisi | `pack_suitcase_screen.dart`, `widgets/ai/ai_pack_rows.dart` | ritorno dall'attesa | ✓ riga "Cosa manca" in ambra con il numero di avvisi, riga "Perché queste scelte", capi con "Da indossare in partenza" |
+| 6 | Dalla casa aperto | `widgets/ai/ai_home_group.dart` | tap su "Dalla casa · 8 oggetti" | ✓ oggetti non di abbigliamento non in valigia, da aggiungere con "Aggiungi" |
+| 7 | Scheda di un capo | `widgets/ai/ai_pack_item_sheet.dart` | tap su un capo della valigia | ✓ pezzi, perché è in valigia, "Togli dalla valigia" |
+| 8 | Cosa manca | `widgets/ai/ai_pack_rows.dart` | tap su "Cosa manca" | ✓ avvisi importanti e utili, "Cerca nell'armadio" e "Ok, capito" |
+| 9 | Perché queste scelte | idem | tap su "Perché queste scelte" | ✓ un punto per clima o attività, con i capi collegati |
+
+Non catturati: la conferma di sostituzione della valigia (dialog), lo stato
+di errore dell'attesa (crediti, armadio vuoto), il foglio di casa aperto e
+"Rigenera" come azione (è la stessa rotta del foglio).
+
+**Cosa si salva sul viaggio** (`TripModel.aiSetup`, `TripModel.aiResult`, colonna
+`aiPackingResult` del DB, serializzata in JSON):
+- `aiSetup`: casa, bagaglio e le risposte per tappa, così il foglio riparte
+  da lì e "Rigenera" non le chiede di nuovo.
+- `aiResult`: la proposta (capi con quantità, "da indossare in partenza" e
+  motivo), gli avvisi e i motivi, e gli avvisi chiusi con "Ok, capito"
+  (`dismissedWarnings`). La valigia del viaggio è la proposta, con i capi
+  ancora in casa; un capo non più in casa si salta. Se gli oggetti della casa
+  non si leggono, la proposta si salva lo stesso e la valigia non cambia.
+- Il viaggio e la valigia restano modificabili a mano come sempre: la
+  proposta non è una valigia bloccata.
 
 ## Attriti UX e incoerenze visive
 
