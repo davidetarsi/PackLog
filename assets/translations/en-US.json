@@ -92,7 +92,8 @@
     "name_label": "Name",
     "new_item": "New item",
     "edit_item": "Edit item",
-    "details_label": "Details"
+    "details_label": "Details",
+    "note_label": "Note"
   },
   "categories": {
     "vestiti": "Clothes",

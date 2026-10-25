@@ -92,7 +92,8 @@
     "name_label": "Nome",
     "new_item": "Nuovo oggetto",
     "edit_item": "Modifica oggetto",
-    "details_label": "Dettagli"
+    "details_label": "Dettagli",
+    "note_label": "Nota"
   },
   "categories": {
     "vestiti": "Vestiti",

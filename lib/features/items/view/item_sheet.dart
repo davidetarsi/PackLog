@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/helpers/dialog_helpers.dart';
@@ -15,15 +18,18 @@ import '../../../shared/widgets/ds_field_label.dart';
 import '../../../shared/widgets/ds_sheet_header.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/quantity_stepper.dart';
+import '../../ai_input/model/clothing_analysis_result.dart';
 import '../../spaces/model/space_model.dart';
 import '../../spaces/providers/space_provider.dart';
 import '../../spaces/view/add_edit_space_screen.dart';
 import '../../../shared/widgets/ds_link_button.dart';
+import '../model/clothing_details.dart';
 import '../model/item_model.dart';
 import '../providers/item_provider.dart';
 import '../services/category_infer_service.dart';
 import '../widgets/category_pill.dart';
 import 'bulk_move_sheet.dart';
+import 'widgets/clothing_details_section.dart';
 
 /// Apre la scheda di un oggetto esistente.
 Future<void> showItemSheet(
@@ -125,6 +131,14 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   ItemCategory? _chosenCategory;
   int _quantity = 1;
   String? _spaceId;
+
+  /// Dettagli di un capo, solo in modifica e se l'oggetto ha i metadati di un
+  /// capo: il risultato letto, i dettagli come sono salvati e quelli che
+  /// l'utente sta modificando.
+  ClothingAnalysisResult? _clothingResult;
+  ClothingDetails? _originalDetails;
+  ClothingDetails? _details;
+
   bool _loaded = false;
   bool _isSaving = false;
 
@@ -139,7 +153,8 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
         note != (item.description ?? '') ||
         (_chosenCategory ?? item.category) != item.category ||
         _quantity != (item.quantity ?? 1) ||
-        _spaceId != item.spaceId;
+        _spaceId != item.spaceId ||
+        (_details != null && _details != _originalDetails);
   }
 
   ItemModel? _item() =>
@@ -170,6 +185,12 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     _chosenCategory = item.category;
     _quantity = item.quantity ?? 1;
     _spaceId = item.spaceId;
+    final clothing = clothingFromMetadata(item.aiMetadata);
+    if (clothing != null) {
+      _clothingResult = clothing;
+      _originalDetails = ClothingDetails.of(clothing);
+      _details = _originalDetails;
+    }
     _loaded = true;
   }
 
@@ -263,8 +284,10 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
       category: _chosenCategory ?? item.category,
       quantity: _quantity,
       spaceId: _spaceId,
+      aiMetadata: _metadataFor(item),
       updatedAt: DateTime.now(),
     );
+    final changedDetails = _changedDetailFields();
     setState(() => _isSaving = true);
     final ok = await ErrorRetryDialog.executeWithRetry(
       context: context,
@@ -276,7 +299,32 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     );
     if (!mounted) return;
     setState(() => _isSaving = false);
-    if (ok) Navigator.pop(context);
+    if (!ok) return;
+    if (changedDetails.isNotEmpty) {
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackItemDetailsEdited(source: 'house', fields: changedDetails);
+    }
+    Navigator.pop(context);
+  }
+
+  /// I metadati del capo con i dettagli modificati. Senza modifiche (o per un
+  /// oggetto che non è un capo) restano quelli salvati, byte per byte.
+  String? _metadataFor(ItemModel item) {
+    final clothing = _clothingResult;
+    final details = _details;
+    if (clothing == null || details == null || details == _originalDetails) {
+      return item.aiMetadata;
+    }
+    return jsonEncode(details.applyTo(clothing).toJson());
+  }
+
+  /// Campi dei dettagli cambiati rispetto a quando la scheda si è aperta.
+  List<String> _changedDetailFields() {
+    final before = _originalDetails;
+    final after = _details;
+    if (before == null || after == null) return const [];
+    return after.changedFields(before);
   }
 
   /// Crea l'oggetto con la categoria scelta, altrimenti quella dedotta dal
@@ -437,7 +485,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          DsFieldLabel('items.name_label'.tr()),
+                          DsFieldLabel.prominent('items.name_label'.tr()),
                           TextFormField(
                             key: const Key('item_sheet_name'),
                             controller: _nameController,
@@ -451,7 +499,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                                 ? 'common.name_required_validation'.tr()
                                 : null,
                           ),
-                          DsFieldLabel('items.category_label'.tr()),
+                          DsFieldLabel.prominent('items.category_label'.tr()),
                           SizedBox(
                             key: const Key('item_sheet_category'),
                             height: context.responsive(
@@ -517,7 +565,14 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                               ),
                             ),
                           ),
-                          DsFieldLabel('items.details_label'.tr()),
+                          if (_details case final details?) ...[
+                            DsFieldLabel.prominent('items.details_label'.tr()),
+                            ClothingDetailsSection(
+                              details: details,
+                              onChanged: (d) => setState(() => _details = d),
+                            ),
+                          ],
+                          DsFieldLabel.prominent('items.note_label'.tr()),
                           TextFormField(
                             key: const Key('item_sheet_note'),
                             controller: _noteController,
@@ -580,7 +635,7 @@ class _InlineField extends StatelessWidget {
       padding: EdgeInsets.only(top: context.spacingSm),
       child: Row(
         children: [
-          Text(label, style: DsFieldLabel.textStyle(context)),
+          Text(label, style: DsFieldLabel.prominentStyle(context)),
           SizedBox(width: context.spacingMd),
           // Il controllo sta a destra e, se è lungo (il nome di uno spazio),
           // si stringe lui: l'etichetta resta intera.

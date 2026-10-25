@@ -265,6 +265,23 @@ void main() {
       ).called(1);
     });
 
+    test(
+      'trackItemDetailsEdited emits item_details_edited with source and fields',
+      () async {
+        service.trackItemDetailsEdited(source: 'house', fields: ['warmth']);
+        await pump();
+        verify(
+          () => mockAnalytics.logEvent(
+            'item_details_edited',
+            properties: {
+              'source': 'house',
+              'fields': ['warmth'],
+            },
+          ),
+        ).called(1);
+      },
+    );
+
     test('trackItemUpdated emits item_updated with category', () async {
       service.trackItemUpdated(category: 'vestiti');
       await pump();

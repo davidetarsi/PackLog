@@ -79,6 +79,18 @@ class CoreAnalyticsService {
     _safeLogEvent('item_bulk_moved', properties: {'count': count});
   }
 
+  /// Dettagli di un capo modificati a mano (tag): `fields` sono i nomi dei
+  /// campi cambiati, mai i valori.
+  void trackItemDetailsEdited({
+    required String source,
+    required List<String> fields,
+  }) {
+    _safeLogEvent(
+      'item_details_edited',
+      properties: {'source': source, 'fields': fields},
+    );
+  }
+
   void trackItemsAddedToTrip({required String tripId, required int count}) {
     _safeLogEvent(
       'items_added_to_trip',

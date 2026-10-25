@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import 'ds_sheet_header.dart';
 import '../theme/app_spacing.dart';
+import 'ds_group_header.dart';
 
 /// Bottom sheet generico per la **selezione di un elemento da una lista**.
 ///
@@ -10,6 +11,10 @@ import '../theme/app_spacing.dart';
 ///
 /// Distinto da [DsFormSheet] (usato per form di entità):
 /// qui non c'è action bar finale, basta toccare per confermare.
+///
+/// Con [groupOf] gli elementi consecutivi dello stesso gruppo sono preceduti
+/// da un'intestazione con il nome del gruppo (es. la categoria dei tipi di
+/// capo). Un gruppo vuoto (`''`) non ha intestazione.
 ///
 /// Uso tipico:
 /// ```dart
@@ -33,6 +38,9 @@ class DsPickerSheet<T> extends StatelessWidget {
   final ValueChanged<T> onSelected;
   final Widget? footer;
 
+  /// Gruppo di ogni elemento, per le intestazioni (vedi la classe).
+  final String Function(T)? groupOf;
+
   const DsPickerSheet({
     super.key,
     required this.title,
@@ -43,6 +51,7 @@ class DsPickerSheet<T> extends StatelessWidget {
     this.getIcon,
     this.selected,
     this.footer,
+    this.groupOf,
   });
 
   /// Mostra il picker sheet e restituisce il valore selezionato (null se
@@ -56,6 +65,7 @@ class DsPickerSheet<T> extends StatelessWidget {
     IconData? Function(T)? getIcon,
     T? selected,
     Widget Function(BuildContext)? footerBuilder,
+    String Function(T)? groupOf,
   }) {
     return showModalBottomSheet<T>(
       context: context,
@@ -69,9 +79,26 @@ class DsPickerSheet<T> extends StatelessWidget {
         getIcon: getIcon,
         selected: selected,
         footer: footerBuilder?.call(sheetContext),
+        groupOf: groupOf,
         onSelected: (item) => Navigator.pop(sheetContext, item),
       ),
     );
+  }
+
+  /// Righe della lista: un `String` è un'intestazione di gruppo, un `int` è
+  /// l'indice dell'elemento in [items].
+  List<Object> get rows {
+    final result = <Object>[];
+    String? lastGroup;
+    for (var index = 0; index < items.length; index++) {
+      final group = groupOf?.call(items[index]);
+      if (group != null && group.isNotEmpty && group != lastGroup) {
+        result.add(group);
+      }
+      lastGroup = group;
+      result.add(index);
+    }
+    return result;
   }
 
   @override
@@ -105,9 +132,11 @@ class DsPickerSheet<T> extends StatelessWidget {
               Flexible(
                 child: ListView.builder(
                   shrinkWrap: true,
-                  itemCount: items.length,
+                  itemCount: rows.length,
                   itemBuilder: (_, index) {
-                    final item = items[index];
+                    final row = rows[index];
+                    if (row is String) return DsGroupHeader(label: row);
+                    final item = items[row as int];
                     final isSelected = item == selected;
                     final iconData = getIcon?.call(item);
                     final subtitle = getSubtitle?.call(item);
