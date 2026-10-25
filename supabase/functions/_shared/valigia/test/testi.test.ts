@@ -3,6 +3,7 @@
 // Uso: node --test test/testi.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { copyMancante, uscitaApp } from "../uscita.ts";
 
 const SOTTOCATEGORIE = ["T-Shirt", "Shirt", "Polo", "Hoodie", "Sweatshirt", "Sweater", "Tank Top", "Crop Top",
@@ -106,4 +107,34 @@ test("tappe vuote o ripetute: mai 'per Lisbona e Lisbona', mai 'per '", () => {
   assert.equal(titolo(["Lisbona", "Sintra", "Lisbona"]), "Manca un cappotto per Lisbona e Sintra");
   assert.equal(titolo(["", "  "]), "Manca un cappotto per il viaggio");
   assert.equal(titolo(null), "Manca un cappotto per il viaggio");
+});
+
+test("motivi e 'Perché queste scelte' delle valigie dell'oracolo: italiano pulito", () => {
+  // I testi del generatore (motivi.ts, uguale al bench) sulle 50 valigie campione.
+  const casi: any[] = JSON.parse(readFileSync(new URL("./oracolo_celle_campione.json", import.meta.url), "utf8"));
+  let n = 0;
+  for (const c of casi) {
+    const m = c.motivi;
+    const testi: string[] = [
+      ...m.capi.flatMap((x: any) => [x.motivo.etichetta, x.motivo.frase, ...x.motivo.note, ...x.motivo.anche]),
+      ...Object.values(m.riepilogo) as string[], ...m.essenziali.map((e: any) => e.motivo.frase),
+      ...c.perche.flatMap((p: any) => [p.titolo, ...p.frasi]),
+    ].filter((t) => t);
+    for (const t of testi) {
+      const dove = `${c.id}: "${t}"`;
+      assert.doesNotMatch(t, /[aeiouAEIOU]'(\s|$|,)/, `${dove} apostrofo al posto dell'accento`);
+      assert.doesNotMatch(t, /\ba [AaÀà]/, `${dove} "a" davanti ad "a"`);
+      assert.doesNotMatch(t, /\b(T-shirt|camicie|polo|canotte|gonne): (col caldo )?uno\b/, `${dove} "uno" con un nome femminile`);
+      assert.doesNotMatch(t, /\p{Lu}\p{Ll}+, \p{Lu}\p{Ll}+(:|$)/u, `${dove} elenco di luoghi senza "e"`);
+      n++;
+    }
+    // Escursioni leggere non sono trekking; le terme non sono il mare.
+    const att = [...(c.viaggio.scenario.attivita ?? []), ...(c.viaggio.scenario.legs ?? []).flatMap((l: any) => l.attivita ?? [])]
+      .join(" ").toLowerCase();
+    if (!/trekking|cammino|hiking|alpinismo/.test(att)) assert.ok(!testi.some((t) => /trekking/i.test(t)), `${c.id}: trekking`);
+    if (!/mare|spiagg|beach|snorkel|surf|immersion|isola|crociera/.test(att)) {
+      assert.ok(!testi.some((t) => /\bmare\b/i.test(t) && !/Mare o piscina/.test(t)), `${c.id}: mare`);
+    }
+  }
+  assert.ok(n > 1000, `testi controllati: ${n}`);
 });
