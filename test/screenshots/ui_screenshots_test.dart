@@ -116,6 +116,18 @@ Future<void> _openManageSheet(ScreenshotApp app) async {
   await app.tap(_icon(Icons.more_vert));
 }
 
+/// Scorre la scheda aperta (oggetto o scansione) di [dy] pixel.
+Future<void> _scrollSheet(ScreenshotApp app, double dy) async {
+  await app.tester.drag(find.byType(SingleChildScrollView).last, Offset(0, dy));
+  await app.settle();
+}
+
+/// Il tocco sui dettagli della riga [group]/[item] dei risultati AI.
+Finder _scanDetails(int group, int item) => find.descendant(
+  of: find.byKey(ValueKey('ai_result_${group}_$item')),
+  matching: find.byKey(const Key('ai_result_details')),
+);
+
 Future<void> _emitAi(ScreenshotApp app, AiImportState state) async {
   (app.container.read(aiImportNotifierProvider.notifier) as FakeAiImport).emit(
     state,
@@ -735,7 +747,8 @@ final flows = <Flow>[
       description:
           'Tocco su un oggetto: la scheda oggetto in modifica, la stessa della '
           'creazione. Nome in un campo, categorie su una riga (scelta piena), '
-          'quantità e spazio accanto all\'etichetta, Dettagli con la nota.',
+          'quantità e spazio accanto all\'etichetta. Sotto una linea i Dettagli '
+          'a tag, poi la nota.',
       steps: (app) async {
         await _houseDetail(app);
         await app.tap(find.text('Maglione di lana'));
@@ -752,6 +765,64 @@ final flows = <Flow>[
         await _houseDetail(app);
         await app.tap(find.text('Maglione di lana'));
         await app.tap(find.byKey(const Key('item_sheet_menu')));
+      },
+    ),
+    Scenario(
+      4,
+      'oggetto-scheda',
+      'dettagli-in-alto',
+      source: 'lib/features/items/view/item_sheet.dart',
+      description:
+          'Scheda del maglione scorsa fino ai Dettagli: una linea, poi i tag '
+          'Tipo, Colore, Calore, Pioggia e Stile.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.text('Maglione di lana'));
+        await _scrollSheet(app, -380);
+      },
+    ),
+    Scenario(
+      5,
+      'oggetto-scheda',
+      'dettagli-fondo',
+      source: 'lib/features/items/view/item_sheet.dart',
+      description: 'Scheda del maglione in fondo: Usi (più di uno) e la Nota.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.text('Maglione di lana'));
+        await _scrollSheet(app, -380);
+        await _scrollSheet(app, -700);
+      },
+    ),
+    Scenario(
+      6,
+      'oggetto-scheda',
+      'tipo-picker',
+      source: 'lib/features/items/view/widgets/clothing_details_section.dart',
+      description:
+          'Tocco sulla riga Tipo: foglio "Scegli il tipo" con le sottocategorie '
+          'della categoria del capo.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.text('Maglione di lana'));
+        await _scrollSheet(app, -380);
+        await app.tap(find.byKey(const Key('clothing_type_row')));
+      },
+    ),
+    Scenario(
+      7,
+      'oggetto-scheda',
+      'altro-colore',
+      source: 'lib/features/items/view/widgets/clothing_details_section.dart',
+      description:
+          '"+ Altro colore" aperto: campo per scrivere un colore che non è tra '
+          'quelli di base.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.text('Maglione di lana'));
+        await _scrollSheet(app, -380);
+        await app.tester.ensureVisible(_text('clothing.details.other_color'));
+        await app.tap(_text('clothing.details.other_color'));
       },
     ),
   ]),
@@ -804,7 +875,9 @@ final flows = <Flow>[
       'capi-riconosciuti',
       route: '/houses/:id/ai-import/results',
       source: _aiResults,
-      description: 'Risultati con casa di destinazione selezionata.',
+      description:
+          'Risultati con casa di destinazione selezionata. Sotto il capo '
+          'con un dubbio (Pantaloni da trekking), la riga "1 da controllare".',
       setup: AppSetup(
         extraOverrides: [
           aiImportNotifierProvider.overrideWith(FakeAiImport.new),
@@ -893,7 +966,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      9,
+      8,
       'ai-risultati',
       'casa-vuota',
       route: '/houses/:id/ai-import/results',
@@ -911,7 +984,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      10,
+      9,
       'ai-risultati',
       'conferma-uscita',
       route: '/houses/:id/ai-import/results',
@@ -930,7 +1003,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      11,
+      10,
       'ai-risultati',
       'errore-parziale',
       route: '/houses/:id/ai-import/results',
@@ -948,7 +1021,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      12,
+      11,
       'ai-risultati',
       'errore-rete',
       route: '/houses/:id/ai-import/results',
@@ -966,7 +1039,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      13,
+      12,
       'ai-risultati',
       'limite-raggiunto',
       route: '/houses/:id/ai-import/results',
@@ -981,6 +1054,51 @@ final flows = <Flow>[
         await _houseDetail(app);
         await app.push('/houses/$kHomeId/ai-import/results');
         await _emitAi(app, aiFailureState(AiFailureReason.limitReached));
+      },
+    ),
+    Scenario(
+      13,
+      'scheda-scansione',
+      'in-alto',
+      route: '/houses/:id/ai-import/results',
+      source: 'lib/features/items/view/item_sheet.dart',
+      description:
+          'Tocco sui dettagli della riga: la scheda del capo dalla scansione, '
+          'in alto. Il nome è modificabile; i dettagli sono a tag.',
+      setup: AppSetup(
+        extraOverrides: [
+          aiImportNotifierProvider.overrideWith(FakeAiImport.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.push('/houses/$kHomeId/ai-import/results');
+        await _emitAi(app, aiResultsState());
+        await app.tester.ensureVisible(_scanDetails(1, 0));
+        await app.tap(_scanDetails(1, 0));
+      },
+    ),
+    Scenario(
+      14,
+      'scheda-scansione',
+      'pioggia-da-controllare',
+      route: '/houses/:id/ai-import/results',
+      source: 'lib/features/items/view/item_sheet.dart',
+      description:
+          'Stessa scheda scorsa fino a Pioggia: "da controllare" finché '
+          'l\'utente non sceglie un valore.',
+      setup: AppSetup(
+        extraOverrides: [
+          aiImportNotifierProvider.overrideWith(FakeAiImport.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.push('/houses/$kHomeId/ai-import/results');
+        await _emitAi(app, aiResultsState());
+        await app.tester.ensureVisible(_scanDetails(1, 0));
+        await app.tap(_scanDetails(1, 0));
+        await _scrollSheet(app, -400);
       },
     ),
   ]),

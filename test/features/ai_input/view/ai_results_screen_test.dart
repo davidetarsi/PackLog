@@ -259,11 +259,11 @@ void main() {
     expect(find.byType(AiResultsScreen), findsOneWidget);
     expect(find.text('Camicia di lino azzurra'), findsOneWidget);
     expect(find.text('T-shirt bianca'), findsOneWidget);
-    expect(find.text('Jeans slim blu scuro'), findsOneWidget);
+    expect(find.text('Pantaloni da trekking'), findsOneWidget);
     expect(find.text('Salva: 3 nuovi'), findsOneWidget);
     expect(find.text('T-shirt · Bianco'), findsOneWidget);
     expect(find.text('Camicia · Azzurro'), findsOneWidget);
-    expect(find.text('Pantaloni · Blu'), findsOneWidget);
+    expect(find.text('Pantaloni · Grigio'), findsOneWidget);
     expect(find.text('Foto 1 · 2 capi'), findsOneWidget);
     expect(find.byKey(const Key('ai_already_here')), findsNWidgets(3));
     await app.finish();
@@ -474,6 +474,57 @@ void main() {
     await tester.tap(details);
     await tester.pumpAndSettle();
     expect(find.byType(ItemSheet), findsOneWidget);
+    await app.finish();
+  });
+
+  testWidgets('la scheda dalla scansione salva i dettagli e toglie il dubbio', (
+    tester,
+  ) async {
+    final app = await _openResults(tester);
+    final row = find.byKey(const ValueKey('ai_result_1_0'));
+    expect(
+      find.descendant(of: row, matching: find.text('1 da controllare')),
+      findsOneWidget,
+    );
+
+    final details = find.descendant(
+      of: row,
+      matching: find.byKey(const Key('ai_result_details')),
+    );
+    await tester.ensureVisible(details);
+    await tester.tap(details);
+    await tester.pumpAndSettle();
+    expect(find.byType(ItemSheet), findsOneWidget);
+
+    final pioggia = find.text('Impermeabile');
+    await tester.ensureVisible(pioggia);
+    await tester.tap(pioggia);
+    await tester.pumpAndSettle();
+
+    final nome = find.descendant(
+      of: find.byKey(const Key('item_sheet_name')),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(nome, 'Pantaloni trekking impermeabili');
+    await tester.pumpAndSettle();
+
+    final salva = find.byKey(const Key('item_sheet_save'));
+    await tester.ensureVisible(salva);
+    await tester.tap(salva);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ItemSheet), findsNothing);
+    expect(find.text('Pantaloni trekking impermeabili'), findsOneWidget);
+    expect(
+      find.descendant(of: row, matching: find.text('1 da controllare')),
+      findsNothing,
+    );
+    final saved = app.container
+        .read(aiImportNotifierProvider)
+        .photoGroups[1]
+        .results[0];
+    expect(saved.extras['waterResistance'], 2);
+    expect(saved.doubts, isNot(contains('waterResistance')));
     await app.finish();
   });
 

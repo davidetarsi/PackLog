@@ -154,9 +154,11 @@ class _AiResultCardState extends State<AiResultCard> {
                         color: active ? colors.onSurface : muted,
                       ),
                       SizedBox(width: context.spacingXs),
-                      Text(
-                        'ai_import.to_check'.plural(doubts.length),
-                        style: doubtStyle,
+                      Flexible(
+                        child: Text(
+                          'ai_import.to_check'.plural(doubts.length),
+                          style: doubtStyle,
+                        ),
                       ),
                     ],
                   ),
