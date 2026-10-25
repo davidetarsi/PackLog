@@ -36,7 +36,9 @@ function controlla(testo: string, dove: string) {
   assert.match(testo, /^[A-ZÀ-Ý]/, `${dove}: non inizia con la maiuscola "${testo}"`);
   assert.doesNotMatch(testo, /undefined|null|NaN|\[object|\$\{/, `${dove}: valore crudo "${testo}"`);
   assert.doesNotMatch(testo, /capospalla|slot|warmth|bulk|ripieg|pila/i, `${dove}: parola interna "${testo}"`);
-  assert.doesNotMatch(testo, /non basta|non è abbastanza/, `${dove}: accordo col nome dell'utente "${testo}"`);
+  assert.doesNotMatch(testo, /non basta/, `${dove}: accordo col nome dell'utente "${testo}"`);
+  // "non è abbastanza ..." solo col soggetto fisso "Il più simile che hai, X,"
+  if (/non è abbastanza/.test(testo)) assert.match(testo, /^Il più simile che hai, .+, non è abbastanza /, `${dove}: soggetto "${testo}"`);
   assert.doesNotMatch(testo, / ,|,,|\.\.|, (e|o) /, `${dove}: punteggiatura "${testo}"`);
   assert.doesNotMatch(testo, /\b(\p{L}+) e \1\b/u, `${dove}: nome ripetuto "${testo}"`);
   assert.doesNotMatch(testo, /\bper il meteo previsto\b|\badatto al meteo\b/, `${dove}: meteo generico "${testo}"`);

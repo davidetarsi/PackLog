@@ -22,7 +22,7 @@ import { conRiprova, generaValigia, MAX_TOKENS_VALIGIA, scenarioDaApp } from "..
 import { IngressoNonValido, validaViaggio } from "../_shared/valigia/ingresso.ts";
 import { jevHttp, MODELLO as MODELLO_JEV, type ProfiloNoto } from "../_shared/valigia/jev.ts";
 import { uscitaApp } from "../_shared/valigia/uscita.ts";
-import type { RigaArmadio } from "../_shared/valigia/capo.ts";
+import { caricaArmadio, type RigaArmadio } from "../_shared/valigia/capo.ts";
 import {
   consumaCreditoAi, corpo, CORS_HEADERS, errore, json, restituisciCreditoAi, serviziMeteo, utente,
 } from "../_shared/servizi.ts";
@@ -118,7 +118,10 @@ Deno.serve(async (req) => {
     risposta = json(200, {
       valigia, motivi: r.motivi, perche: r.perche, geo: r.geo, meteo: r.meteo,
       note_tecniche: r.jev.errori,
-      ...uscitaApp(r.valigia, r.motivi as { capi: Record<string, any>[]; essenziali: Record<string, any>[] }, salvate),
+      ...uscitaApp(r.valigia, r.motivi as { capi: Record<string, any>[]; essenziali: Record<string, any>[] }, salvate, {
+        meteo: r.meteo as Record<string, any> | null,
+        armadio: caricaArmadio(righe as RigaArmadio[]).flatMap((g) => [g.sub_fine, g.sub_category]),
+      }),
     });
   } catch (e) {
     console.error("[pack-trip]", (e as Error).message);
