@@ -210,4 +210,14 @@ void main() {
       expect(r.extras['bulk'], 3);
     });
   });
+
+  test(
+    'clothingFromMetadata: un tipo inatteso dà null invece di un errore',
+    () {
+      expect(
+        clothingFromMetadata('{"category": "Upper Body", "warmth": 3.5}'),
+        isNull,
+      );
+    },
+  );
 }

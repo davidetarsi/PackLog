@@ -117,8 +117,8 @@ class ClothingDetails {
   );
 }
 
-/// Lettura comoda da `ItemModel.aiMetadata`: null se assente, non leggibile,
-/// o se il JSON dice che non è un capo.
+/// Lettura comoda da `ItemModel.aiMetadata`: null se assente, non leggibile
+/// (anche per un tipo inatteso), o se il JSON dice che non è un capo.
 ClothingAnalysisResult? clothingFromMetadata(String? aiMetadata) {
   if (aiMetadata == null || aiMetadata.isEmpty) return null;
   final Object? decoded;
@@ -130,5 +130,11 @@ ClothingAnalysisResult? clothingFromMetadata(String? aiMetadata) {
   if (decoded is! Map) return null;
   final json = Map<String, dynamic>.from(decoded);
   if (json['category'] == 'Not Clothing') return null;
-  return ClothingAnalysisResult.fromJson(json);
+  // Un tipo inatteso (es. warmth decimale) non deve far cadere la scheda:
+  // senza dettagli leggibili la sezione semplicemente non compare.
+  try {
+    return ClothingAnalysisResult.fromJson(json);
+  } on TypeError {
+    return null;
+  }
 }
