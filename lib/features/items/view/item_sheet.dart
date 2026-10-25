@@ -18,6 +18,7 @@ import '../../../shared/widgets/ds_field_label.dart';
 import '../../../shared/widgets/ds_sheet_header.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/quantity_stepper.dart';
+import '../../ai_input/helpers/ai_item_category.dart';
 import '../../ai_input/model/clothing_analysis_result.dart';
 import '../../spaces/model/space_model.dart';
 import '../../spaces/providers/space_provider.dart';
@@ -70,6 +71,20 @@ Future<ItemModel?> showNewItemSheet(
   );
 }
 
+/// Apre la scheda di un capo della scansione non ancora salvato. Restituisce
+/// il capo modificato, o `null` se la scheda si chiude senza salvare.
+Future<ClothingAnalysisResult?> showScanItemSheet(
+  BuildContext context, {
+  required ClothingAnalysisResult result,
+}) {
+  return showModalBottomSheet<ClothingAnalysisResult>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => ItemSheet.scan(result: result),
+  );
+}
+
 /// Opzione del picker spazio. `id == null` è "Senza spazio": non si può
 /// usare `null` come valore, per [DsPickerSheet] vuol dire "chiuso".
 typedef _SpaceOption = ({String? id, String name, IconData icon});
@@ -83,6 +98,10 @@ enum _ItemMenu { move, delete }
 /// la proposta dedotta dal nome, piena la scelta dell'utente. Nella modifica
 /// la categoria dell'oggetto è già una scelta. Spostare in un'altra casa ed
 /// eliminare stanno nel "⋮", solo nella modifica.
+///
+/// Dalla scansione ([ItemSheet.scan]) la scheda modifica un capo non ancora
+/// salvato: nome, categoria e dettagli, senza casa né menu. Non scrive nel DB:
+/// chiude restituendo il capo modificato.
 class ItemSheet extends ConsumerStatefulWidget {
   final String houseId;
 
@@ -99,6 +118,9 @@ class ItemSheet extends ConsumerStatefulWidget {
   /// Riga di aiuto sopra il bottone della creazione.
   final String? footnote;
 
+  /// Il capo della scansione da modificare; `null` fuori dalla scansione.
+  final ClothingAnalysisResult? scanResult;
+
   const ItemSheet({
     super.key,
     required this.houseId,
@@ -106,7 +128,8 @@ class ItemSheet extends ConsumerStatefulWidget {
   }) : initialName = '',
        submitLabel = null,
        submitIcon = null,
-       footnote = null;
+       footnote = null,
+       scanResult = null;
 
   const ItemSheet.create({
     super.key,
@@ -115,7 +138,19 @@ class ItemSheet extends ConsumerStatefulWidget {
     required String this.submitLabel,
     this.submitIcon,
     this.footnote,
-  }) : itemId = null;
+  }) : itemId = null,
+       scanResult = null;
+
+  /// Senza casa: la scheda della scansione non legge né scrive gli oggetti.
+  /// [houseId] è vuoto e non si usa.
+  const ItemSheet.scan({super.key, required ClothingAnalysisResult result})
+    : houseId = '',
+      itemId = null,
+      initialName = '',
+      submitLabel = null,
+      submitIcon = null,
+      footnote = null,
+      scanResult = result;
 
   @override
   ConsumerState<ItemSheet> createState() => _ItemSheetState();
@@ -139,13 +174,22 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   ClothingDetails? _originalDetails;
   ClothingDetails? _details;
 
+  /// Solo dalla scansione: i dubbi del server ancora da risolvere, e la
+  /// categoria di partenza.
+  Set<String> _doubts = {};
+  ItemCategory? _scanCategory;
+
   bool _loaded = false;
   bool _isSaving = false;
 
-  bool get _isNew => widget.itemId == null;
+  bool get _isScan => widget.scanResult != null;
 
-  /// In modifica: qualcosa è diverso dall'oggetto salvato.
+  bool get _isNew => widget.itemId == null && !_isScan;
+
+  /// In modifica: qualcosa è diverso dall'oggetto salvato. Nella scansione:
+  /// qualcosa è diverso dal capo ricevuto.
   bool get _isDirty {
+    if (_isScan) return _scanDirty();
     final item = _item();
     if (item == null) return false;
     final note = _noteController.text.trim();
@@ -154,6 +198,13 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
         (_chosenCategory ?? item.category) != item.category ||
         _quantity != (item.quantity ?? 1) ||
         _spaceId != item.spaceId ||
+        (_details != null && _details != _originalDetails);
+  }
+
+  bool _scanDirty() {
+    final result = widget.scanResult!;
+    return _nameController.text.trim() != result.name ||
+        _chosenCategory != _scanCategory ||
         (_details != null && _details != _originalDetails);
   }
 
@@ -166,6 +217,10 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   @override
   void initState() {
     super.initState();
+    if (_isScan) {
+      _initScan(widget.scanResult!);
+      return;
+    }
     if (_isNew) {
       _nameController.text = widget.initialName;
       _loaded = true;
@@ -189,6 +244,23 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     if (clothing != null) {
       _clothingResult = clothing;
       _originalDetails = ClothingDetails.of(clothing);
+      _details = _originalDetails;
+    }
+    _loaded = true;
+  }
+
+  /// Dalla scansione: nome, categoria e dettagli del capo ricevuto. I dettagli
+  /// si mostrano solo per un capo di abbigliamento.
+  void _initScan(ClothingAnalysisResult result) {
+    _nameController.text = result.name;
+    _scanCategory = aiItemCategory(
+      result.category,
+      appCategory: result.appCategory,
+    );
+    _chosenCategory = _scanCategory;
+    _doubts = {...result.doubts};
+    if (result.category != 'Not Clothing') {
+      _originalDetails = ClothingDetails.of(result);
       _details = _originalDetails;
     }
     _loaded = true;
@@ -270,6 +342,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
 
   Future<void> _save() async {
     if (_isSaving || !_formKey.currentState!.validate()) return;
+    if (_isScan) return _saveScan(widget.scanResult!);
     if (_isNew) return _create();
     final item = _item();
     if (item == null) {
@@ -306,6 +379,29 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
           .trackItemDetailsEdited(source: 'house', fields: changedDetails);
     }
     Navigator.pop(context);
+  }
+
+  /// Dalla scansione non si scrive nulla: il capo modificato torna a chi ha
+  /// aperto la scheda. I dettagli restano quelli dell'analisi se non sono
+  /// cambiati, come nella modifica.
+  void _saveScan(ClothingAnalysisResult result) {
+    var edited = result;
+    final details = _details;
+    if (details != null && details != _originalDetails) {
+      edited = details.applyTo(edited);
+    }
+    final remainingDoubts = [
+      for (final field in result.doubts)
+        if (_doubts.contains(field)) field,
+    ];
+    Navigator.pop(
+      context,
+      edited.copyWith(
+        name: _nameController.text.trim(),
+        appCategory: appCategoryKey(_chosenCategory ?? _scanCategory!),
+        doubts: remainingDoubts,
+      ),
+    );
   }
 
   /// I metadati del capo con i dettagli modificati. Senza modifiche (o per un
@@ -410,15 +506,18 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     if (!_loaded) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final spaces =
-        ref.watch(spaceNotifierProvider(widget.houseId)).valueOrNull ??
-        const <SpaceModel>[];
+    final spaces = _isScan
+        ? const <SpaceModel>[]
+        : ref.watch(spaceNotifierProvider(widget.houseId)).valueOrNull ??
+              const <SpaceModel>[];
     final spaceName =
         spaces.where((s) => s.id == _spaceId).firstOrNull?.name ??
         'spaces.default'.tr();
-    final inferred = _inferredCategory(
-      ref.watch(categoryInferServiceProvider).valueOrNull,
-    );
+    final inferred = _isScan
+        ? null
+        : _inferredCategory(
+            ref.watch(categoryInferServiceProvider).valueOrNull,
+          );
     final footnote = widget.footnote;
 
     // Durante il salvataggio il foglio non si chiude: chi l'ha aperto aspetta
@@ -447,7 +546,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                       : 'items.edit_item'.tr(),
                   onClose: () => Navigator.pop(context),
                   actions: [
-                    if (!_isNew)
+                    if (!_isNew && !_isScan)
                       PopupMenuButton<_ItemMenu>(
                         key: const Key('item_sheet_menu'),
                         icon: const Icon(Icons.more_vert),
@@ -521,50 +620,52 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                               ],
                             ),
                           ),
-                          _InlineField(
-                            label: 'items.quantity'.tr(),
-                            child: QuantityStepper(
-                              value: _quantity,
-                              minValue: 1,
-                              // Neutro: nella scheda l'arancio è del bottone e
-                              // della categoria scelta.
-                              accentColor: cs.onSurface,
-                              onChanged: (v) => setState(() => _quantity = v),
-                            ),
-                          ),
-                          _InlineField(
-                            label: 'items.space_label'.tr(),
-                            child: InkWell(
-                              key: const Key('item_sheet_space'),
-                              borderRadius: BorderRadius.circular(
-                                AppConstants.inputBorderRadius,
+                          if (!_isScan) ...[
+                            _InlineField(
+                              label: 'items.quantity'.tr(),
+                              child: QuantityStepper(
+                                value: _quantity,
+                                minValue: 1,
+                                // Neutro: nella scheda l'arancio è del bottone
+                                // e della categoria scelta.
+                                accentColor: cs.onSurface,
+                                onChanged: (v) => setState(() => _quantity = v),
                               ),
-                              onTap: () => _pickSpace(spaces),
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: context.spacingSm,
+                            ),
+                            _InlineField(
+                              label: 'items.space_label'.tr(),
+                              child: InkWell(
+                                key: const Key('item_sheet_space'),
+                                borderRadius: BorderRadius.circular(
+                                  AppConstants.inputBorderRadius,
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        spaceName,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: textTheme.bodyLarge,
+                                onTap: () => _pickSpace(spaces),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: context.spacingSm,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          spaceName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: textTheme.bodyLarge,
+                                        ),
                                       ),
-                                    ),
-                                    Icon(
-                                      Icons.chevron_right,
-                                      size: context.iconSizeMd,
-                                      color: cs.onSurfaceVariant,
-                                    ),
-                                  ],
+                                      Icon(
+                                        Icons.chevron_right,
+                                        size: context.iconSizeMd,
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                           if (_details case final details?) ...[
                             // I dettagli hanno titoli dello stesso stile del
                             // resto della scheda: una linea li separa, senza un
@@ -576,22 +677,27 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                             ClothingDetailsSection(
                               details: details,
                               onChanged: (d) => setState(() => _details = d),
+                              doubts: _doubts,
+                              onDoubtResolved: (field) =>
+                                  setState(() => _doubts.remove(field)),
                             ),
                           ],
-                          DsFieldLabel.prominent('items.note_label'.tr()),
-                          TextFormField(
-                            key: const Key('item_sheet_note'),
-                            controller: _noteController,
-                            minLines: 1,
-                            maxLines: 4,
-                            textCapitalization: TextCapitalization.sentences,
-                            decoration: dsFieldDecoration(
-                              context,
-                              hintText: 'items.add_note'.tr(),
+                          if (!_isScan) ...[
+                            DsFieldLabel.prominent('items.note_label'.tr()),
+                            TextFormField(
+                              key: const Key('item_sheet_note'),
+                              controller: _noteController,
+                              minLines: 1,
+                              maxLines: 4,
+                              textCapitalization: TextCapitalization.sentences,
+                              decoration: dsFieldDecoration(
+                                context,
+                                hintText: 'items.add_note'.tr(),
+                              ),
+                              // Ridisegna "Salva", attivo solo con una modifica.
+                              onChanged: (_) => setState(() {}),
                             ),
-                            // Ridisegna "Salva", attivo solo con una modifica.
-                            onChanged: (_) => setState(() {}),
-                          ),
+                          ],
                           if (footnote != null)
                             Padding(
                               padding: EdgeInsets.only(top: context.spacingMd),

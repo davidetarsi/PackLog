@@ -540,6 +540,150 @@ void main() {
     });
   });
 
+  // ── updateResult() ─────────────────────────────────────────────────────────
+
+  group('updateResult()', () {
+    test('sostituisce il capo nel gruppo e nella posizione giusti', () async {
+      final service = MockAiClothingAnalyzerService();
+      final container = _makeContainer(service: service);
+      addTearDown(container.dispose);
+
+      await _seedOneGroup(
+        container,
+        service,
+        results: [
+          _fakeResult(name: 'T-Shirt'),
+          _fakeResult(name: 'Jeans'),
+        ],
+      );
+      final edited = _fakeResult(name: 'Polo').copyWith(warmth: 5);
+
+      container
+          .read(aiImportNotifierProvider.notifier)
+          .updateResult(0, 0, edited);
+
+      final results = container
+          .read(aiImportNotifierProvider)
+          .photoGroups
+          .first
+          .results;
+      expect(results[0], edited);
+      expect(results[0].name, 'Polo');
+      expect(results[1].name, 'Jeans');
+    });
+  });
+
+  // ── analitica dei dettagli cambiati dalla scheda ───────────────────────────
+
+  group('saveItems() e dettagli cambiati dalla scheda', () {
+    test(
+      'traccia item_details_edited (scan) solo per il capo con dettagli cambiati',
+      () async {
+        final service = MockAiClothingAnalyzerService();
+        final itemRepo = MockItemRepository();
+        final syncOrchestrator = MockSyncOrchestrator();
+        final analytics = MockCoreAnalyticsService();
+        final container = _makeContainer(
+          service: service,
+          itemRepo: itemRepo,
+          syncOrchestrator: syncOrchestrator,
+          analytics: analytics,
+        );
+        addTearDown(container.dispose);
+
+        when(
+          () => itemRepo.saveAiItemsToHouse(
+            houseId: any(named: 'houseId'),
+            newItems: any(named: 'newItems'),
+            metadataByItemId: any(named: 'metadataByItemId'),
+          ),
+        ).thenAnswer((_) async => 0);
+        when(() => syncOrchestrator.requestSync()).thenReturn(null);
+
+        await _seedOneGroup(
+          container,
+          service,
+          results: [
+            _fakeResult(name: 'T-Shirt'),
+            _fakeResult(name: 'Jeans'),
+          ],
+        );
+        final notifier = container.read(aiImportNotifierProvider.notifier);
+        // Il primo capo: scaldato dalla scheda. Il secondo: solo il nome.
+        notifier.updateResult(
+          0,
+          0,
+          _fakeResult(name: 'T-Shirt').copyWith(warmth: 5),
+        );
+        notifier.updateItemName(0, 1, 'Pantaloni');
+        notifier.setSelectedHouseId('house-99');
+
+        await notifier.saveItems();
+
+        // Una sola chiamata, quella del capo con il calore cambiato.
+        final args = verify(
+          () => analytics.trackItemDetailsEdited(
+            source: captureAny(named: 'source'),
+            fields: captureAny(named: 'fields'),
+          ),
+        ).captured;
+        expect(args, [
+          'scan',
+          ['warmth'],
+        ]);
+      },
+    );
+
+    test('un capo escluso non produce evento', () async {
+      final service = MockAiClothingAnalyzerService();
+      final itemRepo = MockItemRepository();
+      final syncOrchestrator = MockSyncOrchestrator();
+      final analytics = MockCoreAnalyticsService();
+      final container = _makeContainer(
+        service: service,
+        itemRepo: itemRepo,
+        syncOrchestrator: syncOrchestrator,
+        analytics: analytics,
+      );
+      addTearDown(container.dispose);
+
+      when(
+        () => itemRepo.saveAiItemsToHouse(
+          houseId: any(named: 'houseId'),
+          newItems: any(named: 'newItems'),
+          metadataByItemId: any(named: 'metadataByItemId'),
+        ),
+      ).thenAnswer((_) async => 0);
+      when(() => syncOrchestrator.requestSync()).thenReturn(null);
+
+      await _seedOneGroup(
+        container,
+        service,
+        results: [
+          _fakeResult(name: 'T-Shirt'),
+          _fakeResult(name: 'Jeans'),
+        ],
+      );
+      final notifier = container.read(aiImportNotifierProvider.notifier);
+      notifier.updateResult(
+        0,
+        1,
+        _fakeResult(name: 'Jeans').copyWith(warmth: 1),
+      );
+      notifier.setIncluded(0, 1, false);
+      notifier.setSelectedHouseId('house-99');
+
+      await notifier.saveItems();
+
+      verifyNever(
+        () => analytics.trackItemDetailsEdited(
+          source: any(named: 'source'),
+          fields: any(named: 'fields'),
+        ),
+      );
+    });
+  });
+
   // ── setSelectedHouseId() ───────────────────────────────────────────────────
 
   group('setSelectedHouseId()', () {
