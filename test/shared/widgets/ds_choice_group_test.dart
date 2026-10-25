@@ -111,6 +111,44 @@ void main() {
     expect(find.text('+ Altro colore'), findsOneWidget);
   });
 
+  testWidgets('onTouched arriva anche confermando la scelta attuale', (
+    tester,
+  ) async {
+    var touched = 0;
+    Set<String>? emitted;
+    await pump(
+      tester,
+      DsChoiceGroup<String>(
+        title: 'Pioggia',
+        options: const ['Si bagna', 'Impermeabile'],
+        labelOf: (s) => s,
+        selected: const {'Si bagna'},
+        onChanged: (s) => emitted = s,
+        onTouched: () => touched++,
+      ),
+    );
+    await tester.tap(find.text('Si bagna'));
+    expect(touched, 1);
+    expect(emitted, isNull);
+  });
+
+  testWidgets('una nota lunga si accorcia invece di sforare', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pump(
+      tester,
+      choiceGroup(
+        selected: const {'Blu'},
+        onChanged: (_) {},
+        doubt: true,
+        note: 'da controllare con molta attenzione prima di salvare',
+      ),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   group('scelta singola obbligatoria', () {
     testWidgets('toccare la scelta attuale non emette nulla', (tester) async {
       Set<String>? out;

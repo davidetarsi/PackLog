@@ -13,7 +13,8 @@ import 'ds_field_label.dart';
 ///
 /// [note] sta sulla stessa riga del titolo, in grigio. Con [doubt] la nota
 /// diventa "?" + testo in onSurface; senza [note] resta solo l'icona.
-/// [trailing] va in coda alle pillole (es. "+ Altro colore").
+/// [trailing] va in coda alle pillole (es. "+ Altro colore"). [onTouched]
+/// avvisa di ogni tocco, anche se la scelta non cambia.
 class DsChoiceGroup<T> extends StatelessWidget {
   final String title;
   final List<T> options;
@@ -30,6 +31,10 @@ class DsChoiceGroup<T> extends StatelessWidget {
   final bool doubt;
   final Widget? trailing;
 
+  /// Chiamata a ogni tocco su una pillola, anche quando la scelta non cambia
+  /// (es. confermare il valore già scelto per togliere un dubbio).
+  final VoidCallback? onTouched;
+
   const DsChoiceGroup({
     super.key,
     required this.title,
@@ -42,9 +47,11 @@ class DsChoiceGroup<T> extends StatelessWidget {
     this.note,
     this.doubt = false,
     this.trailing,
+    this.onTouched,
   });
 
   void _handleTap(T option) {
+    onTouched?.call();
     final isSelected = selected.contains(option);
     final Set<T> next;
     if (multiple) {
@@ -88,10 +95,14 @@ class DsChoiceGroup<T> extends StatelessWidget {
                 if (doubt && note != null)
                   SizedBox(width: context.spacingXs / 2),
                 if (note != null)
-                  Text(
-                    note!,
-                    style: tt.bodySmall?.copyWith(
-                      color: doubt ? cs.onSurface : cs.onSurfaceVariant,
+                  Flexible(
+                    child: Text(
+                      note!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.bodySmall?.copyWith(
+                        color: doubt ? cs.onSurface : cs.onSurfaceVariant,
+                      ),
                     ),
                   ),
               ],
