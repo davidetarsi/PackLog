@@ -566,7 +566,13 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                             ),
                           ),
                           if (_details case final details?) ...[
-                            DsFieldLabel.prominent('items.details_label'.tr()),
+                            // I dettagli hanno titoli dello stesso stile del
+                            // resto della scheda: una linea li separa, senza un
+                            // titolo "Dettagli" che li sovrasti.
+                            Padding(
+                              padding: EdgeInsets.only(top: context.spacingLg),
+                              child: const Divider(height: 1),
+                            ),
                             ClothingDetailsSection(
                               details: details,
                               onChanged: (d) => setState(() => _details = d),

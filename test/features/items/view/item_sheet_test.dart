@@ -336,13 +336,14 @@ void main() {
       final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
       await openMaglione(tester, app);
 
-      expect(find.text('Dettagli'), findsOneWidget);
       expect(find.text('Nota'), findsOneWidget);
       expect(find.byKey(const Key('clothing_type_row')), findsOneWidget);
       expect(find.text(clothingTypeLabel('Sweater')), findsOneWidget);
       expect(find.text(warmthLabel(4)), findsOneWidget);
       final spaceY = tester.getTopLeft(find.text('Spazio')).dy;
-      final detailsY = tester.getTopLeft(find.text('Dettagli')).dy;
+      final detailsY = tester
+          .getTopLeft(find.byKey(const Key('clothing_type_row')))
+          .dy;
       final noteY = tester.getTopLeft(find.text('Nota')).dy;
       expect(detailsY, greaterThan(spaceY));
       expect(noteY, greaterThan(detailsY));
@@ -354,7 +355,6 @@ void main() {
     ) async {
       final app = await openCalzini(tester);
       expect(find.byKey(const Key('clothing_type_row')), findsNothing);
-      expect(find.text('Dettagli'), findsNothing);
       expect(find.text('Nota'), findsOneWidget);
       await app.finish();
     });
