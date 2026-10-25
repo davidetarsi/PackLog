@@ -135,7 +135,21 @@ class DsPickerSheet<T> extends StatelessWidget {
                   itemCount: rows.length,
                   itemBuilder: (_, index) {
                     final row = rows[index];
-                    if (row is String) return DsGroupHeader(label: row);
+                    if (row is String) {
+                      // Stesso margine orizzontale delle righe sotto.
+                      final tile =
+                          ListTileTheme.of(context).contentPadding?.resolve(
+                            Directionality.of(context),
+                          ) ??
+                          EdgeInsets.symmetric(horizontal: AppSpacing.md);
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          left: tile.left,
+                          right: tile.right,
+                        ),
+                        child: DsGroupHeader(label: row),
+                      );
+                    }
                     final item = items[row as int];
                     final isSelected = item == selected;
                     final iconData = getIcon?.call(item);
