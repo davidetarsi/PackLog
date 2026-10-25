@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       valigia, motivi: r.motivi, perche: r.perche, geo: r.geo, meteo: r.meteo,
       note_tecniche: r.jev.errori,
       ...uscitaApp(r.valigia, r.motivi as { capi: Record<string, any>[]; essenziali: Record<string, any>[] }, salvate, {
-        meteo: r.meteo as Record<string, any> | null,
+        meteo: r.meteo as Record<string, any> | null, viaggio: viaggio as Record<string, any>,
         armadio: caricaArmadio(righe as RigaArmadio[]).flatMap((g) => [g.sub_fine, g.sub_category]),
       }),
     });

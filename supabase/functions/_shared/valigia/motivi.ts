@@ -2,6 +2,7 @@
 // Porting di motivi.py del bench (catalogo chiuso: codice, etichetta, frase).
 // Si calcola sulla valigia finita, senza toccare la scelta dei capi.
 import { occasioneFormale } from "./regole_capi.ts";
+import { lavanderiaPresunta } from "./dopo.ts";
 import { get } from "./slots.ts";
 import type { RigaArmadio } from "./capo.ts";
 import { massimo, minimo, o, ordina, pyRound, vero } from "./py.ts";
@@ -72,6 +73,7 @@ export interface Valigia {
 interface Contesto {
   giorni: number;
   lavatrice: boolean;
+  lavanderia: boolean;
   tappe: Map<string, Record_>;
   occasione: boolean;
   trekking: boolean;
@@ -112,7 +114,8 @@ export function contesto(v: Valigia): Contesto {
   const richiesti = new Map<string, Record_>();
   for (const r of o(get(s, "richiesti"), []) as Record_[]) if (vero(get(r, "slot"))) richiesti.set(r.slot, r);
   return {
-    giorni, lavatrice: vero(get(sc, "lavatrice")), tappe,
+    giorni, lavatrice: vero(get(sc, "lavatrice")),
+    lavanderia: !vero(get(sc, "legs")) && lavanderiaPresunta(giorni, get(sc, "lavatrice")), tappe,
     occasione: occasioneFormale(att),
     trekking: att.some((a) => ["trekking", "escursion", "cammino", "hiking", "alpinismo"]
       .some((r) => a.toLowerCase().includes(r))),
@@ -333,6 +336,7 @@ export function fraseQuantita(gruppo: Record_[], ctx: Contesto): string {
   const c = clima(ctx, null);
   const caldo = c.tmax != null && c.tmax > 24;
   const sopra = get(gruppo[0], "category") === "Upper Body";
+  if (ctx.lavanderia && p > 1) return `${pezzi(p)} per ${g} giorni: si lavano strada facendo`;
   if (ctx.lavatrice && g > 5) return `${pezzi(p)} per ${g} giorni: con la lavatrice si rilavano strada facendo`;
   if (caldo && sopra && p >= Math.min(g, 4)) return `${pezzi(p)} per ${g} giorni: col caldo uno al giorno`;
   if (caldo && !sopra && p > 1) return `${pezzi(p)} per ${g} giorni: col caldo si cambiano più spesso`;
@@ -348,6 +352,7 @@ export function fraseEssenziale(e: Record_, ctx: Contesto): string {
   const q = get(e, "quantita", 1) as number, g = ctx.giorni;
   if (["pigiama", "pyjama", "pajama", "camicia da notte"].includes(get(e, "radice"))) return "Uno per il viaggio";
   if (q <= 1) return "Uno basta per il viaggio";
+  if (ctx.lavanderia && q < g) return `${q}: lavando strada facendo bastano per ${q - 1} giorni, più un ricambio`;
   if (ctx.lavatrice && q < g) return `${q}: con la lavatrice bastano per ${q - 1} giorni, più un ricambio`;
   if (q === g + 1) return `${q}: uno al giorno più un ricambio`;
   return `${q} per ${g} giorni`;
@@ -402,10 +407,11 @@ export const NOMI_PLURALI: Record<string, string> = {
   "T-Shirt": "T-shirt", Shirt: "camicie", Polo: "polo", "Tank Top": "canotte",
   Shorts: "bermuda e shorts", Trousers: "pantaloni", Jeans: "jeans",
   Skirt: "gonne", Leggings: "leggings", Sweatpants: "pantaloni della tuta",
-  Dress: "vestiti", "Crop Top": "top",
+  Dress: "vestiti", "Crop Top": "top", "Thermal Top": "maglie termiche",
+  "Thermal Bottoms": "pantaloni termici",
 };
 /** Nomi femminili: "2 camicie: una ogni 4 giorni" (non "uno"). */
-const FEMMINILI = new Set(["T-Shirt", "Shirt", "Polo", "Tank Top", "Skirt"]);
+const FEMMINILI = new Set(["T-Shirt", "Shirt", "Polo", "Tank Top", "Skirt", "Thermal Top"]);
 
 const nomi = (capi: Record_[]) =>
   capi.map((x) => x.item + ((get(x, "quantita", 1) as number) > 1 ? ` ×${x.quantita}` : ""));
@@ -452,7 +458,7 @@ export function percheValigia(v: Valigia, tag: Record<string, string[]>, m = mot
   if (m.essenziali.length) {
     punti.push({
       codice: "essenziale", titolo: "Essenziali",
-      frasi: [`${ctx.giorni} giorni` + (ctx.lavatrice ? " con la lavatrice" : "")],
+      frasi: [`${ctx.giorni} giorni` + (ctx.lavanderia ? " lavando strada facendo" : ctx.lavatrice ? " con la lavatrice" : "")],
       capi: m.essenziali.map((e) => (e.quantita > 1 ? `${e.item} ×${e.quantita}` : e.item)),
     });
   }
