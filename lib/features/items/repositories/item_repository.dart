@@ -24,6 +24,10 @@ abstract class ItemRepository {
   Future<void> addItem(ItemModel model);
   Future<ItemModel> getItemById(String id);
   Future<List<ItemModel>> getAllItems();
+
+  /// Colori di base già usati dai capi dell'utente (dai metadati), senza
+  /// vuoti e 'N/A', deduplicati e ordinati per frequenza poi alfabetico.
+  Future<List<String>> getUsedColors();
   Future<List<ItemModel>> getItemsByHouseId(String houseId);
   Future<bool> deleteItem(String id);
   Future<void> updateItem(ItemModel model);

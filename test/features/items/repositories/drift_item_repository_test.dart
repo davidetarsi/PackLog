@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
@@ -1165,5 +1167,47 @@ void main() {
         );
       },
     );
+  });
+
+  group('DriftItemRepository - getUsedColors', () {
+    test('legge i colori dai metadati, uniti e ordinati', () async {
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'casa-colori',
+          name: 'Casa colori',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      String capo(String color) => jsonEncode({
+        'name': 'Capo',
+        'category': 'Upper Body',
+        'subCategory': 'T-Shirt',
+        'baseColor': color,
+        'warmth': 2,
+        'formality': 'Casual',
+        'activityTags': <String>[],
+      });
+      final now = DateTime.now();
+      ItemModel item(String id, String? meta) => ItemModel(
+        id: id,
+        houseId: 'casa-colori',
+        name: id,
+        category: ItemCategory.vestiti,
+        createdAt: now,
+        updatedAt: now,
+        aiMetadata: meta,
+      );
+      await repository.insertMultipleItems([
+        item('1', capo('blu')),
+        item('2', capo('Blu ')),
+        item('3', capo('Rosa chiaro')),
+        item('4', capo('N/A')),
+        item('5', null),
+        item('6', jsonEncode({'category': 'Not Clothing'})),
+      ]);
+
+      expect(await repository.getUsedColors(), ['blu', 'Rosa chiaro']);
+    });
   });
 }

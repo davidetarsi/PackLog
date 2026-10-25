@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
+import '../model/clothing_colors.dart';
 import '../model/item_model.dart';
 import 'item_repository.dart';
 import '../../../core/database/database.dart';
@@ -52,6 +53,12 @@ class DriftItemRepository implements ItemRepository {
     }
 
     return _toModel(result.data!);
+  }
+
+  @override
+  Future<List<String>> getUsedColors() async {
+    final items = await getAllItems();
+    return usedColorsFrom(items.map((item) => item.aiMetadata));
   }
 
   @override
