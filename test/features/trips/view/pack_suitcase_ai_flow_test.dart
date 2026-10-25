@@ -146,7 +146,7 @@ final _avvisoBoxer = AiWarning(
   id: 'w1',
   code: 'boxer',
   level: AiWarningLevel.important,
-  title: 'Pochi boxer per questo viaggio',
+  title: 'Ti servono più pezzi di boxer',
   why: 'Fino alla lavatrice ne servirebbero 6.',
   search: 'felp',
 );

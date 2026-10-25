@@ -466,7 +466,7 @@ Future<void> seedValigiaAi(ProviderContainer c) async {
         id: 'warn-calzini',
         code: 'pochi_pezzi',
         level: AiWarningLevel.important,
-        title: 'Pochi Calzini per questo viaggio',
+        title: 'Ti servono più pezzi di Calzini',
         why: "Ne servirebbero 8, nell'armadio ne hai 7.",
         search: 'Calzini',
       ),

@@ -14,7 +14,7 @@ test("stesso capo in due punti: una riga, quantità sommata, tetto", () => {
   assert.deepEqual(r.capi.map((c) => [c.item_id, c.quantita, c.in_partenza]), [["a", 4, false], ["s", 1, true], ["b", 6, false]]);
   assert.equal(r.capi[0].motivo.frase, "x");
   assert.deepEqual(r.avvisi, [{ id: "pochi_pezzi:0", codice: "pochi_pezzi", livello: "utile",
-    titolo: "Pochi Boxer neri per questo viaggio", perche: "Ne servirebbero 6, nell'armadio ne hai 4.", cerca: "Boxer neri" }]);
+    titolo: "Ti servono più pezzi di Boxer neri", perche: "Ne servirebbero 6, nell'armadio ne hai 4.", cerca: "Boxer neri" }]);
 });
 
 test("stesso capo in ideali, ripieghi ed essenziali: una riga con la somma di tutti", () => {
@@ -38,9 +38,53 @@ test("stesso capo in ideali, ripieghi ed essenziali: una riga con la somma di tu
 
 test("capo essenziale tagliato dal tetto: avviso importante", () => {
   const motivi = { capi: [], essenziali: [
-    { item_id: "k", item: "Pigiama", quantita: 2, motivo: { codice: "essenziale", etichetta: "Essenziali", frase: "e" } }] };
+    { item_id: "k", item: "Pigiama", quantita: 3, motivo: { codice: "essenziale", etichetta: "Essenziali", frase: "e" } }] };
   const r = uscitaApp({ mancanti_canonici: [] }, motivi, new Map([["k", 1]]));
   assert.deepEqual(r.avvisi.map((a) => [a.id, a.livello, a.cerca]), [["pochi_pezzi:0", "importante", "Pigiama"]]);
+});
+
+test("essenziale con un solo pezzo in meno: avviso utile, non importante", () => {
+  // Il caso di DEV: 10 calzini salvati, 11 per dieci giorni.
+  const motivi = { capi: [], essenziali: [
+    { item_id: "k", item: "Calzini corti grigi", quantita: 11, motivo: { codice: "essenziale", etichetta: "Essenziali", frase: "e" } }] };
+  const r = uscitaApp({ mancanti_canonici: [] }, motivi, new Map([["k", 10]]));
+  assert.deepEqual(r.avvisi.map((a) => [a.livello, a.titolo, a.perche]),
+    [["utile", "Ti servono più pezzi di Calzini corti grigi", "Ne servirebbero 11, nell'armadio ne hai 10."]]);
+});
+
+test("mancante segnato essenziale dal generatore: importante anche se consigliato", () => {
+  // Rovaniemi a dicembre senza piumino: il generatore lo dice essenziale ma solo consigliato.
+  const r = uscitaApp({ mancanti_canonici: [
+      { tipo: "posseduto_ma_inadatto", slot: "Giacca per la neve", priorita: "consigliato", essential: true,
+        category: "Outerwear", subCategories: ["Down Jacket", "Rain Jacket"], warmth_richiesto: [5, 5],
+        impermeabilita_richiesta: 2, candidato_scartato: "Giacca antipioggia leggera", tappe: [] },
+      { tipo: "posseduto_ma_inadatto", slot: "Pantaloni per la sera", priorita: "consigliato", essential: false,
+        category: "Lower Body", subCategories: ["Jeans"], warmth_richiesto: [2, 3], candidato_scartato: "Jeans chiari estivi" }] },
+    { capi: [], essenziali: [] }, new Map());
+  assert.deepEqual(r.avvisi.map((a) => [a.livello, a.titolo, a.perche]), [
+    ["importante", "Manca un piumino per il viaggio", "Giacca antipioggia leggera non è abbastanza per il freddo e la pioggia previsti."],
+    ["utile", "Manca un paio di jeans per il viaggio", "Jeans chiari estivi non è abbastanza per il meteo previsto."]]);
+});
+
+test("bagaglio troppo pieno: frase sua, i capi da valutare, niente numeri", () => {
+  const gap = { slot: "volume del bagaglio", tipo: "volume_eccedente", category: "", essential: false, imposto: true,
+    priorita: "necessario", capienza: 30, volume: 41,
+    reason: "la valigia occupa 41 punti, il bagaglio ne regge 30: valuta di lasciare a casa uno di questi capi" };
+  const avviso = (extra: Record<string, unknown>) =>
+    uscitaApp({ mancanti_canonici: [{ ...gap, ...extra }] }, { capi: [], essenziali: [] }, new Map()).avvisi[0];
+  const tre = avviso({ da_valutare: ["Felpa grigia", "Maglione blu", "Jeans scuri"] });
+  assert.deepEqual([tre.codice, tre.livello, tre.titolo, tre.perche, tre.cerca], ["volume_eccedente", "importante",
+    "Il bagaglio è troppo pieno", "Valuta di lasciare a casa Felpa grigia, Maglione blu o Jeans scuri.", null]);
+  assert.equal(avviso({ da_valutare: ["Felpa grigia"] }).perche, "Valuta di lasciare a casa Felpa grigia.");
+  const nessuno = avviso({ da_valutare: [] });
+  assert.equal(nessuno.perche, "Quello che serve per questo viaggio non ci sta nel bagaglio scelto.");
+  assert.doesNotMatch(`${nessuno.titolo} ${nessuno.perche}`, /\d|manca/i);
+});
+
+test("quantita insufficiente: 'Ti serve più di'", () => {
+  const r = uscitaApp({ mancanti_canonici: [{ tipo: "quantita_insufficiente", priorita: "necessario",
+    category: "Lower Body", subCategories: ["Sweatpants"], tappe: ["Rovaniemi"] }] }, { capi: [], essenziali: [] }, new Map());
+  assert.equal(r.avvisi[0].titolo, "Ti serve più di un paio di pantaloni della tuta per Rovaniemi");
 });
 
 test("avvisi dai mancanti: importanti prima", () => {
@@ -81,7 +125,7 @@ test("posseduto_ma_inadatto: il candidato scartato spiega perche' non basta", ()
     candidato_scartato: "Giacca in pelle", candidato_warmth: 2 })] }, { capi: [], essenziali: [] }, new Map());
   assert.equal(r.avvisi[0].codice, "posseduto_ma_inadatto");
   assert.equal(r.avvisi[0].titolo, "Manca un cappotto per Reykjavik");
-  assert.equal(r.avvisi[0].perche, "Giacca in pelle non basta per il freddo previsto.");
+  assert.equal(r.avvisi[0].perche, "Giacca in pelle non è abbastanza per il freddo previsto.");
   assert.doesNotMatch(r.avvisi[0].perche, /capospalla|pila|\d/i);
 });
 

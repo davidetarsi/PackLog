@@ -25,7 +25,7 @@ export interface AvvisoApp {
 
 // Copy fisso (italiano, niente testo libero dal generatore): ogni frase nasce solo
 // dai campi strutturati del gap (category, subCategories, tipo, tappe, warmth_richiesto,
-// impermeabilita_richiesta, candidato_scartato). Mai la parola "capospalla", mai numeri.
+// impermeabilita_richiesta, candidato_scartato, da_valutare). Mai la parola "capospalla", mai numeri.
 const NOME_SOTTOCATEGORIA: Record<string, string> = {
   "T-Shirt": "una maglietta", "Shirt": "una camicia", "Polo": "una polo", "Hoodie": "una felpa con cappuccio",
   "Sweatshirt": "una felpa", "Sweater": "un maglione", "Tank Top": "una canottiera", "Crop Top": "un top",
@@ -64,26 +64,40 @@ function perTappe(g: Record_): string {
   return `per ${nomi.slice(0, -1).join(", ")} e ${nomi[nomi.length - 1]}`;
 }
 
-/** Il motivo del capo che manca, dai soli campi strutturati. */
+/** Il motivo del capo che manca, dai soli campi strutturati: il freddo e la pioggia, se servono entrambi. */
 function perMeteo(g: Record_): string {
   const acqua = Number(g.impermeabilita_richiesta ?? 0) >= 1 || Number(g.requiredWaterResistance ?? 0) >= 1;
-  if (acqua) return "per la pioggia prevista";
   const v = g.warmth_richiesto;
-  if (Array.isArray(v) && v.length === 2 && Number.isFinite(Number(v[0])) && Number(v[0]) >= 3) return "per il freddo previsto";
+  const freddo = Array.isArray(v) && v.length === 2 && Number.isFinite(Number(v[0])) && Number(v[0]) >= 3;
+  if (freddo && acqua) return "per il freddo e la pioggia previsti";
+  if (freddo) return "per il freddo previsto";
+  if (acqua) return "per la pioggia prevista";
   return "per il meteo previsto";
+}
+
+/** "A", "A o B", "A, B o C". */
+function inAlternativa(nomi: string[]): string {
+  if (nomi.length <= 1) return nomi.join("");
+  return `${nomi.slice(0, -1).join(", ")} o ${nomi[nomi.length - 1]}`;
 }
 
 /** Titolo e corpo di un avviso dai mancanti del generatore: solo copy fisso, mai il testo libero. */
 export function copyMancante(g: Record_): { titolo: string; perche: string } {
+  if (g.tipo === "volume_eccedente") {
+    const nomi = (Array.isArray(g.da_valutare) ? g.da_valutare : []).map(String).filter((n) => n.trim() !== "");
+    return { titolo: "Il bagaglio è troppo pieno",
+      perche: nomi.length ? `Valuta di lasciare a casa ${inAlternativa(nomi)}.`
+        : "Quello che serve per questo viaggio non ci sta nel bagaglio scelto." };
+  }
   const capo = nomeCapo(g);
   const tappe = perTappe(g);
   if (g.tipo === "quantita_insufficiente") {
-    return { titolo: `Servono più copie di ${capo} ${tappe}`,
+    return { titolo: `Ti serve più di ${capo} ${tappe}`,
       perche: "Nell'armadio di questa casa ne hai meno di quante ne servono." };
   }
   const candidato = typeof g.candidato_scartato === "string" ? g.candidato_scartato.trim() : "";
   if (g.tipo === "posseduto_ma_inadatto" && candidato) {
-    return { titolo: `Manca ${capo} ${tappe}`, perche: `${candidato} non basta ${perMeteo(g)}.` };
+    return { titolo: `Manca ${capo} ${tappe}`, perche: `${candidato} non è abbastanza ${perMeteo(g)}.` };
   }
   return { titolo: `Manca ${capo} ${tappe}`,
     perche: "Nell'armadio di questa casa non c'è niente di adatto al meteo previsto." };
@@ -122,10 +136,12 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
       motivo: { codice: c.motivo.codice, etichetta: c.motivo.etichetta, frase: c.motivo.frase },
     });
     if (quantita < c.quantita) {
+      // Un pezzo solo in meno non e' mai importante, nemmeno per un essenziale.
+      const essenziale = c.motivo.codice === "essenziale" || essenziali.has(id);
       avvisi.push({
         codice: CODICE_POCHI,
-        livello: c.motivo.codice === "essenziale" || essenziali.has(id) ? "importante" : "utile",
-        titolo: `Pochi ${c.item} per questo viaggio`,
+        livello: essenziale && c.quantita - tetto > 1 ? "importante" : "utile",
+        titolo: `Ti servono più pezzi di ${c.item}`,
         perche: `Ne servirebbero ${c.quantita}, nell'armadio ne hai ${tetto}.`,
         cerca: c.item,
       });
@@ -136,7 +152,8 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
     const { titolo, perche } = copyMancante(g);
     avvisi.push({
       codice: String(g.tipo),
-      livello: g.priorita === "necessario" ? "importante" : "utile",
+      // Importante se il generatore lo dice necessario o lo segna come essenziale (Rovaniemi senza piumino).
+      livello: g.priorita === "necessario" || vero(g.essential) ? "importante" : "utile",
       titolo,
       perche,
       cerca: null,
