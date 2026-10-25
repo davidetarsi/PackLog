@@ -262,3 +262,25 @@ test("giri DEV: gonna, vestito e cravatta solo se l'armadio ne ha gia' uno", () 
   // senza armadio (chiamate vecchie, test): niente filtro
   assert.equal(avvisiDi([cravatta]).length, 1);
 });
+
+test("giri DEV: sessanta giorni a Berlino senza lavatrice, avviso della lavanderia", () => {
+  const lav = (viaggio: Record<string, unknown>) =>
+    uscitaApp({ mancanti_canonici: [] }, vuoto, new Map(), { viaggio }).avvisi.map((a) => [a.codice, a.livello, a.titolo, a.perche]);
+  assert.deepEqual(lav({ giorni: 60, lavatrice: false }), [["lavanderia", "utile", "Prevedi una lavanderia",
+    "Il viaggio è lungo: la valigia conta di lavare i vestiti strada facendo."]]);
+  assert.deepEqual(lav({ giorni: 15 }), lav({ giorni: 60, lavatrice: false }));
+  assert.deepEqual(lav({ giorni: 14, lavatrice: false }), []);       // fino a due settimane no
+  assert.deepEqual(lav({ giorni: 60, lavatrice: true }), []);
+  assert.deepEqual(lav({ giorni: 30, lavatrice: false, tappe: [{ nome: "A", giorni: 15 }, { nome: "B", giorni: 15 }] }), []);
+});
+
+test("capienza del bagaglio: i litri contano, senza litri il tipo (Davide, 25 ottobre)", async () => {
+  const { capienzaBagaglio } = await import("../dopo.ts");
+  // gli stessi valori di capienza_bagaglio del bench
+  for (const [d, c] of [["zaino", 28], ["zaino da 20 litri", 14], ["Zaino 30 litri", 19], ["zaino da 40 litri", 25],
+    ["zaino da 45 litri", 28], ["zaino da 50 litri", 30], ["zaino da 60 litri", 60], ["Borsa rossa da 35 litri", 22],
+    ["trolley cabina", 30], ["valigia grande", 90], ["borsa a tracolla", 8], ["Valigia 100 l", 70],
+    ["zaino 2,5 litri", 8], ["zaino 0 litri", 28], ["", 60], [null, 60]] as [string | null, number][]) {
+    assert.equal(capienzaBagaglio(d), c, String(d));
+  }
+});

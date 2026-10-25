@@ -1,11 +1,13 @@
 // L'uscita per l'app: i capi come li vede l'utente (uno per capo, con la quantita'
 // da portare), il tetto sulle quantita' che ha davvero nell'armadio, e gli avvisi
 // su cio' che manca. Non tocca la scelta dei capi: lavora sul risultato del generatore.
+import { lavanderiaPresunta } from "./dopo.ts";
 import { vero } from "./py.ts";
 
 type Record_ = Record<string, any>;
 
 export const CODICE_POCHI = "pochi_pezzi";
+export const CODICE_LAVANDERIA = "lavanderia";
 
 export interface CapoApp {
   item_id: string;
@@ -203,9 +205,11 @@ function perQuestoArmadio(g: Record_, armadio: Set<string> | null): Record_ | nu
 }
 
 /** Capi (uniti per item_id, quantita' sommata, tetto dell'armadio) e avvisi della valigia.
- *  meteo: quello della risposta del generatore; armadio: le sottocategorie dei capi della casa. */
+ *  meteo: quello della risposta del generatore; armadio: le sottocategorie dei capi della casa;
+ *  viaggio: quello dell'app (giorni, lavatrice, tappe). */
 export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenziali: Record_[] },
-  salvate: Map<string, number | null>, contesto: { meteo?: Record_ | null; armadio?: Iterable<string> } = {},
+  salvate: Map<string, number | null>,
+  contesto: { meteo?: Record_ | null; armadio?: Iterable<string>; viaggio?: Record_ | null } = {},
 ): { capi: CapoApp[]; avvisi: AvvisoApp[] } {
   const armadio = contesto.armadio ? new Set(contesto.armadio) : null;
   // Lo stesso capo puo' stare in piu' tappe, come ideale e ripiego, o tra gli essenziali:
@@ -264,6 +268,16 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
       titolo,
       perche,
       cerca: null,
+    });
+  }
+
+  // Viaggio lungo in un posto solo, senza lavatrice: il generatore conta su un bucato
+  // (quantita' di due settimane), e l'utente deve saperlo (Davide, 25 ottobre).
+  const v = contesto.viaggio;
+  if (v && !(Array.isArray(v.tappe) && v.tappe.length) && lavanderiaPresunta(v.giorni, v.lavatrice)) {
+    avvisi.push({
+      codice: CODICE_LAVANDERIA, livello: "utile", titolo: "Prevedi una lavanderia",
+      perche: "Il viaggio è lungo: la valigia conta di lavare i vestiti strada facendo.", cerca: null,
     });
   }
 

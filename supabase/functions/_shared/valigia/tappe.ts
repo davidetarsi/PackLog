@@ -304,11 +304,12 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     attContesto.push(att);
   }
   const capienza = capienzaBagaglio(bagaglio);
-  const lavMt = Boolean(get(sc, "lavatrice", false)) ||
+  const lavEss = Boolean(get(sc, "lavatrice", false));
+  const lavMt = lavEss ||
     (K.CAMMINO_LAVA_A_MANO && rc.camminoAPiedi(sc.attivita, bagaglio, giorniTot));
   const r = strategySlots(testoModello, items, {
     giorni: giorniTot, lavatrice: lavMt, attivita: attBase, attivita_viaggio: attContesto,
-    lavatrice_essenziali: Boolean(get(sc, "lavatrice", false)),
+    lavatrice_essenziali: lavEss,
     temp_max_essenziali: (() => {
       const m = perTappa.map((t) => t.meteo.temp_max_media).filter((x) => x != null);
       return m.length ? Math.min(...m) : null;
