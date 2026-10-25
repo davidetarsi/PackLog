@@ -430,57 +430,51 @@ void main() {
   });
 
   group('DriftItemRepository - AI result persistence', () {
-    test('returns the actual number of existing items enriched', () async {
-      final now = DateTime(2026, 10, 14);
-      await database.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: 'ai-repository-house',
-          name: 'Casa AI',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      for (final id in ['existing-a', 'existing-b', 'already-scanned']) {
+    test(
+      'saves only the new items and leaves existing ones untouched',
+      () async {
+        final now = DateTime(2026, 10, 14);
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: 'ai-repository-house',
+            name: 'Casa AI',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
         await database.itemsDao.insertItem(
           ItemsCompanion.insert(
-            id: id,
+            id: 'already-scanned',
             houseId: 'ai-repository-house',
-            name: id,
+            name: 'Gia scansionato',
             category: ItemCategory.varie,
             createdAt: now,
             updatedAt: now,
-            aiMetadata: Value(id == 'already-scanned' ? '{"old":true}' : null),
+            aiMetadata: const Value('{"old":true}'),
           ),
         );
-      }
 
-      final count = await repository.saveAiItemsToHouse(
-        houseId: 'ai-repository-house',
-        newItems: [
-          ItemModel(
-            id: 'new-ai-item',
-            houseId: 'ai-repository-house',
-            name: 'Nuovo',
-            category: ItemCategory.vestiti,
-            createdAt: now,
-            updatedAt: now,
-          ),
-        ],
-        metadataByItemId: const {
-          'existing-a': '{"confidence":0.8}',
-          'existing-b': '{"confidence":0.9}',
-          'already-scanned': '{"confidence":1}',
-          'missing': '{"confidence":1}',
-        },
-      );
+        await repository.saveAiItemsToHouse(
+          houseId: 'ai-repository-house',
+          newItems: [
+            ItemModel(
+              id: 'new-ai-item',
+              houseId: 'ai-repository-house',
+              name: 'Nuovo',
+              category: ItemCategory.vestiti,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          ],
+        );
 
-      expect(count, 2);
-      expect((await repository.getItemById('new-ai-item')).name, 'Nuovo');
-      expect(
-        (await repository.getItemById('already-scanned')).aiMetadata,
-        '{"old":true}',
-      );
-    });
+        expect((await repository.getItemById('new-ai-item')).name, 'Nuovo');
+        expect(
+          (await repository.getItemById('already-scanned')).aiMetadata,
+          '{"old":true}',
+        );
+      },
+    );
 
     test('rejects new items from another house before writing', () async {
       final now = DateTime(2026, 10, 14);
@@ -497,7 +491,6 @@ void main() {
         repository.saveAiItemsToHouse(
           houseId: 'requested-house',
           newItems: [item],
-          metadataByItemId: const {},
         ),
         throwsArgumentError,
       );
@@ -528,7 +521,6 @@ void main() {
         repository.saveAiItemsToHouse(
           houseId: 'ai-error-house',
           newItems: [duplicate.copyWith(name: 'Duplicato')],
-          metadataByItemId: const {},
         ),
         throwsA(isA<EntitySaveException>()),
       );

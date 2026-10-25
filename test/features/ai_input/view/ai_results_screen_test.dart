@@ -20,6 +20,7 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
+import 'package:pack_log/features/items/view/item_sheet.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/universal_action_bar.dart';
@@ -180,9 +181,8 @@ Future<_TestApp> _openResults(
     () => itemRepository.saveAiItemsToHouse(
       houseId: any(named: 'houseId'),
       newItems: any(named: 'newItems'),
-      metadataByItemId: any(named: 'metadataByItemId'),
     ),
-  ).thenAnswer((_) async => 0);
+  ).thenAnswer((_) async {});
   final sync = _MockSyncOrchestrator();
   when(() => sync.requestSync()).thenReturn(null);
   final analytics = _MockCoreAnalyticsService();
@@ -261,7 +261,9 @@ void main() {
     expect(find.text('T-shirt bianca'), findsOneWidget);
     expect(find.text('Jeans slim blu scuro'), findsOneWidget);
     expect(find.text('Salva: 3 nuovi'), findsOneWidget);
-    expect(find.text('T-shirt · bianco · tinta unita'), findsOneWidget);
+    expect(find.text('T-shirt · Bianco'), findsOneWidget);
+    expect(find.text('Camicia · Azzurro'), findsOneWidget);
+    expect(find.text('Pantaloni · Blu'), findsOneWidget);
     expect(find.text('Foto 1 · 2 capi'), findsOneWidget);
     expect(find.byKey(const Key('ai_already_here')), findsNWidgets(3));
     await app.finish();
@@ -289,19 +291,6 @@ void main() {
     expect(find.text('1 item identified'), findsOneWidget);
     expect(find.text('Photo 1 · 1 item'), findsOneWidget);
     expect(find.text('Save: 1 new'), findsOneWidget);
-
-    (app.container.read(aiImportNotifierProvider.notifier) as _FakeAiImport)
-        .emit(
-          oneItem.copyWith(
-            photoGroups: [
-              oneItem.photoGroups.single.copyWith(
-                linkedItemIds: const {0: 'item-0'},
-              ),
-            ],
-          ),
-        );
-    await tester.pump();
-    expect(find.text('Save: 1 updated'), findsOneWidget);
     await app.finish();
   });
 
@@ -313,10 +302,12 @@ void main() {
       of: find.byKey(const ValueKey('ai_result_0_1')),
       matching: find.byType(Checkbox),
     );
+    await tester.ensureVisible(checkbox);
     await tester.tap(checkbox);
     await tester.pumpAndSettle();
     expect(find.text('Salva: 2 nuovi'), findsOneWidget);
     expect(find.text('T-shirt bianca'), findsOneWidget);
+    await tester.ensureVisible(checkbox);
     await tester.tap(checkbox);
     await tester.pumpAndSettle();
     expect(find.text('Salva: 3 nuovi'), findsOneWidget);
@@ -332,6 +323,7 @@ void main() {
       (1, 'T-shirt rinominata'),
     ]) {
       final card = find.byKey(ValueKey('ai_result_0_$index'));
+      await tester.ensureVisible(card);
       await tester.tap(
         find.descendant(
           of: card,
@@ -351,7 +343,6 @@ void main() {
       () => app.itemRepository.saveAiItemsToHouse(
         houseId: captureAny(named: 'houseId'),
         newItems: captureAny(named: 'newItems'),
-        metadataByItemId: captureAny(named: 'metadataByItemId'),
       ),
     ).captured;
     final savedItems = captured[1] as List<ItemModel>;
@@ -366,12 +357,11 @@ void main() {
     tester,
   ) async {
     final app = await _openResults(tester);
-    final saveCompleter = Completer<int>();
+    final saveCompleter = Completer<void>();
     when(
       () => app.itemRepository.saveAiItemsToHouse(
         houseId: any(named: 'houseId'),
         newItems: any(named: 'newItems'),
-        metadataByItemId: any(named: 'metadataByItemId'),
       ),
     ).thenAnswer((_) => saveCompleter.future);
 
@@ -386,11 +376,10 @@ void main() {
       () => app.itemRepository.saveAiItemsToHouse(
         houseId: any(named: 'houseId'),
         newItems: any(named: 'newItems'),
-        metadataByItemId: any(named: 'metadataByItemId'),
       ),
     ).called(1);
 
-    saveCompleter.complete(0);
+    saveCompleter.complete();
     await tester.pumpAndSettle();
 
     expect(find.text('DETAIL $kHomeId'), findsOneWidget);
@@ -475,79 +464,31 @@ void main() {
     await app.finish();
   });
 
-  testWidgets('linked id mostra dettaglio aggiornato e permette Annulla', (
-    tester,
-  ) async {
-    final initial = aiResultsState();
-    final state = initial.copyWith(
-      photoGroups: [
-        initial.photoGroups.first.copyWith(linkedItemIds: const {0: 'item-0'}),
-        initial.photoGroups.last,
-      ],
+  testWidgets('il tocco sui dettagli apre la scheda del capo', (tester) async {
+    final app = await _openResults(tester);
+    final details = find.descendant(
+      of: find.byKey(const ValueKey('ai_result_0_0')),
+      matching: find.byKey(const Key('ai_result_details')),
     );
-    final app = await _openResults(tester, state: state);
-    expect(
-      find.text('Già in casa: «T-shirt bianca» · dettagli aggiunti'),
-      findsOneWidget,
-    );
-    expect(find.text('Salva: 2 nuovi · 1 aggiornato'), findsOneWidget);
-    await tester.tap(find.text('Annulla').first);
+    await tester.ensureVisible(details);
+    await tester.tap(details);
     await tester.pumpAndSettle();
-    expect(find.text('Salva: 3 nuovi'), findsOneWidget);
+    expect(find.byType(ItemSheet), findsOneWidget);
     await app.finish();
   });
-
-  testWidgets(
-    'linked id senza nome caricato resta collegato con testo neutro',
-    (tester) async {
-      final initial = aiResultsState();
-      final state = initial.copyWith(
-        photoGroups: [
-          initial.photoGroups.first.copyWith(
-            linkedItemIds: const {0: 'missing'},
-          ),
-          initial.photoGroups.last,
-        ],
-      );
-      final app = await _openResults(tester, state: state);
-      expect(
-        find.text('Oggetto già in casa · dettagli aggiunti'),
-        findsOneWidget,
-      );
-      expect(find.text('Salva: 2 nuovi · 1 aggiornato'), findsOneWidget);
-      await app.finish();
-    },
-  );
-
-  testWidgets(
-    'linked id resta distinto da un nuovo capo mentre la casa carica',
-    (tester) async {
-      final initial = aiResultsState();
-      final state = initial.copyWith(
-        photoGroups: [
-          initial.photoGroups.first.copyWith(
-            linkedItemIds: const {0: 'item-0'},
-          ),
-          initial.photoGroups.last,
-        ],
-      );
-      final app = await _openResults(tester, state: state, loadingItems: true);
-      expect(
-        find.text('Oggetto già in casa · dettagli aggiunti'),
-        findsOneWidget,
-      );
-      expect(find.text('Salva: 2 nuovi · 1 aggiornato'), findsOneWidget);
-      await app.finish();
-    },
-  );
 
   testWidgets('anteprima mostra tutta la foto e apre il visualizzatore', (
     tester,
   ) async {
     final app = await _openResults(tester);
     expect(tester.widget<Image>(find.byType(Image).first).fit, BoxFit.contain);
-    await tester.tap(find.byKey(const Key('ai_photo_preview')).first);
+    // Il decode della foto avviene fuori dal clock finto: il riquadro non ha
+    // ancora dimensioni, quindi si invoca il tocco direttamente.
+    tester
+        .widget<InkWell>(find.byKey(const Key('ai_photo_preview')).first)
+        .onTap!();
     await tester.pumpAndSettle();
+
     expect(find.byKey(const Key('ai_photo_viewer')), findsOneWidget);
     expect(find.byType(InteractiveViewer), findsOneWidget);
     await app.finish();

@@ -35,12 +35,10 @@ abstract class ItemRepository {
   /// Inserisce multipli oggetti in una singola transazione atomica
   Future<void> insertMultipleItems(List<ItemModel> models);
 
-  /// Salva atomicamente gli item AI nuovi e i metadati per quelli esistenti.
-  /// Ritorna quanti record esistenti sono stati arricchiti realmente.
-  Future<int> saveAiItemsToHouse({
+  /// Salva atomicamente i nuovi oggetti della scansione AI nella casa indicata.
+  Future<void> saveAiItemsToHouse({
     required String houseId,
     required List<ItemModel> newItems,
-    required Map<String, String> metadataByItemId,
   });
 
   /// Ottiene gli oggetti di una casa filtrati per spazio specifico

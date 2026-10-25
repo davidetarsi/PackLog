@@ -44,14 +44,14 @@ class AiImportNotifier extends _$AiImportNotifier {
   List<ClothingAnalysisResult> get allResults =>
       state.photoGroups.expand((g) => g.results).toList();
 
-  /// I capi che il salvataggio scrive (nuovi o da arricchire), con la loro
+  /// I capi che il salvataggio scrive: quelli non esclusi, con la loro
   /// posizione nella scansione.
   Iterable<({int group, int item, ClothingAnalysisResult result})>
   get _savedEntries sync* {
     for (var g = 0; g < state.photoGroups.length; g++) {
       final group = state.photoGroups[g];
       for (var i = 0; i < group.results.length; i++) {
-        if (group.linkedItemIds.containsKey(i) || !group.excluded.contains(i)) {
+        if (!group.excluded.contains(i)) {
           yield (group: g, item: i, result: group.results[i]);
         }
       }
@@ -59,21 +59,10 @@ class AiImportNotifier extends _$AiImportNotifier {
   }
 
   List<ClothingAnalysisResult> get _newResults => [
-    for (final group in state.photoGroups)
-      for (var i = 0; i < group.results.length; i++)
-        if (!group.excluded.contains(i) && !group.linkedItemIds.containsKey(i))
-          group.results[i],
+    for (final entry in _savedEntries) entry.result,
   ];
 
-  Map<String, ClothingAnalysisResult> get _links => {
-    for (final group in state.photoGroups)
-      for (final entry in group.linkedItemIds.entries)
-        entry.value: group.results[entry.key],
-  };
-
   int get newCount => _newResults.length;
-
-  int get updatedCount => _links.length;
 
   // ── Processing ────────────────────────────────────────────────────────────
 
@@ -198,27 +187,6 @@ class AiImportNotifier extends _$AiImportNotifier {
     _replaceGroup(groupIndex, group.copyWith(excluded: excluded));
   }
 
-  void linkToExisting(int groupIndex, int itemIndex, String itemId) {
-    final groups = List<PhotoGroup>.from(state.photoGroups);
-    for (var index = 0; index < groups.length; index++) {
-      final links = Map<int, String>.from(groups[index].linkedItemIds)
-        ..removeWhere((_, linkedId) => linkedId == itemId);
-      groups[index] = groups[index].copyWith(linkedItemIds: links);
-    }
-    final target = groups[groupIndex];
-    groups[groupIndex] = target.copyWith(
-      linkedItemIds: {...target.linkedItemIds, itemIndex: itemId},
-    );
-    state = state.copyWith(photoGroups: groups);
-  }
-
-  void unlink(int groupIndex, int itemIndex) {
-    final group = _group(groupIndex);
-    final linkedItemIds = Map<int, String>.from(group.linkedItemIds)
-      ..remove(itemIndex);
-    _replaceGroup(groupIndex, group.copyWith(linkedItemIds: linkedItemIds));
-  }
-
   void updateItemName(int groupIndex, int itemIndex, String name) {
     final current = _group(groupIndex).results[itemIndex];
     updateResult(groupIndex, itemIndex, current.copyWith(name: name));
@@ -241,13 +209,7 @@ class AiImportNotifier extends _$AiImportNotifier {
 
   void setSelectedHouseId(String id) {
     if (state.selectedHouseId == id) return;
-    state = state.copyWith(
-      selectedHouseId: id,
-      photoGroups: [
-        for (final group in state.photoGroups)
-          group.copyWith(linkedItemIds: const <int, String>{}),
-      ],
-    );
+    state = state.copyWith(selectedHouseId: id);
   }
 
   void reset() {
@@ -283,8 +245,7 @@ class AiImportNotifier extends _$AiImportNotifier {
     }
 
     final results = _newResults;
-    final links = _links;
-    if (results.isEmpty && links.isEmpty) return;
+    if (results.isEmpty) return;
 
     state = state.copyWith(isLoading: true);
     try {
@@ -304,26 +265,14 @@ class AiImportNotifier extends _$AiImportNotifier {
           )
           .toList();
 
-      final metadataByItemId = {
-        for (final entry in links.entries)
-          entry.key: jsonEncode(entry.value.toJson()),
-      };
-      final updated = await ref
+      await ref
           .read(itemRepositoryProvider)
-          .saveAiItemsToHouse(
-            houseId: houseId,
-            newItems: items,
-            metadataByItemId: metadataByItemId,
-          );
+          .saveAiItemsToHouse(houseId: houseId, newItems: items);
       ref.invalidate(itemNotifierProvider(houseId));
       ref.read(syncOrchestratorProvider).requestSync();
       ref
           .read(coreAnalyticsServiceProvider)
-          .trackAiItemsSaved(
-            count: items.length,
-            isOnboarding: false,
-            updated: updated,
-          );
+          .trackAiItemsSaved(count: items.length, isOnboarding: false);
       _trackScanEdits();
       _analyzed.clear();
       state = const AiImportState();

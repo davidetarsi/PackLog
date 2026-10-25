@@ -893,26 +893,6 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      8,
-      'ai-risultati',
-      'collegato',
-      route: '/houses/:id/ai-import/results',
-      source: _aiResults,
-      description: 'T-shirt riconosciuta collegata all’oggetto già presente.',
-      setup: AppSetup(
-        extraOverrides: [
-          aiImportNotifierProvider.overrideWith(FakeAiImport.new),
-        ],
-      ),
-      steps: (app) async {
-        await _houseDetail(app);
-        await app.push('/houses/$kHomeId/ai-import/results');
-        await _emitAi(app, aiResultsState());
-        await app.tap(find.byKey(const Key('ai_already_here')).at(1));
-        await app.tap(find.byKey(const Key('add_details_item-0')));
-      },
-    ),
-    Scenario(
       9,
       'ai-risultati',
       'casa-vuota',
