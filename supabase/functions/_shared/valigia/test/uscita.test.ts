@@ -62,8 +62,8 @@ test("mancante segnato essenziale dal generatore: importante anche se consigliat
         category: "Lower Body", subCategories: ["Jeans"], warmth_richiesto: [2, 3], candidato_scartato: "Jeans chiari estivi" }] },
     { capi: [], essenziali: [] }, new Map());
   assert.deepEqual(r.avvisi.map((a) => [a.livello, a.titolo, a.perche]), [
-    ["importante", "Manca un piumino per il viaggio", "Giacca antipioggia leggera non è abbastanza per il freddo e la pioggia previsti."],
-    ["utile", "Manca un paio di jeans per il viaggio", "Jeans chiari estivi non è abbastanza per il meteo previsto."]]);
+    ["importante", "Manca un piumino per il viaggio", "Il più simile che hai, Giacca antipioggia leggera, non è adatto al freddo e alla pioggia previsti."],
+    ["utile", "Manca un paio di jeans per il viaggio", "Il più simile che hai, Jeans chiari estivi, non è adatto a questo viaggio."]]);
 });
 
 test("bagaglio troppo pieno: frase sua, i capi da valutare, niente numeri", () => {
@@ -110,7 +110,7 @@ test("copy dei mancanti: nessuna parola del generatore, niente numeri, tappa nel
     { capi: [], essenziali: [] }, new Map());
   const [a] = r.avvisi;
   assert.equal(a.titolo, "Manca un cappotto per Reykjavik");
-  assert.equal(a.perche, "Nell'armadio di questa casa non c'è niente di adatto al meteo previsto.");
+  assert.equal(a.perche, "Nell'armadio di questa casa non c'è niente di adatto al freddo previsto.");
   assert.equal(a.cerca, null);
   assert.equal(a.codice, "assente");
   for (const testo of [a.titolo, a.perche]) {
@@ -125,7 +125,7 @@ test("posseduto_ma_inadatto: il candidato scartato spiega perche' non basta", ()
     candidato_scartato: "Giacca in pelle", candidato_warmth: 2 })] }, { capi: [], essenziali: [] }, new Map());
   assert.equal(r.avvisi[0].codice, "posseduto_ma_inadatto");
   assert.equal(r.avvisi[0].titolo, "Manca un cappotto per Reykjavik");
-  assert.equal(r.avvisi[0].perche, "Giacca in pelle non è abbastanza per il freddo previsto.");
+  assert.equal(r.avvisi[0].perche, "Il più simile che hai, Giacca in pelle, non è adatto al freddo previsto.");
   assert.doesNotMatch(r.avvisi[0].perche, /capospalla|pila|\d/i);
 });
 

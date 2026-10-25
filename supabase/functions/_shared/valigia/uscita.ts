@@ -49,58 +49,73 @@ const NOME_CATEGORIA: Record<string, string> = {
   "Shoes": "un paio di scarpe", "Outerwear": "una giacca", "Accessory": "un accessorio",
 };
 
-/** Il capo come frase: la prima sottocategoria che conosciamo, altrimenti la categoria, altrimenti "un capo". */
-function nomeCapo(g: Record_): string {
+// Il meteo si nomina solo per i capi che lo riguardano: niente "pioggia" per un paio di
+// infradito, niente "freddo" per un costume. Altrimenti la frase dice "a questo viaggio".
+const CONTRO_LA_PIOGGIA = new Set(["Coat", "Rain Jacket", "Down Jacket", "Windbreaker", "Ski Jacket", "Ski Suit",
+  "Casual Jacket", "Boots", "Hiking Boots", "Snow Boots", "Sneakers", "Dress Shoes", "Loafers", "Ski Pants",
+  "Cap/Hat", "Umbrella"]);
+const CATEGORIE_CONTRO_LA_PIOGGIA = new Set(["Outerwear"]);
+const MAI_PER_IL_FREDDO = new Set(["T-Shirt", "Polo", "Tank Top", "Crop Top", "Shorts", "Swimwear", "Sandals",
+  "Flip-Flops", "Water Shoes", "Sunglasses", "Umbrella", "Wetsuit", "Belt", "Tie", "Jewelry", "Watch", "Bag"]);
+
+/** Il capo del gap: la prima sottocategoria che conosciamo, altrimenti la categoria, altrimenti "un capo". */
+function capoDelGap(g: Record_): { nome: string; sub: string | null; categoria: string } {
+  const categoria = String(g.category ?? "");
   const subs: unknown[] = Array.isArray(g.subCategories) ? g.subCategories : [];
-  for (const s of subs) if (typeof s === "string" && NOME_SOTTOCATEGORIA[s]) return NOME_SOTTOCATEGORIA[s];
-  return NOME_CATEGORIA[String(g.category ?? "")] ?? "un capo";
+  for (const s of subs) if (typeof s === "string" && NOME_SOTTOCATEGORIA[s]) return { nome: NOME_SOTTOCATEGORIA[s], sub: s, categoria };
+  return { nome: NOME_CATEGORIA[categoria] ?? "un capo", sub: null, categoria };
 }
 
-/** "Reykjavik", "Reykjavik e Akureyri", "A, B e C"; senza tappe: il viaggio intero. */
-function perTappe(g: Record_): string {
-  const nomi = (Array.isArray(g.tappe) ? g.tappe : []).map(String).filter((n) => n.trim() !== "");
-  if (!nomi.length) return "per il viaggio";
-  if (nomi.length === 1) return `per ${nomi[0]}`;
-  return `per ${nomi.slice(0, -1).join(", ")} e ${nomi[nomi.length - 1]}`;
-}
-
-/** Il motivo del capo che manca, dai soli campi strutturati: il freddo e la pioggia, se servono entrambi. */
-function perMeteo(g: Record_): string {
-  const acqua = Number(g.impermeabilita_richiesta ?? 0) >= 1 || Number(g.requiredWaterResistance ?? 0) >= 1;
-  const v = g.warmth_richiesto;
-  const freddo = Array.isArray(v) && v.length === 2 && Number.isFinite(Number(v[0])) && Number(v[0]) >= 3;
-  if (freddo && acqua) return "per il freddo e la pioggia previsti";
-  if (freddo) return "per il freddo previsto";
-  if (acqua) return "per la pioggia prevista";
-  return "per il meteo previsto";
-}
-
-/** "A", "A o B", "A, B o C". */
-function inAlternativa(nomi: string[]): string {
+/** "A", "A e B", "A, B e C" (oppure con "o"), senza nomi vuoti ne' ripetuti. */
+function elenco(valori: unknown[], congiunzione: "e" | "o"): string {
+  const nomi = [...new Set(valori.map((n) => String(n ?? "").trim()).filter((n) => n !== ""))];
   if (nomi.length <= 1) return nomi.join("");
-  return `${nomi.slice(0, -1).join(", ")} o ${nomi[nomi.length - 1]}`;
+  return `${nomi.slice(0, -1).join(", ")} ${congiunzione} ${nomi[nomi.length - 1]}`;
 }
 
-/** Titolo e corpo di un avviso dai mancanti del generatore: solo copy fisso, mai il testo libero. */
+/** "per Reykjavik", "per Reykjavik e Akureyri"; senza tappe: il viaggio intero. */
+function perTappe(g: Record_): string {
+  const nomi = elenco(Array.isArray(g.tappe) ? g.tappe : [], "e");
+  return nomi ? `per ${nomi}` : "per il viaggio";
+}
+
+/** A cosa non basta quello che c'e': il freddo e la pioggia solo se il capo li riguarda. */
+function adattoA(g: Record_, capo: { sub: string | null; categoria: string }): string {
+  const pioggiaSensata = capo.sub ? CONTRO_LA_PIOGGIA.has(capo.sub) : CATEGORIE_CONTRO_LA_PIOGGIA.has(capo.categoria);
+  const freddoSensato = !(capo.sub && MAI_PER_IL_FREDDO.has(capo.sub));
+  const acqua = pioggiaSensata &&
+    (Number(g.impermeabilita_richiesta ?? 0) >= 1 || Number(g.requiredWaterResistance ?? 0) >= 1);
+  const v = g.warmth_richiesto;
+  const freddo = freddoSensato && Array.isArray(v) && v.length === 2 && Number.isFinite(Number(v[0])) && Number(v[0]) >= 3;
+  if (freddo && acqua) return "al freddo e alla pioggia previsti";
+  if (freddo) return "al freddo previsto";
+  if (acqua) return "alla pioggia prevista";
+  return "a questo viaggio";
+}
+
+/** Titolo e corpo di un avviso dai mancanti del generatore: solo copy fisso, mai il testo libero.
+ *  Le frasi non accordano nulla col nome del capo dell'utente ("Il più simile che hai, X, ..."),
+ *  cosi' reggono singolari e plurali. */
 export function copyMancante(g: Record_): { titolo: string; perche: string } {
   if (g.tipo === "volume_eccedente") {
-    const nomi = (Array.isArray(g.da_valutare) ? g.da_valutare : []).map(String).filter((n) => n.trim() !== "");
+    const nomi = elenco(Array.isArray(g.da_valutare) ? g.da_valutare : [], "o");
     return { titolo: "Il bagaglio è troppo pieno",
-      perche: nomi.length ? `Valuta di lasciare a casa ${inAlternativa(nomi)}.`
+      perche: nomi ? `Valuta di lasciare a casa ${nomi}.`
         : "Quello che serve per questo viaggio non ci sta nel bagaglio scelto." };
   }
-  const capo = nomeCapo(g);
+  const capo = capoDelGap(g);
   const tappe = perTappe(g);
   if (g.tipo === "quantita_insufficiente") {
-    return { titolo: `Ti serve più di ${capo} ${tappe}`,
+    return { titolo: `Ti serve più di ${capo.nome} ${tappe}`,
       perche: "Nell'armadio di questa casa ne hai meno di quante ne servono." };
   }
   const candidato = typeof g.candidato_scartato === "string" ? g.candidato_scartato.trim() : "";
   if (g.tipo === "posseduto_ma_inadatto" && candidato) {
-    return { titolo: `Manca ${capo} ${tappe}`, perche: `${candidato} non è abbastanza ${perMeteo(g)}.` };
+    return { titolo: `Manca ${capo.nome} ${tappe}`,
+      perche: `Il più simile che hai, ${candidato}, non è adatto ${adattoA(g, capo)}.` };
   }
-  return { titolo: `Manca ${capo} ${tappe}`,
-    perche: "Nell'armadio di questa casa non c'è niente di adatto al meteo previsto." };
+  return { titolo: `Manca ${capo.nome} ${tappe}`,
+    perche: `Nell'armadio di questa casa non c'è niente di adatto ${adattoA(g, capo)}.` };
 }
 
 /** Capi (uniti per item_id, quantita' sommata, tetto dell'armadio) e avvisi della valigia. */
@@ -141,9 +156,9 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
       avvisi.push({
         codice: CODICE_POCHI,
         livello: essenziale && c.quantita - tetto > 1 ? "importante" : "utile",
-        titolo: `Ti servono più pezzi di ${c.item}`,
+        titolo: `Ti servono più pezzi di ${c.item.trim()}`,
         perche: `Ne servirebbero ${c.quantita}, nell'armadio ne hai ${tetto}.`,
-        cerca: c.item,
+        cerca: c.item.trim(),
       });
     }
   }
@@ -160,8 +175,18 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
     });
   }
 
+  // Due mancanti diversi possono dare la stessa frase (due paia di stivali per la neve):
+  // un avviso solo, importante se lo era almeno uno dei due.
+  const unici = new Map<string, Omit<AvvisoApp, "id">>();
+  for (const a of avvisi) {
+    const chiave = `${a.titolo}\n${a.perche}`;
+    const gia = unici.get(chiave);
+    if (!gia) unici.set(chiave, a);
+    else if (a.livello === "importante") gia.livello = "importante";
+  }
+
   // Prima gli importanti; a parita' di livello l'ordine di sopra (sort e' stabile).
-  const ordinati = avvisi
+  const ordinati = [...unici.values()]
     .sort((a, b) => Number(b.livello === "importante") - Number(a.livello === "importante"))
     .map((a, i) => ({ id: `${a.codice}:${i}`, ...a }));
   return { capi, avvisi: ordinati };
