@@ -10,6 +10,7 @@ import '../model/item_model.dart';
 import '../repositories/item_repository.dart';
 import 'item_metadata_service_provider.dart';
 import 'item_selection_provider.dart';
+import 'user_colors_provider.dart';
 
 part 'item_provider.g.dart';
 
@@ -53,6 +54,7 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
         totalItems: items.length,
       ),
     );
+    ref.invalidate(userColorsProvider);
     if (model.aiMetadata == null && model.name.trim().isNotEmpty) {
       unawaited(_schedaDalNome(model, categoryChosen: categoryChosen));
     }
@@ -89,6 +91,7 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
         operation: () => _repo.updateItem(updated),
         reload: () => _repo.getItemsByHouseId(houseId),
         rethrowOnError: false,
+        onSuccess: (_) => ref.invalidate(userColorsProvider),
       );
     } catch (e) {
       debugPrint('[ItemNotifier] scheda dal nome non salvata: $e');
@@ -99,8 +102,10 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
     operation: () => _repo.updateItem(model),
     reload: () => _repo.getItemsByHouseId(houseId),
     rethrowOnly: true,
-    onSuccess: (_) =>
-        _analytics.trackItemUpdated(category: model.category.name),
+    onSuccess: (_) {
+      _analytics.trackItemUpdated(category: model.category.name);
+      ref.invalidate(userColorsProvider);
+    },
   );
 
   Future<void> deleteItem(String id, String houseId) async {

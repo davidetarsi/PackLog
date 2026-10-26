@@ -2,26 +2,30 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../shared/theme/app_spacing.dart';
+import '../../../items/model/clothing_labels.dart';
 import '../../model/clothing_analysis_result.dart';
 
-/// Caratteristiche principali riconosciute dall'AI.
-String aiDetailsLine(ClothingAnalysisResult result) => [
-  result.subCategory,
-  result.baseColor.toLowerCase(),
-  result.pattern.toLowerCase(),
-].where((value) => value.trim().isNotEmpty).join(' · ');
+/// Valore non utile da mostrare: vuoto o 'N/A'.
+bool _isMissing(String value) =>
+    value.trim().isEmpty || value.trim().toUpperCase() == 'N/A';
 
-/// Riga di un capo riconosciuto con inclusione, modifica del nome e collegamento.
+/// Riga dei dettagli del capo: tipo e colore di base, tradotti e nell'ordine
+/// della scheda. I valori vuoti o 'N/A' non compaiono.
+String aiDetailsLine(ClothingAnalysisResult result) => [
+  if (!_isMissing(result.subCategory)) clothingTypeLabel(result.subCategory),
+  colorLabel(result.baseColor),
+].where((value) => value.isNotEmpty).join(' · ');
+
+/// Riga di un capo riconosciuto: inclusione, nome modificabile sul posto,
+/// dettagli (con accesso alla scheda) e "C'è già?".
 class AiResultCard extends StatefulWidget {
   final ClothingAnalysisResult item;
   final TextEditingController controller;
   final ValueChanged<String> onNameChanged;
   final bool included;
   final ValueChanged<bool> onIncludedChanged;
-  final bool isLinked;
-  final String? linkedItemName;
   final VoidCallback? onAlreadyHere;
-  final VoidCallback? onUnlink;
+  final VoidCallback? onOpenDetails;
   final bool enabled;
 
   const AiResultCard({
@@ -31,10 +35,8 @@ class AiResultCard extends StatefulWidget {
     required this.onNameChanged,
     required this.included,
     required this.onIncludedChanged,
-    this.isLinked = false,
-    this.linkedItemName,
+    required this.onOpenDetails,
     this.onAlreadyHere,
-    this.onUnlink,
     this.enabled = true,
   });
 
@@ -53,24 +55,28 @@ class _AiResultCardState extends State<AiResultCard> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final linked = widget.isLinked || widget.linkedItemName != null;
-    final active = widget.included && !linked;
+    final active = widget.included;
     final muted = colors.onSurface.withValues(alpha: 0.38);
-    final nameStyle = textTheme.bodyLarge?.copyWith(
-      fontWeight: FontWeight.w500,
+    final nameStyle = textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w600,
       color: active ? colors.onSurface : muted,
     );
-    final detailStyle = textTheme.bodySmall?.copyWith(
+    final detailStyle = textTheme.bodyMedium?.copyWith(
       color: active ? colors.onSurfaceVariant : muted,
     );
+    final doubtStyle = textTheme.bodyMedium?.copyWith(
+      color: active ? colors.onSurface : muted,
+    );
+    final doubts = widget.item.doubts;
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: context.spacingXs),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Checkbox(
             value: active,
-            onChanged: !widget.enabled || linked
+            onChanged: !widget.enabled
                 ? null
                 : (value) => widget.onIncludedChanged(value ?? false),
           ),
@@ -116,28 +122,51 @@ class _AiResultCardState extends State<AiResultCard> {
                     ),
                   ),
                 SizedBox(height: context.spacingXs / 2),
-                Text(
-                  linked
-                      ? widget.linkedItemName == null
-                            ? 'ai_import.linked_unknown'.tr()
-                            : 'ai_import.linked'.tr(
-                                args: [widget.linkedItemName!],
-                              )
-                      : aiDetailsLine(widget.item),
-                  style: detailStyle,
+                InkWell(
+                  key: const Key('ai_result_details'),
+                  onTap: widget.enabled ? widget.onOpenDetails : null,
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          aiDetailsLine(widget.item),
+                          style: detailStyle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      SizedBox(width: context.spacingXs),
+                      Icon(
+                        Icons.chevron_right,
+                        size: context.iconSizeSm,
+                        color: active ? colors.onSurfaceVariant : muted,
+                      ),
+                    ],
+                  ),
                 ),
+                if (doubts.isNotEmpty) ...[
+                  SizedBox(height: context.spacingXs / 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.help_outline,
+                        size: context.iconSizeSm,
+                        color: active ? colors.onSurface : muted,
+                      ),
+                      SizedBox(width: context.spacingXs),
+                      Flexible(
+                        child: Text(
+                          'ai_import.to_check'.plural(doubts.length),
+                          style: doubtStyle,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
-          if (linked && widget.onUnlink != null)
-            TextButton(
-              style: TextButton.styleFrom(
-                foregroundColor: colors.onSurfaceVariant,
-              ),
-              onPressed: widget.enabled ? widget.onUnlink : null,
-              child: Text('common.undo'.tr()),
-            )
-          else if (widget.onAlreadyHere != null)
+          if (widget.onAlreadyHere != null)
             TextButton(
               key: const Key('ai_already_here'),
               style: TextButton.styleFrom(

@@ -24,6 +24,10 @@ abstract class ItemRepository {
   Future<void> addItem(ItemModel model);
   Future<ItemModel> getItemById(String id);
   Future<List<ItemModel>> getAllItems();
+
+  /// Colori di base già usati dai capi dell'utente (dai metadati), senza
+  /// vuoti e 'N/A', deduplicati e ordinati per frequenza poi alfabetico.
+  Future<List<String>> getUsedColors();
   Future<List<ItemModel>> getItemsByHouseId(String houseId);
   Future<bool> deleteItem(String id);
   Future<void> updateItem(ItemModel model);
@@ -31,12 +35,10 @@ abstract class ItemRepository {
   /// Inserisce multipli oggetti in una singola transazione atomica
   Future<void> insertMultipleItems(List<ItemModel> models);
 
-  /// Salva atomicamente gli item AI nuovi e i metadati per quelli esistenti.
-  /// Ritorna quanti record esistenti sono stati arricchiti realmente.
-  Future<int> saveAiItemsToHouse({
+  /// Salva atomicamente i nuovi oggetti della scansione AI nella casa indicata.
+  Future<void> saveAiItemsToHouse({
     required String houseId,
     required List<ItemModel> newItems,
-    required Map<String, String> metadataByItemId,
   });
 
   /// Ottiene gli oggetti di una casa filtrati per spazio specifico

@@ -5,10 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/analytics/core_analytics_service.dart';
 import '../../../../shared/helpers/search_match.dart';
 import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/widgets/ds_badge.dart';
 import '../../../../shared/widgets/ds_error_state.dart';
 import '../../../../shared/widgets/ds_group_header.dart';
 import '../../../../shared/widgets/ds_sheet_header.dart';
-import '../../../../shared/widgets/ds_badge.dart';
 import '../../../houses/providers/house_provider.dart';
 import '../../../items/model/item_model.dart';
 import '../../../items/providers/item_provider.dart';
@@ -16,16 +16,13 @@ import '../../helpers/ai_item_category.dart';
 import '../../model/clothing_analysis_result.dart';
 import 'ai_result_card.dart' show aiDetailsLine;
 
-// Sotto 360 px quantità e azione richiedono una riga separata.
-const _compactRowBreakpoint = 360.0;
-
-/// Apre "C'è già?" e restituisce l'id dell'oggetto manuale a cui aggiungere
-/// i dettagli AI, oppure `null` quando il foglio viene chiuso.
-Future<String?> showAlreadyHereSheet(
+/// Apre "C'è già?": mostra gli oggetti della casa simili al capo scansionato.
+/// È solo informativo: non collega né modifica nulla.
+Future<void> showAlreadyHereSheet(
   BuildContext context, {
   required String houseId,
   required ClothingAnalysisResult scanned,
-}) => showModalBottomSheet<String>(
+}) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
@@ -57,7 +54,6 @@ class _AlreadyHereSheet extends ConsumerStatefulWidget {
 class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
   bool _othersOpen = false;
   bool _openedTracked = false;
-  bool _detailsTapped = false;
 
   @override
   Widget build(BuildContext context) {
@@ -139,10 +135,9 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
                   });
                 }
 
-                Widget itemRow(ItemModel item, {required bool canAddDetails}) {
-                  final showAction = canAddDetails && item.aiMetadata == null;
-                  final hasTrailing = (item.quantity ?? 1) > 1 || showAction;
-                  Widget title({bool includeQuantity = false}) => Row(
+                Widget itemRow(ItemModel item) => Padding(
+                  padding: EdgeInsets.symmetric(vertical: context.spacingXs),
+                  child: Row(
                     children: [
                       Expanded(
                         child: Text(
@@ -161,73 +156,13 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
                           color: cs.onSurfaceVariant,
                         ),
                       ],
-                      if (includeQuantity && (item.quantity ?? 1) > 1) ...[
+                      if ((item.quantity ?? 1) > 1) ...[
                         SizedBox(width: context.spacingXs),
                         DsQuantityBadge(current: item.quantity!),
                       ],
                     ],
-                  );
-                  Widget actions({bool includeQuantity = true}) => Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (includeQuantity && (item.quantity ?? 1) > 1)
-                        DsQuantityBadge(current: item.quantity!),
-                      if (showAction) ...[
-                        SizedBox(width: context.spacingXs),
-                        TextButton(
-                          key: ValueKey('add_details_${item.id}'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: cs.onSurfaceVariant,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: context.spacingSm,
-                            ),
-                          ),
-                          onPressed: _detailsTapped
-                              ? null
-                              : () {
-                                  if (_detailsTapped || !mounted) return;
-                                  _detailsTapped = true;
-                                  ref
-                                      .read(coreAnalyticsServiceProvider)
-                                      .trackAlreadyHereDetailsAdded();
-                                  Navigator.pop(context, item.id);
-                                },
-                          child: Text('ai_import.add_details'.tr()),
-                        ),
-                      ],
-                    ],
-                  );
-
-                  return SizedBox(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        if (constraints.maxWidth < _compactRowBreakpoint) {
-                          return Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: context.spacingXs,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                title(includeQuantity: true),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: actions(includeQuantity: false),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                        return Row(
-                          children: [
-                            Expanded(child: title()),
-                            if (hasTrailing) actions(),
-                          ],
-                        );
-                      },
-                    ),
-                  );
-                }
+                  ),
+                );
 
                 final categoryLabel = sameCategory.displayName.toLowerCase();
                 final photoDetails = [
@@ -266,8 +201,7 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
                               label: 'ai_import.most_similar'.tr(),
                               count: similar.length,
                             ),
-                            for (final item in similar)
-                              itemRow(item, canAddDetails: true),
+                            for (final item in similar) itemRow(item),
                           ],
                           if (others.isNotEmpty) ...[
                             DsGroupHeader(
@@ -282,8 +216,7 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
                                   setState(() => _othersOpen = !_othersOpen),
                             ),
                             if (_othersOpen)
-                              for (final item in others)
-                                itemRow(item, canAddDetails: false),
+                              for (final item in others) itemRow(item),
                           ],
                         ],
                       ),

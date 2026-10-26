@@ -621,7 +621,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       (widget.aiIntent
           ? kMinInteractiveDimension * 2
           : context.spacingSm +
-                context.responsive(56) +
+                context.responsive(AppConstants.ctaHeight) +
                 kMinInteractiveDimension);
 
   Widget _buildBottomBar(BuildContext context) {
@@ -706,11 +706,16 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
         label: Text('trips.new.prepare_with_ai'.tr()),
         style: OutlinedButton.styleFrom(
           foregroundColor: cs.onSurface,
-          minimumSize: Size.fromHeight(context.responsive(56)),
+          minimumSize: Size.fromHeight(
+            context.responsive(AppConstants.ctaHeight),
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
           ),
-          side: BorderSide(color: cs.outline, width: 2),
+          side: BorderSide(
+            color: cs.outline,
+            width: AppConstants.emphasisBorderWidth,
+          ),
         ),
       ),
     );

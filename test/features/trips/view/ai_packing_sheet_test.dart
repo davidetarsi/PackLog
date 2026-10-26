@@ -11,7 +11,7 @@ import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/model/trip_weather.dart';
 import 'package:pack_log/features/trips/providers/trip_weather_provider.dart';
-import 'package:pack_log/features/trips/view/widgets/ai/ai_choice_pill.dart';
+import 'package:pack_log/shared/widgets/ds_choice_pill.dart';
 import 'package:pack_log/features/trips/view/widgets/ai/ai_packing_sheet.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
@@ -413,15 +413,15 @@ void main() {
         expect(find.text('Tappa 1 di 2 · Islanda'), findsOneWidget);
         expect(
           tester
-              .widget<AiChoicePill>(
-                find.widgetWithText(AiChoicePill, 'Città e musei'),
+              .widget<DsChoicePill>(
+                find.widgetWithText(DsChoicePill, 'Città e musei'),
               )
               .selected,
           isTrue,
         );
         expect(
           tester
-              .widget<AiChoicePill>(find.widgetWithText(AiChoicePill, 'Hotel'))
+              .widget<DsChoicePill>(find.widgetWithText(DsChoicePill, 'Hotel'))
               .selected,
           isTrue,
         );

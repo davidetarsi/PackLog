@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_choice_group.dart';
 import '../../../model/ai_packing.dart';
-import 'ai_choice_pill.dart';
 
 /// Le risposte di una tappa del foglio "Valigia con AI": attività, alloggio e
 /// lavatrice. Con [stopName] null è il viaggio con una tappa sola, e i titoli
@@ -48,52 +48,34 @@ class AiStopForm extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (copyFromName != null && onCopy != null)
-          Align(
+          Container(
+            padding: EdgeInsets.only(top: context.spacingMd),
             alignment: Alignment.centerLeft,
             child: _DashedCopyButton(
               label: 'trips.ai.copy_from'.tr(args: [copyFromName!]),
               onTap: onCopy!,
             ),
           ),
-        _Section(
+        DsChoiceGroup<AiActivity>(
           title: activitiesTitle,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final activity in AiActivity.values)
-                AiChoicePill(
-                  label: activity.labelKey.tr(),
-                  selected: answers.activities.contains(activity),
-                  onTap: () => onChanged(
-                    answers.copyWith(
-                      activities: answers.activities.contains(activity)
-                          ? [
-                              for (final a in answers.activities)
-                                if (a != activity) a,
-                            ]
-                          : [...answers.activities, activity],
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          options: AiActivity.values,
+          labelOf: (activity) => activity.labelKey.tr(),
+          selected: answers.activities.toSet(),
+          multiple: true,
+          required: false,
+          // L'insieme tiene l'ordine dei tocchi, come la lista di prima.
+          onChanged: (chosen) =>
+              onChanged(answers.copyWith(activities: chosen.toList())),
         ),
-        _Section(
+        DsChoiceGroup<AiStay>(
           title: stayTitle,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final stay in AiStay.values)
-                AiChoicePill(
-                  label: stay.labelKey.tr(),
-                  selected: answers.stay == stay,
-                  onTap: () => onChanged(answers.copyWith(stay: stay)),
-                ),
-            ],
-          ),
+          options: AiStay.values,
+          labelOf: (stay) => stay.labelKey.tr(),
+          selected: {?answers.stay},
+          onChanged: (chosen) =>
+              onChanged(answers.copyWith(stay: chosen.first)),
         ),
+        SizedBox(height: context.spacingLg),
         _WasherRow(
           value: answers.washer,
           onChanged: (value) => onChanged(answers.copyWith(washer: value)),
@@ -101,32 +83,6 @@ class AiStopForm extends StatelessWidget {
           tt: tt,
         ),
       ],
-    );
-  }
-}
-
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
     );
   }
 }
@@ -149,7 +105,10 @@ class _WasherRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacingMd,
+        vertical: context.spacingSm + context.spacingXs,
+      ),
       decoration: BoxDecoration(
         color: context.groupSurface,
         borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
@@ -200,18 +159,26 @@ class _DashedCopyButton extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
       child: CustomPaint(
         painter: _DashedBorderPainter(cs.outline),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 40),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          constraints: const BoxConstraints(
+            minHeight: AppConstants.pillTabDefault,
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacingSm + context.spacingXs,
+          ),
           alignment: Alignment.center,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.content_copy, size: 16, color: cs.onSurface),
-              const SizedBox(width: 8),
+              Icon(
+                Icons.content_copy,
+                size: context.iconSizeSm,
+                color: cs.onSurface,
+              ),
+              SizedBox(width: context.spacingSm),
               Text(label, style: tt.labelLarge?.copyWith(color: cs.onSurface)),
             ],
           ),
@@ -238,8 +205,11 @@ class _DashedBorderPainter extends CustomPainter {
     for (final metric in path.computeMetrics()) {
       var distance = 0.0;
       while (distance < metric.length) {
-        canvas.drawPath(metric.extractPath(distance, distance + 4), paint);
-        distance += 7;
+        canvas.drawPath(
+          metric.extractPath(distance, distance + AppConstants.dashLength),
+          paint,
+        );
+        distance += AppConstants.dashLength + AppConstants.dashGap;
       }
     }
   }

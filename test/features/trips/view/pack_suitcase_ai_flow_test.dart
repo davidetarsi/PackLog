@@ -29,6 +29,7 @@ import 'package:pack_log/features/trips/view/ai_packing_wait_screen.dart';
 import 'package:pack_log/features/trips/view/pack_suitcase_screen.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/theme/theme.dart';
 import 'package:pack_log/shared/widgets/ds_form_sheet.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
@@ -589,6 +590,22 @@ void main() {
 
       expect(find.byKey(const Key('ai_warning_search_w2')), findsNothing);
       expect(find.byKey(const Key('ai_warning_dismiss_w2')), findsOneWidget);
+    });
+
+    testWidgets('"Importante" è in ambra, "Utile" in grigio', (tester) async {
+      arrange(
+        trip: _viaggioAi(warnings: [_avvisoBoxer, _avvisoSenzaCerca]),
+        items: _houseItems,
+      );
+      await pumpPack(tester);
+
+      await tapKey(tester, const Key('pack_row_missing'));
+
+      final context = tester.element(find.text('Utile'));
+      Color? colorOf(String text) =>
+          tester.widget<Text>(find.text(text)).style?.color;
+      expect(colorOf('Importante'), context.appColors.warning);
+      expect(colorOf('Utile'), Theme.of(context).colorScheme.onSurfaceVariant);
     });
 
     testWidgets('la riga dei motivi apre il foglio con un punto per motivo', (

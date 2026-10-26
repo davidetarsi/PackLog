@@ -1,14 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/features/items/model/clothing_labels.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/view/item_sheet.dart';
 import 'package:pack_log/features/items/widgets/category_pill.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
+import 'package:pack_log/shared/widgets/ds_group_header.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../screenshots/support/harness.dart';
@@ -289,6 +293,147 @@ void main() {
       await app.tap(find.byKey(const Key('item_sheet_save')));
       expect(find.byKey(const Key('item_sheet_name')), findsOneWidget);
       expect(find.text('common.name_required_validation'.tr()), findsOneWidget);
+      await app.finish();
+    });
+  });
+
+  group('dettagli a tag', () {
+    Future<void> openMaglione(WidgetTester tester, ScreenshotApp app) async {
+      await app.go('/');
+      await app.push('/houses/$kHomeId');
+      await app.tap(find.text('Maglione di lana'));
+    }
+
+    /// Il foglio con i dettagli è più alto della superficie di prova: il
+    /// bottone "Salva" va portato in vista prima di toccarlo.
+    Future<void> tapSave(WidgetTester tester, ScreenshotApp app) async {
+      await tester.ensureVisible(find.byKey(const Key('item_sheet_save')));
+      await app.tap(find.byKey(const Key('item_sheet_save')));
+    }
+
+    VoidCallback? onSave(WidgetTester tester) => tester
+        .widget<DsButton>(find.byKey(const Key('item_sheet_save')))
+        .onPressed;
+
+    /// Il JSON dei metadati di "Maglione di lana" come è salvato nel DB. Si
+    /// cerca fra tutti gli oggetti: il seed sposta il maglione nella baita.
+    Future<Map<String, dynamic>> storedMetadata(
+      WidgetTester tester,
+      ScreenshotApp app,
+    ) async {
+      // Il salvataggio scrive sul DB in tempo reale: si aspetta che finisca.
+      final all = (await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        return app.container.read(itemRepositoryProvider).getAllItems();
+      }))!;
+      final item = all.firstWhere((i) => i.name == 'Maglione di lana');
+      return jsonDecode(item.aiMetadata!) as Map<String, dynamic>;
+    }
+
+    testWidgets('un capo mostra Dettagli dopo Spazio, con i suoi tag', (
+      tester,
+    ) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+      await openMaglione(tester, app);
+
+      expect(find.text('Nota'), findsOneWidget);
+      expect(find.byKey(const Key('clothing_type_row')), findsOneWidget);
+      expect(find.text(clothingTypeLabel('Sweater')), findsOneWidget);
+      expect(find.text(warmthLabel(4)), findsOneWidget);
+      final spaceY = tester.getTopLeft(find.text('Spazio')).dy;
+      final detailsY = tester
+          .getTopLeft(find.byKey(const Key('clothing_type_row')))
+          .dy;
+      final noteY = tester.getTopLeft(find.text('Nota')).dy;
+      expect(detailsY, greaterThan(spaceY));
+      expect(noteY, greaterThan(detailsY));
+      await app.finish();
+    });
+
+    testWidgets('un oggetto senza metadati di capo non ha la sezione', (
+      tester,
+    ) async {
+      final app = await openCalzini(tester);
+      expect(find.byKey(const Key('clothing_type_row')), findsNothing);
+      expect(find.text('Nota'), findsOneWidget);
+      await app.finish();
+    });
+
+    testWidgets('un nuovo oggetto non ha la sezione', (tester) async {
+      final (:app, result: _) = await openNew(tester, initialName: 'Ciab');
+      expect(find.byKey(const Key('clothing_type_row')), findsNothing);
+      await app.finish();
+    });
+
+    testWidgets('Salva si accende solo con un tag cambiato', (tester) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+      await openMaglione(tester, app);
+      expect(onSave(tester), isNull);
+
+      await app.tap(find.text(warmthLabel(3)));
+      expect(onSave(tester), isNotNull);
+      await app.finish();
+    });
+
+    testWidgets('Calore cambiato si salva e le altre chiavi restano', (
+      tester,
+    ) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+      await openMaglione(tester, app);
+
+      await app.tap(find.text(warmthLabel(2)));
+      await tapSave(tester, app);
+
+      final meta = await storedMetadata(tester, app);
+      expect(meta['warmth'], 2);
+      expect(meta['subCategory'], 'Sweater');
+      expect(meta['baseColor'], 'Blu');
+      expect(meta['pattern'], 'Solid');
+      expect(meta['coverage'], 'Long');
+      expect(meta['activityTags'], ['Everyday']);
+      expect(meta['waterResistance'], 0);
+      await app.finish();
+    });
+
+    testWidgets('negli usi l\'ultimo tag non si toglie', (tester) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+      await openMaglione(tester, app);
+
+      await app.tap(find.text(activityLabel('Everyday')));
+      expect(onSave(tester), isNull);
+      await app.finish();
+    });
+
+    testWidgets('"+ Altro colore" aggiunge il colore e lo salva', (
+      tester,
+    ) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+      await openMaglione(tester, app);
+
+      await app.tap(find.text('+ Altro colore'));
+      await app.enterText(
+        find.byKey(const Key('clothing_color_field')),
+        'Rosa chiaro',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await app.settle();
+      expect(find.text('Rosa chiaro'), findsOneWidget);
+
+      await tapSave(tester, app);
+      final meta = await storedMetadata(tester, app);
+      expect(meta['baseColor'], 'Rosa chiaro');
+      await app.finish();
+    });
+
+    testWidgets('il picker del tipo è raggruppato per categoria', (
+      tester,
+    ) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+      await openMaglione(tester, app);
+
+      await app.tap(find.byKey(const Key('clothing_type_row')));
+      expect(find.text('Scegli il tipo'), findsOneWidget);
+      expect(find.byType(DsGroupHeader), findsWidgets);
       await app.finish();
     });
   });

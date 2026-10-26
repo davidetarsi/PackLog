@@ -129,7 +129,7 @@ class DsButton extends StatelessWidget {
         onTap: canTap ? onPressed : (isLoading ? null : onDisabledTap),
         child: Container(
           width: expand ? double.infinity : null,
-          height: context.responsive(56),
+          height: context.responsive(AppConstants.ctaHeight),
           padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
           decoration: BoxDecoration(
             // Nessun colore qui: lo sfondo è già gestito da Material.

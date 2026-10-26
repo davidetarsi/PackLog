@@ -666,12 +666,13 @@ void main() {
       expect(find.byType(AddEditLuggageSheet), findsOneWidget);
     });
 
-    testWidgets('la creazione resta accessibile quando ci sono già bagagli', (
+    testWidgets('con dei bagagli si crea da "Gestisci bagagli"', (
       tester,
     ) async {
       arrange(luggages: [_luggage('l1', 'Zaino')]);
       await pumpPack(tester);
-      expect(find.text('Nuovo bagaglio'), findsOneWidget);
+      expect(find.text('Nuovo bagaglio'), findsNothing);
+      await tapText(tester, 'Gestisci bagagli');
       await tapText(tester, 'Nuovo bagaglio');
       expect(find.byType(AddEditLuggageSheet), findsOneWidget);
     });

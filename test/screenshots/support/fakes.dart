@@ -197,19 +197,32 @@ Future<File> _photo(String name, Color garment) async {
   return file;
 }
 
-ClothingAnalysisResult _garment(String name, String color, String sub) =>
-    ClothingAnalysisResult(
-      name: name,
-      category: sub == 'Pantaloni' ? 'Lower Body' : 'Upper Body',
-      subCategory: sub,
-      baseColor: color,
-      pattern: 'Tinta unita',
-      coverage: 'Busto',
-      fit: 'Regular',
-      warmth: 2,
-      formality: 'Casual',
-      activityTags: const ['città', 'viaggio'],
-    );
+/// Un capo come lo scrive il server: sottocategoria e valori di pattern,
+/// coverage e attività in inglese, colore base in italiano.
+ClothingAnalysisResult _garment(
+  String name,
+  String color,
+  String sub, {
+  String pattern = 'Solid',
+  String coverage = 'Long',
+  int warmth = 2,
+  List<String> activityTags = const ['Everyday'],
+  int waterResistance = 0,
+  List<String> doubts = const [],
+}) => ClothingAnalysisResult(
+  name: name,
+  category: sub == 'Trousers' ? 'Lower Body' : 'Upper Body',
+  subCategory: sub,
+  baseColor: color,
+  pattern: pattern,
+  coverage: coverage,
+  fit: 'Regular',
+  warmth: warmth,
+  formality: 'Casual',
+  activityTags: activityTags,
+  extras: {'waterResistance': waterResistance},
+  doubts: doubts,
+);
 
 AiImportState aiResultsState({String? houseId = kHomeId}) => AiImportState(
   selectedHouseId: houseId,
@@ -217,13 +230,32 @@ AiImportState aiResultsState({String? houseId = kHomeId}) => AiImportState(
     PhotoGroup(
       photo: photoShirt,
       results: [
-        _garment('Camicia di lino azzurra', 'Azzurro', 'Camicia'),
-        _garment('T-shirt bianca', 'Bianco', 'T-shirt'),
+        _garment('Camicia di lino azzurra', 'Azzurro', 'Shirt', warmth: 1),
+        _garment(
+          'T-shirt bianca',
+          'Bianco',
+          'T-Shirt',
+          coverage: 'Short',
+          warmth: 1,
+          activityTags: const ['Everyday', 'Beach'],
+        ),
       ],
     ),
     PhotoGroup(
       photo: photoJeans,
-      results: [_garment('Jeans slim blu scuro', 'Blu', 'Pantaloni')],
+      // Il server non sa se il tessuto tiene la pioggia: lo chiede.
+      results: [
+        _garment(
+          'Pantaloni da trekking',
+          'grigio',
+          'Trousers',
+          pattern: 'Solid',
+          warmth: 2,
+          activityTags: const ['Hiking', 'Everyday'],
+          waterResistance: 1,
+          doubts: const ['waterResistance'],
+        ),
+      ],
     ),
   ],
 );

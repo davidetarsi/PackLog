@@ -75,7 +75,7 @@ class StickyCtaScaffold extends StatelessWidget {
 
   /// Altezza standard di una CTA a riga singola: safe-area + `ctaPadding`
   /// di default (top spacingMd, bottom spacingSm) + altezza del pill button
-  /// (`responsive(56)`, la stessa usata dalla pill di [MainShell]).
+  /// ([AppConstants.ctaHeight], la stessa usata dalla pill di [MainShell]).
   ///
   /// Pubblico e statico così una schermata con una CTA più alta (righe
   /// impilate) può comporre il proprio `ctaHeightOverride` a partire da
@@ -84,7 +84,7 @@ class StickyCtaScaffold extends StatelessWidget {
       MediaQuery.paddingOf(context).bottom +
       context.spacingMd +
       context.spacingSm +
-      context.responsive(56);
+      context.responsive(AppConstants.ctaHeight);
 
   @override
   Widget build(BuildContext context) {

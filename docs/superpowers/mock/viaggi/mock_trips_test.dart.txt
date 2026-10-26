@@ -1,0 +1,68 @@
+// MOCK usa e getta: tab Viaggi a biglietti.
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/fakes.dart';
+import 'support/fonts.dart';
+import 'support/harness.dart';
+
+const _v = String.fromEnvironment('MOCK_TRIPS', defaultValue: 'v1');
+
+void main() {
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    await EasyLocalization.ensureInitialized();
+    useSystemSqlite();
+    await loadRealFonts();
+    await createPhotoFixtures();
+  });
+  tearDownAll(Manifest.write);
+
+  Shot shot(String state, ShotTheme theme, int order) => Shot(
+    flow: 'mock-viaggi-$_v',
+    flowTitle: 'Mock viaggi $_v',
+    order: order,
+    screen: 'viaggi',
+    state: state,
+    source: 'lib/features/trips/view/trips_mock.dart',
+    description: 'mock',
+    theme: theme,
+  );
+
+  for (final theme in ShotTheme.values) {
+    testWidgets('viaggi ${theme.name}', (tester) async {
+      final app = await ScreenshotApp.start(tester, theme: theme);
+      await app.go('/trips');
+      await app.capture(shot('prossimi-1', theme, 1));
+      await tester.drag(
+        find.byKey(const Key('trips_pager')),
+        const Offset(-330, 0),
+      );
+      await app.settle();
+      await app.capture(shot('prossimi-2', theme, 2));
+      if (_v != 'v1' && _v != 'v2') {
+        await tester.drag(
+          find.byKey(const Key('trips_pager')),
+          const Offset(-330, 0),
+        );
+        await app.settle();
+        await app.capture(shot('prossimi-3', theme, 3));
+        if (_v.startsWith('v12')) {
+          await app.tap(find.text('Passati'));
+          await app.capture(shot('passati', theme, 4));
+          await app.tap(find.text('Salvati'));
+          await app.capture(shot('salvati', theme, 5));
+        }
+        await app.finish();
+        return;
+      }
+      await app.tap(find.text('Passati'));
+      await app.capture(shot('passati', theme, 3));
+      await app.tap(find.text('Salvati'));
+      await app.capture(shot('salvati', theme, 4));
+      await app.finish();
+    });
+  }
+}

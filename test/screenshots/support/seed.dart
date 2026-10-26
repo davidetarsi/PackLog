@@ -25,6 +25,13 @@ const kSavedTripId = 'trip-matrimonio';
 const kPastTripId = 'trip-barcellona';
 const kEmptyTripId = 'trip-vuoto';
 
+/// Metadati di "Maglione di lana", nel formato salvato in `items.ai_metadata`.
+const kMaglioneAiMetadata =
+    '{"name":"Maglione di lana","category":"Upper Body",'
+    '"subCategory":"Sweater","baseColor":"Blu","pattern":"Solid",'
+    '"coverage":"Long","fit":"Regular","warmth":4,"formality":"Casual",'
+    '"activityTags":["Everyday"],"waterResistance":0}';
+
 /// Quanto popolare il database.
 enum SeedLevel {
   /// Nessuna casa, nessun viaggio: primo avvio dopo il login.
@@ -172,6 +179,8 @@ Future<void> seed(ProviderContainer c, SeedLevel level) async {
         category: cat,
         quantity: qty,
         spaceId: space,
+        // Un capo con i metadati del server, per la sezione "Dettagli".
+        aiMetadata: name == 'Maglione di lana' ? kMaglioneAiMetadata : null,
         createdAt: stamp,
         updatedAt: stamp,
       ),

@@ -521,6 +521,10 @@ void main() {
         expect(find.text('Caricatore'), findsOneWidget);
         expect(find.text('Pila'), findsOneWidget);
         expect(find.text('Felpa'), findsNothing);
+        // Divisi per categoria come la valigia sopra.
+        expect(find.text('Toiletries · 1'), findsOneWidget);
+        expect(find.text('Elettronica · 1'), findsOneWidget);
+        expect(find.text('Varie · 1'), findsOneWidget);
 
         await tapKey(tester, const Key('ai_home_add_i-spazzolino'));
 

@@ -9,6 +9,8 @@ library;
 export 'app_pill_tab.dart';
 export 'circular_action_button.dart';
 export 'ds_badge.dart';
+export 'ds_choice_group.dart';
+export 'ds_choice_pill.dart';
 export 'ds_contextual_app_bar.dart';
 export 'ds_floating_bar.dart';
 export 'ds_group_header.dart';

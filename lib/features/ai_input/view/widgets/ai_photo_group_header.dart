@@ -65,39 +65,40 @@ class AiPhotoGroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Miniatura piccola: è il riferimento del gruppo, toccandola si apre.
-    final size = context.responsive(56);
+    // Foto intera e alta: è ciò che l'utente riconosce per primo. Toccandola
+    // si apre a schermo intero.
+    final height = context.responsive(160);
     final radius = BorderRadius.circular(AppConstants.cardBorderRadius);
     return Padding(
       padding: EdgeInsets.only(top: context.spacingLg),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Material(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: radius,
-            clipBehavior: Clip.antiAlias,
+          Align(
+            alignment: Alignment.centerLeft,
             child: InkWell(
               key: const Key('ai_photo_preview'),
               borderRadius: radius,
               onTap: () => _openFull(context),
-              child: Image.file(
-                photo,
-                width: size,
-                height: size,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => SizedBox.square(
-                  dimension: size,
-                  child: _missingPhoto(context),
+              child: ClipRRect(
+                borderRadius: radius,
+                child: Image.file(
+                  photo,
+                  height: height,
+                  fit: BoxFit.contain,
+                  // Foto mancante: un riquadro quadrato, così resta un bersaglio
+                  // da toccare e non sparisce.
+                  errorBuilder: (context, error, stackTrace) => SizedBox.square(
+                    dimension: height,
+                    child: _missingPhoto(context),
+                  ),
                 ),
               ),
             ),
           ),
-          SizedBox(width: context.spacingMd),
-          Expanded(
-            child: DsGroupHeader(
-              label: 'ai_import.photo_number'.tr(args: ['$photoIndex']),
-              detail: 'ai_import.items_count'.plural(itemCount),
-            ),
+          DsGroupHeader(
+            label: 'ai_import.photo_number'.tr(args: ['$photoIndex']),
+            detail: 'ai_import.items_count'.plural(itemCount),
           ),
         ],
       ),

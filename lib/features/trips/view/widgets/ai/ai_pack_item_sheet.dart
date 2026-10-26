@@ -150,10 +150,7 @@ class _AiPackItemSheetState extends State<_AiPackItemSheet> {
             alignment: Alignment.centerLeft,
             child: TextButton(
               key: const Key('ai_pack_item_remove'),
-              style: TextButton.styleFrom(
-                foregroundColor: cs.onSurface,
-                minimumSize: const Size(0, 44),
-              ),
+              style: TextButton.styleFrom(foregroundColor: cs.onSurface),
               onPressed: () {
                 Navigator.of(context).pop();
                 widget.onRemove();
