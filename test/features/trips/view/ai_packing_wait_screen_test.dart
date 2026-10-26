@@ -202,14 +202,29 @@ void main() {
     testWidgets('i passi avanzano a 0, 3 e 6 secondi', (tester) async {
       await _pump(tester);
 
-      // A 0 s solo il primo passo è in corso: nessuna spunta.
-      expect(find.byIcon(Icons.check), findsNothing);
+      // Il puntino che lampeggia sta sul passo in corso; ce n'è uno solo.
+      String blinkingStep() {
+        final row = find.ancestor(
+          of: find.byKey(const Key('ai_wait_blinking_dot')),
+          matching: find.byType(Row),
+        );
+        return tester
+            .widget<Text>(
+              find.descendant(of: row.first, matching: find.byType(Text)),
+            )
+            .data!;
+      }
+
+      expect(find.byKey(const Key('ai_wait_blinking_dot')), findsOneWidget);
+      expect(blinkingStep(), 'Guardo il meteo di Islanda e Olanda');
 
       await tester.pump(const Duration(seconds: 3));
-      expect(find.byIcon(Icons.check), findsOneWidget);
+      expect(blinkingStep(), 'Scelgo dal tuo armadio');
 
       await tester.pump(const Duration(seconds: 3));
-      expect(find.byIcon(Icons.check), findsNWidgets(2));
+      expect(blinkingStep(), 'Controllo cosa manca');
+      // Niente rotellina: l'avanzamento lo dice il puntino.
+      expect(find.byType(CircularProgressIndicator), findsNothing);
 
       _service.last.complete(_result);
       await tester.pump();
