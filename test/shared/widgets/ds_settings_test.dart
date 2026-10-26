@@ -67,6 +67,46 @@ void main() {
     expect(find.byIcon(Icons.chevron_right), findsNothing);
   });
 
+  testWidgets('destructive colora etichetta e icona di errore', (tester) async {
+    await pump(
+      tester,
+      DsSettingsRow(
+        label: 'Elimina',
+        leading: const Icon(Icons.delete_outline),
+        destructive: true,
+        onTap: () {},
+      ),
+    );
+    final cs = AppTheme.light.colorScheme;
+    expect(tester.widget<Text>(find.text('Elimina')).style?.color, cs.error);
+    expect(
+      IconTheme.of(tester.element(find.byIcon(Icons.delete_outline))).color,
+      cs.error,
+    );
+  });
+
+  testWidgets('enabled false: niente tocco e colore spento', (tester) async {
+    var taps = 0;
+    await pump(
+      tester,
+      DsSettingsRow(
+        label: 'Spento',
+        leading: const Icon(Icons.lock_outline),
+        enabled: false,
+        onTap: () => taps++,
+      ),
+    );
+    await tester.tap(find.text('Spento'));
+    expect(taps, 0);
+
+    final off = AppTheme.light.colorScheme.onSurface.withValues(alpha: 0.38);
+    expect(tester.widget<Text>(find.text('Spento')).style?.color, off);
+    expect(
+      IconTheme.of(tester.element(find.byIcon(Icons.lock_outline))).color,
+      off,
+    );
+  });
+
   testWidgets('il gruppo mette una linea tra le righe, non prima né dopo', (
     tester,
   ) async {

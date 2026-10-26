@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
-import '../constants/app_constants.dart';
-import 'ds_sheet_header.dart';
-import '../theme/app_spacing.dart';
-import 'ds_group_header.dart';
 
-/// Bottom sheet generico per la **selezione di un elemento da una lista**.
+import 'ds_form_sheet.dart';
+import 'ds_group_header.dart';
+import 'ds_settings.dart';
+
+/// Foglio per la **selezione di un elemento da una lista**.
 ///
-/// Struttura: `[DsSheetHeader] → ListView` di opzioni.
-/// Toccare un'opzione chiude il sheet e restituisce il valore.
+/// Struttura: [DsFormSheet] (testata con la x, trascinamento) → un
+/// [DsSettingsGroup] per gruppo di righe. Toccare una riga chiude il foglio e
+/// restituisce il valore.
 ///
-/// Distinto da [DsFormSheet] (usato per form di entità):
-/// qui non c'è action bar finale, basta toccare per confermare.
+/// Distinto dai fogli di entità (form con CTA): qui non c'è action bar finale,
+/// basta toccare per confermare.
 ///
-/// Con [groupOf] gli elementi consecutivi dello stesso gruppo sono preceduti
-/// da un'intestazione con il nome del gruppo (es. la categoria dei tipi di
-/// capo). Un gruppo vuoto (`''`) non ha intestazione.
+/// Con [groupOf] gli elementi consecutivi dello stesso gruppo stanno in un
+/// blocco preceduto da un'intestazione con il nome del gruppo (es. la categoria
+/// dei tipi di capo). Un gruppo vuoto (`''`) non ha intestazione.
 ///
 /// Uso tipico:
 /// ```dart
@@ -34,6 +35,10 @@ class DsPickerSheet<T> extends StatelessWidget {
   final String Function(T) getLabel;
   final String? Function(T)? getSubtitle;
   final IconData? Function(T)? getIcon;
+
+  /// Widget di inizio riga al posto dell'icona, per es. la bandiera della
+  /// lingua. Se restituisce `null` vale [getIcon].
+  final Widget? Function(T)? getLeading;
   final T? selected;
   final ValueChanged<T> onSelected;
   final Widget? footer;
@@ -49,6 +54,7 @@ class DsPickerSheet<T> extends StatelessWidget {
     required this.onSelected,
     this.getSubtitle,
     this.getIcon,
+    this.getLeading,
     this.selected,
     this.footer,
     this.groupOf,
@@ -63,20 +69,20 @@ class DsPickerSheet<T> extends StatelessWidget {
     required String Function(T) getLabel,
     String? Function(T)? getSubtitle,
     IconData? Function(T)? getIcon,
+    Widget? Function(T)? getLeading,
     T? selected,
     Widget Function(BuildContext)? footerBuilder,
     String Function(T)? groupOf,
   }) {
-    return showModalBottomSheet<T>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    return showDsSheet<T>(
+      context,
       builder: (sheetContext) => DsPickerSheet<T>(
         title: title,
         items: items,
         getLabel: getLabel,
         getSubtitle: getSubtitle,
         getIcon: getIcon,
+        getLeading: getLeading,
         selected: selected,
         footer: footerBuilder?.call(sheetContext),
         groupOf: groupOf,
@@ -85,18 +91,21 @@ class DsPickerSheet<T> extends StatelessWidget {
     );
   }
 
-  /// Righe della lista: un `String` è un'intestazione di gruppo, un `int` è
-  /// l'indice dell'elemento in [items].
-  List<Object> get rows {
-    final result = <Object>[];
+  /// Gruppi in ordine: ogni gruppo ha il nome (null se non ne ha) e gli indici
+  /// dei suoi elementi in [items]. Un cambio di gruppo apre un nuovo blocco.
+  List<({String? label, List<int> indices})> get _sections {
+    final result = <({String? label, List<int> indices})>[];
     String? lastGroup;
     for (var index = 0; index < items.length; index++) {
       final group = groupOf?.call(items[index]);
-      if (group != null && group.isNotEmpty && group != lastGroup) {
-        result.add(group);
+      if (result.isEmpty || group != lastGroup) {
+        result.add((
+          label: group == null || group.isEmpty ? null : group,
+          indices: <int>[],
+        ));
       }
+      result.last.indices.add(index);
       lastGroup = group;
-      result.add(index);
     }
     return result;
   }
@@ -104,76 +113,52 @@ class DsPickerSheet<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppConstants.modalBorderRadius),
-        ),
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DsSheetHeader(title: title),
-            if (items.isEmpty)
-              Padding(
-                padding: EdgeInsets.all(AppSpacing.lg),
-                child: Center(
-                  child: Text(
-                    '—',
-                    style: TextStyle(color: cs.onSurfaceVariant),
-                  ),
-                ),
-              )
-            else
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: rows.length,
-                  itemBuilder: (_, index) {
-                    final row = rows[index];
-                    if (row is String) {
-                      // Stesso margine orizzontale delle righe sotto.
-                      final tile =
-                          ListTileTheme.of(context).contentPadding?.resolve(
-                            Directionality.of(context),
-                          ) ??
-                          EdgeInsets.symmetric(horizontal: AppSpacing.md);
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          left: tile.left,
-                          right: tile.right,
-                        ),
-                        child: DsGroupHeader(label: row),
-                      );
-                    }
-                    final item = items[row as int];
-                    final isSelected = item == selected;
-                    final iconData = getIcon?.call(item);
-                    final subtitle = getSubtitle?.call(item);
-
-                    return ListTile(
-                      leading: iconData != null
-                          ? Icon(iconData, color: cs.onSurfaceVariant)
-                          : null,
-                      title: Text(getLabel(item)),
-                      subtitle: subtitle != null ? Text(subtitle) : null,
-                      trailing: isSelected
-                          ? Icon(Icons.check, color: cs.primary)
-                          : null,
-                      onTap: () => onSelected(item),
-                    );
-                  },
+    return DsFormSheet(
+      title: title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (items.isEmpty)
+            Center(
+              child: Text(
+                '—',
+                style: textTheme.bodyLarge?.copyWith(
+                  color: cs.onSurfaceVariant,
                 ),
               ),
-            if (footer != null) footer!,
-            AppSpacing.gapSm,
-          ],
-        ),
+            )
+          else
+            for (final section in _sections) ...[
+              if (section.label != null) DsGroupHeader(label: section.label!),
+              DsSettingsGroup(
+                children: [
+                  for (final index in section.indices) _row(context, index, cs),
+                ],
+              ),
+            ],
+          if (footer != null) footer!,
+        ],
       ),
+    );
+  }
+
+  Widget _row(BuildContext context, int index, ColorScheme cs) {
+    final item = items[index];
+    final iconData = getIcon?.call(item);
+    final leading =
+        getLeading?.call(item) ??
+        (iconData != null ? Icon(iconData, color: cs.onSurfaceVariant) : null);
+    final subtitle = getSubtitle?.call(item);
+
+    return DsSettingsRow(
+      key: ValueKey('picker_item_$index'),
+      leading: leading,
+      label: getLabel(item),
+      subtitle: subtitle,
+      trailing: item == selected ? Icon(Icons.check, color: cs.primary) : null,
+      onTap: () => onSelected(item),
     );
   }
 }
