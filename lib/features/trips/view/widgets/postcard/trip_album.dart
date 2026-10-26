@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/app_spacing.dart';
 import '../../../../../shared/widgets/ds_group_header.dart';
 import '../../../model/trip_model.dart';
@@ -50,6 +51,19 @@ class TripAlbum extends StatelessWidget {
     this.padding,
   });
 
+  Widget _tilted(TripModel trip, int index) => Transform.rotate(
+    angle: _tilts[index % _tilts.length],
+    child: _AlbumPostcard(
+      key: Key('album_postcard_${trip.id}'),
+      trip: trip,
+      destination: destinationOf(trip),
+      cancelled: cancelledStamps,
+      onTap: onTap,
+      onLongPress: onLongPress,
+      onReuse: onReuse,
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -60,28 +74,48 @@ class TripAlbum extends StatelessWidget {
       children: [
         for (final group in groups) ...[
           DsGroupHeader(label: group.label, count: group.trips.length),
-          GridView.count(
-            crossAxisCount: _columns,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: context.spacingMd,
-            crossAxisSpacing: context.spacingMd,
-            childAspectRatio: _cellAspectRatio,
-            children: [
-              for (final (i, trip) in group.trips.indexed)
-                Transform.rotate(
-                  angle: _tilts[i % _tilts.length],
-                  child: _AlbumPostcard(
-                    key: Key('album_postcard_${trip.id}'),
-                    trip: trip,
-                    destination: destinationOf(trip),
-                    cancelled: cancelledStamps,
-                    onTap: onTap,
-                    onLongPress: onLongPress,
-                    onReuse: onReuse,
-                  ),
-                ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final gap = context.spacingMd;
+              final cellWidth =
+                  (constraints.maxWidth - gap * (_columns - 1)) / _columns;
+              final trips = group.trips;
+              return Column(
+                children: [
+                  for (var row = 0; row * _columns < trips.length; row++)
+                    Padding(
+                      padding: EdgeInsets.only(
+                        top: row == 0 ? 0 : context.spacingMd,
+                      ),
+                      // Le proporzioni dell'album sono il minimo: con il
+                      // testo di sistema ingrandito la riga si allunga.
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: cellWidth / _cellAspectRatio,
+                        ),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (var col = 0; col < _columns; col++) ...[
+                                if (col > 0) SizedBox(width: gap),
+                                Expanded(
+                                  child: row * _columns + col < trips.length
+                                      ? _tilted(
+                                          trips[row * _columns + col],
+                                          row * _columns + col,
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ],
@@ -92,6 +126,9 @@ class TripAlbum extends StatelessWidget {
 /// Cartolina piccola: francobollo in alto a destra, nome del viaggio, notti
 /// e l'azione per riusare il viaggio in basso.
 class _AlbumPostcard extends StatelessWidget {
+  /// Interlinea del titolo, stretta perché sta su due righe.
+  static const double _titleHeight = 1.1;
+
   final TripModel trip;
   final String destination;
   final bool cancelled;
@@ -143,7 +180,7 @@ class _AlbumPostcard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: tt.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
-                height: 1.1,
+                height: _titleHeight,
               ),
             ),
             if (nights != null)
@@ -155,12 +192,8 @@ class _AlbumPostcard extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: TextButton.icon(
                 key: Key('album_reuse_${trip.id}'),
-                style: TextButton.styleFrom(
-                  foregroundColor: cs.onSurface,
-                  visualDensity: VisualDensity.compact,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+                // Area di tocco piena (48): il disegno resta compatto.
+                style: TextButton.styleFrom(foregroundColor: cs.onSurface),
                 onPressed: () => onReuse(trip),
                 icon: Icon(Icons.replay, size: context.iconSizeSm),
                 label: Text('trips.album.reuse'.tr()),
@@ -185,12 +218,16 @@ class _AlbumStamp extends StatelessWidget {
 
   const _AlbumStamp({required this.date, required this.cancelled});
 
+  /// Lato del francobollo.
+  static double sizeOf(BuildContext context) =>
+      context.responsive(AppConstants.albumStampSize);
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final width = context.responsive(56);
-    final height = context.responsive(56);
+    final width = sizeOf(context);
+    final height = width;
     final waveWidth = width * _waveFraction;
     final day = date;
 

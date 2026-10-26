@@ -49,6 +49,7 @@ Future<void> _pump(
   String Function(TripModel)? destinationOf,
   Size size = const Size(390, 800),
   Future<void> Function()? onRefresh,
+  double textScale = 1,
 }) async {
   // La scala responsive dipende dalla larghezza della vista: si fissa a 390.
   tester.view.physicalSize = size;
@@ -69,6 +70,12 @@ Future<void> _pump(
           locale: context.locale,
           supportedLocales: context.supportedLocales,
           localizationsDelegates: context.localizationDelegates,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
           home: Scaffold(
             body: Center(
               child: SizedBox(
@@ -299,4 +306,31 @@ void main() {
     final day = tester.getCenter(find.text('20'));
     expect(day.dx, closeTo(stamp.center.dx, 0.5));
   });
+
+  testWidgets('"Riusa" ha l area di tocco piena', (tester) async {
+    await _pump(
+      tester,
+      groups: [
+        TripAlbumGroup('2026', [lisbona]),
+      ],
+    );
+
+    final reuse = tester.getSize(find.byKey(const Key('album_reuse_lisbona')));
+    expect(reuse.height, greaterThanOrEqualTo(kMinInteractiveDimension));
+  });
+
+  for (final scale in [1.0, 1.6, 2.0]) {
+    testWidgets('con il testo a ${scale}x la cartolina non si stringe', (
+      tester,
+    ) async {
+      // Un overflow farebbe fallire il test da solo.
+      await _pump(tester, groups: groups, textScale: scale);
+
+      for (final id in ['lisbona', 'firenze', 'courmayeur']) {
+        final card = tester.getRect(find.byKey(Key('album_postcard_$id')));
+        final reuse = tester.getRect(find.byKey(Key('album_reuse_$id')));
+        expect(reuse.bottom, lessThanOrEqualTo(card.bottom + 1));
+      }
+    });
+  }
 }

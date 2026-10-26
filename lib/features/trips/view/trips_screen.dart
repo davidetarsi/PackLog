@@ -172,7 +172,11 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       body: Column(
         children: [
           TabHeader(title: 'navigation.trips'.tr()),
-          Center(
+          // A sinistra, allineati al titolo della tab, come nel mock. Il
+          // margine sta dentro lo scorrimento: su schermi stretti le pillole
+          // arrivano fino al bordo.
+          SizedBox(
+            width: double.infinity,
             child: AppPillTab<TripFilterTab>(
               items: TripFilterTab.values,
               selectedItem: activeTab,
@@ -180,6 +184,9 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
               onSelected: (tab) => setState(() => _selectedTab = tab),
               selectedColor: colorScheme.onSurface,
               selectedTextColor: colorScheme.onSurface,
+              scrollPadding: EdgeInsets.symmetric(
+                horizontal: context.spacingMd,
+              ),
             ),
           ),
           SizedBox(height: context.spacingMd),
