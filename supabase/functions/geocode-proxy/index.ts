@@ -83,6 +83,11 @@ Deno.serve(async (req) => {
   if (lang.length > 8) {
     return errorResponse(400, "'lang' too long");
   }
+  // I filtri di Geoapify (countrycode:it,fr · proximity:lon,lat · …): solo i
+  // caratteri della loro sintassi, cosi' nessun altro parametro passa di qui.
+  if (bias.length > MAX_TEXT_LENGTH || !/^[a-z0-9:,.|-]+$/i.test(bias)) {
+    return errorResponse(400, "'bias' not valid");
+  }
 
   // 3. Atomic rate-limit check (TOCTOU-safe via SQL function).
   //    200 richieste / 24 ore per utente — allineato al reset a credito
