@@ -79,6 +79,18 @@ class CoreAnalyticsService {
     _safeLogEvent('item_bulk_moved', properties: {'count': count});
   }
 
+  /// Dettagli di un capo modificati a mano (tag): `fields` sono i nomi dei
+  /// campi cambiati, mai i valori.
+  void trackItemDetailsEdited({
+    required String source,
+    required List<String> fields,
+  }) {
+    _safeLogEvent(
+      'item_details_edited',
+      properties: {'source': source, 'fields': fields},
+    );
+  }
+
   void trackItemsAddedToTrip({required String tripId, required int count}) {
     _safeLogEvent(
       'items_added_to_trip',
@@ -222,18 +234,10 @@ class CoreAnalyticsService {
     _safeLogEvent('ai_input_failed', properties: {'error_type': errorType});
   }
 
-  void trackAiItemsSaved({
-    required int count,
-    required bool isOnboarding,
-    int updated = 0,
-  }) {
+  void trackAiItemsSaved({required int count, required bool isOnboarding}) {
     _safeLogEvent(
       'ai_items_saved',
-      properties: {
-        'count': count,
-        'is_onboarding': isOnboarding,
-        'updated': updated,
-      },
+      properties: {'count': count, 'is_onboarding': isOnboarding},
     );
   }
 
@@ -244,10 +248,6 @@ class CoreAnalyticsService {
       properties: {'has_manual_candidates': hasManualCandidates},
     );
   }
-
-  /// L'utente aggiunge dettagli AI a un oggetto esistente.
-  void trackAlreadyHereDetailsAdded() =>
-      _safeLogEvent('already_here_details_added');
 
   // ── onboarding_ ───────────────────────────────────────────────────────────
 

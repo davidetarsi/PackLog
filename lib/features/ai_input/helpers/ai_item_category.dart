@@ -12,3 +12,7 @@ ItemCategory aiItemCategory(String category, {String? appCategory}) {
   }
   return ItemCategory.vestiti;
 }
+
+/// La chiave di [category] come la manda `item-metadata` in `app_category`:
+/// l'inverso di [aiItemCategory], per salvare una categoria scelta a mano.
+String appCategoryKey(ItemCategory category) => category.name;

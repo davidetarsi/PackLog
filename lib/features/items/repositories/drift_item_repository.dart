@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
+import '../model/clothing_colors.dart';
 import '../model/item_model.dart';
 import 'item_repository.dart';
 import '../../../core/database/database.dart';
@@ -52,6 +53,12 @@ class DriftItemRepository implements ItemRepository {
     }
 
     return _toModel(result.data!);
+  }
+
+  @override
+  Future<List<String>> getUsedColors() async {
+    final items = await getAllItems();
+    return usedColorsFrom(items.map((item) => item.aiMetadata));
   }
 
   @override
@@ -147,10 +154,9 @@ class DriftItemRepository implements ItemRepository {
   }
 
   @override
-  Future<int> saveAiItemsToHouse({
+  Future<void> saveAiItemsToHouse({
     required String houseId,
     required List<ItemModel> newItems,
-    required Map<String, String> metadataByItemId,
   }) async {
     for (final item in newItems) {
       if (item.houseId != houseId) {
@@ -161,13 +167,11 @@ class DriftItemRepository implements ItemRepository {
         );
       }
     }
-    if (newItems.isEmpty && metadataByItemId.isEmpty) return 0;
+    if (newItems.isEmpty) return;
 
     final result = await _dbService.executeWithRetry(
       () => _dao.saveAiItemsToHouse(
-        houseId: houseId,
         newItems: newItems.map(_toCompanion).toList(),
-        metadataByItemId: metadataByItemId,
       ),
       operationName: 'saveAiItemsToHouse($houseId)',
       config: RetryConfig.criticalConfig,
@@ -179,8 +183,6 @@ class DriftItemRepository implements ItemRepository {
         cause: result.error,
       );
     }
-
-    return result.data!;
   }
 
   /// Stream reattivo di tutti gli oggetti

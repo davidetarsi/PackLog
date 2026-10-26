@@ -21,6 +21,7 @@ import '../../houses/model/house_model.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
+import '../../items/view/item_sheet.dart';
 import '../../tour/tour_keys.dart';
 import '../helpers/ai_item_category.dart';
 import '../model/clothing_analysis_result.dart';
@@ -249,7 +250,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     final state = ref.read(aiImportNotifierProvider);
     if (state.isLoading || _exitDialogOpen || _exitStarted) return;
     final notifier = ref.read(aiImportNotifierProvider.notifier);
-    if (notifier.newCount + notifier.updatedCount > 0) {
+    if (notifier.newCount > 0) {
       _exitDialogOpen = true;
       try {
         final confirmed = await DialogHelpers.showConfirmation(
@@ -344,8 +345,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
         });
       }
 
-      // Il conteggio del vecchio stato includeva esclusi e collegati. Il
-      // repository può anche saltare un aggiornamento concorrente, quindi il
+      // Il repository può saltare un aggiornamento concorrente, quindi il
       // messaggio di esito resta generico.
       if (_saveRequested &&
           prev != null &&
@@ -454,22 +454,16 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     }
 
     final newCount = notifier.newCount;
-    final updatedCount = notifier.updatedCount;
     final selectedHouse = widget.isFirstTimeOnboarding
         ? null
         : _selectedHouse(state.selectedHouseId);
     final canSave =
         !state.isLoading &&
-        newCount + updatedCount > 0 &&
+        newCount > 0 &&
         (widget.isFirstTimeOnboarding || selectedHouse != null);
-    final label = switch ((newCount, updatedCount)) {
-      (0, 0) => 'common.save'.tr(),
-      (_, 0) => 'ai_import.save_new'.plural(newCount),
-      (0, _) => 'ai_import.save_updated'.plural(updatedCount),
-      _ =>
-        '${'ai_import.save_new'.plural(newCount)} · '
-            '${'ai_import.updated_part'.plural(updatedCount)}',
-    };
+    final label = newCount == 0
+        ? 'common.save'.tr()
+        : 'ai_import.save_new'.plural(newCount);
 
     return UniversalActionBar(
       primaryLabel: label,
@@ -538,11 +532,6 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       ) ??
       false;
 
-  String? _linkedName(String? id, List<ItemModel>? items) {
-    if (id == null || items == null) return null;
-    return items.where((item) => item.id == id).firstOrNull?.name;
-  }
-
   Future<void> _openAlreadyHere(
     AiImportState state,
     int groupIndex,
@@ -552,22 +541,33 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     if (_alreadyHereOpen || houseId == null || state.isLoading) return;
     _alreadyHereOpen = true;
     try {
-      final itemId = await showAlreadyHereSheet(
+      await showAlreadyHereSheet(
         context,
         houseId: houseId,
         scanned: state.photoGroups[groupIndex].results[itemIndex],
       );
-      if (itemId == null || !mounted) return;
-      final currentState = ref.read(aiImportNotifierProvider);
-      if (currentState.isLoading || currentState.selectedHouseId != houseId) {
-        return;
-      }
-      ref
-          .read(aiImportNotifierProvider.notifier)
-          .linkToExisting(groupIndex, itemIndex, itemId);
     } finally {
       _alreadyHereOpen = false;
     }
+  }
+
+  /// Apre la scheda del capo. Se l'utente salva, il capo sostituisce quello
+  /// della scansione e il nome nel campo si aggiorna.
+  Future<void> _openDetails(int groupIndex, int itemIndex) async {
+    final notifier = ref.read(aiImportNotifierProvider.notifier);
+    final current = ref.read(aiImportNotifierProvider);
+    if (current.isLoading ||
+        groupIndex >= current.photoGroups.length ||
+        itemIndex >= current.photoGroups[groupIndex].results.length) {
+      return;
+    }
+    final edited = await showScanItemSheet(
+      context,
+      result: current.photoGroups[groupIndex].results[itemIndex],
+    );
+    if (edited == null || !mounted) return;
+    notifier.updateResult(groupIndex, itemIndex, edited);
+    _controllers[groupIndex][itemIndex].text = edited.name;
   }
 
   // ── Loading state ─────────────────────────────────────────────────────────
@@ -798,18 +798,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                           ),
                           onIncludedChanged: (included) =>
                               notifier.setIncluded(gi, ii, included),
-                          isLinked: state.photoGroups[gi].linkedItemIds
-                              .containsKey(ii),
-                          linkedItemName: _linkedName(
-                            state.photoGroups[gi].linkedItemIds[ii],
-                            existingItems,
-                          ),
-                          onUnlink:
-                              state.photoGroups[gi].linkedItemIds.containsKey(
-                                ii,
-                              )
-                              ? () => notifier.unlink(gi, ii)
-                              : null,
+                          onOpenDetails: state.isLoading
+                              ? null
+                              : () => _openDetails(gi, ii),
                           onAlreadyHere:
                               _hasSameCategory(
                                 existingItems,
