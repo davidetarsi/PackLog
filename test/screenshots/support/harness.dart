@@ -84,6 +84,9 @@ class AppSetup {
   /// Casa creata dalla prova AI (`defaultHouseId` del tour).
   final String? tourHouseId;
   final SeedLevel seed;
+
+  /// Il viaggio di Lisbona ha gia la valigia generata (`seedValigiaAi`).
+  final bool aiPacking;
   final int unsyncedChanges;
   final List<Override> extraOverrides;
 
@@ -93,6 +96,7 @@ class AppSetup {
     this.tourStep = OnboardingStep.done,
     this.tourHouseId,
     this.seed = SeedLevel.full,
+    this.aiPacking = false,
     this.unsyncedChanges = 0,
     this.extraOverrides = const [],
   });
@@ -311,6 +315,7 @@ class ScreenshotApp {
 
     await tester.runAsync(() async {
       await seed(container, setup.seed);
+      if (setup.aiPacking) await seedValigiaAi(container);
       // `MyApp` crea il router solo a bootstrap concluso e onboarding letto,
       // e il redirect del router non fa nulla finché il bootstrap è in
       // corso: li risolviamo prima, così il primo redirect è quello giusto.

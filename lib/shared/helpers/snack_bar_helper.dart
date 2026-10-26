@@ -15,6 +15,7 @@
 /// ```
 library;
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_spacing.dart';
@@ -74,6 +75,29 @@ class AppSnackBar {
     );
   }
 
+  /// Mostra uno SnackBar **informativo** con l'azione "Annulla" (`common.undo`),
+  /// per tornare indietro su un'operazione appena fatta (es. capo tolto).
+  ///
+  /// L'azione resta del colore del testo: lo SnackBar è neutro, non arancio.
+  static void showUndo(
+    BuildContext context,
+    String message, {
+    required VoidCallback onUndo,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    _show(
+      context: context,
+      message: message,
+      backgroundColor: colorScheme.inverseSurface,
+      textColor: colorScheme.onInverseSurface,
+      action: SnackBarAction(
+        label: 'common.undo'.tr(),
+        textColor: colorScheme.onInverseSurface,
+        onPressed: onUndo,
+      ),
+    );
+  }
+
   // ── Internal ────────────────────────────────────────────────────────────────
 
   static void _show({
@@ -81,6 +105,7 @@ class AppSnackBar {
     required String message,
     required Color backgroundColor,
     required Color textColor,
+    SnackBarAction? action,
   }) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -96,6 +121,7 @@ class AppSnackBar {
             borderRadius: BorderRadius.circular(12),
           ),
           margin: EdgeInsets.all(context.spacingMd),
+          action: action,
         ),
       );
   }

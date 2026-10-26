@@ -176,6 +176,27 @@ void main() {
     expect(title.style?.color, scheme.primary);
   });
 
+  testWidgets('Valigia con AI è una riga attiva, senza "In arrivo"', (
+    tester,
+  ) async {
+    final read = await openSheet(tester, houses: [_house('a')]);
+    expect(find.text('create_sheet.ai_suitcase'), findsOneWidget);
+    expect(find.text('common.coming_soon'), findsNothing);
+
+    final row = tester.widget<ListTile>(
+      find.descendant(
+        of: find.byKey(const Key('create_ai_suitcase')),
+        matching: find.byType(ListTile),
+      ),
+    );
+    expect(row.enabled, isTrue);
+    expect(row.onTap, isNotNull);
+
+    await tester.tap(find.byKey(const Key('create_ai_suitcase')));
+    await tester.pumpAndSettle();
+    expect(read()!.action, CreateAction.aiSuitcase);
+  });
+
   testWidgets('scansioni esaurite: scansione spenta, il link a mano resta', (
     tester,
   ) async {

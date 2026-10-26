@@ -63,7 +63,12 @@ void main() {
           ),
         ],
       ),
-      GoRoute(path: '/new-trip', builder: (_, _) => const Text('NEW TRIP')),
+      GoRoute(
+        path: '/new-trip',
+        builder: (_, state) => Text(
+          state.uri.queryParameters['ai'] == '1' ? 'NEW TRIP AI' : 'NEW TRIP',
+        ),
+      ),
       GoRoute(
         path: '/houses/:id',
         builder: (_, state) => Text(
@@ -229,6 +234,22 @@ void main() {
       await tester.tap(find.byKey(const Key('create_new_trip')));
       await tester.pumpAndSettle();
       expect(find.text('NEW TRIP'), findsOneWidget);
+    });
+
+    testWidgets('Valigia con AI apre il nuovo viaggio con ai=1 e lo traccia', (
+      tester,
+    ) async {
+      await pumpShell(tester);
+      await openCreate(tester);
+      await tester.tap(find.byKey(const Key('create_ai_suitcase')));
+      await tester.pumpAndSettle();
+      expect(find.text('NEW TRIP AI'), findsOneWidget);
+      verify(
+        () => analytics.logEvent(
+          'create_sheet_choice',
+          properties: {'choice': 'ai_suitcase', 'tab': 'houses'},
+        ),
+      ).called(1);
     });
 
     testWidgets('chiudere il foglio non fa nulla', (tester) async {

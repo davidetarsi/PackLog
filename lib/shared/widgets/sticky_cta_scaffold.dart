@@ -1,4 +1,7 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
+import 'package:pack_log/shared/constants/app_constants.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/cta_reserved_space.dart';
 
@@ -8,15 +11,17 @@ import 'package:pack_log/shared/theme/cta_reserved_space.dart';
 /// - Il body è scrollabile e arriva fino in fondo allo schermo (`extendBody`)
 /// - Il CTA (bottoni/actions) resta fisso in basso, sopra il body che scorre
 ///   sotto
-/// - Con `ctaBackgroundColor` non impostato (default trasparente) il body
-///   scrollato resta visibile nell'area attorno ai bottoni; quell'area non è
-///   comunque cliccabile verso il contenuto sotto (vedi commento nel `build`)
+/// - Con `ctaBackgroundColor` non impostato (default) i bottoni galleggiano:
+///   il body che scorre sotto l'area CTA si vede sfocato e velato dallo
+///   sfondo, così resta chiaro che la pagina continua senza che il testo si
+///   confonda con i bottoni. Quell'area non è cliccabile verso il contenuto
+///   sotto (vedi commento nel `build`)
 /// - SafeArea gestisce correttamente iOS Home Indicator e Android Nav Bar
 ///
 /// **Non è lo stesso pattern della nav bar di [MainShell], ed è bene saperlo.**
 /// Quella è una pill con riempimento `surfaceContainer`, raggio pill e ombra:
 /// i suoi item stanno *dentro* una superficie visibile. Qui l'area CTA è
-/// trasparente e i bottoni galleggiano scoperti sul contenuto che scorre.
+/// sfocata e i bottoni galleggiano sul contenuto che scorre.
 /// Entrambe fluttuano sopra il body, ma somigliano l'una all'altra molto meno
 /// di quanto il codice lasci intendere.
 ///
@@ -44,9 +49,9 @@ class StickyCtaScaffold extends StatelessWidget {
   /// nessuna barra e il body occupa tutto lo spazio disponibile.
   final Widget? bottomContent;
 
-  /// Colore di background dell'area CTA (default: trasparente — i bottoni
-  /// "galleggiano" scoperti sopra il body che scorre sotto). Passare un colore
-  /// esplicito solo se serve un'area CTA opaca invece che flottante.
+  /// Colore di background dell'area CTA. Di default è null: i bottoni
+  /// galleggiano sopra il body, che sotto l'area CTA si vede sfocato. Passare
+  /// un colore esplicito solo se serve un'area CTA opaca invece che flottante.
   final Color? ctaBackgroundColor;
 
   /// Padding interno del contenitore CTA.
@@ -70,7 +75,7 @@ class StickyCtaScaffold extends StatelessWidget {
 
   /// Altezza standard di una CTA a riga singola: safe-area + `ctaPadding`
   /// di default (top spacingMd, bottom spacingSm) + altezza del pill button
-  /// (`responsive(56)`, la stessa usata dalla pill di [MainShell]).
+  /// ([AppConstants.ctaHeight], la stessa usata dalla pill di [MainShell]).
   ///
   /// Pubblico e statico così una schermata con una CTA più alta (righe
   /// impilate) può comporre il proprio `ctaHeightOverride` a partire da
@@ -79,7 +84,7 @@ class StickyCtaScaffold extends StatelessWidget {
       MediaQuery.paddingOf(context).bottom +
       context.spacingMd +
       context.spacingSm +
-      context.responsive(56);
+      context.responsive(AppConstants.ctaHeight);
 
   @override
   Widget build(BuildContext context) {
@@ -111,22 +116,43 @@ class StickyCtaScaffold extends StatelessWidget {
           // di sé — per un rettangolo alto quanto tutta l'area CTA, quel
           // riempimento resta a piena opacità fuori dai pochi px di bordo
           // sfumato, tingendo di nero un'area che dovrebbe restare trasparente.
-          : Container(
-              color: ctaBackgroundColor ?? Colors.transparent,
-              child: SafeArea(
-                child: Padding(
-                  padding:
-                      ctaPadding ??
-                      EdgeInsets.only(
-                        left: context.spacingMd,
-                        right: context.spacingMd,
-                        top: context.spacingMd,
-                        bottom: context.spacingSm,
-                      ),
-                  child: bottomContent,
-                ),
-              ),
+          : _ctaArea(context),
+    );
+  }
+
+  /// L'area dei bottoni: opaca con [ctaBackgroundColor], altrimenti sfocata.
+  Widget _ctaArea(BuildContext context) {
+    final content = SafeArea(
+      child: Padding(
+        padding:
+            ctaPadding ??
+            EdgeInsets.only(
+              left: context.spacingMd,
+              right: context.spacingMd,
+              top: context.spacingMd,
+              bottom: context.spacingSm,
             ),
+        child: bottomContent,
+      ),
+    );
+    final opaque = ctaBackgroundColor;
+    if (opaque != null) return Container(color: opaque, child: content);
+    // Il contenuto che passa sotto si vede sfocato e velato dallo sfondo:
+    // la pagina continua, ma il testo non si sovrappone ai bottoni. ClipRect
+    // limita la sfocatura all'area CTA.
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: AppConstants.ctaBlurSigma,
+          sigmaY: AppConstants.ctaBlurSigma,
+        ),
+        child: Container(
+          color: Theme.of(context).scaffoldBackgroundColor.withValues(
+            alpha: AppConstants.ctaScrimOpacity,
+          ),
+          child: content,
+        ),
+      ),
     );
   }
 }

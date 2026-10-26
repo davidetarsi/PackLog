@@ -76,7 +76,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -352,6 +352,12 @@ class AppDatabase extends _$AppDatabase {
           // Casa opzionale e ON DELETE SET NULL. Drift ricostruisce la tabella
           // copiando tutte le colonne e preservando ID, sync e junction.
           await m.alterTable(TableMigration(luggages));
+        }
+        if (from < 12) {
+          // Valigia AI: risposte del foglio e valigia proposta sul viaggio.
+          // Due colonne nullable in coda, come `legs`: nessuna riscrittura.
+          await m.addColumn(trips, trips.aiPackingSetup);
+          await m.addColumn(trips, trips.aiPackingResult);
         }
       },
       beforeOpen: (details) async {

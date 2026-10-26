@@ -31,6 +31,7 @@ class DsFormSheet extends StatelessWidget {
     this.actionKey,
     this.isBusy = false,
     this.actions = const [],
+    this.footer,
   });
 
   final String title;
@@ -40,6 +41,10 @@ class DsFormSheet extends StatelessWidget {
   final Key? actionKey;
   final bool isBusy;
   final List<Widget> actions;
+
+  /// Piè fisso al posto della CTA singola (per due bottoni o un avviso). Ha la
+  /// precedenza su [actionLabel].
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) => PopScope(
@@ -73,7 +78,9 @@ class DsFormSheet extends StatelessWidget {
                   child: AbsorbPointer(absorbing: isBusy, child: child),
                 ),
               ),
-              if (actionLabel != null)
+              if (footer != null)
+                footer!
+              else if (actionLabel != null)
                 Padding(
                   padding: EdgeInsets.fromLTRB(
                     context.spacingMd,

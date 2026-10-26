@@ -141,8 +141,9 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     onSuccess: Colors.white,
     successContainer: Color(0xFFE8F5E9),
     onSuccessContainer: Color(0xFF1B5E20),
-    // Ambra avviso — leggibile su sfondo chiaro
-    warning: Color(0xFFB45309),
+    // Ambra avviso — oro scuro, lontano dall'arancio del brand e leggibile sul
+    // bianco (contrasto 5,5:1)
+    warning: Color(0xFF8A6100),
     onWarning: Colors.white,
     warningContainer: Color(0xFFFEF3C7),
     onWarningContainer: Color(0xFF451A03),

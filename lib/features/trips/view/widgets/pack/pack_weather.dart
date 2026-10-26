@@ -143,6 +143,18 @@ class _WeatherCard extends StatelessWidget {
   }
 }
 
+/// Il meteo di una sola tappa, con la stessa riga della sezione "Meteo" ma
+/// senza il tocco che apre il dettaglio (es. nel foglio "Valigia con AI").
+class WeatherStopCard extends StatelessWidget {
+  const WeatherStopCard({super.key, required this.stop});
+
+  final StopWeather stop;
+
+  @override
+  Widget build(BuildContext context) =>
+      _WeatherSurface(child: _StopRow(stop: stop));
+}
+
 /// Una tappa: icona del tempo, nome e dettagli, minime e massime a destra.
 class _StopRow extends StatelessWidget {
   const _StopRow({required this.stop, this.onTap});

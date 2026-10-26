@@ -7,6 +7,8 @@ export const MAX_GIORNI = 60;
 export const MAX_TAPPE = 8;
 export const MAX_ATTIVITA = 20;
 export const MAX_TESTO = 80;
+/** Oltre questi giorni di fila senza lavatrice la valigia deve averne una. */
+export const GIORNI_MAX_SENZA_LAVATRICE = 5;
 
 export class IngressoNonValido extends Error {}
 
@@ -25,6 +27,38 @@ function giorni(x: unknown, campo: string): number {
     return no(`'${campo}' deve essere un intero fra 1 e ${MAX_GIORNI}`);
   }
   return x;
+}
+
+function lavatrice(x: unknown, campo: string): boolean | null {
+  if (x == null) return null;
+  if (typeof x !== "boolean") return no(`'${campo}' deve essere vero o falso`);
+  return x;
+}
+
+/** Vero solo se almeno una tappa ha la lavatrice e nessuna serie di giorni senza
+ *  lavatrice supera GIORNI_MAX_SENZA_LAVATRICE (una tappa con lavatrice azzera la serie). */
+export function lavatriceDaTappe(tappe: { giorni: number; lavatrice: boolean }[]): boolean {
+  let serie = 0;
+  let almeno = false;
+  for (const t of tappe) {
+    if (t.lavatrice) {
+      almeno = true;
+      serie = 0;
+    } else {
+      serie += t.giorni;
+      if (serie > GIORNI_MAX_SENZA_LAVATRICE) return false;
+    }
+  }
+  return almeno;
+}
+
+/** L'alloggio del viaggio dalle tappe: uno solo se sono tutti uguali, altrimenti
+ *  "hotel (Islanda), appartamento (Olanda)". */
+export function alloggioDaTappe(tappe: { nome: string; alloggio: string | null }[]): string | null {
+  const dati = tappe.filter((t) => t.alloggio);
+  if (!dati.length) return null;
+  if (new Set(dati.map((t) => t.alloggio)).size === 1) return dati[0].alloggio;
+  return dati.map((t) => `${t.alloggio} (${t.nome})`).join(", ");
 }
 
 function attivita(x: unknown, campo: string): string[] {
@@ -59,6 +93,7 @@ export function validaViaggio(x: unknown, oggi: string, conDettagli = true): Via
   if (!x || typeof x !== "object" || Array.isArray(x)) return no("manca il viaggio");
   const v = x as Record<string, unknown>;
   const out: ViaggioApp = { data_inizio: data(v.data_inizio, oggi), giorni: 0 };
+  let perTappa: { nome: string; giorni: number; alloggio: string | null; lavatrice: boolean }[] | null = null;
   if (v.tappe != null) {
     if (!Array.isArray(v.tappe) || !v.tappe.length) return no("'tappe' deve essere un elenco non vuoto");
     if (v.tappe.length > MAX_TAPPE) return no(`al massimo ${MAX_TAPPE} tappe`);
@@ -67,6 +102,17 @@ export function validaViaggio(x: unknown, oggi: string, conDettagli = true): Via
       giorni: giorni((t as Record<string, unknown>).giorni, `tappe[${i}].giorni`),
       attivita: attivita((t as Record<string, unknown>).attivita, `tappe[${i}].attivita`),
     }));
+    if (conDettagli) {
+      perTappa = v.tappe.map((t, i) => {
+        const r = t as Record<string, unknown>;
+        return {
+          nome: out.tappe![i].nome,
+          giorni: out.tappe![i].giorni,
+          alloggio: testo(r.alloggio, `tappe[${i}].alloggio`),
+          lavatrice: lavatrice(r.lavatrice, `tappe[${i}].lavatrice`) ?? false,
+        };
+      });
+    }
     out.giorni = out.tappe.reduce((n, t) => n + t.giorni, 0);
     if (out.giorni > MAX_GIORNI) return no(`viaggio troppo lungo (max ${MAX_GIORNI} giorni)`);
     if (v.giorni != null && v.giorni !== out.giorni) return no("'giorni' diverso dalla somma delle tappe");
@@ -77,8 +123,15 @@ export function validaViaggio(x: unknown, oggi: string, conDettagli = true): Via
   if (!conDettagli) return out;
   out.attivita = attivita(v.attivita, "attivita");
   out.bagaglio = testo(v.bagaglio, "bagaglio");
-  out.alloggio = testo(v.alloggio, "alloggio");
-  if (v.lavatrice != null && typeof v.lavatrice !== "boolean") return no("'lavatrice' deve essere vero o falso");
-  out.lavatrice = !!v.lavatrice;
+  // Formato vecchio (alloggio e lavatrice del viaggio) se c'e', altrimenti dalle tappe.
+  const alloggioViaggio = testo(v.alloggio, "alloggio");
+  const lavatriceViaggio = lavatrice(v.lavatrice, "lavatrice");
+  if (perTappa) {
+    out.alloggio = alloggioViaggio ?? alloggioDaTappe(perTappa);
+    out.lavatrice = lavatriceViaggio ?? lavatriceDaTappe(perTappa);
+  } else {
+    out.alloggio = alloggioViaggio;
+    out.lavatrice = lavatriceViaggio ?? false;
+  }
   return out;
 }

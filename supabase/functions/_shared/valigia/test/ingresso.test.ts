@@ -1,7 +1,9 @@
 // Il controllo del viaggio che arriva dall'app e la riprova del modello.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { IngressoNonValido, validaViaggio } from "../ingresso.ts";
+import {
+  alloggioDaTappe, GIORNI_MAX_SENZA_LAVATRICE, IngressoNonValido, lavatriceDaTappe, validaViaggio,
+} from "../ingresso.ts";
 import { conRiprova } from "../genera.ts";
 
 const OGGI = "2026-10-19";
@@ -51,4 +53,34 @@ test("il modello si richiede una volta se il JSON non si legge", async () => {
   n = 0;
   await assert.rejects(conRiprova(async () => ({ testo: (n++, "no") }))("p"), /non leggibile/);
   assert.equal(n, 2);
+});
+
+test("lavatrice: regola dei 5 giorni", () => {
+  assert.equal(GIORNI_MAX_SENZA_LAVATRICE, 5);
+  assert.equal(lavatriceDaTappe([{ giorni: 5, lavatrice: false }, { giorni: 4, lavatrice: true }]), true);
+  assert.equal(lavatriceDaTappe([{ giorni: 7, lavatrice: false }, { giorni: 4, lavatrice: true }]), false);
+  assert.equal(lavatriceDaTappe([{ giorni: 9, lavatrice: true }]), true);
+  assert.equal(lavatriceDaTappe([{ giorni: 3, lavatrice: false }]), false);
+  assert.equal(lavatriceDaTappe([{ giorni: 4, lavatrice: true }, { giorni: 6, lavatrice: false }]), false);
+  assert.equal(lavatriceDaTappe([{ giorni: 3, lavatrice: false }, { giorni: 3, lavatrice: false }, { giorni: 2, lavatrice: true }]), false);
+});
+
+test("alloggio dalle tappe", () => {
+  assert.equal(alloggioDaTappe([{ nome: "Islanda", alloggio: null }]), null);
+  assert.equal(alloggioDaTappe([{ nome: "Islanda", alloggio: "hotel" }, { nome: "Olanda", alloggio: "hotel" }]), "hotel");
+  assert.equal(alloggioDaTappe([{ nome: "Islanda", alloggio: "hotel" }, { nome: "Olanda", alloggio: "appartamento" }]),
+    "hotel (Islanda), appartamento (Olanda)");
+  assert.equal(alloggioDaTappe([{ nome: "Islanda", alloggio: null }, { nome: "Olanda", alloggio: "ostello" }]), "ostello");
+});
+
+test("tappe con alloggio e lavatrice", () => {
+  const t = validaViaggio({ data_inizio: "2026-11-02", tappe: [
+    { ...luogo, giorni: 5, alloggio: "hotel", lavatrice: false },
+    { nome: "Porto", lat: 41.15, lon: -8.61, giorni: 4, alloggio: "appartamento", lavatrice: true }] }, OGGI);
+  assert.equal(t.lavatrice, true);
+  assert.equal(t.alloggio, "hotel (Lisbona), appartamento (Porto)");
+  assert.equal("alloggio" in t.tappe![0], false);
+  // il formato vecchio vince
+  assert.equal(validaViaggio({ data_inizio: "2026-11-02", lavatrice: false, tappe: [{ ...luogo, giorni: 3, lavatrice: true }] }, OGGI).lavatrice, false);
+  rifiuta({ data_inizio: "2026-11-02", tappe: [{ ...luogo, giorni: 3, lavatrice: "si" }] }, /lavatrice/);
 });

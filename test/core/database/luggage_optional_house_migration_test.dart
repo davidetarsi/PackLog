@@ -5,10 +5,13 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
 
+/// Colonne aggiunte dalla v12: il confronto dei dati le ignora.
+const _colonneAi = {'ai_packing_setup', 'ai_packing_result'};
+
 void main() {
   for (final version in [8, 9, 10]) {
     test(
-      'v$version → v11 conserva inventario, viaggi e sync senza bagagli',
+      'v$version → v12 conserva inventario, viaggi e sync senza bagagli',
       () async {
         final directory = await Directory.systemTemp.createTemp(
           'packlog-migration-',
@@ -76,7 +79,11 @@ void main() {
               (await old
                       .customSelect('SELECT * FROM $table ORDER BY rowid')
                       .get())
-                  .map((r) => r.data)
+                  .map(
+                    (r) =>
+                        Map<String, Object?>.of(r.data)
+                          ..removeWhere((k, _) => _colonneAi.contains(k)),
+                  )
                   .toList();
         }
         await old.close();
@@ -98,6 +105,11 @@ void main() {
           );
           CREATE INDEX idx_luggages_house_id ON luggages(house_id);
         """);
+          // Le colonne AI arrivano nella v12: ogni versione qui è anteriore.
+          raw.execute('''
+            ALTER TABLE trips DROP COLUMN ai_packing_setup;
+            ALTER TABLE trips DROP COLUMN ai_packing_result;
+          ''');
           if (version < 9) {
             raw.execute('ALTER TABLE items DROP COLUMN ai_metadata');
           }
@@ -117,6 +129,14 @@ void main() {
                       .get())
                   .map((r) => r.data)
                   .toList();
+          // Le colonne AI della v12 non esistono prima: restano null e si
+          // tolgono dal confronto. Il resto deve essere identico.
+          for (final row in after) {
+            if (table == 'trips') {
+              expect(row.remove('ai_packing_setup'), isNull);
+              expect(row.remove('ai_packing_result'), isNull);
+            }
+          }
           expect(
             after,
             before[table],
@@ -131,14 +151,14 @@ void main() {
         expect(
           (await migrated.customSelect('PRAGMA user_version').getSingle())
               .data['user_version'],
-          11,
+          12,
         );
       },
     );
   }
 
   test(
-    'v10 → v11 conserva bagagli, metadati sync e collegamenti ai viaggi',
+    'v10 → v12 conserva bagagli, metadati sync e collegamenti ai viaggi',
     () async {
       final db = AppDatabase.forTesting(
         NativeDatabase.memory(
@@ -181,7 +201,7 @@ void main() {
                   .get())
               .first
               .data;
-      expect(db.schemaVersion, 11);
+      expect(db.schemaVersion, 12);
       expect(row['id'], 'l1');
       expect(row['house_id'], 'h1');
       expect(row['name'], 'Zaino');

@@ -43,7 +43,12 @@ const _missingScrollDuration = Duration(milliseconds: 300);
 /// Con [tripId] è la modifica di un viaggio esistente: stessa pagina, senza i
 /// passi, con un solo "Salva" che si accende dopo un cambiamento.
 class NewTripScreen extends ConsumerStatefulWidget {
-  const NewTripScreen({super.key, this.tripId, this.discardOnExit = false});
+  const NewTripScreen({
+    super.key,
+    this.tripId,
+    this.discardOnExit = false,
+    this.aiIntent = false,
+  });
 
   /// Viaggio da modificare; null per un viaggio nuovo.
   final String? tripId;
@@ -52,6 +57,10 @@ class NewTripScreen extends ConsumerStatefulWidget {
   /// Serve al flusso "Riusa": la copia nasce senza date e, se l'utente la
   /// abbandona, non deve restare in lista.
   final bool discardOnExit;
+
+  /// Viene da "Valigia con AI" (`/new-trip?ai=1`): il primario del passo 1 è
+  /// "Prepara con AI" e la strada manuale diventa un link.
+  final bool aiIntent;
 
   @override
   ConsumerState<NewTripScreen> createState() => _NewTripScreenState();
@@ -184,9 +193,20 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     _save(goToPacking: false);
   }
 
-  /// Salva il viaggio e va dove dice il passo 1. Con un errore il modulo resta
-  /// compilato e la riprova la gestisce [ErrorRetryDialog].
-  Future<void> _save({required bool goToPacking}) async {
+  /// Strada manuale ("Preparo io la valigia"): passo 2 senza AI. È un link,
+  /// quindi non si spegne: senza campi mostra gli errori come il bottone.
+  void _onPackMyself() {
+    if (!_draft.canSave) {
+      _showMissing();
+      return;
+    }
+    _save(goToPacking: true);
+  }
+
+  /// Salva il viaggio e va dove dice il passo 1. Con [withAi] la pagina
+  /// valigia parte con il foglio "Valigia con AI" aperto. Con un errore il
+  /// modulo resta compilato e la riprova la gestisce [ErrorRetryDialog].
+  Future<void> _save({required bool goToPacking, bool withAi = false}) async {
     if (_saving) return;
     setState(() => _saving = true);
 
@@ -212,20 +232,29 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       // in corso, o la cache se il viaggio ce l'ha già.
       ref.read(tripWeatherNotifierProvider(trip.id));
       router.go('/trips');
-      router.push('/trips/${trip.id}/edit-items?from=new');
+      router.push(
+        '/trips/${trip.id}/edit-items?from=new${withAi ? '&ai=1' : ''}',
+      );
     } else {
       router.go('/trips?focus=${trip.id}');
     }
   }
 
-  /// In modifica: riporta i cambiamenti sul viaggio, che conserva oggetti,
-  /// bagagli, nota e tutto il resto.
+  /// In modifica: riporta i cambiamenti sul viaggio di adesso, che conserva
+  /// oggetti, bagagli, valigia AI, nota e tutto il resto.
   Future<void> _saveEdit() async {
     final original = _original;
     if (_saving || original == null) return;
     setState(() => _saving = true);
     final draftTrip = _draft.toTripModel(id: original.id, now: DateTime.now());
-    final updated = original.copyWith(
+    // Il viaggio com'è adesso nel provider, non la copia di apertura: risposte
+    // AI, oggetti e bagagli salvati nel frattempo non devono sparire.
+    final corrente = ref
+        .read(tripNotifierProvider)
+        .valueOrNull
+        ?.where((t) => t.id == original.id)
+        .firstOrNull;
+    final updated = (corrente ?? original).copyWith(
       name: draftTrip.name,
       departureDateTime: draftTrip.departureDateTime,
       returnDateTime: draftTrip.returnDateTime,
@@ -346,10 +375,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
           ),
         ),
         // Il nuovo viaggio ha bottone e link; la modifica solo il bottone.
-        ctaHeightOverride: _isEdit
-            ? null
-            : StickyCtaScaffold.standardHeight(context) +
-                  kMinInteractiveDimension,
+        ctaHeightOverride: _isEdit ? null : _newTripCtaHeight(context),
         ctaBackgroundColor: Theme.of(context).scaffoldBackgroundColor,
         bottomContent: _buildBottomBar(context),
         body: Builder(
@@ -588,6 +614,16 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     );
   }
 
+  /// Fascia in fondo al passo 1: "Avanti" e "Prepara con AI" (due bottoni) più
+  /// il link "Più tardi"; con [NewTripScreen.aiIntent] un bottone e due link.
+  double _newTripCtaHeight(BuildContext context) =>
+      StickyCtaScaffold.standardHeight(context) +
+      (widget.aiIntent
+          ? kMinInteractiveDimension * 2
+          : context.spacingSm +
+                context.responsive(AppConstants.ctaHeight) +
+                kMinInteractiveDimension);
+
   Widget _buildBottomBar(BuildContext context) {
     if (_isEdit) {
       return DsButton(
@@ -597,6 +633,26 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
         isLoading: _saving,
         onPressed: _draft.canSave && _edited ? _saveEdit : null,
         onDisabledTap: _draft.canSave ? null : _showMissing,
+      );
+    }
+    final later = DsLinkButton(
+      key: const Key('new_trip_later'),
+      label: 'trips.new.later'.tr(),
+      onPressed: _onLater,
+    );
+
+    if (widget.aiIntent) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _prepareAiButton(),
+          DsLinkButton(
+            key: const Key('new_trip_manual'),
+            label: 'trips.new.pack_myself'.tr(),
+            onPressed: _onPackMyself,
+          ),
+          later,
+        ],
       );
     }
     return Column(
@@ -611,12 +667,57 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
           onPressed: _draft.canSave ? () => _save(goToPacking: true) : null,
           onDisabledTap: _showMissing,
         ),
-        DsLinkButton(
-          key: const Key('new_trip_later'),
-          label: 'trips.new.later'.tr(),
-          onPressed: _onLater,
-        ),
+        SizedBox(height: context.spacingSm),
+        _prepareAiOutlined(context),
+        later,
       ],
+    );
+  }
+
+  /// "Prepara con AI" primario, con [NewTripScreen.aiIntent].
+  Widget _prepareAiButton() {
+    return DsButton(
+      key: const Key('new_trip_prepare_ai'),
+      label: 'trips.new.prepare_with_ai'.tr(),
+      icon: Icons.auto_awesome,
+      expand: true,
+      isLoading: _saving,
+      onPressed: _draft.canSave
+          ? () => _save(goToPacking: true, withAi: true)
+          : null,
+      onDisabledTap: _showMissing,
+    );
+  }
+
+  /// "Prepara con AI" sotto "Avanti": contorno neutro, perché l'arancio del
+  /// passo 1 è solo "Avanti" (come la scelta neutra di "Avanti" nel foglio
+  /// valigia). Stessa altezza del bottone primario. Senza campi, il tocco
+  /// mostra gli errori invece di spegnersi.
+  Widget _prepareAiOutlined(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        key: const Key('new_trip_prepare_ai'),
+        onPressed: _draft.canSave
+            ? () => _save(goToPacking: true, withAi: true)
+            : _showMissing,
+        icon: const Icon(Icons.auto_awesome),
+        label: Text('trips.new.prepare_with_ai'.tr()),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: cs.onSurface,
+          minimumSize: Size.fromHeight(
+            context.responsive(AppConstants.ctaHeight),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+          ),
+          side: BorderSide(
+            color: cs.outline,
+            width: AppConstants.emphasisBorderWidth,
+          ),
+        ),
+      ),
     );
   }
 }

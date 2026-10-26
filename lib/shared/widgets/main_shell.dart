@@ -58,6 +58,9 @@ class MainShell extends ConsumerWidget {
       case CreateAction.newTrip:
         analytics.trackCreateSheetChoice(choice: 'new_trip', tab: tab);
         context.push('/new-trip');
+      case CreateAction.aiSuitcase:
+        analytics.trackCreateSheetChoice(choice: 'ai_suitcase', tab: tab);
+        context.push('/new-trip?ai=1');
     }
   }
 

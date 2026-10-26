@@ -171,6 +171,85 @@
     "other": "Altro"
   },
   "trips": {
+"ai": {
+  "title": "Valigia con AI",
+  "house_title": "Da quale casa prendi i vestiti",
+  "luggage_title": "Con che bagaglio parti",
+  "new_luggage": "Nuovo bagaglio",
+  "no_luggage": "Non hai ancora bagagli.",
+  "no_houses": "Aggiungi una casa per preparare la valigia con AI.",
+  "stop_progress": "Tappa {} di {} · {}",
+  "activities_title": "Cosa farai in {}?",
+  "activities_title_single": "Cosa farai?",
+  "stay_title": "Dove dormi in {}",
+  "stay_title_single": "Dove dormi",
+  "washer": "C'è una lavatrice",
+  "washer_sub": "Se c'è, porti meno vestiti",
+  "washer_sub_on": "Porti meno vestiti e li lavi lì",
+  "copy_from": "Uguale a {}",
+  "back": "Indietro",
+  "next": "Avanti: {}",
+  "prepare": "Prepara la valigia",
+  "incomplete": "{} è ancora da compilare. Ha un meteo diverso: vale la pena dirci cosa farai e dove dormi.",
+  "go_to_stop": "La compilo io",
+  "activity": {
+    "city": "Città e musei",
+    "walks": "Passeggiate ed escursioni",
+    "trekking": "Trekking",
+    "cammino": "Cammino",
+    "high_mountain": "Alta montagna",
+    "sea": "Mare",
+    "diving": "Immersioni e snorkeling",
+    "ski": "Sci e neve",
+    "camping": "Campeggio",
+    "work": "Lavoro",
+    "formal_dinner": "Cena elegante",
+    "wedding": "Matrimonio",
+    "worship": "Luoghi di culto",
+    "nightlife": "Serate e locali",
+    "cycling": "Bicicletta",
+    "spa": "Terme"
+  },
+  "stay": {
+    "hotel": "Hotel",
+    "apartment": "Appartamento",
+    "hostel": "Ostello",
+    "camping": "Campeggio",
+    "friends": "Da amici o parenti"
+  },
+  "wait": {
+    "title": "Preparo la valigia",
+    "subtitle": "{} · {}",
+    "nights": {
+      "one": "{} notte",
+      "other": "{} notti"
+    },
+    "step_weather": "Guardo il meteo di {}",
+    "step_wardrobe": "Scelgo dal tuo armadio",
+    "step_check": "Controllo cosa manca",
+    "hint": "Di solito ci vogliono una decina di secondi."
+  },
+  "error": {
+    "credits_title": "Hai finito i crediti AI",
+    "credits_body": "Per questo mese i crediti della valigia AI sono finiti. Puoi aggiungerne con un codice promo dal Profilo.",
+    "credits_action": "Vai al Profilo",
+    "empty_title": "Questa casa non ha vestiti",
+    "empty_body": "Per preparare la valigia servono i capi dell'armadio di questa casa. Aggiungine qualcuno, poi riprova.",
+    "empty_action": "Aggiungi vestiti",
+    "too_large_title": "L'armadio è troppo grande",
+    "too_large_body": "La valigia AI legge al massimo 400 capi. Togline qualcuno da questa casa per prepararla.",
+    "generic_title": "Non sono riuscito a preparare la valigia",
+    "generic_body": "Controlla la connessione e riprova."
+  },
+  "unavailable": {
+    "noDates": "Il viaggio non ha ancora le date: aggiungile per preparare la valigia con AI.",
+    "past": "Il viaggio è già finito: la valigia con AI si prepara per i viaggi in corso o futuri.",
+    "tooFar": "Il viaggio parte fra più di due anni: la valigia con AI si prepara più vicino alla partenza.",
+    "tooLong": "La valigia con AI copre viaggi fino a 60 giorni. Puoi prepararla a mano.",
+    "tooManyStops": "La valigia con AI copre fino a 8 tappe. Puoi prepararla a mano.",
+    "missingPlace": "Una tappa non ha ancora una posizione sulla mappa: impostala per preparare la valigia con AI."
+  }
+},
     "edit": {
       "discard_title": "Uscire senza salvare?",
       "discard_message": "Le modifiche al viaggio andranno perse."
@@ -185,7 +264,6 @@
       "duplicated": "Viaggio duplicato"
     },
     "pack": {
-      "ai_coming_soon": "La valigia preparata dall’AI è in arrivo",
       "title": "Prepara la valigia",
       "luggages": "Bagagli",
       "no_luggages": "Non hai ancora bagagli.",
@@ -201,7 +279,43 @@
       "done_count": {"one": "Fatto · {} oggetto", "other": "Fatto · {} oggetti"},
       "days_left": {"one": "-{} giorno", "other": "-{} giorni"},
       "discard_title": "Uscire senza salvare?",
-      "discard_message": "Le modifiche alla valigia andranno perse."
+      "discard_message": "Le modifiche alla valigia andranno perse.",
+      "ai": {
+        "note": "Ho scelto i vestiti e l'essenziale per l'igiene. Il resto lo scegli tu: lo trovi in fondo alla valigia.",
+        "search_hint": "Aggiungi dal tuo armadio",
+        "in_departure": "Da indossare in partenza",
+        "in_departure_note": "Da indossare in partenza: è ingombrante e così non occupa spazio in valigia.",
+        "why_title": "Perché è in valigia",
+        "have_count": "Ne hai {} nell'armadio",
+        "quantity": "Quantità",
+        "remove": "Togli dalla valigia",
+        "removed": "Tolto: {}",
+        "added": "Aggiunto: {}",
+        "suitcase_empty": "Nessun oggetto in valigia: cercalo qui sopra.",
+        "home_title": {
+          "one": "Dalla casa · {} oggetto",
+          "other": "Dalla casa · {} oggetti"
+        },
+        "home_subtitle": "Toiletries, elettronica e varie: li scegli tu",
+        "home_add": "Aggiungi",
+        "prepare_button": "Prepara con AI",
+        "regenerate": "Rigenera",
+        "replace_title": "Vuoi sostituire la valigia?",
+        "replace_message": "I capi che hai in valigia verranno sostituiti da quelli proposti dall'AI.",
+        "replace_confirm": "Sostituisci",
+        "missing_row": "Cosa manca a questo viaggio",
+        "nothing_missing": "Non manca niente",
+        "nothing_missing_hint": "La valigia copre clima e attività",
+        "nothing_missing_sheet": "Non manca niente: la valigia copre il clima e le attività di tutte le tappe.",
+        "reasons_row": "Perché queste scelte",
+        "reasons_none": "Nessun motivo da mostrare.",
+        "level_important": "Importante",
+        "level_useful": "Utile",
+        "warning_search": "Cerca nell'armadio",
+        "warning_dismiss": "Ok, capito",
+        "stops_join": "{} e {}",
+        "items_error": "Non sono riuscito a leggere gli oggetti della casa: la proposta è salva, ma la valigia non è cambiata."
+      }
     },
     "weather": {
       "title": "Meteo",
@@ -315,6 +429,8 @@
       "name_hint": "È stato preso dalla meta: cambialo se vuoi.",
       "next": "Avanti: prepara la valigia",
       "later": "Prepara la valigia più tardi",
+      "prepare_with_ai": "Prepara con AI",
+      "pack_myself": "Preparo io la valigia",
       "where_missing": "Scegli dove vai: serve anche per il meteo.",
       "when_missing": "Scegli andata e ritorno.",
       "stop_no_nights": "{} finisce prima di iniziare: controlla le date.",
@@ -338,6 +454,7 @@
     "save": "Salva",
     "save_changes": "Salva modifiche",
     "cancel": "Annulla",
+    "undo": "Annulla",
     "confirm": "Conferma",
     "delete": "Elimina",
     "create": "Crea",

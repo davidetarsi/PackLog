@@ -156,4 +156,30 @@ void main() {
       expect(find.text('CTA'), findsOneWidget);
     });
   });
+
+  testWidgets('di default i bottoni galleggiano su uno sfondo sfocato', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: StickyCtaScaffold(body: SizedBox(), bottomContent: Text('CTA')),
+      ),
+    );
+    expect(find.byType(BackdropFilter), findsOneWidget);
+  });
+
+  testWidgets('con ctaBackgroundColor l area è opaca, senza sfocatura', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: StickyCtaScaffold(
+          body: SizedBox(),
+          bottomContent: Text('CTA'),
+          ctaBackgroundColor: Colors.white,
+        ),
+      ),
+    );
+    expect(find.byType(BackdropFilter), findsNothing);
+  });
 }

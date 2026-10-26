@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -6,7 +7,9 @@ import 'package:pack_log/features/ai_input/model/ai_failure_reason.dart';
 import 'package:pack_log/features/ai_input/model/ai_import_state.dart';
 import 'package:pack_log/features/ai_input/model/clothing_analysis_result.dart';
 import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
+import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_weather.dart';
+import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:pack_log/features/trips/services/trip_weather_service.dart';
 
 import 'seed.dart';
@@ -141,6 +144,16 @@ class FakeTripWeather extends TripWeatherService {
       forecastDays: _days(stop, min, max, today: today),
     );
   }
+}
+
+/// Valigia AI che non arriva mai: la pagina d'attesa resta com'è, senza
+/// timer di rete né risposte.
+class HangingPackTripService extends PackTripService {
+  @override
+  Future<AiPackingResult> generate(
+    Map<String, dynamic> body, {
+    required String houseId,
+  }) => Completer<AiPackingResult>().future;
 }
 
 /// Meteo con il tetto giornaliero finito.
