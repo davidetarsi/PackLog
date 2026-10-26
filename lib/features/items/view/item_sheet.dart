@@ -15,7 +15,6 @@ import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_error_state.dart';
 import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../../shared/widgets/ds_form_sheet.dart';
-
 import '../../../shared/widgets/ds_field.dart';
 import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/ds_field_label.dart';
@@ -505,7 +504,9 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isNew && !_isSaving) {
+    // Solo la modifica legge l'oggetto dalla casa: il nuovo e quello della
+    // scansione non ci sono ancora.
+    if (!_isNew && !_isScan && !_isSaving) {
       final items = ref.watch(itemNotifierProvider(widget.houseId));
       final fallback = items.when<Widget?>(
         loading: () =>
