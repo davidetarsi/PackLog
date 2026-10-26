@@ -10,8 +10,7 @@
 // app_category: items.category (vestiti, varie, toiletries, elettronica);
 // dubbi: etichette da chiedere ("?"), [] = niente da chiedere.
 //
-// Lo scan dell'app passa da qui; openai-proxy resta per le versioni gia'
-// installate, che lo chiamano ancora (stessi crediti, stessi errori).
+// Lo scan dell'app passa da qui.
 // La foto consuma un credito AI (quota mensile + crediti extra, come la valigia);
 // il nome no: costa pochissimo e ha solo un limite giornaliero contro gli abusi,
 // che l'app non mostra.
@@ -28,7 +27,7 @@ import {
 // Un nome costa circa due decimi di millesimo di dollaro (Claude + Jev): il
 // tetto difende dagli abusi. Predefinito: riga 'item_name_daily_cap' di public.app_config.
 const TETTO_NOMI_GIORNALIERO = 150;
-// ~6 MB di base64 (~4,5 MB di immagine), come openai-proxy.
+// ~6 MB di base64 (~4,5 MB di immagine).
 const MAX_IMMAGINE_BASE64 = 6 * 1024 * 1024;
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");

@@ -1,7 +1,7 @@
-// Cio' che serve alle Edge Functions (pack-trip, trip-weather, item-metadata,
-// openai-proxy): risposte HTTP, utente dal JWT, limiti d'uso per utente,
-// crediti AI, Open-Meteo con la cache in tabella. Il client Supabase e' passato
-// da fuori (service role).
+// Cio' che serve alle Edge Functions (pack-trip, trip-weather, item-metadata):
+// risposte HTTP, utente dal JWT, limiti d'uso per utente, crediti AI,
+// Open-Meteo con la cache in tabella. Il client Supabase e' passato da fuori
+// (service role).
 import type { Risposta, Servizi } from "./clima/meteo.ts";
 
 // deno-lint-ignore no-explicit-any
