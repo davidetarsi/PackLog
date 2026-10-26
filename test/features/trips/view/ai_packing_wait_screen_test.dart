@@ -243,7 +243,7 @@ void main() {
       expect(_outcome.popped, isTrue);
       expect(_outcome.result, isNull);
       expect(_text('Preparo la valigia'), findsNothing);
-      expect(_text('Non sono riuscito a preparare la valigia'), findsNothing);
+      expect(_text('Non è stato possibile preparare la valigia'), findsNothing);
     });
   });
 
@@ -297,7 +297,7 @@ void main() {
       _service.last.completeError(const PackTripException('HTTP 502'));
       await _settle(tester);
 
-      expect(_text('Non sono riuscito a preparare la valigia'), findsOneWidget);
+      expect(_text('Non è stato possibile preparare la valigia'), findsOneWidget);
       expect(_service.generateCalls, 1);
 
       await tester.tap(find.text('Riprova'));

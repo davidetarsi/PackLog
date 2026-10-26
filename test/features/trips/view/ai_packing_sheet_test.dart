@@ -358,7 +358,7 @@ void main() {
 
       expect(result.called, isFalse);
       expect(find.textContaining('è ancora da compilare'), findsOneWidget);
-      expect(find.text('La compilo io'), findsOneWidget);
+      expect(find.text('Compila la tappa'), findsOneWidget);
 
       await _tap(tester, 'Prepara la valigia');
       await tester.pumpAndSettle();
@@ -368,7 +368,7 @@ void main() {
       expect(result.setup!.stops['olanda']!.isUntouched, isTrue);
     });
 
-    testWidgets('La compilo io porta alla tappa vuota', (tester) async {
+    testWidgets('Compila la tappa porta alla tappa vuota', (tester) async {
       final result = _Result();
       await _pump(
         tester,
@@ -385,7 +385,7 @@ void main() {
       expect(find.text('Tappa 1 di 2 · Islanda'), findsOneWidget);
       await _tap(tester, 'Avanti: Olanda');
       await _tap(tester, 'Prepara la valigia');
-      await _tap(tester, 'La compilo io');
+      await _tap(tester, 'Compila la tappa');
 
       expect(find.text('Tappa 2 di 2 · Olanda'), findsOneWidget);
       expect(find.textContaining('è ancora da compilare'), findsNothing);

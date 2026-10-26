@@ -480,7 +480,7 @@ void main() {
     });
 
     testWidgets('con ai=1 il primario è "Prepara con AI", c\'è il link '
-        '"Preparo io la valigia" e non "Avanti"', (tester) async {
+        '"Prepara a mano" e non "Avanti"', (tester) async {
       await pumpScreen(tester, open: '/new-trip?ai=1');
 
       expect(find.byKey(const Key('new_trip_next')), findsNothing);
@@ -491,13 +491,13 @@ void main() {
             .variant,
         DsButtonVariant.primary,
       );
-      expect(find.text('Preparo io la valigia'), findsOneWidget);
+      expect(find.text('Prepara a mano'), findsOneWidget);
       double y(String key) => tester.getTopLeft(find.byKey(Key(key))).dy;
       expect(y('new_trip_prepare_ai'), lessThan(y('new_trip_manual')));
       expect(y('new_trip_manual'), lessThan(y('new_trip_later')));
     });
 
-    testWidgets('con ai=1, "Preparo io la valigia" porta al passo 2 senza AI', (
+    testWidgets('con ai=1, "Prepara a mano" porta al passo 2 senza AI', (
       tester,
     ) async {
       await pumpScreen(tester, open: '/new-trip?ai=1');

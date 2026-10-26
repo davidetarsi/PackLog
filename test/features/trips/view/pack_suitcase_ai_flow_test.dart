@@ -679,7 +679,7 @@ void main() {
         expect(saves.last.items, isEmpty);
         expect(
           find.text(
-            'Non sono riuscito a leggere gli oggetti della casa: la proposta è salva, ma la valigia non è cambiata.',
+            'Non è stato possibile leggere gli oggetti della casa: la proposta è salvata, ma la valigia non è cambiata.',
           ),
           findsOneWidget,
         );
@@ -712,7 +712,7 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(
           find.text(
-            'Non sono riuscito a leggere gli oggetti della casa: la proposta è salva, ma la valigia non è cambiata.',
+            'Non è stato possibile leggere gli oggetti della casa: la proposta è salvata, ma la valigia non è cambiata.',
           ),
           findsNothing,
         );
