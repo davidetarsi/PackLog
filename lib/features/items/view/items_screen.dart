@@ -237,16 +237,16 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                 loading: () => const SkeletonSimpleList(),
                 error: (error, stack) => DsErrorState(
                   error: error,
+                  title: 'errors.load_houses'.tr(),
                   onRetry: () => ref.invalidate(houseNotifierProvider),
-                  message: 'common.error_loading_houses'.tr(
-                    namedArgs: {'error': error.toString()},
-                  ),
+                  message: 'errors.retry_hint'.tr(),
                 ),
               );
             },
             loading: () => const SkeletonItemsBody(),
             error: (error, stack) => DsErrorState(
               error: error,
+              title: 'errors.load_items'.tr(),
               onRetry: () => ref
                   .read(itemNotifierProvider(widget.houseId).notifier)
                   .refresh(widget.houseId),

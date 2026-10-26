@@ -96,7 +96,7 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
               ),
               error: (error, _) => DsErrorState(
                 error: error,
-                message: 'ai_import.already_here_load_error'.tr(),
+                title: 'ai_import.already_here_load_error'.tr(),
                 onRetry: () =>
                     ref.invalidate(itemNotifierProvider(widget.houseId)),
               ),

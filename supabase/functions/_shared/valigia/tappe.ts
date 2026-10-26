@@ -21,6 +21,28 @@ import {
 } from "./slots.ts";
 import { massimo, minimo, pf, vero } from "./py.ts";
 
+const PAROLE_GENERICHE = new Set(["visite", "visita", "citta", "città", "cene", "serate", "serata", "giorno",
+  "giornate", "informali", "eleganti", "musei", "mercati", "leggere", "leggera", "leggeri", "leggero"]);
+
+function parole(testo: unknown): Set<string> {
+  return new Set((String(testo ?? "").toLowerCase().match(/\p{L}+/gu) ?? []).filter((w) => [...w].length >= 5));
+}
+
+/** I mancanti della fase 1 (la tappa base vede le attivita' di tutto il viaggio) vanno alle tappe di
+ *  cui parlano: le tappe nominate; se no quelle con un'attivita' che il mancante nomina; se no nessuna
+ *  (giri DEV del 25 ottobre: le calzature per le terme di Reykjavik segnate su Lisbona). */
+export function tappeDelMancante(gp: Record_, perTappa: Record_[]): string[] {
+  const testo = `${gp.slot || ""} ${gp.reason || ""}`.toLowerCase();
+  const p = parole(testo);
+  const nomi: string[] = perTappa.map((t) => t.destinazione);
+  const citate = nomi.filter((n) => n && testo.includes(n.toLowerCase()));
+  if (citate.length) return [...new Set(citate)];
+  const conAttivita = perTappa.filter((t) => (t.attivita || []).some((a: unknown) =>
+    [...parole(a)].some((w) => !PAROLE_GENERICHE.has(w) && p.has(w)))).map((t) => t.destinazione as string);
+  if (conAttivita.length && new Set(conAttivita).size < new Set(nomi).size) return [...new Set(conAttivita)];
+  return [];
+}
+
 const q = (x: Record_) => x.quantita ?? 1;
 const lws = (a: string) => a.toLowerCase().trim();
 function contiene(xs: Record_[], x: Record_): boolean {
@@ -304,11 +326,12 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     attContesto.push(att);
   }
   const capienza = capienzaBagaglio(bagaglio);
-  const lavMt = Boolean(get(sc, "lavatrice", false)) ||
+  const lavEss = Boolean(get(sc, "lavatrice", false));
+  const lavMt = lavEss ||
     (K.CAMMINO_LAVA_A_MANO && rc.camminoAPiedi(sc.attivita, bagaglio, giorniTot));
   const r = strategySlots(testoModello, items, {
     giorni: giorniTot, lavatrice: lavMt, attivita: attBase, attivita_viaggio: attContesto,
-    lavatrice_essenziali: Boolean(get(sc, "lavatrice", false)),
+    lavatrice_essenziali: lavEss,
     temp_max_essenziali: (() => {
       const m = perTappa.map((t) => t.meteo.temp_max_media).filter((x) => x != null);
       return m.length ? Math.min(...m) : null;
@@ -328,7 +351,10 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
       profiliCapi)).map((t) => t.destinazione);
     if (restano.length) rec.tappe = restano;
   }
-  for (const gp of r.mancanti || []) gp.tappe = [base.destinazione];
+  for (const gp of r.mancanti || []) {
+    const dette = K.TAPPE_DEI_MANCANTI ? tappeDelMancante(gp, perTappa) : [];
+    gp.tappe = dette.length ? dette : [base.destinazione];
+  }
   r.tappa_base = base.destinazione;
   r.tappe = nomi;
   r.giorni_per_tappa = Object.fromEntries(perTappa.map((t) => [t.destinazione, Math.trunc(Number(t.giorni || 1))]));

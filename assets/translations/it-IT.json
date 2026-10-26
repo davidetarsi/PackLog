@@ -55,6 +55,7 @@
     "unnamed_house": "Casa senza nome"
   },
   "items": {
+    "not_found": "Oggetto non trovato",
     "add": "Oggetto",
     "this_item": "questo oggetto",
     "no_houses_available": "Nessuna casa disponibile. Crea prima una casa.",
@@ -132,6 +133,7 @@
     "space_deleted": "Spazio \"{}\" eliminato"
   },
   "luggages": {
+    "load_failed": "Impossibile caricare i bagagli",
     "title": "Bagagli",
     "add": "Bagaglio",
     "add_new": "Nuovo bagaglio",
@@ -189,8 +191,8 @@
   "back": "Indietro",
   "next": "Avanti: {}",
   "prepare": "Prepara la valigia",
-  "incomplete": "{} è ancora da compilare. Ha un meteo diverso: vale la pena dirci cosa farai e dove dormi.",
-  "go_to_stop": "La compilo io",
+  "incomplete": "{} è ancora da compilare. Ha un meteo diverso: conviene indicare cosa farai e dove dormi.",
+  "go_to_stop": "Compila la tappa",
   "activity": {
     "city": "Città e musei",
     "walks": "Passeggiate ed escursioni",
@@ -230,14 +232,14 @@
   },
   "error": {
     "credits_title": "Hai finito i crediti AI",
-    "credits_body": "Per questo mese i crediti della valigia AI sono finiti. Puoi aggiungerne con un codice promo dal Profilo.",
+    "credits_body": "Per questo mese i crediti della valigia con AI sono finiti. Puoi aggiungerne con un codice promo dal Profilo.",
     "credits_action": "Vai al Profilo",
     "empty_title": "Questa casa non ha vestiti",
-    "empty_body": "Per preparare la valigia servono i capi dell'armadio di questa casa. Aggiungine qualcuno, poi riprova.",
+    "empty_body": "Per preparare la valigia servono i vestiti dell'armadio di questa casa. Aggiungine qualcuno, poi riprova.",
     "empty_action": "Aggiungi vestiti",
     "too_large_title": "L'armadio è troppo grande",
-    "too_large_body": "La valigia AI legge al massimo 400 capi. Togline qualcuno da questa casa per prepararla.",
-    "generic_title": "Non sono riuscito a preparare la valigia",
+    "too_large_body": "La valigia con AI legge al massimo 400 oggetti per casa. Togline qualcuno da questa casa per prepararla.",
+    "generic_title": "Non è stato possibile preparare la valigia",
     "generic_body": "Controlla la connessione e riprova."
   },
   "unavailable": {
@@ -249,6 +251,7 @@
     "missingPlace": "Una tappa non ha ancora una posizione sulla mappa: impostala per preparare la valigia con AI."
   }
 },
+    "not_found": "Viaggio non trovato",
     "edit": {
       "discard_title": "Uscire senza salvare?",
       "discard_message": "Le modifiche al viaggio andranno perse."
@@ -279,7 +282,7 @@
       "discard_title": "Uscire senza salvare?",
       "discard_message": "Le modifiche alla valigia andranno perse.",
       "ai": {
-        "note": "Ho scelto i vestiti e l'essenziale per l'igiene. Il resto lo scegli tu: lo trovi in fondo alla valigia.",
+        "note": "Sono stati scelti i vestiti e l'essenziale per l'igiene. Il resto lo scegli tu: lo trovi in fondo alla valigia.",
         "search_hint": "Aggiungi dal tuo armadio",
         "in_departure": "Da indossare in partenza",
         "in_departure_note": "Da indossare in partenza: è ingombrante e così non occupa spazio in valigia.",
@@ -299,7 +302,7 @@
         "prepare_button": "Prepara con AI",
         "regenerate": "Rigenera",
         "replace_title": "Vuoi sostituire la valigia?",
-        "replace_message": "I capi che hai in valigia verranno sostituiti da quelli proposti dall'AI.",
+        "replace_message": "I vestiti che hai in valigia verranno sostituiti da quelli proposti dall'AI.",
         "replace_confirm": "Sostituisci",
         "missing_row": "Cosa manca a questo viaggio",
         "nothing_missing": "Non manca niente",
@@ -312,7 +315,7 @@
         "warning_search": "Cerca nell'armadio",
         "warning_dismiss": "Ok, capito",
         "stops_join": "{} e {}",
-        "items_error": "Non sono riuscito a leggere gli oggetti della casa: la proposta è salva, ma la valigia non è cambiata."
+        "items_error": "Non è stato possibile leggere gli oggetti della casa: la proposta è salvata, ma la valigia non è cambiata."
       }
     },
     "weather": {
@@ -403,7 +406,7 @@
       "next": "Avanti: prepara la valigia",
       "later": "Prepara la valigia più tardi",
       "prepare_with_ai": "Prepara con AI",
-      "pack_myself": "Preparo io la valigia",
+      "pack_myself": "Prepara a mano",
       "where_missing": "Scegli dove vai: serve anche per il meteo.",
       "when_missing": "Scegli andata e ritorno.",
       "stop_no_nights": "{} finisce prima di iniziare: controlla le date.",
@@ -423,6 +426,11 @@
     }
   },
   "common": {
+    "content_unavailable": "Il contenuto potrebbe essere stato eliminato o non essere più disponibile.",
+    "page_not_found": "Pagina non trovata",
+    "page_unavailable": "Pagina non disponibile",
+    "page_not_found_hint": "Questo collegamento non porta a una pagina disponibile. Torna alle tue case per continuare.",
+    "back_to_trips": "Torna ai viaggi",
     "coming_soon": "In arrivo",
     "save": "Salva",
     "save_changes": "Salva modifiche",
@@ -484,6 +492,10 @@
     "dates": "Date"
   },
   "errors": {
+    "retry_hint": "Riprova tra un momento.",
+    "load_houses": "Impossibile caricare le case",
+    "load_items": "Impossibile caricare gli oggetti",
+    "load_trips": "Impossibile caricare i viaggi",
     "generic": "Si è verificato un errore",
     "save_failed": "Impossibile salvare",
     "save_error": "Errore di salvataggio",
@@ -525,6 +537,8 @@
     "copy_success": "\"{}\" copiato con successo"
   },
   "profile": {
+    "ai_usage_load_failed": "Impossibile caricare gli usi AI",
+    "sync_details_load_failed": "Impossibile caricare i dettagli di sincronizzazione",
     "section_preferences": "Preferenze",
     "section_account": "Account",
     "ai_usage_title": "Usi AI",
@@ -571,6 +585,7 @@
     "analytics_subtitle": "Dati d'uso che ci aiutano a migliorare l'app"
   },
   "ai_import": {
+    "error_title": "Scansione non completata",
     "already_here_title": "C'è già in {}?",
     "already_here_default_title": "C'è già in casa?",
     "already_here_load_error": "Impossibile caricare gli oggetti della casa. Riprova.",
@@ -667,6 +682,7 @@
     "ai_save_tooltip": "Li salviamo in una casa nuova, «Casa». Subito dopo potrai darle il nome e il luogo giusti."
   },
   "location_search": {
+    "failed": "Non è stato possibile cercare i luoghi. Riprova.",
     "rate_limit_reached": "Troppe ricerche di località, riprova tra qualche minuto.",
     "no_results": "Nessun luogo trovato. Prova con il nome di una città."
   },

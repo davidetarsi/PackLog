@@ -16,6 +16,7 @@ export 'ds_floating_bar.dart';
 export 'ds_group_header.dart';
 export 'ds_icon_picker.dart';
 export 'ds_link_button.dart';
+export 'ds_not_found_state.dart';
 export 'ds_picker_sheet.dart';
 export 'ds_sheet_header.dart';
 export 'ds_section_header.dart';

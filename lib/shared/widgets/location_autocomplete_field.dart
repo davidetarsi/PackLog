@@ -4,7 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../helpers/snack_bar_helper.dart';
+import 'location_search_feedback.dart';
 import '../model/model.dart';
 import '../services/location_search_service.dart';
 import '../theme/app_spacing.dart';
@@ -73,6 +73,8 @@ class _LocationAutocompleteFieldState
 
   List<LocationSuggestionModel> _suggestions = [];
   bool _isLoading = false;
+  Object? _searchError;
+  int _requestId = 0;
 
   /// Ultima ricerca completata: serve a dire "nessun luogo" solo dopo una
   /// risposta vera, non mentre si scrive.
@@ -119,6 +121,9 @@ class _LocationAutocompleteFieldState
     setState(() {
       _suggestions = [];
       _searchedQuery = null;
+      _searchError = null;
+      _isLoading = false;
+      _requestId++;
     });
     if (text.trim().length < widget.minCharsForSearch) return;
 
@@ -129,36 +134,35 @@ class _LocationAutocompleteFieldState
   }
 
   Future<void> _searchLocations(String query) async {
-    if (!mounted) return;
-    setState(() => _isLoading = true);
-
+    if (!mounted || query != _controller.text.trim()) return;
+    final request = ++_requestId;
+    setState(() {
+      _isLoading = true;
+      _searchError = null;
+    });
     try {
       final suggestions = await ref
           .read(locationSearchServiceProvider)
           .search(query, lang: context.locale.languageCode);
-      // Se nel frattempo il testo è cambiato, questa risposta è superata.
-      if (!mounted || _controller.text.trim() != query) return;
+      if (!mounted ||
+          request != _requestId ||
+          _controller.text.trim() != query) {
+        return;
+      }
       setState(() {
         _suggestions = suggestions;
         _searchedQuery = query;
         _isLoading = false;
       });
-    } on GeocodeRateLimitException {
-      if (!mounted) return;
+    } catch (error) {
+      if (!mounted ||
+          request != _requestId ||
+          _controller.text.trim() != query) {
+        return;
+      }
       setState(() {
         _suggestions = [];
-        _isLoading = false;
-      });
-      // Feedback esplicito all'utente: senza questo vedrebbe "nessun
-      // risultato" e penserebbe che la località non esista.
-      AppSnackBar.showWarning(
-        context,
-        'location_search.rate_limit_reached'.tr(),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _suggestions = [];
+        _searchError = error;
         _isLoading = false;
       });
     }
@@ -166,9 +170,15 @@ class _LocationAutocompleteFieldState
 
   void _selectSuggestion(LocationSuggestionModel suggestion) {
     _debounceTimer?.cancel();
+    _requestId++;
     _ignoreNextChange = true;
     _controller.text = suggestion.displayName;
-    setState(() => _suggestions = []);
+    setState(() {
+      _suggestions = [];
+      _searchError = null;
+      _searchedQuery = null;
+      _isLoading = false;
+    });
     widget.onLocationSelected?.call(suggestion);
     _focusNode.unfocus();
   }
@@ -226,6 +236,7 @@ class _LocationAutocompleteFieldState
     final noResults =
         showResults &&
         !_isLoading &&
+        _searchError == null &&
         _suggestions.isEmpty &&
         _searchedQuery != null;
 
@@ -257,6 +268,11 @@ class _LocationAutocompleteFieldState
             ),
           ),
         ],
+        if (showResults && _searchError != null)
+          LocationSearchFeedback(
+            error: _searchError!,
+            onRetry: () => _searchLocations(_controller.text.trim()),
+          ),
         if (noResults)
           Padding(
             padding: EdgeInsets.only(

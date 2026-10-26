@@ -652,6 +652,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       height: context.screenHeight * 0.6,
       child: DsErrorState(
         error: reason,
+        title: 'ai_import.error_title'.tr(),
         message: reason.messageKey.tr(),
         retryLabel: 'ai_import.retry'.tr(),
         // Su quota esaurita e sessione scaduta riprovare non può funzionare:

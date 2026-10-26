@@ -28,7 +28,7 @@ class LuggagesManagementSheet extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => DsErrorState(
             error: error,
-            message: 'storage.load_failed'.tr(),
+            title: 'luggages.load_failed'.tr(),
             onRetry: () => ref.invalidate(luggageNotifierProvider),
           ),
           data: (luggages) => DsSettingsGroup(

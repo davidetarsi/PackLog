@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/widgets/location_search_feedback.dart';
 import '../../../../shared/constants/house_icons.dart';
 import '../../../../shared/model/model.dart';
 import '../../../../shared/services/location_search_service.dart';
@@ -68,6 +69,10 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
 
   Timer? _debounceTimer;
   List<LocationSuggestionModel> _places = const [];
+  Object? _searchError;
+  bool _isSearching = false;
+  String? _searchedQuery;
+  int _requestId = 0;
 
   /// Vero mentre la scelta scrive il nome nel campo. Il controller notifica
   /// più volte durante quella scrittura (anche per la selezione del testo),
@@ -114,29 +119,56 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
     final query = _controller.text.trim();
     // I luoghi mostrati sono della ricerca precedente: durante l'attesa non
     // devono restare sotto il testo nuovo.
-    setState(() => _places = const []);
+    setState(() {
+      _places = const [];
+      _searchError = null;
+      _searchedQuery = null;
+      _isSearching = false;
+      _requestId++;
+    });
     if (query.length < _minCharsForPlaces) return;
 
     _debounceTimer = Timer(_placesDebounce, () => _searchPlaces(query));
   }
 
   Future<void> _searchPlaces(String query) async {
-    final lang = Localizations.localeOf(context).languageCode;
-    List<LocationSuggestionModel> results;
+    if (!mounted || query != _controller.text.trim()) return;
+    final request = ++_requestId;
+    setState(() {
+      _isSearching = true;
+      _searchError = null;
+    });
     try {
-      results = await ref
+      final results = await ref
           .read(locationSearchServiceProvider)
-          .search(query, lang: lang);
-    } catch (_) {
-      results = const [];
+          .search(query, lang: Localizations.localeOf(context).languageCode);
+      if (!mounted ||
+          request != _requestId ||
+          _controller.text.trim() != query) {
+        return;
+      }
+      setState(() {
+        _places = results;
+        _searchedQuery = query;
+        _isSearching = false;
+      });
+    } catch (error) {
+      if (!mounted ||
+          request != _requestId ||
+          _controller.text.trim() != query) {
+        return;
+      }
+      setState(() {
+        _places = const [];
+        _searchError = error;
+        _isSearching = false;
+      });
     }
-    // Se nel frattempo il testo è cambiato, questa risposta è già superata.
-    if (!mounted || _controller.text.trim() != query) return;
-    setState(() => _places = results);
   }
 
   void _select(DraftPlace place, String text) {
     _debounceTimer?.cancel();
+    _requestId++;
     if (_controller.text != text) {
       _writingChoice = true;
       try {
@@ -146,7 +178,12 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
       }
     }
     _focusNode.unfocus();
-    setState(() => _places = const []);
+    setState(() {
+      _places = const [];
+      _searchError = null;
+      _searchedQuery = null;
+      _isSearching = false;
+    });
     widget.onSelected(place);
   }
 
@@ -184,6 +221,25 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
             ),
           ),
         ),
+        if (showResults && _searchError != null)
+          LocationSearchFeedback(
+            error: _searchError!,
+            onRetry: () => _searchPlaces(_controller.text.trim()),
+          ),
+        if (showResults &&
+            !_isSearching &&
+            _searchError == null &&
+            _searchedQuery != null &&
+            _places.isEmpty)
+          Padding(
+            padding: EdgeInsets.only(top: context.spacingSm),
+            child: Text(
+              'location_search.no_results'.tr(),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
         if (showResults && matchingHouses.isNotEmpty) ...[
           SizedBox(height: context.spacingSm),
           // Il tocco su una riga non deve togliere il focus prima del suo

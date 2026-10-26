@@ -34,6 +34,16 @@ import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
 import 'package:pack_log/shared/widgets/quantity_stepper.dart';
 
+import 'package:pack_log/features/houses/model/house_model.dart';
+import 'package:pack_log/features/profile/providers/gpt_usage_provider.dart';
+import 'package:pack_log/features/houses/providers/house_provider.dart';
+import 'package:pack_log/features/houses/view/add_edit_house_screen.dart';
+import 'package:pack_log/features/items/view/item_sheet.dart';
+import 'package:pack_log/features/luggages/view/add_edit_luggage_screen.dart';
+import 'package:pack_log/features/spaces/view/add_edit_space_screen.dart';
+import 'package:pack_log/shared/services/location_search_service.dart';
+import 'package:pack_log/shared/model/location_suggestion_model.dart';
+
 import 'support/fakes.dart';
 import 'support/fonts.dart';
 import 'support/harness.dart';
@@ -144,6 +154,26 @@ Future<void> _emitAi(ScreenshotApp app, AiImportState state) async {
 class _SyncingForever extends Syncing {
   @override
   bool build() => true;
+}
+
+class _UnavailableHouses extends HouseNotifier {
+  @override
+  Future<List<HouseModel>> build() async =>
+      throw StateError('database internal details');
+}
+
+class _UnavailablePlaces extends LocationSearchService {
+  @override
+  Future<List<LocationSuggestionModel>> search(
+    String query, {
+    required String lang,
+  }) async => throw const GeocodeSearchException();
+}
+
+class _SaveUnavailableHouse extends HouseNotifier {
+  @override
+  Future<void> updateHouse(HouseModel house) async =>
+      throw StateError('write failed');
 }
 
 // ── Nuovo viaggio ────────────────────────────────────────────────────────────
@@ -2053,14 +2083,160 @@ final flows = <Flow>[
       },
     ),
   ]),
-  Flow('12-errori', 'Errori di navigazione', [
+  Flow('12-errori', 'Errori e contenuti non trovati', [
     Scenario(
       1,
       'errore-router',
       'rotta-sconosciuta',
       source: 'lib/core/routing/app_router.dart',
-      description: 'Pagina di errore del router (link rotto).',
+      description: 'Collegamento inesistente con ritorno sicuro alle case.',
       steps: (app) => app.go('/rotta/che/non/esiste'),
+    ),
+    Scenario(
+      2,
+      'viaggio',
+      'non-trovato',
+      source: 'lib/features/trips/view/trip_detail_screen.dart',
+      description:
+          'Viaggio non più disponibile, aperto da un collegamento diretto.',
+      steps: (app) => app.go('/trips/missing'),
+    ),
+    Scenario(
+      3,
+      'casa',
+      'non-trovata',
+      source: 'lib/features/houses/view/house_detail_screen.dart',
+      description: 'Casa non più disponibile e ritorno alla lista case.',
+      steps: (app) => app.push('/houses/missing'),
+    ),
+    Scenario(
+      4,
+      'case',
+      'caricamento-fallito',
+      source: 'lib/features/houses/view/houses_screen.dart',
+      description: 'Errore di lettura, senza dettagli tecnici, con Riprova.',
+      setup: AppSetup(
+        extraOverrides: [
+          houseNotifierProvider.overrideWith(_UnavailableHouses.new),
+        ],
+      ),
+      steps: (app) => app.go('/'),
+    ),
+    Scenario(
+      5,
+      'oggetto',
+      'non-trovato',
+      source: 'lib/features/items/view/item_sheet.dart',
+      description:
+          'Oggetto mancante: il foglio spiega il problema e offre Chiudi.',
+      steps: (app) async {
+        await _houseDetail(app);
+        showItemSheet(
+          app.tester.element(find.byType(Scaffold).last),
+          houseId: kHomeId,
+          itemId: 'missing',
+        );
+        await app.settle();
+      },
+    ),
+    Scenario(
+      6,
+      'spazio',
+      'non-trovato',
+      source: 'lib/features/spaces/view/add_edit_space_screen.dart',
+      description: 'Stesso stato nel foglio spazio, senza campi modificabili.',
+      steps: (app) async {
+        await _houseDetail(app);
+        showAddEditSpaceSheet(
+          app.tester.element(find.byType(Scaffold).last),
+          houseId: kHomeId,
+          spaceId: 'missing',
+        );
+        await app.settle();
+      },
+    ),
+    Scenario(
+      7,
+      'bagaglio',
+      'non-trovato',
+      source: 'lib/features/luggages/view/add_edit_luggage_screen.dart',
+      description:
+          'Bagaglio mancante, con lo stesso messaggio e azione di chiusura.',
+      steps: (app) async {
+        await _pack(app, kUpcomingTripId);
+        showAddEditLuggageSheet(
+          app.tester.element(find.byType(Scaffold).last),
+          luggageId: 'missing',
+        );
+        await app.settle();
+      },
+    ),
+    Scenario(
+      8,
+      'luoghi',
+      'ricerca-fallita',
+      source: 'lib/features/trips/view/widgets/place_search.dart',
+      description:
+          'Errore sotto il campo, diverso da nessun risultato e con Riprova.',
+      setup: AppSetup(
+        extraOverrides: [
+          locationSearchServiceProvider.overrideWithValue(_UnavailablePlaces()),
+        ],
+      ),
+      steps: (app) async {
+        await _openNewTrip(app);
+        await app.enterText(_fieldIn('new_trip_place_search'), 'Roma');
+        await app.tester.pump(const Duration(milliseconds: 400));
+        await app.settle();
+      },
+    ),
+    Scenario(
+      9,
+      'casa',
+      'salvataggio-fallito',
+      source: 'lib/shared/widgets/error_retry_dialog.dart',
+      description:
+          'Salvataggio non riuscito: il modulo resta compilato e si può riprovare.',
+      setup: AppSetup(
+        extraOverrides: [
+          houseNotifierProvider.overrideWith(_SaveUnavailableHouse.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        showAddEditHouseSheet(
+          app.tester.element(find.byType(Scaffold).last),
+          houseId: kHomeId,
+        );
+        await app.settle();
+        await app.enterText(
+          find.byKey(const Key('house_sheet_name')),
+          'Casa Roma',
+        );
+        await app.tap(find.byKey(const Key('house_sheet_save')));
+      },
+    ),
+    Scenario(
+      10,
+      'profilo',
+      'usi-ai-non-disponibili',
+      source: 'lib/features/profile/view/profile_screen.dart',
+      description:
+          'Avviso compatto degli usi AI con Riprova; il resto del Profilo resta usabile.',
+      setup: AppSetup(
+        extraOverrides: [
+          gptUsageProvider.overrideWith(
+            (ref) async => throw StateError('internal'),
+          ),
+        ],
+      ),
+      steps: (app) async {
+        await app.go('/profile');
+        await app.tester.ensureVisible(
+          find.text('profile.ai_usage_load_failed'.tr()),
+        );
+        await app.settle();
+      },
     ),
   ]),
 ];

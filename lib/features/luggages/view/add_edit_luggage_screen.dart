@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
@@ -151,7 +152,7 @@ class _AddEditLuggageSheetState extends ConsumerState<AddEditLuggageSheet> {
         error: (error, _) => _sheet(
           DsErrorState(
             error: error,
-            message: 'storage.load_failed'.tr(),
+            title: 'luggages.load_failed'.tr(),
             onRetry: () => ref.invalidate(luggageNotifierProvider),
           ),
         ),
@@ -162,9 +163,11 @@ class _AddEditLuggageSheetState extends ConsumerState<AddEditLuggageSheet> {
                 .firstOrNull;
             if (entity == null) {
               return _sheet(
-                DsEmptyState(
+                DsNotFoundState(
                   icon: Icons.luggage_outlined,
                   title: 'luggages.not_found'.tr(),
+                  actionLabel: 'common.close'.tr(),
+                  onAction: () => Navigator.pop(context),
                 ),
               );
             }

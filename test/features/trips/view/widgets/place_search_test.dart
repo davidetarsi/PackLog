@@ -322,4 +322,19 @@ void main() {
     ).colorScheme.error;
     expect(border.borderSide.color, errorColor);
   });
+  testWidgets(
+    'dopo una scelta valida rifocalizzare non mostra nessun risultato',
+    (tester) async {
+      await pumpSearch(tester, onSelected: (_) {});
+      await tester.enterText(find.byType(TextField), 'Marsiglia');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      await tester.tap(_placeRow(0));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(TextField));
+      await tester.pumpAndSettle();
+      expect(find.text('location_search.no_results'), findsNothing);
+      expect(find.text('location_search.failed'), findsNothing);
+    },
+  );
 }

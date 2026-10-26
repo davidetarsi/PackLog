@@ -12,6 +12,9 @@ import '../../../shared/helpers/dialog_helpers.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/ds_error_state.dart';
+import '../../../shared/widgets/ds_not_found_state.dart';
+import '../../../shared/widgets/ds_form_sheet.dart';
 import '../../../shared/widgets/ds_field.dart';
 import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/ds_field_label.dart';
@@ -226,15 +229,10 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
       _loaded = true;
       return;
     }
-    final item = _item();
-    if (item == null) {
-      // Oggetto non trovato (es. cancellato da un altro dispositivo): il foglio
-      // si chiude invece di restare vuoto.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.pop(context);
-      });
-      return;
-    }
+  }
+
+  void _hydrate(ItemModel item) {
+    if (_loaded) return;
     _nameController.text = item.name;
     _noteController.text = item.description ?? '';
     _chosenCategory = item.category;
@@ -501,9 +499,43 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     Navigator.pop(context);
   }
 
+  Widget _unavailable(Widget child) =>
+      DsFormSheet(title: 'items.edit_item'.tr(), child: child);
+
   @override
   Widget build(BuildContext context) {
-    if (!_loaded) return const SizedBox.shrink();
+    // Solo la modifica legge l'oggetto dalla casa: il nuovo e quello della
+    // scansione non ci sono ancora.
+    if (!_isNew && !_isScan && !_isSaving) {
+      final items = ref.watch(itemNotifierProvider(widget.houseId));
+      final fallback = items.when<Widget?>(
+        loading: () =>
+            _unavailable(const Center(child: CircularProgressIndicator())),
+        error: (error, _) => _unavailable(
+          DsErrorState(
+            error: error,
+            title: 'errors.load_items'.tr(),
+            onRetry: () => ref.invalidate(itemNotifierProvider(widget.houseId)),
+          ),
+        ),
+        data: (items) {
+          final item = items.where((i) => i.id == widget.itemId).firstOrNull;
+          if (item == null) {
+            return _unavailable(
+              DsNotFoundState(
+                title: 'items.not_found'.tr(),
+                icon: Icons.inventory_2_outlined,
+                actionLabel: 'common.close'.tr(),
+                onAction: () => Navigator.pop(context),
+              ),
+            );
+          }
+          _hydrate(item);
+          return null;
+        },
+      );
+      if (fallback != null) return fallback;
+    }
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final spaces = _isScan

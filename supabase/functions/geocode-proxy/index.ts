@@ -1,5 +1,6 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
+import { isValidGeocodeBias } from "./validation.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -83,10 +84,8 @@ Deno.serve(async (req) => {
   if (lang.length > 8) {
     return errorResponse(400, "'lang' too long");
   }
-  // I filtri di Geoapify (countrycode:it,fr · proximity:lon,lat · …): solo i
-  // caratteri della loro sintassi, cosi' nessun altro parametro passa di qui.
-  if (bias.length > MAX_TEXT_LENGTH || !/^[a-z0-9:,.|-]+$/i.test(bias)) {
-    return errorResponse(400, "'bias' not valid");
+  if (!isValidGeocodeBias(bias)) {
+    return errorResponse(400, "Invalid 'bias': expected proximity:lon,lat");
   }
 
   // 3. Atomic rate-limit check (TOCTOU-safe via SQL function).

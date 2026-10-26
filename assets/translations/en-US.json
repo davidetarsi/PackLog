@@ -55,6 +55,7 @@
     "unnamed_house": "Unnamed house"
   },
   "items": {
+    "not_found": "Item not found",
     "add": "Item",
     "this_item": "this item",
     "no_houses_available": "No houses available. Create a house first.",
@@ -132,6 +133,7 @@
     "space_deleted": "Space \"{}\" deleted"
   },
   "luggages": {
+    "load_failed": "Unable to load luggage",
     "title": "Luggages",
     "add": "Luggage",
     "add_new": "New luggage",
@@ -188,9 +190,9 @@
   "copy_from": "Same as {}",
   "back": "Back",
   "next": "Next: {}",
-  "prepare": "Pack my suitcase",
-  "incomplete": "{} is still to fill in. The weather is different there: tell us what you will do and where you sleep.",
-  "go_to_stop": "I'll fill it in",
+  "prepare": "Pack the suitcase",
+  "incomplete": "{} is still to fill in. The weather is different there: it's worth adding what you will do and where you sleep.",
+  "go_to_stop": "Fill in the stop",
   "activity": {
     "city": "Cities and museums",
     "walks": "Walks and hikes",
@@ -230,14 +232,14 @@
   },
   "error": {
     "credits_title": "You have run out of AI credits",
-    "credits_body": "The suitcase AI credits for this month are used up. You can add more with a promo code from your Profile.",
+    "credits_body": "The AI packing list credits for this month are used up. You can add more with a promo code from your Profile.",
     "credits_action": "Go to Profile",
     "empty_title": "This house has no clothes",
-    "empty_body": "To pack the suitcase we need the clothes in this house's wardrobe. Add some, then try again.",
+    "empty_body": "Packing the suitcase needs the clothes in this house's wardrobe. Add some, then try again.",
     "empty_action": "Add clothes",
     "too_large_title": "The wardrobe is too large",
-    "too_large_body": "The AI suitcase reads at most 400 items. Remove some from this house to pack it.",
-    "generic_title": "I could not pack the suitcase",
+    "too_large_body": "The AI packing list reads at most 400 items per house. Remove some from this house to pack it.",
+    "generic_title": "The suitcase could not be packed",
     "generic_body": "Check your connection and try again."
   },
   "unavailable": {
@@ -249,6 +251,7 @@
     "missingPlace": "A stop has no place on the map yet: set it to pack with AI."
   }
 },
+    "not_found": "Trip not found",
     "edit": {
       "discard_title": "Leave without saving?",
       "discard_message": "Your changes to the trip will be lost."
@@ -279,7 +282,7 @@
       "discard_title": "Leave without saving?",
       "discard_message": "Your suitcase changes will be lost.",
       "ai": {
-        "note": "I chose the clothes and the basics for hygiene. The rest is up to you: you'll find it at the bottom of the suitcase.",
+        "note": "The clothes and the hygiene basics have been chosen. The rest is up to you: you'll find it at the bottom of the suitcase.",
         "search_hint": "Add from your wardrobe",
         "in_departure": "Wear on departure",
         "in_departure_note": "Wear on departure: it's bulky, so it takes no space in the suitcase.",
@@ -299,7 +302,7 @@
         "prepare_button": "Prepare with AI",
         "regenerate": "Regenerate",
         "replace_title": "Replace the suitcase?",
-        "replace_message": "The items in the suitcase will be replaced by the ones the AI suggests.",
+        "replace_message": "The clothes in the suitcase will be replaced by the ones the AI suggests.",
         "replace_confirm": "Replace",
         "missing_row": "What's missing for this trip",
         "nothing_missing": "Nothing is missing",
@@ -312,7 +315,7 @@
         "warning_search": "Search the wardrobe",
         "warning_dismiss": "Got it",
         "stops_join": "{} and {}",
-        "items_error": "I couldn't read the house's items: the proposal is saved, but the suitcase has not changed."
+        "items_error": "The house's items could not be read: the proposal is saved, but the suitcase has not changed."
       }
     },
     "weather": {
@@ -403,7 +406,7 @@
       "next": "Next: pack your suitcase",
       "later": "Pack later",
       "prepare_with_ai": "Prepare with AI",
-      "pack_myself": "I'll pack it myself",
+      "pack_myself": "Pack it by hand",
       "where_missing": "Choose where you're going: we need it for the weather too.",
       "when_missing": "Choose your dates.",
       "stop_no_nights": "{} ends before it starts: check the dates.",
@@ -423,6 +426,11 @@
     }
   },
   "common": {
+    "content_unavailable": "This content may have been deleted or may no longer be available.",
+    "page_not_found": "Page not found",
+    "page_unavailable": "Page unavailable",
+    "page_not_found_hint": "This link does not lead to an available page. Return to your houses to continue.",
+    "back_to_trips": "Back to trips",
     "coming_soon": "Coming soon",
     "save": "Save",
     "save_changes": "Save changes",
@@ -484,6 +492,10 @@
     "dates": "Dates"
   },
   "errors": {
+    "retry_hint": "Try again in a moment.",
+    "load_houses": "Unable to load houses",
+    "load_items": "Unable to load items",
+    "load_trips": "Unable to load trips",
     "generic": "An error occurred",
     "save_failed": "Unable to save",
     "save_error": "Save error",
@@ -525,6 +537,8 @@
     "copy_success": "\"{}\" copied successfully"
   },
   "profile": {
+    "ai_usage_load_failed": "Unable to load AI usage",
+    "sync_details_load_failed": "Unable to load sync details",
     "section_preferences": "Preferences",
     "section_account": "Account",
     "ai_usage_title": "AI uses",
@@ -571,6 +585,7 @@
     "analytics_subtitle": "Usage data that helps us improve the app"
   },
   "ai_import": {
+    "error_title": "Scan could not be completed",
     "already_here_title": "Already in {}?",
     "already_here_default_title": "Already at home?",
     "already_here_load_error": "Couldn't load the items in this home. Try again.",
@@ -667,6 +682,7 @@
     "ai_save_tooltip": "We save them in a new house, “Home”. Right after, you can give it the right name and place."
   },
   "location_search": {
+    "failed": "We could not search for places. Try again.",
     "rate_limit_reached": "Too many location searches, please try again in a few minutes.",
     "no_results": "No places found. Try the name of a city."
   },

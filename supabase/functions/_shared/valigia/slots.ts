@@ -15,7 +15,7 @@ import {
 } from "./inject.ts";
 import {
   applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps,
-  capienzaBagaglio, capienzaPotabile, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri,
+  capienzaBagaglio, capienzaPotabile, lavanderiaPresunta, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri,
   penalitaVetoCapo, penalitaVoto, score, segnaInPartenza, segnalaScarpeCammino, segnalaVolume, togliDoppioni,
 } from "./dopo.ts";
 import { floorDiv, massimo, minimo, ordina, pf, ps, vero } from "./py.ts";
@@ -207,8 +207,10 @@ function contiene(xs: Record_[], x: Record_): boolean {
 export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiSlots): Record_ {
   rejects.length = 0;
   fixes.length = 0;
-  const giorni = a.giorni;
+  let giorni = a.giorni;
   let lavatrice = a.lavatrice;
+  // solo per la destinazione unica: le tappe hanno la regola dei 5 giorni dell'app
+  if (a.lavatrice_essenziali == null && lavanderiaPresunta(giorni, lavatrice)) giorni = K.GIORNI_LAVANDERIA;
   const attivita = a.attivita ?? null;
   const tempMin = a.temp_min ?? null, tempMax = a.temp_max ?? null;
   const bagaglio = a.bagaglio ?? "";

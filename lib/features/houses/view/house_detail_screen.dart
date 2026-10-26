@@ -6,6 +6,7 @@ import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
+import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../ai_input/helpers/start_ai_scan.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../providers/house_provider.dart';
@@ -33,7 +34,6 @@ import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/helpers/navigation_helpers.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
-import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/helpers/search_match.dart';
 
@@ -487,13 +487,11 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
           if (matchingHouses.isEmpty) {
             return Scaffold(
               appBar: AppBar(title: Text('houses.house_not_found'.tr())),
-              body: DsEmptyState(
+              body: DsNotFoundState(
                 icon: Icons.home_outlined,
-                title: 'houses.house_not_found_message'.tr(),
-                ctaLabel: 'houses.back_to_houses'.tr(),
-                ctaIcon: Icons.home,
-                ctaVariant: DsButtonVariant.secondary,
-                onCta: () => context.go('/'),
+                title: 'houses.house_not_found'.tr(),
+                actionLabel: 'houses.back_to_houses'.tr(),
+                onAction: () => context.go('/'),
               ),
             );
           }
@@ -654,6 +652,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
           appBar: AppBar(title: Text('common.error'.tr())),
           body: DsErrorState(
             error: error,
+            title: 'errors.load_houses'.tr(),
             onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
           ),
         ),
