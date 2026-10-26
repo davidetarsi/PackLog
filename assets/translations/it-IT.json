@@ -191,8 +191,8 @@
   "back": "Indietro",
   "next": "Avanti: {}",
   "prepare": "Prepara la valigia",
-  "incomplete": "{} è ancora da compilare. Ha un meteo diverso: vale la pena dirci cosa farai e dove dormi.",
-  "go_to_stop": "La compilo io",
+  "incomplete": "{} è ancora da compilare. Ha un meteo diverso: conviene indicare cosa farai e dove dormi.",
+  "go_to_stop": "Compila la tappa",
   "activity": {
     "city": "Città e musei",
     "walks": "Passeggiate ed escursioni",
@@ -232,14 +232,14 @@
   },
   "error": {
     "credits_title": "Hai finito i crediti AI",
-    "credits_body": "Per questo mese i crediti della valigia AI sono finiti. Puoi aggiungerne con un codice promo dal Profilo.",
+    "credits_body": "Per questo mese i crediti della valigia con AI sono finiti. Puoi aggiungerne con un codice promo dal Profilo.",
     "credits_action": "Vai al Profilo",
     "empty_title": "Questa casa non ha vestiti",
-    "empty_body": "Per preparare la valigia servono i capi dell'armadio di questa casa. Aggiungine qualcuno, poi riprova.",
+    "empty_body": "Per preparare la valigia servono i vestiti dell'armadio di questa casa. Aggiungine qualcuno, poi riprova.",
     "empty_action": "Aggiungi vestiti",
     "too_large_title": "L'armadio è troppo grande",
-    "too_large_body": "La valigia AI legge al massimo 400 capi. Togline qualcuno da questa casa per prepararla.",
-    "generic_title": "Non sono riuscito a preparare la valigia",
+    "too_large_body": "La valigia con AI legge al massimo 400 oggetti per casa. Togline qualcuno da questa casa per prepararla.",
+    "generic_title": "Non è stato possibile preparare la valigia",
     "generic_body": "Controlla la connessione e riprova."
   },
   "unavailable": {
@@ -282,7 +282,7 @@
       "discard_title": "Uscire senza salvare?",
       "discard_message": "Le modifiche alla valigia andranno perse.",
       "ai": {
-        "note": "Ho scelto i vestiti e l'essenziale per l'igiene. Il resto lo scegli tu: lo trovi in fondo alla valigia.",
+        "note": "Sono stati scelti i vestiti e l'essenziale per l'igiene. Il resto lo scegli tu: lo trovi in fondo alla valigia.",
         "search_hint": "Aggiungi dal tuo armadio",
         "in_departure": "Da indossare in partenza",
         "in_departure_note": "Da indossare in partenza: è ingombrante e così non occupa spazio in valigia.",
@@ -302,7 +302,7 @@
         "prepare_button": "Prepara con AI",
         "regenerate": "Rigenera",
         "replace_title": "Vuoi sostituire la valigia?",
-        "replace_message": "I capi che hai in valigia verranno sostituiti da quelli proposti dall'AI.",
+        "replace_message": "I vestiti che hai in valigia verranno sostituiti da quelli proposti dall'AI.",
         "replace_confirm": "Sostituisci",
         "missing_row": "Cosa manca a questo viaggio",
         "nothing_missing": "Non manca niente",
@@ -315,7 +315,7 @@
         "warning_search": "Cerca nell'armadio",
         "warning_dismiss": "Ok, capito",
         "stops_join": "{} e {}",
-        "items_error": "Non sono riuscito a leggere gli oggetti della casa: la proposta è salva, ma la valigia non è cambiata."
+        "items_error": "Non è stato possibile leggere gli oggetti della casa: la proposta è salvata, ma la valigia non è cambiata."
       }
     },
     "weather": {
@@ -406,7 +406,7 @@
       "next": "Avanti: prepara la valigia",
       "later": "Prepara la valigia più tardi",
       "prepare_with_ai": "Prepara con AI",
-      "pack_myself": "Preparo io la valigia",
+      "pack_myself": "Prepara a mano",
       "where_missing": "Scegli dove vai: serve anche per il meteo.",
       "when_missing": "Scegli andata e ritorno.",
       "stop_no_nights": "{} finisce prima di iniziare: controlla le date.",

@@ -193,7 +193,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     _save(goToPacking: false);
   }
 
-  /// Strada manuale ("Preparo io la valigia"): passo 2 senza AI. È un link,
+  /// Strada manuale ("Prepara a mano"): passo 2 senza AI. È un link,
   /// quindi non si spegne: senza campi mostra gli errori come il bottone.
   void _onPackMyself() {
     if (!_draft.canSave) {

@@ -191,10 +191,38 @@ export function applicaBudgetRotazione(capi: Record_[], giorni: number, minimoSo
   return tagliati;
 }
 
+const LITRI = /(\d+(?:[.,]\d+)?)\s*(?:l|lt|litri|litre|litres|liter|liters)\b/;
+
+/** Litri del bagaglio -> capienza (Davide, 25 ottobre): fino a 10 L come la tracolla, poi in
+ *  proporzione fino allo zaino da 45 L (28), 50 L come la cabina (30), da 60 L nessun limite
+ *  (60, o di piu' se lo dice il tipo). */
+export function capienzaDaLitri(litri: number): number {
+  if (litri <= 10) return 8;
+  if (litri <= 45) return Math.floor(8 + (litri - 10) * 20 / 35 + 0.5);
+  if (litri < 50) return 28;
+  if (litri < 60) return 30;
+  return 60;
+}
+
 export function capienzaBagaglio(descrizione: string | null | undefined): number {
   const low = (descrizione || "").toLowerCase();
+  const m = LITRI.exec(low);
+  const litri = m ? Number(m[1].replace(",", ".")) : 0;
+  if (K.LITRI_DEL_BAGAGLIO && litri > 0) {
+    const c = capienzaDaLitri(litri);
+    return c < 60 ? c : Math.max(60, capienzaDalTipo(low));
+  }
+  return capienzaDalTipo(low);
+}
+
+function capienzaDalTipo(low: string): number {
   for (const [chiave, cap] of K.CAPIENZA) if (low.includes(chiave)) return cap;
   return 60;
+}
+
+/** Viaggio lungo senza lavatrice: le quantita' di GIORNI_LAVANDERIA giorni (Davide, 25 ottobre). */
+export function lavanderiaPresunta(giorni: number | null | undefined, lavatrice: unknown): boolean {
+  return Boolean(K.LAVANDERIA_VIAGGI_LUNGHI) && !vero(lavatrice) && (giorni || 0) > K.GIORNI_LAVANDERIA;
 }
 
 export function capienzaPotabile(descrizione: string): number | null {

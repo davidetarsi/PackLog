@@ -2,6 +2,7 @@
 // Porting di motivi.py del bench (catalogo chiuso: codice, etichetta, frase).
 // Si calcola sulla valigia finita, senza toccare la scelta dei capi.
 import { occasioneFormale } from "./regole_capi.ts";
+import { lavanderiaPresunta } from "./dopo.ts";
 import { get } from "./slots.ts";
 import type { RigaArmadio } from "./capo.ts";
 import { massimo, minimo, o, ordina, pyRound, vero } from "./py.ts";
@@ -72,9 +73,11 @@ export interface Valigia {
 interface Contesto {
   giorni: number;
   lavatrice: boolean;
+  lavanderia: boolean;
   tappe: Map<string, Record_>;
   occasione: boolean;
   trekking: boolean;
+  escursioni: boolean;
   meteo: Record_;
   attivita: string[];
   richiesti: Map<string, Record_>;
@@ -111,13 +114,56 @@ export function contesto(v: Valigia): Contesto {
   const richiesti = new Map<string, Record_>();
   for (const r of o(get(s, "richiesti"), []) as Record_[]) if (vero(get(r, "slot"))) richiesti.set(r.slot, r);
   return {
-    giorni, lavatrice: vero(get(sc, "lavatrice")), tappe,
+    giorni, lavatrice: vero(get(sc, "lavatrice")),
+    lavanderia: !vero(get(sc, "legs")) && lavanderiaPresunta(giorni, get(sc, "lavatrice")), tappe,
     occasione: occasioneFormale(att),
     trekking: att.some((a) => ["trekking", "escursion", "cammino", "hiking", "alpinismo"]
       .some((r) => a.toLowerCase().includes(r))),
+    escursioni: soloEscursioni(att),
     meteo: m, attivita: att, richiesti,
   };
 }
+
+/** Solo escursioni leggere, senza trekking veri: si dice "escursioni" (giri di
+ *  prova su DEV del 25 ottobre: "Per il trekking a Sintra"). */
+function soloEscursioni(attivita: unknown[]): boolean {
+  const a = attivita.filter((x) => x).join(" ").toLowerCase();
+  return a.includes("escursion") && !["trekking", "cammino", "hiking", "alpinismo"].some((r) => a.includes(r));
+}
+
+/** Acqua del viaggio: "Per il mare" solo se c'e' il mare (terme a Budapest, 25 ottobre). */
+const MARE = ["mare", "spiagg", "beach", "snorkel", "surf", "immersion", "isola", "crociera"];
+const TERME = /\b(terme|termal|onsen|spa\b|sauna|hammam)/;
+
+function acqua(attivita: unknown[]): string {
+  const a = attivita.filter((x) => x).join(" ").toLowerCase();
+  if (MARE.some((r) => a.includes(r))) return "mare";
+  if (TERME.test(a)) return "terme";
+  if (a.includes("piscin")) return "piscina";
+  return "";
+}
+
+function attivitaCapo(ctx: Contesto, tappeCapo: string[]): unknown[] {
+  const tt = tappeCapo.filter((t) => ctx.tappe.has(t)).map((t) => ctx.tappe.get(t)!);
+  return tt.length ? tt.flatMap((t) => o(get(t, "attivita"), []) as unknown[]) : ctx.attivita;
+}
+
+/** L'etichetta del motivo, detta con le parole del viaggio. */
+export function etichetta(codice: string, ctx: Contesto): string {
+  if (codice === "trekking" && ctx.escursioni) return "Escursioni";
+  if (codice === "mare") {
+    return ({ mare: "Mare", terme: "Terme", piscina: "Piscina" } as Record<string, string>)[acqua(ctx.attivita)] ?? "Acqua";
+  }
+  return CATALOGO[codice][0];
+}
+
+function elenco(nomi: string[]): string {
+  const n = [...new Set(nomi.filter((x) => x))];
+  if (!n.length) return "";
+  return n.length === 1 ? n[0] : n.slice(0, -1).join(", ") + " e " + n[n.length - 1];
+}
+
+const a = (luogo: string) => (luogo.slice(0, 1).toLowerCase() === "a" ? "ad " : "a ") + luogo;
 
 interface Clima { tmin: number | null; tmax: number | null; tmin_ass: number | null; pioggia: number | null }
 
@@ -206,7 +252,11 @@ export function frase(codice: string, capo: Record_, ctx: Contesto, nomeSlot = "
   const c = clima(ctx, get(capo, "tappe"));
   let dove = "";
   const tappeCapo = o(get(capo, "tappe"), []) as string[];
-  if (ctx.tappe.size && tappeCapo.length && tappeCapo.length < ctx.tappe.size) dove = " a " + tappeCapo.join(", ");
+  // Con piu' di tre tappe l'elenco non si legge: vale per il viaggio.
+  if (ctx.tappe.size && tappeCapo.length && tappeCapo.length < ctx.tappe.size && new Set(tappeCapo).size <= 3) {
+    const luoghi = elenco(tappeCapo);
+    if (luoghi) dove = " " + a(luoghi);
+  }
   const att = ctx.attivita.join(" ").toLowerCase();
   switch (codice) {
     case "culto": {
@@ -216,11 +266,16 @@ export function frase(codice: string, capo: Record_, ctx: Contesto, nomeSlot = "
     case "formale":
       for (const [parola, testo] of FORMALI) if (att.includes(parola)) return `Per ${testo}${dove}`;
       return `Per le occasioni eleganti${dove}`;
-    case "trekking": return `Per il trekking${dove}`;
+    case "trekking": return ctx.escursioni ? `Per le escursioni${dove}` : `Per il trekking${dove}`;
     case "neve": return "Per sci e neve";
     case "muta": return "Per immersioni o surf";
-    case "mare":
-      return get(capo, "subCategory") === "Swimwear" ? `Per il mare${dove}` : `Mare o piscina${dove}`;
+    case "mare": {
+      const w = acqua(attivitaCapo(ctx, tappeCapo));
+      if (w === "terme") return `Per le terme${dove}`;
+      if (w === "piscina") return `Per la piscina${dove}`;
+      if (get(capo, "subCategory") === "Swimwear") return w === "mare" ? `Per il mare${dove}` : `Per fare il bagno${dove}`;
+      return `Mare o piscina${dove}`;
+    }
     case "sera": return "Per cene e serate: un capo presentabile";
     case "capospalla_caldo": return `Minime fino a ${gradi(c.tmin_ass)}: serve un capo caldo${dove}`;
     case "pioggia": {
@@ -247,7 +302,7 @@ export function frase(codice: string, capo: Record_, ctx: Contesto, nomeSlot = "
     case "essenziale": return "";
   }
   if (get(capo, "subCategory") === "Scarf") return "Un foulard leggero: copre spalle o collo quando serve";
-  return "Utile per le attivita' del viaggio";
+  return "Utile per le attività del viaggio";
 }
 
 export interface Motivo { codice: string; etichetta: string; frase: string; anche: string[]; note: string[] }
@@ -265,11 +320,11 @@ export function motivoCapo(capo: Record_, ctx: Contesto): Motivo {
   const note: string[] = [];
   if (vero(get(capo, "in_partenza"))) note.push("Da indossare in partenza");
   const manche = (o(get(capo, "assegnazioni"), []) as Record_[]).flatMap((a) => o(get(a, "manchevolezze"), []) as unknown[]);
-  if (get(capo, "match") === "ripiego" || manche.length) note.push("Il piu' adatto che hai");
-  const etichetta = CATALOGO[codice][0];
-  const altri = ordina(new Set(candidati.filter(([c]) => c !== codice).map(([c]) => CATALOGO[c][0])))
-    .filter((e) => e !== etichetta);
-  return { codice, etichetta, frase: frase(codice, capo, ctx, nome), anche: altri, note };
+  if (get(capo, "match") === "ripiego" || manche.length) note.push("Il più adatto che hai");
+  const et = etichetta(codice, ctx);
+  const altri = ordina(new Set(candidati.filter(([c]) => c !== codice).map(([c]) => etichetta(c, ctx))))
+    .filter((e) => e !== et);
+  return { codice, etichetta: et, frase: frase(codice, capo, ctx, nome), anche: altri, note };
 }
 
 const pezzi = (n: number) => (n === 1 ? "1 pezzo" : `${n} pezzi`);
@@ -281,9 +336,10 @@ export function fraseQuantita(gruppo: Record_[], ctx: Contesto): string {
   const c = clima(ctx, null);
   const caldo = c.tmax != null && c.tmax > 24;
   const sopra = get(gruppo[0], "category") === "Upper Body";
+  if (ctx.lavanderia && p > 1) return `${pezzi(p)} per ${g} giorni: si lavano strada facendo`;
   if (ctx.lavatrice && g > 5) return `${pezzi(p)} per ${g} giorni: con la lavatrice si rilavano strada facendo`;
   if (caldo && sopra && p >= Math.min(g, 4)) return `${pezzi(p)} per ${g} giorni: col caldo uno al giorno`;
-  if (caldo && !sopra && p > 1) return `${pezzi(p)} per ${g} giorni: col caldo si cambiano piu' spesso`;
+  if (caldo && !sopra && p > 1) return `${pezzi(p)} per ${g} giorni: col caldo si cambiano più spesso`;
   if (p > 1) {
     const ogni = Math.max(1, Math.floor(g / p + 0.5));
     if (ogni === 1) return `${pezzi(p)} per ${g} giorni: uno al giorno`;
@@ -296,8 +352,9 @@ export function fraseEssenziale(e: Record_, ctx: Contesto): string {
   const q = get(e, "quantita", 1) as number, g = ctx.giorni;
   if (["pigiama", "pyjama", "pajama", "camicia da notte"].includes(get(e, "radice"))) return "Uno per il viaggio";
   if (q <= 1) return "Uno basta per il viaggio";
-  if (ctx.lavatrice && q < g) return `${q}: con la lavatrice bastano per ${q - 1} giorni, piu' un ricambio`;
-  if (q === g + 1) return `${q}: uno al giorno piu' un ricambio`;
+  if (ctx.lavanderia && q < g) return `${q}: lavando strada facendo bastano per ${q - 1} giorni, più un ricambio`;
+  if (ctx.lavatrice && q < g) return `${q}: con la lavatrice bastano per ${q - 1} giorni, più un ricambio`;
+  if (q === g + 1) return `${q}: uno al giorno più un ricambio`;
   return `${q} per ${g} giorni`;
 }
 
@@ -350,8 +407,11 @@ export const NOMI_PLURALI: Record<string, string> = {
   "T-Shirt": "T-shirt", Shirt: "camicie", Polo: "polo", "Tank Top": "canotte",
   Shorts: "bermuda e shorts", Trousers: "pantaloni", Jeans: "jeans",
   Skirt: "gonne", Leggings: "leggings", Sweatpants: "pantaloni della tuta",
-  Dress: "vestiti", "Crop Top": "top",
+  Dress: "vestiti", "Crop Top": "top", "Thermal Top": "maglie termiche",
+  "Thermal Bottoms": "pantaloni termici",
 };
+/** Nomi femminili: "2 camicie: una ogni 4 giorni" (non "uno"). */
+const FEMMINILI = new Set(["T-Shirt", "Shirt", "Polo", "Tank Top", "Skirt", "Thermal Top"]);
 
 const nomi = (capi: Record_[]) =>
   capi.map((x) => x.item + ((get(x, "quantita", 1) as number) > 1 ? ` ×${x.quantita}` : ""));
@@ -381,7 +441,9 @@ export function percheValigia(v: Valigia, tag: Record<string, string[]>, m = mot
         const n = capi.filter((x) => String(get(x, "subCategory")) === sub)
           .reduce((t, x) => t + (get(x, "quantita", 1) as number), 0);
         const i = testo.indexOf(": ");
-        frasi.push(`${n} ${NOMI_PLURALI[sub] ?? sub.toLowerCase()}: ` + (i < 0 ? testo : testo.slice(i + 2)));
+        let resto = i < 0 ? testo : testo.slice(i + 2);
+        if (FEMMINILI.has(sub)) resto = resto.replace("uno ", "una ");
+        frasi.push(`${n} ${NOMI_PLURALI[sub] ?? sub.toLowerCase()}: ` + resto);
       }
       if (!frasi.length) frasi = ["Da usare tutti i giorni"];
     } else if (codice === "culto") {
@@ -391,12 +453,12 @@ export function percheValigia(v: Valigia, tag: Record<string, string[]>, m = mot
     } else if (frasi.length > 1) {
       frasi = [massimo(frasi, (f) => [...f].length)!]; // la stessa idea detta meglio
     }
-    punti.push({ codice, titolo: CATALOGO[codice][0], frasi, capi: nomi(capi) });
+    punti.push({ codice, titolo: etichetta(codice, ctx), frasi, capi: nomi(capi) });
   }
   if (m.essenziali.length) {
     punti.push({
       codice: "essenziale", titolo: "Essenziali",
-      frasi: [`${ctx.giorni} giorni` + (ctx.lavatrice ? " con la lavatrice" : "")],
+      frasi: [`${ctx.giorni} giorni` + (ctx.lavanderia ? " lavando strada facendo" : ctx.lavatrice ? " con la lavatrice" : "")],
       capi: m.essenziali.map((e) => (e.quantita > 1 ? `${e.item} ×${e.quantita}` : e.item)),
     });
   }
