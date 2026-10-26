@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
         .eq("user_id", userId);
       if (error) {
         console.error(`[hard-delete] DELETE ${table} failed:`, error.message);
-        return errorResponse(500, `Failed to delete ${table}: ${error.message}`);
+        return errorResponse(500, `Failed to delete ${table}`);
       }
       deleted[table] = count ?? 0;
     } catch (e) {
@@ -132,10 +132,7 @@ Deno.serve(async (req) => {
       "[hard-delete] deleteUser failed:",
       deleteAuthError.message,
     );
-    return errorResponse(
-      500,
-      `Auth account deletion failed: ${deleteAuthError.message}`,
-    );
+    return errorResponse(500, "Auth account deletion failed");
   }
 
   console.log("[hard-delete] success for user_id:", userId, "counts:", deleted);

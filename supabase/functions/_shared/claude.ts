@@ -1,4 +1,4 @@
-// Il modello delle Edge Functions AI (item-metadata, pack-trip, openai-proxy):
+// Il modello delle Edge Functions AI (item-metadata, pack-trip):
 // Claude Haiku 5.5, con la chiave lato server. Qui l'unica chiamata vera; il
 // resto del codice riceve una funzione `(contenuto, max_tokens) -> testo`, cosi'
 // i test girano con un modello finto.
