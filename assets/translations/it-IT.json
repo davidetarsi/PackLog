@@ -55,6 +55,7 @@
     "unnamed_house": "Casa senza nome"
   },
   "items": {
+    "not_found": "Oggetto non trovato",
     "add": "Oggetto",
     "this_item": "questo oggetto",
     "no_houses_available": "Nessuna casa disponibile. Crea prima una casa.",
@@ -132,6 +133,7 @@
     "space_deleted": "Spazio \"{}\" eliminato"
   },
   "luggages": {
+    "load_failed": "Impossibile caricare i bagagli",
     "title": "Bagagli",
     "add": "Bagaglio",
     "add_new": "Nuovo bagaglio",
@@ -249,6 +251,7 @@
     "missingPlace": "Una tappa non ha ancora una posizione sulla mappa: impostala per preparare la valigia con AI."
   }
 },
+    "not_found": "Viaggio non trovato",
     "edit": {
       "discard_title": "Uscire senza salvare?",
       "discard_message": "Le modifiche al viaggio andranno perse."
@@ -423,6 +426,11 @@
     }
   },
   "common": {
+    "content_unavailable": "Il contenuto potrebbe essere stato eliminato o non essere più disponibile.",
+    "page_not_found": "Pagina non trovata",
+    "page_unavailable": "Pagina non disponibile",
+    "page_not_found_hint": "Questo collegamento non porta a una pagina disponibile. Torna alle tue case per continuare.",
+    "back_to_trips": "Torna ai viaggi",
     "coming_soon": "In arrivo",
     "save": "Salva",
     "save_changes": "Salva modifiche",
@@ -484,6 +492,10 @@
     "dates": "Date"
   },
   "errors": {
+    "retry_hint": "Riprova tra un momento.",
+    "load_houses": "Impossibile caricare le case",
+    "load_items": "Impossibile caricare gli oggetti",
+    "load_trips": "Impossibile caricare i viaggi",
     "generic": "Si è verificato un errore",
     "save_failed": "Impossibile salvare",
     "save_error": "Errore di salvataggio",
@@ -525,6 +537,8 @@
     "copy_success": "\"{}\" copiato con successo"
   },
   "profile": {
+    "ai_usage_load_failed": "Impossibile caricare gli usi AI",
+    "sync_details_load_failed": "Impossibile caricare i dettagli di sincronizzazione",
     "section_preferences": "Preferenze",
     "section_account": "Account",
     "ai_usage_title": "Usi AI",
@@ -571,6 +585,7 @@
     "analytics_subtitle": "Dati d'uso che ci aiutano a migliorare l'app"
   },
   "ai_import": {
+    "error_title": "Scansione non completata",
     "already_here_title": "C'è già in {}?",
     "already_here_default_title": "C'è già in casa?",
     "already_here_load_error": "Impossibile caricare gli oggetti della casa. Riprova.",
@@ -667,6 +682,7 @@
     "ai_save_tooltip": "Li salviamo in una casa nuova, «Casa». Subito dopo potrai darle il nome e il luogo giusti."
   },
   "location_search": {
+    "failed": "Non è stato possibile cercare i luoghi. Riprova.",
     "rate_limit_reached": "Troppe ricerche di località, riprova tra qualche minuto.",
     "no_results": "Nessun luogo trovato. Prova con il nome di una città."
   },

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/widgets/ds_field.dart';
@@ -138,7 +139,7 @@ class _AddEditSpaceSheetState extends ConsumerState<AddEditSpaceSheet> {
         error: (error, _) => _sheet(
           DsErrorState(
             error: error,
-            message: 'storage.load_failed'.tr(),
+            title: 'storage.load_failed'.tr(),
             onRetry: () =>
                 ref.invalidate(spaceNotifierProvider(widget.houseId)),
           ),
@@ -150,9 +151,11 @@ class _AddEditSpaceSheetState extends ConsumerState<AddEditSpaceSheet> {
                 .firstOrNull;
             if (entity == null) {
               return _sheet(
-                DsEmptyState(
+                DsNotFoundState(
                   icon: Icons.meeting_room_outlined,
                   title: 'spaces.not_found'.tr(),
+                  actionLabel: 'common.close'.tr(),
+                  onAction: () => Navigator.pop(context),
                 ),
               );
             }

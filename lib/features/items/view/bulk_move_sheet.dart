@@ -171,10 +171,10 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
                         padding: EdgeInsets.all(context.spacingMd),
                         child: Center(child: CircularProgressIndicator()),
                       ),
-                      error: (err, _) => ListTile(
-                        enabled: false,
-                        leading: const Icon(Icons.error_outline),
-                        title: Text('errors.load_failed'.tr()),
+                      error: (error, _) => DsErrorState(
+                        error: error,
+                        title: 'errors.load_houses'.tr(),
+                        onRetry: () => ref.invalidate(houseNotifierProvider),
                       ),
                     ),
                     if (_selectedHouse != null && spacesAsync != null)
@@ -232,19 +232,10 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
         padding: EdgeInsets.all(context.spacingMd),
         child: const Center(child: CircularProgressIndicator()),
       ),
-      error: (_, stack) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.error_outline),
-            title: Text('errors.load_failed'.tr()),
-            trailing: TextButton(
-              onPressed: _isLoadingSpaces ? null : () => _retrySpaces(house),
-              child: Text('common.retry'.tr()),
-            ),
-          ),
-        ],
+      error: (error, _) => DsErrorState(
+        error: error,
+        title: 'storage.load_failed'.tr(),
+        onRetry: _isLoadingSpaces ? () {} : () => _retrySpaces(house),
       ),
     );
   }

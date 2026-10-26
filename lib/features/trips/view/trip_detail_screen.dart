@@ -8,6 +8,7 @@ import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_section_title.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -51,6 +52,7 @@ class TripDetailScreen extends ConsumerWidget {
         appBar: AppBar(title: Text('common.error'.tr())),
         body: DsErrorState(
           error: error,
+          title: 'errors.load_trips'.tr(),
           onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
         ),
       ),
@@ -59,14 +61,12 @@ class TripDetailScreen extends ConsumerWidget {
 
   Widget _notFound(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('common.not_found'.tr())),
-      body: DsEmptyState(
+      appBar: AppBar(title: Text('trips.not_found'.tr())),
+      body: DsNotFoundState(
         icon: Icons.luggage_outlined,
-        title: 'common.not_found'.tr(),
-        ctaLabel: 'common.back_to_list'.tr(),
-        ctaIcon: Icons.arrow_back,
-        ctaVariant: DsButtonVariant.secondary,
-        onCta: () => context.pop(),
+        title: 'trips.not_found'.tr(),
+        actionLabel: 'common.back_to_trips'.tr(),
+        onAction: () => context.go('/trips'),
       ),
     );
   }

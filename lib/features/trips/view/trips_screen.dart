@@ -403,6 +403,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   Widget _buildErrorState(BuildContext context, Object error) {
     return DsErrorState(
       error: error,
+      title: 'errors.load_trips'.tr(),
       onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
     );
   }

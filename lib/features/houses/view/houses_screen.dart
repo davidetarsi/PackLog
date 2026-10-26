@@ -92,6 +92,7 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
               loading: () => const SkeletonHousesBody(),
               error: (error, stack) => DsErrorState(
                 error: error,
+                title: 'errors.load_houses'.tr(),
                 onRetry: () =>
                     ref.read(houseNotifierProvider.notifier).refresh(),
               ),

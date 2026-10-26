@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../shared/widgets/ds_button.dart';
-import '../../../../shared/widgets/ds_empty_state.dart';
+import '../../../../shared/widgets/ds_not_found_state.dart';
 import '../../../../shared/widgets/ds_error_state.dart';
 import '../../model/trip_model.dart';
 import '../../providers/trip_provider.dart';
@@ -29,17 +28,16 @@ Widget? tripEditPlaceholder({
   final body = switch (tripsAsync) {
     AsyncError(:final error) => DsErrorState(
       error: error,
+      title: 'errors.load_trips'.tr(),
       onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
     ),
-    AsyncData() => DsEmptyState(
+    AsyncData() => DsNotFoundState(
       // Dato arrivato ma nessun viaggio con questo id: cancellato da un altro
       // dispositivo, o link vecchio. Riprovare non serve, tornare indietro sì.
       icon: Icons.luggage_outlined,
-      title: 'common.not_found'.tr(),
-      ctaLabel: 'common.back_to_list'.tr(),
-      ctaIcon: Icons.arrow_back,
-      ctaVariant: DsButtonVariant.secondary,
-      onCta: () => context.pop(),
+      title: 'trips.not_found'.tr(),
+      actionLabel: 'common.back_to_trips'.tr(),
+      onAction: () => context.go('/trips'),
     ),
     _ => const Center(child: CircularProgressIndicator()),
   };

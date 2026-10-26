@@ -8,6 +8,10 @@ import '../../../shared/constants/house_icons.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/ds_error_state.dart';
+import '../../../shared/widgets/ds_not_found_state.dart';
+import '../../../shared/widgets/ds_form_sheet.dart';
+
 import '../../../shared/widgets/ds_field.dart';
 import '../../../shared/widgets/ds_field_label.dart';
 import '../../../shared/widgets/ds_icon_picker.dart';
@@ -47,6 +51,7 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
   final _nameController = TextEditingController();
   HouseModel? _existing;
   LocationSuggestionModel? _location;
+  String _locationText = '';
   String _iconName = 'home';
   bool _locationMissing = false;
   bool _isSaving = false;
@@ -71,6 +76,7 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
       _existing = existing;
       _nameController.text = existing.name;
       _location = existing.location;
+      _locationText = existing.location?.displayName ?? '';
       _iconName = existing.iconName;
     }
   }
@@ -82,7 +88,7 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
   }
 
   Future<void> _save() async {
-    if (_isSaving) return;
+    if (_isSaving || (!_isNew && _existing == null)) return;
     final location = _location;
     if (location == null) {
       setState(() => _locationMissing = true);
@@ -132,8 +138,49 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
     if (ok) Navigator.pop(context);
   }
 
+  Widget _unavailable(Widget child) =>
+      DsFormSheet(title: 'houses.edit'.tr(), child: child);
+
   @override
   Widget build(BuildContext context) {
+    if (!_isNew && !_isSaving) {
+      final houses = ref.watch(houseNotifierProvider);
+      final fallback = houses.when<Widget?>(
+        loading: () =>
+            _unavailable(const Center(child: CircularProgressIndicator())),
+        error: (error, _) => _unavailable(
+          DsErrorState(
+            error: error,
+            title: 'errors.load_houses'.tr(),
+            onRetry: () => ref.invalidate(houseNotifierProvider),
+          ),
+        ),
+        data: (houses) {
+          final existing = houses
+              .where((h) => h.id == widget.houseId)
+              .firstOrNull;
+          if (existing == null) {
+            return _unavailable(
+              DsNotFoundState(
+                title: 'houses.house_not_found'.tr(),
+                icon: Icons.home_outlined,
+                actionLabel: 'common.close'.tr(),
+                onAction: () => Navigator.pop(context),
+              ),
+            );
+          }
+          if (_existing == null) {
+            _existing = existing;
+            _nameController.text = existing.name;
+            _location = existing.location;
+            _locationText = existing.location?.displayName ?? '';
+            _iconName = existing.iconName;
+          }
+          return null;
+        },
+      );
+      if (fallback != null) return fallback;
+    }
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -174,14 +221,16 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
                         DsFieldLabel('houses.where_label'.tr()),
                         LocationAutocompleteField(
                           key: const Key('house_sheet_location'),
-                          initialValue: _location?.displayName,
+                          initialValue: _locationText,
                           hintText: 'houses.location_hint'.tr(),
                           hasError: _locationMissing,
                           onLocationSelected: (location) => setState(() {
                             _location = location;
+                            _locationText = location.displayName;
                             _locationMissing = false;
                           }),
                           onTextChanged: (text) {
+                            _locationText = text;
                             // Un luogo scritto a mano non vale: va scelto
                             // dalla lista, che porta città e coordinate.
                             if (_location != null &&

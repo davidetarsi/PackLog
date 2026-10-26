@@ -224,19 +224,22 @@ void main() {
     await app.finish();
   });
 
-  testWidgets('oggetto non trovato: la scheda si chiude da sola', (
-    tester,
-  ) async {
-    final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
-    await app.go('/');
-    await app.push('/houses/$kHomeId');
-    final context = tester.element(find.byType(Scaffold).last);
-    unawaited(showItemSheet(context, houseId: kHomeId, itemId: 'non-esiste'));
-    await app.settle();
-    expect(find.byType(ItemSheet), findsNothing);
-    expect(find.byKey(const Key('sheet_close')), findsNothing);
-    await app.finish();
-  });
+  testWidgets(
+    'oggetto non trovato: spiega il problema e si chiude su richiesta',
+    (tester) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+      await app.go('/');
+      await app.push('/houses/$kHomeId');
+      final context = tester.element(find.byType(Scaffold).last);
+      unawaited(showItemSheet(context, houseId: kHomeId, itemId: 'non-esiste'));
+      await app.settle();
+      expect(find.byType(ItemSheet), findsOneWidget);
+      expect(find.text('Oggetto non trovato'), findsOneWidget);
+      await app.tap(find.text('Chiudi'));
+      expect(find.byType(ItemSheet), findsNothing);
+      await app.finish();
+    },
+  );
 
   group('nuovo oggetto', () {
     testWidgets('parte dal nome scritto, senza menu', (tester) async {

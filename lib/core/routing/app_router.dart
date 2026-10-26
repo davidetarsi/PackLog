@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
-import '../../shared/theme/app_spacing.dart';
 
 import '../../bootstrap.dart';
 import '../../features/onboarding/providers/onboarding_status_provider.dart';
@@ -34,7 +33,7 @@ import '../../features/tour/view/ai_onboarding_intro_screen.dart';
 import '../../features/tour/widgets/tour_trigger_wrapper.dart';
 import '../../shared/dev/ds_theme_showcase_screen.dart';
 import '../../shared/widgets/main_shell.dart';
-import '../../shared/widgets/ds_button.dart';
+import '../../shared/widgets/ds_not_found_state.dart';
 
 part 'app_router.g.dart';
 
@@ -188,7 +187,7 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           return TourTriggerWrapper(
             triggerStep: OnboardingStep.houseDetailTooltip,
@@ -218,7 +217,7 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           return AiResultsScreen(houseId: id, isFirstTimeOnboarding: false);
         },
@@ -230,7 +229,7 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           return TripDetailScreen(tripId: id);
         },
@@ -256,7 +255,7 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           // Stessa pagina del nuovo viaggio, in modifica.
           return NewTripScreen(
@@ -272,7 +271,7 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           return PackSuitcaseScreen(
             tripId: id,
@@ -288,7 +287,7 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           return TripWeatherScreen(
             tripId: id,
@@ -323,7 +322,8 @@ GoRouter appRouter(Ref ref) {
       ),
     ],
     errorBuilder: (context, state) => _ErrorScreen(
-      message: 'common.navigation_error'.tr(args: [state.error.toString()]),
+      title: 'common.page_not_found'.tr(),
+      message: 'common.page_not_found_hint'.tr(),
     ),
   );
 }
@@ -335,37 +335,18 @@ GoRouter appRouter(Ref ref) {
 /// separata, con lo stesso layout copiato due volte.
 class _ErrorScreen extends StatelessWidget {
   final String message;
+  final String? title;
 
-  const _ErrorScreen({required this.message});
+  const _ErrorScreen({required this.message, this.title});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('common.error'.tr())),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            AppSpacing.gapMd,
-            Text(
-              message,
-              style: Theme.of(context).textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            AppSpacing.gapMd,
-            DsButton(
-              label: 'common.back_to_home'.tr(),
-              variant: DsButtonVariant.secondary,
-              onPressed: () => context.go('/'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title ?? 'common.page_unavailable'.tr())),
+    body: DsNotFoundState(
+      title: title ?? 'common.page_unavailable'.tr(),
+      message: message,
+      actionLabel: 'houses.back_to_houses'.tr(),
+      onAction: () => context.go('/'),
+    ),
+  );
 }

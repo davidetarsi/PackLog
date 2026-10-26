@@ -43,7 +43,7 @@ class TripPickerSheet extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => DsErrorState(
               error: error,
-              message: 'errors.load_failed'.tr(),
+              title: 'errors.load_trips'.tr(),
               onRetry: () => ref.invalidate(tripNotifierProvider),
             ),
             data: (allTrips) {

@@ -129,5 +129,33 @@ void main() {
         expect(body['features'], isA<List<dynamic>>());
       },
     );
+
+    test('rifiuta bias con coordinate fuori intervallo (400)', () async {
+      final response = await http.get(
+        proxyUri.replace(
+          queryParameters: {'text': 'Milano', 'bias': 'proximity:181,41'},
+        ),
+        headers: {'Authorization': 'Bearer $jwtA', 'apikey': _kSupabaseAnonKey},
+      );
+      expect(response.statusCode, 400);
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      expect(body['error'], contains('bias'));
+    });
+
+    test('accetta il bias di prossimità (200)', () async {
+      final response = await http.get(
+        proxyUri.replace(
+          queryParameters: {
+            'text': 'Milano',
+            'lang': 'it',
+            'bias': 'proximity:12.4964,41.9028',
+          },
+        ),
+        headers: {'Authorization': 'Bearer $jwtA', 'apikey': _kSupabaseAnonKey},
+      );
+      expect(response.statusCode, 200);
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      expect(body['features'], isA<List<dynamic>>());
+    });
   });
 }

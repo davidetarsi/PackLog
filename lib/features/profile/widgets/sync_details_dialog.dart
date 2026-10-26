@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/ds_inline_error.dart';
 
 /// Dialog di dettaglio aperto dal tap sulla SyncStatusTile quando ci sono
 /// modifiche non ancora sincronizzate. Mostra, per tipo di entità, quante
@@ -64,7 +65,10 @@ class SyncDetailsDialog extends ConsumerWidget {
             padding: EdgeInsets.all(context.spacingMd),
             child: const Center(child: CircularProgressIndicator()),
           ),
-          error: (_, _) => Text('errors.load_failed'.tr()),
+          error: (_, _) => DsInlineError(
+            message: 'profile.sync_details_load_failed'.tr(),
+            onRetry: () => ref.invalidate(syncUnsyncedBreakdownProvider),
+          ),
         ),
       ),
       actions: [

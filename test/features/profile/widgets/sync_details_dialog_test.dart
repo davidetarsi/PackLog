@@ -86,4 +86,28 @@ void main() {
 
     expect(find.byType(AlertDialog), findsNothing);
   });
+  testWidgets(
+    'errore di lettura dei dettagli recuperabile senza chiudere il dialogo',
+    (tester) async {
+      var fails = true;
+      await tester.pumpWidget(
+        wrap(
+          overrides: [
+            syncUnsyncedBreakdownProvider.overrideWith((ref) async {
+              if (fails) throw StateError('SQL private');
+              return const [];
+            }),
+          ],
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('SQL private'), findsNothing);
+      fails = false;
+      await tester.tap(find.text('common.retry'.tr()));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('profile.sync_status_synced'.tr()), findsOneWidget);
+    },
+  );
 }

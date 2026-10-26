@@ -13,6 +13,7 @@ import 'package:pack_log/features/items/view/bulk_move_sheet.dart';
 import 'package:pack_log/features/spaces/model/space_model.dart';
 import 'package:pack_log/features/spaces/repositories/space_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pack_log/shared/theme/app_theme.dart';
 
 class _MockHouseRepository extends Mock implements HouseRepository {}
 
@@ -81,6 +82,7 @@ void main() {
           assetLoader: assetLoader,
           child: Builder(
             builder: (context) => MaterialApp(
+              theme: AppTheme.light,
               localizationsDelegates: context.localizationDelegates,
               supportedLocales: context.supportedLocales,
               locale: context.locale,
@@ -113,7 +115,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('errors.load_failed'.tr()), findsOneWidget);
+    expect(find.text('storage.load_failed'.tr()), findsOneWidget);
     expect(find.text('common.retry'.tr()), findsOneWidget);
     await tester.tap(find.text('common.retry'.tr()));
     await tester.pumpAndSettle();
@@ -166,6 +168,7 @@ void main() {
           assetLoader: assetLoader,
           child: Builder(
             builder: (context) => MaterialApp(
+              theme: AppTheme.light,
               localizationsDelegates: context.localizationDelegates,
               supportedLocales: context.supportedLocales,
               locale: context.locale,
@@ -259,6 +262,7 @@ void main() {
           assetLoader: assetLoader,
           child: Builder(
             builder: (context) => MaterialApp(
+              theme: AppTheme.light,
               localizationsDelegates: context.localizationDelegates,
               supportedLocales: context.supportedLocales,
               locale: context.locale,

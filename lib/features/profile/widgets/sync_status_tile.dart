@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/sync/sync_provider.dart';
-import '../../../shared/helpers/exception_message.dart';
+import '../../../shared/widgets/ds_link_button.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/ds_settings.dart';
 import 'sync_details_dialog.dart';
@@ -38,8 +38,17 @@ class SyncStatusTile extends ConsumerWidget {
       ),
       error: (e, _) => DsSettingsRow(
         label: 'profile.sync_status_title'.tr(),
-        subtitle: exceptionMessage(e),
-        trailing: Icon(Icons.cloud_off_outlined, color: cs.error),
+        subtitle: 'errors.load_failed'.tr(),
+        leading: Icon(
+          Icons.cloud_off_outlined,
+          size: context.iconSizeSm,
+          color: cs.onSurfaceVariant,
+        ),
+        trailing: DsLinkButton(
+          label: 'common.retry'.tr(),
+          icon: Icons.refresh,
+          onPressed: () => ref.invalidate(totalUnsyncedCountProvider),
+        ),
       ),
       data: (totalUnsynced) {
         if (totalUnsynced == 0) {

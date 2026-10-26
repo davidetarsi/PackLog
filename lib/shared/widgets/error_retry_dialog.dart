@@ -1,6 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:pack_log/shared/theme/app_spacing.dart';
+import 'ds_button.dart';
 
 /// Risultato del dialog di errore.
 enum ErrorDialogResult {
@@ -47,7 +47,7 @@ class ErrorRetryDialog {
         retryText: retryText,
         cancelText: cancelText,
         icon: icon,
-        iconColor: iconColor ?? Theme.of(context).colorScheme.error,
+        iconColor: iconColor ?? Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     );
 
@@ -127,7 +127,13 @@ class _ErrorDialog extends StatelessWidget {
 
     return AlertDialog(
       icon: Icon(icon, size: 48, color: iconColor),
-      title: Text(title ?? 'common.error'.tr(), textAlign: TextAlign.center),
+      title: Text(
+        title ?? 'common.error'.tr(),
+        textAlign: TextAlign.center,
+        style: theme.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w400,
+        ),
+      ),
       content: Text(
         message,
         textAlign: TextAlign.center,
@@ -138,14 +144,17 @@ class _ErrorDialog extends StatelessWidget {
       actionsAlignment: MainAxisAlignment.center,
       actions: [
         TextButton(
+          style: TextButton.styleFrom(
+            foregroundColor: theme.colorScheme.onSurface,
+          ),
           onPressed: () => Navigator.pop(context, ErrorDialogResult.cancel),
           child: Text(cancelText ?? 'common.cancel'.tr()),
         ),
-        AppSpacing.hGapSm,
-        FilledButton.icon(
+        DsButton(
+          variant: DsButtonVariant.secondary,
           onPressed: () => Navigator.pop(context, ErrorDialogResult.retry),
-          icon: const Icon(Icons.refresh),
-          label: Text(retryText ?? 'common.retry'.tr()),
+          icon: Icons.refresh,
+          label: retryText ?? 'common.retry'.tr(),
         ),
       ],
     );

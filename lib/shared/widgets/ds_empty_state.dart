@@ -41,6 +41,10 @@ class DsEmptyState extends StatelessWidget {
   final TextStyle? subtitleStyle;
   final double? iconSize;
 
+  /// Solo per stati autonomi. Gli empty state dentro SliverFillRemaining
+  /// devono conservare dimensioni intrinseche e lo scroll del contenitore.
+  final bool scrollable;
+
   /// Callback opzionale invocata al tap sull'intero widget.
   final VoidCallback? onTap;
 
@@ -70,6 +74,7 @@ class DsEmptyState extends StatelessWidget {
     this.titleStyle,
     this.subtitleStyle,
     this.iconSize,
+    this.scrollable = false,
     this.onTap,
     this.tapHint,
     this.ctaLabel,
@@ -154,7 +159,21 @@ class DsEmptyState extends StatelessWidget {
       );
     }
 
-    return content;
+    if (!scrollable) return content;
+
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: constraints.hasBoundedHeight ? constraints.maxHeight : 0,
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+            child: content,
+          ),
+        ),
+      ),
+    );
   }
 }
 
