@@ -2,9 +2,13 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_button.dart';
+import '../../../../../shared/widgets/ds_choice_group.dart';
+import '../../../../../shared/widgets/ds_field_label.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
+import '../../../../../shared/widgets/ds_link_button.dart';
 import '../../../../houses/model/house_model.dart';
 import '../../../../houses/providers/house_provider.dart';
 import '../../../../luggages/model/luggage_model.dart';
@@ -16,7 +20,7 @@ import '../../../model/pack_trip_request.dart';
 import '../../../model/trip_model.dart';
 import '../../../model/trip_weather.dart';
 import '../../../providers/trip_weather_provider.dart';
-import 'ai_choice_pill.dart';
+import '../pack/pack_weather.dart';
 import 'ai_stop_form.dart';
 
 /// Il foglio "Valigia con AI". Restituisce le risposte con "Prepara la
@@ -169,9 +173,9 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
     final chosenLuggage = _luggageOf(luggageList);
 
     final body = loading
-        ? const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator()),
+        ? Padding(
+            padding: EdgeInsets.all(context.spacingLg),
+            child: const Center(child: CircularProgressIndicator()),
           )
         : houseList.isEmpty
         ? Text(
@@ -181,75 +185,60 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Block(
+              DsChoiceGroup<HouseModel>(
                 title: 'trips.ai.house_title'.tr(),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final house in houseList)
-                      AiChoicePill(
-                        label: house.displayName,
-                        selected: house.id == chosenHouse?.id,
-                        onTap: () => setState(() => _houseId = house.id),
-                      ),
-                  ],
+                options: houseList,
+                labelOf: (house) => house.displayName,
+                selected: {?chosenHouse},
+                onChanged: (chosen) =>
+                    setState(() => _houseId = chosen.first.id),
+              ),
+              if (luggageList.isEmpty) ...[
+                DsFieldLabel.prominent('trips.ai.luggage_title'.tr()),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: DsLinkButton(
+                    icon: Icons.add,
+                    label: 'trips.ai.new_luggage'.tr(),
+                    onPressed: () async {
+                      final created = await showAddEditLuggageSheet(context);
+                      if (created != null && mounted) {
+                        setState(() => _luggageId = created.id);
+                      }
+                    },
+                  ),
                 ),
-              ),
-              _Block(
-                title: 'trips.ai.luggage_title'.tr(),
-                child: luggageList.isEmpty
-                    ? Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          style: TextButton.styleFrom(
-                            foregroundColor: cs.onSurface,
-                          ),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: Text('trips.ai.new_luggage'.tr()),
-                          onPressed: () async {
-                            final created = await showAddEditLuggageSheet(
-                              context,
-                            );
-                            if (created != null && mounted) {
-                              setState(() => _luggageId = created.id);
-                            }
-                          },
-                        ),
-                      )
-                    : Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final luggage in luggageList)
-                            AiChoicePill(
-                              label: luggage.name,
-                              selected: luggage.id == chosenLuggage?.id,
-                              onTap: () =>
-                                  setState(() => _luggageId = luggage.id),
-                            ),
-                        ],
-                      ),
-              ),
+              ] else
+                DsChoiceGroup<LuggageModel>(
+                  title: 'trips.ai.luggage_title'.tr(),
+                  options: luggageList,
+                  labelOf: (luggage) => luggage.name,
+                  selected: {?chosenLuggage},
+                  onChanged: (chosen) =>
+                      setState(() => _luggageId = chosen.first.id),
+                ),
+              SizedBox(height: context.spacingLg),
               const Divider(height: 1),
-              const SizedBox(height: 16),
               if (_multi) ...[
+                SizedBox(height: context.spacingMd),
                 Text(
                   'trips.ai.stop_progress'.tr(
                     args: ['${_cur + 1}', '${_stops.length}', stop.name],
                   ),
                   style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: context.spacingSm),
                 Row(
                   children: [
                     for (var i = 0; i < _stops.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 6),
+                      if (i > 0) SizedBox(width: context.spacingXs),
                       Expanded(
                         child: Container(
-                          height: 4,
+                          height: AppConstants.progressSegmentHeight,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(2),
+                            borderRadius: BorderRadius.circular(
+                              AppConstants.progressSegmentHeight / 2,
+                            ),
                             color: i <= _cur ? cs.onSurface : cs.outlineVariant,
                           ),
                         ),
@@ -257,12 +246,10 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
                     ],
                   ],
                 ),
-                const SizedBox(height: 16),
-                if (_stopWeather(weather, stop) case final day?)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 20),
-                    child: _StopWeatherCard(stop: day),
-                  ),
+                if (_stopWeather(weather, stop) case final day?) ...[
+                  SizedBox(height: context.spacingMd),
+                  WeatherStopCard(stop: day),
+                ],
               ],
               AiStopForm(
                 answers: _answersOf(stop),
@@ -338,90 +325,6 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
   }
 }
 
-/// Un blocco del foglio: titolo e contenuto.
-class _Block extends StatelessWidget {
-  const _Block({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-/// La scheda meteo di una tappa, dai dati già pronti di `trip-weather`.
-class _StopWeatherCard extends StatelessWidget {
-  const _StopWeatherCard({required this.stop});
-
-  final StopWeather stop;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final locale = context.locale.toString();
-    final format = DateFormat('d MMM', locale);
-    final rainDays = stop.rainDays?.round();
-    final min = stop.tempMin;
-    final max = stop.tempMax;
-    final details = [
-      '${format.format(stop.from)} – ${format.format(stop.to)}',
-      if (rainDays != null) 'trips.weather.rain_days'.plural(rainDays),
-    ].join(' · ');
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.groupSurface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  stop.name,
-                  style: tt.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  details,
-                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ),
-          if (min != null && max != null)
-            Text(
-              'trips.weather.temps'.tr(
-                args: [min.round().toString(), max.round().toString()],
-              ),
-              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 /// L'avviso sopra il bottone: una tappa non è compilata.
 class _IncompleteWarning extends StatelessWidget {
   const _IncompleteWarning({
@@ -442,10 +345,10 @@ class _IncompleteWarning extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     return Container(
       key: const Key('ai_incomplete_warning'),
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(context.spacingMd),
       decoration: BoxDecoration(
         color: context.groupSurface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
         // Neutro: nel foglio l'unico arancio è il bottone in fondo.
         border: Border.all(color: cs.outlineVariant),
       ),
@@ -456,10 +359,10 @@ class _IncompleteWarning extends StatelessWidget {
             'trips.ai.incomplete'.tr(args: [stop.name]),
             style: tt.bodyMedium,
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: context.spacingSm),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: context.spacingSm,
+            runSpacing: context.spacingSm,
             children: [
               if (copyFrom != null)
                 OutlinedButton(
@@ -521,7 +424,10 @@ class _Footer extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (warning != null) ...[warning!, const SizedBox(height: 12)],
+          if (warning != null) ...[
+            warning!,
+            SizedBox(height: context.spacingMd),
+          ],
           Row(
             children: [
               if (back != null)
@@ -543,7 +449,9 @@ class _Footer extends StatelessWidget {
                         onPressed: onCta,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: cs.onSurface,
-                          minimumSize: const Size.fromHeight(52),
+                          minimumSize: Size.fromHeight(
+                            context.responsive(AppConstants.ctaHeight),
+                          ),
                           shape: const StadiumBorder(),
                           side: BorderSide(color: cs.outline),
                         ),

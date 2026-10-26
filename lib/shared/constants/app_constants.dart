@@ -56,6 +56,22 @@ class AppConstants {
   static const double ctaBlurSigma = 16.0;
   static const double ctaScrimOpacity = 0.72;
 
+  /// Altezza del bottone principale in fondo (DsButton) e dei bottoni che gli
+  /// stanno accanto o al suo posto (es. "Avanti" del foglio AI).
+  static const double ctaHeight = 56.0;
+
+  /// Bordo più spesso del solito, per un contorno che deve farsi notare
+  /// (es. il numero degli avvisi, "Prepara con AI").
+  static const double emphasisBorderWidth = 2.0;
+
+  /// Bordo tratteggiato (es. "Uguale a …"): lunghezza di un tratto e spazio
+  /// tra due tratti.
+  static const double dashLength = 4.0;
+  static const double dashGap = 3.0;
+
+  /// Altezza dei segmenti di avanzamento (es. le tappe del foglio AI).
+  static const double progressSegmentHeight = 4.0;
+
   // ── AI Import ────────────────────────────────────────────────────────────────
 
   /// Width of score label column in AI result cards.

@@ -83,7 +83,10 @@ class DsChoiceGroup<T> extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(title, style: DsFieldLabel.prominentStyle(context)),
+              // I titoli lunghi ("Cosa farai a Milano?") vanno a capo.
+              Flexible(
+                child: Text(title, style: DsFieldLabel.prominentStyle(context)),
+              ),
               if (doubt || note != null) ...[
                 SizedBox(width: context.spacingSm),
                 if (doubt)

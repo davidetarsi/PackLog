@@ -389,13 +389,21 @@ void main() {
       final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
       await app.go('/trips');
       await app.push('/trips/$kUpcomingTripId/edit-items');
-      await tester.ensureVisible(find.byKey(const Key('pack_new_luggage')));
-      await app.tap(find.byKey(const Key('pack_new_luggage')));
+      // Con dei bagagli "Nuovo bagaglio" sta dentro "Gestisci bagagli".
+      expect(find.byKey(const Key('pack_new_luggage')), findsNothing);
+      await tester.ensureVisible(find.byKey(const Key('pack_manage_luggages')));
+      await app.tap(find.byKey(const Key('pack_manage_luggages')));
+      await app.tap(find.byKey(const Key('storage_add_luggage')));
       await app.enterText(
         find.byKey(const Key('luggage_sheet_name')),
         'Zaino trekking',
       );
       await app.tap(find.byKey(const Key('luggage_sheet_save')));
+      // La selezione si aggiorna quando si chiude "Gestisci bagagli".
+      Navigator.of(
+        tester.element(find.byKey(const Key('luggages_management'))),
+      ).pop();
+      await app.settle();
       expect(
         find.byWidgetPredicate(
           (w) => w is PackPill && w.label == 'Zaino trekking' && w.selected,

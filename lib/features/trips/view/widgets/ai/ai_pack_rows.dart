@@ -59,7 +59,12 @@ class AiPackRows extends StatelessWidget {
             trailing: hasWarnings ? _CountBadge(count: warnings.length) : null,
             onTap: () => _openWarnings(context),
           ),
-          Divider(height: 1, indent: 54, color: cs.outlineVariant),
+          Divider(
+            height: 1,
+            // Allineato al titolo: margine, icona e spazio dopo l'icona.
+            indent: context.spacingMd * 2 + context.iconSizeMd,
+            color: cs.outlineVariant,
+          ),
           _Row(
             key: const Key('pack_row_reasons'),
             icon: Icons.lightbulb_outline,
@@ -138,7 +143,7 @@ class _Row extends StatelessWidget {
                     ),
                   ),
                   if (subtitle != null) ...[
-                    const SizedBox(height: 3),
+                    SizedBox(height: context.spacingXs / 2),
                     Text(
                       subtitle!,
                       maxLines: 1,
@@ -177,12 +182,18 @@ class _CountBadge extends StatelessWidget {
     final warning = context.appColors.warning;
     final tt = Theme.of(context).textTheme;
     return Container(
-      constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 7),
+      constraints: BoxConstraints(
+        minWidth: context.iconSizeMd,
+        minHeight: context.iconSizeMd,
+      ),
+      padding: EdgeInsets.symmetric(horizontal: context.spacingXs),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: warning, width: 1.5),
+        borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+        border: Border.all(
+          color: warning,
+          width: AppConstants.emphasisBorderWidth,
+        ),
       ),
       child: Text(
         '$count',
@@ -255,7 +266,7 @@ class _WarningsSheetState extends State<_WarningsSheet> {
   }
 }
 
-/// Un avviso: livello (in ambra), titolo, perché, e i bottoni.
+/// Un avviso: livello ("Importante" in ambra), titolo, perché, e i bottoni.
 class _WarningCard extends StatelessWidget {
   const _WarningCard({
     required this.warning,
@@ -272,9 +283,17 @@ class _WarningCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final search = warning.search?.trim();
-    final levelKey = switch (warning.level) {
-      AiWarningLevel.important => 'trips.pack.ai.level_important',
-      AiWarningLevel.useful => 'trips.pack.ai.level_useful',
+    // Solo "Importante" in ambra: "Utile" resta grigio, così il livello si
+    // legge prima del testo.
+    final (levelKey, levelColor) = switch (warning.level) {
+      AiWarningLevel.important => (
+        'trips.pack.ai.level_important',
+        context.appColors.warning,
+      ),
+      AiWarningLevel.useful => (
+        'trips.pack.ai.level_useful',
+        cs.onSurfaceVariant,
+      ),
     };
 
     return Container(
@@ -289,21 +308,21 @@ class _WarningCard extends StatelessWidget {
           Text(
             levelKey.tr(),
             style: tt.labelLarge?.copyWith(
-              color: context.appColors.warning,
+              color: levelColor,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: context.spacingXs),
           Text(
             warning.title,
             style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: context.spacingXs),
           Text(warning.why, style: tt.bodyMedium),
-          const SizedBox(height: 12),
+          SizedBox(height: context.spacingMd),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: context.spacingSm,
+            runSpacing: context.spacingSm,
             children: [
               if (search != null && search.isNotEmpty)
                 _NeutralButton(
@@ -348,7 +367,6 @@ class _NeutralButton extends StatelessWidget {
     onPressed: onPressed,
     style: OutlinedButton.styleFrom(
       foregroundColor: foreground,
-      minimumSize: const Size(0, 40),
       shape: const StadiumBorder(),
       side: BorderSide(color: border),
     ),
@@ -388,11 +406,11 @@ class _ReasonsSheet extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: context.spacingXs),
                         for (final sentence in point.sentences)
                           Text(sentence, style: tt.bodyMedium),
                         if (point.items.isNotEmpty) ...[
-                          const SizedBox(height: 4),
+                          SizedBox(height: context.spacingXs),
                           Text(
                             point.items.join(' · '),
                             style: tt.bodySmall?.copyWith(

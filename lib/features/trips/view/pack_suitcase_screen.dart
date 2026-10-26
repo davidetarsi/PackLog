@@ -685,20 +685,25 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
                   ),
               ],
             ),
-            _newLuggageLink(),
+            // Con dei bagagli si crea da "Gestisci bagagli"; il link "Nuovo
+            // bagaglio" resta solo quando non ce n'è nessuno.
             DsLinkButton(
               key: const Key('pack_manage_luggages'),
               icon: Icons.edit_outlined,
               label: 'luggages.manage'.tr(),
               onPressed: () async {
+                final before = {for (final l in luggages) l.id};
                 await showLuggagesManagementSheet(context);
                 if (!mounted) return;
                 final current = ref.read(luggageNotifierProvider).valueOrNull;
                 if (current == null) return;
+                // Quelli creati nel foglio entrano nel viaggio, come faceva il
+                // link "Nuovo bagaglio".
                 setState(() {
                   _luggages = {
                     for (final l in current)
-                      if (_luggages.containsKey(l.id)) l.id: l,
+                      if (_luggages.containsKey(l.id) || !before.contains(l.id))
+                        l.id: l,
                   };
                 });
               },

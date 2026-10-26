@@ -3,19 +3,21 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_group_header.dart';
 import '../../../../items/model/item_model.dart';
 
 /// Riga di un oggetto della casa che si può aggiungere alla valigia: nome,
-/// categoria e "Aggiungi" a destra. Il tocco su tutta la riga aggiunge.
+/// sottotitolo facoltativo e "Aggiungi" a destra. Il tocco su tutta la riga
+/// aggiunge.
 class AiWardrobeRow extends StatelessWidget {
   final String name;
-  final String subtitle;
+  final String? subtitle;
   final VoidCallback onAdd;
 
   const AiWardrobeRow({
     super.key,
     required this.name,
-    required this.subtitle,
+    this.subtitle,
     required this.onAdd,
   });
 
@@ -44,10 +46,11 @@ class AiWardrobeRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: tt.bodyLarge?.copyWith(color: cs.onSurface),
                   ),
-                  Text(
-                    subtitle,
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    ),
                 ],
               ),
             ),
@@ -66,8 +69,8 @@ class AiWardrobeRow extends StatelessWidget {
 }
 
 /// Il riquadro "Dalla casa · N oggetti" in fondo alla valigia generata:
-/// chiuso di partenza, aperto elenca gli oggetti con "Aggiungi". Senza oggetti
-/// non si disegna. Gli oggetti sono quelli che la pagina ha già filtrato
+/// chiuso di partenza, aperto elenca sotto gli oggetti divisi per categoria,
+/// come la valigia sopra, ognuno con "Aggiungi". Senza oggetti non si disegna. Gli oggetti sono quelli che la pagina ha già filtrato
 /// (niente vestiti, niente cose già in valigia).
 class AiHomeGroup extends StatefulWidget {
   final List<ItemModel> items;
@@ -90,13 +93,14 @@ class _AiHomeGroupState extends State<AiHomeGroup> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return Material(
-      color: context.groupSurface,
-      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          InkWell(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Material(
+          color: context.groupSurface,
+          borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
             onTap: () => setState(() => _open = !_open),
             child: Padding(
               padding: EdgeInsets.all(context.spacingMd),
@@ -123,7 +127,7 @@ class _AiHomeGroupState extends State<AiHomeGroup> {
                     ),
                   ),
                   Icon(
-                    Icons.expand_more,
+                    _open ? Icons.expand_less : Icons.expand_more,
                     size: context.iconSizeMd,
                     color: cs.onSurfaceVariant,
                   ),
@@ -131,16 +135,35 @@ class _AiHomeGroupState extends State<AiHomeGroup> {
               ),
             ),
           ),
-          if (_open)
-            for (final item in items)
-              AiWardrobeRow(
-                key: Key('ai_home_add_${item.id}'),
-                name: item.name,
-                subtitle: item.category.displayName,
-                onAdd: () => widget.onAdd(item),
+        ),
+        if (_open)
+          for (final category in ItemCategory.values)
+            if (items.any((item) => item.category == category)) ...[
+              DsGroupHeader(
+                label: category.displayName,
+                count: items.where((item) => item.category == category).length,
               ),
-        ],
-      ),
+              Material(
+                color: context.groupSurface,
+                borderRadius: BorderRadius.circular(
+                  AppConstants.cardBorderRadius,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (final item in items.where(
+                      (item) => item.category == category,
+                    ))
+                      AiWardrobeRow(
+                        key: Key('ai_home_add_${item.id}'),
+                        name: item.name,
+                        onAdd: () => widget.onAdd(item),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+      ],
     );
   }
 }

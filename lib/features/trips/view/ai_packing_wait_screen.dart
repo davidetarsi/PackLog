@@ -244,10 +244,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
         Center(
           child: TextButton(
             onPressed: _cancel,
-            style: TextButton.styleFrom(
-              foregroundColor: colorScheme.onSurface,
-              minimumSize: const Size(0, 48),
-            ),
+            style: TextButton.styleFrom(foregroundColor: colorScheme.onSurface),
             child: Text('common.cancel'.tr()),
           ),
         ),
