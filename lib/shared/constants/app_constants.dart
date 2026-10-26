@@ -41,6 +41,9 @@ class AppConstants {
   /// Padding inferiore per le bottom sheet (evita sovrapposizione con elementi sotto)
   static const double bottomSheetBottomPadding = 24.0;
 
+  /// Altezza massima dei fogli: si vede sempre un pezzo della pagina sotto.
+  static const double sheetMaxHeightFactor = 0.9;
+
   /// Altezza fissa riservata per i tab contenuto filtri (AppPillTab standard).
   static const double pillTabDefault = 36.0;
 
