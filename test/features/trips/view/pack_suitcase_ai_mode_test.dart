@@ -113,7 +113,7 @@ final _houseItems = [
 ];
 
 const _note =
-    "Ho scelto i vestiti e l'essenziale per l'igiene. Il resto lo scegli tu: lo trovi in fondo alla valigia.";
+    "Sono stati scelti i vestiti e l'essenziale per l'igiene. Il resto lo scegli tu: lo trovi in fondo alla valigia.";
 
 const _reasonEveryday = AiReason(
   code: 'tutti_i_giorni',
