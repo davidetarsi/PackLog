@@ -276,6 +276,16 @@ class AppTheme {
         ),
       ),
 
+      // === Text Selection Theme ===
+      // Cursore, selezione e maniglie neutri: l'arancio resta alle azioni.
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: colorScheme.onSurface,
+        selectionColor: colorScheme.onSurface.withValues(
+          alpha: AppConstants.textSelectionOpacity,
+        ),
+        selectionHandleColor: colorScheme.onSurface,
+      ),
+
       // === List Tile Theme ===
       listTileTheme: const ListTileThemeData(
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),

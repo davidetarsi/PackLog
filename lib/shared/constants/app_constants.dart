@@ -69,6 +69,12 @@ class AppConstants {
   static const double dashLength = 4.0;
   static const double dashGap = 3.0;
 
+  /// Lato del francobollo delle cartoline piccole dell'album.
+  static const double albumStampSize = 56.0;
+
+  /// Quanto è coperto il testo selezionato (colore del testo, velato).
+  static const double textSelectionOpacity = 0.24;
+
   /// Altezza dei segmenti di avanzamento (es. le tappe del foglio AI).
   static const double progressSegmentHeight = 4.0;
 
