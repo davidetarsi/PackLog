@@ -29,13 +29,15 @@ enum PromoRejectReason {
   expired,
   exhausted,
   alreadyRedeemed,
-  tooLate;
+  tooLate,
+  tooManyAttempts;
 
   static PromoRejectReason fromCode(String? code) => switch (code) {
     'expired' => expired,
     'exhausted' => exhausted,
     'already_redeemed' => alreadyRedeemed,
     'too_late' => tooLate,
+    'too_many_attempts' => tooManyAttempts,
     _ => invalidCode,
   };
 
@@ -46,5 +48,6 @@ enum PromoRejectReason {
     exhausted => 'promo.error_exhausted',
     alreadyRedeemed => 'promo.error_already_redeemed',
     tooLate => 'promo.error_too_late',
+    tooManyAttempts => 'promo.error_too_many_attempts',
   };
 }

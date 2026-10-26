@@ -25,6 +25,7 @@ void main() {
         'exhausted': PromoRejectReason.exhausted,
         'already_redeemed': PromoRejectReason.alreadyRedeemed,
         'too_late': PromoRejectReason.tooLate,
+        'too_many_attempts': PromoRejectReason.tooManyAttempts,
         'qualcosa_di_nuovo': PromoRejectReason.invalidCode,
       };
       codes.forEach((code, reason) {

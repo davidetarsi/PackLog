@@ -702,6 +702,7 @@
     "error_exhausted": "This code is no longer available.",
     "error_already_redeemed": "You have already used a promo code.",
     "error_too_late": "Promo codes only work in the first days after signing up.",
+    "error_too_many_attempts": "Too many codes tried. Try again tomorrow.",
     "error_generic": "We couldn't activate the code. Please try again."
   },
   "clothing": {
