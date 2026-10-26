@@ -192,3 +192,24 @@ test("giro del 26 ottobre: termici prima dello sci, giacca casual, maglia termic
   assert.equal(copyMancante({ tipo: "assente", category: "Accessory", subCategories: ["Umbrella"], tappe: ["Lisbona"] }).perche,
     "Nell'armadio di questa casa non c'è niente di adatto alla pioggia prevista.");
 });
+
+test("infradito per le terme: si dicono le terme, non 'questo viaggio'", () => {
+  // G4: Reykjavik con le terme, il generatore scarta le scarpe da acqua.
+  const g = { tipo: "posseduto_ma_inadatto", category: "Shoes", subCategories: ["Flip-Flops", "Sandals"],
+    candidato_scartato: "Scarpe da acqua", candidato_warmth: 1, warmth_richiesto: [1, 2], impermeabilita_richiesta: 2,
+    candidato_wr: 1, tappe: ["Reykjavik"] };
+  const viaggio = { tappe: [{ nome: "Reykjavik", attivita: ["escursioni leggere", "terme"] },
+    { nome: "Lisbona", attivita: ["mare"] }] };
+  const avviso = (v: unknown) => uscitaApp({ mancanti_canonici: [g] }, { capi: [], essenziali: [] }, new Map(),
+    { viaggio: v as Record<string, unknown> }).avvisi[0].perche;
+  assert.equal(avviso(viaggio), "Il più simile che hai, Scarpe da acqua, non è adatto alle terme.");
+  // Il mare di Lisbona non conta: il mancante e' di Reykjavik.
+  assert.equal(avviso({ tappe: [{ nome: "Reykjavik", attivita: ["terme", "mare"] }] }),
+    "Il più simile che hai, Scarpe da acqua, non è adatto al mare e alle terme.");
+  // Destinazione unica: le attivita' del viaggio.
+  assert.equal(avviso({ attivita: ["mare"] }), "Il più simile che hai, Scarpe da acqua, non è adatto al mare.");
+  // Senza mare ne' terme resta la frase di prima.
+  assert.equal(avviso({ attivita: ["visite in citta"] }), "Il più simile che hai, Scarpe da acqua, non è adatto a questo viaggio.");
+  assert.equal(copyMancante({ ...g, tipo: "assente" }, false, ["terme"]).perche,
+    "Nell'armadio di questa casa non c'è niente di adatto alle terme.");
+});

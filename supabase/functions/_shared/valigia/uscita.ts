@@ -144,13 +144,34 @@ function meteoDelGap(g: Record_, capo: { sub: string | null; categoria: string }
   return { freddo, acqua };
 }
 
-/** A cosa non basta quello che c'e': il freddo e la pioggia solo se il capo li riguarda. */
-function adattoA(g: Record_, capo: { sub: string | null; categoria: string }, viaggioFreddo = false): string {
+// Calzature da acqua: se il viaggio ha mare o terme, la frase lo dice (le infradito di Reykjavik).
+const DA_ACQUA = new Set(["Flip-Flops", "Sandals", "Water Shoes"]);
+const LUOGHI_D_ACQUA: [string, string][] = [["mare", "al mare"], ["immersioni", "al mare"], ["terme", "alle terme"]];
+
+/** A cosa non basta quello che c'e': il freddo e la pioggia solo se il capo li riguarda;
+ *  per le calzature da acqua il mare o le terme delle tappe del mancante. */
+function adattoA(g: Record_, capo: { sub: string | null; categoria: string }, viaggioFreddo = false,
+  attivita: string[] = []): string {
   const { freddo, acqua } = meteoDelGap(g, capo, viaggioFreddo);
   if (freddo && acqua) return "al freddo e alla pioggia previsti";
   if (freddo) return "al freddo previsto";
   if (acqua) return "alla pioggia prevista";
+  if (capo.sub && DA_ACQUA.has(capo.sub)) {
+    const luoghi = elenco(LUOGHI_D_ACQUA.filter(([a]) => attivita.includes(a)).map(([, l]) => l), "e");
+    if (luoghi) return luoghi;
+  }
   return "a questo viaggio";
+}
+
+/** Le attivita' delle tappe del mancante (tutte, se non le dice), o quelle del viaggio. */
+function attivitaPer(g: Record_, viaggio: Record_ | null | undefined): string[] {
+  if (!viaggio) return [];
+  const tappe: Record_[] = Array.isArray(viaggio.tappe) ? viaggio.tappe : [];
+  const nomi = new Set((Array.isArray(g.tappe) ? g.tappe : []).map(String));
+  const scelte = tappe.filter((t) => nomi.has(String(t.nome)));
+  const fonti = scelte.length ? scelte : tappe;
+  return [...(Array.isArray(viaggio.attivita) ? viaggio.attivita : []),
+    ...fonti.flatMap((t) => (Array.isArray(t.attivita) ? t.attivita : []))].map(String);
 }
 
 /** Il candidato e' scartato perche' troppo caldo per la forbice chiesta (mai se fa freddo). */
@@ -165,7 +186,8 @@ function troppoPesante(g: Record_, freddo: boolean): boolean {
  *  cosi' reggono singolari e plurali. */
 /** Perche' il candidato non va, dai suoi dati: troppo pesante, poco caldo, non regge la
  *  pioggia, poco elegante. Il soggetto e' sempre "Il piu' simile che hai". */
-function percheNonVa(g: Record_, capo: { sub: string | null; categoria: string }, viaggioFreddo: boolean): string {
+function percheNonVa(g: Record_, capo: { sub: string | null; categoria: string }, viaggioFreddo: boolean,
+  attivita: string[]): string {
   const w = calore(g);
   const cw = g.candidato_warmth == null ? NaN : Number(g.candidato_warmth);
   const { freddo, acqua } = meteoDelGap(g, capo, viaggioFreddo);
@@ -182,10 +204,10 @@ function percheNonVa(g: Record_, capo: { sub: string | null; categoria: string }
     const estivo = viaggioFreddo && Number.isFinite(cw) && cw <= 1 && !(capo.sub && MAI_PER_IL_FREDDO.has(capo.sub));
     return estivo ? "non è abbastanza elegante né adatto al freddo previsto" : "non è abbastanza elegante";
   }
-  return `non è adatto ${adattoA(g, capo, viaggioFreddo)}`;
+  return `non è adatto ${adattoA(g, capo, viaggioFreddo, attivita)}`;
 }
 
-export function copyMancante(g: Record_, viaggioFreddo = false): { titolo: string; perche: string } {
+export function copyMancante(g: Record_, viaggioFreddo = false, attivita: string[] = []): { titolo: string; perche: string } {
   if (g.tipo === "volume_eccedente") {
     const nomi = elenco(Array.isArray(g.da_valutare) ? g.da_valutare : [], "e");
     return { titolo: "Il bagaglio è troppo pieno",
@@ -203,10 +225,10 @@ export function copyMancante(g: Record_, viaggioFreddo = false): { titolo: strin
     // "Manca un maglione" con la felpa "troppo pesante" suona strano: si chiede quello leggero.
     const nome = troppoPesante(g, meteoDelGap(g, capo, viaggioFreddo).freddo) ? leggero(capo.nome) : capo.nome;
     return { titolo: `Manca ${nome} ${tappe}`,
-      perche: `Il più simile che hai, ${candidato}, ${percheNonVa(g, capo, viaggioFreddo)}.` };
+      perche: `Il più simile che hai, ${candidato}, ${percheNonVa(g, capo, viaggioFreddo, attivita)}.` };
   }
   return { titolo: `Manca ${capo.nome} ${tappe}`,
-    perche: `Nell'armadio di questa casa non c'è niente di adatto ${adattoA(g, capo, viaggioFreddo)}.` };
+    perche: `Nell'armadio di questa casa non c'è niente di adatto ${adattoA(g, capo, viaggioFreddo, attivita)}.` };
 }
 
 /** Minima media sotto cui il viaggio (o la tappa) e' freddo, per i mancanti che non dicono il calore. */
@@ -284,7 +306,7 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
     const g = perQuestoArmadio(originale, armadio);
     if (!g) continue;
     const viaggioFreddo = freddoPer(g, contesto.meteo);
-    const { titolo, perche } = copyMancante(g, viaggioFreddo);
+    const { titolo, perche } = copyMancante(g, viaggioFreddo, attivitaPer(g, contesto.viaggio));
     const { freddo, acqua } = meteoDelGap(g, capoDelGap(g, viaggioFreddo), viaggioFreddo);
     avvisi.push({
       codice: String(g.tipo),
