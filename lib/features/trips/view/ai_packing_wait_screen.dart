@@ -333,8 +333,9 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
 
 enum _StepState { done, current, pending }
 
-/// Un passo dell'attesa: spunta se fatto, anello se in corso, puntino se
-/// ancora da fare.
+/// Un passo dell'attesa, con un puntino davanti: fermo e scuro se fatto, che
+/// lampeggia se in corso, chiaro se ancora da fare. Fatto e in corso hanno il
+/// testo scuro; da fare, grigio.
 class _WaitStep extends StatelessWidget {
   const _WaitStep({required this.label, required this.state});
 
@@ -345,43 +346,81 @@ class _WaitStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-
-    final Widget marker;
-    final TextStyle? style;
-    switch (state) {
-      case _StepState.done:
-        marker = Icon(Icons.check, size: 22, color: colorScheme.onSurface);
-        style = theme.textTheme.bodyLarge?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-        );
-      case _StepState.current:
-        marker = const SizedBox(
-          width: 16,
-          height: 16,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        );
-        style = theme.textTheme.bodyLarge?.copyWith(
-          color: colorScheme.onSurface,
-          fontWeight: FontWeight.w500,
-        );
-      case _StepState.pending:
-        marker = Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: colorScheme.outlineVariant,
-            shape: BoxShape.circle,
-          ),
-        );
-        style = theme.textTheme.bodyLarge?.copyWith(color: colorScheme.outline);
-    }
+    final pending = state == _StepState.pending;
+    final dot = _Dot(
+      color: pending ? colorScheme.outlineVariant : colorScheme.onSurface,
+    );
 
     return Row(
       children: [
-        SizedBox(width: 22, height: 22, child: Center(child: marker)),
-        AppSpacing.hGapMd,
-        Expanded(child: Text(label, style: style)),
+        SizedBox.square(
+          dimension: context.iconSizeMd,
+          child: Center(
+            child: state == _StepState.current ? _Blinking(child: dot) : dot,
+          ),
+        ),
+        SizedBox(width: context.spacingMd),
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: pending ? colorScheme.outline : colorScheme.onSurface,
+              fontWeight: state == _StepState.current ? FontWeight.w500 : null,
+            ),
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  const _Dot({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: context.spacingSm,
+      height: context.spacingSm,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+}
+
+/// Fa lampeggiare [child] finché resta a schermo.
+class _Blinking extends StatefulWidget {
+  const _Blinking({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_Blinking> createState() => _BlinkingState();
+}
+
+class _BlinkingState extends State<_Blinking>
+    with SingleTickerProviderStateMixin {
+  static const Duration _period = Duration(milliseconds: 700);
+  static const double _minOpacity = 0.2;
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: _period,
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      key: const Key('ai_wait_blinking_dot'),
+      opacity: Tween<double>(begin: 1, end: _minOpacity).animate(_controller),
+      child: widget.child,
     );
   }
 }

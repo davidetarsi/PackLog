@@ -1920,6 +1920,9 @@ final flows = <Flow>[
       setup: const AppSetup(aiPacking: true),
       steps: (app) async {
         await _pack(app, kUpcomingTripId);
+        // La riga è più in basso nella lista: prima la si porta a schermo.
+        await app.tester.ensureVisible(find.text('Giacca impermeabile').first);
+        await app.settle();
         await app.tap(find.text('Giacca impermeabile'));
       },
     ),

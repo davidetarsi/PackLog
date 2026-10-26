@@ -446,7 +446,8 @@ class _IncompleteWarning extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.groupSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.appColors.warning),
+        // Neutro: nel foglio l'unico arancio è il bottone in fondo.
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
