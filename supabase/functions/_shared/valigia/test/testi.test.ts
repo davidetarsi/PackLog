@@ -140,3 +140,38 @@ test("motivi e 'Perché queste scelte' delle valigie dell'oracolo: italiano puli
   }
   assert.ok(n > 1000, `testi controllati: ${n}`);
 });
+
+test("candidato troppo pesante: il titolo chiede il capo leggero", () => {
+  // Budapest, otto tappe: serve un maglione leggero, la felpa e' troppo calda.
+  const g = (subCategories: string[]) => ({ tipo: "posseduto_ma_inadatto", category: "Upper Body", subCategories,
+    candidato_scartato: "Felpa con cappuccio blu navy", candidato_warmth: 3, warmth_richiesto: [2, 2], tappe: ["Budapest"] });
+  assert.deepEqual(copyMancante(g(["Sweater"])), { titolo: "Manca un maglione leggero per Budapest",
+    perche: "Il più simile che hai, Felpa con cappuccio blu navy, è troppo pesante per il clima previsto." });
+  assert.equal(copyMancante(g(["Hoodie", "Sweater"])).titolo, "Manca una felpa leggera o un maglione leggero per Budapest");
+  assert.equal(copyMancante({ ...g(["Trousers"]), category: "Lower Body" }).titolo, "Manca un paio di pantaloni leggeri per Budapest");
+  assert.equal(copyMancante({ ...g(["Sneakers", "Loafers", "Boots", "Sandals"]), category: "Shoes" }).titolo,
+    "Manca un paio di scarpe leggere per Budapest");
+  assert.equal(copyMancante({ ...g(["Casual Jacket"]), category: "Outerwear" }).titolo, "Manca una giacca casual leggera per Budapest");
+  // Senza "troppo pesante" il titolo non cambia.
+  assert.equal(copyMancante({ ...g(["Sweater"]), candidato_warmth: 1, warmth_richiesto: [3, 4] }).titolo, "Manca un maglione per Budapest");
+});
+
+test("capo elegante estivo in un viaggio freddo: si dice anche il freddo", () => {
+  // Mosca a gennaio: il mancante chiede eleganza e accetta ogni calore, il candidato e' di lino.
+  const g = { tipo: "posseduto_ma_inadatto", category: "Lower Body", subCategories: ["Trousers"],
+    formality: ["Business", "Formal", "Smart Casual"], candidato_scartato: "Pantaloni di lino bianchi",
+    candidato_warmth: 1, warmth_richiesto: [1, 5] };
+  assert.equal(copyMancante(g, true).perche,
+    "Il più simile che hai, Pantaloni di lino bianchi, non è abbastanza elegante né adatto al freddo previsto.");
+  assert.equal(copyMancante(g, false).perche, "Il più simile che hai, Pantaloni di lino bianchi, non è abbastanza elegante.");
+  assert.equal(copyMancante({ ...g, candidato_warmth: 3 }, true).perche,
+    "Il più simile che hai, Pantaloni di lino bianchi, non è abbastanza elegante.");
+});
+
+test("bagaglio troppo pieno: un bagaglio piu' grande, o lasciare a casa qualcosa", () => {
+  assert.deepEqual(copyMancante({ tipo: "volume_eccedente", da_valutare: ["Cardigan grigio", "Jeans regular scuri", "Jeans slim grigio"] }),
+    { titolo: "Il bagaglio è troppo pieno",
+      perche: "Considera un bagaglio più grande oppure lascia a casa qualcosa tra Cardigan grigio, Jeans regular scuri e Jeans slim grigio." });
+  assert.equal(copyMancante({ tipo: "volume_eccedente", da_valutare: [] }).perche,
+    "Quello che serve per questo viaggio non ci sta nel bagaglio scelto: considera un bagaglio più grande.");
+});
