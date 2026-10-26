@@ -67,8 +67,10 @@ const STRATI_CALDI = new Set(["Hoodie", "Sweater", "Sweatshirt", "Fleece"]);
 // Fra due o tre sottocategorie si nomina la piu' generica; i capi da cerimonia solo se il
 // mancante chiede solo eleganza, il maglione e il piumino prima se fa freddo.
 const PIU_GENERICHE = ["Trousers", "Jeans", "Sweatshirt", "Sweater", "T-Shirt", "Shirt", "Sneakers", "Boots",
-  "Hiking Boots", "Coat", "Down Jacket", "Rain Jacket", "Windbreaker", "Casual Jacket", "Blazer", "Flip-Flops",
-  "Sandals", "Shorts", "Leggings", "Sweatpants", "Dress Shoes", "Loafers"];
+  "Hiking Boots", "Coat", "Down Jacket", "Rain Jacket", "Casual Jacket", "Windbreaker", "Blazer", "Flip-Flops",
+  "Sandals", "Shorts", "Leggings", "Sweatpants", "Dress Shoes", "Loafers", "Thermal Top", "Thermal Bottoms"];
+// Un capo estivo chiesto caldo (la T-Shirt per lo "strato termico base" a Mosca) e' lo strato termico.
+const TERMICO: Record<string, string> = { "Upper Body": "Thermal Top", "Lower Body": "Thermal Bottoms" };
 const ELEGANTI = ["Blazer", "Dress Shoes", "Trousers", "Shirt"];
 const COL_FREDDO = ["Sweater", "Down Jacket", "Boots"];
 
@@ -86,6 +88,10 @@ function capoDelGap(g: Record_, freddo = false): { nome: string; sub: string | n
     .filter((s: unknown): s is string => typeof s === "string" && NOME_SOTTOCATEGORIA[s] !== undefined);
   const generico = { nome: NOME_CATEGORIA[categoria] ?? "un capo", sub: null, categoria };
   if (!subs.length) return generico;
+  const termico = TERMICO[categoria];
+  if (termico && (calore(g)?.[0] ?? 0) >= 3 && subs.every((s) => MAI_PER_IL_FREDDO.has(s))) {
+    return { nome: NOME_SOTTOCATEGORIA[termico], sub: termico, categoria };
+  }
   if (subs.length > 1 && subs.every((s) => STRATI_CALDI.has(s))) {
     // col freddo serve il maglione (e si unisce all'avviso "Manca un maglione", Rovaniemi)
     return freddo ? { nome: NOME_SOTTOCATEGORIA.Sweater, sub: "Sweater", categoria }
@@ -131,8 +137,8 @@ function calore(g: Record_): [number, number] | null {
 function meteoDelGap(g: Record_, capo: { sub: string | null; categoria: string }, viaggioFreddo = false) {
   const pioggiaSensata = capo.sub ? CONTRO_LA_PIOGGIA.has(capo.sub) : CATEGORIE_CONTRO_LA_PIOGGIA.has(capo.categoria);
   const freddoSensato = !(capo.sub && MAI_PER_IL_FREDDO.has(capo.sub));
-  const acqua = pioggiaSensata &&
-    (Number(g.impermeabilita_richiesta ?? 0) >= 1 || Number(g.requiredWaterResistance ?? 0) >= 1);
+  const acqua = capo.sub === "Umbrella" || (pioggiaSensata &&
+    (Number(g.impermeabilita_richiesta ?? 0) >= 1 || Number(g.requiredWaterResistance ?? 0) >= 1));
   const w = calore(g);
   const freddo = freddoSensato && (w ? w[0] >= 3 : viaggioFreddo);
   return { freddo, acqua };

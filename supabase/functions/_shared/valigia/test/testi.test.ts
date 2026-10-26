@@ -58,7 +58,8 @@ test("ogni combinazione di mancante da' frasi ben formate e sensate", () => {
       assert.ok(perche.endsWith("."), `${dove}: perche senza punto`);
       assert.ok(!titolo.endsWith("."), `${dove}: titolo col punto`);
       // Il meteo si nomina solo per i capi che lo riguardano.
-      if (sub && ESTIVI.has(sub)) assert.doesNotMatch(perche, /freddo/, `${dove}: freddo per un capo estivo`);
+      // (salvo il capo estivo chiesto caldo, che diventa lo strato termico nel titolo)
+      if (sub && ESTIVI.has(sub) && !/termic/.test(titolo)) assert.doesNotMatch(perche, /freddo/, `${dove}: freddo per un capo estivo`);
       if (sub && sub !== "Sottocategoria nuova" && !CONTRO_PIOGGIA.has(sub)) assert.doesNotMatch(perche, /pioggia/, `${dove}: pioggia per ${sub}`);
       // Il nome dell'utente arriva pulito e fra virgole, mai a fare da soggetto.
       if (tipo === "posseduto_ma_inadatto" && candidato?.trim()) {
@@ -174,4 +175,20 @@ test("bagaglio troppo pieno: un bagaglio piu' grande, o lasciare a casa qualcosa
       perche: "Considera un bagaglio più grande oppure lascia a casa qualcosa tra Cardigan grigio, Jeans regular scuri e Jeans slim grigio." });
   assert.equal(copyMancante({ tipo: "volume_eccedente", da_valutare: [] }).perche,
     "Quello che serve per questo viaggio non ci sta nel bagaglio scelto: considera un bagaglio più grande.");
+});
+
+test("giro del 26 ottobre: termici prima dello sci, giacca casual, maglia termica, ombrello", () => {
+  // Rovaniemi, escursioni leggere: il mancante accetta pantaloni da sci o termici.
+  assert.equal(copyMancante({ tipo: "assente", category: "Lower Body", subCategories: ["Ski Pants", "Thermal Bottoms"] }, true).titolo,
+    "Manca un paio di pantaloni termici per il viaggio");
+  // Matrimonio a Firenze, giacca per la sera: casual prima di quella a vento.
+  assert.equal(copyMancante({ tipo: "posseduto_ma_inadatto", category: "Outerwear", subCategories: ["Casual Jacket", "Windbreaker"],
+    formality: ["Business", "Smart Casual"], candidato_scartato: "Giacca antipioggia leggera" }).titolo, "Manca una giacca casual per il viaggio");
+  // Mosca: "strato termico base" con la sola T-Shirt e calore 4-5 e' una maglia termica.
+  assert.deepEqual(copyMancante({ tipo: "posseduto_ma_inadatto", category: "Upper Body", subCategories: ["T-Shirt"],
+    candidato_scartato: "T-shirt beige", candidato_warmth: 2, warmth_richiesto: [4, 5] }),
+  { titolo: "Manca una maglia termica per il viaggio", perche: "Il più simile che hai, T-shirt beige, non è adatto al freddo previsto." });
+  // L'ombrello serve per la pioggia, anche se il mancante non lo dice.
+  assert.equal(copyMancante({ tipo: "assente", category: "Accessory", subCategories: ["Umbrella"], tappe: ["Lisbona"] }).perche,
+    "Nell'armadio di questa casa non c'è niente di adatto alla pioggia prevista.");
 });
