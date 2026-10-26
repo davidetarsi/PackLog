@@ -74,10 +74,10 @@ test("bagaglio troppo pieno: frase sua, i capi da valutare, niente numeri", () =
     uscitaApp({ mancanti_canonici: [{ ...gap, ...extra }] }, { capi: [], essenziali: [] }, new Map()).avvisi[0];
   const tre = avviso({ da_valutare: ["Felpa grigia", "Maglione blu", "Jeans scuri"] });
   assert.deepEqual([tre.codice, tre.livello, tre.titolo, tre.perche, tre.cerca], ["volume_eccedente", "importante",
-    "Il bagaglio è troppo pieno", "Valuta di lasciare a casa Felpa grigia, Maglione blu o Jeans scuri.", null]);
-  assert.equal(avviso({ da_valutare: ["Felpa grigia"] }).perche, "Valuta di lasciare a casa Felpa grigia.");
+    "Il bagaglio è troppo pieno", "Considera un bagaglio più grande oppure lascia a casa qualcosa tra Felpa grigia, Maglione blu e Jeans scuri.", null]);
+  assert.equal(avviso({ da_valutare: ["Felpa grigia"] }).perche, "Considera un bagaglio più grande oppure lascia a casa qualcosa tra Felpa grigia.");
   const nessuno = avviso({ da_valutare: [] });
-  assert.equal(nessuno.perche, "Quello che serve per questo viaggio non ci sta nel bagaglio scelto.");
+  assert.equal(nessuno.perche, "Quello che serve per questo viaggio non ci sta nel bagaglio scelto: considera un bagaglio più grande.");
   assert.doesNotMatch(`${nessuno.titolo} ${nessuno.perche}`, /\d|manca/i);
 });
 
@@ -190,10 +190,10 @@ test("giri DEV: il candidato troppo pesante lo si dice (blazer e felpa a Tenerif
     { ...tenerife, category: "Upper Body", subCategories: ["Hoodie", "Sweater", "Sweatshirt"], formality: ["Casual"],
       essential: true, candidato_scartato: "Felpa girocollo grigio" },
   ]), [
-    ["utile", "Manca un blazer per Santa Cruz de Tenerife",
+    ["utile", "Manca un blazer leggero per Santa Cruz de Tenerife",
       "Il più simile che hai, Blazer blu, è troppo pesante per il clima previsto."],
     // essenziale, ma niente freddo ne' pioggia: utile
-    ["utile", "Manca una felpa o un maglione per Santa Cruz de Tenerife",
+    ["utile", "Manca una felpa leggera o un maglione leggero per Santa Cruz de Tenerife",
       "Il più simile che hai, Felpa girocollo grigio, è troppo pesante per il clima previsto."],
   ]);
 });

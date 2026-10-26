@@ -98,6 +98,13 @@ function capoDelGap(g: Record_, freddo = false): { nome: string; sub: string | n
   return { nome: NOME_SOTTOCATEGORIA[sub], sub, categoria };
 }
 
+/** Il capo, leggero: "un maglione leggero", "una felpa leggera", "un paio di scarpe leggere". */
+function leggero(nome: string): string {
+  if (nome.includes(" o ")) return nome.split(" o ").map(leggero).join(" o ");
+  if (nome.startsWith("un paio di ")) return `${nome} ${/^un paio di (scarpe|sneakers)\b/.test(nome) ? "leggere" : "leggeri"}`;
+  return `${nome} ${nome.startsWith("una ") ? "leggera" : "leggero"}`;
+}
+
 /** "A", "A e B", "A, B e C" (oppure con "o"), senza nomi vuoti ne' ripetuti. */
 function elenco(valori: unknown[], congiunzione: "e" | "o"): string {
   const nomi = [...new Set(valori.map((n) => String(n ?? "").trim()).filter((n) => n !== ""))];
@@ -140,6 +147,13 @@ function adattoA(g: Record_, capo: { sub: string | null; categoria: string }, vi
   return "a questo viaggio";
 }
 
+/** Il candidato e' scartato perche' troppo caldo per la forbice chiesta (mai se fa freddo). */
+function troppoPesante(g: Record_, freddo: boolean): boolean {
+  const w = calore(g);
+  const cw = g.candidato_warmth == null ? NaN : Number(g.candidato_warmth);
+  return !freddo && w !== null && Number.isFinite(cw) && cw > w[1];
+}
+
 /** Titolo e corpo di un avviso dai mancanti del generatore: solo copy fisso, mai il testo libero.
  *  Le frasi non accordano nulla col nome del capo dell'utente ("Il più simile che hai, X, ..."),
  *  cosi' reggono singolari e plurali. */
@@ -152,21 +166,25 @@ function percheNonVa(g: Record_, capo: { sub: string | null; categoria: string }
   const wr = g.candidato_wr == null ? NaN : Number(g.candidato_wr);
   const req = Number(g.impermeabilita_richiesta ?? g.requiredWaterResistance ?? 0);
   const poco = { caldo: freddo && w !== null && Number.isFinite(cw) && cw < w[0], acqua: acqua && Number.isFinite(wr) && wr < req };
-  if (w && Number.isFinite(cw) && cw > w[1] && !freddo) return "è troppo pesante per il clima previsto";
+  if (troppoPesante(g, freddo)) return "è troppo pesante per il clima previsto";
   if (poco.caldo && poco.acqua) return "non è adatto al freddo e alla pioggia previsti";
   if (poco.caldo) return "non è adatto al freddo previsto";
   if (poco.acqua) return "non è adatto alla pioggia prevista";
   if (soloElegante(g) || (Array.isArray(g.formality) && g.formality.length && g.formality.every(
-    (x: unknown) => x === "Business" || x === "Formal" || x === "Smart Casual"))) return "non è abbastanza elegante";
+    (x: unknown) => x === "Business" || x === "Formal" || x === "Smart Casual"))) {
+    // Il lino a Mosca: il generatore lo scarta per l'eleganza, ma l'utente vede anche il freddo.
+    const estivo = viaggioFreddo && Number.isFinite(cw) && cw <= 1 && !(capo.sub && MAI_PER_IL_FREDDO.has(capo.sub));
+    return estivo ? "non è abbastanza elegante né adatto al freddo previsto" : "non è abbastanza elegante";
+  }
   return `non è adatto ${adattoA(g, capo, viaggioFreddo)}`;
 }
 
 export function copyMancante(g: Record_, viaggioFreddo = false): { titolo: string; perche: string } {
   if (g.tipo === "volume_eccedente") {
-    const nomi = elenco(Array.isArray(g.da_valutare) ? g.da_valutare : [], "o");
+    const nomi = elenco(Array.isArray(g.da_valutare) ? g.da_valutare : [], "e");
     return { titolo: "Il bagaglio è troppo pieno",
-      perche: nomi ? `Valuta di lasciare a casa ${nomi}.`
-        : "Quello che serve per questo viaggio non ci sta nel bagaglio scelto." };
+      perche: nomi ? `Considera un bagaglio più grande oppure lascia a casa qualcosa tra ${nomi}.`
+        : "Quello che serve per questo viaggio non ci sta nel bagaglio scelto: considera un bagaglio più grande." };
   }
   const capo = capoDelGap(g, viaggioFreddo || (calore(g)?.[0] ?? 0) >= 3);
   const tappe = perTappe(g);
@@ -176,7 +194,9 @@ export function copyMancante(g: Record_, viaggioFreddo = false): { titolo: strin
   }
   const candidato = typeof g.candidato_scartato === "string" ? g.candidato_scartato.trim() : "";
   if (g.tipo === "posseduto_ma_inadatto" && candidato) {
-    return { titolo: `Manca ${capo.nome} ${tappe}`,
+    // "Manca un maglione" con la felpa "troppo pesante" suona strano: si chiede quello leggero.
+    const nome = troppoPesante(g, meteoDelGap(g, capo, viaggioFreddo).freddo) ? leggero(capo.nome) : capo.nome;
+    return { titolo: `Manca ${nome} ${tappe}`,
       perche: `Il più simile che hai, ${candidato}, ${percheNonVa(g, capo, viaggioFreddo)}.` };
   }
   return { titolo: `Manca ${capo.nome} ${tappe}`,
