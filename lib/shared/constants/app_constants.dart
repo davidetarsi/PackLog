@@ -51,6 +51,11 @@ class AppConstants {
   /// gli elementi della barra in basso della casa.
   static const double categoryRowHeight = 50.0;
 
+  /// Sfocatura del contenuto che scorre sotto un bottone galleggiante in fondo
+  /// alla pagina (StickyCtaScaffold), e quanto lo copre il velo dello sfondo.
+  static const double ctaBlurSigma = 16.0;
+  static const double ctaScrimOpacity = 0.72;
+
   // ── AI Import ────────────────────────────────────────────────────────────────
 
   /// Width of score label column in AI result cards.
