@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/model/clothing_labels.dart';
+import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/view/item_sheet.dart';
@@ -17,6 +18,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../screenshots/support/harness.dart';
 import '../../../screenshots/support/seed.dart';
+
+/// Il salvataggio dell'oggetto aspetta [gate]: serve a tenere la scheda
+/// occupata mentre il test prova a chiuderla.
+class _GatedItems extends ItemNotifier {
+  _GatedItems(this.gate);
+  final Completer<void> gate;
+
+  @override
+  Future<void> updateItem(ItemModel model) async {
+    await gate.future;
+    return super.updateItem(model);
+  }
+}
 
 void main() {
   setUpAll(() async {
@@ -117,6 +131,37 @@ void main() {
     },
   );
 
+  testWidgets('durante il salvataggio il foglio non si chiude', (tester) async {
+    final gate = Completer<void>();
+    final app = await ScreenshotApp.start(
+      tester,
+      theme: ShotTheme.light,
+      setup: AppSetup(
+        extraOverrides: [
+          itemNotifierProvider(kHomeId).overrideWith(() => _GatedItems(gate)),
+        ],
+      ),
+    );
+    await app.go('/');
+    await app.push('/houses/$kHomeId');
+    await app.tap(find.text('Calzini'));
+    await app.enterText(find.byKey(const Key('item_sheet_note')), 'Di lana');
+    await app.tap(find.byKey(const Key('item_sheet_save')));
+
+    // Salvataggio ancora in corso: né il tocco fuori né il tasto indietro
+    // chiudono il foglio.
+    await tester.tapAt(const Offset(10, 10));
+    await app.settle();
+    tester.binding.handlePopRoute();
+    await app.settle();
+    expect(find.byType(ItemSheet), findsOneWidget);
+
+    gate.complete();
+    await app.settle(frames: 30);
+    expect(find.byType(ItemSheet), findsNothing);
+    await app.finish();
+  });
+
   testWidgets('la x sta all estrema destra, con il menu alla sua sinistra', (
     tester,
   ) async {
@@ -171,7 +216,7 @@ void main() {
     final saveTop = tester
         .getRect(find.byKey(const Key('item_sheet_save')))
         .top;
-    expect(saveTop - noteBottom, greaterThanOrEqualTo(context.spacingLg - 0.1));
+    expect(saveTop - noteBottom, greaterThanOrEqualTo(context.spacingMd - 0.1));
 
     await app.enterText(
       find.byKey(const Key('item_sheet_note')),
@@ -307,11 +352,18 @@ void main() {
       await app.tap(find.text('Maglione di lana'));
     }
 
-    /// Il foglio con i dettagli è più alto della superficie di prova: il
-    /// bottone "Salva" va portato in vista prima di toccarlo.
-    Future<void> tapSave(WidgetTester tester, ScreenshotApp app) async {
-      await tester.ensureVisible(find.byKey(const Key('item_sheet_save')));
-      await app.tap(find.byKey(const Key('item_sheet_save')));
+    Future<void> tapSave(WidgetTester tester, ScreenshotApp app) =>
+        app.tap(find.byKey(const Key('item_sheet_save')));
+
+    /// I dettagli stanno nel contenuto che scorre: la scelta va portata in
+    /// vista prima di toccarla, il foglio è più basso dello schermo di prova.
+    Future<void> tapDetail(
+      WidgetTester tester,
+      ScreenshotApp app,
+      Finder finder,
+    ) async {
+      await tester.ensureVisible(finder.first);
+      await app.tap(finder);
     }
 
     VoidCallback? onSave(WidgetTester tester) => tester
@@ -373,7 +425,7 @@ void main() {
       await openMaglione(tester, app);
       expect(onSave(tester), isNull);
 
-      await app.tap(find.text(warmthLabel(3)));
+      await tapDetail(tester, app, find.text(warmthLabel(3)));
       expect(onSave(tester), isNotNull);
       await app.finish();
     });
@@ -384,7 +436,7 @@ void main() {
       final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
       await openMaglione(tester, app);
 
-      await app.tap(find.text(warmthLabel(2)));
+      await tapDetail(tester, app, find.text(warmthLabel(2)));
       await tapSave(tester, app);
 
       final meta = await storedMetadata(tester, app);

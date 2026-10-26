@@ -3,19 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/model/location_suggestion_model.dart';
 import '../../../shared/theme/app_spacing.dart';
-import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_error_state.dart';
 import '../../../shared/widgets/ds_not_found_state.dart';
-import '../../../shared/widgets/ds_form_sheet.dart';
-
 import '../../../shared/widgets/ds_field.dart';
 import '../../../shared/widgets/ds_field_label.dart';
+import '../../../shared/widgets/ds_form_sheet.dart';
 import '../../../shared/widgets/ds_icon_picker.dart';
-import '../../../shared/widgets/ds_sheet_header.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/location_autocomplete_field.dart';
 import '../model/house_model.dart';
@@ -23,11 +19,8 @@ import '../providers/house_provider.dart';
 
 /// Mostra il foglio per creare o modificare una casa.
 Future<void> showAddEditHouseSheet(BuildContext context, {String? houseId}) {
-  return showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    useRootNavigator: true,
-    backgroundColor: Colors.transparent,
+  return showDsFormSheet(
+    context,
     builder: (context) => AddEditHouseSheet(houseId: houseId),
   );
 }
@@ -184,120 +177,82 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return PopScope(
-      canPop: !_isSaving,
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(AppConstants.modalBorderRadius),
+    return DsFormSheet(
+      title: _isNew ? 'houses.add_new'.tr() : 'houses.edit'.tr(),
+      actionLabel: _isNew ? 'common.create'.tr() : 'common.save'.tr(),
+      actionKey: const Key('house_sheet_save'),
+      onSubmit: _isNew || _isDirty ? _save : null,
+      isBusy: _isSaving,
+      // La prima etichetta ha già il suo spazio sopra: niente padding in cima.
+      padding: EdgeInsets.fromLTRB(
+        context.spacingMd,
+        0,
+        context.spacingMd,
+        context.spacingMd,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DsFieldLabel('houses.where_label'.tr()),
+          LocationAutocompleteField(
+            key: const Key('house_sheet_location'),
+            initialValue: _locationText,
+            hintText: 'houses.location_hint'.tr(),
+            hasError: _locationMissing,
+            onLocationSelected: (location) => setState(() {
+              _location = location;
+              _locationText = location.displayName;
+              _locationMissing = false;
+            }),
+            onTextChanged: (text) {
+              _locationText = text;
+              // Un luogo scritto a mano non vale: va scelto
+              // dalla lista, che porta città e coordinate.
+              if (_location != null && text != _location!.displayName) {
+                setState(() => _location = null);
+              }
+            },
+          ),
+          if (_locationMissing)
+            Padding(
+              padding: EdgeInsets.only(
+                top: context.spacingXs,
+                left: context.spacingMd,
+              ),
+              child: Text(
+                'common.select_location'.tr(),
+                style: tt.bodySmall?.copyWith(color: cs.error),
+              ),
+            ),
+          DsFieldLabel('houses.name_label'.tr()),
+          TextField(
+            key: const Key('house_sheet_name'),
+            controller: _nameController,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: dsFieldDecoration(
+              context,
+              hintText: 'houses.name_hint'.tr(),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          Padding(
+            padding: EdgeInsets.only(
+              top: context.spacingXs,
+              left: context.spacingMd,
+            ),
+            child: Text(
+              'houses.name_help'.tr(),
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                DsSheetHeader(
-                  title: _isNew ? 'houses.add_new'.tr() : 'houses.edit'.tr(),
-                  onClose: () => Navigator.pop(context),
-                ),
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      context.spacingMd,
-                      0,
-                      context.spacingMd,
-                      context.spacingMd,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        DsFieldLabel('houses.where_label'.tr()),
-                        LocationAutocompleteField(
-                          key: const Key('house_sheet_location'),
-                          initialValue: _locationText,
-                          hintText: 'houses.location_hint'.tr(),
-                          hasError: _locationMissing,
-                          onLocationSelected: (location) => setState(() {
-                            _location = location;
-                            _locationText = location.displayName;
-                            _locationMissing = false;
-                          }),
-                          onTextChanged: (text) {
-                            _locationText = text;
-                            // Un luogo scritto a mano non vale: va scelto
-                            // dalla lista, che porta città e coordinate.
-                            if (_location != null &&
-                                text != _location!.displayName) {
-                              setState(() => _location = null);
-                            }
-                          },
-                        ),
-                        if (_locationMissing)
-                          Padding(
-                            padding: EdgeInsets.only(
-                              top: context.spacingXs,
-                              left: context.spacingMd,
-                            ),
-                            child: Text(
-                              'common.select_location'.tr(),
-                              style: tt.bodySmall?.copyWith(color: cs.error),
-                            ),
-                          ),
-                        DsFieldLabel('houses.name_label'.tr()),
-                        TextField(
-                          key: const Key('house_sheet_name'),
-                          controller: _nameController,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: dsFieldDecoration(
-                            context,
-                            hintText: 'houses.name_hint'.tr(),
-                          ),
-                          onChanged: (_) => setState(() {}),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.only(
-                            top: context.spacingXs,
-                            left: context.spacingMd,
-                          ),
-                          child: Text(
-                            'houses.name_help'.tr(),
-                            style: tt.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                        DsFieldLabel('common.icon'.tr()),
-                        DsIconPicker(
-                          icons: HouseIcons.all,
-                          selectedId: _iconName,
-                          onSelected: (name) =>
-                              setState(() => _iconName = name),
-                        ),
-                        SizedBox(height: context.spacingLg),
-                        DsButton(
-                          key: const Key('house_sheet_save'),
-                          label: _isNew
-                              ? 'common.create'.tr()
-                              : 'common.save'.tr(),
-                          expand: true,
-                          isLoading: _isSaving,
-                          onPressed: _isNew || _isDirty ? _save : null,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          DsFieldLabel('common.icon'.tr()),
+          DsIconPicker(
+            icons: HouseIcons.all,
+            selectedId: _iconName,
+            onSelected: (name) => setState(() => _iconName = name),
           ),
-        ),
+        ],
       ),
     );
   }
