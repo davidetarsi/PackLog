@@ -265,6 +265,23 @@ void main() {
       ).called(1);
     });
 
+    test(
+      'trackItemDetailsEdited emits item_details_edited with source and fields',
+      () async {
+        service.trackItemDetailsEdited(source: 'house', fields: ['warmth']);
+        await pump();
+        verify(
+          () => mockAnalytics.logEvent(
+            'item_details_edited',
+            properties: {
+              'source': 'house',
+              'fields': ['warmth'],
+            },
+          ),
+        ).called(1);
+      },
+    );
+
     test('trackItemUpdated emits item_updated with category', () async {
       service.trackItemUpdated(category: 'vestiti');
       await pump();
@@ -314,13 +331,13 @@ void main() {
   });
 
   group('AI & onboarding funnel (P2 #14)', () {
-    test('trackAiItemsSaved logs count + is_onboarding + updated', () async {
+    test('trackAiItemsSaved logs count + is_onboarding', () async {
       service.trackAiItemsSaved(count: 4, isOnboarding: true);
       await pump();
       verify(
         () => mockAnalytics.logEvent(
           'ai_items_saved',
-          properties: {'count': 4, 'is_onboarding': true, 'updated': 0},
+          properties: {'count': 4, 'is_onboarding': true},
         ),
       ).called(1);
     });
@@ -338,17 +355,6 @@ void main() {
         ).called(1);
       },
     );
-
-    test('trackAlreadyHereDetailsAdded logs without properties', () async {
-      service.trackAlreadyHereDetailsAdded();
-      await pump();
-      verify(
-        () => mockAnalytics.logEvent(
-          'already_here_details_added',
-          properties: null,
-        ),
-      ).called(1);
-    });
 
     test('trackOnboardingStarted logs onboarding_started', () async {
       service.trackOnboardingStarted();

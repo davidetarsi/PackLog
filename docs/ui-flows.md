@@ -153,7 +153,7 @@ freccia dell'app bar o un tocco fuori chiudono la pagina.
 | # | Schermata | Sorgente | Come ci si arriva | Stati |
 |---|---|---|---|---|
 | 1 | Scelta sorgente | `features/houses/view/house_detail_screen.dart` | bottone ✨ nel dettaglio casa, ingresso diretto | ✓ sheet Galleria/Fotocamera |
-| 2-13 | Risultati AI | `features/ai_input/view/ai_results_screen.dart` | dopo la scelta delle foto | ✓ analisi in corso, ✓ capi riconosciuti, ✓ scelta casa, ✓ capo escluso, ✓ nome in modifica, ✓ foglio “C’è già?”, ✓ capo collegato, ✓ casa vuota senza “C’è già?”, ✓ conferma uscita, ✓ errore parziale con retry, ✓ errore di rete, ✓ quota esaurita |
+| 2-13 | Risultati AI | `features/ai_input/view/ai_results_screen.dart` | dopo la scelta delle foto | ✓ analisi in corso, ✓ capi riconosciuti, ✓ scelta casa, ✓ capo escluso, ✓ nome in modifica, ✓ foglio “C’è già?”, ✓ casa vuota senza “C’è già?”, ✓ conferma uscita, ✓ errore parziale con retry, ✓ errore di rete, ✓ quota esaurita |
 
 ### 07 · Tab Viaggi
 

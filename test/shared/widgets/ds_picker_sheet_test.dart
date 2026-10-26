@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_group_header.dart';
 import 'package:pack_log/shared/widgets/ds_picker_sheet.dart';
 import 'package:pack_log/shared/widgets/ds_sheet_header.dart';
 
@@ -50,6 +52,72 @@ void main() {
 
     expect(find.byType(DsSheetHeader), findsOneWidget);
     expect(find.byIcon(Icons.check), findsOneWidget);
+  });
+
+  testWidgets('con groupOf intitola ogni gruppo di elementi consecutivi', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DsPickerSheet<String>(
+            title: 'Titolo',
+            items: const ['uno', 'due', 'tre'],
+            getLabel: (s) => s,
+            groupOf: (s) => s == 'tre' ? 'Gruppo B' : 'Gruppo A',
+            onSelected: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    final headers = tester
+        .widgetList<DsGroupHeader>(find.byType(DsGroupHeader))
+        .map((h) => h.label);
+    expect(headers, ['Gruppo A', 'Gruppo B']);
+    expect(find.text('uno'), findsOneWidget);
+    expect(find.text('tre'), findsOneWidget);
+  });
+
+  testWidgets('le intestazioni dei gruppi sono allineate alle righe', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: DsPickerSheet<String>(
+            title: 'Titolo',
+            items: const ['uno', 'due'],
+            getLabel: (s) => s,
+            groupOf: (_) => 'Gruppo A',
+            onSelected: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getTopLeft(find.text('Gruppo A')).dx,
+      tester.getTopLeft(find.text('uno')).dx,
+    );
+  });
+
+  testWidgets('senza groupOf non mostra intestazioni', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DsPickerSheet<String>(
+            title: 'Titolo',
+            items: const ['uno', 'due'],
+            getLabel: (s) => s,
+            onSelected: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(DsGroupHeader), findsNothing);
   });
 
   testWidgets('restituisce l\'elemento toccato', (tester) async {

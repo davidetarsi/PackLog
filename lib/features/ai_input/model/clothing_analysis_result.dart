@@ -39,6 +39,10 @@ class ClothingAnalysisResult {
   /// la UI non li mostra, ma restano in `items.ai_metadata` per la valigia.
   final Map<String, dynamic> extras;
 
+  /// Campi che il server segnala come incerti (`dubbi[].campo`). Sono solo in
+  /// lettura: non finiscono in [toJson].
+  final List<String> doubts;
+
   const ClothingAnalysisResult({
     required this.name,
     required this.category,
@@ -52,6 +56,7 @@ class ClothingAnalysisResult {
     required this.activityTags,
     this.appCategory,
     this.extras = const {},
+    this.doubts = const [],
   });
 
   /// Un elemento di `items` nella risposta di `item-metadata`:
@@ -62,10 +67,29 @@ class ClothingAnalysisResult {
       metadata is Map<String, dynamic> ? metadata : const {},
     );
     final appCategory = json['app_category'];
-    return appCategory is String
-        ? base.copyWith(appCategory: appCategory)
-        : base;
+    return base.copyWith(
+      appCategory: appCategory is String ? appCategory : null,
+      doubts: _doubtsFrom(json['dubbi']),
+    );
   }
+
+  /// I `campo` dei dubbi; le voci malformate si scartano.
+  static List<String> _doubtsFrom(Object? dubbi) {
+    if (dubbi is! List) return const [];
+    return [
+      for (final voce in dubbi)
+        if (voce is Map && voce['campo'] is String) voce['campo'] as String,
+    ];
+  }
+
+  /// Il punteggio di impermeabilità (0–2) salvato in `extras`; 0 se manca.
+  int get waterResistance {
+    final value = extras['waterResistance'];
+    return value is num ? value.toInt() : 0;
+  }
+
+  ClothingAnalysisResult withDoubts(List<String> doubts) =>
+      copyWith(doubts: doubts);
 
   factory ClothingAnalysisResult.fromJson(Map<String, dynamic> json) {
     return ClothingAnalysisResult(
@@ -101,6 +125,7 @@ class ClothingAnalysisResult {
     List<String>? activityTags,
     String? appCategory,
     Map<String, dynamic>? extras,
+    List<String>? doubts,
   }) {
     return ClothingAnalysisResult(
       name: name ?? this.name,
@@ -115,6 +140,7 @@ class ClothingAnalysisResult {
       activityTags: activityTags ?? this.activityTags,
       appCategory: appCategory ?? this.appCategory,
       extras: extras ?? this.extras,
+      doubts: doubts ?? this.doubts,
     );
   }
 
@@ -196,6 +222,7 @@ class ClothingAnalysisResult {
     }
     if (appCategory != other.appCategory) return false;
     if (!mapEquals(extras, other.extras)) return false;
+    if (!listEquals(doubts, other.doubts)) return false;
     return true;
   }
 
@@ -213,5 +240,6 @@ class ClothingAnalysisResult {
     Object.hashAll(activityTags),
     appCategory,
     Object.hashAll(extras.keys),
+    Object.hashAll(doubts),
   );
 }

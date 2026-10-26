@@ -1,0 +1,3649 @@
+// MOCK usa e getta: tab Viaggi a biglietti. Due versioni (MOCK_TRIPS=v1|v2).
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
+import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/nav_bar_spacing.dart';
+import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/ds_group_header.dart';
+import '../../houses/providers/house_provider.dart';
+import '../model/trip_model.dart';
+
+const kTripsMock = String.fromEnvironment('MOCK_TRIPS', defaultValue: 'v1');
+
+enum MockTripTab { upcoming, past, saved }
+
+extension on MockTripTab {
+  String get label => switch (this) {
+    MockTripTab.upcoming => 'Prossimi',
+    MockTripTab.past => 'Passati',
+    MockTripTab.saved => 'Salvati',
+  };
+}
+
+Color _cardColor(BuildContext context) {
+  final cs = Theme.of(context).colorScheme;
+  return Theme.of(context).brightness == Brightness.light
+      ? cs.surfaceContainerLowest
+      : cs.surfaceContainer;
+}
+
+String _destination(WidgetRef ref, TripModel trip) {
+  final house = ref
+      .watch(houseNotifierProvider)
+      .valueOrNull
+      ?.where((h) => h.id == trip.destinationHouseId)
+      .firstOrNull;
+  return house?.displayName ?? trip.destinationDisplayName ?? trip.name;
+}
+
+String _city(String destination) => destination.split(',').first.trim();
+String? _country(String destination) {
+  final parts = destination.split(',');
+  return parts.length > 1 ? parts.sublist(1).join(',').trim() : null;
+}
+
+String _d(BuildContext context, DateTime? d, [String pattern = 'd MMM']) =>
+    d == null ? '—' : DateFormat(pattern, context.locale.toString()).format(d);
+
+String _countdown(TripModel trip) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  if (trip.isActive) {
+    final r = trip.returnDateTime;
+    if (r == null) return 'In viaggio';
+    final left = DateTime(r.year, r.month, r.day).difference(today).inDays;
+    return left <= 0
+        ? 'In viaggio · ultimo giorno'
+        : 'In viaggio · ancora $left giorni';
+  }
+  final dep = trip.departureDateTime;
+  if (dep == null) return 'Senza date';
+  final days = DateTime(dep.year, dep.month, dep.day).difference(today).inDays;
+  if (days == 1) return 'Domani';
+  return 'Tra $days giorni';
+}
+
+({String label, IconData icon}) _cta(TripModel trip) {
+  if (trip.isActive) return (label: 'Apri la checklist', icon: Icons.checklist);
+  if (trip.items.isEmpty) {
+    return (label: 'Prepara la valigia', icon: Icons.auto_awesome);
+  }
+  return (label: 'Continua a preparare', icon: Icons.luggage_outlined);
+}
+
+/// Corpo della tab Viaggi nel mock.
+class TripsMockBody extends ConsumerStatefulWidget {
+  final List<TripModel> trips;
+  const TripsMockBody({super.key, required this.trips});
+
+  @override
+  ConsumerState<TripsMockBody> createState() => _TripsMockBodyState();
+}
+
+class _TripsMockBodyState extends ConsumerState<TripsMockBody> {
+  MockTripTab _tab = MockTripTab.upcoming;
+  int _page = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final trips = widget.trips;
+    final upcoming = trips.where((t) => t.isActive || t.isUpcoming).toList()
+      ..sort(
+        (a, b) => (a.departureDateTime ?? DateTime(2099)).compareTo(
+          b.departureDateTime ?? DateTime(2099),
+        ),
+      );
+    final past = trips.where((t) => t.isCompleted).toList()
+      ..sort(
+        (a, b) => (b.departureDateTime ?? DateTime(1900)).compareTo(
+          a.departureDateTime ?? DateTime(1900),
+        ),
+      );
+    final saved = trips.where((t) => t.isSaved).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+          child: AppPillTab<MockTripTab>(
+            items: MockTripTab.values,
+            selectedItem: _tab,
+            getLabel: (t) => t.label,
+            onSelected: (t) => setState(() => _tab = t),
+            selectedColor: cs.onSurface,
+            selectedTextColor: cs.onSurface,
+          ),
+        ),
+        SizedBox(height: context.spacingMd),
+        Expanded(
+          child: switch (_tab) {
+            MockTripTab.upcoming => Column(
+              children: [
+                Expanded(
+                  child: const ['v7', 'v11', 'v12', 'v12b'].contains(kTripsMock)
+                      ? _PostcardPile(
+                          trips: upcoming,
+                          index: _page,
+                          onChanged: (p) => setState(() => _page = p),
+                          builder: switch (kTripsMock) {
+                            'v11' => (t) => _RetroPostcard(trip: t),
+                            'v12' ||
+                            'v12b' => (t) => _ItineraryPostcard(trip: t),
+                            _ => null,
+                          },
+                        )
+                      : PageView.builder(
+                          key: const Key('trips_pager'),
+                          controller: PageController(viewportFraction: 0.88),
+                          itemCount: upcoming.length,
+                          onPageChanged: (p) => setState(() => _page = p),
+                          itemBuilder: (_, i) => Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.spacingXs,
+                            ),
+                            child: switch (kTripsMock) {
+                              'v1' => _TicketV1(trip: upcoming[i]),
+                              'v2' => _TicketV2(trip: upcoming[i]),
+                              'v3' => _TicketV3(trip: upcoming[i]),
+                              'v4' => _TicketV4(trip: upcoming[i]),
+                              'v6' => _TicketV6(trip: upcoming[i]),
+                              'v8' => _TicketV8(trip: upcoming[i]),
+                              'v9' => _TicketV9(trip: upcoming[i]),
+                              'v10' => _TicketV10(trip: upcoming[i]),
+                              _ => _TicketV5(trip: upcoming[i]),
+                            },
+                          ),
+                        ),
+                ),
+                SizedBox(height: context.spacingMd),
+                _PageDots(count: upcoming.length, index: _page),
+                SizedBox(
+                  height: context.navBarReservedHeight + context.spacingLg,
+                ),
+              ],
+            ),
+            MockTripTab.past => _TripList(trips: past, saved: false),
+            MockTripTab.saved => _TripList(trips: saved, saved: true),
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _PageDots extends StatelessWidget {
+  final int count;
+  final int index;
+  const _PageDots({required this.count, required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < count; i++)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: EdgeInsets.symmetric(horizontal: context.spacingXs / 2),
+            width: i == index ? context.spacingMd : context.spacingSm,
+            height: context.spacingSm,
+            decoration: BoxDecoration(
+              color: i == index ? cs.onSurface : cs.outlineVariant,
+              borderRadius: BorderRadius.circular(context.spacingXs),
+            ),
+          ),
+        SizedBox(width: context.spacingSm),
+        Text(
+          '${index + 1} di $count',
+          style: Theme.of(
+            context,
+          ).textTheme.labelMedium?.copyWith(color: cs.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+}
+
+/// Lo staccato del biglietto: tacche nel colore della pagina e linea a
+/// trattini.
+class _Perforation extends StatelessWidget {
+  final Axis axis;
+  const _Perforation({this.axis = Axis.horizontal});
+
+  @override
+  Widget build(BuildContext context) {
+    final page = Theme.of(context).scaffoldBackgroundColor;
+    final dash = Theme.of(context).colorScheme.outlineVariant;
+    const r = 12.0;
+    Widget notch() => Container(
+      width: r * 2,
+      height: r * 2,
+      decoration: BoxDecoration(color: page, shape: BoxShape.circle),
+    );
+    if (axis == Axis.vertical) {
+      return SizedBox(
+        width: r * 2,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(top: -r, child: notch()),
+            Positioned(bottom: -r, child: notch()),
+            Positioned.fill(
+              top: r,
+              bottom: r,
+              child: CustomPaint(painter: _Dashes(dash, vertical: true)),
+            ),
+          ],
+        ),
+      );
+    }
+    return SizedBox(
+      height: r * 2,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(left: -r, child: notch()),
+          Positioned(right: -r, child: notch()),
+          Positioned.fill(
+            left: r * 1.5,
+            right: r * 1.5,
+            child: CustomPaint(painter: _Dashes(dash)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Dashes extends CustomPainter {
+  final Color color;
+  final bool vertical;
+  _Dashes(this.color, {this.vertical = false});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5;
+    const dash = 6.0, gap = 5.0;
+    if (vertical) {
+      final x = size.width / 2;
+      for (var y = 0.0; y < size.height; y += dash + gap) {
+        canvas.drawLine(Offset(x, y), Offset(x, y + dash), paint);
+      }
+    } else {
+      final y = size.height / 2;
+      for (var x = 0.0; x < size.width; x += dash + gap) {
+        canvas.drawLine(Offset(x, y), Offset(x + dash, y), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _Dashes old) => old.color != color;
+}
+
+/// Cosa manca ancora in valigia: i primi tre oggetti non spuntati.
+class _Missing extends StatelessWidget {
+  final TripModel trip;
+  const _Missing({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final missing = trip.items.where((i) => !i.isChecked).toList();
+    if (missing.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'DA METTERE IN VALIGIA',
+          style: tt.labelSmall?.copyWith(
+            color: cs.onSurfaceVariant,
+            letterSpacing: 1.2,
+          ),
+        ),
+        SizedBox(height: context.spacingSm),
+        for (final i in missing.take(3))
+          Padding(
+            padding: EdgeInsets.only(bottom: context.spacingXs),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_box_outline_blank,
+                  size: context.iconSizeSm,
+                  color: cs.onSurfaceVariant,
+                ),
+                SizedBox(width: context.spacingSm),
+                Expanded(
+                  child: Text(
+                    i.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodyMedium,
+                  ),
+                ),
+                if (i.quantity > 1)
+                  Text(
+                    'x${i.quantity}',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+              ],
+            ),
+          ),
+        if (missing.length > 3)
+          Text(
+            'e altri ${missing.length - 3}',
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+      ],
+    );
+  }
+}
+
+class _Progress extends StatelessWidget {
+  final TripModel trip;
+  const _Progress({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final total = trip.totalCount;
+    final done = trip.completedCount;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          total == 0 ? 'Valigia ancora vuota' : '$done di $total in valigia',
+          style: tt.labelLarge,
+        ),
+        SizedBox(height: context.spacingXs),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(context.spacingXs),
+          child: LinearProgressIndicator(
+            value: total == 0 ? 0 : done / total,
+            minHeight: context.spacingXs + 2,
+            backgroundColor: cs.surfaceContainerHigh,
+            color: cs.onSurface,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V1: carta d'imbarco. Sopra "dove e quando", staccato, sotto "valigia".
+// ─────────────────────────────────────────────────────────────────────────
+class _TicketV1 extends ConsumerWidget {
+  final TripModel trip;
+  const _TicketV1({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final stops = trip.legs.map((l) => _city(l.locationDisplayName)).toList();
+
+    Widget dateCol(String label, DateTime? d, CrossAxisAlignment align) =>
+        Column(
+          crossAxisAlignment: align,
+          children: [
+            Text(
+              label,
+              style: tt.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                letterSpacing: 1.2,
+              ),
+            ),
+            Text(_d(context, d, 'd MMM'), style: tt.titleLarge),
+            Text(
+              _d(context, d, 'EEEE'),
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        );
+
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _cardColor(context),
+          borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.all(context.spacingLg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.spacingSm,
+                          vertical: context.spacingXs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.pillBorderRadius,
+                          ),
+                        ),
+                        child: Text(_countdown(trip), style: tt.labelMedium),
+                      ),
+                      const Spacer(),
+                      if (trip.isSaved)
+                        Icon(
+                          Icons.bookmark,
+                          size: context.iconSizeSm,
+                          color: cs.onSurfaceVariant,
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: context.spacingLg),
+                  Text(
+                    trip.name.toUpperCase(),
+                    style: tt.labelMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  Text(
+                    _city(dest),
+                    style: tt.displaySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (_country(dest) != null)
+                    Text(
+                      _country(dest)!,
+                      style: tt.titleMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  if (stops.length > 1) ...[
+                    SizedBox(height: context.spacingMd),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: context.spacingXs,
+                      children: [
+                        for (final (i, s) in stops.indexed) ...[
+                          if (i > 0)
+                            Icon(
+                              Icons.arrow_forward,
+                              size: context.iconSizeSm,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          Text(s, style: tt.bodyMedium),
+                        ],
+                      ],
+                    ),
+                  ],
+                  SizedBox(height: context.spacingLg),
+                  Row(
+                    children: [
+                      dateCol(
+                        'PARTENZA',
+                        trip.departureDateTime,
+                        CrossAxisAlignment.start,
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.spacingSm,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Divider(color: cs.outlineVariant),
+                              ),
+                              Icon(
+                                Icons.flight,
+                                size: context.iconSizeSm,
+                                color: cs.onSurfaceVariant,
+                              ),
+                              Expanded(
+                                child: Divider(color: cs.outlineVariant),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      dateCol(
+                        'RITORNO',
+                        trip.returnDateTime,
+                        CrossAxisAlignment.end,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.spacingLg),
+              child: _Missing(trip: trip),
+            ),
+            const Spacer(),
+            const _Perforation(),
+            Padding(
+              padding: EdgeInsets.all(context.spacingLg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _Progress(trip: trip),
+                  SizedBox(height: context.spacingSm),
+                  Text(
+                    trip.luggageCount == 0
+                        ? 'Nessun bagaglio scelto'
+                        : '${trip.luggageCount} bagagli · ${trip.totalLuggageVolume} L',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  SizedBox(height: context.spacingMd),
+                  DsButton(
+                    label: cta.label,
+                    icon: cta.icon,
+                    expand: true,
+                    onPressed: () => context.push('/trips/${trip.id}'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V2: biglietto col conto alla rovescia. Matrice laterale con il numero di
+// giorni, staccato verticale, corpo con meta e tappe; valigia in fondo.
+// ─────────────────────────────────────────────────────────────────────────
+class _TicketV2 extends ConsumerWidget {
+  final TripModel trip;
+  const _TicketV2({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dep = trip.departureDateTime;
+    final days = dep == null
+        ? null
+        : DateTime(dep.year, dep.month, dep.day).difference(today).inDays;
+
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _cardColor(context),
+          borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: context.responsive(150),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: context.responsive(108),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (trip.isActive) ...[
+                          Icon(
+                            Icons.flight_takeoff,
+                            size: context.iconSizeLg,
+                            color: cs.onSurface,
+                          ),
+                          SizedBox(height: context.spacingXs),
+                          Text('in viaggio', style: tt.labelLarge),
+                        ] else ...[
+                          Text(
+                            '${days ?? '–'}',
+                            style: tt.displayMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            days == 1 ? 'giorno' : 'giorni',
+                            style: tt.labelLarge?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const _Perforation(axis: Axis.vertical),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.all(context.spacingMd),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _city(dest),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            trip.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.bodyMedium?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          SizedBox(height: context.spacingSm),
+                          Text(
+                            '${_d(context, trip.departureDateTime)} – ${_d(context, trip.returnDateTime)}',
+                            style: tt.titleSmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: cs.outlineVariant),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.all(context.spacingLg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (trip.legs.length > 1) ...[
+                      Text(
+                        'TAPPE',
+                        style: tt.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      SizedBox(height: context.spacingSm),
+                      for (final (i, l) in trip.legs.indexed)
+                        Padding(
+                          padding: EdgeInsets.only(bottom: context.spacingSm),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: context.spacingSm,
+                                height: context.spacingSm,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: i == 0
+                                      ? cs.onSurface
+                                      : cs.outlineVariant,
+                                ),
+                              ),
+                              SizedBox(width: context.spacingSm),
+                              Expanded(
+                                child: Text(
+                                  _city(l.locationDisplayName),
+                                  style: tt.bodyLarge,
+                                ),
+                              ),
+                              Text(
+                                '${_d(context, l.from)} – ${_d(context, l.to)}',
+                                style: tt.bodySmall?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ] else
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.place_outlined,
+                            size: context.iconSizeSm,
+                            color: cs.onSurfaceVariant,
+                          ),
+                          SizedBox(width: context.spacingXs),
+                          Expanded(child: Text(dest, style: tt.bodyLarge)),
+                        ],
+                      ),
+                    SizedBox(height: context.spacingMd),
+                    _Missing(trip: trip),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: context.responsive(56),
+                          height: context.responsive(56),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                value: trip.totalCount == 0
+                                    ? 0
+                                    : trip.completedCount / trip.totalCount,
+                                strokeWidth: 5,
+                                backgroundColor: cs.surfaceContainerHigh,
+                                color: cs.onSurface,
+                              ),
+                              Text(
+                                trip.totalCount == 0
+                                    ? '0'
+                                    : '${(trip.completedCount * 100 / trip.totalCount).round()}%',
+                                style: tt.labelMedium,
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: context.spacingMd),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                trip.totalCount == 0
+                                    ? 'Valigia ancora vuota'
+                                    : '${trip.completedCount} di ${trip.totalCount} in valigia',
+                                style: tt.titleSmall,
+                              ),
+                              Text(
+                                trip.luggageCount == 0
+                                    ? 'Nessun bagaglio scelto'
+                                    : '${trip.luggageCount} bagagli · ${trip.totalLuggageVolume} L',
+                                style: tt.bodySmall?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: context.spacingMd),
+                    DsButton(
+                      label: cta.label,
+                      icon: cta.icon,
+                      expand: true,
+                      onPressed: () => context.push('/trips/${trip.id}'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Passati / Salvati: lista compatta, diversa nelle due versioni.
+// ─────────────────────────────────────────────────────────────────────────
+class _TripList extends ConsumerWidget {
+  final List<TripModel> trips;
+  final bool saved;
+  const _TripList({required this.trips, required this.saved});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final byYear = <int, List<TripModel>>{};
+    for (final t in trips) {
+      byYear
+          .putIfAbsent((t.departureDateTime ?? t.createdAt).year, () => [])
+          .add(t);
+    }
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        context.spacingMd,
+        0,
+        context.spacingMd,
+        context.navBarReservedHeight + context.spacingMd,
+      ),
+      children: [
+        if (kTripsMock == 'v12')
+          ..._postcardRows(context, trips, saved)
+        else if (kTripsMock == 'v12b')
+          ..._postcardAlbum(context, trips, saved)
+        else if (kTripsMock == 'v1')
+          for (final t in trips)
+            Padding(
+              padding: EdgeInsets.only(bottom: context.spacingSm),
+              child: _StubRow(trip: t, saved: saved),
+            )
+        else
+          for (final e in byYear.entries) ...[
+            DsGroupHeader(
+              label: saved ? 'Modelli' : '${e.key}',
+              count: e.value.length,
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: _cardColor(context),
+                borderRadius: BorderRadius.circular(
+                  AppConstants.cardBorderRadius,
+                ),
+              ),
+              child: Column(
+                children: [
+                  for (final (i, t) in e.value.indexed) ...[
+                    if (i > 0)
+                      Divider(
+                        height: 1,
+                        indent: context.spacingMd,
+                        endIndent: context.spacingMd,
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    _PlainRow(trip: t, saved: saved),
+                  ],
+                ],
+              ),
+            ),
+          ],
+      ],
+    );
+  }
+}
+
+/// V1: mini biglietto. Matrice con giorno e mese, staccato, meta e date.
+class _StubRow extends ConsumerWidget {
+  final TripModel trip;
+  final bool saved;
+  const _StubRow({required this.trip, required this.saved});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final d = trip.departureDateTime;
+    return Container(
+      height: context.responsive(84),
+      decoration: BoxDecoration(
+        color: _cardColor(context),
+        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: context.responsive(72),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _d(context, d, 'd'),
+                  style: tt.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  _d(context, d, 'MMM yy').toUpperCase(),
+                  style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          const _Perforation(axis: Axis.vertical),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _city(dest),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    '${trip.name} · ${_d(context, trip.departureDateTime)} – ${_d(context, trip.returnDateTime)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(right: context.spacingMd),
+            child: Icon(
+              saved ? Icons.bookmark : Icons.chevron_right,
+              size: context.iconSizeSm,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// V2: riga semplice dentro il blocco dell'anno, con un'azione rapida.
+class _PlainRow extends ConsumerWidget {
+  final TripModel trip;
+  final bool saved;
+  const _PlainRow({required this.trip, required this.saved});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    return ListTile(
+      minTileHeight: context.responsive(64),
+      contentPadding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+      leading: CircleAvatar(
+        backgroundColor: cs.surfaceContainerHigh,
+        child: Text(
+          _city(dest).characters.first.toUpperCase(),
+          style: tt.titleMedium,
+        ),
+      ),
+      title: Text(
+        _city(dest),
+        style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        '${_d(context, trip.departureDateTime)} – ${_d(context, trip.returnDateTime)} · ${trip.totalCount} oggetti',
+        style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+      ),
+      trailing: TextButton(
+        style: TextButton.styleFrom(foregroundColor: cs.onSurfaceVariant),
+        onPressed: () {},
+        child: Text(saved ? 'Usa' : 'Rifai'),
+      ),
+    );
+  }
+}
+
+int? _nights(TripModel trip) {
+  final a = trip.departureDateTime, b = trip.returnDateTime;
+  if (a == null || b == null) return null;
+  return DateTime(
+    b.year,
+    b.month,
+    b.day,
+  ).difference(DateTime(a.year, a.month, a.day)).inDays;
+}
+
+String _bags(TripModel trip) => trip.luggageCount == 0
+    ? 'Da scegliere'
+    : '${trip.luggageCount} · ${trip.totalLuggageVolume} L';
+
+BoxDecoration _card(BuildContext context) => BoxDecoration(
+  color: _cardColor(context),
+  borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+);
+
+TextStyle? _caps(BuildContext context) =>
+    Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      letterSpacing: 1.2,
+    );
+
+// ─────────────────────────────────────────────────────────────────────────
+// V3: etichetta del bagaglio. Fascia con il foro, campi a griglia come un
+// modulo, e un "codice a barre" in cui ogni barra è un oggetto: piena se è
+// già in valigia.
+// ─────────────────────────────────────────────────────────────────────────
+class _TicketV3 extends ConsumerWidget {
+  final TripModel trip;
+  const _TicketV3({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final nights = _nights(trip);
+    final radius = Radius.circular(AppConstants.cardBorderRadius);
+
+    Widget field(String label, String value, String? sub) => Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: context.spacingSm),
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: cs.outlineVariant)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: _caps(context)),
+            SizedBox(height: context.spacingXs / 2),
+            Text(value, style: tt.titleMedium),
+            if (sub != null)
+              Text(
+                sub,
+                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Container(
+        decoration: _card(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: context.responsive(52),
+              padding: EdgeInsets.symmetric(horizontal: context.spacingLg),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHigh,
+                borderRadius: BorderRadius.only(
+                  topLeft: radius,
+                  topRight: radius,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: context.responsive(16),
+                    height: context.responsive(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: cs.outline, width: 1.5),
+                    ),
+                  ),
+                  SizedBox(width: context.spacingMd),
+                  Expanded(child: Text(_countdown(trip), style: tt.labelLarge)),
+                  Icon(
+                    trip.isSaved ? Icons.bookmark : Icons.luggage_outlined,
+                    size: context.iconSizeSm,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.all(context.spacingLg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('DESTINAZIONE', style: _caps(context)),
+                    Text(
+                      _city(dest),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.displaySmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        height: 1.05,
+                      ),
+                    ),
+                    Text(
+                      [
+                        if (_country(dest) != null) _country(dest)!,
+                        if (trip.name != _city(dest)) trip.name,
+                      ].join(' · '),
+                      style: tt.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    SizedBox(height: context.spacingLg),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        field(
+                          'PARTENZA',
+                          _d(context, trip.departureDateTime),
+                          _d(context, trip.departureDateTime, 'EEEE'),
+                        ),
+                        SizedBox(width: context.spacingMd),
+                        field(
+                          'RITORNO',
+                          _d(context, trip.returnDateTime),
+                          _d(context, trip.returnDateTime, 'EEEE'),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        field(
+                          'DURATA',
+                          nights == null
+                              ? '—'
+                              : nights == 1
+                              ? '1 notte'
+                              : '$nights notti',
+                          trip.legs.length > 1
+                              ? '${trip.legs.length} tappe'
+                              : null,
+                        ),
+                        SizedBox(width: context.spacingMd),
+                        field('BAGAGLI', _bags(trip), null),
+                      ],
+                    ),
+                    const Spacer(),
+                    _Barcode(trip: trip),
+                    SizedBox(height: context.spacingLg),
+                    DsButton(
+                      label: cta.label,
+                      icon: cta.icon,
+                      expand: true,
+                      onPressed: () => context.push('/trips/${trip.id}'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Barcode extends StatelessWidget {
+  final TripModel trip;
+  const _Barcode({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final items = trip.items;
+    final h = context.responsive(72);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (items.isEmpty)
+          Container(
+            height: h,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(context.spacingSm),
+              border: Border.all(color: cs.outlineVariant),
+            ),
+            child: Text(
+              'Nessun oggetto ancora',
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          )
+        else
+          SizedBox(
+            height: h,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final i in items)
+                  Expanded(
+                    flex: 2 + i.name.length % 3,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                      decoration: BoxDecoration(
+                        color: i.isChecked
+                            ? cs.onSurface
+                            : cs.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        SizedBox(height: context.spacingSm),
+        Row(
+          children: [
+            Text(
+              items.isEmpty
+                  ? 'Valigia ancora vuota'
+                  : '${trip.completedCount} di ${trip.totalCount} in valigia',
+              style: tt.labelLarge,
+            ),
+            const Spacer(),
+            if (items.isNotEmpty)
+              Text(
+                'mancano ${trip.totalCount - trip.completedCount}',
+                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V4: agenda. Il tempo al centro: una linea verticale con partenza, tappe,
+// "oggi" e ritorno. La valigia è un solo riquadro riassuntivo.
+// ─────────────────────────────────────────────────────────────────────────
+class _TicketV4 extends ConsumerWidget {
+  final TripModel trip;
+  const _TicketV4({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final stops =
+        <({DateTime? date, String title, String? sub, bool today})>[
+          (
+            date: today,
+            title: 'Oggi',
+            sub: trip.isActive ? 'Sei in viaggio' : _countdown(trip),
+            today: true,
+          ),
+          (
+            date: trip.departureDateTime,
+            title: 'Partenza',
+            sub: trip.legs.length > 1
+                ? 'per ${_city(trip.legs.first.locationDisplayName)}'
+                : 'per ${_city(dest)}',
+            today: false,
+          ),
+          if (trip.legs.length > 1)
+            for (final l in trip.legs.skip(1))
+              (
+                date: l.from,
+                title: _city(l.locationDisplayName),
+                sub: 'tappa',
+                today: false,
+              ),
+          (
+            date: trip.returnDateTime,
+            title: 'Ritorno',
+            sub: null,
+            today: false,
+          ),
+        ]..sort(
+          (a, b) =>
+              (a.date ?? DateTime(2099)).compareTo(b.date ?? DateTime(2099)),
+        );
+    final todayIndex = stops.indexWhere((s) => s.today);
+
+    Widget stop(int i) {
+      final s = stops[i];
+      final past = i < todayIndex;
+      final dot = context.responsive(s.today ? 14 : 10);
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: context.responsive(16),
+              child: Column(
+                children: [
+                  Container(
+                    width: 2,
+                    height: context.spacingXs,
+                    color: i == 0 ? Colors.transparent : cs.outlineVariant,
+                  ),
+                  Container(
+                    width: dot,
+                    height: dot,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: s.today || past
+                          ? cs.onSurface
+                          : _cardColor(context),
+                      border: Border.all(
+                        color: s.today || past ? cs.onSurface : cs.outline,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: i == stops.length - 1
+                          ? Colors.transparent
+                          : cs.outlineVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: context.spacingMd),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: context.spacingLg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.title,
+                      style: (s.today ? tt.titleLarge : tt.titleMedium)
+                          ?.copyWith(
+                            fontWeight: s.today ? FontWeight.w700 : null,
+                            color: past ? cs.onSurfaceVariant : null,
+                          ),
+                    ),
+                    if (s.sub != null)
+                      Text(
+                        s.sub!,
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Text(
+              _d(context, s.date, 'EEE d MMM'),
+              style: tt.titleSmall?.copyWith(
+                color: past ? cs.onSurfaceVariant : null,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final total = trip.totalCount, done = trip.completedCount;
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Container(
+        decoration: _card(context),
+        padding: EdgeInsets.all(context.spacingLg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              _city(dest),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: tt.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            Text(
+              [
+                if (_country(dest) != null) _country(dest)!,
+                if (trip.name != _city(dest)) trip.name,
+              ].join(' · '),
+              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            SizedBox(height: context.spacingLg),
+            for (var i = 0; i < stops.length; i++) stop(i),
+            const Spacer(),
+            Container(
+              padding: EdgeInsets.all(context.spacingMd),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(context.spacingMd),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.luggage_outlined, size: context.iconSizeMd),
+                  SizedBox(width: context.spacingMd),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          total == 0
+                              ? 'Valigia ancora vuota'
+                              : '$done di $total in valigia',
+                          style: tt.titleSmall,
+                        ),
+                        Text(
+                          trip.luggageCount == 0
+                              ? 'Nessun bagaglio scelto'
+                              : trip.luggages.map((l) => l.name).join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (total > 0)
+                    Text(
+                      '${(done * 100 / total).round()}%',
+                      style: tt.titleMedium,
+                    ),
+                ],
+              ),
+            ),
+            SizedBox(height: context.spacingMd),
+            DsButton(
+              label: cta.label,
+              icon: cta.icon,
+              expand: true,
+              onPressed: () => context.push('/trips/${trip.id}'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V5: copertina. Metà alta tonale con la meta in grande (domani potrebbe
+// ospitare una foto del posto), metà bassa con la valigia come numero.
+// ─────────────────────────────────────────────────────────────────────────
+class _TicketV5 extends ConsumerWidget {
+  final TripModel trip;
+  const _TicketV5({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final radius = Radius.circular(AppConstants.cardBorderRadius);
+    final total = trip.totalCount, done = trip.completedCount;
+
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Container(
+        decoration: _card(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 11,
+              child: Container(
+                padding: EdgeInsets.all(context.spacingLg),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHigh,
+                  borderRadius: BorderRadius.only(
+                    topLeft: radius,
+                    topRight: radius,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(_countdown(trip), style: tt.labelLarge),
+                        const Spacer(),
+                        Text(
+                          '${_d(context, trip.departureDateTime)} – ${_d(context, trip.returnDateTime)}',
+                          style: tt.labelLarge,
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    if (_country(dest) != null)
+                      Text(
+                        _country(dest)!.toUpperCase(),
+                        style: _caps(context),
+                      ),
+                    Text(
+                      _city(dest),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.displayMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        height: 1.0,
+                      ),
+                    ),
+                    if (trip.name != _city(dest)) ...[
+                      SizedBox(height: context.spacingXs),
+                      Text(
+                        trip.name,
+                        style: tt.titleMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 9,
+              child: Padding(
+                padding: EdgeInsets.all(context.spacingLg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('VALIGIA', style: _caps(context)),
+                    SizedBox(height: context.spacingXs),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          total == 0 ? '0' : '$done',
+                          style: tt.displaySmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          total == 0 ? '  oggetti' : ' / $total pronti',
+                          style: tt.titleMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: context.spacingSm),
+                    Wrap(
+                      spacing: context.spacingSm,
+                      runSpacing: context.spacingSm,
+                      children: [
+                        if (trip.luggages.isEmpty)
+                          Text(
+                            'Nessun bagaglio scelto',
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        for (final l in trip.luggages)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.spacingSm,
+                              vertical: context.spacingXs,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(
+                                AppConstants.pillBorderRadius,
+                              ),
+                              border: Border.all(color: cs.outlineVariant),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.luggage_outlined,
+                                  size: context.iconSizeSm,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                                SizedBox(width: context.spacingXs),
+                                Text(l.name, style: tt.labelMedium),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const Spacer(),
+                    DsButton(
+                      label: cta.label,
+                      icon: cta.icon,
+                      expand: true,
+                      onPressed: () => context.push('/trips/${trip.id}'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Partenza e ritorno in grande ai lati di una linea, con un'etichetta al
+/// centro (per esempio le notti).
+class _DatesRow extends StatelessWidget {
+  final TripModel trip;
+  const _DatesRow({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final nights = _nights(trip);
+    Widget col(String label, DateTime? d, CrossAxisAlignment a) => Column(
+      crossAxisAlignment: a,
+      children: [
+        Text(label, style: _caps(context)),
+        Text(
+          _d(context, d),
+          style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        Text(
+          _d(context, d, 'EEEE'),
+          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        ),
+      ],
+    );
+    return Row(
+      children: [
+        col('PARTENZA', trip.departureDateTime, CrossAxisAlignment.start),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.spacingSm),
+            child: Row(
+              children: [
+                Expanded(child: Divider(color: cs.outlineVariant)),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: context.spacingXs),
+                  child: Text(
+                    nights == null
+                        ? ''
+                        : (nights == 1 ? '1 notte' : '$nights notti'),
+                    style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+                Expanded(child: Divider(color: cs.outlineVariant)),
+              ],
+            ),
+          ),
+        ),
+        col('RITORNO', trip.returnDateTime, CrossAxisAlignment.end),
+      ],
+    );
+  }
+}
+
+class _Ring extends StatelessWidget {
+  final TripModel trip;
+  const _Ring({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final total = trip.totalCount, done = trip.completedCount;
+    return Row(
+      children: [
+        SizedBox(
+          width: context.responsive(60),
+          height: context.responsive(60),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox.expand(
+                child: CircularProgressIndicator(
+                  value: total == 0 ? 0 : done / total,
+                  strokeWidth: 6,
+                  backgroundColor: cs.surfaceContainerHigh,
+                  color: cs.onSurface,
+                ),
+              ),
+              Text(
+                total == 0 ? '0%' : '${(done * 100 / total).round()}%',
+                style: tt.labelLarge,
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: context.spacingMd),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                total == 0
+                    ? 'Valigia ancora vuota'
+                    : '$done di $total in valigia',
+                style: tt.titleSmall,
+              ),
+              Text(
+                trip.luggageCount == 0
+                    ? 'Nessun bagaglio scelto'
+                    : trip.luggages.map((l) => l.name).join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Widget _countdownChip(BuildContext context, TripModel trip) => Container(
+  padding: EdgeInsets.symmetric(
+    horizontal: context.spacingSm,
+    vertical: context.spacingXs,
+  ),
+  decoration: BoxDecoration(
+    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+    borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+  ),
+  child: Text(_countdown(trip), style: Theme.of(context).textTheme.labelMedium),
+);
+
+// ─────────────────────────────────────────────────────────────────────────
+// V6: la valigia. La card ha maniglia e ruote, e si riempie dal basso come
+// un liquido in base a quanto è già in valigia.
+// ─────────────────────────────────────────────────────────────────────────
+class _TicketV6 extends ConsumerWidget {
+  final TripModel trip;
+  const _TicketV6({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final total = trip.totalCount, done = trip.completedCount;
+    final level = total == 0 ? 0.0 : done / total;
+    final card = _cardColor(context);
+    final light = Theme.of(context).brightness == Brightness.light;
+    final fill = light ? cs.surfaceContainerHigh : cs.surfaceContainerHighest;
+    final handleH = context.responsive(26);
+    final wheel = context.responsive(18);
+    final radius = context.responsive(32);
+
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: context.responsive(104),
+                height: handleH * 2,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(handleH * 0.8),
+                  border: Border.all(
+                    color: light ? cs.surfaceContainerHighest : card,
+                    width: 9,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          for (final left in [true, false])
+            Positioned(
+              bottom: 0,
+              left: left ? radius : null,
+              right: left ? null : radius,
+              child: Container(
+                width: wheel,
+                height: wheel,
+                decoration: BoxDecoration(
+                  color: cs.outline,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          Positioned.fill(
+            top: handleH,
+            bottom: wheel / 2,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(radius),
+              child: Container(
+                color: card,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _Wave(level: level, color: fill),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(context.spacingLg),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              _countdownChip(context, trip),
+                              const Spacer(),
+                            ],
+                          ),
+                          SizedBox(height: context.spacingMd),
+                          Text(
+                            _city(dest),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.displaySmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            [
+                              if (_country(dest) != null) _country(dest)!,
+                              if (trip.name != _city(dest)) trip.name,
+                            ].join(' · '),
+                            style: tt.bodyMedium?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          SizedBox(height: context.spacingLg),
+                          _DatesRow(trip: trip),
+                          const Spacer(),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                '${(level * 100).round()}%',
+                                style: tt.displayMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              SizedBox(width: context.spacingSm),
+                              Expanded(
+                                child: Text(
+                                  total == 0
+                                      ? 'valigia ancora vuota'
+                                      : 'in valigia · $done di $total',
+                                  style: tt.titleMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: context.spacingMd),
+                          DsButton(
+                            label: cta.label,
+                            icon: cta.icon,
+                            expand: true,
+                            onPressed: () => context.push('/trips/${trip.id}'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Wave extends CustomPainter {
+  final double level;
+  final Color color;
+  _Wave({required this.level, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (level <= 0) return;
+    final y0 = size.height * (1 - level);
+    const amp = 7.0;
+    final wl = size.width / 1.2;
+    final path = Path()..moveTo(0, y0);
+    for (var x = 0.0; x <= size.width + 4; x += 4) {
+      path.lineTo(x, y0 + math.sin(x / wl * 2 * math.pi) * amp);
+    }
+    path
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _Wave old) =>
+      old.level != level || old.color != color;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V7: cartoline. I prossimi viaggi sono una pila di cartoline storte; si
+// scorre lanciando via quella in cima. Francobollo col conto alla rovescia,
+// timbro con la data, righe dell'indirizzo con date e bagagli.
+// ─────────────────────────────────────────────────────────────────────────
+class _PostcardPile extends StatefulWidget {
+  final List<TripModel> trips;
+  final int index;
+  final ValueChanged<int> onChanged;
+  final Widget Function(TripModel)? builder;
+  const _PostcardPile({
+    required this.trips,
+    required this.index,
+    required this.onChanged,
+    this.builder,
+  });
+
+  @override
+  State<_PostcardPile> createState() => _PostcardPileState();
+}
+
+class _PostcardPileState extends State<_PostcardPile> {
+  double _dx = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = widget.trips.length;
+    final i = widget.index;
+    const tilts = [0.0, 0.045, -0.06];
+    return GestureDetector(
+      key: const Key('trips_pager'),
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragUpdate: (d) => setState(() => _dx += d.delta.dx),
+      onHorizontalDragEnd: (_) {
+        if (_dx < -60 && i < n - 1) widget.onChanged(i + 1);
+        if (_dx > 60 && i > 0) widget.onChanged(i - 1);
+        setState(() => _dx = 0);
+      },
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacingLg,
+          vertical: context.spacingSm,
+        ),
+        child: Stack(
+          children: [
+            for (var k = math.min(i + 2, n - 1); k >= i; k--)
+              Positioned.fill(
+                child: Transform.translate(
+                  offset: k == i
+                      ? Offset(_dx, 0)
+                      : Offset(10.0 * (k - i), 8.0 * (k - i)),
+                  child: Transform.rotate(
+                    angle: tilts[k - i] + (k == i ? _dx / 2000 : 0),
+                    child: k == i
+                        ? (widget.builder ?? (t) => _Postcard(trip: t))(
+                            widget.trips[k],
+                          )
+                        : const _BlankPostcard(),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Postcard extends ConsumerWidget {
+  final TripModel trip;
+  const _Postcard({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final total = trip.totalCount, done = trip.completedCount;
+    final note = total == 0
+        ? 'La valigia è ancora tutta da fare. Ci pensiamo insieme?'
+        : trip.isActive
+        ? 'Ci siamo! In valigia ho $done cose su $total.'
+        : 'Ho già messo in valigia $done cose su $total, ne mancano ${total - done}.';
+
+    Widget line(String label, String value) => Container(
+      padding: EdgeInsets.symmetric(vertical: context.spacingSm),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: cs.outlineVariant)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: context.responsive(84),
+            child: Text(label, style: _caps(context)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: tt.titleSmall,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Container(
+        padding: EdgeInsets.all(context.spacingLg),
+        decoration: BoxDecoration(
+          color: _cardColor(context),
+          borderRadius: BorderRadius.circular(context.spacingSm),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Saluti da',
+                        style: tt.titleMedium?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        _city(dest),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.headlineLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          height: 1.05,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _StampAndPostmark(trip: trip),
+              ],
+            ),
+            const Spacer(),
+            Text(
+              note,
+              style: tt.headlineSmall?.copyWith(
+                fontStyle: FontStyle.italic,
+                height: 1.4,
+              ),
+            ),
+            const Spacer(),
+            line(
+              'PARTENZA',
+              _d(context, trip.departureDateTime, 'EEEE d MMMM'),
+            ),
+            line('RITORNO', _d(context, trip.returnDateTime, 'EEEE d MMMM')),
+            line(
+              'BAGAGLI',
+              trip.luggageCount == 0
+                  ? 'da scegliere'
+                  : trip.luggages.map((l) => l.name).join(', '),
+            ),
+            SizedBox(height: context.spacingLg),
+            DsButton(
+              label: cta.label,
+              icon: cta.icon,
+              expand: true,
+              onPressed: () => context.push('/trips/${trip.id}'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StampAndPostmark extends StatelessWidget {
+  final TripModel trip;
+  const _StampAndPostmark({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dep = trip.departureDateTime;
+    final days = dep == null
+        ? null
+        : DateTime(dep.year, dep.month, dep.day).difference(today).inDays;
+    final w = context.responsive(80), h = context.responsive(96);
+    final mark = context.responsive(72);
+    return SizedBox(
+      width: w + mark * 0.7,
+      height: h + mark * 0.6,
+      child: Stack(
+        children: [
+          Positioned(
+            top: 0,
+            right: 0,
+            child: CustomPaint(
+              painter: _StampPainter(
+                color: cs.surfaceContainerHigh,
+                border: cs.outlineVariant,
+              ),
+              child: SizedBox(
+                width: w,
+                height: h,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: trip.isActive
+                      ? [
+                          Icon(Icons.flight_takeoff, size: context.iconSizeLg),
+                          Text('in viaggio', style: tt.labelMedium),
+                        ]
+                      : [
+                          Text(
+                            '${days ?? '–'}',
+                            style: tt.headlineLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            days == 1 ? 'giorno' : 'giorni',
+                            style: tt.labelMedium,
+                          ),
+                        ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            bottom: 0,
+            child: Transform.rotate(
+              angle: -0.3,
+              child: Container(
+                width: mark,
+                height: mark,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'PACKLOG',
+                      style: tt.labelSmall?.copyWith(
+                        fontSize: 8,
+                        letterSpacing: 1.5,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      _d(context, dep, 'd MMM').toUpperCase(),
+                      style: tt.labelLarge?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      _d(context, dep, 'yyyy'),
+                      style: tt.labelSmall?.copyWith(
+                        fontSize: 8,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Francobollo: rettangolo con i bordi "mangiati" a semicerchi e una cornice
+/// interna.
+class _StampPainter extends CustomPainter {
+  final Color color;
+  final Color border;
+  _StampPainter({required this.color, required this.border});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const r = 3.5, step = 10.0;
+    var shape = Path()..addRect(Offset.zero & size);
+    final bites = Path();
+    for (var x = step / 2; x < size.width; x += step) {
+      bites
+        ..addOval(Rect.fromCircle(center: Offset(x, 0), radius: r))
+        ..addOval(Rect.fromCircle(center: Offset(x, size.height), radius: r));
+    }
+    for (var y = step / 2; y < size.height; y += step) {
+      bites
+        ..addOval(Rect.fromCircle(center: Offset(0, y), radius: r))
+        ..addOval(Rect.fromCircle(center: Offset(size.width, y), radius: r));
+    }
+    shape = Path.combine(PathOperation.difference, shape, bites);
+    canvas.drawPath(shape, Paint()..color = color);
+    canvas.drawRect(
+      (Offset.zero & size).deflate(8),
+      Paint()
+        ..color = border
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _StampPainter old) =>
+      old.color != color || old.border != border;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V8: la rotta. Una linea tratteggiata ad arco da "oggi" alle tappe, con
+// l'aereo che avanza; sotto date grandi e anello della valigia.
+// ─────────────────────────────────────────────────────────────────────────
+class _TicketV8 extends ConsumerWidget {
+  final TripModel trip;
+  const _TicketV8({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final stops = trip.legs.length > 1
+        ? trip.legs.map((l) => _city(l.locationDisplayName)).toList()
+        : [_city(dest)];
+
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Container(
+        decoration: _card(context),
+        padding: EdgeInsets.all(context.spacingLg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(children: [_countdownChip(context, trip), const Spacer()]),
+            Expanded(
+              child: CustomPaint(
+                painter: _RoutePainter(
+                  stops: stops,
+                  active: trip.isActive,
+                  startLabel: trip.isActive ? 'partenza' : 'oggi',
+                  dash: cs.outline,
+                  ink: cs.onSurface,
+                  muted: cs.onSurfaceVariant,
+                  card: _cardColor(context),
+                  stopStyle: tt.titleMedium!.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                  lastStyle: tt.headlineMedium!.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: cs.onSurface,
+                  ),
+                  smallStyle: tt.bodySmall!.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+            _DatesRow(trip: trip),
+            SizedBox(height: context.spacingLg),
+            _Ring(trip: trip),
+            SizedBox(height: context.spacingMd),
+            DsButton(
+              label: cta.label,
+              icon: cta.icon,
+              expand: true,
+              onPressed: () => context.push('/trips/${trip.id}'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoutePainter extends CustomPainter {
+  final List<String> stops;
+  final bool active;
+  final String startLabel;
+  final Color dash, ink, muted, card;
+  final TextStyle stopStyle, lastStyle, smallStyle;
+  _RoutePainter({
+    required this.stops,
+    required this.active,
+    required this.startLabel,
+    required this.dash,
+    required this.ink,
+    required this.muted,
+    required this.card,
+    required this.stopStyle,
+    required this.lastStyle,
+    required this.smallStyle,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final p0 = Offset(w * 0.06, h * 0.86);
+    final c = Offset(w * 0.18, h * 0.02);
+    final p1 = Offset(w * 0.88, h * 0.26);
+    Offset at(double t) =>
+        p0 * ((1 - t) * (1 - t)) + c * (2 * (1 - t) * t) + p1 * (t * t);
+    Offset tangent(double t) => (c - p0) * (2 * (1 - t)) + (p1 - c) * (2 * t);
+
+    final path = Path()
+      ..moveTo(p0.dx, p0.dy)
+      ..quadraticBezierTo(c.dx, c.dy, p1.dx, p1.dy);
+    final dashPaint = Paint()
+      ..color = dash
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    for (final m in path.computeMetrics()) {
+      for (var d = 0.0; d < m.length; d += 13) {
+        canvas.drawPath(m.extractPath(d, d + 6), dashPaint);
+      }
+    }
+
+    void label(
+      String text,
+      TextStyle style,
+      Offset anchor, {
+      bool above = false,
+    }) {
+      final tp = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: ui.TextDirection.ltr,
+        maxLines: 1,
+        ellipsis: '…',
+      )..layout(maxWidth: w);
+      final x = (anchor.dx - tp.width / 2).clamp(0.0, w - tp.width);
+      final y = above ? anchor.dy - tp.height - 12 : anchor.dy + 12;
+      tp.paint(canvas, Offset(x, y));
+    }
+
+    // Partenza.
+    canvas.drawCircle(p0, 5, Paint()..color = muted);
+    label(startLabel, smallStyle, p0);
+
+    // Tappe.
+    final ts = stops.length == 1
+        ? [1.0]
+        : [
+            for (var i = 0; i < stops.length; i++)
+              0.62 + 0.38 * i / (stops.length - 1),
+          ];
+    for (var i = 0; i < stops.length; i++) {
+      final pt = at(ts[i]);
+      final last = i == stops.length - 1;
+      canvas.drawCircle(pt, last ? 9 : 6, Paint()..color = ink);
+      canvas.drawCircle(pt, last ? 4 : 2.5, Paint()..color = card);
+      label(stops[i], last ? lastStyle : stopStyle, pt);
+    }
+
+    // Aereo.
+    final tp = active ? ts.first - 0.1 : 0.28;
+    final pt = at(tp);
+    final tg = tangent(tp);
+    canvas.drawCircle(pt, 18, Paint()..color = card);
+    final icon = TextPainter(
+      text: TextSpan(
+        text: String.fromCharCode(Icons.flight.codePoint),
+        style: TextStyle(
+          fontFamily: Icons.flight.fontFamily,
+          package: Icons.flight.fontPackage,
+          fontSize: 28,
+          color: ink,
+        ),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    )..layout();
+    canvas
+      ..save()
+      ..translate(pt.dx, pt.dy)
+      ..rotate(math.atan2(tg.dy, tg.dx) + math.pi / 2);
+    icon.paint(canvas, Offset(-icon.width / 2, -icon.height / 2));
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _RoutePainter old) => true;
+}
+
+int? _daysLeft(TripModel trip) {
+  final dep = trip.departureDateTime;
+  if (dep == null) return null;
+  final now = DateTime.now();
+  return DateTime(
+    dep.year,
+    dep.month,
+    dep.day,
+  ).difference(DateTime(now.year, now.month, now.day)).inDays;
+}
+
+typedef _Place = ({String name, DateTime? from, DateTime? to});
+
+List<_Place> _places(TripModel trip, String dest) => trip.legs.isNotEmpty
+    ? [
+        for (final l in trip.legs)
+          (name: _city(l.locationDisplayName), from: l.from, to: l.to),
+      ]
+    : [
+        (
+          name: _city(dest),
+          from: trip.departureDateTime,
+          to: trip.returnDateTime,
+        ),
+      ];
+
+String _nightsLabel(DateTime? a, DateTime? b) {
+  if (a == null || b == null) return '';
+  final n = DateTime(
+    b.year,
+    b.month,
+    b.day,
+  ).difference(DateTime(a.year, a.month, a.day)).inDays;
+  return n == 1 ? '1 notte' : '$n notti';
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Itinerario verticale: i luoghi dicono dove e quante notti, gli
+// spostamenti tra un luogo e l'altro portano le date. Niente "oggi".
+// `metro` = linea spessa da mappa della metro; altrimenti linea sottile.
+// ─────────────────────────────────────────────────────────────────────────
+class _Itinerary extends StatelessWidget {
+  final TripModel trip;
+  final String dest;
+  final bool metro;
+  const _Itinerary({
+    required this.trip,
+    required this.dest,
+    this.metro = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final places = _places(trip, dest);
+    final card = _cardColor(context);
+    final line = metro ? cs.onSurface : cs.outline;
+    final lineW = metro ? 6.0 : 2.0;
+
+    final entries = <({bool place, IconData? icon, String title, String sub})>[
+      (
+        place: false,
+        icon: Icons.flight_takeoff,
+        title: 'Andata',
+        sub: _d(context, trip.departureDateTime, 'EEE d MMM'),
+      ),
+      for (final (i, p) in places.indexed) ...[
+        if (i > 0)
+          (
+            place: false,
+            icon: Icons.flight,
+            title: 'Spostamento',
+            sub: _d(context, p.from, 'EEE d MMM'),
+          ),
+        (
+          place: true,
+          icon: null,
+          title: p.name,
+          sub:
+              '${_nightsLabel(p.from, p.to)} · ${_d(context, p.from)} – ${_d(context, p.to)}',
+        ),
+      ],
+      (
+        place: false,
+        icon: Icons.flight_land,
+        title: 'Ritorno',
+        sub: _d(context, trip.returnDateTime, 'EEE d MMM'),
+      ),
+    ];
+
+    Widget marker(bool place, IconData? icon) {
+      if (place) {
+        final d = context.responsive(metro ? 22 : 12);
+        return Container(
+          width: d,
+          height: d,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: metro ? card : cs.onSurface,
+            border: metro ? Border.all(color: cs.onSurface, width: 5) : null,
+          ),
+        );
+      }
+      final d = context.responsive(metro ? 30 : 24);
+      return Container(
+        width: d,
+        height: d,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: metro ? cs.onSurface : card,
+        ),
+        child: Icon(
+          icon,
+          size: context.responsive(metro ? 16 : 18),
+          color: metro ? card : cs.onSurfaceVariant,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (i, e) in entries.indexed)
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: context.responsive(32),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          width: lineW,
+                          color: i == 0 ? Colors.transparent : line,
+                        ),
+                      ),
+                      marker(e.place, e.icon),
+                      Expanded(
+                        child: Container(
+                          width: lineW,
+                          color: i == entries.length - 1
+                              ? Colors.transparent
+                              : line,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: context.spacingMd),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      vertical: e.place ? context.spacingSm : context.spacingXs,
+                    ),
+                    child: e.place
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                e.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: (metro ? tt.titleLarge : tt.titleMedium)
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              Text(
+                                e.sub,
+                                style: tt.bodySmall?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Text(
+                                e.title,
+                                style: tt.labelLarge?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                e.sub,
+                                style: tt.labelLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V9: linea della metro. Testata con i giorni nella matrice (da V2), poi
+// l'itinerario come una linea della metro: capolinea andata e ritorno.
+// ─────────────────────────────────────────────────────────────────────────
+class _TicketV9 extends ConsumerWidget {
+  final TripModel trip;
+  const _TicketV9({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final days = _daysLeft(trip);
+
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Container(
+        decoration: _card(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: context.responsive(112),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: context.responsive(100),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: trip.isActive
+                          ? [
+                              Icon(
+                                Icons.flight_takeoff,
+                                size: context.iconSizeLg,
+                              ),
+                              Text('in viaggio', style: tt.labelLarge),
+                            ]
+                          : [
+                              Text(
+                                '${days ?? '–'}',
+                                style: tt.displaySmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                days == 1 ? 'giorno' : 'giorni',
+                                style: tt.labelLarge?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                    ),
+                  ),
+                  const _Perforation(axis: Axis.vertical),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.all(context.spacingMd),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _city(dest),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            [
+                              if (_country(dest) != null) _country(dest)!,
+                              if (trip.name != _city(dest)) trip.name,
+                            ].join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.bodyMedium?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const _Perforation(),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  context.spacingLg,
+                  context.spacingSm,
+                  context.spacingLg,
+                  context.spacingLg,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _Itinerary(trip: trip, dest: dest, metro: true),
+                    const Spacer(),
+                    _Ring(trip: trip),
+                    SizedBox(height: context.spacingMd),
+                    DsButton(
+                      label: cta.label,
+                      icon: cta.icon,
+                      expand: true,
+                      onPressed: () => context.push('/trips/${trip.id}'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V10: passaporto. Pagina dei visti con le righe di sicurezza; andata,
+// luoghi e ritorno sono timbri sparsi e un po' storti.
+// ─────────────────────────────────────────────────────────────────────────
+class _TicketV10 extends ConsumerWidget {
+  final TripModel trip;
+  const _TicketV10({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final places = _places(trip, dest);
+    String up(DateTime? d, String p) => _d(context, d, p).toUpperCase();
+
+    final stamps = <Widget>[
+      _Stamp(
+        shape: _StampShape.rect,
+        icon: Icons.flight_takeoff,
+        top: 'PARTENZA',
+        main: up(trip.departureDateTime, 'd MMM'),
+        bottom: up(trip.departureDateTime, 'yyyy'),
+      ),
+      for (final p in places)
+        _Stamp(
+          shape: _StampShape.circle,
+          top: _nightsLabel(p.from, p.to).toUpperCase(),
+          main: p.name.toUpperCase(),
+          bottom: '${up(p.from, 'd MMM')} – ${up(p.to, 'd MMM')}',
+        ),
+      _Stamp(
+        shape: _StampShape.oval,
+        icon: Icons.flight_land,
+        top: 'RIENTRO',
+        main: up(trip.returnDateTime, 'd MMM'),
+        bottom: up(trip.returnDateTime, 'yyyy'),
+      ),
+    ];
+    const slots3 = [(0.3, 0.2, -0.14), (0.66, 0.5, 0.1), (0.32, 0.82, -0.06)];
+    const slots4 = [
+      (0.28, 0.16, -0.14),
+      (0.7, 0.3, 0.12),
+      (0.3, 0.6, 0.06),
+      (0.7, 0.84, -0.1),
+    ];
+    final slots = stamps.length <= 3 ? slots3 : slots4;
+
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Container(
+        decoration: _card(context),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _Guilloche(
+                  color: cs.outlineVariant.withValues(alpha: 0.45),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(context.spacingLg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Text('VISTI · PACKLOG', style: _caps(context)),
+                      const Spacer(),
+                      _countdownChip(context, trip),
+                    ],
+                  ),
+                  SizedBox(height: context.spacingSm),
+                  Text(
+                    _city(dest),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    [
+                      if (_country(dest) != null) _country(dest)!,
+                      if (trip.name != _city(dest)) trip.name,
+                    ].join(' · '),
+                    style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, c) {
+                        final size = context.responsive(118);
+                        return Stack(
+                          children: [
+                            for (final (i, st)
+                                in stamps.take(slots.length).indexed)
+                              Positioned(
+                                left: (slots[i].$1 * c.maxWidth - size / 2)
+                                    .clamp(0.0, c.maxWidth - size),
+                                top: (slots[i].$2 * c.maxHeight - size / 2)
+                                    .clamp(0.0, c.maxHeight - size),
+                                width: size,
+                                height: size,
+                                child: Transform.rotate(
+                                  angle: slots[i].$3,
+                                  child: Center(child: st),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  _Ring(trip: trip),
+                  SizedBox(height: context.spacingMd),
+                  DsButton(
+                    label: cta.label,
+                    icon: cta.icon,
+                    expand: true,
+                    onPressed: () => context.push('/trips/${trip.id}'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _StampShape { rect, circle, oval }
+
+class _Stamp extends StatelessWidget {
+  final _StampShape shape;
+  final IconData? icon;
+  final String top;
+  final String main;
+  final String bottom;
+  const _Stamp({
+    required this.shape,
+    this.icon,
+    required this.top,
+    required this.main,
+    required this.bottom,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    final ink = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72);
+    final base = context.responsive(118);
+    final (w, h) = switch (shape) {
+      _StampShape.rect => (base * 0.95, base * 0.72),
+      _StampShape.circle => (base, base),
+      _StampShape.oval => (base, base * 0.62),
+    };
+    BoxDecoration deco(double width) => BoxDecoration(
+      shape: shape == _StampShape.circle ? BoxShape.circle : BoxShape.rectangle,
+      borderRadius: switch (shape) {
+        _StampShape.rect => BorderRadius.circular(context.spacingXs),
+        _StampShape.oval => BorderRadius.circular(base),
+        _StampShape.circle => null,
+      },
+      border: Border.all(color: ink, width: width),
+    );
+    return Container(
+      width: w,
+      height: h,
+      padding: const EdgeInsets.all(3),
+      decoration: deco(2.5),
+      child: Container(
+        decoration: deco(1),
+        padding: EdgeInsets.symmetric(
+          horizontal: shape == _StampShape.circle ? 14 : 10,
+          vertical: 6,
+        ),
+        child: FittedBox(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) Icon(icon, size: 18, color: ink),
+              Text(
+                top,
+                style: tt.labelSmall?.copyWith(color: ink, letterSpacing: 1.5),
+              ),
+              Text(
+                main,
+                style: tt.titleLarge?.copyWith(
+                  color: ink,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                bottom,
+                style: tt.labelSmall?.copyWith(color: ink, letterSpacing: 1),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Guilloche extends CustomPainter {
+  final Color color;
+  _Guilloche({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    for (var y = 0.0; y < size.height + 20; y += 16) {
+      final path = Path()..moveTo(0, y);
+      for (var x = 0.0; x <= size.width; x += 4) {
+        path.lineTo(x, y + math.sin(x / 38 + y / 50) * 4);
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _Guilloche old) => old.color != color;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V11: cartolina d'epoca. Nella pila come V7, ma con il nome della meta in
+// lettere a blocchi "Saluti da" e l'itinerario al posto del messaggio.
+// ─────────────────────────────────────────────────────────────────────────
+class _RetroPostcard extends ConsumerWidget {
+  final TripModel trip;
+  const _RetroPostcard({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final days = _daysLeft(trip);
+    final city = _city(dest).toUpperCase();
+    final title = city.length > 10 && city.contains(' ')
+        ? city.replaceFirst(' ', '\n')
+        : city;
+    final base = tt.displayLarge?.copyWith(
+      fontWeight: FontWeight.w900,
+      height: 0.95,
+      letterSpacing: 1,
+    );
+
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Container(
+        padding: EdgeInsets.all(context.spacingLg),
+        decoration: BoxDecoration(
+          color: _cardColor(context),
+          borderRadius: BorderRadius.circular(context.spacingSm),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(top: context.spacingSm),
+                  child: Text(
+                    'Saluti da',
+                    style: tt.titleLarge?.copyWith(
+                      fontStyle: FontStyle.italic,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Transform.rotate(
+                  angle: 0.06,
+                  child: CustomPaint(
+                    painter: _StampPainter(
+                      color: cs.surfaceContainerHigh,
+                      border: cs.outlineVariant,
+                    ),
+                    child: SizedBox(
+                      width: context.responsive(62),
+                      height: context.responsive(74),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: trip.isActive
+                            ? [
+                                Icon(
+                                  Icons.flight_takeoff,
+                                  size: context.iconSizeMd,
+                                ),
+                                Text('in viaggio', style: tt.labelSmall),
+                              ]
+                            : [
+                                Text(
+                                  '${days ?? '–'}',
+                                  style: tt.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  days == 1 ? 'giorno' : 'giorni',
+                                  style: tt.labelSmall,
+                                ),
+                              ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: context.spacingSm),
+            SizedBox(
+              height: context.responsive(title.contains('\n') ? 128 : 76),
+              child: FittedBox(
+                fit: BoxFit.contain,
+                alignment: Alignment.centerLeft,
+                child: Stack(
+                  children: [
+                    Transform.translate(
+                      offset: const Offset(4, 4),
+                      child: Text(
+                        title,
+                        style: base?.copyWith(color: cs.onSurface),
+                      ),
+                    ),
+                    Text(
+                      title,
+                      style: base?.copyWith(color: cs.surfaceContainerHigh),
+                    ),
+                    Text(
+                      title,
+                      style: base?.copyWith(
+                        foreground: Paint()
+                          ..style = PaintingStyle.stroke
+                          ..strokeWidth = 2
+                          ..color = cs.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: context.spacingLg),
+            _Itinerary(trip: trip, dest: dest),
+            const Spacer(),
+            Container(
+              padding: EdgeInsets.symmetric(vertical: context.spacingSm),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: cs.outlineVariant),
+                  bottom: BorderSide(color: cs.outlineVariant),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Text('VALIGIA', style: _caps(context)),
+                  SizedBox(width: context.spacingMd),
+                  Expanded(
+                    child: Text(
+                      trip.totalCount == 0
+                          ? 'ancora vuota'
+                          : '${trip.completedCount} di ${trip.totalCount} · ${trip.luggages.map((l) => l.name).join(', ')}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.titleSmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: context.spacingLg),
+            DsButton(
+              label: cta.label,
+              icon: cta.icon,
+              expand: true,
+              onPressed: () => context.push('/trips/${trip.id}'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V12: cartolina (V7) con l'itinerario. Saluti da + francobollo e timbro,
+// poi Andata → tappe → Ritorno, il messaggio sulla valigia e i bagagli.
+// ─────────────────────────────────────────────────────────────────────────
+class _ItineraryPostcard extends ConsumerWidget {
+  final TripModel trip;
+  const _ItineraryPostcard({required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    final cta = _cta(trip);
+    final total = trip.totalCount, done = trip.completedCount;
+
+    return GestureDetector(
+      onTap: () => context.push('/trips/${trip.id}'),
+      child: Container(
+        padding: EdgeInsets.all(context.spacingLg),
+        decoration: BoxDecoration(
+          color: _cardColor(context),
+          borderRadius: BorderRadius.circular(context.spacingSm),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Saluti da',
+                        style: tt.titleMedium?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        _city(dest),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.headlineLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          height: 1.05,
+                        ),
+                      ),
+                      if (trip.name != _city(dest))
+                        Text(
+                          trip.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: tt.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                _StampAndPostmark(trip: trip),
+              ],
+            ),
+            SizedBox(height: context.spacingMd),
+            _Itinerary(trip: trip, dest: dest),
+            const Spacer(),
+            Container(
+              padding: EdgeInsets.only(top: context.spacingMd),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: cs.outlineVariant)),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: context.responsive(52),
+                    height: context.responsive(52),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox.expand(
+                          child: CircularProgressIndicator(
+                            value: total == 0 ? 0 : done / total,
+                            strokeWidth: 6,
+                            backgroundColor: cs.surfaceContainerHigh,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                        Text(
+                          total == 0
+                              ? '0%'
+                              : '${(done * 100 / total).round()}%',
+                          style: tt.labelMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: context.spacingSm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          total == 0
+                              ? 'Valigia vuota'
+                              : '$done di $total pronti',
+                          style: tt.titleSmall,
+                        ),
+                        Text(
+                          total == 0
+                              ? 'nessun oggetto'
+                              : done == total
+                              ? 'tutto in valigia'
+                              : 'mancano ${total - done}',
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (trip.luggages.isNotEmpty) ...[
+                    SizedBox(width: context.spacingSm),
+                    Icon(
+                      Icons.luggage_outlined,
+                      size: context.iconSizeMd,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    SizedBox(width: context.spacingXs),
+                    Flexible(
+                      child: Text(
+                        trip.luggages.map((l) => l.name).join('\n'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.labelLarge,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            SizedBox(height: context.spacingLg),
+            DsButton(
+              label: cta.label,
+              icon: cta.icon,
+              expand: true,
+              onPressed: () => context.push('/trips/${trip.id}'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Le cartoline sotto quella in cima: solo carta, senza contenuto, così non
+/// spuntano bottoni o testi dai bordi.
+class _BlankPostcard extends StatelessWidget {
+  const _BlankPostcard();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: _cardColor(context),
+        borderRadius: BorderRadius.circular(context.spacingSm),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Map<int, List<TripModel>> _byYear(List<TripModel> trips) {
+  final m = <int, List<TripModel>>{};
+  for (final t in trips) {
+    m.putIfAbsent((t.departureDateTime ?? t.createdAt).year, () => []).add(t);
+  }
+  return m;
+}
+
+/// Passati: gruppi per anno. Salvati: un solo gruppo.
+List<Widget> _grouped(
+  BuildContext context,
+  List<TripModel> trips,
+  bool saved,
+  Widget Function(Map<int, List<TripModel>>, MapEntry<int, List<TripModel>>)
+  group,
+) {
+  final m = saved ? {0: trips} : _byYear(trips);
+  return [
+    for (final e in m.entries) ...[
+      DsGroupHeader(
+        label: saved ? 'Da riusare' : '${e.key}',
+        count: e.value.length,
+      ),
+      group(m, e),
+      SizedBox(height: context.spacingSm),
+    ],
+  ];
+}
+
+// ── V12 A: righe a mini cartolina (dal mini biglietto di V1). ──────────────
+List<Widget> _postcardRows(
+  BuildContext context,
+  List<TripModel> trips,
+  bool saved,
+) => _grouped(
+  context,
+  trips,
+  saved,
+  (_, e) => Column(
+    children: [
+      for (final (i, t) in e.value.indexed)
+        Padding(
+          padding: EdgeInsets.only(bottom: context.spacingSm),
+          child: Transform.rotate(
+            angle: i.isEven ? -0.006 : 0.006,
+            child: _PostcardRow(trip: t, saved: saved),
+          ),
+        ),
+    ],
+  ),
+);
+
+BoxDecoration _paper(BuildContext context) {
+  final cs = Theme.of(context).colorScheme;
+  return BoxDecoration(
+    color: _cardColor(context),
+    borderRadius: BorderRadius.circular(context.spacingSm),
+    border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.06),
+        blurRadius: 10,
+        offset: const Offset(0, 3),
+      ),
+    ],
+  );
+}
+
+/// Francobollo piccolo con giorno e mese. Se il viaggio è passato è
+/// "annullato" dalle onde del timbro postale.
+class _DateStamp extends StatelessWidget {
+  final TripModel trip;
+  final bool cancelled;
+  final double width;
+  const _DateStamp({
+    required this.trip,
+    required this.cancelled,
+    required this.width,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final d = trip.departureDateTime;
+    return SizedBox(
+      width: width * 1.5,
+      height: width * 1.2,
+      child: Stack(
+        children: [
+          CustomPaint(
+            painter: _StampPainter(
+              color: cs.surfaceContainerHigh,
+              border: cs.outlineVariant,
+            ),
+            child: SizedBox(
+              width: width,
+              height: width * 1.2,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _d(context, d, 'd'),
+                    style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    _d(context, d, 'MMM yy').toUpperCase(),
+                    style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (cancelled)
+            Positioned.fill(
+              left: width * 0.78,
+              child: CustomPaint(
+                painter: _CancelWaves(
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.55),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Le onde del timbro postale che "annullano" il francobollo.
+class _CancelWaves extends CustomPainter {
+  final Color color;
+  _CancelWaves({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    for (var k = 0; k < 4; k++) {
+      final y = size.height * (0.3 + 0.13 * k);
+      final path = Path()..moveTo(0, y);
+      for (var x = 0.0; x <= size.width; x += 2) {
+        path.lineTo(x, y + math.sin(x / 5) * 2.2);
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CancelWaves old) => old.color != color;
+}
+
+Widget _reuseButton(BuildContext context) => TextButton.icon(
+  style: TextButton.styleFrom(
+    foregroundColor: Theme.of(context).colorScheme.onSurface,
+    visualDensity: VisualDensity.compact,
+  ),
+  onPressed: () {},
+  icon: Icon(Icons.replay, size: context.iconSizeSm),
+  label: const Text('Riusa'),
+);
+
+class _PostcardRow extends ConsumerWidget {
+  final TripModel trip;
+  final bool saved;
+  const _PostcardRow({required this.trip, required this.saved});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        context.spacingMd,
+        context.spacingSm,
+        context.spacingXs,
+        context.spacingSm,
+      ),
+      decoration: _paper(context),
+      child: Row(
+        children: [
+          _DateStamp(
+            trip: trip,
+            cancelled: !saved,
+            width: context.responsive(50),
+          ),
+          SizedBox(width: context.spacingSm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Saluti da',
+                  style: tt.labelMedium?.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  _city(dest),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                Text(
+                  [
+                    if (trip.name != _city(dest)) trip.name,
+                    '${_d(context, trip.departureDateTime)} – ${_d(context, trip.returnDateTime)}',
+                  ].join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          _reuseButton(context),
+        ],
+      ),
+    );
+  }
+}
+
+// ── V12 B: album di cartoline, due per riga, appese un po' storte. ────────
+List<Widget> _postcardAlbum(
+  BuildContext context,
+  List<TripModel> trips,
+  bool saved,
+) => _grouped(
+  context,
+  trips,
+  saved,
+  (_, e) => GridView.count(
+    crossAxisCount: 2,
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    mainAxisSpacing: context.spacingMd,
+    crossAxisSpacing: context.spacingMd,
+    childAspectRatio: 0.82,
+    children: [
+      for (final (i, t) in e.value.indexed)
+        Transform.rotate(
+          angle: const [-0.025, 0.02, 0.012, -0.018][i % 4],
+          child: _AlbumPostcard(trip: t, saved: saved),
+        ),
+    ],
+  ),
+);
+
+class _AlbumPostcard extends ConsumerWidget {
+  final TripModel trip;
+  final bool saved;
+  const _AlbumPostcard({required this.trip, required this.saved});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dest = _destination(ref, trip);
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        context.spacingMd,
+        context.spacingMd,
+        context.spacingXs,
+        context.spacingXs,
+      ),
+      decoration: _paper(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.topRight,
+            child: _DateStamp(
+              trip: trip,
+              cancelled: !saved,
+              width: context.responsive(44),
+            ),
+          ),
+          const Spacer(),
+          Text(
+            'Saluti da',
+            style: tt.labelMedium?.copyWith(
+              fontStyle: FontStyle.italic,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          Text(
+            _city(dest),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: tt.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+            ),
+          ),
+          Text(
+            _nightsLabel(trip.departureDateTime, trip.returnDateTime),
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          _reuseButton(context),
+        ],
+      ),
+    );
+  }
+}

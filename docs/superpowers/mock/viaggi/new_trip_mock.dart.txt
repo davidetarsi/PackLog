@@ -1,0 +1,1351 @@
+// MOCK usa e getta: nuovo viaggio in due passi (Viaggio → Valigia).
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/ds_group_header.dart';
+import '../../../shared/widgets/ds_link_button.dart';
+import '../../../shared/widgets/ds_settings.dart';
+import '../../../shared/widgets/ds_sheet_header.dart';
+import '../../../shared/widgets/quantity_stepper.dart';
+import '../../houses/providers/house_provider.dart';
+import '../../items/model/item_model.dart';
+import '../../items/providers/item_provider.dart';
+import '../model/trip_leg.dart';
+import '../model/trip_model.dart';
+import '../model/trip_postcard.dart';
+import 'widgets/postcard/postcard_parts.dart';
+import 'widgets/postcard/trip_itinerary_view.dart';
+
+DateTime _day(int d) {
+  final n = DateTime.now();
+  return DateTime(n.year, n.month, n.day + d, 9);
+}
+
+String _d(BuildContext context, DateTime d, [String p = 'EEE d MMM']) =>
+    DateFormat(p, context.locale.toString()).format(d);
+
+TripModel _mockTrip({bool leg = true}) => TripModel(
+  id: 'mock',
+  name: 'Lisbona',
+  departureDateTime: _day(9),
+  returnDateTime: _day(14),
+  legs: [
+    if (leg)
+      TripLeg(
+        id: 'sintra',
+        locationDisplayName: 'Sintra, Portogallo',
+        from: _day(12),
+        to: _day(14),
+      ),
+  ],
+  createdAt: DateTime.now(),
+  updatedAt: DateTime.now(),
+);
+
+/// Indicatore a due voci, neutro.
+class _Steps extends StatelessWidget {
+  final int current;
+  final String second;
+  const _Steps({required this.current, this.second = 'Valigia'});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    Widget step(int i, String label) {
+      final active = i == current;
+      final done = i < current;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: context.responsive(22),
+            height: context.responsive(22),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active || done ? cs.onSurface : null,
+              border: Border.all(
+                color: active || done ? cs.onSurface : cs.outline,
+                width: 1.5,
+              ),
+            ),
+            child: done
+                ? Icon(Icons.check, size: context.iconSizeSm, color: cs.surface)
+                : Text(
+                    '${i + 1}',
+                    style: tt.labelMedium?.copyWith(
+                      color: active ? cs.surface : cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+          ),
+          SizedBox(width: context.spacingSm),
+          Text(
+            label,
+            style: tt.labelLarge?.copyWith(
+              color: active ? cs.onSurface : cs.onSurfaceVariant,
+              fontWeight: active ? FontWeight.w700 : null,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        step(0, 'Viaggio'),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.spacingSm),
+            child: Divider(color: cs.outlineVariant),
+          ),
+        ),
+        step(1, second),
+      ],
+    );
+  }
+}
+
+Widget _sectionTitle(BuildContext context, String text) => Padding(
+  padding: EdgeInsets.only(top: context.spacingLg, bottom: context.spacingSm),
+  child: Text(
+    text,
+    style: Theme.of(
+      context,
+    ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+  ),
+);
+
+/// Campo "finto" con icona, testo o segnaposto, e azione a destra.
+class _Field extends StatelessWidget {
+  final IconData icon;
+  final String? value;
+  final String hint;
+  final Widget? trailing;
+  final bool focused;
+  final String? error;
+  const _Field({
+    required this.icon,
+    required this.hint,
+    this.value,
+    this.trailing,
+    this.focused = false,
+    this.error,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final box = Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacingMd,
+        vertical: context.spacingMd,
+      ),
+      decoration: BoxDecoration(
+        color: context.groupSurface,
+        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+        border: Border.all(
+          color: error != null
+              ? cs.error
+              : focused
+              ? cs.onSurface
+              : cs.outlineVariant,
+          width: focused || error != null ? 1.5 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: context.iconSizeMd, color: cs.onSurfaceVariant),
+          SizedBox(width: context.spacingMd),
+          Expanded(
+            child: Text(
+              value ?? hint,
+              style: value == null
+                  ? tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant)
+                  : tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          ?trailing,
+        ],
+      ),
+    );
+    if (error == null) return box;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        box,
+        Padding(
+          padding: EdgeInsets.only(
+            top: context.spacingXs,
+            left: context.spacingMd,
+          ),
+          child: Text(error!, style: tt.bodySmall?.copyWith(color: cs.error)),
+        ),
+      ],
+    );
+  }
+}
+
+/// Passo 1: Viaggio. `state`: empty | search | filled.
+class NewTripMock extends ConsumerWidget {
+  final String state;
+  const NewTripMock({super.key, required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final houses = ref.watch(houseNotifierProvider).valueOrNull ?? const [];
+    final filled = state.startsWith('filled') || state.startsWith('tappa');
+    final trip = _mockTrip(leg: state == 'filled' || state == 'filled-ai');
+    final sheet = state.startsWith('tappa')
+        ? _LegSheetMock(filled: state == 'tappa-filled')
+        : null;
+    final ai = state == 'filled-ai';
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Nuovo viaggio')),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    context.spacingMd,
+                    context.spacingSm,
+                    context.spacingMd,
+                    context.spacingLg,
+                  ),
+                  children: [
+                    const _Steps(current: 0),
+                    _sectionTitle(context, 'Dove vai?'),
+                    _Field(
+                      icon: filled ? Icons.place_outlined : Icons.search,
+                      hint: 'Una tua casa o una città',
+                      value: filled ? 'Lisbona, Portogallo' : null,
+                      focused: state == 'search',
+                      trailing: filled
+                          ? Icon(
+                              Icons.close,
+                              size: context.iconSizeSm,
+                              color: cs.onSurfaceVariant,
+                            )
+                          : null,
+                    ),
+                    if (state == 'search') ...[
+                      SizedBox(height: context.spacingSm),
+                      DsGroupHeader(label: 'Le tue case', count: houses.length),
+                      DsSettingsGroup(
+                        children: [
+                          for (final h in houses)
+                            DsSettingsRow(label: h.displayName, onTap: () {}),
+                        ],
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(context.spacingMd),
+                        child: Text(
+                          'Oppure scrivi una città: i risultati compaiono qui sotto.',
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (state != 'search') ...[
+                      _sectionTitle(context, 'Quando?'),
+                      _Field(
+                        icon: Icons.calendar_today_outlined,
+                        hint: 'Scegli andata e ritorno',
+                        value: filled
+                            ? '${_d(context, trip.departureDateTime!)} – ${_d(context, trip.returnDateTime!)}'
+                            : null,
+                        trailing: filled
+                            ? Text(
+                                '5 notti',
+                                style: tt.labelLarge?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              )
+                            : null,
+                      ),
+                    ],
+                    if (filled) ...[
+                      _sectionTitle(context, 'Itinerario'),
+                      Container(
+                        padding: EdgeInsets.all(context.spacingMd),
+                        decoration: BoxDecoration(
+                          color: context.groupSurface,
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.cardBorderRadius,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TripItineraryView(
+                              entries: buildItinerary(
+                                trip,
+                                destination: 'Lisbona',
+                              ),
+                            ),
+                            SizedBox(height: context.spacingSm),
+                            DsLinkButton(
+                              label: 'Aggiungi tappa',
+                              onPressed: () {},
+                            ),
+                          ],
+                        ),
+                      ),
+                      _sectionTitle(context, 'Nome del viaggio'),
+                      _Field(
+                        icon: Icons.edit_outlined,
+                        hint: 'Nome',
+                        value: 'Lisbona',
+                      ),
+                      Padding(
+                        padding: EdgeInsets.only(
+                          top: context.spacingXs,
+                          left: context.spacingMd,
+                        ),
+                        child: Text(
+                          'L\'abbiamo preso dalla meta: cambialo se vuoi.',
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (state == 'empty') ...[
+                      _sectionTitle(context, 'Itinerario'),
+                      Text(
+                        'Scegli meta e date: qui compare il tuo itinerario, e puoi aggiungere altre tappe.',
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (state != 'search')
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      context.spacingMd,
+                      context.spacingSm,
+                      context.spacingMd,
+                      context.spacingSm,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (ai) ...[
+                          DsButton(
+                            label: 'Avanti: prepara con l\'AI',
+                            icon: Icons.auto_awesome,
+                            expand: true,
+                            onPressed: () {},
+                          ),
+                          SizedBox(height: context.spacingXs),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              DsLinkButton(
+                                label: 'Preparo io',
+                                onPressed: () {},
+                              ),
+                              SizedBox(width: context.spacingMd),
+                              DsLinkButton(
+                                label: 'Più tardi',
+                                onPressed: () {},
+                              ),
+                            ],
+                          ),
+                        ] else ...[
+                          DsButton(
+                            label: 'Avanti: prepara la valigia',
+                            icon: Icons.arrow_forward,
+                            expand: true,
+                            onPressed: filled ? () {} : null,
+                          ),
+                          SizedBox(height: context.spacingXs),
+                          DsLinkButton(
+                            label: 'Prepara la valigia più tardi',
+                            onPressed: () {},
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (sheet != null) ...[
+            Positioned.fill(
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.45)),
+            ),
+            Align(alignment: Alignment.bottomCenter, child: sheet),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Passo 2: Valigia. `state`: empty | selected.
+class PackMock extends ConsumerWidget {
+  final String state;
+  const PackMock({super.key, required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final trip = _mockTrip();
+    final items =
+        ref.watch(itemNotifierProvider('house-milano')).valueOrNull ??
+        const <ItemModel>[];
+    final selected = state == 'selected';
+    final sheet = state == 'meteo-sheet';
+    final picked = selected
+        ? {
+            for (final (i, it) in items.indexed)
+              if (i % 3 != 1) it.id: (it.quantity ?? 1).clamp(1, 3),
+          }
+        : <String, int>{};
+    final byCat = <ItemCategory, List<ItemModel>>{};
+    for (final it in items) {
+      byCat.putIfAbsent(it.category, () => []).add(it);
+    }
+    final bags = ['Trolley cabina', 'Zaino', 'Valigia grande'];
+
+    Widget pill(String label, bool on, IconData icon) => Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacingMd,
+        vertical: context.spacingSm,
+      ),
+      decoration: BoxDecoration(
+        color: on ? cs.surfaceContainerHigh : null,
+        borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+        border: Border.all(color: on ? cs.onSurface : cs.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            on ? Icons.check : icon,
+            size: context.iconSizeSm,
+            color: on ? cs.onSurface : cs.onSurfaceVariant,
+          ),
+          SizedBox(width: context.spacingXs),
+          Text(label, style: tt.labelLarge),
+        ],
+      ),
+    );
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Prepara la valigia')),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    context.spacingMd,
+                    context.spacingSm,
+                    context.spacingMd,
+                    context.spacingLg,
+                  ),
+                  children: [
+                    const _Steps(current: 1),
+                    SizedBox(height: context.spacingMd),
+                    _TripSummaryLine(trip: trip),
+                    _WeatherSection(state: state),
+                    _sectionTitle(context, 'Bagagli'),
+                    Wrap(
+                      spacing: context.spacingSm,
+                      runSpacing: context.spacingSm,
+                      children: [
+                        for (final (i, b) in bags.indexed)
+                          pill(b, selected && i < 2, Icons.luggage_outlined),
+                      ],
+                    ),
+                    _sectionTitle(context, 'Cosa porti'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _Field(
+                            icon: Icons.search,
+                            hint: 'Cerca negli oggetti',
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: context.spacingSm),
+                    Row(
+                      children: [
+                        Text(
+                          'Da',
+                          style: tt.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                        SizedBox(width: context.spacingSm),
+                        pill('Casa Milano', false, Icons.home_outlined),
+                        SizedBox(width: context.spacingXs),
+                        Icon(
+                          Icons.expand_more,
+                          size: context.iconSizeSm,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                    for (final e in byCat.entries) ...[
+                      DsGroupHeader(
+                        label: e.key.displayName,
+                        count: e.value.length,
+                      ),
+                      DsSettingsGroup(
+                        children: [
+                          for (final it in e.value)
+                            _PackRow(name: it.name, qty: picked[it.id]),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    context.spacingMd,
+                    context.spacingSm,
+                    context.spacingMd,
+                    context.spacingSm,
+                  ),
+                  child: DsButton(
+                    label: selected
+                        ? 'Fatto · ${picked.length} oggetti'
+                        : 'Fatto',
+                    icon: Icons.check,
+                    expand: true,
+                    onPressed: () {},
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (sheet) ...[
+            Positioned.fill(
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.45)),
+            ),
+            const Align(
+              alignment: Alignment.bottomCenter,
+              child: _WeatherDaysSheet(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PackRow extends StatelessWidget {
+  final String name;
+  final int? qty;
+  const _PackRow({required this.name, this.qty});
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    final on = qty != null;
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacingSm,
+        vertical: context.spacingXs,
+      ),
+      child: Row(
+        children: [
+          Checkbox(value: on, onChanged: (_) {}),
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: tt.bodyLarge?.copyWith(
+                color: on ? cs.onSurface : cs.onSurfaceVariant,
+              ),
+            ),
+          ),
+          if (on) QuantityStepper(value: qty!, minValue: 1, onChanged: (_) {}),
+        ],
+      ),
+    );
+  }
+}
+
+/// Foglio "Nuova tappa".
+class _LegSheetMock extends StatelessWidget {
+  final bool filled;
+  const _LegSheetMock({required this.filled});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final radius = Radius.circular(AppConstants.modalBorderRadius);
+    return Material(
+      color: Theme.of(context).bottomSheetTheme.backgroundColor ?? cs.surface,
+      borderRadius: BorderRadius.only(topLeft: radius, topRight: radius),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            context.spacingMd,
+            context.spacingSm,
+            context.spacingMd,
+            context.spacingMd,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DsSheetHeader(title: 'Nuova tappa', onClose: () {}),
+              _sectionTitle(context, 'Dove?'),
+              _Field(
+                icon: filled ? Icons.place_outlined : Icons.search,
+                hint: 'Città o luogo',
+                value: filled ? 'Sintra, Portogallo' : null,
+                focused: !filled,
+              ),
+              _sectionTitle(context, 'Quando?'),
+              _Field(
+                icon: Icons.calendar_today_outlined,
+                hint: 'Giorni della tappa',
+                value: filled
+                    ? '${_d(context, _day(12))} – ${_d(context, _day(14))}'
+                    : null,
+                trailing: filled
+                    ? Text(
+                        '2 notti',
+                        style: tt.labelLarge?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      )
+                    : null,
+              ),
+              Padding(
+                padding: EdgeInsets.only(
+                  top: context.spacingSm,
+                  left: context.spacingMd,
+                  right: context.spacingMd,
+                ),
+                child: Text(
+                  filled
+                      ? 'Lisbona finisce il ${_d(context, _day(12), 'd MMM')}, quando parti per Sintra. Il ritorno resta ${_d(context, _day(14))}.'
+                      : 'Le date stanno dentro il viaggio: ${_d(context, _day(9))} – ${_d(context, _day(14))}.',
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ),
+              SizedBox(height: context.spacingLg),
+              DsButton(
+                label: 'Aggiungi tappa',
+                icon: Icons.add,
+                expand: true,
+                onPressed: filled ? () {} : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Card tonale arancio dell'AI, stile della scansione nel foglio Crea.
+class _AiBanner extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  const _AiBanner({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = dark
+        ? cs.primaryContainer
+        : Color.alphaBlend(cs.primary.withValues(alpha: 0.22), cs.surface);
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+      child: Padding(
+        padding: EdgeInsets.all(context.spacingMd),
+        child: Row(
+          children: [
+            Icon(
+              Icons.auto_awesome,
+              size: context.iconSizeMd,
+              color: cs.onPrimaryContainer,
+            ),
+            SizedBox(width: context.spacingMd),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: tt.titleSmall?.copyWith(
+                      color: cs.onPrimaryContainer,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: tt.bodySmall?.copyWith(color: cs.onPrimaryContainer),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: cs.onPrimaryContainer),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Passo 1 con date per tappa. `state`: one | sheet | two | ai-two.
+class NewTripMockV2 extends StatelessWidget {
+  final String state;
+  const NewTripMockV2({super.key, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final ai = state.startsWith('ai');
+    final two = state.endsWith('two');
+    final variantA = state == 'a';
+    final variantC = state == 'c';
+    final variantD = state == 'd' || state == 'e';
+    final empty = state == 'e';
+    final variantB = state == 'b' || state == 'ai-b' || variantC || variantD;
+    const tip =
+        'Visiti più città? Aggiungi una tappa per ognuna: avrai il meteo di ogni tappa.';
+    Widget tipText() =>
+        Text(tip, style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant));
+    final trip = TripModel(
+      id: 'mock',
+      name: 'Lisbona',
+      departureDateTime: _day(9),
+      returnDateTime: two ? _day(14) : _day(12),
+      legs: [
+        if (two)
+          TripLeg(
+            id: 'sintra',
+            locationDisplayName: 'Sintra, Portogallo',
+            from: _day(12),
+            to: _day(14),
+          ),
+      ],
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(ai ? 'Viaggio con AI' : 'Nuovo viaggio'),
+        actions: [
+          if (variantB && !ai && !variantD)
+            Padding(
+              padding: EdgeInsets.only(right: context.spacingMd),
+              child: _AiPill(
+                label: variantC ? 'Crea valigia con AI' : 'Con l\'AI',
+              ),
+            ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    context.spacingMd,
+                    context.spacingSm,
+                    context.spacingMd,
+                    context.spacingLg,
+                  ),
+                  children: [
+                    _Steps(current: 0, second: ai ? 'Valigia AI' : 'Valigia'),
+                    if (variantD) ...[
+                      SizedBox(height: context.spacingMd),
+                      const _AiSlimButton(),
+                    ],
+                    if (variantA) ...[
+                      SizedBox(height: context.spacingMd),
+                      Row(
+                        children: [
+                          Expanded(child: tipText()),
+                          SizedBox(width: context.spacingMd),
+                          const _AiPill(),
+                        ],
+                      ),
+                    ] else if (!ai && !variantB) ...[
+                      SizedBox(height: context.spacingMd),
+                      const _AiBanner(
+                        title: 'Fatti preparare la valigia dall\'AI',
+                        subtitle:
+                            'Stesse domande, poi la valigia la propone l\'AI.',
+                      ),
+                    ],
+                    _sectionTitle(context, 'Dove vai?'),
+                    _Field(
+                      icon: empty ? Icons.search : Icons.place_outlined,
+                      hint: 'Una tua casa o una città',
+                      value: empty ? null : 'Lisbona, Portogallo',
+                      error: empty
+                          ? 'Scegli dove vai: serve anche per il meteo.'
+                          : null,
+                      trailing: empty
+                          ? null
+                          : Icon(
+                              Icons.close,
+                              size: context.iconSizeSm,
+                              color: cs.onSurfaceVariant,
+                            ),
+                    ),
+                    _sectionTitle(context, 'Quando?'),
+                    _Field(
+                      icon: Icons.calendar_today_outlined,
+                      hint: 'Scegli le date',
+                      value: empty
+                          ? null
+                          : '${_d(context, _day(9))} – ${_d(context, _day(12))}',
+                      error: empty ? 'Scegli andata e ritorno.' : null,
+                      trailing: empty
+                          ? null
+                          : Text(
+                              '3 notti',
+                              style: tt.labelLarge?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                    ),
+                    _sectionTitle(context, 'Itinerario'),
+                    if (empty)
+                      Text(
+                        'Scegli meta e date: qui compare il tuo itinerario.',
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: EdgeInsets.all(context.spacingMd),
+                        decoration: BoxDecoration(
+                          color: context.groupSurface,
+                          borderRadius: BorderRadius.circular(
+                            AppConstants.cardBorderRadius,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TripItineraryView(
+                              entries: buildItinerary(
+                                trip,
+                                destination: 'Lisbona',
+                              ),
+                            ),
+                            SizedBox(height: context.spacingSm),
+                            DsLinkButton(
+                              label: 'Aggiungi tappa',
+                              onPressed: () {},
+                            ),
+                            Padding(
+                              padding: EdgeInsets.only(left: context.spacingSm),
+                              child: variantB
+                                  ? tipText()
+                                  : Text(
+                                      'Il ritorno è la fine dell\'ultima tappa.',
+                                      style: tt.bodySmall?.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    _sectionTitle(context, 'Nome del viaggio'),
+                    _Field(
+                      icon: Icons.edit_outlined,
+                      hint: 'Nome',
+                      value: 'Lisbona',
+                    ),
+                  ],
+                ),
+              ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    context.spacingMd,
+                    context.spacingSm,
+                    context.spacingMd,
+                    context.spacingSm,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DsButton(
+                        label: ai
+                            ? 'Prepara la valigia con l\'AI'
+                            : 'Avanti: prepara la valigia',
+                        icon: ai ? Icons.auto_awesome : Icons.arrow_forward,
+                        expand: true,
+                        onPressed: empty ? null : () {},
+                        onDisabledTap: () {},
+                      ),
+                      SizedBox(height: context.spacingXs),
+                      DsLinkButton(
+                        label: ai
+                            ? 'Preferisco prepararla io'
+                            : 'Prepara la valigia più tardi',
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (state == 'sheet') ...[
+            Positioned.fill(
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.45)),
+            ),
+            const Align(
+              alignment: Alignment.bottomCenter,
+              child: _LegSheetV2(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// "Nuova tappa": parte dove finisce la precedente, chiede solo fino a quando.
+class _LegSheetV2 extends StatelessWidget {
+  const _LegSheetV2();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final radius = Radius.circular(AppConstants.modalBorderRadius);
+    return Material(
+      color: Theme.of(context).bottomSheetTheme.backgroundColor ?? cs.surface,
+      borderRadius: BorderRadius.only(topLeft: radius, topRight: radius),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            context.spacingMd,
+            context.spacingSm,
+            context.spacingMd,
+            context.spacingMd,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DsSheetHeader(title: 'Nuova tappa', onClose: () {}),
+              _sectionTitle(context, 'Dove?'),
+              _Field(
+                icon: Icons.place_outlined,
+                hint: 'Città o luogo',
+                value: 'Sintra, Portogallo',
+              ),
+              _sectionTitle(context, 'Fino a quando?'),
+              _Field(
+                icon: Icons.calendar_today_outlined,
+                hint: 'Ultimo giorno della tappa',
+                value: '${_d(context, _day(12))} – ${_d(context, _day(14))}',
+                trailing: Text(
+                  '2 notti',
+                  style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.only(
+                  top: context.spacingSm,
+                  left: context.spacingMd,
+                  right: context.spacingMd,
+                ),
+                child: Text(
+                  'Parti da Lisbona ${_d(context, _day(12))}. Il ritorno diventa ${_d(context, _day(14))}.',
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ),
+              SizedBox(height: context.spacingLg),
+              DsButton(
+                label: 'Aggiungi tappa',
+                icon: Icons.add,
+                expand: true,
+                onPressed: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottone compatto "Con l'AI", tonale come le card AI.
+class _AiPill extends StatelessWidget {
+  final String label;
+  const _AiPill({this.label = 'Con l\'AI'});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = dark
+        ? cs.primaryContainer
+        : Color.alphaBlend(cs.primary.withValues(alpha: 0.22), cs.surface);
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacingMd,
+          vertical: context.spacingSm,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.auto_awesome,
+              size: context.iconSizeSm,
+              color: cs.onPrimaryContainer,
+            ),
+            SizedBox(width: context.spacingXs),
+            Text(
+              label,
+              style: tt.labelLarge?.copyWith(color: cs.onPrimaryContainer),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottone tonale a tutta larghezza, sottile: "Crea la valigia con l'AI".
+class _AiSlimButton extends StatelessWidget {
+  const _AiSlimButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = dark
+        ? cs.primaryContainer
+        : Color.alphaBlend(cs.primary.withValues(alpha: 0.22), cs.surface);
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacingMd,
+          vertical: context.spacingSm + context.spacingXs,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.auto_awesome,
+              size: context.iconSizeSm,
+              color: cs.onPrimaryContainer,
+            ),
+            SizedBox(width: context.spacingSm),
+            Expanded(
+              child: Text(
+                'Crea la valigia con l\'AI',
+                style: tt.labelLarge?.copyWith(color: cs.onPrimaryContainer),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: context.iconSizeSm,
+              color: cs.onPrimaryContainer,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Riepilogo del viaggio in una riga, sopra il meteo.
+class _TripSummaryLine extends StatelessWidget {
+  final TripModel trip;
+  const _TripSummaryLine({required this.trip});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return Padding(
+      padding: EdgeInsets.only(top: context.spacingMd),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  trip.name,
+                  style: tt.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  '${_d(context, trip.departureDateTime!, 'd MMM')} – ${_d(context, trip.returnDateTime!, 'd MMM')} · 5 notti · Lisbona, Sintra',
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '-9 giorni',
+            style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Meteo per tappa. `state`: meteo | meteo-sheet | clima | parziale | ...
+class _WeatherSection extends StatelessWidget {
+  final String state;
+  const _WeatherSection({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final clima = state == 'clima';
+    final parziale = state == 'parziale';
+
+    Widget row(
+      String city,
+      String temps,
+      String rain,
+      IconData icon, {
+      bool missing = false,
+    }) => Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacingMd,
+        vertical: context.spacingSm + context.spacingXs,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            missing ? Icons.cloud_off_outlined : icon,
+            size: context.iconSizeMd,
+            color: cs.onSurfaceVariant,
+          ),
+          SizedBox(width: context.spacingMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  city,
+                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  missing ? 'Meteo non disponibile per ora' : rain,
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          if (!missing)
+            Text(
+              temps,
+              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          if (!clima && !missing) ...[
+            SizedBox(width: context.spacingXs),
+            Icon(
+              Icons.chevron_right,
+              size: context.iconSizeSm,
+              color: cs.onSurfaceVariant,
+            ),
+          ],
+        ],
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _sectionTitle(context, 'Meteo'),
+        Container(
+          decoration: BoxDecoration(
+            color: context.groupSurface,
+            borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+          ),
+          child: Column(
+            children: [
+              row(
+                'Lisbona · 3 notti',
+                '16° – 23°',
+                clima
+                    ? 'Di solito piove 1 giorno su 3'
+                    : 'Pioggia prevista 1 giorno su 3',
+                Icons.wb_sunny_outlined,
+              ),
+              Divider(
+                height: 1,
+                indent: context.spacingMd,
+                endIndent: context.spacingMd,
+                color: cs.outlineVariant,
+              ),
+              row(
+                'Sintra · 2 notti',
+                '12° – 19°',
+                clima
+                    ? 'Di solito piove 1 giorno su 2'
+                    : 'Niente pioggia prevista',
+                Icons.cloud_outlined,
+                missing: parziale,
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.only(
+            top: context.spacingXs,
+            left: context.spacingMd,
+            right: context.spacingMd,
+          ),
+          child: Text(
+            clima
+                ? 'Media degli ultimi 5 anni in questi giorni. Le previsioni arrivano dal 15 ott.'
+                : 'Previsioni di oggi, minima e massima medie. Tocca una tappa per i giorni.',
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Foglio con le previsioni giorno per giorno di una tappa.
+class _WeatherDaysSheet extends StatelessWidget {
+  const _WeatherDaysSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final radius = Radius.circular(AppConstants.modalBorderRadius);
+    final days = [
+      (9, Icons.wb_sunny_outlined, 23, 16, 5),
+      (10, Icons.cloud_outlined, 21, 15, 20),
+      (11, Icons.umbrella_outlined, 18, 14, 80),
+    ];
+    return Material(
+      color: Theme.of(context).bottomSheetTheme.backgroundColor ?? cs.surface,
+      borderRadius: BorderRadius.only(topLeft: radius, topRight: radius),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            context.spacingMd,
+            context.spacingSm,
+            context.spacingMd,
+            context.spacingLg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DsSheetHeader(title: 'Lisbona · meteo', onClose: () {}),
+              SizedBox(height: context.spacingSm),
+              for (final (d, icon, max, min, rain) in days)
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: context.spacingSm),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: context.responsive(96),
+                        child: Text(
+                          _d(context, _day(d)),
+                          style: tt.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        icon,
+                        size: context.iconSizeMd,
+                        color: cs.onSurfaceVariant,
+                      ),
+                      SizedBox(width: context.spacingMd),
+                      Expanded(
+                        child: Text(
+                          'pioggia $rain%',
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '$max°',
+                        style: tt.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(width: context.spacingSm),
+                      Text(
+                        '$min°',
+                        style: tt.titleMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              SizedBox(height: context.spacingSm),
+              Text(
+                'Previsioni di oggi da Open-Meteo. Si aggiornano ogni giorno fino alla partenza.',
+                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

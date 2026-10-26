@@ -44,4 +44,22 @@ void main() {
       );
     });
   });
+
+  group('appCategoryKey', () {
+    test('usa le chiavi che manda item-metadata', () {
+      expect(
+        {for (final c in ItemCategory.values) appCategoryKey(c)},
+        {'vestiti', 'toiletries', 'elettronica', 'varie'},
+      );
+    });
+
+    test('torna la categoria letta dal server', () {
+      for (final category in ItemCategory.values) {
+        expect(
+          aiItemCategory('Upper Body', appCategory: appCategoryKey(category)),
+          category,
+        );
+      }
+    });
+  });
 }

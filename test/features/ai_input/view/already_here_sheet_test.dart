@@ -209,8 +209,7 @@ void main() {
     expect(find.text('Più simili · 2'), findsOneWidget);
     expect(find.text('T-shirt bianca'), findsWidgets);
     expect(find.text('T-shirt bianca wrong category'), findsNothing);
-    expect(find.byKey(const ValueKey('add_details_item-0')), findsOneWidget);
-    expect(find.byKey(const ValueKey('add_details_already-ai')), findsNothing);
+    expect(find.text('Aggiungi i dettagli'), findsNothing);
     expect(find.byIcon(Icons.auto_awesome), findsOneWidget);
     verify(
       () => analytics.trackAlreadyHereOpened(hasManualCandidates: true),
@@ -239,7 +238,7 @@ void main() {
     await app.tap(find.byKey(const Key('ai_already_here')));
     expect(find.text('Più simili · 1'), findsOneWidget);
     expect(find.textContaining('Altri oggetti'), findsOneWidget);
-    expect(find.byKey(const ValueKey('add_details_item-16')), findsOneWidget);
+    expect(find.text('Aggiungi i dettagli'), findsNothing);
     expect(find.text('Passaporto'), findsNothing);
     await app.tap(find.textContaining('Altri oggetti'));
     expect(find.text('Passaporto'), findsOneWidget);
@@ -391,143 +390,12 @@ void main() {
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
-    expect(
-      find.byKey(const ValueKey('add_details_retry-candidate')),
-      findsOneWidget,
-    );
+    expect(find.text('T-shirt bianca'), findsWidgets);
     verify(
       () => analytics.trackAlreadyHereOpened(hasManualCandidates: true),
     ).called(1);
     await tester.pumpWidget(const SizedBox.shrink());
   });
-
-  testWidgets(
-    'Aggiungi dettagli collega un manuale e Salva scrive i metadati',
-    (tester) async {
-      final analytics = _MockAnalytics();
-      final app = await ScreenshotApp.start(
-        tester,
-        theme: ShotTheme.light,
-        setup: AppSetup(
-          extraOverrides: [
-            aiImportNotifierProvider.overrideWith(
-              () => FakeAiImport(_state('Upper Body')),
-            ),
-            coreAnalyticsServiceProvider.overrideWithValue(analytics),
-          ],
-        ),
-      );
-      final repository = app.container.read(itemRepositoryProvider);
-      await tester.runAsync(() async {
-        await repository.insertMultipleItems([
-          ItemModel(
-            id: 'manual-candidate',
-            houseId: kHomeId,
-            name: 'T-shirt bianca',
-            category: ItemCategory.vestiti,
-            createdAt: DateTime(2026),
-            updatedAt: DateTime(2026),
-          ),
-          ItemModel(
-            id: 'already-ai',
-            houseId: kHomeId,
-            name: 'T-shirt bianca AI',
-            category: ItemCategory.vestiti,
-            aiMetadata: '{"old":true}',
-            createdAt: DateTime(2026),
-            updatedAt: DateTime(2026),
-          ),
-        ]);
-      });
-      app.container.invalidate(itemNotifierProvider(kHomeId));
-      await _openResults(app);
-      await app.tap(find.byKey(const Key('ai_already_here')));
-      await app.tap(find.byKey(const ValueKey('add_details_manual-candidate')));
-
-      expect(find.text('Salva: 1 aggiornato'), findsOneWidget);
-      expect(
-        find.text('Già in casa: «T-shirt bianca» · dettagli aggiunti'),
-        findsOneWidget,
-      );
-      verify(() => analytics.trackAlreadyHereDetailsAdded()).called(1);
-
-      await app.tap(find.text('Salva: 1 aggiornato'));
-      final items = await tester.runAsync(
-        () => repository.getItemsByHouseId(kHomeId),
-      );
-      final manual = items!.singleWhere(
-        (item) => item.id == 'manual-candidate',
-      );
-      final alreadyAi = items.singleWhere((item) => item.id == 'already-ai');
-      expect(manual.aiMetadata, isNotNull);
-      expect(alreadyAi.aiMetadata, '{"old":true}');
-      verify(
-        () => analytics.trackAiItemsSaved(
-          count: 0,
-          isOnboarding: false,
-          updated: 1,
-        ),
-      ).called(1);
-      await app.finish();
-    },
-  );
-
-  testWidgets(
-    'Annulla un collegamento prima di Salva non scrive nel database',
-    (tester) async {
-      final analytics = _MockAnalytics();
-      final app = await ScreenshotApp.start(
-        tester,
-        theme: ShotTheme.light,
-        setup: AppSetup(
-          extraOverrides: [
-            aiImportNotifierProvider.overrideWith(
-              () => FakeAiImport(_state('Upper Body')),
-            ),
-            coreAnalyticsServiceProvider.overrideWithValue(analytics),
-          ],
-        ),
-      );
-      final repository = app.container.read(itemRepositoryProvider);
-      await tester.runAsync(() async {
-        await repository.insertMultipleItems([
-          ItemModel(
-            id: 'manual-undo',
-            houseId: kHomeId,
-            name: 'T-shirt bianca',
-            category: ItemCategory.vestiti,
-            createdAt: DateTime(2026),
-            updatedAt: DateTime(2026),
-          ),
-        ]);
-      });
-      app.container.invalidate(itemNotifierProvider(kHomeId));
-      await _openResults(app);
-      await app.tap(find.byKey(const Key('ai_already_here')));
-      await app.tap(find.byKey(const ValueKey('add_details_manual-undo')));
-
-      expect(find.text('Salva: 1 aggiornato'), findsOneWidget);
-      await app.tap(find.text('Annulla'));
-      expect(find.text('Salva: 1 nuovo'), findsOneWidget);
-      expect(
-        app.container
-            .read(aiImportNotifierProvider)
-            .photoGroups
-            .single
-            .linkedItemIds,
-        isEmpty,
-      );
-      final items = await tester.runAsync(
-        () => repository.getItemsByHouseId(kHomeId),
-      );
-      expect(
-        items!.singleWhere((item) => item.id == 'manual-undo').aiMetadata,
-        isNull,
-      );
-      verify(() => analytics.trackAlreadyHereDetailsAdded()).called(1);
-      await app.finish();
-    },
-  );
 
   testWidgets('X chiude il foglio senza collegare né scrivere nel database', (
     tester,
@@ -550,68 +418,12 @@ void main() {
     await app.tap(find.byKey(const Key('sheet_close')));
 
     expect(find.text('Salva: 1 nuovo'), findsOneWidget);
-    expect(
-      app.container
-          .read(aiImportNotifierProvider)
-          .photoGroups
-          .single
-          .linkedItemIds,
-      isEmpty,
-    );
-    verifyNever(() => analytics.trackAlreadyHereDetailsAdded());
-    await app.finish();
-  });
-
-  testWidgets('doppio callback Aggiungi dettagli collega una volta sola', (
-    tester,
-  ) async {
-    final analytics = _MockAnalytics();
-    final app = await ScreenshotApp.start(
-      tester,
-      theme: ShotTheme.light,
-      setup: AppSetup(
-        extraOverrides: [
-          aiImportNotifierProvider.overrideWith(
-            () => FakeAiImport(_state('Upper Body')),
-          ),
-          coreAnalyticsServiceProvider.overrideWithValue(analytics),
-        ],
+    verifyNever(
+      () => analytics.trackAiItemsSaved(
+        count: any(named: 'count'),
+        isOnboarding: any(named: 'isOnboarding'),
       ),
     );
-    final repository = app.container.read(itemRepositoryProvider);
-    await tester.runAsync(() async {
-      await repository.insertMultipleItems([
-        ItemModel(
-          id: 'manual-double-callback',
-          houseId: kHomeId,
-          name: 'T-shirt bianca',
-          category: ItemCategory.vestiti,
-          createdAt: DateTime(2026),
-          updatedAt: DateTime(2026),
-        ),
-      ]);
-    });
-    app.container.invalidate(itemNotifierProvider(kHomeId));
-    await _openResults(app);
-    await app.tap(find.byKey(const Key('ai_already_here')));
-
-    final addDetails = tester.widget<TextButton>(
-      find.byKey(const ValueKey('add_details_manual-double-callback')),
-    );
-    addDetails.onPressed!();
-    addDetails.onPressed!();
-    await app.settle(frames: 16);
-
-    expect(find.byKey(const Key('sheet_close')), findsNothing);
-    expect(
-      app.container
-          .read(aiImportNotifierProvider)
-          .photoGroups
-          .single
-          .linkedItemIds,
-      {0: 'manual-double-callback'},
-    );
-    verify(() => analytics.trackAlreadyHereDetailsAdded()).called(1);
     await app.finish();
   });
 
@@ -637,15 +449,7 @@ void main() {
     await app.settle();
 
     expect(find.byKey(const Key('sheet_close')), findsNothing);
-    expect(
-      app.container
-          .read(aiImportNotifierProvider)
-          .photoGroups
-          .single
-          .linkedItemIds,
-      isEmpty,
-    );
-    verifyNever(() => analytics.trackAlreadyHereDetailsAdded());
+    expect(find.text('Salva: 1 nuovo'), findsOneWidget);
     await app.finish();
   });
 
