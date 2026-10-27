@@ -145,7 +145,16 @@ void main() {
       await _pumpCard(tester, item: _result(doubts: const ['warmth']));
       double sizeOf(String text) =>
           tester.widget<Text>(find.text(text)).style!.fontSize!;
-      expect(sizeOf('Camicia di lino'), greaterThan(16));
+      expect(
+        tester
+            .widget<RichText>(
+              find.textContaining('Camicia di lino', findRichText: true),
+            )
+            .text
+            .style!
+            .fontSize!,
+        greaterThan(16),
+      );
       expect(sizeOf('1 da controllare'), greaterThanOrEqualTo(14));
       final details = find.byWidgetPredicate(
         (w) => w is Text && (w.data ?? '').contains(' · '),
@@ -154,6 +163,18 @@ void main() {
         tester.widget<Text>(details).style!.fontSize!,
         greaterThanOrEqualTo(14),
       );
+    });
+
+    testWidgets('la freccia segue il nome, non sta in fondo alla riga', (
+      tester,
+    ) async {
+      await _pumpCard(tester, item: _result(), onAlreadyHere: () {});
+      final chevron = tester.getRect(
+        find.byKey(const Key('ai_result_chevron')),
+      );
+      final button = tester.getRect(find.byKey(const Key('ai_already_here')));
+      // Subito dopo "Camicia di lino", ben lontana da "C'è già?".
+      expect(chevron.right, lessThan(button.left - 48));
     });
 
     testWidgets('niente matita: il nome si cambia nella scheda', (

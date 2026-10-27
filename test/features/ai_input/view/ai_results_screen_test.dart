@@ -257,9 +257,18 @@ void main() {
   ) async {
     final app = await _openResults(tester);
     expect(find.byType(AiResultsScreen), findsOneWidget);
-    expect(find.text('Camicia di lino azzurra'), findsOneWidget);
-    expect(find.text('T-shirt bianca'), findsOneWidget);
-    expect(find.text('Pantaloni da trekking'), findsOneWidget);
+    expect(
+      find.textContaining('Camicia di lino azzurra', findRichText: true),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('T-shirt bianca', findRichText: true),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Pantaloni da trekking', findRichText: true),
+      findsOneWidget,
+    );
     expect(find.text('Salva: 3 nuovi'), findsOneWidget);
     expect(find.text('T-shirt · Bianco'), findsOneWidget);
     expect(find.text('Camicia · Azzurro'), findsOneWidget);
@@ -306,7 +315,10 @@ void main() {
     await tester.tap(checkbox);
     await tester.pumpAndSettle();
     expect(find.text('Salva: 2 nuovi'), findsOneWidget);
-    expect(find.text('T-shirt bianca'), findsOneWidget);
+    expect(
+      find.textContaining('T-shirt bianca', findRichText: true),
+      findsOneWidget,
+    );
     await tester.ensureVisible(checkbox);
     await tester.tap(checkbox);
     await tester.pumpAndSettle();
@@ -334,7 +346,7 @@ void main() {
         await tester.ensureVisible(find.byKey(const Key('item_sheet_save')));
         await tester.tap(find.byKey(const Key('item_sheet_save')));
         await tester.pumpAndSettle();
-        expect(find.text(name), findsOneWidget);
+        expect(find.textContaining(name, findRichText: true), findsOneWidget);
       }
       await tester.tap(find.text('Salva: 3 nuovi'));
       await tester.pumpAndSettle();
@@ -515,7 +527,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ItemSheet), findsNothing);
-    expect(find.text('Pantaloni trekking impermeabili'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Pantaloni trekking impermeabili',
+        findRichText: true,
+      ),
+      findsOneWidget,
+    );
     expect(
       find.descendant(of: row, matching: find.text('1 da controllare')),
       findsNothing,

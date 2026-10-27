@@ -99,8 +99,32 @@ class AiResultCard extends StatelessWidget {
                         children: [
                           ValueListenableBuilder<TextEditingValue>(
                             valueListenable: controller,
-                            builder: (context, value, _) =>
-                                Text(value.text, style: nameStyle),
+                            // La freccia segue il nome: subito dopo l'ultima
+                            // parola, anche quando il nome va a capo.
+                            builder: (context, value, _) => Text.rich(
+                              TextSpan(
+                                text: value.text,
+                                children: [
+                                  WidgetSpan(
+                                    alignment: PlaceholderAlignment.middle,
+                                    child: Padding(
+                                      padding: EdgeInsets.only(
+                                        left: context.spacingXs,
+                                      ),
+                                      child: Icon(
+                                        Icons.chevron_right,
+                                        key: const Key('ai_result_chevron'),
+                                        size: context.iconSizeMd,
+                                        color: included
+                                            ? colors.onSurfaceVariant
+                                            : muted,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              style: nameStyle,
+                            ),
                           ),
                           if (details.isNotEmpty) ...[
                             SizedBox(height: context.spacingXxs),
@@ -120,11 +144,6 @@ class AiResultCard extends StatelessWidget {
                           ],
                         ],
                       ),
-                    ),
-                    Icon(
-                      Icons.chevron_right,
-                      size: context.iconSizeMd,
-                      color: included ? colors.onSurfaceVariant : muted,
                     ),
                   ],
                 ),
