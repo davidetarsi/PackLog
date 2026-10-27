@@ -9,8 +9,8 @@ import '../theme/app_spacing.dart';
 /// Effetto sul bordo in fondo allo schermo, dietro i bottoni, la barra delle
 /// tab e il piè dei fogli: lo "scroll edge effect" morbido di Liquid Glass.
 /// Niente fascia con un bordo: il contenuto che scorre sotto si sfoca e
-/// sfuma nel colore di fondo sempre di più verso il bordo. L'effetto parte un
-/// po' sopra i controlli ([rise]), così non si vede dove comincia.
+/// sfuma nel colore di fondo sempre di più verso il bordo. L'effetto parte
+/// appena sopra i controlli, a [topGap].
 ///
 /// La sfocatura cresce in modo continuo grazie a uno shader (inspire_blur):
 /// con i BackdropFilter a strati si vedevano i gradini. Gli shader non girano
@@ -24,23 +24,16 @@ class DsGlassBand extends StatelessWidget {
   /// I controlli, già con il loro padding e la safe area.
   final Widget child;
 
-  /// Spazio fra il bordo alto dell'area dei controlli e i controlli.
+  /// Spazio fra il bordo alto dell'area dei controlli e i controlli: è da lì
+  /// che parte la sfumatura.
   static double topGap(BuildContext context) => context.spacingXs;
-
-  /// Quanto sopra l'area dei controlli comincia la sfumatura.
-  static double rise(BuildContext context) => context.spacingXl;
 
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.surface;
     return Stack(
-      clipBehavior: Clip.none,
       children: [
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          top: -rise(context),
+        Positioned.fill(
           child: IgnorePointer(
             child: Stack(
               key: const Key('ds_glass_band_edge'),
