@@ -4,6 +4,7 @@ import '../theme/app_spacing.dart';
 import 'ds_bottom_sheet_handle.dart';
 import 'ds_icon_button.dart';
 import '../theme/app_text_styles.dart';
+import 'ds_divider.dart';
 
 /// Testata dei bottom sheet: handle, titolo, divisore.
 ///
@@ -62,7 +63,7 @@ class DsSheetHeader extends StatelessWidget {
                   ],
                 ),
         ),
-        const Divider(height: 1),
+        const DsDivider(),
       ],
     );
   }

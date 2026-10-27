@@ -6,6 +6,7 @@ import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_button.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../model/ai_packing.dart';
+import '../../../../../shared/widgets/ds_divider.dart';
 
 /// Le due righe sotto il titolo della valigia AI: "Cosa manca a questo viaggio"
 /// (avvisi, in ambra) e "Perché queste scelte" (motivi, neutra). Ognuna apre
@@ -60,11 +61,9 @@ class AiPackRows extends StatelessWidget {
             trailing: hasWarnings ? _CountBadge(count: warnings.length) : null,
             onTap: () => _openWarnings(context),
           ),
-          Divider(
-            height: 1,
+          DsDivider(
             // Allineato al titolo: margine, icona e spazio dopo l'icona.
             indent: context.spacingMd * 2 + context.iconSizeMd,
-            color: cs.outlineVariant,
           ),
           _Row(
             key: const Key('pack_row_reasons'),

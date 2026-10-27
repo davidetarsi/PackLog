@@ -8,6 +8,7 @@ import '../../../shared/widgets/ds_empty_state.dart';
 import '../model/trip_weather.dart';
 import '../providers/trip_weather_provider.dart';
 import 'widgets/pack/weather_icons.dart';
+import '../../../shared/widgets/ds_divider.dart';
 
 /// Il meteo dei prossimi giorni di una tappa: per ogni giorno il riepilogo e
 /// le sei fasce di quattro ore, con icona, temperatura media e pioggia.
@@ -149,7 +150,7 @@ class _DayCard extends StatelessWidget {
             if (day.bands.isNotEmpty) ...[
               Padding(
                 padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-                child: const Divider(height: 1),
+                child: const DsDivider(),
               ),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,

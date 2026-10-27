@@ -8,6 +8,7 @@ import '../../../model/trip_postcard.dart';
 import 'postcard_parts.dart';
 import 'trip_itinerary_view.dart';
 import '../../../../../shared/theme/app_text_styles.dart';
+import '../../../../../shared/widgets/ds_divider.dart';
 
 /// Cartolina grande di un viaggio: intestazione con la meta, francobollo con
 /// timbro, itinerario, stato della valigia e azione principale.
@@ -241,7 +242,7 @@ class _SuitcaseRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Divider(height: 1, color: cs.outlineVariant),
+        DsDivider(),
         SizedBox(height: context.spacingMd),
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,

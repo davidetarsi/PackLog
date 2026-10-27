@@ -32,6 +32,7 @@ import '../services/category_infer_service.dart';
 import '../widgets/category_pill.dart';
 import 'bulk_move_sheet.dart';
 import 'widgets/clothing_details_section.dart';
+import '../../../shared/widgets/ds_divider.dart';
 
 /// Apre la scheda di un oggetto esistente.
 Future<void> showItemSheet(
@@ -675,7 +676,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
               // titolo "Dettagli" che li sovrasti.
               Padding(
                 padding: EdgeInsets.only(top: context.spacingLg),
-                child: const Divider(height: 1),
+                child: const DsDivider(),
               ),
               ClothingDetailsSection(
                 details: details,

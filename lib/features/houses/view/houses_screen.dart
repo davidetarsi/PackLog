@@ -113,6 +113,7 @@ class _HouseCard extends ConsumerWidget {
     final action = await showEntityContextMenu(
       context: context,
       entityType: 'common.house_type'.tr(),
+      title: house.displayName,
       showSetPrimaryAction: true,
       isPrimary: house.isPrimary,
     );

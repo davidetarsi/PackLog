@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import 'ds_divider.dart';
 
 /// Indicatore dei passi di un flusso lineare: "1 Viaggio — 2 Valigia".
 ///
@@ -80,7 +81,7 @@ class DsSteps extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: context.spacingSm),
-                child: Divider(color: cs.outlineVariant),
+                child: DsDivider(),
               ),
             ),
           step(i),

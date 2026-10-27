@@ -6,11 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// autorizzato a chiamare `AlertDialog` o `showDialog`. Il resto del codice
 /// usa `DsDialog` e `showDsDialog`.
 void main() {
-  const allowed = <String>{
-    'lib/shared/widgets/ds_dialog.dart',
-    // Fino al Task 6, che riscrive il menu come foglio.
-    'lib/shared/widgets/entity_context_menu.dart',
-  };
+  const allowed = <String>{'lib/shared/widgets/ds_dialog.dart'};
   const allowedDirs = <String>['lib/shared/dev/'];
   final rawShowDialog = RegExp(r'\bshowDialog\b');
 

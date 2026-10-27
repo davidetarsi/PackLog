@@ -9,6 +9,7 @@ import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/ds_section_title.dart';
 import '../../../model/trip_weather.dart';
 import '../../../providers/trip_weather_provider.dart';
+import '../../../../../shared/widgets/ds_divider.dart';
 
 /// Da qui il vento si nomina nella riga della tappa.
 const _kWindyKmh = 40.0;
@@ -100,7 +101,7 @@ class _WeatherCard extends StatelessWidget {
           child: Column(
             children: [
               for (var i = 0; i < weather.stops.length; i++) ...[
-                if (i > 0) const Divider(height: 1),
+                if (i > 0) const DsDivider(),
                 _StopRow(
                   stop: weather.stops[i],
                   // Con i giorni di previsione la tappa apre il dettaglio.

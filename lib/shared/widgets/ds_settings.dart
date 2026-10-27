@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 import '../theme/surface_colors.dart';
+import 'ds_divider.dart';
 
 /// Blocco di righe di impostazioni: il componente standard dei moduli
 /// (oggetto, casa, spazio, bagaglio, viaggio). Le righe sono separate da
@@ -15,8 +16,6 @@ class DsSettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     return Material(
       color: context.groupSurface,
       borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
@@ -26,11 +25,9 @@ class DsSettingsGroup extends StatelessWidget {
         children: [
           for (final (i, child) in children.indexed) ...[
             if (i > 0)
-              Divider(
-                height: 1,
+              DsDivider(
                 indent: context.spacingMd,
                 endIndent: context.spacingMd,
-                color: cs.outlineVariant,
               ),
             child,
           ],
