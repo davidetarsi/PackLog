@@ -1,21 +1,16 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/ds_button.dart';
+import '../../../../shared/widgets/ds_field.dart';
+import '../../../../shared/widgets/ds_field_label.dart';
+import '../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../../shared/widgets/ds_link_button.dart';
-import '../../../../shared/widgets/ds_sheet_header.dart';
 import '../../model/trip_draft.dart';
 import '../../model/trip_postcard.dart';
 import 'place_search.dart';
 import 'trip_dates_sheet.dart';
-import '../../../../shared/widgets/ds_field.dart';
-import '../../../../shared/widgets/ds_section_title.dart';
-
-/// Altezza massima del foglio, in frazione dello schermo: la testata resta
-/// sempre visibile sopra il contenuto che scorre.
-const double _kStopSheetHeightFactor = 0.9;
 
 /// Esito del foglio della tappa.
 sealed class StopSheetResult {
@@ -45,11 +40,8 @@ Future<StopSheetResult?> showStopSheet(
   required String previousName,
   DraftStop? initial,
 }) {
-  return showModalBottomSheet<StopSheetResult>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
+  return showDsFormSheet<StopSheetResult>(
+    context,
     builder: (_) =>
         _StopSheet(start: start, previousName: previousName, initial: initial),
   );
@@ -118,143 +110,100 @@ class _StopSheetState extends State<_StopSheet> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final end = _end;
-    final maxHeight =
-        MediaQuery.sizeOf(context).height * _kStopSheetHeightFactor;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppConstants.modalBorderRadius),
+    return DsFormSheet(
+      title: (_editing ? 'trips.new.stop_edit' : 'trips.new.stop_new').tr(),
+      // Il piè sta fuori dallo scroll: la CTA resta visibile anche con la
+      // tastiera aperta.
+      footer: Padding(
+        padding: EdgeInsets.fromLTRB(
+          context.spacingMd,
+          context.spacingSm,
+          context.spacingMd,
+          context.spacingMd,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DsButton(
+              key: const Key('stop_sheet_save'),
+              label: (_editing ? 'trips.new.stop_save' : 'trips.new.stop_add')
+                  .tr(),
+              icon: _editing ? Icons.check_rounded : Icons.add,
+              expand: true,
+              onPressed: _canSave ? _save : null,
+            ),
+            if (_editing)
+              DsLinkButton(
+                key: const Key('stop_sheet_remove'),
+                label: 'trips.new.stop_remove'.tr(),
+                onPressed: _remove,
+              ),
+          ],
         ),
       ),
-      // Il foglio sale sopra la tastiera; il contenuto scorre dentro.
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: SafeArea(
-          top: false,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxHeight),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DsFieldLabel.prominent('trips.new.where_stop'.tr()),
+          PlaceSearch(
+            key: const Key('stop_sheet_place'),
+            initialText: widget.initial?.place.name,
+            onSelected: (place) => setState(() => _place = place),
+            // Scrivere dopo la scelta vuol dire un posto
+            // diverso da quello mostrato: la scelta decade.
+            onTextChanged: (_) {
+              if (_place != null) setState(() => _place = null);
+            },
+          ),
+          DsFieldLabel.prominent('trips.new.when'.tr()),
+          DsFieldBox(
+            key: const Key('stop_sheet_dates'),
+            icon: Icons.calendar_today_outlined,
+            onTap: _pickEnd,
+            child: Row(
               children: [
-                DsSheetHeader(
-                  title:
-                      (_editing ? 'trips.new.stop_edit' : 'trips.new.stop_new')
-                          .tr(),
-                  onClose: () => Navigator.of(context).pop(),
-                ),
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(context.spacingMd),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        DsSectionTitle('trips.new.where_stop'.tr()),
-                        PlaceSearch(
-                          key: const Key('stop_sheet_place'),
-                          initialText: widget.initial?.place.name,
-                          onSelected: (place) => setState(() => _place = place),
-                          // Scrivere dopo la scelta vuol dire un posto
-                          // diverso da quello mostrato: la scelta decade.
-                          onTextChanged: (_) {
-                            if (_place != null) setState(() => _place = null);
-                          },
-                        ),
-                        DsSectionTitle('trips.new.when'.tr()),
-                        DsFieldBox(
-                          key: const Key('stop_sheet_dates'),
-                          icon: Icons.calendar_today_outlined,
-                          onTap: _pickEnd,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  end == null
-                                      ? 'common.tap_to_set_dates'.tr()
-                                      : '${_formatDay(context, widget.start)}'
-                                            ' – '
-                                            '${_formatDay(context, end)}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: tt.bodyLarge?.copyWith(
-                                    color: end == null
-                                        ? cs.onSurfaceVariant
-                                        : cs.onSurface,
-                                  ),
-                                ),
-                              ),
-                              if (end != null)
-                                Text(
-                                  'trips.itinerary.nights'.plural(
-                                    nightsBetween(widget.start, end) ?? 0,
-                                  ),
-                                  style: tt.labelLarge?.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        // Il ritorno è la fine dell'ultima tappa: vale solo
-                        // per una tappa aggiunta in coda, non per una modificata.
-                        if (end != null && !_editing)
-                          Padding(
-                            padding: EdgeInsets.only(top: context.spacingSm),
-                            child: Text(
-                              'trips.new.stop_hint'.tr(
-                                args: [
-                                  widget.previousName,
-                                  _formatDay(context, widget.start),
-                                  _formatDay(context, end),
-                                ],
-                              ),
-                              style: tt.bodySmall?.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                      ],
+                Expanded(
+                  child: Text(
+                    end == null
+                        ? 'common.tap_to_set_dates'.tr()
+                        : '${_formatDay(context, widget.start)}'
+                              ' – '
+                              '${_formatDay(context, end)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodyLarge?.copyWith(
+                      color: end == null ? cs.onSurfaceVariant : cs.onSurface,
                     ),
                   ),
                 ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    context.spacingMd,
-                    context.spacingSm,
-                    context.spacingMd,
-                    context.spacingMd,
+                if (end != null)
+                  Text(
+                    'trips.itinerary.nights'.plural(
+                      nightsBetween(widget.start, end) ?? 0,
+                    ),
+                    style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      DsButton(
-                        key: const Key('stop_sheet_save'),
-                        label:
-                            (_editing
-                                    ? 'trips.new.stop_save'
-                                    : 'trips.new.stop_add')
-                                .tr(),
-                        icon: _editing ? Icons.check_rounded : Icons.add,
-                        expand: true,
-                        onPressed: _canSave ? _save : null,
-                      ),
-                      if (_editing)
-                        DsLinkButton(
-                          key: const Key('stop_sheet_remove'),
-                          label: 'trips.new.stop_remove'.tr(),
-                          onPressed: _remove,
-                        ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
-        ),
+          // Il ritorno è la fine dell'ultima tappa: vale solo
+          // per una tappa aggiunta in coda, non per una modificata.
+          if (end != null && !_editing)
+            Padding(
+              padding: EdgeInsets.only(top: context.spacingSm),
+              child: Text(
+                'trips.new.stop_hint'.tr(
+                  args: [
+                    widget.previousName,
+                    _formatDay(context, widget.start),
+                    _formatDay(context, end),
+                  ],
+                ),
+                style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
+        ],
       ),
     );
   }

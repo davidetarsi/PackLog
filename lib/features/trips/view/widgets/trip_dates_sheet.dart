@@ -2,17 +2,10 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../shared/constants/app_constants.dart';
-import '../../../../shared/theme/app_spacing.dart';
-import '../../../../shared/widgets/ds_button.dart';
-import '../../../../shared/widgets/ds_sheet_header.dart';
+import '../../../../shared/widgets/ds_form_sheet.dart';
 import '../../model/trip_date_range.dart';
 import '../../providers/date_range_selection_provider.dart';
 import 'trip_calendar.dart';
-
-/// Altezza del foglio delle date, in frazione dell'altezza dello schermo:
-/// quasi a tutto schermo, con la testata ancora visibile sopra.
-const double _kTripDatesSheetHeightFactor = 0.9;
 
 /// Foglio per scegliere partenza e ritorno di un viaggio.
 ///
@@ -24,11 +17,8 @@ Future<TripDateRange?> showTripRangeSheet(
   DateTime? initialDeparture,
   DateTime? initialReturn,
 }) {
-  return showModalBottomSheet<TripDateRange>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
+  return showDsFormSheet<TripDateRange>(
+    context,
     builder: (_) => _TripRangeSheet(
       initialDeparture: initialDeparture,
       initialReturn: initialReturn,
@@ -46,11 +36,8 @@ Future<DateTime?> showTripEndSheet(
   required DateTime start,
   DateTime? initialEnd,
 }) {
-  return showModalBottomSheet<DateTime>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
+  return showDsFormSheet<DateTime>(
+    context,
     builder: (_) => _TripEndSheet(start: start, initialEnd: initialEnd),
   );
 }
@@ -165,44 +152,19 @@ class _TripDatesSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Container(
-      height: MediaQuery.sizeOf(context).height * _kTripDatesSheetHeightFactor,
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppConstants.modalBorderRadius),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          DsSheetHeader(
-            title: 'trips.new.when'.tr(),
-            onClose: () => Navigator.of(context).pop(),
-          ),
-          Expanded(
-            child: TripCalendar(
-              selection: selection,
-              initialMonth: initialMonth,
-              firstSelectableDay: firstSelectableDay,
-              onDaySelected: onDaySelected,
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.all(context.spacingMd),
-              child: DsButton(
-                label: confirmLabel,
-                icon: Icons.check_rounded,
-                onPressed: onConfirm,
-                expand: true,
-              ),
-            ),
-          ),
-        ],
+    // Il calendario prende lo spazio tra testata e conferma: il foglio è alto
+    // quanto il massimo sopra la tastiera, senza scroll esterno.
+    return DsFormSheet(
+      title: 'trips.new.when'.tr(),
+      expand: true,
+      actionLabel: confirmLabel,
+      actionIcon: Icons.check_rounded,
+      onSubmit: onConfirm,
+      child: TripCalendar(
+        selection: selection,
+        initialMonth: initialMonth,
+        firstSelectableDay: firstSelectableDay,
+        onDaySelected: onDaySelected,
       ),
     );
   }
