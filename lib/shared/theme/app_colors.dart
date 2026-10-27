@@ -120,6 +120,10 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   final Color itemTemporaryBackground;
   final Color itemTemporaryText;
 
+  // ── Velo del tour ─────────────────────────────────────────────────────────
+  // Sfondo scuro dietro il tour guidato: nero in entrambi i temi.
+  final Color tourScrim;
+
   const AppColorsExtension({
     required this.success,
     required this.onSuccess,
@@ -132,6 +136,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     required this.itemTemporary,
     required this.itemTemporaryBackground,
     required this.itemTemporaryText,
+    required this.tourScrim,
   });
 
   /// Valori per light mode.
@@ -151,6 +156,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     itemTemporary: Color(0xFF1976D2),
     itemTemporaryBackground: Color(0xFFE3F2FD),
     itemTemporaryText: Color(0xFF0D47A1),
+    tourScrim: Colors.black,
   );
 
   /// Valori per dark mode.
@@ -169,6 +175,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     itemTemporary: Color(0xFF42A5F5),
     itemTemporaryBackground: Color(0xFF1A3A5C),
     itemTemporaryText: Color(0xFF82B1FF),
+    tourScrim: Colors.black,
   );
 
   @override
@@ -184,6 +191,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     Color? itemTemporary,
     Color? itemTemporaryBackground,
     Color? itemTemporaryText,
+    Color? tourScrim,
   }) {
     return AppColorsExtension(
       success: success ?? this.success,
@@ -198,6 +206,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
       itemTemporaryBackground:
           itemTemporaryBackground ?? this.itemTemporaryBackground,
       itemTemporaryText: itemTemporaryText ?? this.itemTemporaryText,
+      tourScrim: tourScrim ?? this.tourScrim,
     );
   }
 
@@ -243,6 +252,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
         other.itemTemporaryText,
         t,
       )!,
+      tourScrim: Color.lerp(tourScrim, other.tourScrim, t)!,
     );
   }
 }

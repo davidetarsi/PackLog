@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
+import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
@@ -98,7 +99,9 @@ class DsButton extends StatelessWidget {
       // ancora del testo.
       backgroundColor = colorScheme.surface;
       accentColor = colorScheme.outline;
-      contentColor = colorScheme.onSurface.withValues(alpha: 0.38);
+      contentColor = colorScheme.onSurface.withValues(
+        alpha: AppOpacity.disabled,
+      );
     } else {
       switch (variant) {
         case DsButtonVariant.destructive:

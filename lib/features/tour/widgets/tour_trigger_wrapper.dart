@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/analytics/analytics_service.dart';
+import '../../../shared/theme/app_theme.dart';
 import '../model/onboarding_state.dart';
 import '../providers/post_login_onboarding_provider.dart';
 import '../tour_keys.dart';
@@ -162,7 +163,7 @@ class _TourTriggerWrapperState extends ConsumerState<TourTriggerWrapper> {
           ],
         ),
       ],
-      colorShadow: Colors.black,
+      colorShadow: context.appColors.tourScrim,
       opacityShadow: 0.8,
       hideSkip: true,
       pulseEnable: widget.isSpotlight,

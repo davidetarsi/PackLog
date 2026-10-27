@@ -7,10 +7,14 @@ import '../../features/houses/providers/house_provider.dart';
 import '../../features/profile/providers/gpt_usage_provider.dart';
 import '../constants/app_constants.dart';
 import '../constants/house_icons.dart';
+import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
 import 'ds_form_sheet.dart';
 import 'ds_link_button.dart';
 import 'ds_picker_sheet.dart';
+
+/// Velo della card "Scansiona". Non è una selezione: la card ha il suo velo.
+const double _scanCardTint = 0.22;
 
 enum CreateAction { aiScan, manualItems, newHouse, newTrip, aiSuitcase }
 
@@ -183,17 +187,16 @@ class _AiScanCard extends StatelessWidget {
     // In chiaro `primaryContainer` è quasi bianco e la card non spiccava:
     // un velo di `primary` sulla superficie la rende arancio deciso.
     final background = !enabled
-        ? colorScheme.onSurface.withValues(alpha: 0.08)
+        ? colorScheme.onSurface.withValues(alpha: AppOpacity.pressed)
         : isDark
         ? colorScheme.primaryContainer
         : Color.alphaBlend(
-            // Non è una selezione: la card Scansiona ha il suo velo.
-            colorScheme.primary.withValues(alpha: 0.22),
+            colorScheme.primary.withValues(alpha: _scanCardTint),
             colorScheme.surface,
           );
     final foreground = enabled
         ? colorScheme.onPrimaryContainer
-        : colorScheme.onSurface.withValues(alpha: 0.38);
+        : colorScheme.onSurface.withValues(alpha: AppOpacity.disabled);
     final hint = house == null
         ? 'create_sheet.need_house'.tr()
         : exhausted

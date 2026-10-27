@@ -66,9 +66,8 @@ class AppConstants {
   static const double categoryRowHeight = 50.0;
 
   /// Sfocatura del contenuto che scorre sotto un bottone galleggiante in fondo
-  /// alla pagina (StickyCtaScaffold), e quanto lo copre il velo dello sfondo.
+  /// alla pagina (StickyCtaScaffold). Il velo è in AppOpacity.ctaScrim.
   static const double ctaBlurSigma = 16.0;
-  static const double ctaScrimOpacity = 0.72;
 
   /// Altezza del bottone principale in fondo (DsButton) e dei bottoni che gli
   /// stanno accanto o al suo posto (es. "Avanti" del foglio AI).
@@ -85,9 +84,6 @@ class AppConstants {
 
   /// Lato del francobollo delle cartoline piccole dell'album.
   static const double albumStampSize = 56.0;
-
-  /// Quanto è coperto il testo selezionato (colore del testo, velato).
-  static const double textSelectionOpacity = 0.24;
 
   /// Altezza dei segmenti di avanzamento (es. le tappe del foglio AI).
   static const double progressSegmentHeight = 4.0;

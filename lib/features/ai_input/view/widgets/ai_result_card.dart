@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../shared/theme/app_opacity.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/ds_checkbox.dart';
 import '../../../../shared/widgets/ds_text_button.dart';
@@ -58,7 +59,7 @@ class _AiResultCardState extends State<AiResultCard> {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final active = widget.included;
-    final muted = colors.onSurface.withValues(alpha: 0.38);
+    final muted = colors.onSurface.withValues(alpha: AppOpacity.disabled);
     final nameStyle = textTheme.titleMedium?.copyWith(
       color: active ? colors.onSurface : muted,
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
 
 /// Widget riutilizzabile per regolare la quantità di un item.
@@ -70,7 +71,7 @@ class QuantityStepper extends StatelessWidget {
             Icons.remove_circle_outline,
             color: canDecrement
                 ? effectiveAccent
-                : cs.onSurface.withValues(alpha: 0.38),
+                : cs.onSurface.withValues(alpha: AppOpacity.disabled),
           ),
           onPressed: canDecrement ? () => onChanged(value - 1) : null,
           iconSize: effectiveIconSize,
@@ -102,7 +103,7 @@ class QuantityStepper extends StatelessWidget {
             Icons.add_circle_outline,
             color: canIncrement
                 ? effectiveAccent
-                : cs.onSurface.withValues(alpha: 0.38),
+                : cs.onSurface.withValues(alpha: AppOpacity.disabled),
           ),
           onPressed: canIncrement ? () => onChanged(value + 1) : null,
           iconSize: effectiveIconSize,

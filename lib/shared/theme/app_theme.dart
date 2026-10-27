@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'app_opacity.dart';
 import 'app_spacing.dart';
 import 'error_empty_theme_extension.dart';
 import '../constants/app_constants.dart';
@@ -236,13 +237,15 @@ class AppTheme {
         fillColor: const WidgetStatePropertyAll(Colors.transparent),
         checkColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.disabled)
-              ? colorScheme.onSurface.withValues(alpha: 0.38)
+              ? colorScheme.onSurface.withValues(alpha: AppOpacity.disabled)
               : colorScheme.primary,
         ),
         side: WidgetStateBorderSide.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) {
             return BorderSide(
-              color: colorScheme.onSurface.withValues(alpha: 0.38),
+              color: colorScheme.onSurface.withValues(
+                alpha: AppOpacity.disabled,
+              ),
               width: 2,
             );
           }
@@ -281,7 +284,7 @@ class AppTheme {
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: colorScheme.onSurface,
         selectionColor: colorScheme.onSurface.withValues(
-          alpha: AppConstants.textSelectionOpacity,
+          alpha: AppOpacity.textSelection,
         ),
         selectionHandleColor: colorScheme.onSurface,
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../../../../shared/constants/app_constants.dart';
+import '../../../../shared/theme/app_opacity.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/theme/cta_reserved_space.dart';
 import '../../model/trip_date_range.dart';
@@ -406,7 +407,7 @@ class _DayCell extends StatelessWidget {
 
     // Colore testo
     final textColor = muted
-        ? cs.onSurface.withValues(alpha: 0.38)
+        ? cs.onSurface.withValues(alpha: AppOpacity.disabled)
         : isSelected
         ? cs.onPrimary
         : inRange

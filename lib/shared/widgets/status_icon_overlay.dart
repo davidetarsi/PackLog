@@ -12,7 +12,7 @@ class StatusIconOverlay extends StatelessWidget {
   /// Colore di sfondo
   final Color backgroundColor;
 
-  /// Colore dell'icona (default: bianco)
+  /// Colore dell'icona: lo passano i factory onTrip e temporary.
   final Color iconColor;
 
   /// Dimensione dell'icona (default: 12)
@@ -22,7 +22,7 @@ class StatusIconOverlay extends StatelessWidget {
     super.key,
     required this.icon,
     required this.backgroundColor,
-    this.iconColor = Colors.white,
+    required this.iconColor,
     this.iconSize = 12,
   });
 

@@ -4,9 +4,13 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
+import '../../../../../shared/theme/app_opacity.dart';
 import '../../../../../shared/theme/app_spacing.dart';
 import '../../../../../shared/theme/surface_colors.dart';
 import '../../../../../shared/theme/app_text_styles.dart';
+
+/// Inchiostro del timbro: un velo sul colore del testo, più spento del testo.
+const double _stampInkOpacity = 0.7;
 
 /// Carta della cartolina: superficie di gruppo, angoli contenuti, bordo
 /// sottile e ombra leggera come la barra flottante.
@@ -28,7 +32,7 @@ class PostcardPaper extends StatelessWidget {
         borderRadius: radius,
         boxShadow: [
           BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.12),
+            color: cs.shadow.withValues(alpha: AppOpacity.shadow),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
@@ -39,7 +43,9 @@ class PostcardPaper extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.groupSurface,
           borderRadius: radius,
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: AppOpacity.mutedBorder),
+          ),
         ),
         child: child,
       ),
@@ -144,7 +150,7 @@ class Postmark extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(
-            color: ink.withValues(alpha: 0.7),
+            color: ink.withValues(alpha: _stampInkOpacity),
             width: AppConstants.selectedBorderWidth,
           ),
         ),

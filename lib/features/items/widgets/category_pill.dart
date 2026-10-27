@@ -36,7 +36,7 @@ class CategoryPill extends StatelessWidget {
       case CategoryPillState.inferred:
         backgroundColor = Colors.transparent;
         foregroundColor = categoryColor;
-        borderColor = categoryColor.withValues(alpha: 0.6);
+        borderColor = categoryColor.withValues(alpha: AppOpacity.mutedBorder);
       // Scelta: fondo tenue, mai pieno. L'arancio pieno resta all'azione
       // principale dello schermo (regola "un solo arancio").
       case CategoryPillState.forced:

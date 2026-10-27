@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
+import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
 
 /// Bottone circolare per azioni secondarie nelle action bar.
@@ -58,11 +59,11 @@ class CircularActionButton extends StatelessWidget {
     final isEnabled = onPressed != null;
     final iconColor = isEnabled
         ? (color ?? colorScheme.onSurfaceVariant)
-        : colorScheme.onSurface.withValues(alpha: 0.38);
+        : colorScheme.onSurface.withValues(alpha: AppOpacity.disabled);
 
     final borderColor = isEnabled
         ? colorScheme.outlineVariant
-        : colorScheme.outlineVariant.withValues(alpha: 0.5);
+        : colorScheme.outlineVariant.withValues(alpha: AppOpacity.mutedBorder);
 
     return Material(
       color: backgroundColor ?? colorScheme.surface,

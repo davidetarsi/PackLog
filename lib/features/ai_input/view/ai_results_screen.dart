@@ -12,6 +12,7 @@ import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/dialog_helpers.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/app_theme.dart';
 import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_error_state.dart';
@@ -323,7 +324,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
           ],
         ),
       ],
-      colorShadow: Colors.black,
+      colorShadow: context.appColors.tourScrim,
       opacityShadow: 0.8,
       hideSkip: true,
     ).show(context: context);

@@ -12,6 +12,7 @@ import 'package:pack_log/features/tour/providers/post_login_onboarding_provider.
 import 'package:pack_log/features/tour/repositories/i_onboarding_repository.dart';
 import 'package:pack_log/features/tour/repositories/shared_prefs_onboarding_repository.dart';
 import 'package:pack_log/features/tour/tour_keys.dart';
+import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/features/tour/widgets/tour_step_content.dart';
 
 class MockOnboardingRepository extends Mock implements IOnboardingRepository {}
@@ -51,7 +52,10 @@ void main() {
       saveLocale: false,
       child: UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(home: PostLoginOnboardingListener(child: shell)),
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: PostLoginOnboardingListener(child: shell),
+        ),
       ),
     );
   }
