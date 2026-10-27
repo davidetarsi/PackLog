@@ -38,9 +38,13 @@ enum DsButtonVariant {
 /// |---|---|---|---|
 /// | primary | `primary` | `primary` | `onPrimary` |
 /// | destructive | `error` | `error` | `onError` |
-/// | secondary | trasparente | `primary` | `primary` |
-/// | neutral | trasparente | `outline` | `onSurface` |
-/// | disabilitato | `surface` | `outline` | `onSurface` al 38% |
+/// | secondary | superficie sotto | `primary` | `primary` |
+/// | neutral | superficie sotto | `outline` | `onSurface` |
+/// | disabilitato | superficie sotto | `outline` | `onSurface` al 38% |
+///
+/// "Superficie sotto" è il fondo della pagina, del foglio o del dialog in cui
+/// sta il bottone: pieno, così sopra la fascia di vetro il contenuto sfocato
+/// non si vede dentro il bottone.
 ///
 /// `neutral` è l'azione secondaria accanto alla principale: l'arancio resta
 /// solo alla principale.
@@ -97,7 +101,7 @@ class DsButton extends StatelessWidget {
       // 38% è la convenzione Material per il disabilitato: volutamente sotto
       // le soglie di contrasto, perché "non toccabile" deve leggersi prima
       // ancora del testo.
-      backgroundColor = colorScheme.surface;
+      backgroundColor = _ambientSurface(context, colorScheme);
       accentColor = colorScheme.outline;
       contentColor = colorScheme.onSurface.withValues(
         alpha: AppOpacity.disabled,
@@ -109,14 +113,10 @@ class DsButton extends StatelessWidget {
           accentColor = colorScheme.error;
           contentColor = colorScheme.onError;
         case DsButtonVariant.secondary:
-          // Sfondo trasparente e non `surface`: così il bottone prende il
-          // colore di ciò che gli sta sotto. Dentro un dialog, il cui fondo è
-          // più chiaro della surface, una superficie opaca disegnava un
-          // rettangolo scuro visibile attorno all'etichetta.
-          //
-          // Sicuro perché nessun call site monta un secondary sopra contenuto
-          // scorrevole: le CTA sticky sono tutte primary o destructive.
-          backgroundColor = Colors.transparent;
+          // Pieno del colore della superficie su cui sta: sopra la fascia di
+          // vetro il contenuto sfocato non si vede dentro il bottone, e in un
+          // dialog prende il fondo del dialog, senza rettangoli scuri.
+          backgroundColor = _ambientSurface(context, colorScheme);
           accentColor = colorScheme.primary;
           contentColor = colorScheme.primary;
         case DsButtonVariant.primary:
@@ -124,7 +124,7 @@ class DsButton extends StatelessWidget {
           accentColor = colorScheme.primary;
           contentColor = colorScheme.onPrimary;
         case DsButtonVariant.neutral:
-          backgroundColor = Colors.transparent;
+          backgroundColor = _ambientSurface(context, colorScheme);
           accentColor = colorScheme.outline;
           contentColor = colorScheme.onSurface;
       }
@@ -200,4 +200,14 @@ class DsButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Colore della superficie su cui sta un bottone a contorno: il [Material] più
+/// vicino se è opaco (un dialog, un gruppo), altrimenti `surface`, il fondo
+/// delle pagine e dei fogli. Così il bottone è pieno ma non si stacca dal
+/// suo sfondo.
+Color _ambientSurface(BuildContext context, ColorScheme colorScheme) {
+  final color = context.findAncestorWidgetOfExactType<Material>()?.color;
+  if (color == null || color.a < 1) return colorScheme.surface;
+  return color;
 }

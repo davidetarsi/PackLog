@@ -53,17 +53,41 @@ void main() {
   }
 
   group('DsButton — scala a tre livelli', () {
-    testWidgets('il secondario non ha sfondo proprio', (tester) async {
-      // Sfondo opaco: dentro un dialog, il cui fondo è più chiaro della
-      // surface, il bottone disegnava un rettangolo scuro attorno all'etichetta.
+    testWidgets('il secondario è pieno del fondo su cui sta', (tester) async {
+      // Pieno: sopra la fascia di vetro il contenuto sfocato non si vede
+      // dentro il bottone. Il fondo è quello della pagina.
       await pumpButton(
         tester,
         variant: DsButtonVariant.secondary,
         onPressed: () {},
       );
 
-      expect(backgroundOf(tester), Colors.transparent);
+      expect(backgroundOf(tester), AppTheme.dark.scaffoldBackgroundColor);
       expect(borderOf(tester), AppTheme.dark.colorScheme.primary);
+    });
+
+    testWidgets('dentro un dialog prende il fondo del dialog', (tester) async {
+      // Un fondo diverso da quello della pagina (dialog, gruppo): il bottone
+      // non deve disegnare un rettangolo di un altro colore.
+      const dialogColor = Color(0xFF334455);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: Center(
+              child: Material(
+                color: dialogColor,
+                child: DsButton(
+                  label: 'Etichetta',
+                  variant: DsButtonVariant.neutral,
+                  onPressed: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(backgroundOf(tester), dialogColor);
     });
 
     testWidgets('il primario è a riempimento pieno', (tester) async {
@@ -91,7 +115,7 @@ void main() {
         ),
       );
 
-      expect(backgroundOf(tester), Colors.transparent);
+      expect(backgroundOf(tester), AppTheme.dark.scaffoldBackgroundColor);
       expect(borderOf(tester), scheme.outline);
       expect(borderOf(tester), isNot(scheme.primary));
       expect(label.style?.color, scheme.onSurface);

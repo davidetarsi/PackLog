@@ -1,4 +1,4 @@
-import 'dart:ui' show ImageFilter;
+import 'dart:ui' show ImageFilter, TileMode;
 
 import 'package:flutter/material.dart';
 
@@ -27,9 +27,12 @@ class DsGlassBand extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRect(
       child: BackdropFilter(
+        // Ai bordi dello schermo la sfocatura specchia il contenuto invece di
+        // pescare oltre il bordo, che scurirebbe (o schiarirebbe) i lati.
         filter: ImageFilter.blur(
           sigmaX: AppConstants.ctaBlurSigma,
           sigmaY: AppConstants.ctaBlurSigma,
+          tileMode: TileMode.mirror,
         ),
         child: ColoredBox(color: Colors.transparent, child: child),
       ),
