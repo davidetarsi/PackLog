@@ -53,8 +53,8 @@ class AppConstants {
   /// gli elementi della barra in basso della casa.
   static const double categoryRowHeight = 50.0;
 
-  /// Sfocatura del contenuto che scorre sotto un bottone galleggiante in fondo
-  /// alla pagina (StickyCtaScaffold). Il velo è in AppOpacity.ctaScrim.
+  /// Sfocatura del contenuto che scorre sotto la fascia di vetro in fondo
+  /// (DsGlassBand). Senza velo: si vedono i colori veri, sfocati.
   static const double ctaBlurSigma = 16.0;
 
   /// Altezza del bottone principale in fondo (DsButton) e dei bottoni che gli

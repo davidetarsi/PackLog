@@ -367,8 +367,8 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       },
       // Stesso scaffold degli altri form con CTA in fondo: i bottoni restano
       // fissi sotto il contenuto e, con la tastiera aperta, restano sotto la
-      // tastiera invece di salire con essa. Due righe (bottone e link) e uno
-      // sfondo pieno, perché il link non va letto sopra il testo che scorre.
+      // tastiera invece di salire con essa. Due righe (bottone e link) sulla
+      // fascia di vetro: il testo dietro è sfocato, il link si legge.
       child: StickyCtaScaffold(
         appBar: AppBar(
           title: Text(
@@ -377,7 +377,6 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
         ),
         // Il nuovo viaggio ha bottone e link; la modifica solo il bottone.
         ctaHeightOverride: _isEdit ? null : _newTripCtaHeight(context),
-        ctaBackgroundColor: Theme.of(context).scaffoldBackgroundColor,
         bottomContent: _buildBottomBar(context),
         body: Builder(
           builder: (context) => SingleChildScrollView(
