@@ -10,6 +10,7 @@ import 'package:pack_log/features/items/view/item_sheet.dart';
 import 'package:pack_log/features/spaces/model/space_model.dart';
 import 'package:pack_log/features/spaces/repositories/space_repository.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/quantity_stepper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
@@ -168,5 +169,33 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('sheet_close')).hitTestable(), findsOneWidget);
+    // Il bilanciere non si rimpicciolisce: i +/- restano da 48 per lato.
+    final buttons = find.descendant(
+      of: find.byType(QuantityStepper),
+      matching: find.byType(IconButton),
+    );
+    expect(buttons, findsNWidgets(2));
+    for (final button in buttons.evaluate()) {
+      final size = tester.getSize(find.byWidget(button.widget));
+      expect(size.width, greaterThanOrEqualTo(48));
+      expect(size.height, greaterThanOrEqualTo(48));
+    }
   });
+
+  testWidgets(
+    'a testo normale quantità e bilanciere stanno sulla stessa riga',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await _pumpSheet(tester, item: _calzini(spaceId: 's1'));
+
+      final labelY = tester.getCenter(find.text('items.quantity'.tr())).dy;
+      final stepperY = tester.getCenter(find.byType(QuantityStepper)).dy;
+      expect(stepperY, closeTo(labelY, 2));
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

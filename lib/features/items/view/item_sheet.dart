@@ -629,18 +629,13 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
             if (!_isScan) ...[
               _InlineField(
                 label: 'items.quantity'.tr(),
-                // A testo ingrandito l'etichetta lascia poco spazio: il
-                // bilanciere si rimpicciolisce invece di sforare.
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: QuantityStepper(
-                    value: _quantity,
-                    minValue: 1,
-                    // Neutro: nella scheda l'arancio è del bottone
-                    // e della categoria scelta.
-                    accentColor: cs.onSurface,
-                    onChanged: (v) => setState(() => _quantity = v),
-                  ),
+                child: QuantityStepper(
+                  value: _quantity,
+                  minValue: 1,
+                  // Neutro: nella scheda l'arancio è del bottone
+                  // e della categoria scelta.
+                  accentColor: cs.onSurface,
+                  onChanged: (v) => setState(() => _quantity = v),
                 ),
               ),
               _InlineField(
@@ -736,15 +731,17 @@ class _InlineField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(top: context.spacingSm),
-      child: Row(
+      // Su una riga finché ci stanno entrambi: l'etichetta a sinistra, il
+      // controllo a destra. Se non ci stanno, il controllo va a capo sotto,
+      // allineato a destra, alla sua dimensione piena.
+      child: OverflowBar(
+        alignment: MainAxisAlignment.spaceBetween,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: context.spacingMd,
+        overflowSpacing: context.spacingXs,
         children: [
           Text(label, style: DsFieldLabel.prominentStyle(context)),
-          SizedBox(width: context.spacingMd),
-          // Il controllo sta a destra e, se è lungo (il nome di uno spazio),
-          // si stringe lui: l'etichetta resta intera.
-          Expanded(
-            child: Align(alignment: Alignment.centerRight, child: child),
-          ),
+          child,
         ],
       ),
     );
