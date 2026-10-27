@@ -61,7 +61,6 @@ void main() {
     expect(AppOpacity.shadow, 0.12);
     expect(AppOpacity.mutedBorder, 0.5);
     expect(AppOpacity.navGlass, 0.78);
-    expect(AppOpacity.ctaScrim, 0.72);
     expect(AppOpacity.textSelection, 0.24);
   });
 

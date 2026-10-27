@@ -155,7 +155,7 @@ class _TripDetail extends ConsumerWidget {
                 houseNames: {for (final h in houses) h.id: h.displayName},
               ),
             ),
-            PackWeatherSection(tripId: trip.id),
+            PackWeatherSection(trip: trip),
             if (trip.luggages.isNotEmpty) ...[
               DsSectionTitle('trips.pack.luggages'.tr()),
               Wrap(

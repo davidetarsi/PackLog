@@ -18,9 +18,6 @@ abstract final class AppOpacity {
   /// Vetro della barra galleggiante: quanto è opaca la superficie.
   static const double navGlass = 0.78;
 
-  /// Velo dello sfondo sotto il bottone principale in fondo (StickyCtaScaffold).
-  static const double ctaScrim = 0.72;
-
   /// Colore del testo selezionato (velo sul testo, non sullo sfondo).
   static const double textSelection = 0.24;
 }

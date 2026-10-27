@@ -649,7 +649,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
                   onDismiss: _dismissWarning,
                 ),
               ],
-              PackWeatherSection(tripId: trip.id),
+              PackWeatherSection(trip: trip),
               DsSectionTitle('trips.pack.luggages'.tr()),
               _luggageSection(context),
               DsSectionTitle('trips.pack.items'.tr()),
