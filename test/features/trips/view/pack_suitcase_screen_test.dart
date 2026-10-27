@@ -415,6 +415,42 @@ void main() {
       expect(find.text('Spazzolino'), findsOneWidget);
       expect(find.text('Maglietta'), findsNothing);
     });
+
+    testWidgets('la ricerca della valigia ha la x', (tester) async {
+      arrange(
+        items: {
+          'h1': [_maglietta, _spazzolino],
+        },
+      );
+      await pumpPack(tester);
+
+      expect(find.byKey(const Key('ds_search_clear')), findsNothing);
+      await tester.enterText(find.byType(TextField), 'spazz');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('ds_search_clear')), findsOneWidget);
+    });
+
+    testWidgets('la x della valigia svuota e rimette gli oggetti', (
+      tester,
+    ) async {
+      arrange(
+        items: {
+          'h1': [_maglietta, _spazzolino],
+        },
+      );
+      await pumpPack(tester);
+
+      await tester.enterText(find.byType(TextField), 'spazz');
+      await tester.pumpAndSettle();
+      expect(find.text('Maglietta'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('ds_search_clear')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Maglietta'), findsOneWidget);
+      expect(find.text('Spazzolino'), findsOneWidget);
+    });
   });
 
   group('PackSuitcaseScreen — selezione', () {

@@ -15,7 +15,7 @@ import '../../../../shared/widgets/location_result_row.dart';
 import '../../../houses/model/house_model.dart';
 import '../../../houses/providers/house_provider.dart';
 import '../../model/trip_draft.dart';
-import '../../../../shared/widgets/ds_field.dart';
+import '../../../../shared/widgets/ds_search_field.dart';
 
 /// Caratteri minimi prima di cercare luoghi: come [LocationAutocompleteField].
 const int _minCharsForPlaces = 3;
@@ -205,21 +205,12 @@ class _PlaceSearchState extends ConsumerState<PlaceSearch> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        TextField(
+        DsSearchField(
           controller: _controller,
           focusNode: _focusNode,
           autofocus: widget.autofocus,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: dsFieldDecoration(
-            context,
-            hasError: widget.hasError,
-            hintText: widget.hintText ?? 'trips.new.where_hint'.tr(),
-            prefixIcon: Icon(
-              Icons.search,
-              size: context.iconSizeMd,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
+          hasError: widget.hasError,
+          hintText: widget.hintText ?? 'trips.new.where_hint'.tr(),
         ),
         if (showResults && _searchError != null)
           LocationSearchFeedback(

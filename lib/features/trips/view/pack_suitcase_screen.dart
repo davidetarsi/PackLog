@@ -45,6 +45,7 @@ import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
 import 'widgets/trip_edit_placeholder.dart';
 import '../../../shared/widgets/ds_section_title.dart';
+import '../../../shared/widgets/ds_search_field.dart';
 
 /// Lettere della ricerca da cui, se ci sono risultati, compare anche la riga
 /// "Aggiungi". Senza risultati compare subito.
@@ -776,28 +777,11 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
 
   /// Campo della ricerca, uguale nelle due modalità.
   Widget _searchField(BuildContext context, {required String hint}) {
-    final cs = Theme.of(context).colorScheme;
-    return TextField(
+    // La x svuota e chiama onChanged(''): la lista torna intera.
+    return DsSearchField(
       controller: _searchController,
+      hintText: hint,
       onChanged: (value) => setState(() => _query = value.trim()),
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: Icon(
-          Icons.search,
-          size: context.iconSizeMd,
-          color: cs.onSurfaceVariant,
-        ),
-        filled: true,
-        fillColor: context.groupSurface,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: context.spacingMd,
-          vertical: context.spacingMd,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          borderSide: BorderSide.none,
-        ),
-      ),
     );
   }
 

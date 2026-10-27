@@ -20,14 +20,6 @@ void main() {
   };
   const allowedDirs = <String>['lib/shared/dev/'];
 
-  // Temporanei: li migra il Task 4 (DsSearchField).
-  const temporary = <String>{
-    'lib/features/trips/view/widgets/place_search.dart',
-    'lib/shared/widgets/location_autocomplete_field.dart',
-    'lib/features/trips/view/pack_suitcase_screen.dart',
-    'lib/features/houses/view/house_detail_screen.dart',
-  };
-
   test('nessun TextField fuori dai campi del design system', () {
     final offenders = <String>[];
 
@@ -38,7 +30,6 @@ void main() {
           path.endsWith('.g.dart') ||
           path.endsWith('.freezed.dart') ||
           allowed.contains(path) ||
-          temporary.contains(path) ||
           allowedDirs.any(path.startsWith)) {
         continue;
       }
