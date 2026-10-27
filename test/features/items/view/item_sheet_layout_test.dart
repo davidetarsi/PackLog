@@ -177,8 +177,8 @@ void main() {
     expect(buttons, findsNWidgets(2));
     for (final button in buttons.evaluate()) {
       final size = tester.getSize(find.byWidget(button.widget));
-      expect(size.width, greaterThanOrEqualTo(48));
-      expect(size.height, greaterThanOrEqualTo(48));
+      expect(size.width, greaterThanOrEqualTo(kMinInteractiveDimension));
+      expect(size.height, greaterThanOrEqualTo(kMinInteractiveDimension));
     }
   });
 

@@ -76,7 +76,10 @@ class QuantityStepper extends StatelessWidget {
           iconSize: effectiveIconSize,
           padding: EdgeInsets.zero,
           // Area di tocco minima da 48: l'icona resta piccola, il tocco no.
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          constraints: const BoxConstraints(
+            minWidth: kMinInteractiveDimension,
+            minHeight: kMinInteractiveDimension,
+          ),
           // Standard, non compact: il compact ridurrebbe il minimo di 48.
           visualDensity: VisualDensity.standard,
         ),
@@ -106,7 +109,10 @@ class QuantityStepper extends StatelessWidget {
           iconSize: effectiveIconSize,
           padding: EdgeInsets.zero,
           // Area di tocco minima da 48: l'icona resta piccola, il tocco no.
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          constraints: const BoxConstraints(
+            minWidth: kMinInteractiveDimension,
+            minHeight: kMinInteractiveDimension,
+          ),
           // Standard, non compact: il compact ridurrebbe il minimo di 48.
           visualDensity: VisualDensity.standard,
         ),
