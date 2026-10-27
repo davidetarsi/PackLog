@@ -7,6 +7,7 @@ import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/ds_section_title.dart';
+import '../../../model/trip_model.dart';
 import '../../../model/trip_weather.dart';
 import '../../../providers/trip_weather_provider.dart';
 import '../../../../../shared/widgets/ds_divider.dart';
@@ -30,15 +31,22 @@ const _kRefreshSpin = Duration(milliseconds: 600);
 /// Sezione "Meteo" della pagina valigia: una riga per tappa con temperature e
 /// pioggia, e sotto da dove viene il meteo con "Aggiorna".
 ///
-/// Per un viaggio senza meteo possibile (passato, senza date) non mostra
+/// Per un viaggio senza meteo possibile (finito, senza date) non mostra
 /// niente, nemmeno il titolo.
 class PackWeatherSection extends ConsumerWidget {
-  const PackWeatherSection({super.key, required this.tripId});
+  const PackWeatherSection({super.key, required this.trip});
 
-  final String tripId;
+  final TripModel trip;
+
+  String get tripId => trip.id;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Un viaggio finito non ha meteo da guardare né da aggiornare. Si decide
+    // qui, all'ora esatta, senza leggere il meteo: quello in memoria può
+    // essere di quando il viaggio era ancora in corso.
+    if (trip.isCompleted) return const SizedBox.shrink();
+
     final provider = tripWeatherNotifierProvider(tripId);
     final weatherAsync = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
