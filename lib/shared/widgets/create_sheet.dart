@@ -48,16 +48,23 @@ class CreateSheet extends ConsumerStatefulWidget {
 }
 
 class _CreateSheetState extends ConsumerState<CreateSheet> {
-  String? _selectedHouseId;
+  /// Casa scelta per la scansione e per gli oggetti a mano: due scelte
+  /// separate, che partono entrambe dalla casa principale.
+  String? _scanHouseId;
+  String? _manualHouseId;
 
-  HouseModel? _destination(List<HouseModel> houses) {
+  HouseModel? _destination(List<HouseModel> houses, String? selectedId) {
     for (final h in houses) {
-      if (h.id == _selectedHouseId) return h;
+      if (h.id == selectedId) return h;
     }
     return defaultDestinationHouse(houses);
   }
 
-  Future<void> _chooseHouse(List<HouseModel> houses, HouseModel current) async {
+  /// Apre la scelta della casa; restituisce l'id scelto, null se si chiude.
+  Future<String?> _chooseHouse(
+    List<HouseModel> houses,
+    HouseModel current,
+  ) async {
     final picked = await DsPickerSheet.show<HouseModel>(
       context: context,
       title: 'create_sheet.choose_house'.tr(),
@@ -66,9 +73,7 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
       getIcon: (h) => HouseIcons.getIcon(h.iconName),
       selected: current,
     );
-    if (picked != null && mounted) {
-      setState(() => _selectedHouseId = picked.id);
-    }
+    return mounted ? picked?.id : null;
   }
 
   void _choose(CreateAction action, [String? houseId]) =>
@@ -77,7 +82,8 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
   @override
   Widget build(BuildContext context) {
     final houses = ref.watch(houseNotifierProvider).valueOrNull ?? const [];
-    final house = _destination(houses);
+    final house = _destination(houses, _scanHouseId);
+    final manualHouse = _destination(houses, _manualHouseId);
     final aiExhausted =
         ref.watch(gptUsageProvider).valueOrNull?.isExhausted ?? false;
 
@@ -116,8 +122,12 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
                   footer: house == null
                       ? null
                       : _HouseChooser(
+                          key: const Key('create_destination'),
                           house: house,
-                          onTap: () => _chooseHouse(houses, house),
+                          onTap: () async {
+                            final id = await _chooseHouse(houses, house);
+                            if (id != null) setState(() => _scanHouseId = id);
+                          },
                         ),
                 ),
                 SizedBox(height: context.spacingSm),
@@ -143,12 +153,23 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
             key: const Key('create_manual_items'),
             icon: Icons.edit_outlined,
             title: 'create_sheet.manual'.tr(),
-            subtitle: house == null
+            subtitle: manualHouse == null
                 ? 'create_sheet.manual_need_house'.tr()
-                : 'create_sheet.manual_hint'.tr(args: [house.displayName]),
-            onTap: house == null
+                : 'create_sheet.manual_hint'.tr(),
+            // La casa in cui finiscono gli oggetti, come per la scansione.
+            footer: manualHouse == null
                 ? null
-                : () => _choose(CreateAction.manualItems, house.id),
+                : _HouseChooser(
+                    key: const Key('create_manual_destination'),
+                    house: manualHouse,
+                    onTap: () async {
+                      final id = await _chooseHouse(houses, manualHouse);
+                      if (id != null) setState(() => _manualHouseId = id);
+                    },
+                  ),
+            onTap: manualHouse == null
+                ? null
+                : () => _choose(CreateAction.manualItems, manualHouse.id),
           ),
           _CreateRow(
             key: const Key('create_new_trip'),
@@ -281,7 +302,7 @@ class _HouseChooser extends StatelessWidget {
   final HouseModel house;
   final VoidCallback onTap;
 
-  const _HouseChooser({required this.house, required this.onTap});
+  const _HouseChooser({super.key, required this.house, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +310,6 @@ class _HouseChooser extends StatelessWidget {
     final color = colorScheme.onSurface;
 
     return InkWell(
-      key: const Key('create_destination'),
       borderRadius: BorderRadius.circular(AppConstants.smallBorderRadius),
       onTap: onTap,
       child: ConstrainedBox(
@@ -327,6 +347,9 @@ class _CreateRow extends StatelessWidget {
   final String subtitle;
   final bool emphasized;
 
+  /// Sotto il sottotitolo: la scelta della casa per gli oggetti a mano.
+  final Widget? footer;
+
   /// `null` spegne la riga (oggetti a mano senza nessuna casa).
   final VoidCallback? onTap;
 
@@ -337,6 +360,7 @@ class _CreateRow extends StatelessWidget {
     required this.subtitle,
     this.onTap,
     this.emphasized = false,
+    this.footer,
   });
 
   @override
@@ -368,7 +392,12 @@ class _CreateRow extends StatelessWidget {
               ).textTheme.bodyLarge?.copyWith(color: colorScheme.primary)
             : null,
       ),
-      subtitle: Text(subtitle),
+      subtitle: footer == null
+          ? Text(subtitle)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [Text(subtitle), footer!],
+            ),
     );
   }
 }
