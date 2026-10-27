@@ -1847,9 +1847,10 @@ final flows = <Flow>[
         await app.go('/trips');
         await app.push('/trips/$kUpcomingTripId/edit-items');
         await app.tester.ensureVisible(
-          find.byKey(const Key('pack_new_luggage')),
+          find.byKey(const Key('pack_manage_luggages')),
         );
-        await app.tap(find.byKey(const Key('pack_new_luggage')));
+        await app.tap(find.byKey(const Key('pack_manage_luggages')));
+        await app.tap(find.byKey(const Key('storage_add_luggage')));
         await app.enterText(
           find.byKey(const Key('luggage_sheet_name')),
           'Zaino trekking',
