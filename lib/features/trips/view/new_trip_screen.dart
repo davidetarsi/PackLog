@@ -447,7 +447,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       key: _whereKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DsSectionTitle('trips.new.where'.tr()),
+        DsSectionTitle('trips.new.where'.tr(), isRequired: true),
         if (place == null)
           PlaceSearch(
             key: const Key('new_trip_place_search'),
@@ -495,7 +495,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       key: _whenKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DsSectionTitle('trips.new.when'.tr()),
+        DsSectionTitle('trips.new.when'.tr(), isRequired: true),
         DsFieldBox(
           key: const Key('new_trip_dates'),
           icon: Icons.calendar_today_outlined,
@@ -659,10 +659,12 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
         onDisabledTap: _draft.canSave ? null : _showMissing,
       );
     }
+    // Senza meta e date i link sono spenti come i bottoni; toccare un
+    // bottone spento mostra cosa manca.
     final later = DsLinkButton(
       key: const Key('new_trip_later'),
       label: 'trips.new.later'.tr(),
-      onPressed: _onLater,
+      onPressed: _draft.canSave ? _onLater : null,
     );
 
     if (widget.aiIntent) {
@@ -673,32 +675,37 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
           DsLinkButton(
             key: const Key('new_trip_manual'),
             label: 'trips.new.pack_myself'.tr(),
-            onPressed: _onPackMyself,
+            onPressed: _draft.canSave ? _onPackMyself : null,
           ),
           later,
         ],
       );
     }
+    // Prima la valigia con AI, arancio; "Avanti" a mano è la seconda strada,
+    // a contorno neutro.
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _prepareAiButton(),
+        SizedBox(height: context.spacingSm),
         DsButton(
           key: const Key('new_trip_next'),
+          variant: DsButtonVariant.neutral,
           label: 'trips.new.next'.tr(),
           icon: Icons.arrow_forward,
           expand: true,
-          isLoading: _saving,
-          onPressed: _draft.canSave ? () => _save(goToPacking: true) : null,
-          onDisabledTap: _showMissing,
+          onPressed: _draft.canSave && !_saving
+              ? () => _save(goToPacking: true)
+              : null,
+          onDisabledTap: _saving ? null : _showMissing,
         ),
-        SizedBox(height: context.spacingSm),
-        _prepareAiOutlined(context),
         later,
       ],
     );
   }
 
-  /// "Prepara con AI" primario, con [NewTripScreen.aiIntent].
+  /// "Prepara con AI": la strada principale, arancio. Spento finché mancano
+  /// meta o date; il tocco da spento mostra cosa manca.
   Widget _prepareAiButton() {
     return DsButton(
       key: const Key('new_trip_prepare_ai'),
@@ -710,26 +717,6 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
           ? () => _save(goToPacking: true, withAi: true)
           : null,
       onDisabledTap: _showMissing,
-    );
-  }
-
-  /// "Prepara con AI" sotto "Avanti": contorno neutro, perché l'arancio del
-  /// passo 1 è solo "Avanti" (come la scelta neutra di "Avanti" nel foglio
-  /// valigia). Stessa altezza del bottone primario. Senza campi, il tocco
-  /// mostra gli errori invece di spegnersi.
-  Widget _prepareAiOutlined(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: DsButton(
-        key: const Key('new_trip_prepare_ai'),
-        variant: DsButtonVariant.neutral,
-        expand: true,
-        onPressed: _draft.canSave
-            ? () => _save(goToPacking: true, withAi: true)
-            : _showMissing,
-        icon: Icons.auto_awesome,
-        label: 'trips.new.prepare_with_ai'.tr(),
-      ),
     );
   }
 }

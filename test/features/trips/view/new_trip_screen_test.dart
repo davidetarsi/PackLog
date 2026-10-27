@@ -26,6 +26,7 @@ import 'package:pack_log/shared/model/location_type.dart';
 import 'package:pack_log/shared/services/location_search_service.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
+import 'package:pack_log/shared/widgets/ds_link_button.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
@@ -359,52 +360,90 @@ void main() {
   });
 
   group('NewTripScreen — valigia con AI', () {
-    testWidgets('nel passo 1 "Prepara con AI" è un contorno neutro sotto '
-        '"Avanti"', (tester) async {
+    testWidgets('nel passo 1 "Prepara con AI" è il primario in alto, '
+        '"Avanti" un contorno neutro sotto', (tester) async {
       await pumpScreen(tester);
 
       final ai = find.byKey(const Key('new_trip_prepare_ai'));
+      final next = find.byKey(const Key('new_trip_next'));
       final scheme = Theme.of(tester.element(ai)).colorScheme;
-      final button = tester.widget<DsButton>(ai);
-      expect(button.variant, DsButtonVariant.neutral);
-      final label = tester.widget<Text>(
-        find.descendant(of: ai, matching: find.text('Prepara con AI')),
-      );
-      expect(label.style?.color, scheme.onSurface);
+      expect(tester.widget<DsButton>(ai).variant, DsButtonVariant.primary);
+      expect(tester.widget<DsButton>(next).variant, DsButtonVariant.neutral);
       final container = tester.widget<Container>(
-        find.descendant(of: ai, matching: find.byType(Container)).first,
+        find.descendant(of: next, matching: find.byType(Container)).first,
       );
       final border = (container.decoration! as BoxDecoration).border! as Border;
       expect(border.top.color, scheme.outline);
       expect(
-        find.descendant(of: ai, matching: find.text('Prepara con AI')),
-        findsOneWidget,
-      );
-      expect(
         find.descendant(of: ai, matching: find.byIcon(Icons.auto_awesome)),
         findsOneWidget,
       );
-      expect(
-        tester.getSize(ai).height,
-        tester.getSize(find.byKey(const Key('new_trip_next'))).height,
-      );
+      expect(tester.getSize(ai).height, tester.getSize(next).height);
       double y(String key) => tester.getTopLeft(find.byKey(Key(key))).dy;
-      expect(y('new_trip_next'), lessThan(y('new_trip_prepare_ai')));
-      expect(y('new_trip_prepare_ai'), lessThan(y('new_trip_later')));
+      expect(y('new_trip_prepare_ai'), lessThan(y('new_trip_next')));
+      expect(y('new_trip_next'), lessThan(y('new_trip_later')));
     });
 
-    testWidgets('nel passo 1 solo "Avanti" usa il colore primario', (
+    testWidgets('a modulo vuoto bottoni e link sono spenti, poi si accendono', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+      expect(
+        tester
+            .widget<DsButton>(find.byKey(const Key('new_trip_prepare_ai')))
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<DsButton>(find.byKey(const Key('new_trip_next')))
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<DsLinkButton>(find.byKey(const Key('new_trip_later')))
+            .onPressed,
+        isNull,
+      );
+
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      expect(
+        tester
+            .widget<DsButton>(find.byKey(const Key('new_trip_prepare_ai')))
+            .onPressed,
+        isNotNull,
+      );
+      expect(
+        tester
+            .widget<DsLinkButton>(find.byKey(const Key('new_trip_later')))
+            .onPressed,
+        isNotNull,
+      );
+    });
+
+    testWidgets('"Dove vai?" e "Quando?" hanno l\'asterisco, il nome no', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+      expect(find.text('Dove vai? *'), findsOneWidget);
+      expect(find.text('Quando? *'), findsOneWidget);
+      expect(find.textContaining('Nome del viaggio *'), findsNothing);
+    });
+
+    testWidgets('nel passo 1 solo "Prepara con AI" usa il colore primario', (
       tester,
     ) async {
       await pumpScreen(tester);
 
-      final next = find.byKey(const Key('new_trip_next'));
-      final primary = Theme.of(tester.element(next)).colorScheme.primary;
-      // Tutto ciò che sta dentro "Avanti" è suo: il resto della schermata no.
+      final ai = find.byKey(const Key('new_trip_prepare_ai'));
+      final primary = Theme.of(tester.element(ai)).colorScheme.primary;
+      // Tutto ciò che sta dentro "Prepara con AI" è suo: il resto no.
       final avanti = find
-          .descendant(of: next, matching: find.byWidgetPredicate((_) => true))
+          .descendant(of: ai, matching: find.byWidgetPredicate((_) => true))
           .evaluate()
-          .followedBy(next.evaluate())
+          .followedBy(ai.evaluate())
           .toSet();
 
       bool usesPrimary(Widget w) {
@@ -798,12 +837,17 @@ void main() {
       verifyNever(() => tripRepo.addTrip(any()));
     });
 
-    testWidgets('Più tardi a modulo vuoto mostra i due messaggi', (
+    testWidgets('Più tardi a modulo vuoto è spento e non salva', (
       tester,
     ) async {
       await pumpScreen(tester);
 
       await tester.tap(find.byKey(const Key('new_trip_later')));
+      await tester.pumpAndSettle();
+      verifyNever(() => tripRepo.addTrip(any()));
+
+      // Il tocco su un bottone spento dice cosa manca.
+      await tester.tap(find.byKey(const Key('new_trip_next')));
       await tester.pumpAndSettle();
 
       expect(

@@ -11,7 +11,9 @@ import 'ds_text_button.dart';
 /// freccia basta a dire che si tocca.
 class DsLinkButton extends StatelessWidget {
   final String label;
-  final VoidCallback onPressed;
+
+  /// `null` spegne il link, come un bottone spento.
+  final VoidCallback? onPressed;
   final IconData? icon;
 
   const DsLinkButton({
