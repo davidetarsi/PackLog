@@ -186,8 +186,9 @@ List<ItineraryEntry> buildItinerary(
   return entries;
 }
 
-/// Tipo di francobollo della cartolina.
-enum StampKind { daysLeft, today, traveling, noDate }
+/// Tipo di francobollo della cartolina. [StampKind.past] è un viaggio il cui
+/// ritorno è già passato: niente giorni, né "oggi".
+enum StampKind { daysLeft, today, traveling, past, noDate }
 
 /// Francobollo della cartolina: stato e, per [StampKind.daysLeft], i giorni.
 ///
@@ -202,6 +203,10 @@ enum StampKind { daysLeft, today, traveling, noDate }
       !now.isBefore(departure) &&
       (returnAt == null || !now.isAfter(returnAt));
   if (traveling) return (kind: StampKind.traveling, days: null);
+
+  if (returnAt != null && now.isAfter(returnAt)) {
+    return (kind: StampKind.past, days: null);
+  }
 
   if (departure == null) return (kind: StampKind.noDate, days: null);
 

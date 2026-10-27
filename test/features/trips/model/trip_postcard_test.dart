@@ -466,6 +466,29 @@ void main() {
 
       expect(stampFor(trip, now).kind, StampKind.noDate);
     });
+
+    test('viaggio finito: past, senza giorni', () {
+      final trip = makeTrip(
+        's5',
+        departure: DateTime(2026, 10, 10, 9),
+        returnAt: DateTime(2026, 10, 15, 9),
+      );
+
+      final stamp = stampFor(trip, now);
+
+      expect(stamp.kind, StampKind.past);
+      expect(stamp.days, isNull);
+    });
+
+    test('gita di oggi già finita: past', () {
+      final trip = makeTrip(
+        's6',
+        departure: DateTime(2026, 10, 19, 8),
+        returnAt: DateTime(2026, 10, 19, 9),
+      );
+
+      expect(stampFor(trip, now).kind, StampKind.past);
+    });
   });
 
   group('ctaFor', () {

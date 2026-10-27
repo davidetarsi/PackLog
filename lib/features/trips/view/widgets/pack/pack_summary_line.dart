@@ -123,6 +123,7 @@ String? tripStampLabel(TripModel trip) {
     StampKind.daysLeft => 'trips.pack.days_left'.plural(stamp.days ?? 0),
     StampKind.today => 'trips.postcard.today'.tr(),
     StampKind.traveling => 'trips.postcard.traveling'.tr(),
+    StampKind.past => null,
     StampKind.noDate => null,
   };
 }
