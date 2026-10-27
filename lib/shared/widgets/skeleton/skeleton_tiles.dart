@@ -82,9 +82,9 @@ class SkeletonHouseCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SkeletonBox(width: 140, height: 16),
+                      SkeletonBox(width: 140, height: 18),
                       SizedBox(height: context.spacingXs),
-                      SkeletonBox(width: 100, height: 12),
+                      SkeletonBox(width: 100, height: 14),
                     ],
                   ),
                 ),

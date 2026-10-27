@@ -201,6 +201,7 @@ class _HouseCard extends ConsumerWidget {
                             child: Text(
                               house.displayName,
                               style: tt.titleMedium?.copyWith(
+                                fontSize: AppSpacing.fontMd,
                                 fontWeight: FontWeight.w600,
                               ),
                               maxLines: 1,
@@ -223,7 +224,7 @@ class _HouseCard extends ConsumerWidget {
                       if (place != null)
                         Text(
                           place,
-                          style: tt.bodyMedium?.copyWith(
+                          style: tt.bodyLarge?.copyWith(
                             color: cs.onSurfaceVariant,
                           ),
                           maxLines: 1,
@@ -232,7 +233,7 @@ class _HouseCard extends ConsumerWidget {
                       if (statsLine != null)
                         Text(
                           statsLine,
-                          style: tt.bodySmall?.copyWith(
+                          style: tt.bodyMedium?.copyWith(
                             color: cs.onSurfaceVariant,
                           ),
                           maxLines: 1,
