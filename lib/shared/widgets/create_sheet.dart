@@ -187,6 +187,7 @@ class _AiScanCard extends StatelessWidget {
         : isDark
         ? colorScheme.primaryContainer
         : Color.alphaBlend(
+            // Non è una selezione: la card Scansiona ha il suo velo.
             colorScheme.primary.withValues(alpha: 0.22),
             colorScheme.surface,
           );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../model/item_model.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/app_opacity.dart';
 import '../../../shared/theme/app_spacing.dart';
 
 enum CategoryPillState { inactive, inferred, forced }
@@ -39,7 +40,7 @@ class CategoryPill extends StatelessWidget {
       // Scelta: fondo tenue, mai pieno. L'arancio pieno resta all'azione
       // principale dello schermo (regola "un solo arancio").
       case CategoryPillState.forced:
-        backgroundColor = categoryColor.withValues(alpha: 0.18);
+        backgroundColor = categoryColor.withValues(alpha: AppOpacity.selected);
         foregroundColor = categoryColor;
         borderColor = categoryColor;
     }
