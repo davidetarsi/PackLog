@@ -210,7 +210,7 @@ void main() {
   });
 
   testWidgets(
-    'quando si nasconde la tastiera con il focus la ricerca si chiude',
+    'nascondere la tastiera lascia la ricerca aperta; il Back dopo la chiude',
     (tester) async {
       final app = await openHome(tester);
       await app.tap(find.byKey(const Key('house_search')));
@@ -224,13 +224,23 @@ void main() {
       );
       expect(tester.widget<EditableText>(field).focusNode.hasFocus, isTrue);
 
+      // Il primo Back di Android lo consuma la tastiera: scompare e basta.
       tester.view.viewInsets = FakeViewPadding.zero;
       tester.binding.handleMetricsChanged();
       await tester.pump();
       await app.settle();
 
+      expect(find.byKey(const Key('house_search_field')), findsOneWidget);
+      expect(tester.widget<EditableText>(field).focusNode.hasFocus, isFalse);
+      expect(find.text('Calzini'), findsOneWidget);
+      expect(find.text('Jeans blu'), findsNothing);
+
+      // Il Back successivo chiude la ricerca e resta sulla casa.
+      await tester.binding.handlePopRoute();
+      await app.settle();
       expect(find.byKey(const Key('house_search_field')), findsNothing);
       expect(find.text('Jeans blu'), findsOneWidget);
+      expect(find.text('Casa Milano'), findsOneWidget);
       await app.finish();
     },
   );
