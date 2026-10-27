@@ -258,6 +258,7 @@
     },
     "detail": {
       "edit_trip": "Edit trip",
+      "reuse_trip": "Reuse trip",
       "duplicate": "Duplicate",
       "save": "Add to saved",
       "unsave": "Remove from saved",
