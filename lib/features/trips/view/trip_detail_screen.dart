@@ -113,7 +113,7 @@ class _TripDetail extends ConsumerWidget {
                 value: _TripMenu.delete,
                 child: Text(
                   'common.delete'.tr(),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.error,
                   ),
                 ),

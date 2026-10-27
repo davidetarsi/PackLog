@@ -183,7 +183,7 @@ class _AddEditSpaceSheetState extends ConsumerState<AddEditSpaceSheet> {
               value: true,
               child: Text(
                 'spaces.delete'.tr(),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.error,
                 ),
               ),

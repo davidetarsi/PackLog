@@ -566,7 +566,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                 value: _ItemMenu.delete,
                 child: Text(
                   'common.delete'.tr(),
-                  style: textTheme.bodySmall?.copyWith(color: cs.error),
+                  style: textTheme.bodyLarge?.copyWith(color: cs.error),
                 ),
               ),
             ],

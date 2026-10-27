@@ -195,7 +195,7 @@ class _AddEditLuggageSheetState extends ConsumerState<AddEditLuggageSheet> {
               value: true,
               child: Text(
                 'luggages.delete'.tr(),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.error,
                 ),
               ),
