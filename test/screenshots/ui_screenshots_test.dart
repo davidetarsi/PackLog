@@ -199,7 +199,7 @@ Future<void> _openNewTrip(ScreenshotApp app) async {
 Future<void> _searchPlace(ScreenshotApp app, Finder field, String query) async {
   await app.tap(field);
   await app.enterText(field, query);
-  await app.tap(find.byKey(const Key('place_search_location_0')));
+  await app.tap(find.byKey(const Key('location_result_0')));
 }
 
 /// Tocca un giorno del calendario, scorrendolo se fuori schermo.

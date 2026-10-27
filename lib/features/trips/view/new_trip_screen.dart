@@ -88,6 +88,10 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
 
   bool get _isEdit => widget.tripId != null;
 
+  /// "Riusa": la copia di un viaggio passato. Si compila come il passo 1 del
+  /// nuovo viaggio e prosegue verso la valigia con gli oggetti copiati.
+  bool get _isReuse => _isEdit && widget.discardOnExit;
+
   final GlobalKey _whereKey = GlobalKey();
   final GlobalKey _whenKey = GlobalKey();
   final GlobalKey _itineraryKey = GlobalKey();
@@ -243,10 +247,17 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
 
   /// In modifica: riporta i cambiamenti sul viaggio di adesso, che conserva
   /// oggetti, bagagli, valigia AI, nota e tutto il resto.
-  Future<void> _saveEdit() async {
+  ///
+  /// Con "Riusa" non torna indietro: con [goToPacking] apre la valigia della
+  /// copia, altrimenti la tab Viaggi con la copia in evidenza, come il passo 1
+  /// del nuovo viaggio.
+  Future<void> _saveEdit({bool goToPacking = false}) async {
     final original = _original;
     if (_saving || original == null) return;
     setState(() => _saving = true);
+    // Il router si prende prima dell'attesa: dopo la navigazione questo
+    // context non è più montato.
+    final router = GoRouter.of(context);
     final draftTrip = _draft.toTripModel(id: original.id, now: DateTime.now());
     // Il viaggio com'è adesso nel provider, non la copia di apertura: risposte
     // AI, oggetti e bagagli salvati nel frattempo non devono sparire.
@@ -273,10 +284,19 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     );
     if (!mounted) return;
     setState(() => _saving = false);
-    if (saved) {
-      // Prima del pop: l'uscita non va scambiata per un abbandono.
-      _savedOk = true;
+    if (!saved) return;
+    // Prima di uscire: l'uscita non va scambiata per un abbandono.
+    _savedOk = true;
+    if (!_isReuse) {
       context.pop();
+      return;
+    }
+    if (goToPacking) {
+      ref.read(tripWeatherNotifierProvider(original.id));
+      router.go('/trips');
+      router.push('/trips/${original.id}/edit-items?from=new');
+    } else {
+      router.go('/trips?focus=${original.id}');
     }
   }
 
@@ -372,11 +392,21 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       child: StickyCtaScaffold(
         appBar: AppBar(
           title: Text(
-            _isEdit ? 'trips.detail.edit_trip'.tr() : 'trips.new.title'.tr(),
+            _isReuse
+                ? 'trips.detail.reuse_trip'.tr()
+                : _isEdit
+                ? 'trips.detail.edit_trip'.tr()
+                : 'trips.new.title'.tr(),
           ),
         ),
-        // Il nuovo viaggio ha bottone e link; la modifica solo il bottone.
-        ctaHeightOverride: _isEdit ? null : _newTripCtaHeight(context),
+        // Il nuovo viaggio ha bottone e link, "Riusa" anche; la modifica solo
+        // il bottone.
+        ctaHeightOverride: _isReuse
+            ? StickyCtaScaffold.standardHeight(context) +
+                  kMinInteractiveDimension
+            : _isEdit
+            ? null
+            : _newTripCtaHeight(context),
         bottomContent: _buildBottomBar(context),
         body: Builder(
           builder: (context) => SingleChildScrollView(
@@ -389,7 +419,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (!_isEdit)
+                if (!_isEdit || _isReuse)
                   DsSteps(
                     labels: [
                       'trips.new.step_trip'.tr(),
@@ -596,6 +626,29 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
                 kMinInteractiveDimension);
 
   Widget _buildBottomBar(BuildContext context) {
+    if (_isReuse) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DsButton(
+            key: const Key('reuse_next'),
+            label: 'trips.new.next'.tr(),
+            icon: Icons.arrow_forward,
+            expand: true,
+            isLoading: _saving,
+            onPressed: _draft.canSave
+                ? () => _saveEdit(goToPacking: true)
+                : null,
+            onDisabledTap: _showMissing,
+          ),
+          DsLinkButton(
+            key: const Key('reuse_later'),
+            label: 'trips.new.later'.tr(),
+            onPressed: _draft.canSave ? _saveEdit : _showMissing,
+          ),
+        ],
+      );
+    }
     if (_isEdit) {
       return DsButton(
         key: const Key('edit_trip_save'),

@@ -1,35 +1,24 @@
-import 'dart:async';
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../shared/widgets/location_search_feedback.dart';
 import '../../../../shared/constants/house_icons.dart';
-import '../../../../shared/model/model.dart';
-import '../../../../shared/services/location_search_service.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/ds_group_header.dart';
 import '../../../../shared/widgets/ds_settings.dart';
-import '../../../../shared/widgets/location_result_row.dart';
+import '../../../../shared/widgets/location_autocomplete_field.dart';
 import '../../../houses/model/house_model.dart';
 import '../../../houses/providers/house_provider.dart';
 import '../../model/trip_draft.dart';
-import '../../../../shared/widgets/ds_search_field.dart';
 
-/// Caratteri minimi prima di cercare luoghi: come [LocationAutocompleteField].
-const int _minCharsForPlaces = 3;
-
-/// Attesa tra un tasto e la richiesta dei luoghi.
-const Duration _placesDebounce = Duration(milliseconds: 300);
-
-/// Campo unico per scegliere la meta: le case dell'utente e i luoghi della
-/// ricerca. I risultati stanno sotto il campo, nella pagina, non in overlay.
+/// Campo unico per scegliere la meta o una tappa: le case dell'utente e i
+/// luoghi della ricerca. È il [LocationAutocompleteField] di tutta l'app, con
+/// le case sopra i luoghi.
 ///
 /// Il campo vuoto e attivo mostra le case. Scrivendo filtra le case per nome
-/// e, dopo una breve attesa, aggiunge i luoghi del [LocationSearchService].
-/// Scelto un posto, [onSelected] riceve il [DraftPlace] e la lista si chiude.
-class PlaceSearch extends ConsumerStatefulWidget {
+/// e, dopo una breve attesa, aggiunge i luoghi. Scelto un posto, [onSelected]
+/// riceve il [DraftPlace] e la lista si chiude.
+class PlaceSearch extends ConsumerWidget {
   const PlaceSearch({
     super.key,
     required this.onSelected,
@@ -58,239 +47,49 @@ class PlaceSearch extends ConsumerStatefulWidget {
   final bool hasError;
 
   @override
-  ConsumerState<PlaceSearch> createState() => _PlaceSearchState();
-}
-
-class _PlaceSearchState extends ConsumerState<PlaceSearch> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initialText,
-  );
-  final FocusNode _focusNode = FocusNode();
-
-  Timer? _debounceTimer;
-  List<LocationSuggestionModel> _places = const [];
-  Object? _searchError;
-  bool _isSearching = false;
-  String? _searchedQuery;
-  int _requestId = 0;
-
-  /// Vero mentre la scelta scrive il nome nel campo. Il controller notifica
-  /// più volte durante quella scrittura (anche per la selezione del testo),
-  /// quindi il filtro vale per tutta la durata e non per una sola notifica.
-  bool _writingChoice = false;
-
-  /// Ultimo testo visto. Il controller notifica anche quando cambia solo la
-  /// selezione (un tocco che mette il cursore): quelle notifiche non sono
-  /// modifiche del testo e vanno ignorate.
-  late String _lastText;
-
-  @override
-  void initState() {
-    super.initState();
-    // Inizializzato qui e non alla dichiarazione: un valore pigro, letto per la
-    // prima volta dopo una modifica, coinciderebbe con il testo nuovo e il
-    // primo tasto verrebbe scartato.
-    _lastText = _controller.text;
-    _controller.addListener(_onTextChanged);
-    _focusNode.addListener(_onFocusChanged);
-  }
-
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    _controller.removeListener(_onTextChanged);
-    _controller.dispose();
-    _focusNode.removeListener(_onFocusChanged);
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _onFocusChanged() => setState(() {});
-
-  void _onTextChanged() {
-    final text = _controller.text;
-    if (text == _lastText) return;
-    _lastText = text;
-    if (_writingChoice) return;
-
-    widget.onTextChanged?.call(text);
-
-    _debounceTimer?.cancel();
-    final query = _controller.text.trim();
-    // I luoghi mostrati sono della ricerca precedente: durante l'attesa non
-    // devono restare sotto il testo nuovo.
-    setState(() {
-      _places = const [];
-      _searchError = null;
-      _searchedQuery = null;
-      _isSearching = false;
-      _requestId++;
-    });
-    if (query.length < _minCharsForPlaces) return;
-
-    _debounceTimer = Timer(_placesDebounce, () => _searchPlaces(query));
-  }
-
-  Future<void> _searchPlaces(String query) async {
-    if (!mounted || query != _controller.text.trim()) return;
-    final request = ++_requestId;
-    setState(() {
-      _isSearching = true;
-      _searchError = null;
-    });
-    try {
-      final results = await ref
-          .read(locationSearchServiceProvider)
-          .search(query, lang: Localizations.localeOf(context).languageCode);
-      if (!mounted ||
-          request != _requestId ||
-          _controller.text.trim() != query) {
-        return;
-      }
-      setState(() {
-        _places = results;
-        _searchedQuery = query;
-        _isSearching = false;
-      });
-    } catch (error) {
-      if (!mounted ||
-          request != _requestId ||
-          _controller.text.trim() != query) {
-        return;
-      }
-      setState(() {
-        _places = const [];
-        _searchError = error;
-        _isSearching = false;
-      });
-    }
-  }
-
-  void _select(DraftPlace place, String text) {
-    _debounceTimer?.cancel();
-    _requestId++;
-    if (_controller.text != text) {
-      _writingChoice = true;
-      try {
-        _controller.text = text;
-      } finally {
-        _writingChoice = false;
-      }
-    }
-    _focusNode.unfocus();
-    setState(() {
-      _places = const [];
-      _searchError = null;
-      _searchedQuery = null;
-      _isSearching = false;
-    });
-    widget.onSelected(place);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    final query = _controller.text.trim().toLowerCase();
+  Widget build(BuildContext context, WidgetRef ref) {
     final houses = ref.watch(houseNotifierProvider).valueOrNull ?? const [];
-    final matchingHouses = query.isEmpty
-        ? houses
-        : houses
-              .where((h) => h.displayName.toLowerCase().contains(query))
-              .toList();
 
-    final showResults = _focusNode.hasFocus;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        DsSearchField(
-          controller: _controller,
-          focusNode: _focusNode,
-          autofocus: widget.autofocus,
-          hasError: widget.hasError,
-          hintText: widget.hintText ?? 'trips.new.where_hint'.tr(),
-        ),
-        if (showResults && _searchError != null)
-          LocationSearchFeedback(
-            error: _searchError!,
-            onRetry: () => _searchPlaces(_controller.text.trim()),
-          ),
-        if (showResults &&
-            !_isSearching &&
-            _searchError == null &&
-            _searchedQuery != null &&
-            _places.isEmpty)
-          Padding(
-            padding: EdgeInsets.only(top: context.spacingSm),
-            child: Text(
-              'location_search.no_results'.tr(),
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+    return LocationAutocompleteField(
+      initialValue: initialText,
+      autofocus: autofocus,
+      hasError: hasError,
+      hintText: hintText ?? 'trips.new.where_hint'.tr(),
+      placesLabel: 'trips.new.places'.tr(),
+      onTextChanged: onTextChanged,
+      onLocationSelected: (place) => onSelected(DraftPlace.location(place)),
+      leadingResults: (query, fill) {
+        final matching = query.isEmpty
+            ? houses
+            : houses
+                  .where((h) => h.displayName.toLowerCase().contains(query))
+                  .toList();
+        if (matching.isEmpty) return null;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DsGroupHeader(
+              label: 'trips.new.your_homes'.tr(),
+              count: matching.length,
             ),
-          ),
-        if (showResults && matchingHouses.isNotEmpty) ...[
-          SizedBox(height: context.spacingSm),
-          // Il tocco su una riga non deve togliere il focus prima del suo
-          // onTap: senza questo la lista sparisce al primo tocco.
-          TextFieldTapRegion(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            DsSettingsGroup(
               children: [
-                DsGroupHeader(
-                  label: 'trips.new.your_homes'.tr(),
-                  count: matchingHouses.length,
-                ),
-                DsSettingsGroup(
-                  children: [
-                    for (final house in matchingHouses)
-                      _HouseRow(
-                        key: Key('place_search_house_${house.id}'),
-                        house: house,
-                        onTap: () => _select(
-                          DraftPlace.house(
-                            id: house.id,
-                            name: house.displayName,
-                          ),
-                          house.displayName,
-                        ),
-                      ),
-                  ],
-                ),
+                for (final house in matching)
+                  _HouseRow(
+                    key: Key('place_search_house_${house.id}'),
+                    house: house,
+                    onTap: () {
+                      fill(house.displayName);
+                      onSelected(
+                        DraftPlace.house(id: house.id, name: house.displayName),
+                      );
+                    },
+                  ),
               ],
             ),
-          ),
-        ],
-        if (showResults && _places.isNotEmpty) ...[
-          SizedBox(height: context.spacingSm),
-          TextFieldTapRegion(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                DsGroupHeader(
-                  label: 'trips.new.places'.tr(),
-                  count: _places.length,
-                ),
-                DsSettingsGroup(
-                  children: [
-                    for (final (i, place) in _places.indexed)
-                      LocationResultRow(
-                        key: Key('place_search_location_$i'),
-                        place: place,
-                        onTap: () => _select(
-                          DraftPlace.location(place),
-                          place.displayName,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -299,27 +98,6 @@ class _HouseRow extends StatelessWidget {
   const _HouseRow({super.key, required this.house, required this.onTap});
 
   final HouseModel house;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return _ResultRow(
-      icon: HouseIcons.getIcon(house.iconName),
-      label: house.displayName,
-      onTap: onTap,
-    );
-  }
-}
-
-class _ResultRow extends StatelessWidget {
-  const _ResultRow({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
   final VoidCallback onTap;
 
   @override
@@ -335,11 +113,15 @@ class _ResultRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, size: context.iconSizeMd, color: cs.onSurfaceVariant),
+            Icon(
+              HouseIcons.getIcon(house.iconName),
+              size: context.iconSizeMd,
+              color: cs.onSurfaceVariant,
+            ),
             SizedBox(width: context.spacingMd),
             Expanded(
               child: Text(
-                label,
+                house.displayName,
                 style: tt.bodyLarge?.copyWith(color: cs.onSurface),
                 overflow: TextOverflow.ellipsis,
               ),
