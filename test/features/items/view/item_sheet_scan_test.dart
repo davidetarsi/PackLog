@@ -189,6 +189,24 @@ void main() {
       },
     );
 
+    testWidgets(
+      'dubbio confermato senza cambiare valore: Salva si accende e il dubbio va via',
+      (tester) async {
+        await open(tester, maglia.withDoubts(const ['warmth']));
+        expect(onSave(tester), isNull);
+
+        // Si conferma il calore proposto toccando la pillola già scelta.
+        await tester.tap(find.text(warmthLabel(4)));
+        await tester.pumpAndSettle();
+        expect(onSave(tester), isNotNull);
+
+        await tapSave(tester);
+        expect(returned, isNotNull);
+        expect(returned!.warmth, 4);
+        expect(returned!.doubts, isEmpty);
+      },
+    );
+
     testWidgets('nome cambiato: il capo restituito ha il nome nuovo', (
       tester,
     ) async {
