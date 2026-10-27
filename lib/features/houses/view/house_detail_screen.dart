@@ -443,10 +443,11 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
             !(ModalRoute.of(context)?.isCurrent ?? true)) {
           return;
         }
-        // Su Android il Back può essere consumato dall'IME per prima: il focus
-        // resta sul campo mentre la tastiera scompare. Chiudiamo la ricerca
-        // insieme alla tastiera invece di lasciare uno stato intermedio.
-        _closeSearch();
+        // Su Android il primo Back lo consuma la tastiera: il focus resta sul
+        // campo mentre lei scompare. Si toglie solo il focus, così la ricerca
+        // resta aperta e i risultati coperti dalla tastiera tornano visibili;
+        // il Back successivo chiude la ricerca.
+        _searchFocus.unfocus();
       });
     }
 
