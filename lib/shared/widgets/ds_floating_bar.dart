@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
+import '../theme/surface_colors.dart';
 
 /// Effetto vetro della barra (sfocatura dello sfondo). Se sul telefono la
 /// sfocatura fa scattare lo scorrimento, metti `false`: la barra torna a una
@@ -25,14 +26,14 @@ class DsFloatingBar extends StatelessWidget {
       AppConstants.pillBorderRadius,
     );
 
+    // Lo stesso fondo delle card, così barra e card si leggono come una cosa.
+    final surface = context.groupSurface;
     Widget bar = Container(
       height: context.responsive(56.0),
       decoration: BoxDecoration(
         color: _kGlassBar
-            ? colorScheme.surfaceContainer.withValues(
-                alpha: AppOpacity.navGlass,
-              )
-            : colorScheme.surfaceContainer,
+            ? surface.withValues(alpha: AppOpacity.navGlass)
+            : surface,
         borderRadius: radius,
         border: Border.all(
           color: colorScheme.outlineVariant.withValues(

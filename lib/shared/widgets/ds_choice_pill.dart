@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
+import '../theme/surface_colors.dart';
 import 'ds_dashed_box.dart';
 
 /// Pillola di scelta compatta: bordo e testo, niente icone.
@@ -9,7 +10,8 @@ import 'ds_dashed_box.dart';
 /// La faccia è alta [AppConstants.pillTabCompact], ma l'area di tocco è almeno
 /// [kMinInteractiveDimension]. Scelta: bordo e testo onSurface, e nel tema
 /// chiaro anche lo sfondo surfaceContainerHigh. Non scelta: bordo
-/// outlineVariant, testo onSurfaceVariant, senza sfondo.
+/// outlineVariant, testo onSurfaceVariant; nel tema chiaro sullo sfondo
+/// bianco delle card, che la stacca dalla pagina grigia.
 ///
 /// Lo stato di selezione lo decide il chiamante (vedi [DsChoiceGroup]).
 /// Con [dashed] il bordo è tratteggiato: un valore proposto dall'AI e da
@@ -58,7 +60,11 @@ class DsChoicePill extends StatelessWidget {
                     horizontal: context.spacingSmPlus,
                   ),
                   decoration: BoxDecoration(
-                    color: selected && isLight ? cs.surfaceContainerHigh : null,
+                    color: !isLight
+                        ? null
+                        : selected
+                        ? cs.surfaceContainerHigh
+                        : context.groupSurface,
                     borderRadius: radius,
                     border: dashed
                         ? null

@@ -74,7 +74,7 @@ void main() {
     await app.finish();
   });
 
-  testWidgets('le categorie hanno una superficie tonale a blocco', (
+  testWidgets('le categorie stanno su card bianche come le altre', (
     tester,
   ) async {
     final app = await openHome(tester);
@@ -83,7 +83,7 @@ void main() {
       find.byKey(const Key('house_group_surface_vestiti')),
     );
     final decoration = section.decoration as BoxDecoration;
-    expect(decoration.color, AppTheme.light.colorScheme.surfaceContainer);
+    expect(decoration.color, AppTheme.light.colorScheme.surfaceContainerLowest);
     expect(
       decoration.borderRadius,
       BorderRadius.circular(AppConstants.cardBorderRadius),

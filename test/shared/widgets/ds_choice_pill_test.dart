@@ -71,7 +71,7 @@ void main() {
   });
 
   testWidgets(
-    'tema chiaro: non scelta con bordo outlineVariant, testo onSurfaceVariant, senza sfondo',
+    'tema chiaro: non scelta con bordo outlineVariant, testo onSurfaceVariant, sfondo bianco delle card',
     (tester) async {
       final cs = AppTheme.light.colorScheme;
       await pump(
@@ -80,7 +80,7 @@ void main() {
       );
       expect(borderOf(tester), cs.outlineVariant);
       expect(textColorOf(tester), cs.onSurfaceVariant);
-      expect(decorationOf(tester).color, isNull);
+      expect(decorationOf(tester).color, cs.surfaceContainerLowest);
     },
   );
 
