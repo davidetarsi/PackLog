@@ -9,6 +9,7 @@ import 'package:pack_log/features/houses/view/add_edit_house_screen.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/view/item_sheet.dart';
+import 'package:pack_log/shared/widgets/ds_form_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../screenshots/support/harness.dart';
 import '../../../screenshots/support/seed.dart';
@@ -47,6 +48,34 @@ void main() {
     expect(
       (await app.container.read(houseNotifierProvider.future)).length,
       before.length,
+    );
+    await app.finish();
+  });
+
+  testWidgets('il foglio casa usa la cornice comune, con la CTA nel piè', (
+    tester,
+  ) async {
+    final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+    showAddEditHouseSheet(
+      tester.element(find.byType(Scaffold).last),
+      houseId: kHomeId,
+    );
+    await app.settle();
+    expect(find.byType(DsFormSheet), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(DsFormSheet),
+        matching: find.byKey(const Key('house_sheet_save')),
+      ),
+      findsOneWidget,
+    );
+    // Il piè è fuori dal contenuto che scorre.
+    expect(
+      find.ancestor(
+        of: find.byKey(const Key('house_sheet_save')),
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsNothing,
     );
     await app.finish();
   });

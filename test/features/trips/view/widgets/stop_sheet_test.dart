@@ -11,7 +11,9 @@ import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
 import 'package:pack_log/shared/services/location_search_service.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
+import 'package:pack_log/shared/widgets/ds_field_label.dart';
 import 'package:pack_log/shared/widgets/ds_link_button.dart';
+import 'package:pack_log/shared/widgets/ds_section_title.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../helpers/memory_asset_loader.dart';
@@ -343,5 +345,43 @@ void main() {
         expect(stop.end, end);
       },
     );
+  });
+
+  group('cornice del foglio', () {
+    testWidgets('tappa: le sezioni sono etichette del foglio', (tester) async {
+      await _pumpHost(tester, (context) async {
+        await showStopSheet(
+          context,
+          start: _nextMonthDay(7),
+          previousName: 'Lisbona',
+        );
+      });
+
+      expect(find.byType(DsSectionTitle), findsNothing);
+      expect(find.byType(DsFieldLabel), findsAtLeastNWidgets(2));
+    });
+
+    testWidgets('tappa con la tastiera aperta', (tester) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.viewInsets = FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetViewInsets);
+
+      await _pumpHost(tester, (context) async {
+        await showStopSheet(
+          context,
+          start: _nextMonthDay(7),
+          previousName: 'Lisbona',
+        );
+      });
+
+      await tester.tap(find.byKey(const Key('stop_sheet_place')));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(_saveButton().hitTestable(), findsOneWidget);
+    });
   });
 }

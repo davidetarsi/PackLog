@@ -11,14 +11,12 @@ import '../../../shared/constants/space_icons.dart';
 import '../../../shared/helpers/dialog_helpers.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
-import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_error_state.dart';
 import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../../shared/widgets/ds_form_sheet.dart';
 import '../../../shared/widgets/ds_field.dart';
 import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/ds_field_label.dart';
-import '../../../shared/widgets/ds_sheet_header.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/quantity_stepper.dart';
 import '../../ai_input/helpers/ai_item_category.dart';
@@ -41,10 +39,8 @@ Future<void> showItemSheet(
   required String houseId,
   required String itemId,
 }) {
-  return showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
+  return showDsFormSheet(
+    context,
     builder: (_) => ItemSheet(houseId: houseId, itemId: itemId),
   );
 }
@@ -60,10 +56,8 @@ Future<ItemModel?> showNewItemSheet(
   IconData? submitIcon,
   String? footnote,
 }) {
-  return showModalBottomSheet<ItemModel>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
+  return showDsFormSheet<ItemModel>(
+    context,
     builder: (_) => ItemSheet.create(
       houseId: houseId,
       initialName: initialName,
@@ -80,10 +74,8 @@ Future<ClothingAnalysisResult?> showScanItemSheet(
   BuildContext context, {
   required ClothingAnalysisResult result,
 }) {
-  return showModalBottomSheet<ClothingAnalysisResult>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
+  return showDsFormSheet<ClothingAnalysisResult>(
+    context,
     builder: (_) => ItemSheet.scan(result: result),
   );
 }
@@ -554,211 +546,173 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
 
     // Durante il salvataggio il foglio non si chiude: chi l'ha aperto aspetta
     // l'oggetto creato.
-    return PopScope(
-      canPop: !_isSaving,
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(AppConstants.modalBorderRadius),
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                DsSheetHeader(
-                  title: _isNew
-                      ? 'items.new_item'.tr()
-                      : 'items.edit_item'.tr(),
-                  onClose: () => Navigator.pop(context),
-                  actions: [
-                    if (!_isNew && !_isScan)
-                      PopupMenuButton<_ItemMenu>(
-                        key: const Key('item_sheet_menu'),
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (choice) => switch (choice) {
-                          _ItemMenu.move => _moveToHouse(),
-                          _ItemMenu.delete => _delete(),
-                        },
-                        itemBuilder: (_) => [
-                          PopupMenuItem(
-                            value: _ItemMenu.move,
-                            child: Text('items.move_to_house'.tr()),
-                          ),
-                          PopupMenuItem(
-                            value: _ItemMenu.delete,
-                            child: Text(
-                              'common.delete'.tr(),
-                              style: TextStyle(color: cs.error),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
+    return DsFormSheet(
+      title: _isNew ? 'items.new_item'.tr() : 'items.edit_item'.tr(),
+      actions: [
+        if (!_isNew && !_isScan)
+          PopupMenuButton<_ItemMenu>(
+            key: const Key('item_sheet_menu'),
+            icon: const Icon(Icons.more_vert),
+            onSelected: (choice) => switch (choice) {
+              _ItemMenu.move => _moveToHouse(),
+              _ItemMenu.delete => _delete(),
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: _ItemMenu.move,
+                child: Text('items.move_to_house'.tr()),
+              ),
+              PopupMenuItem(
+                value: _ItemMenu.delete,
+                child: Text(
+                  'common.delete'.tr(),
+                  style: TextStyle(color: cs.error),
                 ),
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      context.spacingMd,
-                      0,
-                      context.spacingMd,
-                      context.spacingMd,
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          DsFieldLabel.prominent('items.name_label'.tr()),
-                          TextFormField(
-                            key: const Key('item_sheet_name'),
-                            controller: _nameController,
-                            minLines: 1,
-                            maxLines: 3,
-                            textCapitalization: TextCapitalization.sentences,
-                            decoration: dsFieldDecoration(context),
-                            // Ridisegna la proposta di categoria.
-                            onChanged: (_) => setState(() {}),
-                            validator: (v) => v == null || v.trim().isEmpty
-                                ? 'common.name_required_validation'.tr()
-                                : null,
-                          ),
-                          DsFieldLabel.prominent('items.category_label'.tr()),
-                          SizedBox(
-                            key: const Key('item_sheet_category'),
-                            height: context.responsive(
-                              AppConstants.categoryRowHeight,
-                            ),
-                            child: Row(
-                              children: [
-                                for (final category in ItemCategory.values) ...[
-                                  if (category != ItemCategory.values.first)
-                                    SizedBox(width: context.spacingXs),
-                                  Expanded(
-                                    child: CategoryPill(
-                                      category: category,
-                                      pillState: _pillState(category, inferred),
-                                      onTap: () => _tapCategory(category),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          if (!_isScan) ...[
-                            _InlineField(
-                              label: 'items.quantity'.tr(),
-                              child: QuantityStepper(
-                                value: _quantity,
-                                minValue: 1,
-                                // Neutro: nella scheda l'arancio è del bottone
-                                // e della categoria scelta.
-                                accentColor: cs.onSurface,
-                                onChanged: (v) => setState(() => _quantity = v),
-                              ),
-                            ),
-                            _InlineField(
-                              label: 'items.space_label'.tr(),
-                              child: InkWell(
-                                key: const Key('item_sheet_space'),
-                                borderRadius: BorderRadius.circular(
-                                  AppConstants.inputBorderRadius,
-                                ),
-                                onTap: () => _pickSpace(spaces),
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: context.spacingSm,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          spaceName,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: textTheme.bodyLarge,
-                                        ),
-                                      ),
-                                      Icon(
-                                        Icons.chevron_right,
-                                        size: context.iconSizeMd,
-                                        color: cs.onSurfaceVariant,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                          if (_details case final details?) ...[
-                            // I dettagli hanno titoli dello stesso stile del
-                            // resto della scheda: una linea li separa, senza un
-                            // titolo "Dettagli" che li sovrasti.
-                            Padding(
-                              padding: EdgeInsets.only(top: context.spacingLg),
-                              child: const Divider(height: 1),
-                            ),
-                            ClothingDetailsSection(
-                              details: details,
-                              onChanged: (d) => setState(() => _details = d),
-                              doubts: _doubts,
-                              onDoubtResolved: (field) =>
-                                  setState(() => _doubts.remove(field)),
-                            ),
-                          ],
-                          if (!_isScan) ...[
-                            DsFieldLabel.prominent('items.note_label'.tr()),
-                            TextFormField(
-                              key: const Key('item_sheet_note'),
-                              controller: _noteController,
-                              minLines: 1,
-                              maxLines: 4,
-                              textCapitalization: TextCapitalization.sentences,
-                              decoration: dsFieldDecoration(
-                                context,
-                                hintText: 'items.add_note'.tr(),
-                              ),
-                              // Ridisegna "Salva", attivo solo con una modifica.
-                              onChanged: (_) => setState(() {}),
-                            ),
-                          ],
-                          if (footnote != null)
-                            Padding(
-                              padding: EdgeInsets.only(top: context.spacingMd),
-                              child: Text(
-                                footnote,
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          SizedBox(height: context.spacingLg),
-                          DsButton(
-                            key: const Key('item_sheet_save'),
-                            label: widget.submitLabel ?? 'common.save'.tr(),
-                            icon: widget.submitIcon,
-                            expand: true,
-                            isLoading: _isSaving,
-                            // In modifica, a riposo il foglio non ha arancio
-                            // pieno: "Salva" si accende alla prima modifica.
-                            onPressed: _isNew || _isDirty ? _save : null,
-                          ),
-                        ],
+              ),
+            ],
+          ),
+      ],
+      actionLabel: widget.submitLabel ?? 'common.save'.tr(),
+      actionIcon: widget.submitIcon,
+      actionKey: const Key('item_sheet_save'),
+      // In modifica, a riposo il foglio non ha arancio pieno: "Salva" si
+      // accende alla prima modifica.
+      onSubmit: _isNew || _isDirty ? _save : null,
+      isBusy: _isSaving,
+      // La prima etichetta ha già il suo spazio sopra: niente padding in cima.
+      padding: EdgeInsets.fromLTRB(
+        context.spacingMd,
+        0,
+        context.spacingMd,
+        context.spacingMd,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DsFieldLabel.prominent('items.name_label'.tr()),
+            TextFormField(
+              key: const Key('item_sheet_name'),
+              controller: _nameController,
+              minLines: 1,
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: dsFieldDecoration(context),
+              // Ridisegna la proposta di categoria.
+              onChanged: (_) => setState(() {}),
+              validator: (v) => v == null || v.trim().isEmpty
+                  ? 'common.name_required_validation'.tr()
+                  : null,
+            ),
+            DsFieldLabel.prominent('items.category_label'.tr()),
+            SizedBox(
+              key: const Key('item_sheet_category'),
+              height: context.responsive(AppConstants.categoryRowHeight),
+              child: Row(
+                children: [
+                  for (final category in ItemCategory.values) ...[
+                    if (category != ItemCategory.values.first)
+                      SizedBox(width: context.spacingXs),
+                    Expanded(
+                      child: CategoryPill(
+                        category: category,
+                        pillState: _pillState(category, inferred),
+                        onTap: () => _tapCategory(category),
                       ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (!_isScan) ...[
+              _InlineField(
+                label: 'items.quantity'.tr(),
+                child: QuantityStepper(
+                  value: _quantity,
+                  minValue: 1,
+                  // Neutro: nella scheda l'arancio è del bottone
+                  // e della categoria scelta.
+                  accentColor: cs.onSurface,
+                  onChanged: (v) => setState(() => _quantity = v),
+                ),
+              ),
+              _InlineField(
+                label: 'items.space_label'.tr(),
+                child: InkWell(
+                  key: const Key('item_sheet_space'),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.inputBorderRadius,
+                  ),
+                  onTap: () => _pickSpace(spaces),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: context.spacingSm),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            spaceName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodyLarge,
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          size: context.iconSizeMd,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
+              ),
+            ],
+            if (_details case final details?) ...[
+              // I dettagli hanno titoli dello stesso stile del
+              // resto della scheda: una linea li separa, senza un
+              // titolo "Dettagli" che li sovrasti.
+              Padding(
+                padding: EdgeInsets.only(top: context.spacingLg),
+                child: const Divider(height: 1),
+              ),
+              ClothingDetailsSection(
+                details: details,
+                onChanged: (d) => setState(() => _details = d),
+                doubts: _doubts,
+                onDoubtResolved: (field) =>
+                    setState(() => _doubts.remove(field)),
+              ),
+            ],
+            if (!_isScan) ...[
+              DsFieldLabel.prominent('items.note_label'.tr()),
+              TextFormField(
+                key: const Key('item_sheet_note'),
+                controller: _noteController,
+                minLines: 1,
+                maxLines: 4,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: dsFieldDecoration(
+                  context,
+                  hintText: 'items.add_note'.tr(),
+                ),
+                // Ridisegna "Salva", attivo solo con una modifica.
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+            if (footnote != null)
+              Padding(
+                padding: EdgeInsets.only(top: context.spacingMd),
+                child: Text(
+                  footnote,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -777,15 +731,17 @@ class _InlineField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(top: context.spacingSm),
-      child: Row(
+      // Su una riga finché ci stanno entrambi: l'etichetta a sinistra, il
+      // controllo a destra. Se non ci stanno, il controllo va a capo sotto,
+      // allineato a destra, alla sua dimensione piena.
+      child: OverflowBar(
+        alignment: MainAxisAlignment.spaceBetween,
+        overflowAlignment: OverflowBarAlignment.end,
+        spacing: context.spacingMd,
+        overflowSpacing: context.spacingXs,
         children: [
           Text(label, style: DsFieldLabel.prominentStyle(context)),
-          SizedBox(width: context.spacingMd),
-          // Il controllo sta a destra e, se è lungo (il nome di uno spazio),
-          // si stringe lui: l'etichetta resta intera.
-          Expanded(
-            child: Align(alignment: Alignment.centerRight, child: child),
-          ),
+          child,
         ],
       ),
     );

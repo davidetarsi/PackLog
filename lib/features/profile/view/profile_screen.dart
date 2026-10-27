@@ -28,9 +28,9 @@ import '../../../shared/widgets/tab_header.dart' show profileInitials;
 import '../services/feedback_url_service.dart';
 import '../widgets/sync_status_tile.dart';
 import 'dialogs/profile_delete_account_dialog.dart';
-import 'dialogs/profile_language_dialog.dart';
 import 'dialogs/profile_logout_dialog.dart';
-import 'dialogs/profile_theme_dialog.dart';
+import 'sheets/profile_language_sheet.dart';
+import 'sheets/profile_theme_sheet.dart';
 
 /// Schermata di profilo: unico punto di accesso a preferenze,
 /// sync e informazioni sull'app.
@@ -265,12 +265,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   DsSettingsRow(
                     label: 'settings.language'.tr(),
                     value: languageName,
-                    onTap: () => showProfileLanguageDialog(context),
+                    onTap: () => showProfileLanguageSheet(context),
                   ),
                   DsSettingsRow(
                     label: 'settings.theme'.tr(),
                     value: themeModeName,
-                    onTap: () => showProfileThemeDialog(
+                    onTap: () => showProfileThemeSheet(
                       context,
                       currentThemeMode:
                           ref.read(themeModeNotifierProvider).valueOrNull ??

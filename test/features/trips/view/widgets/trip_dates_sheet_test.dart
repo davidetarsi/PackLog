@@ -7,6 +7,7 @@ import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
 import 'package:pack_log/features/trips/view/widgets/trip_dates_sheet.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
+import 'package:pack_log/shared/widgets/ds_form_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../helpers/memory_asset_loader.dart';
@@ -151,6 +152,19 @@ void main() {
 
       expect(result.value!.departureDate, departure);
       expect(result.value!.returnDate, ret);
+    });
+
+    testWidgets('date: il calendario riempie il foglio e Conferma è nel piè', (
+      tester,
+    ) async {
+      await _pumpHost(tester, (context) async {
+        await showTripRangeSheet(context);
+      });
+
+      final sheet = tester.widget<DsFormSheet>(find.byType(DsFormSheet));
+      expect(sheet.expand, isTrue);
+      expect(find.byType(DsButton).hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 

@@ -1742,8 +1742,8 @@ final flows = <Flow>[
       4,
       'lingua',
       'dialog',
-      source: 'lib/features/profile/view/dialogs/profile_language_dialog.dart',
-      description: 'Dialog scelta lingua.',
+      source: 'lib/features/profile/view/sheets/profile_language_sheet.dart',
+      description: 'Foglio scelta lingua.',
       steps: (app) async {
         await app.go('/');
         await app.push('/profile');
@@ -1754,8 +1754,8 @@ final flows = <Flow>[
       5,
       'tema',
       'dialog',
-      source: 'lib/features/profile/view/dialogs/profile_theme_dialog.dart',
-      description: 'Dialog scelta tema.',
+      source: 'lib/features/profile/view/sheets/profile_theme_sheet.dart',
+      description: 'Foglio scelta tema.',
       steps: (app) async {
         await app.go('/');
         await app.push('/profile');
@@ -1847,9 +1847,10 @@ final flows = <Flow>[
         await app.go('/trips');
         await app.push('/trips/$kUpcomingTripId/edit-items');
         await app.tester.ensureVisible(
-          find.byKey(const Key('pack_new_luggage')),
+          find.byKey(const Key('pack_manage_luggages')),
         );
-        await app.tap(find.byKey(const Key('pack_new_luggage')));
+        await app.tap(find.byKey(const Key('pack_manage_luggages')));
+        await app.tap(find.byKey(const Key('storage_add_luggage')));
         await app.enterText(
           find.byKey(const Key('luggage_sheet_name')),
           'Zaino trekking',

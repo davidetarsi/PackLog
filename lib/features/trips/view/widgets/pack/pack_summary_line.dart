@@ -53,7 +53,7 @@ class PackSummaryLine extends StatelessWidget {
                 title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
               Text(
                 details,

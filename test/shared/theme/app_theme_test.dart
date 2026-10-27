@@ -136,16 +136,19 @@ void main() {
         }
       });
 
-      testWidgets('il titolo AppBar pesa quanto titleLarge', (tester) async {
+      testWidgets('il titolo AppBar ha la size di titleLarge', (tester) async {
         final textTheme = await resolvedTextTheme(tester, themeData);
 
         expect(
           themeData.appBarTheme.titleTextStyle?.fontSize,
           textTheme.titleLarge?.fontSize,
         );
+      });
+
+      testWidgets('la barra in alto pesa come i titoli', (tester) async {
         expect(
-          themeData.appBarTheme.titleTextStyle?.fontWeight,
-          textTheme.titleLarge?.fontWeight,
+          themeData.appBarTheme.titleTextStyle!.fontWeight,
+          FontWeight.w700,
         );
       });
     });

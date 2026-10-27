@@ -214,4 +214,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(read()!.action, CreateAction.manualItems);
   });
+
+  testWidgets('la testata ha la x e chiude senza scelta', (tester) async {
+    final read = await openSheet(tester, houses: [_house('a')]);
+
+    await tester.tap(find.byKey(const Key('sheet_close')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CreateSheet), findsNothing);
+    expect(read(), isNull);
+  });
 }

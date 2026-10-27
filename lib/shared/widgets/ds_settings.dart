@@ -44,6 +44,10 @@ class DsSettingsGroup extends StatelessWidget {
 /// controllo ([trailing]) oppure il valore corrente ([value]) con la freccia
 /// se la riga apre una scelta. [subtitle] è una spiegazione breve sotto
 /// l'etichetta, per le righe che da sole non si capiscono.
+///
+/// [destructive] colora etichetta e icona di errore (es. "Elimina"); [enabled]
+/// `false` spegne la riga: niente tocco e colore disabilitato. L'icona di
+/// [leading] va senza colore esplicito, altrimenti la riga non può tingerla.
 class DsSettingsRow extends StatelessWidget {
   final String label;
   final Widget? leading;
@@ -51,6 +55,8 @@ class DsSettingsRow extends StatelessWidget {
   final String? value;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final bool destructive;
+  final bool enabled;
 
   const DsSettingsRow({
     super.key,
@@ -60,6 +66,8 @@ class DsSettingsRow extends StatelessWidget {
     this.value,
     this.trailing,
     this.onTap,
+    this.destructive = false,
+    this.enabled = true,
   });
 
   @override
@@ -67,6 +75,13 @@ class DsSettingsRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final value = this.value;
+    final leading = this.leading;
+    // Colore del testo e dell'icona: il disabilitato vince sul distruttivo.
+    final Color? tint = !enabled
+        ? cs.onSurface.withValues(alpha: 0.38)
+        : destructive
+        ? cs.error
+        : null;
     final end =
         trailing ??
         (value == null
@@ -104,10 +119,18 @@ class DsSettingsRow extends StatelessWidget {
 
     final subtitle = this.subtitle;
     return ListTile(
-      leading: leading,
+      enabled: enabled,
+      // IconTheme interno: il colore della riga vince su quello disabilitato
+      // che ListTile applica alle sue icone.
+      leading: leading == null || tint == null
+          ? leading
+          : IconTheme.merge(
+              data: IconThemeData(color: tint),
+              child: leading,
+            ),
       minTileHeight: context.responsive(56),
       contentPadding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-      title: Text(label, style: textTheme.bodyLarge),
+      title: Text(label, style: textTheme.bodyLarge?.copyWith(color: tint)),
       subtitle: subtitle == null
           ? null
           : Text(
