@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/shared/constants/app_constants.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/theme/error_empty_theme_extension.dart';
 
 /// Il textTheme di [AppTheme] è la fonte di verità tipografica dell'app: lo
 /// usano ~66 call site che nessun altro test copre. Questi test bloccano le
@@ -182,6 +184,42 @@ void main() {
         expect(factor, 1.0);
         // Il token e lo slot equivalente devono coincidere su ogni device.
         expect(resolvedBodySize, AppSpacing.fontXs);
+      });
+    }
+  });
+
+  // Valori che il tema legge dai token: oggi coincidono con i numeri che
+  // sostituiscono, quindi passano già. Servono a bloccare una regressione
+  // silenziosa se un token cambia o un numero torna a mano.
+  group('il tema usa i token', () {
+    for (final (themeName, themeData) in [
+      ('light', AppTheme.light),
+      ('dark', AppTheme.dark),
+    ]) {
+      test('$themeName: il raggio del bottom sheet è modalBorderRadius', () {
+        final shape =
+            themeData.bottomSheetTheme.shape! as RoundedRectangleBorder;
+        expect(
+          shape.borderRadius,
+          BorderRadius.vertical(
+            top: Radius.circular(AppConstants.modalBorderRadius),
+          ),
+        );
+      });
+
+      test('$themeName: contentPadding dei campi è md × smPlus', () {
+        expect(
+          themeData.inputDecorationTheme.contentPadding,
+          EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.smPlus,
+          ),
+        );
+      });
+
+      test('$themeName: l\'icona dello stato vuoto è iconDisplay', () {
+        final ext = themeData.extension<ErrorEmptyThemeExtension>()!;
+        expect(ext.emptyStateIconSize, AppSpacing.iconDisplay);
       });
     }
   });
