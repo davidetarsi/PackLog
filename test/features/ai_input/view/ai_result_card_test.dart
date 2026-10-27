@@ -177,6 +177,24 @@ void main() {
       expect(chevron.right, lessThan(button.left - 48));
     });
 
+    testWidgets('nome su due righe: la freccia segue tipo e colore', (
+      tester,
+    ) async {
+      await _pumpCard(
+        tester,
+        item: _result().copyWith(
+          name: 'Camicia di lino a maniche lunghe azzurra per le cene eleganti',
+        ),
+        onAlreadyHere: () {},
+      );
+      final chevron = tester.getRect(
+        find.byKey(const Key('ai_result_chevron')),
+      );
+      final details = tester.getRect(find.text('Camicia · Bianco'));
+      expect(chevron.center.dy, closeTo(details.center.dy, 4));
+      expect(chevron.left, greaterThanOrEqualTo(details.right));
+    });
+
     testWidgets('niente matita: il nome si cambia nella scheda', (
       tester,
     ) async {

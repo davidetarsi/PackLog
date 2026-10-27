@@ -94,55 +94,89 @@ class AiResultCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ValueListenableBuilder<TextEditingValue>(
-                            valueListenable: controller,
-                            // La freccia segue il nome: subito dopo l'ultima
-                            // parola, anche quando il nome va a capo.
-                            builder: (context, value, _) => Text.rich(
-                              TextSpan(
-                                text: value.text,
-                                children: [
-                                  WidgetSpan(
-                                    alignment: PlaceholderAlignment.middle,
-                                    child: Padding(
-                                      padding: EdgeInsets.only(
-                                        left: context.spacingXs,
-                                      ),
-                                      child: Icon(
-                                        Icons.chevron_right,
-                                        key: const Key('ai_result_chevron'),
-                                        size: context.iconSizeMd,
-                                        color: included
-                                            ? colors.onSurfaceVariant
-                                            : muted,
-                                      ),
+                      child: ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: controller,
+                        builder: (context, value, _) => LayoutBuilder(
+                          builder: (context, constraints) {
+                            final chevron = Padding(
+                              padding: EdgeInsets.only(left: context.spacingXs),
+                              child: Icon(
+                                Icons.chevron_right,
+                                key: const Key('ai_result_chevron'),
+                                size: context.iconSizeMd,
+                                color: included
+                                    ? colors.onSurfaceVariant
+                                    : muted,
+                              ),
+                            );
+                            // Nome su una riga: la freccia lo segue. Nome su
+                            // più righe: la freccia segue tipo e colore.
+                            final chevronWidth =
+                                context.iconSizeMd + context.spacingXs;
+                            final painter =
+                                TextPainter(
+                                  text: TextSpan(
+                                    text: value.text,
+                                    style: nameStyle,
+                                  ),
+                                  textDirection: Directionality.of(context),
+                                  textScaler: MediaQuery.textScalerOf(context),
+                                  maxLines: 1,
+                                )..layout(
+                                  maxWidth:
+                                      (constraints.maxWidth - chevronWidth)
+                                          .clamp(0, double.infinity),
+                                );
+                            final nameOnOneLine =
+                                !painter.didExceedMaxLines || details.isEmpty;
+                            painter.dispose();
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (nameOnOneLine)
+                                  Text.rich(
+                                    TextSpan(
+                                      text: value.text,
+                                      children: [
+                                        WidgetSpan(
+                                          alignment:
+                                              PlaceholderAlignment.middle,
+                                          child: chevron,
+                                        ),
+                                      ],
                                     ),
+                                    style: nameStyle,
+                                  )
+                                else
+                                  Text(value.text, style: nameStyle),
+                                if (details.isNotEmpty) ...[
+                                  SizedBox(height: context.spacingXxs),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          details,
+                                          style: detailStyle,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (!nameOnOneLine) chevron,
+                                    ],
                                   ),
                                 ],
-                              ),
-                              style: nameStyle,
-                            ),
-                          ),
-                          if (details.isNotEmpty) ...[
-                            SizedBox(height: context.spacingXxs),
-                            Text(
-                              details,
-                              style: detailStyle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                          if (doubts.isNotEmpty) ...[
-                            SizedBox(height: context.spacingXs),
-                            _ToCheck(
-                              count: doubts.length,
-                              color: included ? colors.onSurface : muted,
-                            ),
-                          ],
-                        ],
+                                if (doubts.isNotEmpty) ...[
+                                  SizedBox(height: context.spacingXs),
+                                  _ToCheck(
+                                    count: doubts.length,
+                                    color: included ? colors.onSurface : muted,
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ],
