@@ -106,9 +106,14 @@ class _DsSearchFieldState extends State<DsSearchField> {
     if (widget.isLoading) {
       return Padding(
         padding: EdgeInsets.all(context.spacingMd),
+        // Del colore della x che sostituisce: è uno stato, non un'azione,
+        // quindi niente arancio.
         child: SizedBox.square(
           dimension: context.iconSizeSm,
-          child: const CircularProgressIndicator(strokeWidth: 2),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: cs.onSurfaceVariant,
+          ),
         ),
       );
     }

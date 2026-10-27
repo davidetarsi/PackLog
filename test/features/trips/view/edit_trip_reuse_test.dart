@@ -18,6 +18,7 @@ import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/view/new_trip_screen.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_steps.dart';
 
 class MockTripRepository extends Mock implements TripRepository {}
 
@@ -43,6 +44,7 @@ void main() {
   /// Location a cui il bottone della radice fa `push`: cambia tra uno scenario
   /// e l'altro (con or senza `reuse=1`).
   late String openLocation;
+  late GoRouter router;
 
   final trip = TripModel(
     id: 'trip-1',
@@ -132,7 +134,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final router = GoRouter(
+    router = GoRouter(
       initialLocation: '/',
       routes: [
         GoRoute(
@@ -153,6 +155,18 @@ void main() {
                 tripId: state.pathParameters['id']!,
                 discardOnExit: state.uri.queryParameters['reuse'] == '1',
               ),
+            ),
+          ],
+        ),
+        // Le mete dopo "Riusa": la tab Viaggi e la valigia della copia.
+        GoRoute(
+          path: '/trips',
+          builder: (_, _) => const Scaffold(body: Text('lista viaggi')),
+          routes: [
+            GoRoute(
+              path: ':id/edit-items',
+              builder: (_, state) =>
+                  Scaffold(body: Text('valigia ${state.pathParameters['id']}')),
             ),
           ],
         ),
@@ -194,7 +208,9 @@ void main() {
     await tester.pumpAndSettle();
     await waitForCondition(
       tester,
-      () => find.byKey(const Key('edit_trip_save')).evaluate().isNotEmpty,
+      () =>
+          find.byKey(const Key('edit_trip_save')).evaluate().isNotEmpty ||
+          find.byKey(const Key('reuse_next')).evaluate().isNotEmpty,
     );
   }
 
@@ -227,19 +243,36 @@ void main() {
     await tester.pumpAndSettle();
     verify(() => tripRepo.deleteTrip('trip-1')).called(1);
 
-    // 3. Salvataggio riuscito: la copia resta, nessuna eliminazione.
+    // 3. Riusa è il passo 1 del nuovo viaggio: passi in alto, "Avanti" e
+    // "Più tardi" in fondo, niente "Salva".
     await resetTrips();
     await openEdit(tester, '/trips/trip-1/edit-info?reuse=1');
-    // "Salva" si accende dopo un cambiamento.
-    await tester.enterText(find.byKey(const Key('new_trip_name')), 'Toscana 2');
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('edit_trip_save')));
+    expect(find.byType(DsSteps), findsOneWidget);
+    expect(find.byKey(const Key('edit_trip_save')), findsNothing);
+    expect(find.byKey(const Key('reuse_later')), findsOneWidget);
+
+    // 4. "Avanti": salva e apre la valigia della copia, che resta.
+    await tester.tap(find.byKey(const Key('reuse_next')));
     await tester.pumpAndSettle();
     verify(() => tripRepo.updateTrip(any())).called(1);
+    expect(find.text('valigia trip-1'), findsOneWidget);
     verifyNever(() => tripRepo.deleteTrip(any()));
 
-    // 4. Senza reuse: uscire senza salvare non elimina niente.
+    // 5. "Più tardi": salva e torna alla tab Viaggi, la copia resta.
     await resetTrips();
+    router.go('/');
+    await tester.pumpAndSettle();
+    await openEdit(tester, '/trips/trip-1/edit-info?reuse=1');
+    await tester.tap(find.byKey(const Key('reuse_later')));
+    await tester.pumpAndSettle();
+    verify(() => tripRepo.updateTrip(any())).called(1);
+    expect(find.text('lista viaggi'), findsOneWidget);
+    verifyNever(() => tripRepo.deleteTrip(any()));
+
+    // 6. Senza reuse: uscire senza salvare non elimina niente.
+    await resetTrips();
+    router.go('/');
+    await tester.pumpAndSettle();
     await openEdit(tester, '/trips/trip-1/edit-info');
     await tester.pageBack();
     await tester.pumpAndSettle();

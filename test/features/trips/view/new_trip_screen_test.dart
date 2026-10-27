@@ -648,7 +648,7 @@ void main() {
         await tester.enterText(_placeField, 'Mar');
         await tester.pump(const Duration(milliseconds: 300));
         await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const Key('place_search_location_0')));
+        await tester.tap(find.byKey(const Key('location_result_0')));
         await tester.pumpAndSettle();
         await _pickDates(tester);
 

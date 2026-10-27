@@ -258,6 +258,7 @@
     },
     "detail": {
       "edit_trip": "Modifica viaggio",
+      "reuse_trip": "Riusa il viaggio",
       "duplicate": "Duplica",
       "save": "Aggiungi ai salvati",
       "unsave": "Togli dai salvati",
