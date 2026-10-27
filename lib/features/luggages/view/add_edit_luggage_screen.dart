@@ -211,22 +211,19 @@ class _AddEditLuggageSheetState extends ConsumerState<AddEditLuggageSheet> {
       mainAxisSize: MainAxisSize.min,
       children: [
         DsFieldLabel('items.name_label'.tr()),
-        TextFormField(
+        DsTextField(
           key: const Key('luggage_sheet_name'),
           controller: _name,
           autofocus: _isNew,
           textCapitalization: TextCapitalization.sentences,
           textInputAction: TextInputAction.done,
-          decoration: dsFieldDecoration(
-            context,
-            hintText: 'luggages.name_hint'.tr(),
-          ),
+          hintText: 'luggages.name_hint'.tr(),
           autovalidateMode: AutovalidateMode.onUserInteraction,
           validator: (value) => value == null || value.trim().isEmpty
               ? 'common.name_required_validation'.tr()
               : null,
           onChanged: (_) => setState(() {}),
-          onFieldSubmitted: (_) => _save(),
+          onSubmitted: (_) => _save(),
         ),
         DsFieldLabel('luggages.size_label'.tr()),
         DsFieldBox(
@@ -247,23 +244,21 @@ class _AddEditLuggageSheetState extends ConsumerState<AddEditLuggageSheet> {
         ),
         if (_size == LuggageSize.custom) ...[
           DsFieldLabel('luggages.volume_label'.tr()),
-          TextFormField(
+          DsTextField(
             key: const Key('luggage_sheet_volume'),
             controller: _volume,
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
             autovalidateMode: AutovalidateMode.onUserInteraction,
-            decoration: dsFieldDecoration(
-              context,
-              hintText: 'luggages.volume_hint'.tr(),
-            ).copyWith(suffixText: 'L'),
+            hintText: 'luggages.volume_hint'.tr(),
+            suffixText: 'L',
             validator: (value) =>
                 int.tryParse(value?.trim() ?? '') == null ||
                     int.parse(value!.trim()) <= 0
                 ? 'common.invalid_number'.tr()
                 : null,
             onChanged: (_) => setState(() {}),
-            onFieldSubmitted: (_) => _save(),
+            onSubmitted: (_) => _save(),
           ),
         ] else
           Padding(

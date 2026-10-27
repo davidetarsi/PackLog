@@ -107,7 +107,10 @@ Finder get _placeField => find.descendant(
   matching: find.byType(TextField),
 );
 
-Finder get _nameField => find.byKey(const Key('new_trip_name'));
+Finder get _nameField => find.descendant(
+  of: find.byKey(const Key('new_trip_name')),
+  matching: find.byType(TextField),
+);
 
 String _nameText(WidgetTester tester) =>
     tester.widget<TextField>(_nameField).controller!.text;

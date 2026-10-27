@@ -45,11 +45,15 @@ class NewHouseRow extends StatelessWidget {
                 children: [
                   Icon(Icons.add, color: foreground),
                   SizedBox(width: context.spacingSm),
-                  Text(
-                    label,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleMedium?.copyWith(color: foreground),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(color: foreground),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),

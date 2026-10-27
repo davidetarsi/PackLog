@@ -30,6 +30,7 @@ import '../../../shared/widgets/ds_contextual_app_bar.dart';
 import '../../items/view/bulk_move_sheet.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/circular_action_button.dart';
+import '../../../shared/widgets/ds_search_field.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/helpers/navigation_helpers.dart';
@@ -715,36 +716,15 @@ class _HouseNormalAppBar extends StatelessWidget
           tooltip: 'common.back'.tr(),
           onPressed: onSearchClose,
         ),
-        title: TextField(
+        title: DsSearchField(
           key: const Key('house_search_field'),
+          inBar: true,
           controller: controller,
           focusNode: searchFocusNode,
-          textInputAction: TextInputAction.search,
+          hintText: 'houses.search_hint'.tr(args: [houseName]),
           onChanged: onSearchChanged,
           onSubmitted: (_) => onSearchSubmitted(),
-          decoration: InputDecoration(
-            hintText: 'houses.search_hint'.tr(args: [houseName]),
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            filled: false,
-          ),
         ),
-        actions: [
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: controller,
-            builder: (context, value, _) => value.text.isEmpty
-                ? const SizedBox.shrink()
-                : IconButton(
-                    icon: const Icon(Icons.close),
-                    tooltip: 'common.clear'.tr(),
-                    onPressed: () {
-                      controller.clear();
-                      onSearchChanged('');
-                    },
-                  ),
-          ),
-        ],
       );
     }
 

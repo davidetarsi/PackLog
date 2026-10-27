@@ -8,7 +8,7 @@ import 'location_search_feedback.dart';
 import '../model/model.dart';
 import '../services/location_search_service.dart';
 import '../theme/app_spacing.dart';
-import 'ds_field.dart';
+import 'ds_search_field.dart';
 import 'ds_settings.dart';
 import 'location_result_row.dart';
 
@@ -32,21 +32,15 @@ class LocationAutocompleteField extends ConsumerStatefulWidget {
   /// Hint del campo
   final String? hintText;
 
-  /// Stile personalizzato per l'hint text
-  final TextStyle? hintStyle;
-
   /// Numero minimo di caratteri per iniziare la ricerca
   final int minCharsForSearch;
 
   /// Ritardo in millisecondi prima di effettuare la ricerca (debounce)
   final int debounceMs;
 
-  /// Con il bordo il campo ha la decorazione dei moduli ([dsFieldDecoration]);
-  /// senza, è testo nudo dentro una riga che ha già il suo riquadro.
-  final bool showBorder;
-
-  /// Bordo in colore di errore, quando il luogo è obbligatorio e manca.
-  final bool hasError;
+  /// Errore sotto il campo, con il bordo del colore di errore: per esempio
+  /// il luogo obbligatorio che manca.
+  final String? errorText;
 
   const LocationAutocompleteField({
     super.key,
@@ -54,11 +48,9 @@ class LocationAutocompleteField extends ConsumerStatefulWidget {
     this.onLocationSelected,
     this.onTextChanged,
     this.hintText,
-    this.hintStyle,
     this.minCharsForSearch = 3,
     this.debounceMs = 300,
-    this.showBorder = true,
-    this.hasError = false,
+    this.errorText,
   });
 
   @override
@@ -183,54 +175,11 @@ class _LocationAutocompleteFieldState
     _focusNode.unfocus();
   }
 
-  void _clear() {
-    _controller.clear();
-    _focusNode.requestFocus();
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final hint = widget.hintText ?? 'common.search_location_hint'.tr();
-
-    final Widget? suffix = _isLoading
-        ? Padding(
-            padding: EdgeInsets.all(context.spacingMd),
-            child: SizedBox.square(
-              dimension: context.iconSizeSm,
-              child: const CircularProgressIndicator(strokeWidth: 2),
-            ),
-          )
-        : _controller.text.isNotEmpty
-        ? IconButton(
-            tooltip: 'common.clear'.tr(),
-            icon: Icon(Icons.close, color: cs.onSurfaceVariant),
-            onPressed: _clear,
-          )
-        : null;
-
-    final decoration = widget.showBorder
-        ? dsFieldDecoration(
-            context,
-            hasError: widget.hasError,
-            hintText: hint,
-            prefixIcon: Icon(
-              Icons.search,
-              size: context.iconSizeMd,
-              color: cs.onSurfaceVariant,
-            ),
-            suffixIcon: suffix,
-          ).copyWith(hintStyle: widget.hintStyle)
-        : InputDecoration(
-            hintText: hint,
-            hintStyle: widget.hintStyle,
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            filled: false,
-            suffixIcon: suffix,
-          );
 
     final showResults = _focusNode.hasFocus;
     final noResults =
@@ -244,12 +193,12 @@ class _LocationAutocompleteFieldState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        TextField(
+        DsSearchField(
           controller: _controller,
           focusNode: _focusNode,
-          textCapitalization: TextCapitalization.sentences,
-          textInputAction: TextInputAction.search,
-          decoration: decoration,
+          hintText: hint,
+          errorText: widget.errorText,
+          isLoading: _isLoading,
         ),
         if (showResults && _suggestions.isNotEmpty) ...[
           SizedBox(height: context.spacingSm),

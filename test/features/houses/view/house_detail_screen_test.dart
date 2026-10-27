@@ -126,6 +126,24 @@ void main() {
     await app.finish();
   });
 
+  testWidgets('ricerca: la x svuota e la lista torna intera', (tester) async {
+    final app = await openHome(tester);
+    await app.tap(find.byKey(const Key('house_search')));
+    await app.enterText(find.byKey(const Key('house_search_field')), 'calz');
+    expect(find.text('Jeans blu'), findsNothing);
+
+    await app.tap(find.byKey(const Key('ds_search_clear')));
+    await app.settle();
+    expect(find.text('Jeans blu'), findsOneWidget);
+    expect(find.text('Calzini'), findsOneWidget);
+    final field = find.descendant(
+      of: find.byKey(const Key('house_search_field')),
+      matching: find.byType(EditableText),
+    );
+    expect(tester.widget<EditableText>(field).controller.text, '');
+    await app.finish();
+  });
+
   testWidgets('senza risultati mostra il vuoto e registra la lunghezza', (
     tester,
   ) async {
@@ -423,15 +441,12 @@ void main() {
     await app.settle();
     await app.longPress(find.text('Calzini'));
     await app.tap(find.byIcon(Icons.close));
-    final textField = tester.widget<TextField>(
-      find.byKey(const Key('house_search_field')),
-    );
     final field = find.descendant(
       of: find.byKey(const Key('house_search_field')),
       matching: find.byType(EditableText),
     );
     expect(tester.widget<EditableText>(field).focusNode.hasFocus, isFalse);
-    expect(textField.controller?.text, 'calz');
+    expect(tester.widget<EditableText>(field).controller.text, 'calz');
     expect(find.text('Calzini'), findsOneWidget);
     expect(find.text('Jeans blu'), findsNothing);
     await app.finish();

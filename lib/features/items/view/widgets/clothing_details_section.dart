@@ -287,24 +287,13 @@ class _ColorChoiceState extends State<_ColorChoice> {
         if (_adding)
           Padding(
             padding: EdgeInsets.only(top: context.spacingXs),
-            child: TextField(
+            child: DsTextField(
               key: const Key('clothing_color_field'),
               controller: _controller,
               autofocus: true,
               maxLength: 40,
               textCapitalization: TextCapitalization.sentences,
-              // Il contatore non serve: il limite basta a fermare la scrittura.
-              buildCounter:
-                  (
-                    _, {
-                    required currentLength,
-                    required isFocused,
-                    maxLength,
-                  }) => null,
-              decoration: dsFieldDecoration(
-                context,
-                hintText: 'clothing.details.color_hint'.tr(),
-              ),
+              hintText: 'clothing.details.color_hint'.tr(),
               onSubmitted: _submit,
             ),
           ),

@@ -174,8 +174,6 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
       );
       if (fallback != null) return fallback;
     }
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
 
     return DsFormSheet(
       title: _isNew ? 'houses.add_new'.tr() : 'houses.edit'.tr(),
@@ -199,7 +197,7 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
             key: const Key('house_sheet_location'),
             initialValue: _locationText,
             hintText: 'houses.location_hint'.tr(),
-            hasError: _locationMissing,
+            errorText: _locationMissing ? 'common.select_location'.tr() : null,
             onLocationSelected: (location) => setState(() {
               _location = location;
               _locationText = location.displayName;
@@ -214,37 +212,14 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
               }
             },
           ),
-          if (_locationMissing)
-            Padding(
-              padding: EdgeInsets.only(
-                top: context.spacingXs,
-                left: context.spacingMd,
-              ),
-              child: Text(
-                'common.select_location'.tr(),
-                style: tt.bodySmall?.copyWith(color: cs.error),
-              ),
-            ),
           DsFieldLabel('houses.name_label'.tr()),
-          TextField(
+          DsTextField(
             key: const Key('house_sheet_name'),
             controller: _nameController,
             textCapitalization: TextCapitalization.sentences,
-            decoration: dsFieldDecoration(
-              context,
-              hintText: 'houses.name_hint'.tr(),
-            ),
+            hintText: 'houses.name_hint'.tr(),
+            helperText: 'houses.name_help'.tr(),
             onChanged: (_) => setState(() {}),
-          ),
-          Padding(
-            padding: EdgeInsets.only(
-              top: context.spacingXs,
-              left: context.spacingMd,
-            ),
-            child: Text(
-              'houses.name_help'.tr(),
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
           ),
           DsFieldLabel('common.icon'.tr()),
           DsIconPicker(

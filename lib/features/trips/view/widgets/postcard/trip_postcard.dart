@@ -199,7 +199,7 @@ class _StampContent extends StatelessWidget {
           Text('trips.postcard.traveling'.tr(), style: tt.labelMedium),
         ],
       ),
-      StampKind.noDate => Column(
+      StampKind.past || StampKind.noDate => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.event, size: context.iconSizeLg),
