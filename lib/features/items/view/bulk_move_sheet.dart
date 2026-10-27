@@ -6,10 +6,12 @@ import '../../houses/model/house_model.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../spaces/model/space_model.dart';
 import '../../spaces/providers/space_provider.dart';
-import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/widgets/ds_form_sheet.dart';
+import '../../../shared/widgets/ds_group_header.dart';
+import '../../../shared/widgets/ds_settings.dart';
 
 class BulkMoveDestination {
   const BulkMoveDestination({
@@ -38,10 +40,8 @@ class BulkMoveSheet extends ConsumerStatefulWidget {
     required int itemCount,
     required String sourceHouseId,
   }) {
-    return showModalBottomSheet<BulkMoveDestination>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    return showDsSheet<BulkMoveDestination>(
+      context,
       builder: (_) =>
           BulkMoveSheet(itemCount: itemCount, sourceHouseId: sourceHouseId),
     );
@@ -97,94 +97,60 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
         ? ref.watch(spaceNotifierProvider(_selectedHouse!.id))
         : null;
 
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
+    return DsFormSheet(
+      title: 'items.bulk_move_sheet_title'.plural(
+        widget.itemCount,
+        args: [widget.itemCount.toString()],
       ),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppConstants.modalBorderRadius),
-        ),
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const DsBottomSheetHandle(),
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.spacingMd,
-                vertical: context.spacingSm,
-              ),
-              child: Text(
-                'items.bulk_move_sheet_title'.plural(
-                  widget.itemCount,
-                  args: [widget.itemCount.toString()],
-                ),
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
-            ),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    housesAsync.when(
-                      data: (allHouses) {
-                        final otherHouses = allHouses
-                            .where((h) => h.id != widget.sourceHouseId)
-                            .toList();
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: otherHouses
-                              .map(
-                                (house) => ListTile(
-                                  leading: Icon(
-                                    HouseIcons.getIcon(house.iconName),
-                                    color: _selectedHouse?.id == house.id
-                                        ? cs.primary
-                                        : cs.onSurfaceVariant,
-                                  ),
-                                  title: Text(house.displayName),
-                                  trailing:
-                                      _isLoadingSpaces &&
-                                          _selectedHouse?.id == house.id
-                                      ? SizedBox.square(
-                                          dimension: context.spacingLg,
-                                          child:
-                                              const CircularProgressIndicator(),
-                                        )
-                                      : null,
-                                  enabled: !_isLoadingSpaces,
-                                  onTap: _isLoadingSpaces
-                                      ? null
-                                      : () => _selectHouse(house),
-                                ),
-                              )
-                              .toList(),
-                        );
-                      },
-                      loading: () => Padding(
-                        padding: EdgeInsets.all(context.spacingMd),
-                        child: Center(child: CircularProgressIndicator()),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          housesAsync.when(
+            data: (allHouses) {
+              final otherHouses = allHouses
+                  .where((h) => h.id != widget.sourceHouseId)
+                  .toList();
+              if (otherHouses.isEmpty) return const SizedBox.shrink();
+              return DsSettingsGroup(
+                children: [
+                  for (final house in otherHouses)
+                    DsSettingsRow(
+                      leading: Icon(
+                        HouseIcons.getIcon(house.iconName),
+                        color: _selectedHouse?.id == house.id
+                            ? cs.primary
+                            : cs.onSurfaceVariant,
                       ),
-                      error: (error, _) => DsErrorState(
-                        error: error,
-                        title: 'errors.load_houses'.tr(),
-                        onRetry: () => ref.invalidate(houseNotifierProvider),
-                      ),
+                      label: house.displayName,
+                      trailing:
+                          _isLoadingSpaces && _selectedHouse?.id == house.id
+                          ? SizedBox.square(
+                              dimension: context.spacingLg,
+                              child: const CircularProgressIndicator(),
+                            )
+                          : null,
+                      enabled: !_isLoadingSpaces,
+                      onTap: _isLoadingSpaces
+                          ? null
+                          : () => _selectHouse(house),
                     ),
-                    if (_selectedHouse != null && spacesAsync != null)
-                      _buildSpaceSection(_selectedHouse!, spacesAsync),
-                  ],
-                ),
-              ),
+                ],
+              );
+            },
+            loading: () => Padding(
+              padding: EdgeInsets.all(context.spacingMd),
+              child: Center(child: CircularProgressIndicator()),
             ),
-          ],
-        ),
+            error: (error, _) => DsErrorState(
+              error: error,
+              title: 'errors.load_houses'.tr(),
+              onRetry: () => ref.invalidate(houseNotifierProvider),
+            ),
+          ),
+          if (_selectedHouse != null && spacesAsync != null)
+            _buildSpaceSection(_selectedHouse!, spacesAsync),
+        ],
       ),
     );
   }
@@ -202,28 +168,32 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
         }
         return Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.inventory_2, color: cs.onSurfaceVariant),
-              title: Text('spaces.default'.tr()),
-              enabled: !_isLoadingSpaces && !_isFinishing,
-              onTap: _isLoadingSpaces || _isFinishing
-                  ? null
-                  : () => _finish(house, null),
-            ),
-            ...spaces.map(
-              (s) => ListTile(
-                leading: Icon(
-                  SpaceIcons.getIcon(s.iconName ?? 'meeting_room'),
-                  color: cs.onSurfaceVariant,
+            DsGroupHeader(label: 'spaces.title'.tr()),
+            DsSettingsGroup(
+              children: [
+                DsSettingsRow(
+                  leading: Icon(Icons.inventory_2, color: cs.onSurfaceVariant),
+                  label: 'spaces.default'.tr(),
+                  enabled: !_isLoadingSpaces && !_isFinishing,
+                  onTap: _isLoadingSpaces || _isFinishing
+                      ? null
+                      : () => _finish(house, null),
                 ),
-                title: Text(s.name),
-                enabled: !_isLoadingSpaces && !_isFinishing,
-                onTap: _isLoadingSpaces || _isFinishing
-                    ? null
-                    : () => _finish(house, s.id),
-              ),
+                for (final s in spaces)
+                  DsSettingsRow(
+                    leading: Icon(
+                      SpaceIcons.getIcon(s.iconName ?? 'meeting_room'),
+                      color: cs.onSurfaceVariant,
+                    ),
+                    label: s.name,
+                    enabled: !_isLoadingSpaces && !_isFinishing,
+                    onTap: _isLoadingSpaces || _isFinishing
+                        ? null
+                        : () => _finish(house, s.id),
+                  ),
+              ],
             ),
           ],
         );

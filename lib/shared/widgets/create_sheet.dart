@@ -8,9 +8,9 @@ import '../../features/profile/providers/gpt_usage_provider.dart';
 import '../constants/app_constants.dart';
 import '../constants/house_icons.dart';
 import '../theme/app_spacing.dart';
+import 'ds_form_sheet.dart';
 import 'ds_link_button.dart';
 import 'ds_picker_sheet.dart';
-import 'ds_sheet_header.dart';
 
 enum CreateAction { aiScan, manualItems, newHouse, newTrip, aiSuitcase }
 
@@ -37,10 +37,8 @@ Future<CreateChoice?> showCreateSheet(
   BuildContext context, {
   required bool fromTrips,
 }) {
-  return showModalBottomSheet<CreateChoice>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
+  return showDsSheet<CreateChoice>(
+    context,
     builder: (_) => CreateSheet(fromTrips: fromTrips),
   );
 }
@@ -112,13 +110,14 @@ class _CreateSheetState extends ConsumerState<CreateSheet> {
       onTap: () => _choose(CreateAction.aiSuitcase),
     );
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: AppConstants.bottomSheetBottomPadding),
+    return DsFormSheet(
+      title: 'create_sheet.title'.tr(),
+      // Il padding laterale è già nella card AI e nelle righe a tutta larghezza.
+      padding: EdgeInsets.only(bottom: context.spacingMd),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DsSheetHeader(title: 'create_sheet.title'.tr()),
           Padding(
             padding: EdgeInsets.fromLTRB(
               context.spacingMd,

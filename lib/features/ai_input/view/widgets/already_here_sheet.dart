@@ -7,8 +7,8 @@ import '../../../../shared/helpers/search_match.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/ds_badge.dart';
 import '../../../../shared/widgets/ds_error_state.dart';
+import '../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../../shared/widgets/ds_group_header.dart';
-import '../../../../shared/widgets/ds_sheet_header.dart';
 import '../../../houses/providers/house_provider.dart';
 import '../../../items/model/item_model.dart';
 import '../../../items/providers/item_provider.dart';
@@ -22,10 +22,8 @@ Future<void> showAlreadyHereSheet(
   BuildContext context, {
   required String houseId,
   required ClothingAnalysisResult scanned,
-}) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
-  useSafeArea: true,
+}) => showDsSheet<void>(
+  context,
   builder: (_) => _AlreadyHereSheet(houseId: houseId, scanned: scanned),
 );
 
@@ -75,171 +73,148 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
       appCategory: widget.scanned.appCategory,
     );
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: context.screenHeight),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          DsSheetHeader(
-            title: houseName == null
-                ? 'ai_import.already_here_default_title'.tr()
-                : 'ai_import.already_here_title'.tr(args: [houseName]),
-            onClose: () => Navigator.pop(context),
+    return DsFormSheet(
+      title: houseName == null
+          ? 'ai_import.already_here_default_title'.tr()
+          : 'ai_import.already_here_title'.tr(args: [houseName]),
+      // Lo scroll sta nella cornice: qui il contenuto non ha padding proprio.
+      padding: EdgeInsets.zero,
+      footer: Padding(
+        padding: EdgeInsets.all(context.spacingMd),
+        child: Text(
+          'ai_import.already_here_help'.tr(),
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: cs.onSurfaceVariant,
           ),
-          Flexible(
-            fit: FlexFit.loose,
-            child: itemsAsync.when(
-              loading: () => Padding(
-                padding: EdgeInsets.all(context.spacingLg),
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-              error: (error, _) => DsErrorState(
-                error: error,
-                title: 'ai_import.already_here_load_error'.tr(),
-                onRetry: () =>
-                    ref.invalidate(itemNotifierProvider(widget.houseId)),
-              ),
-              data: (items) {
-                final matchingCategory = items
-                    .where((item) => item.category == sameCategory)
-                    .toList();
-                final ranked =
-                    matchingCategory
-                        .map(
-                          (item) =>
-                              (item, alreadyHereScore(widget.scanned, item)),
-                        )
-                        .toList()
-                      ..sort((a, b) => b.$2.compareTo(a.$2));
-                final similar = [
-                  for (final entry in ranked)
-                    if (entry.$2 > 0) entry.$1,
-                ];
-                final others = [
-                  for (final entry in ranked)
-                    if (entry.$2 == 0) entry.$1,
-                ];
+        ),
+      ),
+      child: itemsAsync.when(
+        loading: () => Padding(
+          padding: EdgeInsets.all(context.spacingLg),
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+        error: (error, _) => DsErrorState(
+          error: error,
+          title: 'ai_import.already_here_load_error'.tr(),
+          onRetry: () => ref.invalidate(itemNotifierProvider(widget.houseId)),
+        ),
+        data: (items) {
+          final matchingCategory = items
+              .where((item) => item.category == sameCategory)
+              .toList();
+          final ranked =
+              matchingCategory
+                  .map((item) => (item, alreadyHereScore(widget.scanned, item)))
+                  .toList()
+                ..sort((a, b) => b.$2.compareTo(a.$2));
+          final similar = [
+            for (final entry in ranked)
+              if (entry.$2 > 0) entry.$1,
+          ];
+          final others = [
+            for (final entry in ranked)
+              if (entry.$2 == 0) entry.$1,
+          ];
 
-                if (!_openedTracked) {
-                  _openedTracked = true;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (!mounted) return;
-                    ref
-                        .read(coreAnalyticsServiceProvider)
-                        .trackAlreadyHereOpened(
-                          hasManualCandidates: similar.any(
-                            (item) => item.aiMetadata == null,
-                          ),
-                        );
-                  });
-                }
+          if (!_openedTracked) {
+            _openedTracked = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              ref
+                  .read(coreAnalyticsServiceProvider)
+                  .trackAlreadyHereOpened(
+                    hasManualCandidates: similar.any(
+                      (item) => item.aiMetadata == null,
+                    ),
+                  );
+            });
+          }
 
-                Widget itemRow(ItemModel item) => Padding(
-                  padding: EdgeInsets.symmetric(vertical: context.spacingXs),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      if (item.aiMetadata != null) ...[
-                        SizedBox(width: context.spacingXs),
-                        Icon(
-                          Icons.auto_awesome,
-                          size: context.iconSizeSm,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ],
-                      if ((item.quantity ?? 1) > 1) ...[
-                        SizedBox(width: context.spacingXs),
-                        DsQuantityBadge(current: item.quantity!),
-                      ],
-                    ],
+          Widget itemRow(ItemModel item) => Padding(
+            padding: EdgeInsets.symmetric(vertical: context.spacingXs),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                );
+                ),
+                if (item.aiMetadata != null) ...[
+                  SizedBox(width: context.spacingXs),
+                  Icon(
+                    Icons.auto_awesome,
+                    size: context.iconSizeSm,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ],
+                if ((item.quantity ?? 1) > 1) ...[
+                  SizedBox(width: context.spacingXs),
+                  DsQuantityBadge(current: item.quantity!),
+                ],
+              ],
+            ),
+          );
 
-                final categoryLabel = sameCategory.displayName.toLowerCase();
-                final photoDetails = [
-                  widget.scanned.name,
-                  aiDetailsLine(widget.scanned),
-                ].where((part) => part.trim().isNotEmpty).join(' · ');
+          final categoryLabel = sameCategory.displayName.toLowerCase();
+          final photoDetails = [
+            widget.scanned.name,
+            aiDetailsLine(widget.scanned),
+          ].where((part) => part.trim().isNotEmpty).join(' · ');
 
-                return Column(
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  context.spacingMd,
+                  context.spacingSm,
+                  context.spacingMd,
+                  0,
+                ),
+                child: Text(
+                  'ai_import.from_photo'.tr(args: [photoDetails]),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        context.spacingMd,
-                        context.spacingSm,
-                        context.spacingMd,
-                        0,
+                    if (similar.isNotEmpty) ...[
+                      DsGroupHeader(
+                        label: 'ai_import.most_similar'.tr(),
+                        count: similar.length,
                       ),
-                      child: Text(
-                        'ai_import.from_photo'.tr(args: [photoDetails]),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
+                      for (final item in similar) itemRow(item),
+                    ],
+                    if (others.isNotEmpty) ...[
+                      DsGroupHeader(
+                        label: sameCategory == ItemCategory.varie
+                            ? 'ai_import.others_items'.tr()
+                            : 'ai_import.others_of'.tr(args: [categoryLabel]),
+                        count: others.length,
+                        expanded: _othersOpen,
+                        onTap: () => setState(() => _othersOpen = !_othersOpen),
                       ),
-                    ),
-                    Flexible(
-                      fit: FlexFit.loose,
-                      child: ListView(
-                        shrinkWrap: true,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: context.spacingMd,
-                        ),
-                        children: [
-                          if (similar.isNotEmpty) ...[
-                            DsGroupHeader(
-                              label: 'ai_import.most_similar'.tr(),
-                              count: similar.length,
-                            ),
-                            for (final item in similar) itemRow(item),
-                          ],
-                          if (others.isNotEmpty) ...[
-                            DsGroupHeader(
-                              label: sameCategory == ItemCategory.varie
-                                  ? 'ai_import.others_items'.tr()
-                                  : 'ai_import.others_of'.tr(
-                                      args: [categoryLabel],
-                                    ),
-                              count: others.length,
-                              expanded: _othersOpen,
-                              onTap: () =>
-                                  setState(() => _othersOpen = !_othersOpen),
-                            ),
-                            if (_othersOpen)
-                              for (final item in others) itemRow(item),
-                          ],
-                        ],
-                      ),
-                    ),
-                    SafeArea(
-                      top: false,
-                      child: Padding(
-                        padding: EdgeInsets.all(context.spacingMd),
-                        child: Text(
-                          'ai_import.already_here_help'.tr(),
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ),
+                      if (_othersOpen)
+                        for (final item in others) itemRow(item),
+                    ],
                   ],
-                );
-              },
-            ),
-          ),
-        ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

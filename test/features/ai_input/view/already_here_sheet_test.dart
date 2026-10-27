@@ -16,6 +16,7 @@ import 'package:pack_log/features/ai_input/view/widgets/already_here_sheet.dart'
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/shared/widgets/ds_form_sheet.dart';
 import 'package:pack_log/shared/widgets/ds_sheet_header.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -60,6 +61,21 @@ class _SheetItemNotifier extends ItemNotifier {
             : 'Giacca impermeabile di cotone variante numero $i',
         category: ItemCategory.vestiti,
         quantity: 2,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      ),
+  ];
+}
+
+class _ManySheetItemNotifier extends ItemNotifier {
+  @override
+  Future<List<ItemModel>> build(String houseId) async => [
+    for (var i = 0; i < 40; i++)
+      ItemModel(
+        id: 'many-$i',
+        houseId: houseId,
+        name: 'T-shirt bianca variante numero $i',
+        category: ItemCategory.vestiti,
         createdAt: DateTime(2026),
         updatedAt: DateTime(2026),
       ),
@@ -311,8 +327,9 @@ void main() {
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
+      // Lo scroll sta nella cornice del foglio, non in una ListView interna.
       final scrollable = find.descendant(
-        of: find.byType(ListView),
+        of: find.byType(DsFormSheet),
         matching: find.byType(Scrollable),
       );
       expect(
@@ -321,6 +338,78 @@ void main() {
       );
     },
   );
+
+  testWidgets('il foglio non supera il 90% dell\'altezza e scorre', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(960, 1704);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final analytics = _MockAnalytics();
+    final container = ProviderContainer(
+      overrides: [
+        houseNotifierProvider.overrideWith(_SheetHouseNotifier.new),
+        itemNotifierProvider(kHomeId).overrideWith(_ManySheetItemNotifier.new),
+        coreAnalyticsServiceProvider.overrideWithValue(analytics),
+      ],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
+        path: 'assets/translations',
+        fallbackLocale: const Locale('en', 'US'),
+        startLocale: const Locale('it', 'IT'),
+        saveLocale: false,
+        assetLoader: isolatedAssetLoader,
+        child: UncontrolledProviderScope(
+          container: container,
+          child: Builder(
+            builder: (context) => MaterialApp(
+              theme: AppTheme.light,
+              localizationsDelegates: context.localizationDelegates,
+              supportedLocales: context.supportedLocales,
+              locale: context.locale,
+              home: Scaffold(
+                body: Builder(
+                  builder: (context) => FilledButton(
+                    onPressed: () => showAlreadyHereSheet(
+                      context,
+                      houseId: kHomeId,
+                      scanned: _scanned('Upper Body'),
+                    ),
+                    child: const Text('Apri'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.tap(find.text('Apri'));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    final screenHeight = tester.view.physicalSize.height / 3;
+    expect(
+      tester.getSize(find.byType(DsFormSheet)).height,
+      lessThanOrEqualTo(0.9 * screenHeight),
+    );
+    final scrollable = find.descendant(
+      of: find.byType(DsFormSheet),
+      matching: find.byType(Scrollable),
+    );
+    expect(
+      tester.state<ScrollableState>(scrollable).position.maxScrollExtent,
+      greaterThan(0),
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('errore mostra testo comprensibile e Riprova carica i dati', (
     tester,

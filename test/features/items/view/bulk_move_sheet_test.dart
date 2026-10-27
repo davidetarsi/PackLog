@@ -10,6 +10,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/repositories/house_repository.dart';
 import 'package:pack_log/features/items/view/bulk_move_sheet.dart';
+import 'package:pack_log/shared/widgets/ds_settings.dart';
 import 'package:pack_log/features/spaces/model/space_model.dart';
 import 'package:pack_log/features/spaces/repositories/space_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -311,5 +312,77 @@ void main() {
     await tester.pumpAndSettle();
     expect(result?.houseId, firstHouse.id);
     expect(find.text('Apri'), findsOneWidget);
+  });
+
+  testWidgets('case e spazi sono gruppi del design system', (tester) async {
+    final houseRepository = _MockHouseRepository();
+    final spaceRepository = _MockSpaceRepository();
+    final now = DateTime(2026);
+    final destination = HouseModel(
+      id: 'destination',
+      name: 'Casa destinazione',
+      createdAt: now,
+      updatedAt: now,
+    );
+    final space = SpaceModel(
+      id: 'space-1',
+      houseId: destination.id,
+      name: 'Armadio camera',
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    when(
+      () => houseRepository.getAllHouses(),
+    ).thenAnswer((_) async => [destination]);
+    when(
+      () => spaceRepository.getSpacesByHouseId(destination.id),
+    ).thenAnswer((_) async => [space]);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          houseRepositoryProvider.overrideWithValue(houseRepository),
+          spaceRepositoryProvider.overrideWithValue(spaceRepository),
+        ],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('it', 'IT')],
+          path: 'assets/translations',
+          fallbackLocale: const Locale('it', 'IT'),
+          startLocale: const Locale('it', 'IT'),
+          assetLoader: assetLoader,
+          child: Builder(
+            builder: (context) => MaterialApp(
+              theme: AppTheme.light,
+              localizationsDelegates: context.localizationDelegates,
+              supportedLocales: context.supportedLocales,
+              locale: context.locale,
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: TextButton(
+                    onPressed: () => BulkMoveSheet.show(
+                      context,
+                      itemCount: 1,
+                      sourceHouseId: 'source',
+                    ),
+                    child: const Text('Apri'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apri'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DsSettingsGroup), findsOneWidget);
+
+    await tester.tap(find.text(destination.name));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DsSettingsGroup), findsNWidgets(2));
   });
 }
