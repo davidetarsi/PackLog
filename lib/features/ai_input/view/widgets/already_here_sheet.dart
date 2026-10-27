@@ -16,6 +16,7 @@ import '../../../items/providers/item_provider.dart';
 import '../../helpers/ai_item_category.dart';
 import '../../model/clothing_analysis_result.dart';
 import 'ai_result_card.dart' show aiDetailsLine;
+import '../../../../shared/widgets/ds_glass_band.dart';
 
 /// Apre "C'è già?": mostra gli oggetti della casa simili al capo scansionato.
 /// È solo informativo: non collega né modifica nulla.
@@ -81,7 +82,12 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
       // Lo scroll sta nella cornice: qui il contenuto non ha padding proprio.
       padding: EdgeInsets.zero,
       footer: Padding(
-        padding: EdgeInsets.all(context.spacingMd),
+        padding: EdgeInsets.fromLTRB(
+          context.spacingMd,
+          DsGlassBand.topGap(context),
+          context.spacingMd,
+          context.spacingMd,
+        ),
         child: Text(
           'ai_import.already_here_help'.tr(),
           textAlign: TextAlign.center,

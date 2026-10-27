@@ -62,7 +62,7 @@ void main() {
     expect(taps, 1);
   });
 
-  testWidgets('spento: non risponde e il testo è al 38%', (tester) async {
+  testWidgets('spento: non risponde e il testo è al 50%', (tester) async {
     await pumpButton(tester, onPressed: null);
 
     await tester.tap(find.byType(DsTextButton), warnIfMissed: false);

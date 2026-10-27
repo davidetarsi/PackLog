@@ -8,7 +8,7 @@ import '../theme/app_text_styles.dart';
 /// un `TextButton` nell'app.
 ///
 /// Il testo è `onSurface` con peso w600; con [destructive] è `error`. Da
-/// spento diventa `onSurface` al 38%. [iconAtEnd] mette l'icona a destra del
+/// spento diventa `onSurface` al 50% (AppOpacity.disabled). [iconAtEnd] mette l'icona a destra del
 /// testo, come la freccia dei link.
 class DsTextButton extends StatelessWidget {
   final String label;

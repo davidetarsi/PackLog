@@ -56,7 +56,7 @@ void main() {
 
   test('valori', () {
     expect(AppOpacity.selected, 0.18);
-    expect(AppOpacity.disabled, 0.38);
+    expect(AppOpacity.disabled, 0.5);
     expect(AppOpacity.pressed, 0.08);
     expect(AppOpacity.shadow, 0.12);
     expect(AppOpacity.mutedBorder, 0.5);

@@ -16,4 +16,8 @@ abstract final class AppMotion {
 
   /// Elemento che entra e si posa.
   static const Curve emphasized = Curves.easeOutCubic;
+
+  /// Andamento costante: la sfocatura del bordo in fondo, che cresce in modo
+  /// uniforme verso il bordo dello schermo.
+  static const Curve linear = Curves.linear;
 }

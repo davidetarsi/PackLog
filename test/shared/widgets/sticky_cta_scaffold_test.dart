@@ -153,7 +153,10 @@ void main() {
     final band = find.byType(DsGlassBand);
     expect(band, findsOneWidget);
     expect(
-      find.descendant(of: band, matching: find.byType(BackdropFilter)),
+      find.descendant(
+        of: band,
+        matching: find.byKey(const Key('ds_glass_band_edge')),
+      ),
       findsOneWidget,
     );
     final gap =
@@ -161,22 +164,34 @@ void main() {
     expect(gap, closeTo(tester.element(band).spacingXs, 0.01));
   });
 
-  testWidgets('la fascia non vela: nessun colore sopra la sfocatura', (
+  testWidgets('l\'effetto parte sopra i bottoni e sfuma nel fondo', (
     tester,
   ) async {
+    const ctaKey = Key('cta');
     await tester.pumpWidget(
-      const MaterialApp(
-        home: StickyCtaScaffold(body: SizedBox(), bottomContent: Text('CTA')),
+      MaterialApp(
+        home: StickyCtaScaffold(
+          body: const SizedBox(),
+          bottomContent: Container(key: ctaKey, height: 56),
+        ),
       ),
     );
-    final box = tester.widget<ColoredBox>(
-      find
-          .descendant(
-            of: find.byType(DsGlassBand),
-            matching: find.byType(ColoredBox),
-          )
-          .first,
+    final edge = find.byKey(const Key('ds_glass_band_edge'));
+    final band = find.byType(DsGlassBand);
+    // Comincia sopra l'area dei bottoni, così non si vede dove inizia.
+    expect(
+      tester.getTopLeft(edge).dy,
+      closeTo(
+        tester.getTopLeft(band).dy - DsGlassBand.rise(tester.element(band)),
+        0.01,
+      ),
     );
-    expect(box.color.a, 0);
+    // Trasparente in alto, colore di fondo in basso.
+    final box = tester.widget<DecoratedBox>(
+      find.descendant(of: edge, matching: find.byType(DecoratedBox)).last,
+    );
+    final gradient = (box.decoration as BoxDecoration).gradient!;
+    expect(gradient.colors.first.a, 0);
+    expect(gradient.colors.last.a, greaterThan(0.5));
   });
 }

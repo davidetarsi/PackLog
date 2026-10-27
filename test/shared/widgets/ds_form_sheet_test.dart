@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/shared/constants/app_constants.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/widgets/ds_form_sheet.dart';
+import 'package:pack_log/shared/widgets/ds_glass_band.dart';
 import 'package:pack_log/shared/widgets/ds_sheet_header.dart';
 
 const _actionKey = Key('sheet_action');
@@ -159,6 +161,73 @@ void main() {
         matching: find.byType(SingleChildScrollView),
       ),
       findsNothing,
+    );
+  });
+
+  testWidgets('la CTA sta sulla fascia di vetro, a spacingXs dal bordo', (
+    tester,
+  ) async {
+    _setScreen(tester);
+    await _pumpHost(
+      tester,
+      (context) => showDsFormSheet<void>(context, builder: (_) => _form()),
+    );
+
+    final band = find.descendant(
+      of: find.byType(DsFormSheet),
+      matching: find.byType(DsGlassBand),
+    );
+    expect(band, findsOneWidget);
+    expect(
+      find.descendant(of: band, matching: find.byKey(_actionKey)),
+      findsOneWidget,
+    );
+    final gap =
+        tester.getTopLeft(find.byKey(_actionKey)).dy -
+        tester.getTopLeft(band).dy;
+    expect(gap, closeTo(tester.element(band).spacingXs, 0.01));
+  });
+
+  testWidgets('contenuto lungo: scorre sotto la CTA e in fondo sale sopra', (
+    tester,
+  ) async {
+    _setScreen(tester);
+    const last = Key('ultimo');
+    await _pumpHost(
+      tester,
+      (context) => showDsFormSheet<void>(
+        context,
+        builder: (_) => _form(
+          child: const Column(
+            children: [
+              SizedBox(height: 1500),
+              SizedBox(key: last, height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Prima di scorrere il contenuto passa sotto la CTA.
+    final band = find.descendant(
+      of: find.byType(DsFormSheet),
+      matching: find.byType(DsGlassBand),
+    );
+    final scroll = find.descendant(
+      of: find.byType(DsFormSheet),
+      matching: find.byType(SingleChildScrollView),
+    );
+    expect(
+      tester.getBottomLeft(scroll).dy,
+      greaterThan(tester.getTopLeft(band).dy),
+    );
+
+    // In fondo l'ultimo elemento sta tutto sopra la fascia.
+    await tester.drag(scroll, const Offset(0, -3000));
+    await tester.pump(const Duration(seconds: 1));
+    expect(
+      tester.getBottomLeft(find.byKey(last)).dy,
+      lessThanOrEqualTo(tester.getTopLeft(band).dy + 0.5),
     );
   });
 
