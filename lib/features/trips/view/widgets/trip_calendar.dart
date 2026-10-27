@@ -2,10 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../../../../shared/constants/app_constants.dart';
+import '../../../../shared/theme/app_opacity.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/theme/cta_reserved_space.dart';
 import '../../model/trip_date_range.dart';
 import '../../../../shared/theme/app_text_styles.dart';
+
+/// Diametro del cerchio di un giorno selezionato o di "oggi".
+const double _dayCellSize = 36;
+
+/// Altezza di una riga della griglia dei giorni. La stima dello scroll dei
+/// mesi (_monthHeight) la usa nello stesso modo: cambiarla altera lo scroll.
+const double _weekRowHeight = 40;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TripCalendar
@@ -92,6 +100,8 @@ class _TripCalendarState extends State<TripCalendar> {
   ///
   /// Usa le costanti base di AppSpacing (non responsive) — la precisione è
   /// sufficiente per uno scroll iniziale "vicino al target".
+  ///
+  /// Fissi di proposito: servono a calcolare l'altezza dei mesi per lo scroll.
   double _estimatedOffset(int targetIndex) {
     // Padding top del ListView
     double offset = AppSpacing.md;
@@ -107,7 +117,7 @@ class _TripCalendarState extends State<TripCalendar> {
   ///   header text (fontLg ≈ 28px con line-height) + paddingBottom(md=16)
   ///   + weekday row (~18px, fontXxs=12)
   ///   + spacer (xs=4)
-  ///   + N rows × dayCellHeight(40) + (N-1) × rowSpacing(xs=4)
+  ///   + N rows × _weekRowHeight(40) + (N-1) × rowSpacing(xs=4)
   ///   + bottom padding (xl=32)
   static double _monthHeight(DateTime month) {
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
@@ -117,7 +127,6 @@ class _TripCalendarState extends State<TripCalendar> {
     const double headerBottomPadding = AppSpacing.md; // 16
     const double weekdayRow = 18; // fontXxs 12 × ~1.5 line-height
     const double spacerAfterWeekdays = AppSpacing.xs; // 4
-    const double dayCellHeight = 40;
     const double rowSpacing =
         AppSpacing.xs; // 4, tra le righe (non dopo l'ultima)
     const double monthBottomPadding = AppSpacing.xl; // 32
@@ -126,7 +135,7 @@ class _TripCalendarState extends State<TripCalendar> {
         headerBottomPadding +
         weekdayRow +
         spacerAfterWeekdays +
-        rows * dayCellHeight +
+        rows * _weekRowHeight +
         (rows - 1) * rowSpacing +
         monthBottomPadding;
   }
@@ -398,7 +407,7 @@ class _DayCell extends StatelessWidget {
 
     // Colore testo
     final textColor = muted
-        ? cs.onSurface.withValues(alpha: 0.38)
+        ? cs.onSurface.withValues(alpha: AppOpacity.disabled)
         : isSelected
         ? cs.onPrimary
         : inRange
@@ -410,7 +419,7 @@ class _DayCell extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        height: 40,
+        height: _weekRowHeight,
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -435,8 +444,8 @@ class _DayCell extends StatelessWidget {
             // ── Cerchio pieno per i giorni selezionati (start/end) ─────
             if (isSelected)
               Container(
-                width: 36,
-                height: 36,
+                width: _dayCellSize,
+                height: _dayCellSize,
                 decoration: BoxDecoration(
                   color: cs.primary,
                   shape: BoxShape.circle,
@@ -446,10 +455,13 @@ class _DayCell extends StatelessWidget {
             // ── Anello "oggi" (solo se non selezionato) ────────────────
             if (_isToday && !isSelected)
               Container(
-                width: 36,
-                height: 36,
+                width: _dayCellSize,
+                height: _dayCellSize,
                 decoration: BoxDecoration(
-                  border: Border.all(color: cs.primary, width: 1.5),
+                  border: Border.all(
+                    color: cs.primary,
+                    width: AppConstants.selectedBorderWidth,
+                  ),
                   shape: BoxShape.circle,
                 ),
               ),

@@ -7,18 +7,6 @@ class AppConstants {
   static const String itemsKey = 'items';
   static const String tripsKey = 'trips';
 
-  // ── UI Layout Tokens ────────────────────────────────────────────────────────
-
-  /// Gutter orizzontale standard di pagina.
-  /// Fonte unica: usare per ogni padding left/right a livello di schermata.
-  /// Equivale ad AppSpacing.md (= 16.0). Valore duplicato deliberatamente
-  /// per evitare dipendenza circolare tra app_constants e app_spacing.
-  static const double screenHorizontalGutter = 16.0;
-
-  /// Altezza della floating tab bar (senza safe area).
-  /// Bumpata a 60 in Fase 3 per accomodare label 12px + icona 22px senza overflow.
-  static const double tabBarHeight = 60.0;
-
   // ── Border Radius ────────────────────────────────────────────────────────────
 
   /// Border radius for cards (16.0)
@@ -35,6 +23,17 @@ class AppConstants {
 
   /// Border radius for dialogs and modals (20.0)
   static const double modalBorderRadius = 20.0;
+
+  /// Raggio dei dettagli minuti: strisce, angoli di riquadri piccoli (4.0).
+  static const double smallBorderRadius = 4.0;
+
+  // ── Border Width ─────────────────────────────────────────────────────────────
+
+  /// Bordo sottile di default, a riposo: pillole e riquadri non selezionati (1.0).
+  static const double hairlineBorderWidth = 1.0;
+
+  /// Bordo del campo o della scelta a fuoco, selezionata o in errore (1.5).
+  static const double selectedBorderWidth = 1.5;
 
   // ── Spacing ──────────────────────────────────────────────────────────────────
 
@@ -55,9 +54,8 @@ class AppConstants {
   static const double categoryRowHeight = 50.0;
 
   /// Sfocatura del contenuto che scorre sotto un bottone galleggiante in fondo
-  /// alla pagina (StickyCtaScaffold), e quanto lo copre il velo dello sfondo.
+  /// alla pagina (StickyCtaScaffold). Il velo è in AppOpacity.ctaScrim.
   static const double ctaBlurSigma = 16.0;
-  static const double ctaScrimOpacity = 0.72;
 
   /// Altezza del bottone principale in fondo (DsButton) e dei bottoni che gli
   /// stanno accanto o al suo posto (es. "Avanti" del foglio AI).
@@ -75,14 +73,6 @@ class AppConstants {
   /// Lato del francobollo delle cartoline piccole dell'album.
   static const double albumStampSize = 56.0;
 
-  /// Quanto è coperto il testo selezionato (colore del testo, velato).
-  static const double textSelectionOpacity = 0.24;
-
   /// Altezza dei segmenti di avanzamento (es. le tappe del foglio AI).
   static const double progressSegmentHeight = 4.0;
-
-  // ── AI Import ────────────────────────────────────────────────────────────────
-
-  /// Width of score label column in AI result cards.
-  static const double aiScoreLabelWidth = 76.0;
 }

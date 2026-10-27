@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
+import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
 
 /// Effetto vetro della barra (sfocatura dello sfondo). Se sul telefono la
@@ -28,11 +29,15 @@ class DsFloatingBar extends StatelessWidget {
       height: context.responsive(56.0),
       decoration: BoxDecoration(
         color: _kGlassBar
-            ? colorScheme.surfaceContainer.withValues(alpha: 0.78)
+            ? colorScheme.surfaceContainer.withValues(
+                alpha: AppOpacity.navGlass,
+              )
             : colorScheme.surfaceContainer,
         borderRadius: radius,
         border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: colorScheme.outlineVariant.withValues(
+            alpha: AppOpacity.mutedBorder,
+          ),
         ),
       ),
       child: Row(
@@ -55,7 +60,7 @@ class DsFloatingBar extends StatelessWidget {
         borderRadius: radius,
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withValues(alpha: 0.12),
+            color: colorScheme.shadow.withValues(alpha: AppOpacity.shadow),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
@@ -96,7 +101,7 @@ class DsBarItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final color = onTap == null
-        ? colorScheme.onSurface.withValues(alpha: 0.38)
+        ? colorScheme.onSurface.withValues(alpha: AppOpacity.disabled)
         : accent
         ? colorScheme.primary
         : colorScheme.onSurface;
@@ -121,7 +126,7 @@ class DsBarItem extends StatelessWidget {
                   size: context.responsive(22),
                   color: color,
                 ),
-                SizedBox(height: context.spacingXs / 4),
+                SizedBox(height: context.spacingXxs),
                 // L'altezza della barra è fissa: con caratteri molto grandi
                 // la scritta non deve spingere l'icona fuori.
                 MediaQuery.withClampedTextScaling(
@@ -147,7 +152,7 @@ class DsBarItem extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: colorScheme.primary,
                     borderRadius: BorderRadius.vertical(
-                      bottom: Radius.circular(context.spacingXs),
+                      bottom: Radius.circular(AppConstants.smallBorderRadius),
                     ),
                   ),
                 ),

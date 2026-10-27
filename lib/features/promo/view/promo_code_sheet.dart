@@ -125,7 +125,7 @@ class _PromoCodeSheetState extends ConsumerState<_PromoCodeSheet> {
               color: colorScheme.onSurfaceVariant,
             ),
           ),
-          AppSpacing.gapMd,
+          SizedBox(height: context.spacingMd),
           DsFieldLabel('promo.code_label'.tr()),
           DsTextField(
             key: const Key('promo_sheet_field'),
@@ -141,7 +141,7 @@ class _PromoCodeSheetState extends ConsumerState<_PromoCodeSheet> {
               setState(() => _errorKey = null);
             },
           ),
-          AppSpacing.gapLg,
+          SizedBox(height: context.spacingLg),
         ],
       ),
     );

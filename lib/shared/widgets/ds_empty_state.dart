@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 import '../theme/error_empty_theme_extension.dart';
 import 'ds_button.dart';
@@ -153,7 +154,7 @@ class DsEmptyState extends StatelessWidget {
     if (onTap != null) {
       return InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
         child: content,
       );
     }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
+import 'package:pack_log/shared/theme/app_motion.dart';
 import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
@@ -42,7 +43,7 @@ import '../../../shared/helpers/search_match.dart';
 
 /// Durata delle transizioni animate tra le due modalità della UI
 /// (normale ↔ selezione multipla).
-const _kModeSwitchDuration = Duration(milliseconds: 220);
+const _kModeSwitchDuration = AppMotion.medium;
 const _kBottomBarElementsHeight = 50.0;
 
 class HouseDetailScreen extends ConsumerStatefulWidget {
@@ -808,7 +809,7 @@ class _HouseSelectionAppBar extends ConsumerWidget
             ref.read(itemSelectionNotifierProvider.notifier).clear(),
       ),
       title: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 180),
+        duration: AppMotion.medium,
         transitionBuilder: (child, anim) =>
             FadeTransition(opacity: anim, child: child),
         child: Text(

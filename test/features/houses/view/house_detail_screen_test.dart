@@ -6,6 +6,7 @@ import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/features/items/view/bulk_move_sheet.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/shared/constants/app_constants.dart';
+import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
 import 'package:pack_log/shared/widgets/universal_item_tile.dart';
@@ -285,7 +286,9 @@ void main() {
     );
     expect(
       selectedTile.backgroundColor,
-      AppTheme.light.colorScheme.onSurface.withValues(alpha: 0.06),
+      AppTheme.light.colorScheme.onSurface.withValues(
+        alpha: AppOpacity.pressed,
+      ),
     );
     final move = tester.widget<DsBarItem>(
       find.byKey(const Key('selection_move')),

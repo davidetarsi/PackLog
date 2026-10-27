@@ -5,6 +5,7 @@ import '../model/item_model.dart';
 import '../providers/item_selection_provider.dart';
 import '../../../shared/widgets/widgets.dart';
 import 'item_sheet.dart';
+import '../../../shared/theme/app_opacity.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/widgets/ds_checkbox.dart';
@@ -133,7 +134,7 @@ class ItemCard extends ConsumerWidget {
 
     // Velo neutro: l'arancio della selezione sta solo nella casella.
     final Color? bgColor = isSelected
-        ? colorScheme.onSurface.withValues(alpha: 0.06)
+        ? colorScheme.onSurface.withValues(alpha: AppOpacity.pressed)
         : null;
 
     return UniversalItemTile(

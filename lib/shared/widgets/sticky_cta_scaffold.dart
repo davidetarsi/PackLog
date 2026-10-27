@@ -2,6 +2,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:pack_log/shared/constants/app_constants.dart';
+import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/cta_reserved_space.dart';
 
@@ -147,9 +148,9 @@ class StickyCtaScaffold extends StatelessWidget {
           sigmaY: AppConstants.ctaBlurSigma,
         ),
         child: Container(
-          color: Theme.of(context).scaffoldBackgroundColor.withValues(
-            alpha: AppConstants.ctaScrimOpacity,
-          ),
+          color: Theme.of(
+            context,
+          ).scaffoldBackgroundColor.withValues(alpha: AppOpacity.ctaScrim),
           child: content,
         ),
       ),

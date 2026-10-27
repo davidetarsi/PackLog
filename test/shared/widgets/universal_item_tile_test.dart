@@ -1,9 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/shared/widgets/ds_divider.dart';
 import 'package:pack_log/shared/widgets/universal_item_tile.dart';
 
 void main() {
   group('UniversalItemTile', () {
+    testWidgets('la riga è sempre piatta', (tester) async {
+      // Nessuna Card, né con il divisore né senza: la riga resta piatta.
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: UniversalItemTile(
+              title: Text('Flat Item'),
+              showDivider: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(Card), findsNothing);
+      expect(find.byType(DsDivider), findsOneWidget);
+    });
+
     testWidgets('renders title correctly', (tester) async {
       // Arrange
       await tester.pumpWidget(
@@ -118,7 +136,7 @@ void main() {
         ),
       );
 
-      // Assert: in modalità dense il colore vive sul Material, non su una Card
+      // Assert: il colore vive sul Material della riga, non su una Card
       expect(find.byType(Card), findsNothing);
       final material = tester.widget<Material>(
         find
@@ -129,27 +147,6 @@ void main() {
             .first,
       );
       expect(material.color, equals(customColor));
-    });
-
-    testWidgets('applies custom backgroundColor in card mode', (tester) async {
-      // Arrange
-      const customColor = Colors.red;
-
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: UniversalItemTile(
-              title: Text('Colored Item'),
-              backgroundColor: customColor,
-              dense: false,
-            ),
-          ),
-        ),
-      );
-
-      // Assert
-      final card = tester.widget<Card>(find.byType(Card));
-      expect(card.color, equals(customColor));
     });
 
     testWidgets('dense row has no Card but a bottom divider', (tester) async {
@@ -172,50 +169,6 @@ void main() {
       final border = (decorated.decoration as BoxDecoration).border as Border;
       expect(border.bottom.style, BorderStyle.solid);
       expect(border.top, BorderSide.none);
-    });
-
-    testWidgets('borderColor forces the boxed layout even when dense', (
-      tester,
-    ) async {
-      // Il bordo è semantico (selezione, riquadro bulk): dense non deve
-      // mangiarselo.
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: UniversalItemTile(
-              title: Text('Bordered Item'),
-              borderColor: Colors.blue,
-            ),
-          ),
-        ),
-      );
-
-      expect(find.byType(Card), findsOneWidget);
-    });
-
-    testWidgets('shows border when borderColor is provided', (tester) async {
-      // Arrange
-      const borderColor = Colors.blue;
-      const borderWidth = 2.0;
-
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: UniversalItemTile(
-              title: Text('Bordered Item'),
-              borderColor: borderColor,
-              borderWidth: borderWidth,
-            ),
-          ),
-        ),
-      );
-
-      // Assert
-      final card = tester.widget<Card>(find.byType(Card));
-      expect(card.shape, isA<RoundedRectangleBorder>());
-      final shape = card.shape as RoundedRectangleBorder;
-      expect(shape.side.color, equals(borderColor));
-      expect(shape.side.width, equals(borderWidth));
     });
 
     testWidgets('uses custom Row layout when useListTile is false', (
@@ -320,27 +273,6 @@ void main() {
       // Assert
       final listTile = tester.widget<ListTile>(find.byType(ListTile));
       expect(listTile.contentPadding, equals(customPadding));
-    });
-
-    testWidgets('applies custom margin in card mode', (tester) async {
-      // Arrange
-      const customMargin = EdgeInsets.all(16);
-
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: UniversalItemTile(
-              title: Text('Margined Item'),
-              margin: customMargin,
-              dense: false,
-            ),
-          ),
-        ),
-      );
-
-      // Assert
-      final card = tester.widget<Card>(find.byType(Card));
-      expect(card.margin, equals(customMargin));
     });
 
     testWidgets('applies custom margin in flat row mode', (tester) async {

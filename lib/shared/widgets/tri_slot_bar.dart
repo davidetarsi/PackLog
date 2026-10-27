@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_motion.dart';
 
 /// Un widget di layout primitivo che organizza i figli in tre slot:
 /// [left] e [right] hanno larghezza fissa (56px), mentre [center] occupa
@@ -40,8 +41,8 @@ class TriSlotBar extends StatelessWidget {
         children: [
           // Slot Sinistro
           AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
+            duration: AppMotion.medium,
+            curve: AppMotion.emphasized,
             width: sideSlotWidth,
             child: left ?? const SizedBox.shrink(),
           ),
@@ -55,8 +56,8 @@ class TriSlotBar extends StatelessWidget {
 
           // Slot Destro
           AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
+            duration: AppMotion.medium,
+            curve: AppMotion.emphasized,
             width: sideSlotWidth,
             child: right ?? const SizedBox.shrink(),
           ),

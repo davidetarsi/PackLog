@@ -4,7 +4,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
+import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/app_spacing.dart';
+import '../../../../../shared/theme/app_motion.dart';
 import 'postcard_parts.dart';
 
 /// Pila di cartoline da sfogliare orizzontalmente.
@@ -46,7 +48,7 @@ class PostcardPile extends StatefulWidget {
 
 class _PostcardPileState extends State<PostcardPile>
     with SingleTickerProviderStateMixin {
-  static const Duration _animationDuration = Duration(milliseconds: 250);
+  static const Duration _animationDuration = AppMotion.medium;
 
   /// Frazione della larghezza oltre la quale lo spostamento conta come swipe.
   static const double _commitFraction = 0.25;
@@ -122,7 +124,9 @@ class _PostcardPileState extends State<PostcardPile>
 
   void _onTick() {
     setState(() {
-      _dx = _from + (_to - _from) * Curves.easeOut.transform(_controller.value);
+      _dx =
+          _from +
+          (_to - _from) * AppMotion.emphasized.transform(_controller.value);
     });
   }
 
@@ -347,7 +351,7 @@ class _PileDots extends StatelessWidget {
 
   const _PileDots({super.key, required this.count, required this.index});
 
-  static const Duration _duration = Duration(milliseconds: 200);
+  static const Duration _duration = AppMotion.medium;
 
   @override
   Widget build(BuildContext context) {
@@ -360,12 +364,14 @@ class _PileDots extends StatelessWidget {
         for (var k = 0; k < count; k++)
           AnimatedContainer(
             duration: _duration,
-            margin: EdgeInsets.symmetric(horizontal: context.spacingXs / 2),
+            margin: EdgeInsets.symmetric(horizontal: context.spacingXxs),
             width: k == index ? context.spacingMd : context.spacingSm,
             height: context.spacingSm,
             decoration: BoxDecoration(
               color: k == index ? cs.onSurface : cs.outlineVariant,
-              borderRadius: BorderRadius.circular(context.spacingXs),
+              borderRadius: BorderRadius.circular(
+                AppConstants.smallBorderRadius,
+              ),
             ),
           ),
         SizedBox(width: context.spacingSm),

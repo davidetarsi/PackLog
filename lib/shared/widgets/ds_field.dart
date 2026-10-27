@@ -35,14 +35,19 @@ InputDecoration dsFieldDecoration(
       horizontal: context.spacingMd,
       vertical: context.spacingMd,
     ),
-    border: _border(cs.outlineVariant, 1),
+    border: _border(cs.outlineVariant, AppConstants.hairlineBorderWidth),
     enabledBorder: _border(
       hasError ? cs.error : cs.outlineVariant,
-      hasError ? 1.5 : 1,
+      hasError
+          ? AppConstants.selectedBorderWidth
+          : AppConstants.hairlineBorderWidth,
     ),
-    focusedBorder: _border(hasError ? cs.error : cs.onSurface, 1.5),
-    errorBorder: _border(cs.error, 1.5),
-    focusedErrorBorder: _border(cs.error, 1.5),
+    focusedBorder: _border(
+      hasError ? cs.error : cs.onSurface,
+      AppConstants.selectedBorderWidth,
+    ),
+    errorBorder: _border(cs.error, AppConstants.selectedBorderWidth),
+    focusedErrorBorder: _border(cs.error, AppConstants.selectedBorderWidth),
     helperMaxLines: 3,
     errorMaxLines: 3,
   );
@@ -207,7 +212,9 @@ class DsFieldBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
         side: BorderSide(
           color: hasError ? cs.error : cs.outlineVariant,
-          width: hasError ? 1.5 : 1,
+          width: hasError
+              ? AppConstants.selectedBorderWidth
+              : AppConstants.hairlineBorderWidth,
         ),
       ),
       child: InkWell(

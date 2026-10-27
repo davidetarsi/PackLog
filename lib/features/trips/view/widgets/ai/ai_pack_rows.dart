@@ -140,7 +140,7 @@ class _Row extends StatelessWidget {
                     style: tt.bodyLarge?.strong.copyWith(color: titleColor),
                   ),
                   if (subtitle != null) ...[
-                    SizedBox(height: context.spacingXs / 2),
+                    SizedBox(height: context.spacingXxs),
                     Text(
                       subtitle!,
                       maxLines: 1,

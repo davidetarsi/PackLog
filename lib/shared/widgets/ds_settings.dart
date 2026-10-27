@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
+import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
 import '../theme/surface_colors.dart';
 import 'ds_divider.dart';
@@ -75,7 +76,7 @@ class DsSettingsRow extends StatelessWidget {
     final leading = this.leading;
     // Colore del testo e dell'icona: il disabilitato vince sul distruttivo.
     final Color? tint = !enabled
-        ? cs.onSurface.withValues(alpha: 0.38)
+        ? cs.onSurface.withValues(alpha: AppOpacity.disabled)
         : destructive
         ? cs.error
         : null;

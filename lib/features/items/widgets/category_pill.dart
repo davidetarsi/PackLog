@@ -3,6 +3,7 @@ import '../model/item_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_opacity.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/app_motion.dart';
 
 enum CategoryPillState { inactive, inferred, forced }
 
@@ -36,7 +37,7 @@ class CategoryPill extends StatelessWidget {
       case CategoryPillState.inferred:
         backgroundColor = Colors.transparent;
         foregroundColor = categoryColor;
-        borderColor = categoryColor.withValues(alpha: 0.6);
+        borderColor = categoryColor.withValues(alpha: AppOpacity.mutedBorder);
       // Scelta: fondo tenue, mai pieno. L'arancio pieno resta all'azione
       // principale dello schermo (regola "un solo arancio").
       case CategoryPillState.forced:
@@ -54,11 +55,14 @@ class CategoryPill extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: AppMotion.fast,
           padding: EdgeInsets.symmetric(horizontal: context.spacingXs),
           decoration: BoxDecoration(
             color: backgroundColor,
-            border: Border.all(color: borderColor, width: 1.5),
+            border: Border.all(
+              color: borderColor,
+              width: AppConstants.selectedBorderWidth,
+            ),
             borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
           ),
           child: Column(
@@ -69,7 +73,7 @@ class CategoryPill extends StatelessWidget {
                 size: context.iconSizeSm,
                 color: foregroundColor,
               ),
-              SizedBox(height: context.spacingXs / 4),
+              SizedBox(height: context.spacingXxs),
               // scaleDown: con caratteri di sistema grandi o in inglese
               // ("Electronics") il nome si stringe invece di sforare.
               FittedBox(

@@ -4,6 +4,17 @@ import '../../constants/app_constants.dart';
 import '../../theme/app_spacing.dart';
 import 'skeleton_shimmer.dart';
 
+// Misure dei blocchi che imitano le righe di testo: forme, non spaziature.
+const double _wideLine = 160;
+const double _mediumLine = 140;
+const double _shortLine = 100;
+const double _tinyLine = 80;
+const double _stubLine = 60;
+const double _lineHeightSm = 12;
+const double _lineHeightMd = 14;
+const double _lineHeightLg = 18;
+const double _dividerHeight = 1;
+
 /// Placeholder per un item tile (UniversalItemTile, ItemCard, luggage tile, space tile).
 /// Layout: [circle] [line1 + line2] [circle]
 class SkeletonItemTile extends StatelessWidget {
@@ -28,9 +39,9 @@ class SkeletonItemTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SkeletonBox(width: 160, height: 14),
+                SkeletonBox(width: _wideLine, height: _lineHeightMd),
                 SizedBox(height: context.spacingXs),
-                SkeletonBox(width: 100, height: 12),
+                SkeletonBox(width: _shortLine, height: _lineHeightSm),
               ],
             ),
           ),
@@ -82,22 +93,22 @@ class SkeletonHouseCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SkeletonBox(width: 140, height: 18),
+                      SkeletonBox(width: _mediumLine, height: _lineHeightLg),
                       SizedBox(height: context.spacingXs),
-                      SkeletonBox(width: 100, height: 14),
+                      SkeletonBox(width: _shortLine, height: _lineHeightMd),
                     ],
                   ),
                 ),
               ],
             ),
             SizedBox(height: context.spacingMd),
-            const SkeletonBox(width: double.infinity, height: 1),
+            const SkeletonBox(width: double.infinity, height: _dividerHeight),
             SizedBox(height: context.spacingMd),
             Row(
               children: [
-                SkeletonBox(width: 80, height: 12),
+                SkeletonBox(width: _tinyLine, height: _lineHeightSm),
                 const Spacer(),
-                SkeletonBox(width: 60, height: 12),
+                SkeletonBox(width: _stubLine, height: _lineHeightSm),
               ],
             ),
           ],

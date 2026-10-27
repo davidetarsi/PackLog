@@ -36,7 +36,7 @@ const _draftTripId = 'draft';
 /// Dove si ferma il campo mancante dopo lo scorrimento, dall'alto.
 const _missingAlignment = 0.1;
 
-const _missingScrollDuration = Duration(milliseconds: 300);
+const _missingScrollDuration = AppMotion.slow;
 
 /// Passo 1 di "Nuovo viaggio": meta, date, tappe e nome. Salva solo con meta,
 /// date e nessuna tappa a zero notti.

@@ -8,6 +8,7 @@ import '../providers/item_provider.dart';
 import '../services/category_infer_service.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/app_motion.dart';
 import 'category_pill.dart';
 
 /// Gruppo dei tocchi "dentro" il rapid fire. Chi mostra contenuti legati al
@@ -194,12 +195,12 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
           children: [
             // --- BLOCCO 1: ROW DELLE CATEGORIE (Separate e fluttuanti) ---
             AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
+              duration: AppMotion.medium,
+              curve: AppMotion.emphasized,
               alignment: Alignment.bottomCenter,
               child: _isExpanded
                   ? AnimatedOpacity(
-                      duration: const Duration(milliseconds: 150),
+                      duration: AppMotion.fast,
                       opacity: _isExpanded ? 1.0 : 0.0,
                       child: Padding(
                         // Spazio visivo tra le categorie fluttuanti e l'input sottostante
@@ -238,8 +239,8 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
               },
               behavior: HitTestBehavior.opaque,
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
+                duration: AppMotion.medium,
+                curve: AppMotion.emphasized,
                 height: widget.height,
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceContainerLow,
@@ -252,7 +253,10 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                 ),
                 clipBehavior: Clip.antiAlias,
                 // Gestione fluida del padding orizzontale
-                padding: EdgeInsets.only(left: context.spacingMd, right: 6.0),
+                padding: EdgeInsets.only(
+                  left: context.spacingMd,
+                  right: context.spacingXs,
+                ),
                 child: Row(
                   children: [
                     // TextField espanso al massimo (ora il testo andrà fino in fondo)
@@ -325,7 +329,7 @@ class _SubmitButton extends StatelessWidget {
     return GestureDetector(
       onTap: enabled ? onPressed : null,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: AppMotion.fast,
         width: context.iconSizeLg,
         height: context.iconSizeLg,
         decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),

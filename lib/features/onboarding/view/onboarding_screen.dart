@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../features/onboarding/providers/onboarding_status_provider.dart';
+import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/app_motion.dart';
 import '../../../shared/widgets/ds_text_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'widgets/content_slide.dart';
@@ -49,8 +51,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       return;
     }
     _pageController.nextPage(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+      duration: AppMotion.slow,
+      curve: AppMotion.standard,
     );
   }
 
@@ -194,13 +196,13 @@ class _DotsIndicator extends StatelessWidget {
       children: List.generate(count, (index) {
         final isActive = index == currentIndex;
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 4),
+          duration: AppMotion.medium,
+          margin: EdgeInsets.symmetric(horizontal: context.spacingXs),
           width: isActive ? 20 : 8,
           height: 8,
           decoration: BoxDecoration(
             color: isActive ? activeColor : inactiveColor,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppConstants.smallBorderRadius),
           ),
         );
       }),

@@ -340,7 +340,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
               ),
 
-              AppSpacing.gapXl,
+              SizedBox(height: context.spacingXl),
 
               // Hard-delete account (GDPR Art. 17). Distruttivo e irreversibile:
               // si trova, ma è solo testo rosso in fondo alla pagina, staccato
@@ -355,7 +355,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
 
-              AppSpacing.gapSm,
+              SizedBox(height: context.spacingSm),
             ],
           ),
         ),

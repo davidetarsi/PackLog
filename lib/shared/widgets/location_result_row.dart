@@ -32,7 +32,7 @@ class LocationResultRow extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: context.spacingMd,
-          vertical: context.spacingSm + context.spacingXs,
+          vertical: context.spacingSmPlus,
         ),
         child: Row(
           children: [

@@ -5,8 +5,8 @@ import '../theme/app_spacing.dart';
 ///
 /// Variante **text-only** (settings, lista generica):
 /// ```dart
-/// DsSectionHeader(label: 'backup.title'.tr())
-/// DsSectionHeader(label: 'about.title'.tr(), trailing: Icon(Icons.info))
+/// DsSectionHeader(label: 'profile.section_preferences'.tr())
+/// DsSectionHeader(label: 'profile.section_account'.tr(), trailing: Icon(Icons.info))
 /// ```
 ///
 /// Variante **icon-text** (gruppi di contenuto con icona):

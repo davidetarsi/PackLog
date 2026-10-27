@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../constants/app_constants.dart';
 import '../theme/theme.dart';
 
 /// Widget riutilizzabile per pill-style tabs con supporto per due comportamenti:
@@ -180,11 +181,11 @@ class _AppPillState extends State<AppPill> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 100),
+      duration: AppMotion.fast,
       vsync: this,
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _scaleController, curve: AppMotion.standard),
     );
   }
 
@@ -250,8 +251,8 @@ class _AppPillState extends State<AppPill> with SingleTickerProviderStateMixin {
           onTapUp: _handleTapUp,
           onTapCancel: _handleTapCancel,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
+            duration: AppMotion.medium,
+            curve: AppMotion.standard,
             padding: EdgeInsets.symmetric(
               horizontal: effectiveHorizontalPadding,
               vertical: effectiveVerticalPadding,
@@ -259,7 +260,10 @@ class _AppPillState extends State<AppPill> with SingleTickerProviderStateMixin {
             decoration: BoxDecoration(
               color: backgroundColor,
               borderRadius: context.responsiveBorderRadius(20),
-              border: Border.all(color: borderColor, width: 1),
+              border: Border.all(
+                color: borderColor,
+                width: AppConstants.hairlineBorderWidth,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

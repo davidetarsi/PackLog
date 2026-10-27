@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../shared/theme/app_opacity.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/ds_checkbox.dart';
 import '../../../../shared/widgets/ds_text_button.dart';
@@ -58,7 +59,7 @@ class _AiResultCardState extends State<AiResultCard> {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final active = widget.included;
-    final muted = colors.onSurface.withValues(alpha: 0.38);
+    final muted = colors.onSurface.withValues(alpha: AppOpacity.disabled);
     final nameStyle = textTheme.titleMedium?.copyWith(
       color: active ? colors.onSurface : muted,
     );
@@ -122,7 +123,7 @@ class _AiResultCardState extends State<AiResultCard> {
                       ],
                     ),
                   ),
-                SizedBox(height: context.spacingXs / 2),
+                SizedBox(height: context.spacingXxs),
                 InkWell(
                   key: const Key('ai_result_details'),
                   onTap: widget.enabled ? widget.onOpenDetails : null,
@@ -146,7 +147,7 @@ class _AiResultCardState extends State<AiResultCard> {
                   ),
                 ),
                 if (doubts.isNotEmpty) ...[
-                  SizedBox(height: context.spacingXs / 2),
+                  SizedBox(height: context.spacingXxs),
                   Row(
                     children: [
                       Icon(

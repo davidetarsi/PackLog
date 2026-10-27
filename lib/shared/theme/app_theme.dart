@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'app_opacity.dart';
 import 'app_spacing.dart';
 import 'error_empty_theme_extension.dart';
 import '../constants/app_constants.dart';
@@ -192,15 +193,6 @@ class AppTheme {
         ),
       ),
 
-      // === Card Theme ===
-      cardTheme: CardThemeData(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-        ),
-        margin: const EdgeInsets.only(bottom: 8),
-      ),
-
       // === Input Decoration Theme ===
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
@@ -212,7 +204,10 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+          borderSide: BorderSide(
+            color: colorScheme.primary,
+            width: AppConstants.emphasisBorderWidth,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
@@ -220,11 +215,14 @@ class AppTheme {
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          borderSide: BorderSide(color: colorScheme.error, width: 2),
+          borderSide: BorderSide(
+            color: colorScheme.error,
+            width: AppConstants.emphasisBorderWidth,
+          ),
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.smPlus,
         ),
       ),
 
@@ -236,21 +234,23 @@ class AppTheme {
         fillColor: const WidgetStatePropertyAll(Colors.transparent),
         checkColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.disabled)
-              ? colorScheme.onSurface.withValues(alpha: 0.38)
+              ? colorScheme.onSurface.withValues(alpha: AppOpacity.disabled)
               : colorScheme.primary,
         ),
         side: WidgetStateBorderSide.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) {
             return BorderSide(
-              color: colorScheme.onSurface.withValues(alpha: 0.38),
-              width: 2,
+              color: colorScheme.onSurface.withValues(
+                alpha: AppOpacity.disabled,
+              ),
+              width: AppConstants.emphasisBorderWidth,
             );
           }
           return BorderSide(
             color: states.contains(WidgetState.selected)
                 ? colorScheme.primary
                 : colorScheme.onSurfaceVariant,
-            width: 2,
+            width: AppConstants.emphasisBorderWidth,
           );
         }),
       ),
@@ -281,19 +281,22 @@ class AppTheme {
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: colorScheme.onSurface,
         selectionColor: colorScheme.onSurface.withValues(
-          alpha: AppConstants.textSelectionOpacity,
+          alpha: AppOpacity.textSelection,
         ),
         selectionHandleColor: colorScheme.onSurface,
       ),
 
       // === List Tile Theme ===
       listTileTheme: const ListTileThemeData(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
       ),
 
       // === Divider Theme ===
       dividerTheme: DividerThemeData(
-        thickness: 1,
+        thickness: AppConstants.hairlineBorderWidth,
         color: colorScheme.outlineVariant,
       ),
 
@@ -321,7 +324,9 @@ class AppTheme {
       // === Bottom Sheet Theme ===
       bottomSheetTheme: BottomSheetThemeData(
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppConstants.modalBorderRadius),
+          ),
         ),
         backgroundColor: colorScheme.surface,
       ),
@@ -352,7 +357,7 @@ class AppTheme {
             fontWeight: FontWeight.w400,
             color: colorScheme.onSurfaceVariant,
           ),
-          emptyStateIconSize: 80,
+          emptyStateIconSize: AppSpacing.iconDisplay,
           // Stesso colore del titolo e del sottotitolo: l'icona è parte del
           // messaggio, non un elemento a sé. Al 38% sembrava disabilitata, e
           // in arancione competeva con l'unica cosa toccabile della schermata,
@@ -364,12 +369,12 @@ class AppTheme {
             fontSize: AppSpacing.fontSm,
             fontWeight: FontWeight.w400,
           ),
-          errorStateIconSize: 80,
+          errorStateIconSize: AppSpacing.iconDisplay,
           errorStateIconColor: colorScheme.error,
           errorStateRetryLabel: 'common.retry',
-          stateSpacingMd: 16,
-          stateSpacingLg: 24,
-          stateSpacingSm: 8,
+          stateSpacingMd: AppSpacing.md,
+          stateSpacingLg: AppSpacing.lg,
+          stateSpacingSm: AppSpacing.sm,
         ),
       ],
     );
