@@ -92,7 +92,7 @@ void main() {
     });
 
     testWidgets('lo spento è pieno del fondo, senza vetro', (tester) async {
-      // Sul vetro il testo al 38% si perdeva: lo spento resta pieno.
+      // Sul vetro il testo spento si perdeva: lo spento resta pieno.
       await pumpButton(tester, variant: DsButtonVariant.neutral);
       expect(backgroundOf(tester), AppTheme.dark.scaffoldBackgroundColor);
       expect(

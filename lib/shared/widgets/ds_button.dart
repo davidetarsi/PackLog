@@ -42,7 +42,7 @@ enum DsButtonVariant {
 /// | destructive | `error` | `error` | `onError` |
 /// | secondary | superficie sotto | `primary` | `primary` |
 /// | neutral | vetro | `outline` | `onSurface` |
-/// | disabilitato | superficie sotto | `outline` | `onSurface` al 38% |
+/// | disabilitato | superficie sotto | `outline` | `onSurface` al 50% |
 ///
 /// "Superficie sotto" è il fondo della pagina, del foglio o del dialog in cui
 /// sta il bottone, pieno. "Vetro" è lo stesso della barra delle tab:
@@ -100,9 +100,8 @@ class DsButton extends StatelessWidget {
     final Color contentColor;
 
     if (looksDisabled) {
-      // 38% è la convenzione Material per il disabilitato: volutamente sotto
-      // le soglie di contrasto, perché "non toccabile" deve leggersi prima
-      // ancora del testo.
+      // Testo al 50% (AppOpacity.disabled): "non toccabile" deve leggersi
+      // prima ancora del testo, ma il testo deve restare leggibile.
       backgroundColor = _ambientSurface(context, colorScheme);
       accentColor = colorScheme.outline;
       contentColor = colorScheme.onSurface.withValues(
@@ -134,7 +133,7 @@ class DsButton extends StatelessWidget {
 
     // Il neutro attivo è una pillola di vetro come la barra delle tab:
     // superficie semitrasparente con la sfocatura di ciò che sta sotto. Lo
-    // spento no: sul vetro il testo al 38% si perdeva, quindi resta pieno del
+    // spento no: sul vetro il testo spento si perdeva, quindi resta pieno del
     // fondo su cui sta.
     final glass = !looksDisabled && variant == DsButtonVariant.neutral;
     final pill = BorderRadius.circular(AppConstants.pillBorderRadius);

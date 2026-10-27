@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
 
@@ -43,14 +44,16 @@ void main() {
     expect(tester.getSize(find.byKey(const Key('c'))).width, a);
   });
 
-  testWidgets('senza onTap la voce è spenta al 38%', (tester) async {
+  testWidgets('senza onTap la voce è spenta al 50%', (tester) async {
     await pump(tester, [
       const DsBarItem(key: Key('off'), icon: Icons.delete_outline, label: 'X'),
     ]);
     final icon = tester.widget<Icon>(find.byIcon(Icons.delete_outline));
     expect(
       icon.color,
-      AppTheme.light.colorScheme.onSurface.withValues(alpha: 0.38),
+      AppTheme.light.colorScheme.onSurface.withValues(
+        alpha: AppOpacity.disabled,
+      ),
     );
   });
 

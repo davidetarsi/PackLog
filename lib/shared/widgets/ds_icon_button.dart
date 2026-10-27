@@ -7,7 +7,7 @@ import '../theme/app_spacing.dart';
 ///
 /// Il [tooltip] è obbligatorio: è il nome del bottone per chi non vede l'icona,
 /// e compare al tocco lungo. L'area di tocco è 48, l'icona `iconSizeMd`. Da
-/// spento l'icona è `onSurface` al 38%.
+/// spento l'icona è `onSurface` al 50% (AppOpacity.disabled).
 class DsIconButton extends StatelessWidget {
   final IconData icon;
 

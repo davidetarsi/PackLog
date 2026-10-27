@@ -5,7 +5,7 @@ import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_icon_button.dart';
 
 /// [DsIconButton] è il bottone di sola icona: ha sempre un tooltip, un'area di
-/// tocco di 48 e lo stato spento al 38%.
+/// tocco di 48 e lo stato spento al 50%.
 void main() {
   Future<void> pumpButton(
     WidgetTester tester, {
@@ -43,7 +43,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('spento al 38%', (tester) async {
+  testWidgets('spento al 50%', (tester) async {
     await pumpButton(tester, onPressed: null);
 
     final color = IconTheme.of(tester.element(find.byIcon(Icons.close))).color;

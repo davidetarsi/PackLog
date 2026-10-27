@@ -6,6 +6,7 @@ import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_opacity.dart';
 import '../widgets/ds_badge.dart';
 import '../widgets/ds_divider.dart';
 
@@ -338,9 +339,9 @@ class _TypographySection extends StatelessWidget {
                 ).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
               ),
               Text(
-                'disabled · alpha 0.38',
+                'disabled · alpha ${AppOpacity.disabled}',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: cs.onSurface.withValues(alpha: 0.38),
+                  color: cs.onSurface.withValues(alpha: AppOpacity.disabled),
                 ),
               ),
             ],
