@@ -1742,8 +1742,8 @@ final flows = <Flow>[
       4,
       'lingua',
       'dialog',
-      source: 'lib/features/profile/view/dialogs/profile_language_dialog.dart',
-      description: 'Dialog scelta lingua.',
+      source: 'lib/features/profile/view/sheets/profile_language_sheet.dart',
+      description: 'Foglio scelta lingua.',
       steps: (app) async {
         await app.go('/');
         await app.push('/profile');
@@ -1754,8 +1754,8 @@ final flows = <Flow>[
       5,
       'tema',
       'dialog',
-      source: 'lib/features/profile/view/dialogs/profile_theme_dialog.dart',
-      description: 'Dialog scelta tema.',
+      source: 'lib/features/profile/view/sheets/profile_theme_sheet.dart',
+      description: 'Foglio scelta tema.',
       steps: (app) async {
         await app.go('/');
         await app.push('/profile');
