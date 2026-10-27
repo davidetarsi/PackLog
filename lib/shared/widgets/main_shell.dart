@@ -15,6 +15,7 @@ import '../helpers/snack_bar_helper.dart';
 import '../theme/app_spacing.dart';
 import 'create_sheet.dart';
 import 'ds_floating_bar.dart';
+import 'ds_glass_band.dart';
 
 /// Shell principale: barra flottante Case · Crea · Viaggi.
 ///
@@ -102,44 +103,48 @@ class MainShell extends ConsumerWidget {
           navigationShell,
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            context.spacingMd,
-            0,
-            context.spacingMd,
-            context.spacingMd,
-          ),
-          child: DsFloatingBar(
-            children: [
-              DsBarItem(
-                key: const Key('nav_houses'),
-                anchorKey: tourKeys.housesTab,
-                icon: Icons.home_outlined,
-                selectedIcon: Icons.home,
-                label: 'navigation.houses'.tr(),
-                isSelected: onHouses,
-                onTap: () => _goBranch(_housesBranch),
-              ),
-              DsBarItem(
-                key: const Key('nav_create'),
-                anchorKey: tourKeys.primaryAction,
-                icon: Icons.add_circle_outline,
-                label: 'common.create'.tr(),
-                accent: true,
-                onTap: () => _onCreate(context, ref, fromTrips: !onHouses),
-              ),
-              DsBarItem(
-                key: const Key('nav_trips'),
-                anchorKey: tourKeys.tripsTab,
-                icon: Icons.luggage_outlined,
-                selectedIcon: Icons.luggage,
-                label: 'navigation.trips'.tr(),
-                isSelected: !onHouses,
-                onTap: () => _goBranch(_tripsBranch),
-              ),
-            ],
+      // La barra delle tab sta sulla stessa fascia di vetro dei bottoni delle
+      // altre pagine.
+      bottomNavigationBar: DsGlassBand(
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              context.spacingMd,
+              DsGlassBand.topGap(context),
+              context.spacingMd,
+              context.spacingMd,
+            ),
+            child: DsFloatingBar(
+              children: [
+                DsBarItem(
+                  key: const Key('nav_houses'),
+                  anchorKey: tourKeys.housesTab,
+                  icon: Icons.home_outlined,
+                  selectedIcon: Icons.home,
+                  label: 'navigation.houses'.tr(),
+                  isSelected: onHouses,
+                  onTap: () => _goBranch(_housesBranch),
+                ),
+                DsBarItem(
+                  key: const Key('nav_create'),
+                  anchorKey: tourKeys.primaryAction,
+                  icon: Icons.add_circle_outline,
+                  label: 'common.create'.tr(),
+                  accent: true,
+                  onTap: () => _onCreate(context, ref, fromTrips: !onHouses),
+                ),
+                DsBarItem(
+                  key: const Key('nav_trips'),
+                  anchorKey: tourKeys.tripsTab,
+                  icon: Icons.luggage_outlined,
+                  selectedIcon: Icons.luggage,
+                  label: 'navigation.trips'.tr(),
+                  isSelected: !onHouses,
+                  onTap: () => _goBranch(_tripsBranch),
+                ),
+              ],
+            ),
           ),
         ),
       ),

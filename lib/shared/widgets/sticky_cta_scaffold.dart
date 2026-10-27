@@ -1,10 +1,8 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:pack_log/shared/constants/app_constants.dart';
-import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/cta_reserved_space.dart';
+import 'package:pack_log/shared/widgets/ds_glass_band.dart';
 
 /// Scaffold standardizzato con CTA (Call-To-Action) flottante in basso.
 ///
@@ -12,19 +10,10 @@ import 'package:pack_log/shared/theme/cta_reserved_space.dart';
 /// - Il body è scrollabile e arriva fino in fondo allo schermo (`extendBody`)
 /// - Il CTA (bottoni/actions) resta fisso in basso, sopra il body che scorre
 ///   sotto
-/// - Con `ctaBackgroundColor` non impostato (default) i bottoni galleggiano:
-///   il body che scorre sotto l'area CTA si vede sfocato e velato dallo
-///   sfondo, così resta chiaro che la pagina continua senza che il testo si
-///   confonda con i bottoni. Quell'area non è cliccabile verso il contenuto
-///   sotto (vedi commento nel `build`)
+/// - I bottoni stanno su una [DsGlassBand], la stessa fascia di vetro della
+///   barra delle tab: il body che scorre sotto si vede sfocato e appena
+///   velato. Quell'area non è cliccabile verso il contenuto sotto
 /// - SafeArea gestisce correttamente iOS Home Indicator e Android Nav Bar
-///
-/// **Non è lo stesso pattern della nav bar di [MainShell], ed è bene saperlo.**
-/// Quella è una pill con riempimento `surfaceContainer`, raggio pill e ombra:
-/// i suoi item stanno *dentro* una superficie visibile. Qui l'area CTA è
-/// sfocata e i bottoni galleggiano sul contenuto che scorre.
-/// Entrambe fluttuano sopra il body, ma somigliano l'una all'altra molto meno
-/// di quanto il codice lasci intendere.
 ///
 /// L'ultimo contenuto del body può finire visivamente sotto l'area CTA quando
 /// si scorre fino in fondo. Per evitare che l'ultimo elemento di una lista
@@ -50,11 +39,6 @@ class StickyCtaScaffold extends StatelessWidget {
   /// nessuna barra e il body occupa tutto lo spazio disponibile.
   final Widget? bottomContent;
 
-  /// Colore di background dell'area CTA. Di default è null: i bottoni
-  /// galleggiano sopra il body, che sotto l'area CTA si vede sfocato. Passare
-  /// un colore esplicito solo se serve un'area CTA opaca invece che flottante.
-  final Color? ctaBackgroundColor;
-
   /// Padding interno del contenitore CTA.
   /// Se null, applica il padding standard: top 16, bottom 8, orizzontale 16.
   final EdgeInsetsGeometry? ctaPadding;
@@ -69,7 +53,6 @@ class StickyCtaScaffold extends StatelessWidget {
     this.appBar,
     required this.body,
     this.bottomContent,
-    this.ctaBackgroundColor,
     this.ctaPadding,
     this.ctaHeightOverride,
   });
@@ -83,7 +66,7 @@ class StickyCtaScaffold extends StatelessWidget {
   /// questo valore invece di duplicare la formula.
   static double standardHeight(BuildContext context) =>
       MediaQuery.paddingOf(context).bottom +
-      context.spacingMd +
+      DsGlassBand.topGap(context) +
       context.spacingSm +
       context.responsive(AppConstants.ctaHeight);
 
@@ -121,37 +104,20 @@ class StickyCtaScaffold extends StatelessWidget {
     );
   }
 
-  /// L'area dei bottoni: opaca con [ctaBackgroundColor], altrimenti sfocata.
+  /// L'area dei bottoni, sulla fascia di vetro comune.
   Widget _ctaArea(BuildContext context) {
-    final content = SafeArea(
-      child: Padding(
-        padding:
-            ctaPadding ??
-            EdgeInsets.only(
-              left: context.spacingMd,
-              right: context.spacingMd,
-              top: context.spacingMd,
-              bottom: context.spacingSm,
-            ),
-        child: bottomContent,
-      ),
-    );
-    final opaque = ctaBackgroundColor;
-    if (opaque != null) return Container(color: opaque, child: content);
-    // Il contenuto che passa sotto si vede sfocato e velato dallo sfondo:
-    // la pagina continua, ma il testo non si sovrappone ai bottoni. ClipRect
-    // limita la sfocatura all'area CTA.
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: AppConstants.ctaBlurSigma,
-          sigmaY: AppConstants.ctaBlurSigma,
-        ),
-        child: Container(
-          color: Theme.of(
-            context,
-          ).scaffoldBackgroundColor.withValues(alpha: AppOpacity.ctaScrim),
-          child: content,
+    return DsGlassBand(
+      child: SafeArea(
+        child: Padding(
+          padding:
+              ctaPadding ??
+              EdgeInsets.only(
+                left: context.spacingMd,
+                right: context.spacingMd,
+                top: DsGlassBand.topGap(context),
+                bottom: context.spacingSm,
+              ),
+          child: bottomContent,
         ),
       ),
     );

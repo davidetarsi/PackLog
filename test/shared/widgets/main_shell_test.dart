@@ -11,6 +11,7 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/profile/providers/gpt_usage_provider.dart';
 import 'package:pack_log/shared/widgets/create_sheet.dart';
+import 'package:pack_log/shared/widgets/ds_glass_band.dart';
 import 'package:pack_log/shared/widgets/main_shell.dart';
 
 class _MockAnalytics extends Mock implements AppAnalyticsService {}
@@ -115,6 +116,16 @@ void main() {
     double x(String key) => tester.getCenter(find.byKey(Key(key))).dx;
     expect(x('nav_houses'), lessThan(x('nav_create')));
     expect(x('nav_create'), lessThan(x('nav_trips')));
+  });
+
+  testWidgets('la barra delle tab sta sulla fascia di vetro', (tester) async {
+    await pumpShell(tester);
+    final band = find.byType(DsGlassBand);
+    expect(band, findsOneWidget);
+    expect(
+      find.descendant(of: band, matching: find.byKey(const Key('nav_create'))),
+      findsOneWidget,
+    );
   });
 
   testWidgets('le tre scritte sono allineate', (tester) async {
