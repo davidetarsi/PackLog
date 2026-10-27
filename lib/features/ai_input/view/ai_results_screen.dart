@@ -10,11 +10,15 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/dialog_helpers.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/cta_reserved_space.dart';
+import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_error_state.dart';
+import '../../../shared/widgets/ds_icon_button.dart';
 import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/ds_settings.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../houses/model/house_model.dart';
@@ -34,6 +38,7 @@ import 'widgets/ai_photo_group_header.dart';
 import 'widgets/ai_result_card.dart';
 import 'widgets/already_here_sheet.dart';
 import 'widgets/image_source_sheet.dart';
+import '../../../shared/theme/app_text_styles.dart';
 
 /// Page 2 of the AI import flow: shows loading progress while GPT-4o Vision
 /// analyses the images, then the editable results list with save CTA.
@@ -144,18 +149,15 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       }
     } on Object {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            key: const Key('ai_picker_error'),
-            content: Text('ai_import.picker_error'.tr()),
-            action: SnackBarAction(
-              label: 'ai_import.picker_retry'.tr(),
-              onPressed: () {
-                if (!mounted) return;
-                _showPickerSheet();
-              },
-            ),
-          ),
+        AppSnackBar.showAction(
+          context,
+          'ai_import.picker_error'.tr(),
+          actionLabel: 'ai_import.picker_retry'.tr(),
+          onAction: () {
+            if (!mounted) return;
+            _showPickerSheet();
+          },
+          key: const Key('ai_picker_error'),
         );
       }
     } finally {
@@ -308,9 +310,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                       SizedBox(height: context.spacingMd),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: FilledButton(
+                        child: DsButton(
+                          label: 'common.ok'.tr(),
                           onPressed: () => controller.next(),
-                          child: Text('common.ok'.tr()),
                         ),
                       ),
                     ],
@@ -355,13 +357,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
           next.photoGroups.isEmpty &&
           next.failureReason == null &&
           next.errorMessage == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('ai_import.save_success_generic'.tr()),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppSnackBar.showSuccess(context, 'ai_import.save_success_generic'.tr());
         if (!widget.isFirstTimeOnboarding && widget.houseId != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) _exitToHouse();
@@ -383,9 +379,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
           title: Text('ai_import.title'.tr()),
           leading: widget.isFirstTimeOnboarding || widget.houseId == null
               ? null
-              : IconButton(
+              : DsIconButton(
                   key: const Key('ai_results_close'),
-                  icon: const Icon(Icons.close),
+                  icon: Icons.close,
                   tooltip: 'common.close'.tr(),
                   onPressed: aiState.isLoading || _exitStarted
                       ? null
@@ -585,10 +581,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
             child: Text(
               'ai_import.analysis_in_progress'.tr(),
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
             ),
           ),
           SizedBox(height: context.spacingMd),
@@ -854,26 +849,16 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                 Expanded(
                   child: Text(
                     state.failureReason?.messageKey.tr() ?? state.errorMessage!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onErrorContainer,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall?.strong
+                        .copyWith(color: colorScheme.onErrorContainer),
                   ),
                 ),
                 if (state.failureReason?.isRetryable ?? false) ...[
                   SizedBox(width: context.spacingSm),
-                  TextButton(
+                  DsTextButton(
                     key: const Key('ai_partial_error_retry'),
                     onPressed: notifier.retryFailed,
-                    style: TextButton.styleFrom(
-                      foregroundColor: colorScheme.onErrorContainer,
-                      textStyle: Theme.of(context).textTheme.labelLarge
-                          ?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            decoration: TextDecoration.underline,
-                          ),
-                    ),
-                    child: Text('ai_import.retry'.tr()),
+                    label: 'ai_import.retry'.tr(),
                   ),
                 ],
               ],

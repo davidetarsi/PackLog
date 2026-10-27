@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/ds_section_title.dart';
 import '../../../model/trip_weather.dart';
 import '../../../providers/trip_weather_provider.dart';
+import '../../../../../shared/widgets/ds_divider.dart';
 
 /// Da qui il vento si nomina nella riga della tappa.
 const _kWindyKmh = 40.0;
@@ -99,7 +101,7 @@ class _WeatherCard extends StatelessWidget {
           child: Column(
             children: [
               for (var i = 0; i < weather.stops.length; i++) ...[
-                if (i > 0) const Divider(height: 1),
+                if (i > 0) const DsDivider(),
                 _StopRow(
                   stop: weather.stops[i],
                   // Con i giorni di previsione la tappa apre il dettaglio.
@@ -187,7 +189,7 @@ class _StopRow extends StatelessWidget {
                   stop.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                  style: tt.bodyLarge?.strong,
                 ),
                 Text(
                   _details(context),
@@ -202,7 +204,7 @@ class _StopRow extends StatelessWidget {
               'trips.weather.temps'.tr(
                 args: [min.round().toString(), max.round().toString()],
               ),
-              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: tt.titleMedium?.title,
             ),
           ],
           if (onTap != null) ...[
@@ -319,18 +321,16 @@ class _WeatherFooterState extends State<_WeatherFooter> {
             ),
           ),
           if (widget.onRefresh != null)
-            IconButton(
-              key: const Key('pack_weather_refresh'),
-              tooltip: 'trips.weather.refresh'.tr(),
-              onPressed: _refresh,
-              icon: AnimatedRotation(
-                turns: _turns,
-                duration: _kRefreshSpin,
-                child: Icon(
-                  Icons.refresh,
-                  size: context.iconSizeSm,
-                  color: cs.onSurfaceVariant,
-                ),
+            // Ruota il bottone intero: DsIconButton accetta solo un IconData.
+            AnimatedRotation(
+              turns: _turns,
+              duration: _kRefreshSpin,
+              child: DsIconButton(
+                key: const Key('pack_weather_refresh'),
+                tooltip: 'trips.weather.refresh'.tr(),
+                onPressed: _refresh,
+                icon: Icons.refresh,
+                color: cs.onSurfaceVariant,
               ),
             ),
         ],

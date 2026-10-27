@@ -7,6 +7,7 @@ import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ds_badge.dart';
+import '../widgets/ds_divider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DsThemeShowcaseScreen
@@ -83,9 +84,7 @@ class _SectionDivider extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Divider(color: Theme.of(context).colorScheme.outlineVariant),
-          ),
+          Expanded(child: DsDivider()),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             child: Text(
@@ -96,9 +95,7 @@ class _SectionDivider extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Divider(color: Theme.of(context).colorScheme.outlineVariant),
-          ),
+          Expanded(child: DsDivider()),
         ],
       ),
     );

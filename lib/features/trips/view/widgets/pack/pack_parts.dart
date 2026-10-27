@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_checkbox.dart';
+import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/quantity_stepper.dart';
 import '../../../../items/model/item_model.dart';
 import '../../../model/trip_model.dart';
@@ -131,7 +133,7 @@ class PackItemRow extends StatelessWidget {
 
     final label = Row(
       children: [
-        Checkbox(value: chosen != null, onChanged: (_) => onToggle!()),
+        DsCheckbox(value: chosen != null, onChanged: (_) => onToggle!()),
         SizedBox(width: context.spacingXs),
         Expanded(
           child: Text(
@@ -239,10 +241,11 @@ class PackItemRow extends StatelessWidget {
                 }
               },
             ),
-          IconButton(
+          DsIconButton(
             key: Key('pack_remove_${chosen.id}'),
             tooltip: 'trips.pack.ai.remove'.tr(),
-            icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+            icon: Icons.close,
+            color: cs.onSurfaceVariant,
             onPressed: onRemove,
           ),
         ],
@@ -280,10 +283,7 @@ class PackAddRow extends StatelessWidget {
     final text = TextSpan(
       children: [
         TextSpan(text: parts.first),
-        TextSpan(
-          text: name,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
+        TextSpan(text: name, style: tt.bodyLarge?.strong),
         TextSpan(text: parts.skip(1).join()),
       ],
     );

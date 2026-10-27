@@ -19,6 +19,7 @@ import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/shared/widgets/ds_form_sheet.dart';
 import 'package:pack_log/shared/widgets/ds_sheet_header.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_text_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../screenshots/support/fakes.dart';
@@ -559,7 +560,7 @@ void main() {
       ),
     );
     await _openResults(app);
-    final action = tester.widget<TextButton>(
+    final action = tester.widget<DsTextButton>(
       find.byKey(const Key('ai_already_here')),
     );
     action.onPressed!();

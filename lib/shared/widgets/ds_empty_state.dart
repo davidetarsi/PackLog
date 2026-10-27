@@ -3,6 +3,7 @@ import '../theme/app_spacing.dart';
 import '../theme/error_empty_theme_extension.dart';
 import 'ds_button.dart';
 import 'ds_link_button.dart';
+import '../theme/app_text_styles.dart';
 
 /// Template degli stati vuoti: icona, titolo, sottotitolo opzionale e, sotto,
 /// i contenuti che la schermata sceglie.
@@ -123,9 +124,7 @@ class DsEmptyState extends StatelessWidget {
             SizedBox(height: theme.stateSpacingSm),
             Text(
               tapHint!,
-              style: theme.emptyStateSubtitle.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: theme.emptyStateSubtitle.strong,
               textAlign: TextAlign.center,
             ),
           ],

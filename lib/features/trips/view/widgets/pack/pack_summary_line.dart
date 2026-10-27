@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_spacing.dart';
 import '../../../model/trip_model.dart';
 import '../../../model/trip_postcard.dart';
+import '../../../../../shared/theme/app_text_styles.dart';
 
 /// Riepilogo del viaggio in una riga, in cima alla valigia: nome in grande; sotto
 /// le date, le notti e i luoghi; a destra i giorni alla partenza, come il
@@ -53,7 +54,7 @@ class PackSummaryLine extends StatelessWidget {
                 title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                style: tt.headlineSmall?.title,
               ),
               Text(
                 details,

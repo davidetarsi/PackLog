@@ -4,6 +4,7 @@ import 'package:pack_log/features/items/view/item_category.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/shared/widgets/ds_badge.dart';
 import 'package:pack_log/shared/widgets/universal_item_tile.dart';
+import '../../../shared/theme/app_text_styles.dart';
 
 /// Card specifica per oggetti in transito
 class InTransitItemCard extends StatelessWidget {
@@ -42,9 +43,7 @@ class InTransitItemCard extends StatelessWidget {
       leading: CategoryIcon(category: item.category),
       title: Text(
         item.name,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+        style: Theme.of(context).textTheme.bodyMedium?.strong,
       ),
       subtitle: showOrigin
           ? Row(

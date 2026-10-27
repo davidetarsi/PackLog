@@ -6,7 +6,7 @@
 /// - **warning**: sfondo `colorScheme.tertiary`, testo `colorScheme.onTertiary`.
 ///
 /// Tutti i messaggi usano `SnackBarBehavior.floating` per un aspetto moderno
-/// e coerente con Material 3.
+/// e coerente con Material 3. Il raggio è `AppConstants.inputBorderRadius`.
 ///
 /// Esempio d'uso:
 /// ```dart
@@ -18,6 +18,7 @@ library;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 
 /// Utility statica per mostrare SnackBar con lo stile del Design System.
@@ -49,6 +50,22 @@ class AppSnackBar {
     );
   }
 
+  /// Come [showError], ma sul [messenger] passato invece che su un context.
+  ///
+  /// Serve quando il context della schermata può essere già smontato: il
+  /// chiamante prende il messenger prima dell'operazione asincrona.
+  static void showErrorOn(ScaffoldMessengerState messenger, String message) {
+    final context = messenger.context;
+    final colorScheme = Theme.of(context).colorScheme;
+    _showOn(
+      messenger,
+      context: context,
+      message: message,
+      backgroundColor: colorScheme.error,
+      textColor: colorScheme.onError,
+    );
+  }
+
   /// Mostra uno SnackBar di **avvertimento** con sfondo `colorScheme.tertiary`.
   ///
   /// Usare per segnalare situazioni anomale ma non bloccanti
@@ -75,26 +92,46 @@ class AppSnackBar {
     );
   }
 
+  /// Mostra uno SnackBar **informativo** con l'azione [actionLabel], neutro
+  /// (`inverseSurface`) come [showInfo]. L'azione resta del colore del testo:
+  /// lo SnackBar non è arancio.
+  ///
+  /// Se la pagina non ha uno `ScaffoldMessenger` (per esempio un'azione
+  /// annullata durante il cambio di pagina) non mostra nulla e non lancia.
+  static void showAction(
+    BuildContext context,
+    String message, {
+    required String actionLabel,
+    required VoidCallback onAction,
+    Key? key,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    _show(
+      context: context,
+      key: key,
+      message: message,
+      backgroundColor: colorScheme.inverseSurface,
+      textColor: colorScheme.onInverseSurface,
+      action: SnackBarAction(
+        label: actionLabel,
+        textColor: colorScheme.onInverseSurface,
+        onPressed: onAction,
+      ),
+    );
+  }
+
   /// Mostra uno SnackBar **informativo** con l'azione "Annulla" (`common.undo`),
   /// per tornare indietro su un'operazione appena fatta (es. capo tolto).
-  ///
-  /// L'azione resta del colore del testo: lo SnackBar è neutro, non arancio.
   static void showUndo(
     BuildContext context,
     String message, {
     required VoidCallback onUndo,
   }) {
-    final colorScheme = Theme.of(context).colorScheme;
-    _show(
-      context: context,
-      message: message,
-      backgroundColor: colorScheme.inverseSurface,
-      textColor: colorScheme.onInverseSurface,
-      action: SnackBarAction(
-        label: 'common.undo'.tr(),
-        textColor: colorScheme.onInverseSurface,
-        onPressed: onUndo,
-      ),
+    showAction(
+      context,
+      message,
+      actionLabel: 'common.undo'.tr(),
+      onAction: onUndo,
     );
   }
 
@@ -106,19 +143,47 @@ class AppSnackBar {
     required Color backgroundColor,
     required Color textColor,
     SnackBarAction? action,
+    Key? key,
   }) {
-    ScaffoldMessenger.of(context)
+    // Senza ScaffoldMessenger non c'è dove mostrare lo SnackBar: si esce senza
+    // errore, come per un'azione chiesta da una pagina già smontata.
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    _showOn(
+      messenger,
+      context: context,
+      message: message,
+      backgroundColor: backgroundColor,
+      textColor: textColor,
+      action: action,
+      key: key,
+    );
+  }
+
+  static void _showOn(
+    ScaffoldMessengerState messenger, {
+    required BuildContext context,
+    required String message,
+    required Color backgroundColor,
+    required Color textColor,
+    SnackBarAction? action,
+    Key? key,
+  }) {
+    messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
+          key: key,
           content: Text(
             message,
-            style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: textColor),
           ),
           backgroundColor: backgroundColor,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
           ),
           margin: EdgeInsets.all(context.spacingMd),
           action: action,

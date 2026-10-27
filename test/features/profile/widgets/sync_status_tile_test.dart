@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/profile/widgets/sync_status_tile.dart';
+import 'package:pack_log/shared/widgets/ds_dialog.dart';
 
 void main() {
   Widget wrap(Widget child, {required List<Override> overrides}) {
@@ -97,7 +98,7 @@ void main() {
       await tester.tap(find.text('profile.sync_status_title'.tr()));
       await tester.pumpAndSettle();
 
-      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byType(DsDialog), findsOneWidget);
     },
   );
 
@@ -115,6 +116,6 @@ void main() {
     await tester.tap(find.byType(ListTile));
     await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(DsDialog), findsNothing);
   });
 }

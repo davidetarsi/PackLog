@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 
 class TourStepContent extends StatelessWidget {
   final String title;
@@ -64,10 +65,7 @@ class TourStepContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: context.spacingXs),
-          Text(
-            title,
-            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
+          Text(title, style: textTheme.titleMedium),
           SizedBox(height: context.spacingXs),
           Text(
             body,
@@ -79,13 +77,10 @@ class TourStepContent extends StatelessWidget {
           Row(
             children: [
               if (!isLastStep)
-                TextButton(
+                DsTextButton(
                   key: const Key('tour_skip'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: colorScheme.onSurfaceVariant,
-                  ),
                   onPressed: onSkip,
-                  child: Text('tour.skip'.tr()),
+                  label: 'tour.skip'.tr(),
                 ),
               const Spacer(),
               DsButton(

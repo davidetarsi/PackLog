@@ -5,6 +5,7 @@ import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/theme/cta_reserved_space.dart';
 import '../../model/trip_date_range.dart';
+import '../../../../shared/theme/app_text_styles.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TripCalendar
@@ -383,6 +384,7 @@ class _DayCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
+    final base = Theme.of(context).textTheme.bodyMedium;
     final isSelected = _isDeparture || _isReturn;
     final inRange = _isInRange;
     final showRangeBg = isSelected || inRange;
@@ -455,9 +457,7 @@ class _DayCell extends StatelessWidget {
             // ── Numero del giorno ──────────────────────────────────────
             Text(
               '${date.day}',
-              // Il peso condizionale resta: distingue il giorno scelto.
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+              style: (isSelected ? base?.strong : base)?.copyWith(
                 color: textColor,
               ),
             ),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/analytics/core_analytics_service.dart';
 import '../../../../shared/helpers/search_match.dart';
 import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/theme/app_text_styles.dart';
 import '../../../../shared/widgets/ds_badge.dart';
 import '../../../../shared/widgets/ds_error_state.dart';
 import '../../../../shared/widgets/ds_form_sheet.dart';
@@ -139,9 +140,7 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
                   child: Text(
                     item.name,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: theme.textTheme.bodyLarge?.strong,
                   ),
                 ),
                 if (item.aiMetadata != null) ...[

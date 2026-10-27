@@ -2,55 +2,22 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../theme/theme.dart';
 import '../widgets/ds_button.dart';
+import '../widgets/ds_dialog.dart';
 import '../widgets/ds_field.dart';
+import '../widgets/ds_text_button.dart';
 
 /// Helper per i dialog comuni dell'applicazione.
 ///
-/// Convenzione bottoni: le stesse pill del resto dell'app ([DsButton]), due
-/// per riga e di **pari larghezza**. Prima erano due link testuali di peso
-/// identico, e per giunta "Annulla" era colorato d'accento — cioè l'azione
-/// accentata era quella che non fa nulla.
+/// Ogni dialogo è un [DsDialog] aperto con [showDsDialog]. Convenzione
+/// bottoni: due pill di pari larghezza ([DsDialog.twoActions]). Prima erano
+/// due link testuali di peso identico, e per giunta "Annulla" era colorato
+/// d'accento — cioè l'azione accentata era quella che non fa nulla.
 ///
 /// La conferma distruttiva è rossa e non arancione: stessa forma e stesso
 /// peso della primaria, ma un "Elimina" arancione accanto a un "Annulla"
 /// grigio farebbe sembrare la cancellazione la strada consigliata.
 class DialogHelpers {
   DialogHelpers._();
-
-  /// Padding delle azioni: l'`actionsPadding` di default di [AlertDialog] è
-  /// tarato su bottoni testuali e stringerebbe troppo le pill.
-  static const EdgeInsets actionsPadding = EdgeInsets.fromLTRB(24, 8, 24, 20);
-
-  /// Due pill affiancate che si dividono la larghezza in parti uguali.
-  static Widget twoActions({
-    required String cancelLabel,
-    required VoidCallback onCancel,
-    required String confirmLabel,
-    required VoidCallback? onConfirm,
-    bool isDestructive = false,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: DsButton(
-            label: cancelLabel,
-            variant: DsButtonVariant.secondary,
-            onPressed: onCancel,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: DsButton(
-            label: confirmLabel,
-            variant: isDestructive
-                ? DsButtonVariant.destructive
-                : DsButtonVariant.primary,
-            onPressed: onConfirm,
-          ),
-        ),
-      ],
-    );
-  }
 
   /// Mostra un dialog di conferma eliminazione.
   ///
@@ -66,14 +33,12 @@ class DialogHelpers {
     String? customTitle,
     String? warningText,
   }) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
+    final confirmed = await showDsDialog<bool>(
+      context,
       builder: (dialogContext) {
         final colorScheme = Theme.of(dialogContext).colorScheme;
-        return AlertDialog(
-          title: Text(
-            customTitle ?? 'dialogs.delete_title'.tr(args: [itemType]),
-          ),
+        return DsDialog(
+          title: customTitle ?? 'dialogs.delete_title'.tr(args: [itemType]),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +47,7 @@ class DialogHelpers {
                 customMessage ?? 'dialogs.delete_message'.tr(args: [itemName]),
               ),
               if (warningText != null) ...[
-                SizedBox(height: 12),
+                SizedBox(height: dialogContext.spacingSm),
                 Text(
                   warningText,
                   style: Theme.of(
@@ -92,9 +57,8 @@ class DialogHelpers {
               ],
             ],
           ),
-          actionsPadding: actionsPadding,
           actions: [
-            twoActions(
+            DsDialog.twoActions(
               cancelLabel: 'dialogs.cancel'.tr(),
               onCancel: () => Navigator.pop(dialogContext, false),
               confirmLabel: 'dialogs.delete_confirm'.tr(),
@@ -111,8 +75,8 @@ class DialogHelpers {
 
   /// Mostra un dialog generico di conferma.
   ///
-  /// [isDestructive] usa TextButton rosso per il bottone di conferma.
-  /// Altrimenti usa FilledButton (primary).
+  /// [isDestructive] usa il DsButton destruttivo per il bottone di conferma.
+  /// Altrimenti usa DsButton primary.
   ///
   /// Ritorna `true` se l'utente conferma, `false` altrimenti.
   static Future<bool> showConfirmation({
@@ -123,14 +87,13 @@ class DialogHelpers {
     String? cancelLabel,
     bool isDestructive = false,
   }) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actionsPadding: actionsPadding,
+    final confirmed = await showDsDialog<bool>(
+      context,
+      builder: (dialogContext) => DsDialog(
+        title: title,
+        message: message,
         actions: [
-          twoActions(
+          DsDialog.twoActions(
             cancelLabel: cancelLabel ?? 'common.cancel'.tr(),
             onCancel: () => Navigator.pop(dialogContext, false),
             confirmLabel: confirmLabel ?? 'common.confirm'.tr(),
@@ -162,12 +125,11 @@ class DialogHelpers {
     required T primaryValue,
     String? cancelLabel,
   }) {
-    return showDialog<T>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actionsPadding: actionsPadding,
+    return showDsDialog<T>(
+      context,
+      builder: (dialogContext) => DsDialog(
+        title: title,
+        message: message,
         actions: [
           // Tre scelte impilate e non affiancate: tre pill su una riga
           // starebbero strette e le etichette andrebbero troncate proprio
@@ -180,14 +142,14 @@ class DialogHelpers {
                 expand: true,
                 onPressed: () => Navigator.pop(dialogContext, primaryValue),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: dialogContext.spacingSm),
               DsButton(
                 label: secondaryLabel,
                 variant: DsButtonVariant.secondary,
                 expand: true,
                 onPressed: () => Navigator.pop(dialogContext, secondaryValue),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: dialogContext.spacingSm),
               DsButton(
                 label: cancelLabel ?? 'common.cancel'.tr(),
                 variant: DsButtonVariant.secondary,
@@ -217,8 +179,8 @@ class DialogHelpers {
     required String requiredText,
     required String confirmLabel,
   }) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
+    final confirmed = await showDsDialog<bool>(
+      context,
       builder: (dialogContext) => _ProtectedDeleteDialog(
         title: title,
         warning: warning,
@@ -232,7 +194,7 @@ class DialogHelpers {
 
   /// Mostra un dialog informativo con un solo bottone "OK".
   ///
-  /// [icon] opzionale viene mostrata sopra il messaggio.
+  /// [icon] opzionale viene mostrata sopra il titolo.
   /// [details] aggiunge bullet point rossi sotto il messaggio principale
   /// (es. conteggio oggetti quando non si può eliminare una casa).
   static Future<void> showInfo({
@@ -244,34 +206,25 @@ class DialogHelpers {
     Color? iconColor,
     List<String>? details,
   }) async {
-    await showDialog(
-      context: context,
+    await showDsDialog<void>(
+      context,
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
-        return AlertDialog(
-          title: Text(title),
+        return DsDialog(
+          title: title,
+          icon: icon,
+          iconColor:
+              iconColor ?? theme.extension<AppColorsExtension>()!.warning,
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (icon != null) ...[
-                Center(
-                  child: Icon(
-                    icon,
-                    color:
-                        iconColor ??
-                        theme.extension<AppColorsExtension>()!.warning,
-                    size: 48,
-                  ),
-                ),
-                SizedBox(height: 16),
-              ],
               Text(message),
               if (details != null && details.isNotEmpty) ...[
-                SizedBox(height: 12),
+                SizedBox(height: dialogContext.spacingSm),
                 for (final detail in details)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: EdgeInsets.only(top: dialogContext.spacingXs),
                     child: Text(
                       '• $detail',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -283,9 +236,9 @@ class DialogHelpers {
             ],
           ),
           actions: [
-            TextButton(
+            DsTextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: Text(okLabel ?? 'common.ok'.tr()),
+              label: okLabel ?? 'common.ok'.tr(),
             ),
           ],
         );
@@ -297,9 +250,8 @@ class DialogHelpers {
 /// Corpo di [DialogHelpers.showProtectedDeleteConfirmation].
 ///
 /// È uno [StatefulWidget] e non un builder inline perché ha un
-/// [TextEditingController] da creare e distruggere: dentro un `builder` di
-/// `showDialog` il controller verrebbe ricostruito a ogni rebuild e mai
-/// disposto.
+/// [TextEditingController] da creare e distruggere: dentro il builder del
+/// dialogo il controller verrebbe ricostruito a ogni rebuild e mai disposto.
 class _ProtectedDeleteDialog extends StatefulWidget {
   final String title;
   final String warning;
@@ -342,16 +294,16 @@ class _ProtectedDeleteDialogState extends State<_ProtectedDeleteDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      title: Text(widget.title),
+    return DsDialog(
+      title: widget.title,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(widget.warning),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacingMd),
           Text(widget.prompt, style: theme.textTheme.bodySmall),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacingSm),
           DsTextField(
             controller: _controller,
             autofocus: true,
@@ -362,12 +314,11 @@ class _ProtectedDeleteDialogState extends State<_ProtectedDeleteDialog> {
           ),
         ],
       ),
-      actionsPadding: DialogHelpers.actionsPadding,
       actions: [
         // Stesse pill delle altre conferme. Il bottone resta visibile ma
         // spento finché l'email non combacia: l'attrito lo fa la digitazione,
         // e uno spento senza accento lo dice già da sé.
-        DialogHelpers.twoActions(
+        DsDialog.twoActions(
           cancelLabel: 'dialogs.cancel'.tr(),
           onCancel: () => Navigator.pop(context, false),
           confirmLabel: widget.confirmLabel,

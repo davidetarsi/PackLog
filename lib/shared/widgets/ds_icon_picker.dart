@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
+import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
 import '../theme/surface_colors.dart';
 
@@ -70,7 +71,7 @@ class DsIconPicker extends StatelessWidget {
             // Come le pill scelte: velo arancio leggero e bordo, niente pieno.
             decoration: BoxDecoration(
               color: isSelected
-                  ? cs.primary.withValues(alpha: 0.18)
+                  ? cs.primary.withValues(alpha: AppOpacity.selected)
                   : context.groupSurface,
               border: Border.all(
                 color: isSelected ? cs.primary : Colors.transparent,

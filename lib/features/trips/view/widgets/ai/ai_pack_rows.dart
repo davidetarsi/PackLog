@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_button.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../model/ai_packing.dart';
+import '../../../../../shared/widgets/ds_divider.dart';
 
 /// Le due righe sotto il titolo della valigia AI: "Cosa manca a questo viaggio"
 /// (avvisi, in ambra) e "Perché queste scelte" (motivi, neutra). Ognuna apre
@@ -59,11 +61,9 @@ class AiPackRows extends StatelessWidget {
             trailing: hasWarnings ? _CountBadge(count: warnings.length) : null,
             onTap: () => _openWarnings(context),
           ),
-          Divider(
-            height: 1,
+          DsDivider(
             // Allineato al titolo: margine, icona e spazio dopo l'icona.
             indent: context.spacingMd * 2 + context.iconSizeMd,
-            color: cs.outlineVariant,
           ),
           _Row(
             key: const Key('pack_row_reasons'),
@@ -137,10 +137,7 @@ class _Row extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: tt.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: titleColor,
-                    ),
+                    style: tt.bodyLarge?.strong.copyWith(color: titleColor),
                   ),
                   if (subtitle != null) ...[
                     SizedBox(height: context.spacingXs / 2),
@@ -197,10 +194,7 @@ class _CountBadge extends StatelessWidget {
       ),
       child: Text(
         '$count',
-        style: tt.labelMedium?.copyWith(
-          color: warning,
-          fontWeight: FontWeight.w700,
-        ),
+        style: tt.labelMedium?.strong.copyWith(color: warning),
       ),
     );
   }
@@ -307,16 +301,10 @@ class _WarningCard extends StatelessWidget {
         children: [
           Text(
             levelKey.tr(),
-            style: tt.labelLarge?.copyWith(
-              color: levelColor,
-              fontWeight: FontWeight.w700,
-            ),
+            style: tt.labelLarge?.strong.copyWith(color: levelColor),
           ),
           SizedBox(height: context.spacingXs),
-          Text(
-            warning.title,
-            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
+          Text(warning.title, style: tt.titleMedium?.title),
           SizedBox(height: context.spacingXs),
           Text(warning.why, style: tt.bodyMedium),
           SizedBox(height: context.spacingMd),
@@ -325,19 +313,17 @@ class _WarningCard extends StatelessWidget {
             runSpacing: context.spacingSm,
             children: [
               if (search != null && search.isNotEmpty)
-                _NeutralButton(
+                DsButton(
                   key: Key('ai_warning_search_${warning.id}'),
+                  variant: DsButtonVariant.neutral,
                   label: 'trips.pack.ai.warning_search'.tr(),
                   onPressed: () => onSearch(search),
-                  foreground: cs.onSurface,
-                  border: cs.outline,
                 ),
-              _NeutralButton(
+              DsButton(
                 key: Key('ai_warning_dismiss_${warning.id}'),
+                variant: DsButtonVariant.neutral,
                 label: 'trips.pack.ai.warning_dismiss'.tr(),
                 onPressed: onDismiss,
-                foreground: cs.onSurfaceVariant,
-                border: cs.outlineVariant,
               ),
             ],
           ),
@@ -348,32 +334,6 @@ class _WarningCard extends StatelessWidget {
 }
 
 /// Bottone a contorno, neutro: mai arancio.
-class _NeutralButton extends StatelessWidget {
-  const _NeutralButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    required this.foreground,
-    required this.border,
-  });
-
-  final String label;
-  final VoidCallback onPressed;
-  final Color foreground;
-  final Color border;
-
-  @override
-  Widget build(BuildContext context) => OutlinedButton(
-    onPressed: onPressed,
-    style: OutlinedButton.styleFrom(
-      foregroundColor: foreground,
-      shape: const StadiumBorder(),
-      side: BorderSide(color: border),
-    ),
-    child: Text(label),
-  );
-}
-
 /// Il foglio dei motivi: un punto per motivo, nell'ordine ricevuto.
 class _ReasonsSheet extends StatelessWidget {
   const _ReasonsSheet({required this.reasons});
@@ -400,12 +360,7 @@ class _ReasonsSheet extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          point.title,
-                          style: tt.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                        Text(point.title, style: tt.titleMedium?.title),
                         SizedBox(height: context.spacingXs),
                         for (final sentence in point.sentences)
                           Text(sentence, style: tt.bodyMedium),

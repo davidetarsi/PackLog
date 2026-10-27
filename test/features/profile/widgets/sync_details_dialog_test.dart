@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/core/sync/sync_service.dart';
 import 'package:pack_log/features/profile/widgets/sync_details_dialog.dart';
+import 'package:pack_log/shared/widgets/ds_dialog.dart';
 
 void main() {
   Widget wrap({required List<Override> overrides}) {
@@ -63,7 +64,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(DsDialog), findsOneWidget);
     expect(find.textContaining('2'), findsWidgets);
     expect(find.textContaining('5'), findsWidgets);
   });
@@ -79,12 +80,12 @@ void main() {
 
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(DsDialog), findsOneWidget);
 
     await tester.tap(find.text('common.close'.tr()));
     await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(DsDialog), findsNothing);
   });
   testWidgets(
     'errore di lettura dei dettagli recuperabile senza chiudere il dialogo',
@@ -106,7 +107,7 @@ void main() {
       fails = false;
       await tester.tap(find.text('common.retry'.tr()));
       await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byType(DsDialog), findsOneWidget);
       expect(find.text('profile.sync_status_synced'.tr()), findsOneWidget);
     },
   );

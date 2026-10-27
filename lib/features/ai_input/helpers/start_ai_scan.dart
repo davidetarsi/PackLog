@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../providers/ai_import_notifier.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../view/widgets/image_source_sheet.dart';
 
 /// Numero massimo di immagini selezionabili per scansione.
@@ -82,18 +83,15 @@ Future<void> startAiScan(
       }
     } on Object {
       if (context.mounted) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(
-            content: Text('ai_import.picker_error'.tr()),
-            action: SnackBarAction(
-              label: 'ai_import.picker_retry'.tr(),
-              onPressed: () {
-                if (context.mounted) {
-                  unawaited(startAiScan(context, ref, houseId));
-                }
-              },
-            ),
-          ),
+        AppSnackBar.showAction(
+          context,
+          'ai_import.picker_error'.tr(),
+          actionLabel: 'ai_import.picker_retry'.tr(),
+          onAction: () {
+            if (context.mounted) {
+              unawaited(startAiScan(context, ref, houseId));
+            }
+          },
         );
       }
       return;

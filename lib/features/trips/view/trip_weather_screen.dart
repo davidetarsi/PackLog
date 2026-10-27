@@ -8,6 +8,7 @@ import '../../../shared/widgets/ds_empty_state.dart';
 import '../model/trip_weather.dart';
 import '../providers/trip_weather_provider.dart';
 import 'widgets/pack/weather_icons.dart';
+import '../../../shared/widgets/ds_divider.dart';
 
 /// Il meteo dei prossimi giorni di una tappa: per ogni giorno il riepilogo e
 /// le sei fasce di quattro ore, con icona, temperatura media e pioggia.
@@ -124,9 +125,7 @@ class _DayCard extends StatelessWidget {
                     toBeginningOfSentenceCase(date),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: tt.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: tt.titleMedium?.title,
                   ),
                 ),
                 if (min != null && max != null)
@@ -134,9 +133,7 @@ class _DayCard extends StatelessWidget {
                     'trips.weather.temps'.tr(
                       args: [min.round().toString(), max.round().toString()],
                     ),
-                    style: tt.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: tt.titleMedium?.title,
                   ),
               ],
             ),
@@ -153,7 +150,7 @@ class _DayCard extends StatelessWidget {
             if (day.bands.isNotEmpty) ...[
               Padding(
                 padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-                child: const Divider(height: 1),
+                child: const DsDivider(),
               ),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,7 +221,7 @@ class _BandColumn extends StatelessWidget {
           temp == null
               ? '–'
               : 'trips.weather.temp'.tr(args: [temp.round().toString()]),
-          style: tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+          style: tt.bodyLarge?.strong,
         ),
         Text(
           probability == null

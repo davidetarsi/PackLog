@@ -7,6 +7,7 @@ import '../../../core/analytics/core_analytics_service.dart';
 import '../../../features/onboarding/providers/onboarding_status_provider.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'widgets/content_slide.dart';
 
@@ -96,17 +97,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 maintainState: true,
                 child: Padding(
                   padding: EdgeInsets.only(right: context.spacingSm),
-                  child: TextButton(
+                  child: DsTextButton(
                     key: const Key('onboarding_skip'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Theme.of(
-                        context,
-                      ).colorScheme.onSurfaceVariant,
-                    ),
                     onPressed: _isCompleting
                         ? null
                         : () => _handleComplete(skipped: true),
-                    child: Text('onboarding.skip'.tr()),
+                    label: 'onboarding.skip'.tr(),
                   ),
                 ),
               ),

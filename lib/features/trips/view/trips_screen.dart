@@ -84,6 +84,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     final action = await showEntityContextMenu(
       context: context,
       entityType: 'common.trip_type'.tr(),
+      title: trip.name,
       showSaveAction: true,
       isSaved: trip.isSaved,
     );

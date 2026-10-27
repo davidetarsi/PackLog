@@ -365,9 +365,17 @@ void main() {
 
       final ai = find.byKey(const Key('new_trip_prepare_ai'));
       final scheme = Theme.of(tester.element(ai)).colorScheme;
-      final style = tester.widget<OutlinedButton>(ai).style!;
-      expect(style.foregroundColor!.resolve({}), scheme.onSurface);
-      expect(style.side!.resolve({})!.color, scheme.outline);
+      final button = tester.widget<DsButton>(ai);
+      expect(button.variant, DsButtonVariant.neutral);
+      final label = tester.widget<Text>(
+        find.descendant(of: ai, matching: find.text('Prepara con AI')),
+      );
+      expect(label.style?.color, scheme.onSurface);
+      final container = tester.widget<Container>(
+        find.descendant(of: ai, matching: find.byType(Container)).first,
+      );
+      final border = (container.decoration! as BoxDecoration).border! as Border;
+      expect(border.top.color, scheme.outline);
       expect(
         find.descendant(of: ai, matching: find.text('Prepara con AI')),
         findsOneWidget,

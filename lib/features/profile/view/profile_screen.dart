@@ -12,6 +12,7 @@ import '../../../core/auth/auth_state.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../features/houses/providers/house_provider.dart';
 import '../../../features/tour/providers/post_login_onboarding_provider.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../providers/gpt_usage_provider.dart';
 import '../../promo/view/promo_code_sheet.dart';
 import '../../../shared/config/app_config.dart';
@@ -21,6 +22,8 @@ import '../../../shared/theme/nav_bar_spacing.dart';
 import '../../../shared/providers/package_info_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/widgets/ds_checkbox.dart';
+import '../../../shared/widgets/ds_dialog.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_settings.dart';
 import '../../../shared/widgets/ds_inline_error.dart';
@@ -146,15 +149,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     // il pop del loader non scatterebbe più. `rootNavigator` invece punta
     // al Navigator dentro MaterialApp, che sopravvive alle navigazioni.
     final rootNav = Navigator.of(context, rootNavigator: true);
+    // Il messenger resta valido anche quando ProfileScreen viene smontata
+    // dal logout, quindi lo snackbar d'errore passa da qui e non dal context.
     final messenger = ScaffoldMessenger.of(context);
-    final errorColor = Theme.of(context).colorScheme.error;
 
     // Loading dialog: l'operazione tocca rete + più DELETE Postgres → può
     // impiegare qualche secondo. `useRootNavigator: true` mette il dialog
     // sul root navigator, così la sua chiusura è indipendente dal branch
     // shell route della tab Profilo.
-    showDialog<void>(
-      context: context,
+    showDsDialog<void>(
+      context,
       barrierDismissible: false,
       useRootNavigator: true,
       builder: (_) => const Center(child: CircularProgressIndicator()),
@@ -179,12 +183,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // throws prima di signOut) → ProfileScreen ancora mounted →
       // messenger riferimento valido.
       if (rootNav.canPop()) rootNav.pop();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('profile.delete_account_failed'.tr()),
-          backgroundColor: errorColor,
-        ),
-      );
+      AppSnackBar.showErrorOn(messenger, 'profile.delete_account_failed'.tr());
     }
   }
 
@@ -348,13 +347,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               // da "Esci", così non è l'elemento più evidente. Protetto da
               // dialog con conferma email.
               Center(
-                child: TextButton(
+                child: DsTextButton(
                   key: const Key('profile_delete_account'),
                   onPressed: () => _handleDeleteAccount(context),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                  child: Text('profile.delete_account_cta'.tr()),
+                  label: 'profile.delete_account_cta'.tr(),
+                  destructive: true,
                 ),
               ),
 
@@ -403,7 +400,7 @@ class _AccountHeader extends StatelessWidget {
                   hasName ? name : email,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: tt.titleMedium,
                 ),
                 if (hasName && email.isNotEmpty)
                   Text(
@@ -449,7 +446,7 @@ class _AnalyticsToggleTileState extends ConsumerState<_AnalyticsToggleTile> {
     return DsSettingsRow(
       label: 'settings.analytics_title'.tr(),
       subtitle: 'settings.analytics_subtitle'.tr(),
-      trailing: Switch(value: consent.analyticsEnabled, onChanged: _toggle),
+      trailing: DsSwitch(value: consent.analyticsEnabled, onChanged: _toggle),
       onTap: () => _toggle(!consent.analyticsEnabled),
     );
   }

@@ -8,6 +8,7 @@ import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/ds_checkbox.dart';
 import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_section_title.dart';
@@ -113,7 +114,9 @@ class _TripDetail extends ConsumerWidget {
                 value: _TripMenu.delete,
                 child: Text(
                   'common.delete'.tr(),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
                 ),
               ),
             ],
@@ -330,7 +333,7 @@ class _PackedRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Checkbox(value: packed, onChanged: (_) => onToggle()),
+            DsCheckbox(value: packed, onChanged: (_) => onToggle()),
             SizedBox(width: context.spacingXs),
             Expanded(
               child: Text(

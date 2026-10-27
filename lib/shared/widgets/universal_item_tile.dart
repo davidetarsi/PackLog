@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
+import 'ds_divider.dart';
 
 /// Universal layout engine per tutte le tile di oggetti nell'app.
 ///
@@ -128,14 +129,7 @@ class UniversalItemTile extends StatelessWidget {
               child: cardChild,
             ),
             if (showDivider)
-              Padding(
-                padding: dividerInsets,
-                child: Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: colorScheme.outlineVariant,
-                ),
-              ),
+              Padding(padding: dividerInsets, child: DsDivider()),
           ],
         ),
       );

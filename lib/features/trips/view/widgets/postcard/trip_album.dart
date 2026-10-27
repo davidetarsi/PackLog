@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/app_spacing.dart';
 import '../../../../../shared/widgets/ds_group_header.dart';
+import '../../../../../shared/widgets/ds_text_button.dart';
 import '../../../model/trip_model.dart';
 import '../../../model/trip_postcard.dart';
 import 'postcard_parts.dart';
+import '../../../../../shared/theme/app_text_styles.dart';
 
 /// Gruppo dell'album: etichetta (anno o "Da riusare") e i viaggi del gruppo.
 class TripAlbumGroup {
@@ -178,10 +180,7 @@ class _AlbumPostcard extends StatelessWidget {
               postcardTitle(trip, destination: destination),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: tt.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-                height: _titleHeight,
-              ),
+              style: tt.titleLarge?.postcard.copyWith(height: _titleHeight),
             ),
             if (nights != null)
               Text(
@@ -190,13 +189,11 @@ class _AlbumPostcard extends StatelessWidget {
               ),
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
+              child: DsTextButton(
                 key: Key('album_reuse_${trip.id}'),
-                // Area di tocco piena (48): il disegno resta compatto.
-                style: TextButton.styleFrom(foregroundColor: cs.onSurface),
                 onPressed: () => onReuse(trip),
-                icon: Icon(Icons.replay, size: context.iconSizeSm),
-                label: Text('trips.album.reuse'.tr()),
+                icon: Icons.replay,
+                label: 'trips.album.reuse'.tr(),
               ),
             ),
           ],
@@ -242,10 +239,7 @@ class _AlbumStamp extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '${day.day}',
-                  style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
+                Text('${day.day}', style: tt.titleLarge?.postcard),
                 Text(
                   DateFormat(
                     'MMM yy',

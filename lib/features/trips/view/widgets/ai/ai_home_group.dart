@@ -112,9 +112,7 @@ class _AiHomeGroupState extends State<AiHomeGroup> {
                       children: [
                         Text(
                           'trips.pack.ai.home_title'.plural(items.length),
-                          style: tt.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: tt.bodyLarge?.strong,
                         ),
                         SizedBox(height: context.spacingXs),
                         Text(

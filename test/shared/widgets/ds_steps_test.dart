@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/shared/widgets/ds_divider.dart';
 import 'package:pack_log/shared/widgets/ds_steps.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child) => tester.pumpWidget(
@@ -53,8 +54,8 @@ void main() {
       final current = tester.widget<Text>(find.text('Valigia'));
       final other = tester.widget<Text>(find.text('Viaggio'));
 
-      expect(current.style?.fontWeight, FontWeight.w700);
-      expect(other.style?.fontWeight, isNot(FontWeight.w700));
+      expect(current.style?.fontWeight, FontWeight.w600);
+      expect(other.style?.fontWeight, isNot(FontWeight.w600));
     });
 
     testWidgets('mostra tutte le etichette e un divisore tra i passi', (
@@ -69,6 +70,19 @@ void main() {
       expect(find.text('Valigia'), findsOneWidget);
       expect(find.text('Riepilogo'), findsOneWidget);
       expect(find.byType(Divider), findsNWidgets(2));
+    });
+
+    testWidgets('il divisore tra i passi è centrato sul cerchio', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const DsSteps(labels: ['Viaggio', 'Valigia'], current: 0),
+      );
+
+      final line = tester.getCenter(find.byType(DsDivider).first).dy;
+      final circle = tester.getCenter(find.text('1')).dy;
+      expect(line, closeTo(circle, 0.5));
     });
   });
 }

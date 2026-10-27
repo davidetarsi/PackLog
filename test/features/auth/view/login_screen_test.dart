@@ -9,6 +9,7 @@ import 'package:pack_log/core/consent/consent_provider.dart';
 import 'package:pack_log/core/consent/consent_service.dart';
 import 'package:pack_log/features/auth/view/login_screen.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
+import 'package:pack_log/shared/widgets/ds_link_button.dart';
 
 void main() {
   // The analytics service is the concrete `AppAnalyticsService`; constructing
@@ -73,6 +74,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(DsButton), findsOneWidget);
-    expect(find.byType(TextButton), findsNothing);
+    // L'unico TextButton è il link del codice promo, che non è un accesso.
+    expect(find.byType(DsLinkButton), findsOneWidget);
+    expect(find.byType(TextButton), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(DsLinkButton),
+        matching: find.byType(TextButton),
+      ),
+      findsOneWidget,
+    );
   });
 }

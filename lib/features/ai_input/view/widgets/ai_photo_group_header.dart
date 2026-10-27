@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/widgets/ds_dialog.dart';
 import '../../../../shared/widgets/ds_group_header.dart';
+import '../../../../shared/widgets/ds_icon_button.dart';
 
 /// Foto d'origine e intestazione del relativo gruppo di risultati.
 class AiPhotoGroupHeader extends StatelessWidget {
@@ -31,8 +33,8 @@ class AiPhotoGroupHeader extends StatelessWidget {
   );
 
   void _openFull(BuildContext context) {
-    showDialog<void>(
-      context: context,
+    showDsDialog<void>(
+      context,
       builder: (dialogContext) => Dialog.fullscreen(
         key: const Key('ai_photo_viewer'),
         child: Stack(
@@ -50,8 +52,8 @@ class AiPhotoGroupHeader extends StatelessWidget {
             SafeArea(
               child: Align(
                 alignment: Alignment.topRight,
-                child: IconButton(
-                  icon: const Icon(Icons.close),
+                child: DsIconButton(
+                  icon: Icons.close,
                   tooltip: 'common.close'.tr(),
                   onPressed: () => Navigator.pop(dialogContext),
                 ),

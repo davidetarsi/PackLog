@@ -7,6 +7,8 @@ import '../../../model/trip_model.dart';
 import '../../../model/trip_postcard.dart';
 import 'postcard_parts.dart';
 import 'trip_itinerary_view.dart';
+import '../../../../../shared/theme/app_text_styles.dart';
+import '../../../../../shared/widgets/ds_divider.dart';
 
 /// Cartolina grande di un viaggio: intestazione con la meta, francobollo con
 /// timbro, itinerario, stato della valigia e azione principale.
@@ -60,10 +62,7 @@ class TripPostcard extends StatelessWidget {
                       title,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: tt.headlineLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        height: 1.05,
-                      ),
+                      style: tt.headlineLarge?.postcard.copyWith(height: 1.05),
                     ),
                     if (showDestination)
                       Text(
@@ -178,10 +177,7 @@ class _StampContent extends StatelessWidget {
       StampKind.daysLeft => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '-$days',
-            style: tt.headlineLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
+          Text('-$days', style: tt.headlineLarge?.postcard),
           Text(
             'trips.postcard.days_label'.plural(days ?? 0),
             style: tt.labelMedium,
@@ -190,7 +186,7 @@ class _StampContent extends StatelessWidget {
       ),
       StampKind.today => Text(
         'trips.postcard.today'.tr(),
-        style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        style: tt.titleLarge?.postcard,
       ),
       StampKind.traveling => Column(
         mainAxisSize: MainAxisSize.min,
@@ -246,7 +242,7 @@ class _SuitcaseRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Divider(height: 1, color: cs.outlineVariant),
+        DsDivider(),
         SizedBox(height: context.spacingMd),
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,

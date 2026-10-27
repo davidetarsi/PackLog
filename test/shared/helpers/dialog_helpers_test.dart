@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/shared/helpers/dialog_helpers.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_dialog.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
 
 /// I dialog di conferma sono l'ultimo posto dove ci si può permettere un
@@ -80,12 +81,12 @@ void main() {
       await openConfirmation(tester);
       await tester.tap(find.text('Conferma'));
       await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(DsDialog), findsNothing);
 
       await openConfirmation(tester);
       await tester.tap(find.text('Annulla'));
       await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(DsDialog), findsNothing);
     });
 
     testWidgets('nessun overflow di layout con etichette lunghe', (

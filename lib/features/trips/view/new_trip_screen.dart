@@ -10,6 +10,7 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/dialog_helpers.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/ds_icon_button.dart';
 import '../../../shared/widgets/ds_link_button.dart';
 import '../../../shared/widgets/ds_steps.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
@@ -430,23 +431,18 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
             icon: place.houseId == null
                 ? Icons.place_outlined
                 : Icons.home_outlined,
-            suffixIcon: IconButton(
+            suffixIcon: DsIconButton(
               key: const Key('new_trip_clear_destination'),
               tooltip: 'trips.new.where_clear'.tr(),
-              icon: Icon(
-                Icons.close,
-                size: context.iconSizeSm,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+              icon: Icons.close,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               onPressed: () => _update(_draft.clearDestination()),
             ),
             child: Text(
               place.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.bodyLarge?.strong,
             ),
           ),
         if (showError) _FieldError('trips.new.where_missing'.tr()),
@@ -485,7 +481,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: value == null
                       ? tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant)
-                      : tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                      : tt.bodyLarge?.strong,
                 ),
               ),
               if (value != null && nights != null)
@@ -670,29 +666,17 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
   /// valigia). Stessa altezza del bottone primario. Senza campi, il tocco
   /// mostra gli errori invece di spegnersi.
   Widget _prepareAiOutlined(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return SizedBox(
       width: double.infinity,
-      child: OutlinedButton.icon(
+      child: DsButton(
         key: const Key('new_trip_prepare_ai'),
+        variant: DsButtonVariant.neutral,
+        expand: true,
         onPressed: _draft.canSave
             ? () => _save(goToPacking: true, withAi: true)
             : _showMissing,
-        icon: const Icon(Icons.auto_awesome),
-        label: Text('trips.new.prepare_with_ai'.tr()),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: cs.onSurface,
-          minimumSize: Size.fromHeight(
-            context.responsive(AppConstants.ctaHeight),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-          ),
-          side: BorderSide(
-            color: cs.outline,
-            width: AppConstants.emphasisBorderWidth,
-          ),
-        ),
+        icon: Icons.auto_awesome,
+        label: 'trips.new.prepare_with_ai'.tr(),
       ),
     );
   }

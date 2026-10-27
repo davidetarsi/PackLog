@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_spacing.dart';
 import 'ds_field.dart';
+import 'ds_icon_button.dart';
 
 /// Il campo di ricerca: la lente a sinistra, la x per svuotare quando c'è del
 /// testo, la rotella al posto della x mentre cerca. Il tasto della tastiera
@@ -112,10 +113,11 @@ class _DsSearchFieldState extends State<DsSearchField> {
       );
     }
     if (_controller.text.isEmpty) return null;
-    return IconButton(
+    return DsIconButton(
       key: const Key('ds_search_clear'),
       tooltip: 'common.clear'.tr(),
-      icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+      icon: Icons.close,
+      color: cs.onSurfaceVariant,
       onPressed: _clear,
     );
   }

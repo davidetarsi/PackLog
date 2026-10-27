@@ -9,6 +9,7 @@ import '../../../../../shared/widgets/ds_choice_group.dart';
 import '../../../../../shared/widgets/ds_field_label.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../../../shared/widgets/ds_link_button.dart';
+import '../../../../../shared/widgets/ds_text_button.dart';
 import '../../../../houses/model/house_model.dart';
 import '../../../../houses/providers/house_provider.dart';
 import '../../../../luggages/model/luggage_model.dart';
@@ -22,6 +23,7 @@ import '../../../model/trip_weather.dart';
 import '../../../providers/trip_weather_provider.dart';
 import '../pack/pack_weather.dart';
 import 'ai_stop_form.dart';
+import '../../../../../shared/widgets/ds_divider.dart';
 
 /// Il foglio "Valigia con AI". Restituisce le risposte con "Prepara la
 /// valigia", null se si chiude. Non salva nulla: lo fa il chiamante.
@@ -218,7 +220,7 @@ class _AiPackingSheetState extends ConsumerState<AiPackingSheet> {
                       setState(() => _luggageId = chosen.first.id),
                 ),
               SizedBox(height: context.spacingLg),
-              const Divider(height: 1),
+              const DsDivider(),
               if (_multi) ...[
                 SizedBox(height: context.spacingMd),
                 Text(
@@ -365,21 +367,15 @@ class _IncompleteWarning extends StatelessWidget {
             runSpacing: context.spacingSm,
             children: [
               if (copyFrom != null)
-                OutlinedButton(
+                DsButton(
+                  variant: DsButtonVariant.neutral,
                   onPressed: onCopy,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: cs.onSurface,
-                    side: BorderSide(color: cs.outline),
-                  ),
-                  child: Text('trips.ai.copy_from'.tr(args: [copyFrom!.name])),
+                  label: 'trips.ai.copy_from'.tr(args: [copyFrom!.name]),
                 ),
-              OutlinedButton(
+              DsButton(
+                variant: DsButtonVariant.neutral,
                 onPressed: onGo,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: cs.onSurfaceVariant,
-                  side: BorderSide(color: cs.outlineVariant),
-                ),
-                child: Text('trips.ai.go_to_stop'.tr()),
+                label: 'trips.ai.go_to_stop'.tr(),
               ),
             ],
           ),
@@ -411,8 +407,6 @@ class _Footer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         context.spacingMd,
@@ -431,11 +425,7 @@ class _Footer extends StatelessWidget {
           Row(
             children: [
               if (back != null)
-                TextButton(
-                  onPressed: back,
-                  style: TextButton.styleFrom(foregroundColor: cs.onSurface),
-                  child: Text('trips.ai.back'.tr()),
-                ),
+                DsTextButton(onPressed: back, label: 'trips.ai.back'.tr()),
               Expanded(
                 child: primary
                     ? DsButton(
@@ -444,18 +434,12 @@ class _Footer extends StatelessWidget {
                         onPressed: onCta,
                         expand: true,
                       )
-                    // "Avanti" non è l'arancio della schermata: contorno neutro.
-                    : OutlinedButton(
+                    // Secondario: "Avanti" non è l'azione principale del foglio.
+                    : DsButton(
+                        variant: DsButtonVariant.neutral,
                         onPressed: onCta,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: cs.onSurface,
-                          minimumSize: Size.fromHeight(
-                            context.responsive(AppConstants.ctaHeight),
-                          ),
-                          shape: const StadiumBorder(),
-                          side: BorderSide(color: cs.outline),
-                        ),
-                        child: Text(ctaLabel, style: tt.titleSmall),
+                        label: ctaLabel,
+                        expand: true,
                       ),
               ),
             ],

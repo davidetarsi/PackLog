@@ -187,6 +187,7 @@ class _AiScanCard extends StatelessWidget {
         : isDark
         ? colorScheme.primaryContainer
         : Color.alphaBlend(
+            // Non è una selezione: la card Scansiona ha il suo velo.
             colorScheme.primary.withValues(alpha: 0.22),
             colorScheme.surface,
           );
@@ -337,7 +338,11 @@ class _CreateRow extends StatelessWidget {
       ),
       title: Text(
         title ?? titleKey!.tr(),
-        style: emphasized ? TextStyle(color: colorScheme.primary) : null,
+        style: emphasized
+            ? Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: colorScheme.primary)
+            : null,
       ),
       subtitle: Text(subtitle ?? subtitleKey!.tr()),
     );
