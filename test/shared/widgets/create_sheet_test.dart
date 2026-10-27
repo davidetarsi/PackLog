@@ -50,7 +50,6 @@ void main() {
   Future<CreateChoice? Function()> openSheet(
     WidgetTester tester, {
     required List<HouseModel> houses,
-    bool fromTrips = false,
     bool aiExhausted = false,
   }) async {
     CreateChoice? result;
@@ -76,10 +75,7 @@ void main() {
                 body: TextButton(
                   key: const Key('open'),
                   onPressed: () async {
-                    result = await showCreateSheet(
-                      context,
-                      fromTrips: fromTrips,
-                    );
+                    result = await showCreateSheet(context);
                   },
                   child: const Text('open'),
                 ),
@@ -109,7 +105,7 @@ void main() {
     expect(read()!.houseId, 'b');
   });
 
-  testWidgets('cambiare casa e scegliere "scrivili a mano"', (tester) async {
+  testWidgets('cambiare casa e scegliere Aggiungi oggetti', (tester) async {
     final read = await openSheet(
       tester,
       houses: [_house('a', primary: true), _house('b')],
@@ -119,6 +115,8 @@ void main() {
     await tester.tap(find.text('Casa b').last);
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.byKey(const Key('create_manual_items')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('create_manual_items')));
     await tester.pumpAndSettle();
     expect(read()!.action, CreateAction.manualItems);
@@ -127,39 +125,75 @@ void main() {
 
   testWidgets('Nuova casa e Nuovo viaggio', (tester) async {
     var read = await openSheet(tester, houses: [_house('a')]);
+    await tester.ensureVisible(find.byKey(const Key('create_new_house')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('create_new_house')));
     await tester.pumpAndSettle();
     expect(read()!.action, CreateAction.newHouse);
 
     read = await openSheet(tester, houses: [_house('a')]);
+    await tester.ensureVisible(find.byKey(const Key('create_new_trip')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('create_new_trip')));
     await tester.pumpAndSettle();
     expect(read()!.action, CreateAction.newTrip);
   });
 
-  testWidgets(
-    'ordine delle voci: da Case prima la casa, da Viaggi il viaggio',
-    (tester) async {
-      double y(String key) => tester.getTopLeft(find.byKey(Key(key))).dy;
+  testWidgets('ordine fisso: le due AI in alto, poi oggetti, viaggio, casa', (
+    tester,
+  ) async {
+    double y(String key) => tester.getTopLeft(find.byKey(Key(key))).dy;
 
-      await openSheet(tester, houses: [_house('a')]);
-      expect(y('create_new_house'), lessThan(y('create_new_trip')));
-      Navigator.of(tester.element(find.byType(CreateSheet))).pop();
-      await tester.pumpAndSettle();
+    await openSheet(tester, houses: [_house('a')]);
+    final order = [
+      'create_ai_scan',
+      'create_ai_suitcase',
+      'create_manual_items',
+      'create_new_trip',
+      'create_new_house',
+    ];
+    for (var i = 1; i < order.length; i++) {
+      expect(y(order[i - 1]), lessThan(y(order[i])), reason: order[i]);
+    }
+    expect(find.text('create_sheet.without_ai'), findsOneWidget);
+  });
 
-      await openSheet(tester, houses: [_house('a')], fromTrips: true);
-      expect(y('create_new_trip'), lessThan(y('create_new_house')));
-    },
-  );
+  testWidgets('la casa sta sotto il testo della scansione, in colore neutro', (
+    tester,
+  ) async {
+    await openSheet(tester, houses: [_house('a')]);
+    final chooser = find.byKey(const Key('create_destination'));
+    final title = find.text('create_sheet.ai_scan');
 
-  testWidgets('senza case: scansione spenta, niente link, Nuova casa in '
-      'evidenza', (tester) async {
+    expect(tester.getTopLeft(chooser).dx, tester.getTopLeft(title).dx);
+    expect(
+      tester.getTopLeft(chooser).dy,
+      greaterThan(tester.getTopLeft(title).dy),
+    );
+    expect(
+      find.descendant(of: chooser, matching: find.byIcon(Icons.expand_more)),
+      findsOneWidget,
+    );
+
+    final scheme = Theme.of(tester.element(chooser)).colorScheme;
+    final label = tester.widget<Text>(
+      find.descendant(of: chooser, matching: find.byType(Text)),
+    );
+    expect(label.style?.color, scheme.onSurface);
+  });
+
+  testWidgets('senza case: scansione e oggetti spenti, Viaggio con AI attivo, '
+      'Nuova casa in evidenza', (tester) async {
     final read = await openSheet(tester, houses: const []);
     expect(find.text('create_sheet.need_house'), findsOneWidget);
-    expect(find.byKey(const Key('create_manual_items')), findsNothing);
+    expect(find.text('create_sheet.manual_need_house'), findsOneWidget);
     expect(find.byKey(const Key('create_destination')), findsNothing);
 
     await tester.tap(find.byKey(const Key('create_ai_scan')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('create_manual_items')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('create_manual_items')));
     await tester.pumpAndSettle();
     expect(find.byType(CreateSheet), findsOneWidget, reason: 'non si chiude');
     expect(read(), isNull);
@@ -174,45 +208,56 @@ void main() {
       ),
     );
     expect(title.style?.color, scheme.primary);
-  });
-
-  testWidgets('Valigia con AI è una riga attiva, senza "In arrivo"', (
-    tester,
-  ) async {
-    final read = await openSheet(tester, houses: [_house('a')]);
-    expect(find.text('create_sheet.ai_suitcase'), findsOneWidget);
-    expect(find.text('common.coming_soon'), findsNothing);
-
-    final row = tester.widget<ListTile>(
-      find.descendant(
-        of: find.byKey(const Key('create_ai_suitcase')),
-        matching: find.byType(ListTile),
-      ),
-    );
-    expect(row.enabled, isTrue);
-    expect(row.onTap, isNotNull);
 
     await tester.tap(find.byKey(const Key('create_ai_suitcase')));
     await tester.pumpAndSettle();
     expect(read()!.action, CreateAction.aiSuitcase);
   });
 
-  testWidgets('scansioni esaurite: scansione spenta, il link a mano resta', (
+  testWidgets('Viaggio con AI restituisce aiSuitcase', (tester) async {
+    final read = await openSheet(tester, houses: [_house('a')]);
+    expect(find.text('create_sheet.ai_suitcase'), findsOneWidget);
+    expect(find.text('create_sheet.ai_suitcase_hint'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('create_ai_suitcase')));
+    await tester.pumpAndSettle();
+    expect(read()!.action, CreateAction.aiSuitcase);
+  });
+
+  testWidgets(
+    'usi AI esauriti: le due card spente, gli oggetti a mano restano',
+    (tester) async {
+      final read = await openSheet(
+        tester,
+        houses: [_house('a')],
+        aiExhausted: true,
+      );
+      expect(find.text('create_sheet.ai_exhausted'), findsNWidgets(2));
+      await tester.tap(find.byKey(const Key('create_ai_scan')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('create_ai_suitcase')));
+      await tester.pumpAndSettle();
+      expect(read(), isNull);
+
+      await tester.ensureVisible(find.byKey(const Key('create_manual_items')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('create_manual_items')));
+      await tester.pumpAndSettle();
+      expect(read()!.action, CreateAction.manualItems);
+    },
+  );
+
+  testWidgets('testo a 2.0 su schermo stretto: niente overflow', (
     tester,
   ) async {
-    final read = await openSheet(
-      tester,
-      houses: [_house('a')],
-      aiExhausted: true,
-    );
-    expect(find.text('create_sheet.ai_exhausted'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('create_ai_scan')));
-    await tester.pumpAndSettle();
-    expect(read(), isNull);
+    tester.view.physicalSize = const Size(320, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-    await tester.tap(find.byKey(const Key('create_manual_items')));
-    await tester.pumpAndSettle();
-    expect(read()!.action, CreateAction.manualItems);
+    await openSheet(tester, houses: [_house('una casa dal nome molto lungo')]);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('la testata ha la x e chiude senza scelta', (tester) async {

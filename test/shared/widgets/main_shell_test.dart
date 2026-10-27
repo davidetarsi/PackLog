@@ -173,31 +173,26 @@ void main() {
     expect(indicatorIn('nav_trips'), findsOneWidget);
   });
 
-  testWidgets('Crea da Case apre il foglio nell\'ordine di Case', (
-    tester,
-  ) async {
+  testWidgets('Crea da Case apre il foglio e lo segna da Case', (tester) async {
     await pumpShell(tester);
     await openCreate(tester);
-    expect(
-      tester.widget<CreateSheet>(find.byType(CreateSheet)).fromTrips,
-      isFalse,
-    );
+    expect(find.byType(CreateSheet), findsOneWidget);
     verify(
       () => analytics.logEvent('create_tapped', properties: {'tab': 'houses'}),
     ).called(1);
   });
 
-  testWidgets('Crea da Viaggi apre il foglio nell\'ordine di Viaggi', (
+  testWidgets('Crea da Viaggi apre lo stesso foglio e lo segna da Viaggi', (
     tester,
   ) async {
     await pumpShell(tester);
     await tester.tap(find.byKey(const Key('nav_trips')));
     await tester.pumpAndSettle();
     await openCreate(tester);
-    expect(
-      tester.widget<CreateSheet>(find.byType(CreateSheet)).fromTrips,
-      isTrue,
-    );
+    expect(find.byType(CreateSheet), findsOneWidget);
+    verify(
+      () => analytics.logEvent('create_tapped', properties: {'tab': 'trips'}),
+    ).called(1);
   });
 
   group('scelta nel foglio Crea', () {

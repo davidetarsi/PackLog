@@ -41,7 +41,7 @@ class MainShell extends ConsumerWidget {
     final tab = fromTrips ? 'trips' : 'houses';
     analytics.trackCreateTapped(tab: tab);
 
-    final choice = await showCreateSheet(context, fromTrips: fromTrips);
+    final choice = await showCreateSheet(context);
     if (choice == null || !context.mounted) return;
 
     switch (choice.action) {
