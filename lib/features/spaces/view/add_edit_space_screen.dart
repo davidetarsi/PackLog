@@ -199,22 +199,19 @@ class _AddEditSpaceSheetState extends ConsumerState<AddEditSpaceSheet> {
       mainAxisSize: MainAxisSize.min,
       children: [
         DsFieldLabel('items.name_label'.tr()),
-        TextFormField(
+        DsTextField(
           key: const Key('space_sheet_name'),
           controller: _name,
           autofocus: _isNew,
           textCapitalization: TextCapitalization.sentences,
           textInputAction: TextInputAction.done,
-          decoration: dsFieldDecoration(
-            context,
-            hintText: 'spaces.name_hint'.tr(),
-          ),
+          hintText: 'spaces.name_hint'.tr(),
           autovalidateMode: AutovalidateMode.onUserInteraction,
           validator: (value) => value == null || value.trim().isEmpty
               ? 'common.name_required_validation'.tr()
               : null,
           onChanged: (_) => setState(() {}),
-          onFieldSubmitted: (_) => _save(),
+          onSubmitted: (_) => _save(),
         ),
         DsFieldLabel('common.icon'.tr()),
         DsIconPicker(

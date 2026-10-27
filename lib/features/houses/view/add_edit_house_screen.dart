@@ -226,25 +226,13 @@ class _AddEditHouseSheetState extends ConsumerState<AddEditHouseSheet> {
               ),
             ),
           DsFieldLabel('houses.name_label'.tr()),
-          TextField(
+          DsTextField(
             key: const Key('house_sheet_name'),
             controller: _nameController,
             textCapitalization: TextCapitalization.sentences,
-            decoration: dsFieldDecoration(
-              context,
-              hintText: 'houses.name_hint'.tr(),
-            ),
+            hintText: 'houses.name_hint'.tr(),
+            helperText: 'houses.name_help'.tr(),
             onChanged: (_) => setState(() {}),
-          ),
-          Padding(
-            padding: EdgeInsets.only(
-              top: context.spacingXs,
-              left: context.spacingMd,
-            ),
-            child: Text(
-              'houses.name_help'.tr(),
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
           ),
           DsFieldLabel('common.icon'.tr()),
           DsIconPicker(

@@ -574,41 +574,17 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
   }
 
   Widget _buildName(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DsSectionTitle('trips.new.name'.tr()),
-        TextField(
+        DsTextField(
           key: const Key('new_trip_name'),
           controller: _nameController,
           textCapitalization: TextCapitalization.sentences,
+          prefixIcon: Icons.edit_outlined,
+          helperText: 'trips.new.name_hint'.tr(),
           onChanged: (text) => _update(_draft.withName(text)),
-          decoration: InputDecoration(
-            prefixIcon: Icon(
-              Icons.edit_outlined,
-              size: context.iconSizeMd,
-              color: cs.onSurfaceVariant,
-            ),
-            filled: true,
-            fillColor: context.groupSurface,
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: context.spacingMd,
-              vertical: context.spacingMd,
-            ),
-            border: _inputBorder(cs.outlineVariant, 1),
-            enabledBorder: _inputBorder(cs.outlineVariant, 1),
-            focusedBorder: _inputBorder(cs.onSurface, 1.5),
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.only(top: context.spacingSm),
-          child: Text(
-            'trips.new.name_hint'.tr(),
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-          ),
         ),
       ],
     );
@@ -724,12 +700,6 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
 
 String _formatDay(BuildContext context, DateTime day) =>
     DateFormat('EEE d MMM', context.locale.toString()).format(day);
-
-OutlineInputBorder _inputBorder(Color color, double width) =>
-    OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-      borderSide: BorderSide(color: color, width: width),
-    );
 
 /// Messaggio sotto un campo mancante, in colore di errore.
 class _FieldError extends StatelessWidget {

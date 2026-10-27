@@ -913,7 +913,10 @@ void main() {
 
         expect(find.text('Nuovo oggetto'), findsOneWidget);
         final name = tester.widget<TextFormField>(
-          find.byKey(const Key('item_sheet_name')),
+          find.descendant(
+            of: find.byKey(const Key('item_sheet_name')),
+            matching: find.byType(TextFormField),
+          ),
         );
         expect(name.controller!.text, 'Ciab');
         expect(find.text('Lo trovi anche in Casa Milano.'), findsOneWidget);

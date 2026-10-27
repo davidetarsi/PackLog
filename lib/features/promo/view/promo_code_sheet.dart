@@ -127,31 +127,20 @@ class _PromoCodeSheetState extends ConsumerState<_PromoCodeSheet> {
           ),
           AppSpacing.gapMd,
           DsFieldLabel('promo.code_label'.tr()),
-          TextField(
+          DsTextField(
             key: const Key('promo_sheet_field'),
             controller: _controller,
             autofocus: true,
             textCapitalization: TextCapitalization.characters,
             textInputAction: TextInputAction.done,
+            hintText: 'promo.hint'.tr(),
+            prefixIcon: Icons.confirmation_number_outlined,
+            errorText: _errorKey?.tr(),
             onSubmitted: (_) => _submit(),
             onChanged: (_) {
               setState(() => _errorKey = null);
             },
-            decoration: dsFieldDecoration(
-              context,
-              hasError: _errorKey != null,
-              hintText: 'promo.hint'.tr(),
-              prefixIcon: const Icon(Icons.confirmation_number_outlined),
-            ),
           ),
-          if (_errorKey != null) ...[
-            SizedBox(height: context.spacingXs),
-            Text(
-              _errorKey!.tr(),
-              key: const Key('promo_sheet_error'),
-              style: textTheme.bodySmall?.copyWith(color: colorScheme.error),
-            ),
-          ],
           AppSpacing.gapLg,
         ],
       ),

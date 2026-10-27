@@ -125,7 +125,10 @@ void main() {
         expect(find.text('items.note_label'.tr()), findsNothing);
 
         final name = tester.widget<TextFormField>(
-          find.byKey(const Key('item_sheet_name')),
+          find.descendant(
+            of: find.byKey(const Key('item_sheet_name')),
+            matching: find.byType(TextFormField),
+          ),
         );
         expect(name.controller!.text, 'Maglia blu');
         expect(pillOf(tester, ItemCategory.vestiti), CategoryPillState.forced);

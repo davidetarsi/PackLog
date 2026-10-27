@@ -593,13 +593,12 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DsFieldLabel.prominent('items.name_label'.tr()),
-            TextFormField(
+            DsTextField(
               key: const Key('item_sheet_name'),
               controller: _nameController,
               minLines: 1,
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
-              decoration: dsFieldDecoration(context),
               // Ridisegna la proposta di categoria.
               onChanged: (_) => setState(() {}),
               validator: (v) => v == null || v.trim().isEmpty
@@ -688,16 +687,13 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
             ],
             if (!_isScan) ...[
               DsFieldLabel.prominent('items.note_label'.tr()),
-              TextFormField(
+              DsTextField(
                 key: const Key('item_sheet_note'),
                 controller: _noteController,
                 minLines: 1,
                 maxLines: 4,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: dsFieldDecoration(
-                  context,
-                  hintText: 'items.add_note'.tr(),
-                ),
+                hintText: 'items.add_note'.tr(),
                 // Ridisegna "Salva", attivo solo con una modifica.
                 onChanged: (_) => setState(() {}),
               ),

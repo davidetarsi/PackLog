@@ -48,7 +48,12 @@ void main() {
   }
 
   String nameText(WidgetTester tester) => tester
-      .widget<TextFormField>(find.byKey(const Key('item_sheet_name')))
+      .widget<TextFormField>(
+        find.descendant(
+          of: find.byKey(const Key('item_sheet_name')),
+          matching: find.byType(TextFormField),
+        ),
+      )
       .controller!
       .text;
 
@@ -225,7 +230,10 @@ void main() {
     await app.tap(find.byKey(const Key('item_sheet_save')));
     await app.tap(find.text('Calzini'));
     final note = tester.widget<TextFormField>(
-      find.byKey(const Key('item_sheet_note')),
+      find.descendant(
+        of: find.byKey(const Key('item_sheet_note')),
+        matching: find.byType(TextFormField),
+      ),
     );
     expect(note.controller!.text, 'Quelli di lana');
     await app.finish();

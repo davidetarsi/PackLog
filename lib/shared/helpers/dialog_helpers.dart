@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../theme/theme.dart';
 import '../widgets/ds_button.dart';
+import '../widgets/ds_field.dart';
 
 /// Helper per i dialog comuni dell'applicazione.
 ///
@@ -351,15 +352,12 @@ class _ProtectedDeleteDialogState extends State<_ProtectedDeleteDialog> {
           const SizedBox(height: 16),
           Text(widget.prompt, style: theme.textTheme.bodySmall),
           const SizedBox(height: 8),
-          TextField(
+          DsTextField(
             controller: _controller,
             autofocus: true,
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
-            decoration: InputDecoration(
-              hintText: widget.requiredText,
-              border: const OutlineInputBorder(),
-            ),
+            hintText: widget.requiredText,
             onChanged: (_) => setState(() {}),
           ),
         ],

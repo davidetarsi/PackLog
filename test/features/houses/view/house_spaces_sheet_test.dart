@@ -248,7 +248,12 @@ void main() {
       expect(find.textContaining('Vuoi riprovare'), findsOneWidget);
       expect(
         tester
-            .widget<TextFormField>(find.byKey(const Key('space_sheet_name')))
+            .widget<TextFormField>(
+              find.descendant(
+                of: find.byKey(const Key('space_sheet_name')),
+                matching: find.byType(TextFormField),
+              ),
+            )
             .controller!
             .text,
         'Garage',

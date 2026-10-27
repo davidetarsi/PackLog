@@ -83,10 +83,15 @@ void main() {
       expect(calls, 1);
       first.completeError(StateError('storage non disponibile'));
       await app.settle();
-      expect(find.byKey(const Key('promo_sheet_error')), findsOneWidget);
+      expect(find.text('promo.error_generic'.tr()), findsOneWidget);
       expect(
         tester
-            .widget<TextField>(find.byKey(const Key('promo_sheet_field')))
+            .widget<TextField>(
+              find.descendant(
+                of: find.byKey(const Key('promo_sheet_field')),
+                matching: find.byType(TextField),
+              ),
+            )
             .controller!
             .text,
         'ESTATE',
