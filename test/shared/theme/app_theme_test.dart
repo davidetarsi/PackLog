@@ -251,4 +251,45 @@ void main() {
       });
     }
   });
+
+  group('tema chiaro neutro', () {
+    double contrast(Color a, Color b) {
+      final la = a.computeLuminance();
+      final lb = b.computeLuminance();
+      final (hi, lo) = la > lb ? (la, lb) : (lb, la);
+      return (hi + 0.05) / (lo + 0.05);
+    }
+
+    final cs = AppTheme.light.colorScheme;
+
+    test('testo sui bottoni pieni sopra AA (4.5:1)', () {
+      expect(contrast(cs.onPrimary, cs.primary), greaterThanOrEqualTo(4.5));
+    });
+
+    test('testo sui contenitori arancio sopra AA (4.5:1)', () {
+      expect(
+        contrast(cs.onPrimaryContainer, cs.primaryContainer),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
+
+    test('superfici e testi senza tinta: canali quasi uguali', () {
+      for (final color in [
+        cs.surface,
+        cs.surfaceContainerLow,
+        cs.surfaceContainer,
+        cs.surfaceContainerHigh,
+        cs.surfaceContainerHighest,
+        cs.onPrimary,
+        cs.onSurface,
+        cs.onSurfaceVariant,
+      ]) {
+        final channels = [color.r, color.g, color.b];
+        final spread =
+            channels.reduce((a, b) => a > b ? a : b) -
+            channels.reduce((a, b) => a < b ? a : b);
+        expect(spread, lessThan(0.05), reason: '$color tira verso un colore');
+      }
+    });
+  });
 }

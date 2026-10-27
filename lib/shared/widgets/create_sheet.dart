@@ -204,9 +204,13 @@ class _AiCard extends StatelessWidget {
             colorScheme.surface,
           )
         : colorScheme.onSurface.withValues(alpha: AppOpacity.pressed);
-    final foreground = enabled
-        ? colorScheme.onPrimaryContainer
-        : colorScheme.onSurface.withValues(alpha: AppOpacity.disabled);
+    // Testi neutri come nel resto del foglio; l'arancio resta all'icona.
+    final disabledColor = colorScheme.onSurface.withValues(
+      alpha: AppOpacity.disabled,
+    );
+    final iconColor = enabled ? colorScheme.onPrimaryContainer : disabledColor;
+    final titleColor = enabled ? colorScheme.onSurface : disabledColor;
+    final hintColor = enabled ? colorScheme.onSurfaceVariant : disabledColor;
     final radius = BorderRadius.circular(AppConstants.cardBorderRadius);
 
     return Material(
@@ -247,7 +251,7 @@ class _AiCard extends StatelessWidget {
                     AppConstants.badgeBorderRadius,
                   ),
                 ),
-                child: Icon(icon, size: context.iconSizeMd, color: foreground),
+                child: Icon(icon, size: context.iconSizeMd, color: iconColor),
               ),
               SizedBox(width: context.spacingMd),
               Expanded(
@@ -256,12 +260,12 @@ class _AiCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: textTheme.titleMedium?.copyWith(color: foreground),
+                      style: textTheme.titleMedium?.copyWith(color: titleColor),
                     ),
                     SizedBox(height: context.spacingXs),
                     Text(
                       hint,
-                      style: textTheme.bodyMedium?.copyWith(color: foreground),
+                      style: textTheme.bodyMedium?.copyWith(color: hintColor),
                     ),
                     if (footer != null) footer!,
                   ],

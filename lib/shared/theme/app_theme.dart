@@ -13,21 +13,24 @@ import '../constants/app_constants.dart';
 /// - tertiary = stati transienti (es. "in viaggio"). Ambra in entrambi i temi.
 /// - State layer alpha: 0.08 (hover) / 0.12 (selected) / 0.16 (dragged).
 class AppTheme {
-  /// Tema chiaro — arancione brand su sfondo caldo beige.
+  /// Tema chiaro — arancione brand su superfici grigie neutre.
+  ///
+  /// Il colore sta solo dove ha un significato (brand, avvisi): superfici,
+  /// testi e testo sui bottoni pieni non hanno tinta, così il tema non tira
+  /// verso il panna o il marrone.
   static ThemeData get light {
     const colorScheme = ColorScheme.light(
       // ── Primary ───────────────────────────────────────────────────────────
-      // #E85D04: arancione brand light.
+      // #F4801F: arancione chiaro e spostato verso il giallo, che sul fondo
+      // chiaro non legge come rosso.
       //
-      // onPrimary scuro e non bianco: il bianco su questo arancione dà 3,50:1,
-      // sotto la soglia WCAG AA di 4,5:1 per il testo di un bottone (il
-      // commento precedente dichiarava il contrario, misurandolo si scopre che
-      // non regge). Il marrone quasi nero arriva a 4,96:1 e conserva
-      // l'arancione vivo, che scurire il riempimento avrebbe spento.
-      primary: Color(0xFFE85D04),
-      onPrimary: Color(0xFF2A1508),
-      primaryContainer: Color.fromARGB(255, 255, 245, 238),
-      onPrimaryContainer: Color(0xFF4A1F00),
+      // onPrimary quasi nero neutro: il bianco su questo arancione non arriva
+      // ad AA (4,5:1), il quasi nero sta a 6,7:1.
+      primary: Color(0xFFF4801F),
+      onPrimary: Color(0xFF18181B),
+      primaryContainer: Color(0xFFFFF3EA),
+      // Arancio scuro e non marrone: 4,7:1 sul contenitore.
+      onPrimaryContainer: Color(0xFFC2410C),
       // ── Secondary ─────────────────────────────────────────────────────────
       // Grigio neutro per azioni secondarie, distinto dal brand orange.
       secondary: Color(0xFF6B7280),
@@ -40,20 +43,20 @@ class AppTheme {
       onTertiary: Colors.white,
       tertiaryContainer: Color(0xFFFEF3C7),
       onTertiaryContainer: Color(0xFF451A03),
-      // ── Superfici (beige caldo) ────────────────────────────────────────────
-      surface: Color.fromARGB(255, 255, 252, 249),
-      onSurface: Color(0xFF1A1A1A),
+      // ── Superfici (grigio neutro, appena freddo) ──────────────────────────
+      surface: Color(0xFFF7F7F8),
+      onSurface: Color(0xFF18181B),
       // onSurfaceVariant calibrato per leggibilità secondaria WCAG AA in light.
-      onSurfaceVariant: Color(0xFF595959),
+      onSurfaceVariant: Color(0xFF52525B),
       surfaceContainerLowest: Colors.white,
-      surfaceContainerLow: Color(0xFFF5F0EC),
-      surfaceContainer: Color.fromARGB(255, 255, 248, 235),
-      surfaceContainerHigh: Color.fromARGB(255, 218, 210, 196),
-      surfaceContainerHighest: Color.fromARGB(255, 220, 209, 195),
+      surfaceContainerLow: Color(0xFFF5F5F6),
+      surfaceContainer: Color(0xFFF4F4F5),
+      surfaceContainerHigh: Color(0xFFE4E4E7),
+      surfaceContainerHighest: Color(0xFFD4D4D8),
       // ── Bordi ─────────────────────────────────────────────────────────────
       // outline: bordo forte (selezionato, focus). outlineVariant: divider/card.
-      outline: Color(0xFFB8B8B8),
-      outlineVariant: Color(0xFFE0E0E0),
+      outline: Color(0xFFA1A1AA),
+      outlineVariant: Color(0xFFE4E4E7),
       // ── Error / Inverse ───────────────────────────────────────────────────
       error: Color(0xFFBA1A1A),
       onError: Colors.white,
