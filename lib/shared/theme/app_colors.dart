@@ -60,9 +60,6 @@ abstract class AppColors {
   @Deprecated('Usa context.appColors.warning. DS Fase 2.')
   static const Color warningLight = Color(0xFF3D2000);
 
-  @Deprecated('Usa colorScheme.onSurface.withValues(alpha: 0.38). DS Fase 2.')
-  static const Color disabled = Color(0xFF6E6E6E);
-
   @Deprecated('Usa colorScheme.onSurfaceVariant. DS Fase 2.')
   static const Color hint = Color(0xFF9E9E9E);
 

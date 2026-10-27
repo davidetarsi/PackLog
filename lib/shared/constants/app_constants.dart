@@ -7,18 +7,6 @@ class AppConstants {
   static const String itemsKey = 'items';
   static const String tripsKey = 'trips';
 
-  // ── UI Layout Tokens ────────────────────────────────────────────────────────
-
-  /// Gutter orizzontale standard di pagina.
-  /// Fonte unica: usare per ogni padding left/right a livello di schermata.
-  /// Equivale ad AppSpacing.md (= 16.0). Valore duplicato deliberatamente
-  /// per evitare dipendenza circolare tra app_constants e app_spacing.
-  static const double screenHorizontalGutter = 16.0;
-
-  /// Altezza della floating tab bar (senza safe area).
-  /// Bumpata a 60 in Fase 3 per accomodare label 12px + icona 22px senza overflow.
-  static const double tabBarHeight = 60.0;
-
   // ── Border Radius ────────────────────────────────────────────────────────────
 
   /// Border radius for cards (16.0)
@@ -87,9 +75,4 @@ class AppConstants {
 
   /// Altezza dei segmenti di avanzamento (es. le tappe del foglio AI).
   static const double progressSegmentHeight = 4.0;
-
-  // ── AI Import ────────────────────────────────────────────────────────────────
-
-  /// Width of score label column in AI result cards.
-  static const double aiScoreLabelWidth = 76.0;
 }
