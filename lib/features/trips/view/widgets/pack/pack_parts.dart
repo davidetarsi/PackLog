@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_checkbox.dart';
 import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/quantity_stepper.dart';
 import '../../../../items/model/item_model.dart';
@@ -132,7 +133,7 @@ class PackItemRow extends StatelessWidget {
 
     final label = Row(
       children: [
-        Checkbox(value: chosen != null, onChanged: (_) => onToggle!()),
+        DsCheckbox(value: chosen != null, onChanged: (_) => onToggle!()),
         SizedBox(width: context.spacingXs),
         Expanded(
           child: Text(

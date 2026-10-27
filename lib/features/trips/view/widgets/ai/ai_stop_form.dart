@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_checkbox.dart';
 import '../../../../../shared/widgets/ds_choice_group.dart';
 import '../../../model/ai_packing.dart';
 
@@ -129,17 +130,7 @@ class _WasherRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: cs.surface,
-            activeTrackColor: cs.onSurface,
-            inactiveThumbColor: cs.onSurfaceVariant,
-            inactiveTrackColor: Colors.transparent,
-            trackOutlineColor: WidgetStatePropertyAll(
-              value ? cs.onSurface : cs.outline,
-            ),
-          ),
+          DsSwitch(value: value, onChanged: onChanged),
         ],
       ),
     );

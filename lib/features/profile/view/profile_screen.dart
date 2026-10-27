@@ -22,6 +22,7 @@ import '../../../shared/theme/nav_bar_spacing.dart';
 import '../../../shared/providers/package_info_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/widgets/ds_checkbox.dart';
 import '../../../shared/widgets/ds_dialog.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_settings.dart';
@@ -148,8 +149,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     // il pop del loader non scatterebbe più. `rootNavigator` invece punta
     // al Navigator dentro MaterialApp, che sopravvive alle navigazioni.
     final rootNav = Navigator.of(context, rootNavigator: true);
+    // Il messenger resta valido anche quando ProfileScreen viene smontata
+    // dal logout, quindi lo snackbar d'errore passa da qui e non dal context.
     final messenger = ScaffoldMessenger.of(context);
-    final errorColor = Theme.of(context).colorScheme.error;
 
     // Loading dialog: l'operazione tocca rete + più DELETE Postgres → può
     // impiegare qualche secondo. `useRootNavigator: true` mette il dialog
@@ -181,12 +183,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // throws prima di signOut) → ProfileScreen ancora mounted →
       // messenger riferimento valido.
       if (rootNav.canPop()) rootNav.pop();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('profile.delete_account_failed'.tr()),
-          backgroundColor: errorColor,
-        ),
-      );
+      AppSnackBar.showErrorOn(messenger, 'profile.delete_account_failed'.tr());
     }
   }
 
@@ -449,7 +446,7 @@ class _AnalyticsToggleTileState extends ConsumerState<_AnalyticsToggleTile> {
     return DsSettingsRow(
       label: 'settings.analytics_title'.tr(),
       subtitle: 'settings.analytics_subtitle'.tr(),
-      trailing: Switch(value: consent.analyticsEnabled, onChanged: _toggle),
+      trailing: DsSwitch(value: consent.analyticsEnabled, onChanged: _toggle),
       onTap: () => _toggle(!consent.analyticsEnabled),
     );
   }

@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/widgets/ds_checkbox.dart';
 import '../../../../shared/widgets/ds_text_button.dart';
 import '../../../items/model/clothing_labels.dart';
 import '../../model/clothing_analysis_result.dart';
@@ -74,11 +75,11 @@ class _AiResultCardState extends State<AiResultCard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Checkbox(
+          DsCheckbox(
             value: active,
             onChanged: !widget.enabled
                 ? null
-                : (value) => widget.onIncludedChanged(value ?? false),
+                : (value) => widget.onIncludedChanged(value),
           ),
           Expanded(
             child: Column(

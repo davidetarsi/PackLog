@@ -10,6 +10,7 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/dialog_helpers.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/cta_reserved_space.dart';
 import '../../../shared/widgets/ds_button.dart';
@@ -148,18 +149,15 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       }
     } on Object {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            key: const Key('ai_picker_error'),
-            content: Text('ai_import.picker_error'.tr()),
-            action: SnackBarAction(
-              label: 'ai_import.picker_retry'.tr(),
-              onPressed: () {
-                if (!mounted) return;
-                _showPickerSheet();
-              },
-            ),
-          ),
+        AppSnackBar.showAction(
+          context,
+          'ai_import.picker_error'.tr(),
+          actionLabel: 'ai_import.picker_retry'.tr(),
+          onAction: () {
+            if (!mounted) return;
+            _showPickerSheet();
+          },
+          key: const Key('ai_picker_error'),
         );
       }
     } finally {
@@ -359,13 +357,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
           next.photoGroups.isEmpty &&
           next.failureReason == null &&
           next.errorMessage == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('ai_import.save_success_generic'.tr()),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppSnackBar.showSuccess(context, 'ai_import.save_success_generic'.tr());
         if (!widget.isFirstTimeOnboarding && widget.houseId != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) _exitToHouse();
