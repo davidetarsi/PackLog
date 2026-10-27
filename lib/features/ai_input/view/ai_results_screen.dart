@@ -394,7 +394,11 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
         // context interno a questo subtree, non quello del metodo build
         // esterno (che sta sopra lo scope e non lo vedrebbe mai).
         body: Builder(
+          // Niente SafeArea in basso: con extendBody conterebbe anche la
+          // fascia dei bottoni e la lista si fermerebbe sopra, senza niente
+          // da sfocare dietro il bottone. Lo spazio lo dà ctaReservedHeight.
           builder: (context) => SafeArea(
+            bottom: false,
             child: SingleChildScrollView(
               padding: EdgeInsets.all(
                 context.spacingMd,
