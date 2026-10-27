@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../theme/app_spacing.dart';
 
 /// Titolo di sezione di pagine e fogli con dei campi, in grande e grassetto
-/// ("Dove vai?", "Cosa porti"). Lo usano il nuovo viaggio, il foglio della
-/// tappa e la pagina valigia, così i titoli hanno sempre lo stesso aspetto.
-/// Per le etichette dei campi di un foglio c'è DsFieldLabel, più leggero.
+/// ("Dove vai?", "Cosa porti"). Lo usano il nuovo viaggio e la pagina valigia,
+/// così i titoli hanno sempre lo stesso aspetto.
+/// Per le sezioni dentro un foglio c'è DsFieldLabel.prominent.
 class DsSectionTitle extends StatelessWidget {
   const DsSectionTitle(this.text, {super.key});
 
@@ -15,7 +15,7 @@ class DsSectionTitle extends StatelessWidget {
   /// controllo.
   static TextStyle? textStyle(BuildContext context) => Theme.of(
     context,
-  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800);
+  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700);
 
   @override
   Widget build(BuildContext context) {

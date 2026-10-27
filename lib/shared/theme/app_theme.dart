@@ -340,10 +340,9 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
-        // Allineato a textTheme.titleLarge: il titolo dell'AppBar e i titoli
-        // di sezione devono pesare uguale.
+        // titolo della barra, dei fogli e delle sezioni: stesso peso.
         titleTextStyle: TextStyle(
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: colorScheme.onSurface,
           fontSize: AppSpacing.fontLg, // 20
         ),
