@@ -15,26 +15,28 @@ import sys
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 WIDTH, HEIGHT = 1080, 1920
-BACKGROUND = (255, 243, 234)  # primaryContainer del tema chiaro
+BACKGROUND = (244, 128, 31)  # primary del tema chiaro, #F4801F
 TEXT = (24, 24, 27)  # onSurface
 OUTLINE = (228, 228, 231)  # outlineVariant
-PHONE_WIDTH = 860
-PHONE_TOP = 430
-RADIUS = 56
+PHONE_TOP = 400
+PHONE_BOTTOM_MARGIN = 80
+RADIUS = 44
 
 CAPTIONS = {
     "it-IT": [
         "La valigia si prepara da sola",
-        "Con i vestiti che hai già",
+        "Ogni scelta ha il suo perché",
         "Aggiungi i vestiti con una foto",
+        "Con i vestiti che hai già",
         "Il meteo di ogni tappa",
         "Spunta mentre prepari",
         "Sai dove sono le tue cose",
     ],
     "en-US": [
         "Your suitcase, packed for you",
-        "With the clothes you already own",
+        "Every pick has a reason",
         "Add clothes from a photo",
+        "With the clothes you already own",
         "Weather for every stop",
         "Check off as you pack",
         "Know where your things are",
@@ -72,10 +74,12 @@ def compose(raw_path, caption, font):
         draw.text((x, y), line, font=font, fill=TEXT)
         y += line_height
 
+    # Il telefono intero, così si vedono anche i fogli in basso e i bottoni.
     shot = Image.open(raw_path).convert("RGB")
-    height = round(shot.height * PHONE_WIDTH / shot.width)
-    shot = shot.resize((PHONE_WIDTH, height), Image.LANCZOS)
-    left = (WIDTH - PHONE_WIDTH) // 2
+    height = HEIGHT - PHONE_TOP - PHONE_BOTTOM_MARGIN
+    phone_width = round(shot.width * height / shot.height)
+    shot = shot.resize((phone_width, height), Image.LANCZOS)
+    left = (WIDTH - phone_width) // 2
 
     mask = Image.new("L", shot.size, 0)
     ImageDraw.Draw(mask).rounded_rectangle(
@@ -84,16 +88,16 @@ def compose(raw_path, caption, font):
 
     shadow = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     ImageDraw.Draw(shadow).rounded_rectangle(
-        (left, PHONE_TOP + 12, left + PHONE_WIDTH, PHONE_TOP + height + 12),
+        (left, PHONE_TOP + 12, left + phone_width, PHONE_TOP + height + 12),
         RADIUS,
-        fill=(0, 0, 0, 40),
+        fill=(0, 0, 0, 70),
     )
     shadow = shadow.filter(ImageFilter.GaussianBlur(24))
     canvas.paste(shadow, (0, 0), shadow)
 
     canvas.paste(shot, (left, PHONE_TOP), mask)
     ImageDraw.Draw(canvas).rounded_rectangle(
-        (left, PHONE_TOP, left + PHONE_WIDTH - 1, PHONE_TOP + height - 1),
+        (left, PHONE_TOP, left + phone_width - 1, PHONE_TOP + height - 1),
         RADIUS,
         outline=OUTLINE,
         width=2,

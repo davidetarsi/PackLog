@@ -80,6 +80,15 @@ final _scenarios = <(int, String, AppSetup, _Steps)>[
   ),
   (
     2,
+    'motivi',
+    AppSetup(seedWith: _data.seed, locale: _locale),
+    (app) async {
+      await _pack(app, StoreData.tripId);
+      await app.tap(find.text('trips.pack.ai.reasons_row'.tr()));
+    },
+  ),
+  (
+    4,
     'foglio-ai',
     AppSetup(seedWith: _data.seed, locale: _locale),
     (app) async {
@@ -117,7 +126,7 @@ final _scenarios = <(int, String, AppSetup, _Steps)>[
     },
   ),
   (
-    4,
+    5,
     'meteo',
     AppSetup(seedWith: _data.seed, locale: _locale),
     (app) async {
@@ -126,7 +135,7 @@ final _scenarios = <(int, String, AppSetup, _Steps)>[
     },
   ),
   (
-    5,
+    6,
     'checklist',
     AppSetup(seedWith: _data.seed, locale: _locale),
     (app) async {
@@ -136,7 +145,7 @@ final _scenarios = <(int, String, AppSetup, _Steps)>[
     },
   ),
   (
-    6,
+    7,
     'casa',
     AppSetup(seedWith: _data.seed, locale: _locale),
     (app) async {
