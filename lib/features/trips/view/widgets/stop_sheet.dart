@@ -11,6 +11,7 @@ import '../../model/trip_draft.dart';
 import '../../model/trip_postcard.dart';
 import 'place_search.dart';
 import 'trip_dates_sheet.dart';
+import '../../../../shared/widgets/ds_glass_band.dart';
 
 /// Esito del foglio della tappa.
 sealed class StopSheetResult {
@@ -118,7 +119,7 @@ class _StopSheetState extends State<_StopSheet> {
       footer: Padding(
         padding: EdgeInsets.fromLTRB(
           context.spacingMd,
-          context.spacingSm,
+          DsGlassBand.topGap(context),
           context.spacingMd,
           context.spacingMd,
         ),
