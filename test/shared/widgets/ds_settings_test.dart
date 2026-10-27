@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_settings.dart';
 
@@ -99,7 +100,9 @@ void main() {
     await tester.tap(find.text('Spento'));
     expect(taps, 0);
 
-    final off = AppTheme.light.colorScheme.onSurface.withValues(alpha: 0.38);
+    final off = AppTheme.light.colorScheme.onSurface.withValues(
+      alpha: AppOpacity.disabled,
+    );
     expect(tester.widget<Text>(find.text('Spento')).style?.color, off);
     expect(
       IconTheme.of(tester.element(find.byIcon(Icons.lock_outline))).color,

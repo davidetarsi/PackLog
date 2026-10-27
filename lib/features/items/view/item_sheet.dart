@@ -197,11 +197,14 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
         (_details != null && _details != _originalDetails);
   }
 
+  /// Anche un dubbio risolto conta: confermare il valore proposto toglie il
+  /// "da controllare", e quel cambiamento va salvato.
   bool _scanDirty() {
     final result = widget.scanResult!;
     return _nameController.text.trim() != result.name ||
         _chosenCategory != _scanCategory ||
-        (_details != null && _details != _originalDetails);
+        (_details != null && _details != _originalDetails) ||
+        _doubts.length != result.doubts.toSet().length;
   }
 
   /// La categoria che la scheda mostra adesso: scelta, della scansione o

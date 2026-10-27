@@ -24,6 +24,7 @@ import '../../../providers/trip_weather_provider.dart';
 import '../pack/pack_weather.dart';
 import 'ai_stop_form.dart';
 import '../../../../../shared/widgets/ds_divider.dart';
+import '../../../../../shared/widgets/ds_glass_band.dart';
 
 /// Il foglio "Valigia con AI". Restituisce le risposte con "Prepara la
 /// valigia", null se si chiude. Non salva nulla: lo fa il chiamante.
@@ -410,7 +411,7 @@ class _Footer extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(
         context.spacingMd,
-        0,
+        DsGlassBand.topGap(context),
         context.spacingMd,
         context.spacingMd,
       ),

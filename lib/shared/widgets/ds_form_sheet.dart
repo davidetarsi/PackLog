@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
+import '../theme/cta_reserved_space.dart';
 import 'ds_button.dart';
+import 'ds_glass_band.dart';
 import 'ds_sheet_header.dart';
 
 /// Apre un foglio dal basso sul Navigator radice, con le stesse opzioni per
@@ -76,16 +79,33 @@ class DsFormSheet extends StatelessWidget {
         (MediaQuery.sizeOf(context).height -
             MediaQuery.viewInsetsOf(context).bottom);
 
-    final body = expand
-        ? Expanded(
-            child: AbsorbPointer(absorbing: isBusy, child: child),
-          )
-        : Flexible(
-            child: SingleChildScrollView(
-              padding: padding ?? EdgeInsets.all(context.spacingMd),
-              child: AbsorbPointer(absorbing: isBusy, child: child),
-            ),
-          );
+    final content = AbsorbPointer(absorbing: isBusy, child: child);
+    final footerContent =
+        footer ??
+        (actionLabel == null
+            ? null
+            : Padding(
+                padding: EdgeInsets.fromLTRB(
+                  context.spacingMd,
+                  DsGlassBand.topGap(context),
+                  context.spacingMd,
+                  context.spacingMd,
+                ),
+                child: DsButton(
+                  key: actionKey,
+                  label: actionLabel!,
+                  icon: actionIcon,
+                  onPressed: onSubmit,
+                  isLoading: isBusy,
+                  expand: true,
+                ),
+              ));
+    final body = _SheetBody(
+      expand: expand,
+      padding: padding ?? EdgeInsets.all(context.spacingMd),
+      footer: footerContent,
+      child: content,
+    );
 
     final frame = Container(
       decoration: BoxDecoration(
@@ -109,25 +129,6 @@ class DsFormSheet extends StatelessWidget {
               ),
             ),
             body,
-            if (footer != null)
-              footer!
-            else if (actionLabel != null)
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  context.spacingMd,
-                  0,
-                  context.spacingMd,
-                  context.spacingMd,
-                ),
-                child: DsButton(
-                  key: actionKey,
-                  label: actionLabel!,
-                  icon: actionIcon,
-                  onPressed: onSubmit,
-                  isLoading: isBusy,
-                  expand: true,
-                ),
-              ),
           ],
         ),
       ),
@@ -147,5 +148,107 @@ class DsFormSheet extends StatelessWidget {
               ),
       ),
     );
+  }
+}
+
+/// Contenuto del foglio con il piè sopra, sulla fascia di vetro come i
+/// bottoni in fondo alle pagine: il contenuto scorre sotto il piè, sfocato,
+/// e in fondo ha lo spazio per salire sopra di lui.
+class _SheetBody extends StatefulWidget {
+  const _SheetBody({
+    required this.expand,
+    required this.padding,
+    required this.footer,
+    required this.child,
+  });
+
+  final bool expand;
+  final EdgeInsetsGeometry padding;
+  final Widget? footer;
+  final Widget child;
+
+  @override
+  State<_SheetBody> createState() => _SheetBodyState();
+}
+
+class _SheetBodyState extends State<_SheetBody> {
+  /// Altezza del piè, misurata dopo il layout.
+  double _footerHeight = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final footer = widget.footer;
+    final reserved = footer == null ? 0.0 : _footerHeight;
+
+    // Il contenuto che scorre da solo (calendario) legge lo spazio del piè
+    // da `context.ctaReservedHeight`, come nelle pagine.
+    final content = CtaReservedSpaceScope(
+      height: reserved,
+      child: widget.expand
+          ? widget.child
+          : SingleChildScrollView(
+              padding: widget.padding.add(EdgeInsets.only(bottom: reserved)),
+              child: widget.child,
+            ),
+    );
+
+    final stack = footer == null
+        ? content
+        : Stack(
+            fit: widget.expand ? StackFit.expand : StackFit.loose,
+            children: [
+              content,
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _MeasureSize(
+                  onChange: (size) {
+                    if (size.height != _footerHeight) {
+                      setState(() => _footerHeight = size.height);
+                    }
+                  },
+                  child: DsGlassBand(child: footer),
+                ),
+              ),
+            ],
+          );
+
+    return widget.expand ? Expanded(child: stack) : Flexible(child: stack);
+  }
+}
+
+/// Riporta la misura del figlio dopo ogni layout in cui cambia.
+class _MeasureSize extends SingleChildRenderObjectWidget {
+  const _MeasureSize({required this.onChange, required super.child});
+
+  final ValueChanged<Size> onChange;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderMeasureSize(onChange);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderMeasureSize renderObject,
+  ) {
+    renderObject.onChange = onChange;
+  }
+}
+
+class _RenderMeasureSize extends RenderProxyBox {
+  _RenderMeasureSize(this.onChange);
+
+  ValueChanged<Size> onChange;
+  Size? _last;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    if (size == _last) return;
+    _last = size;
+    final measured = size;
+    WidgetsBinding.instance.addPostFrameCallback((_) => onChange(measured));
   }
 }
