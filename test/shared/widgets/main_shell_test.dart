@@ -229,7 +229,12 @@ void main() {
     ) async {
       await pumpShell(tester);
       await openCreate(tester);
-      await tester.tap(find.byKey(const Key('create_manual_items')));
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('create_manual_items')),
+          matching: find.byIcon(Icons.edit_outlined),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.text('HOUSE a add=manual'), findsOneWidget);
     });

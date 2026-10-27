@@ -794,7 +794,12 @@ final flows = <Flow>[
           'Crea → "scrivili a mano": pagina "aggiungi" della casa con il campo attivo.',
       steps: (app) async {
         await _openCreateSheet(app);
-        await app.tap(find.byKey(const Key('create_manual_items')));
+        await app.tap(
+          find.descendant(
+            of: find.byKey(const Key('create_manual_items')),
+            matching: find.byIcon(Icons.edit_outlined),
+          ),
+        );
       },
     ),
     Scenario(

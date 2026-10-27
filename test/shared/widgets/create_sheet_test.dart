@@ -105,22 +105,57 @@ void main() {
     expect(read()!.houseId, 'b');
   });
 
-  testWidgets('cambiare casa e scegliere Aggiungi oggetti', (tester) async {
+  testWidgets('Aggiungi oggetti ha la sua scelta della casa', (tester) async {
     final read = await openSheet(
       tester,
       houses: [_house('a', primary: true), _house('b')],
     );
-    await tester.tap(find.byKey(const Key('create_destination')));
+    final chooser = find.byKey(const Key('create_manual_destination'));
+    await tester.ensureVisible(chooser);
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: chooser, matching: find.byIcon(Icons.expand_more)),
+      findsOneWidget,
+    );
+    await tester.tap(chooser);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Casa b').last);
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.byKey(const Key('create_manual_items')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('create_manual_items')));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('create_manual_items')),
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(read()!.action, CreateAction.manualItems);
     expect(read()!.houseId, 'b');
+  });
+
+  testWidgets('le due case si scelgono separatamente', (tester) async {
+    final read = await openSheet(
+      tester,
+      houses: [_house('a', primary: true), _house('b')],
+    );
+    // Si cambia la casa degli oggetti a mano: la scansione resta sulla
+    // principale.
+    final chooser = find.byKey(const Key('create_manual_destination'));
+    await tester.ensureVisible(chooser);
+    await tester.pumpAndSettle();
+    await tester.tap(chooser);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Casa b').last);
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const Key('create_ai_scan')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('create_ai_scan')));
+    await tester.pumpAndSettle();
+    expect(read()!.action, CreateAction.aiScan);
+    expect(read()!.houseId, 'a');
   });
 
   testWidgets('Nuova casa e Nuovo viaggio', (tester) async {
@@ -193,7 +228,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('create_manual_items')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('create_manual_items')));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('create_manual_items')),
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(CreateSheet), findsOneWidget, reason: 'non si chiude');
     expect(read(), isNull);
@@ -240,8 +280,13 @@ void main() {
       expect(read(), isNull);
 
       await tester.ensureVisible(find.byKey(const Key('create_manual_items')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('create_manual_items')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('create_manual_items')),
+          matching: find.byIcon(Icons.edit_outlined),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(read()!.action, CreateAction.manualItems);
     },
