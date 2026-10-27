@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/ds_inline_error.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 
 /// Dialog di dettaglio aperto dal tap sulla SyncStatusTile quando ci sono
 /// modifiche non ancora sincronizzate. Mostra, per tipo di entità, quante
@@ -72,9 +73,9 @@ class SyncDetailsDialog extends ConsumerWidget {
         ),
       ),
       actions: [
-        TextButton(
+        DsTextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('common.close'.tr()),
+          label: 'common.close'.tr(),
         ),
       ],
     );

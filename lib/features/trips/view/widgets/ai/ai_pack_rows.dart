@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_button.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../model/ai_packing.dart';
 
@@ -313,19 +314,17 @@ class _WarningCard extends StatelessWidget {
             runSpacing: context.spacingSm,
             children: [
               if (search != null && search.isNotEmpty)
-                _NeutralButton(
+                DsButton(
                   key: Key('ai_warning_search_${warning.id}'),
+                  variant: DsButtonVariant.neutral,
                   label: 'trips.pack.ai.warning_search'.tr(),
                   onPressed: () => onSearch(search),
-                  foreground: cs.onSurface,
-                  border: cs.outline,
                 ),
-              _NeutralButton(
+              DsButton(
                 key: Key('ai_warning_dismiss_${warning.id}'),
+                variant: DsButtonVariant.neutral,
                 label: 'trips.pack.ai.warning_dismiss'.tr(),
                 onPressed: onDismiss,
-                foreground: cs.onSurfaceVariant,
-                border: cs.outlineVariant,
               ),
             ],
           ),
@@ -336,32 +335,6 @@ class _WarningCard extends StatelessWidget {
 }
 
 /// Bottone a contorno, neutro: mai arancio.
-class _NeutralButton extends StatelessWidget {
-  const _NeutralButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    required this.foreground,
-    required this.border,
-  });
-
-  final String label;
-  final VoidCallback onPressed;
-  final Color foreground;
-  final Color border;
-
-  @override
-  Widget build(BuildContext context) => OutlinedButton(
-    onPressed: onPressed,
-    style: OutlinedButton.styleFrom(
-      foregroundColor: foreground,
-      shape: const StadiumBorder(),
-      side: BorderSide(color: border),
-    ),
-    child: Text(label),
-  );
-}
-
 /// Il foglio dei motivi: un punto per motivo, nell'ordine ricevuto.
 class _ReasonsSheet extends StatelessWidget {
   const _ReasonsSheet({required this.reasons});

@@ -16,6 +16,7 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
+import 'package:pack_log/shared/widgets/ds_icon_button.dart';
 
 /// Verifica la fine del flusso di scansione AI: lo stack radice deve restare
 /// [shell, dettaglio casa], senza `go()` che butterebbe via la shell.
@@ -251,7 +252,7 @@ void main() {
       expect(find.byType(AiResultsScreen), findsOneWidget);
       expect(
         tester
-            .widget<IconButton>(find.byKey(const Key('ai_results_close')))
+            .widget<DsIconButton>(find.byKey(const Key('ai_results_close')))
             .onPressed,
         isNull,
       );

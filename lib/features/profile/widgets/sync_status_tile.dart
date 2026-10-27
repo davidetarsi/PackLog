@@ -6,6 +6,7 @@ import '../../../core/sync/sync_provider.dart';
 import '../../../shared/widgets/ds_link_button.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/widgets/ds_settings.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import 'sync_details_dialog.dart';
 
 /// Riga del Profilo con lo stato della sincronizzazione: quante modifiche
@@ -69,11 +70,11 @@ class SyncStatusTile extends ConsumerWidget {
           ),
           trailing: isPushInProgress
               ? spinner
-              : TextButton.icon(
+              : DsTextButton(
                   onPressed: () =>
                       ref.read(syncOrchestratorProvider).requestForcedSync(),
-                  icon: const Icon(Icons.cloud_upload_outlined),
-                  label: Text('profile.sync_status_retry'.tr()),
+                  icon: Icons.cloud_upload_outlined,
+                  label: 'profile.sync_status_retry'.tr(),
                 ),
           onTap: () => SyncDetailsDialog.show(context),
         );

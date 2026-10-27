@@ -12,9 +12,12 @@ import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/dialog_helpers.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/cta_reserved_space.dart';
+import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_error_state.dart';
+import '../../../shared/widgets/ds_icon_button.dart';
 import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/ds_settings.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../houses/model/house_model.dart';
@@ -309,9 +312,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                       SizedBox(height: context.spacingMd),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: FilledButton(
+                        child: DsButton(
+                          label: 'common.ok'.tr(),
                           onPressed: () => controller.next(),
-                          child: Text('common.ok'.tr()),
                         ),
                       ),
                     ],
@@ -384,9 +387,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
           title: Text('ai_import.title'.tr()),
           leading: widget.isFirstTimeOnboarding || widget.houseId == null
               ? null
-              : IconButton(
+              : DsIconButton(
                   key: const Key('ai_results_close'),
-                  icon: const Icon(Icons.close),
+                  icon: Icons.close,
                   tooltip: 'common.close'.tr(),
                   onPressed: aiState.isLoading || _exitStarted
                       ? null
@@ -860,15 +863,10 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                 ),
                 if (state.failureReason?.isRetryable ?? false) ...[
                   SizedBox(width: context.spacingSm),
-                  TextButton(
+                  DsTextButton(
                     key: const Key('ai_partial_error_retry'),
                     onPressed: notifier.retryFailed,
-                    style: TextButton.styleFrom(
-                      foregroundColor: colorScheme.onErrorContainer,
-                      textStyle: Theme.of(context).textTheme.labelLarge?.strong
-                          .copyWith(decoration: TextDecoration.underline),
-                    ),
-                    child: Text('ai_import.retry'.tr()),
+                    label: 'ai_import.retry'.tr(),
                   ),
                 ],
               ],

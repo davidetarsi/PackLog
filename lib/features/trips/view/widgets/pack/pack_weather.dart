@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/ds_section_title.dart';
 import '../../../model/trip_weather.dart';
 import '../../../providers/trip_weather_provider.dart';
@@ -319,18 +320,16 @@ class _WeatherFooterState extends State<_WeatherFooter> {
             ),
           ),
           if (widget.onRefresh != null)
-            IconButton(
-              key: const Key('pack_weather_refresh'),
-              tooltip: 'trips.weather.refresh'.tr(),
-              onPressed: _refresh,
-              icon: AnimatedRotation(
-                turns: _turns,
-                duration: _kRefreshSpin,
-                child: Icon(
-                  Icons.refresh,
-                  size: context.iconSizeSm,
-                  color: cs.onSurfaceVariant,
-                ),
+            // Ruota il bottone intero: DsIconButton accetta solo un IconData.
+            AnimatedRotation(
+              turns: _turns,
+              duration: _kRefreshSpin,
+              child: DsIconButton(
+                key: const Key('pack_weather_refresh'),
+                tooltip: 'trips.weather.refresh'.tr(),
+                onPressed: _refresh,
+                icon: Icons.refresh,
+                color: cs.onSurfaceVariant,
               ),
             ),
         ],

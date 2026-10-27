@@ -161,6 +161,13 @@ Future<void> _tap(WidgetTester tester, String label) async {
   await tester.pump();
 }
 
+/// I DsButton primary del foglio. La regola "un solo arancio" si misura su
+/// questi: i neutral sono ammessi.
+List<DsButton> _primaryButtons(WidgetTester tester) => tester
+    .widgetList<DsButton>(find.byType(DsButton))
+    .where((b) => b.variant == DsButtonVariant.primary)
+    .toList();
+
 TextStyle _textStyle(WidgetTester tester, String label) =>
     tester.widget<Text>(find.text(label)).style!;
 
@@ -467,20 +474,21 @@ void main() {
         tester.element(find.byType(Scaffold)),
       ).colorScheme.primary;
 
-      // Primo passo: Avanti non è arancio, e nessun DsButton è nel foglio.
-      expect(find.byType(DsButton), findsNothing);
+      // Primo passo: nessun DsButton primary nel foglio, e Avanti non è
+      // arancio. Avanti è neutral, quindi un DsButton è ammesso.
+      expect(_primaryButtons(tester), isEmpty);
       expect(find.text('Avanti: Olanda'), findsOneWidget);
       _expectNoPrimaryOutside(tester, primary);
       expect(_textStyle(tester, 'Avanti: Olanda').color, isNot(primary));
 
-      // Ultimo passo: l'unico DsButton è "Prepara la valigia", arancio.
+      // Ultimo passo: un solo DsButton primary, "Prepara la valigia". I
+      // neutral sono ammessi accanto.
       await _tap(tester, 'Avanti: Olanda');
-      expect(find.byType(DsButton), findsOneWidget);
+      final primaries = _primaryButtons(tester);
+      expect(primaries, hasLength(1));
+      expect(primaries.single.label, 'Prepara la valigia');
       expect(find.text('Prepara la valigia'), findsOneWidget);
       _expectNoPrimaryOutside(tester, primary, skipDsButton: true);
-      final cta = tester.widget<DsButton>(find.byType(DsButton));
-      expect(cta.label, 'Prepara la valigia');
-      expect(cta.variant, DsButtonVariant.primary);
     });
 
     testWidgets('con una tappa l unico DsButton è Prepara la valigia', (

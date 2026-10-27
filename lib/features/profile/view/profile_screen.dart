@@ -12,6 +12,7 @@ import '../../../core/auth/auth_state.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../features/houses/providers/house_provider.dart';
 import '../../../features/tour/providers/post_login_onboarding_provider.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../providers/gpt_usage_provider.dart';
 import '../../promo/view/promo_code_sheet.dart';
 import '../../../shared/config/app_config.dart';
@@ -348,13 +349,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               // da "Esci", così non è l'elemento più evidente. Protetto da
               // dialog con conferma email.
               Center(
-                child: TextButton(
+                child: DsTextButton(
                   key: const Key('profile_delete_account'),
                   onPressed: () => _handleDeleteAccount(context),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                  child: Text('profile.delete_account_cta'.tr()),
+                  label: 'profile.delete_account_cta'.tr(),
+                  destructive: true,
                 ),
               ),
 

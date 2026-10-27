@@ -6,7 +6,9 @@ import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
+import '../../../shared/widgets/ds_icon_button.dart';
 import '../../../shared/widgets/ds_not_found_state.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../../ai_input/helpers/start_ai_scan.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../providers/house_provider.dart';
@@ -710,9 +712,9 @@ class _HouseNormalAppBar extends StatelessWidget
     if (controller != null) {
       return AppBar(
         key: const ValueKey('search-appbar'),
-        leading: IconButton(
+        leading: DsIconButton(
           key: const Key('house_search_close'),
-          icon: const Icon(Icons.arrow_back),
+          icon: Icons.arrow_back,
           tooltip: 'common.back'.tr(),
           onPressed: onSearchClose,
         ),
@@ -735,14 +737,15 @@ class _HouseNormalAppBar extends StatelessWidget
           // prima di arrivare al bottone, che chiude la pagina da sé.
           ? TapRegion(
               groupId: rapidFireTapRegionGroup,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back),
+              child: DsIconButton(
+                icon: Icons.arrow_back,
                 tooltip: 'common.back'.tr(),
                 onPressed: onCloseAdding,
               ),
             )
-          : IconButton(
-              icon: const Icon(Icons.arrow_back),
+          : DsIconButton(
+              icon: Icons.arrow_back,
+              tooltip: 'common.back'.tr(),
               onPressed: () => context.popOrGo('/'),
             ),
       // Solo il nome, senza icona: l'icona serve a distinguere le case nella
@@ -760,14 +763,14 @@ class _HouseNormalAppBar extends StatelessWidget
       actions: isAdding
           ? null
           : [
-              IconButton(
+              DsIconButton(
                 key: const Key('house_search'),
-                icon: const Icon(Icons.search),
+                icon: Icons.search,
                 tooltip: 'houses.search_tooltip'.tr(),
                 onPressed: onSearchOpen,
               ),
-              IconButton(
-                icon: const Icon(Icons.more_vert),
+              DsIconButton(
+                icon: Icons.more_vert,
                 tooltip: 'houses.manage_sheet_title'.tr(),
                 onPressed: onManage,
               ),
@@ -796,12 +799,10 @@ class _HouseSelectionAppBar extends ConsumerWidget
   Widget build(BuildContext context, WidgetRef ref) {
     final allSelected =
         allItemIds.isNotEmpty && selectedCount == allItemIds.length;
-    final colorScheme = Theme.of(context).colorScheme;
-
     return AppBar(
       key: const ValueKey('selection-appbar'),
-      leading: IconButton(
-        icon: const Icon(Icons.close),
+      leading: DsIconButton(
+        icon: Icons.close,
         tooltip: 'common.cancel'.tr(),
         onPressed: () =>
             ref.read(itemSelectionNotifierProvider.notifier).clear(),
@@ -818,19 +819,16 @@ class _HouseSelectionAppBar extends ConsumerWidget
         ),
       ),
       actions: [
-        TextButton(
+        DsTextButton(
           onPressed: () {
             final notifier = ref.read(itemSelectionNotifierProvider.notifier);
             allSelected
                 ? notifier.deselectAll()
                 : notifier.selectAll(allItemIds);
           },
-          child: Text(
-            allSelected ? 'items.deselect_all'.tr() : 'items.select_all'.tr(),
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(color: colorScheme.onSurface),
-          ),
+          label: allSelected
+              ? 'items.deselect_all'.tr()
+              : 'items.select_all'.tr(),
         ),
       ],
     );

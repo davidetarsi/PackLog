@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_spacing.dart';
 import 'ds_bottom_sheet_handle.dart';
+import 'ds_icon_button.dart';
 import '../theme/app_text_styles.dart';
 
 /// Testata dei bottom sheet: handle, titolo, divisore.
@@ -50,9 +51,9 @@ class DsSheetHeader extends StatelessWidget {
                       ),
                     ),
                     ...actions,
-                    IconButton(
+                    DsIconButton(
                       key: const Key('sheet_close'),
-                      icon: const Icon(Icons.close),
+                      icon: Icons.close,
                       tooltip: MaterialLocalizations.of(
                         context,
                       ).closeButtonTooltip,

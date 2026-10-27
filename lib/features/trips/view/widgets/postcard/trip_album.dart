@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/app_spacing.dart';
 import '../../../../../shared/widgets/ds_group_header.dart';
+import '../../../../../shared/widgets/ds_text_button.dart';
 import '../../../model/trip_model.dart';
 import '../../../model/trip_postcard.dart';
 import 'postcard_parts.dart';
@@ -188,13 +189,11 @@ class _AlbumPostcard extends StatelessWidget {
               ),
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
+              child: DsTextButton(
                 key: Key('album_reuse_${trip.id}'),
-                // Area di tocco piena (48): il disegno resta compatto.
-                style: TextButton.styleFrom(foregroundColor: cs.onSurface),
                 onPressed: () => onReuse(trip),
-                icon: Icon(Icons.replay, size: context.iconSizeSm),
-                label: Text('trips.album.reuse'.tr()),
+                icon: Icons.replay,
+                label: 'trips.album.reuse'.tr(),
               ),
             ),
           ],

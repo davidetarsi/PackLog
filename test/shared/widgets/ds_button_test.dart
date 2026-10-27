@@ -76,6 +76,27 @@ void main() {
       expect(backgroundOf(tester), AppTheme.dark.colorScheme.primary);
     });
 
+    testWidgets('neutral: contorno e testo senza arancio', (tester) async {
+      await pumpButton(
+        tester,
+        variant: DsButtonVariant.neutral,
+        onPressed: () {},
+      );
+      final scheme = AppTheme.dark.colorScheme;
+
+      final label = tester.widget<Text>(
+        find.descendant(
+          of: find.byType(DsButton),
+          matching: find.text('Etichetta'),
+        ),
+      );
+
+      expect(backgroundOf(tester), Colors.transparent);
+      expect(borderOf(tester), scheme.outline);
+      expect(borderOf(tester), isNot(scheme.primary));
+      expect(label.style?.color, scheme.onSurface);
+    });
+
     testWidgets('disabilitato perde l accento anche da secondario', (
       tester,
     ) async {

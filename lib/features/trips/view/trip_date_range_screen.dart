@@ -2,12 +2,12 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/widgets/ds_text_button.dart';
 import '../model/trip_date_range.dart';
 import '../providers/date_range_selection_provider.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'widgets/trip_calendar.dart';
-import '../../../shared/theme/app_text_styles.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TripDateRangeScreen
@@ -54,14 +54,9 @@ class TripDateRangeScreen extends ConsumerWidget {
         title: Text('trips.select_dates'.tr()),
         actions: [
           if (!state.isEmpty)
-            TextButton(
+            DsTextButton(
               onPressed: () => ref.read(provider.notifier).clear(),
-              child: Text(
-                'common.cancel'.tr(),
-                style: Theme.of(context).textTheme.labelLarge?.strong.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
+              label: 'common.cancel'.tr(),
             ),
         ],
       ),

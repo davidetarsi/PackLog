@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/theme.dart';
 import '../widgets/ds_button.dart';
 import '../widgets/ds_field.dart';
+import '../widgets/ds_text_button.dart';
 
 /// Helper per i dialog comuni dell'applicazione.
 ///
@@ -111,8 +112,8 @@ class DialogHelpers {
 
   /// Mostra un dialog generico di conferma.
   ///
-  /// [isDestructive] usa TextButton rosso per il bottone di conferma.
-  /// Altrimenti usa FilledButton (primary).
+  /// [isDestructive] usa il DsButton destruttivo per il bottone di conferma.
+  /// Altrimenti usa DsButton primary.
   ///
   /// Ritorna `true` se l'utente conferma, `false` altrimenti.
   static Future<bool> showConfirmation({
@@ -283,9 +284,9 @@ class DialogHelpers {
             ],
           ),
           actions: [
-            TextButton(
+            DsTextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: Text(okLabel ?? 'common.ok'.tr()),
+              label: okLabel ?? 'common.ok'.tr(),
             ),
           ],
         );

@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../features/ai_input/providers/ai_import_notifier.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../ai_input/helpers/start_ai_scan.dart';
 import '../../ai_input/view/widgets/image_source_sheet.dart';
@@ -99,13 +100,10 @@ class _AiOnboardingIntroScreenState
               alignment: Alignment.centerRight,
               child: Padding(
                 padding: EdgeInsets.only(right: context.spacingSm),
-                child: TextButton(
+                child: DsTextButton(
                   key: const Key('ai_intro_skip'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: colorScheme.onSurfaceVariant,
-                  ),
                   onPressed: _handleSkip,
-                  child: Text('onboarding_tour.ai_intro.skip'.tr()),
+                  label: 'onboarding_tour.ai_intro.skip'.tr(),
                 ),
               ),
             ),

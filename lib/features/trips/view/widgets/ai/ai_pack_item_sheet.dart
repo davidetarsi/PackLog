@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
+import '../../../../../shared/widgets/ds_text_button.dart';
 import '../../../../../shared/widgets/quantity_stepper.dart';
 import '../../../model/ai_packing.dart';
 import '../../../model/trip_model.dart';
@@ -143,14 +144,13 @@ class _AiPackItemSheetState extends State<_AiPackItemSheet> {
           SizedBox(height: context.spacingMd),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: DsTextButton(
               key: const Key('ai_pack_item_remove'),
-              style: TextButton.styleFrom(foregroundColor: cs.onSurface),
               onPressed: () {
                 Navigator.of(context).pop();
                 widget.onRemove();
               },
-              child: Text('trips.pack.ai.remove'.tr()),
+              label: 'trips.pack.ai.remove'.tr(),
             ),
           ),
         ],

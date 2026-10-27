@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'ds_button.dart';
+import 'ds_text_button.dart';
 
 /// Risultato del dialog di errore.
 enum ErrorDialogResult {
@@ -141,12 +142,9 @@ class _ErrorDialog extends StatelessWidget {
       ),
       actionsAlignment: MainAxisAlignment.center,
       actions: [
-        TextButton(
-          style: TextButton.styleFrom(
-            foregroundColor: theme.colorScheme.onSurface,
-          ),
+        DsTextButton(
           onPressed: () => Navigator.pop(context, ErrorDialogResult.cancel),
-          child: Text(cancelText ?? 'common.cancel'.tr()),
+          label: cancelText ?? 'common.cancel'.tr(),
         ),
         DsButton(
           variant: DsButtonVariant.secondary,

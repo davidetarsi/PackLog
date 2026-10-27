@@ -14,6 +14,10 @@ enum DsButtonVariant {
 
   /// Azione distruttiva (elimina, esci definitivamente). Riempimento rosso.
   destructive,
+
+  /// Azione secondaria accanto alla principale: contorno e testo neutri,
+  /// senza arancio.
+  neutral,
 }
 
 /// Bottone pill dell'app: **unica** implementazione di forma, colore e stati.
@@ -34,7 +38,11 @@ enum DsButtonVariant {
 /// | primary | `primary` | `primary` | `onPrimary` |
 /// | destructive | `error` | `error` | `onError` |
 /// | secondary | trasparente | `primary` | `primary` |
+/// | neutral | trasparente | `outline` | `onSurface` |
 /// | disabilitato | `surface` | `outline` | `onSurface` al 38% |
+///
+/// `neutral` è l'azione secondaria accanto alla principale: l'arancio resta
+/// solo alla principale.
 ///
 /// Il testo chiaro sul riempimento arancione non è un'opzione: dà 2,33:1 nel
 /// tema scuro, contro i 4,5:1 richiesti. Da qui `onPrimary` scuro.
@@ -112,6 +120,10 @@ class DsButton extends StatelessWidget {
           backgroundColor = colorScheme.primary;
           accentColor = colorScheme.primary;
           contentColor = colorScheme.onPrimary;
+        case DsButtonVariant.neutral:
+          backgroundColor = Colors.transparent;
+          accentColor = colorScheme.outline;
+          contentColor = colorScheme.onSurface;
       }
     }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/quantity_stepper.dart';
 import '../../../../items/model/item_model.dart';
 import '../../../model/trip_model.dart';
@@ -239,10 +240,11 @@ class PackItemRow extends StatelessWidget {
                 }
               },
             ),
-          IconButton(
+          DsIconButton(
             key: Key('pack_remove_${chosen.id}'),
             tooltip: 'trips.pack.ai.remove'.tr(),
-            icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+            icon: Icons.close,
+            color: cs.onSurfaceVariant,
             onPressed: onRemove,
           ),
         ],

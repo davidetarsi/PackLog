@@ -12,6 +12,7 @@ import '../../../shared/helpers/design_system.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/create_sheet.dart';
 import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/ds_icon_button.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_link_button.dart';
@@ -590,19 +591,17 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
           title: Text('trips.pack.title'.tr()),
           actions: [
             // Grigia se la valigia AI non si può chiedere: il tocco dice perché.
-            IconButton(
+            DsIconButton(
               key: const Key('pack_ai_suitcase'),
               tooltip: _aiResult == null
                   ? 'trips.pack.ai.prepare_button'.tr()
                   : 'trips.pack.ai.regenerate'.tr(),
-              icon: Icon(
-                Icons.auto_awesome_outlined,
-                color: aiAvailable
-                    ? null
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.38),
-              ),
+              icon: Icons.auto_awesome_outlined,
+              color: aiAvailable
+                  ? null
+                  : Theme.of(context).colorScheme.onSurface.withValues(
+                      alpha: AppOpacity.disabled,
+                    ),
               onPressed: _onAiTap,
             ),
           ],
