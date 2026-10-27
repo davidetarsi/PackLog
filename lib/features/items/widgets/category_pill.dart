@@ -4,6 +4,7 @@ import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_opacity.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/app_motion.dart';
+import '../../../shared/theme/surface_colors.dart';
 
 enum CategoryPillState { inactive, inferred, forced }
 
@@ -30,7 +31,10 @@ class CategoryPill extends StatelessWidget {
 
     switch (pillState) {
       case CategoryPillState.inactive:
-        backgroundColor = colorScheme.surfaceContainerLow;
+        // In chiaro il bianco delle card, staccato dalla pagina grigia.
+        backgroundColor = Theme.of(context).brightness == Brightness.light
+            ? context.groupSurface
+            : colorScheme.surfaceContainerLow;
         foregroundColor = colorScheme.onSurfaceVariant;
         borderColor = Colors.transparent;
       // Proposta dall'app: solo il contorno, si legge come un suggerimento.

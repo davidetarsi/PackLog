@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
+import '../theme/surface_colors.dart';
 
-/// Superficie tonale condivisa per il contenuto lazy di un gruppo.
+/// Superficie condivisa per il contenuto lazy di un gruppo: la stessa delle
+/// altre card ([SurfaceColors.groupSurface]).
 class DsGroupSurfaceSliver extends StatelessWidget {
   final Key? surfaceKey;
   final Widget sliver;
@@ -16,13 +18,12 @@ class DsGroupSurfaceSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return SliverPadding(
       padding: EdgeInsets.only(bottom: context.spacingMd),
       sliver: DecoratedSliver(
         key: surfaceKey,
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainer,
+          color: context.groupSurface,
           borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
         ),
         sliver: sliver,
