@@ -121,7 +121,7 @@ class DsBarItem extends StatelessWidget {
                   size: context.responsive(22),
                   color: color,
                 ),
-                SizedBox(height: context.spacingXs / 4),
+                SizedBox(height: context.spacingXxs),
                 // L'altezza della barra è fissa: con caratteri molto grandi
                 // la scritta non deve spingere l'icona fuori.
                 MediaQuery.withClampedTextScaling(
@@ -147,7 +147,7 @@ class DsBarItem extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: colorScheme.primary,
                     borderRadius: BorderRadius.vertical(
-                      bottom: Radius.circular(context.spacingXs),
+                      bottom: Radius.circular(AppConstants.smallBorderRadius),
                     ),
                   ),
                 ),

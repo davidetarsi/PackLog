@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../constants/app_constants.dart';
 import '../theme/theme.dart';
 
 /// Widget riutilizzabile per pill-style tabs con supporto per due comportamenti:
@@ -259,7 +260,10 @@ class _AppPillState extends State<AppPill> with SingleTickerProviderStateMixin {
             decoration: BoxDecoration(
               color: backgroundColor,
               borderRadius: context.responsiveBorderRadius(20),
-              border: Border.all(color: borderColor, width: 1),
+              border: Border.all(
+                color: borderColor,
+                width: AppConstants.hairlineBorderWidth,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

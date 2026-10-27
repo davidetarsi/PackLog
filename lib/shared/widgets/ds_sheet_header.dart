@@ -35,8 +35,8 @@ class DsSheetHeader extends StatelessWidget {
         const Center(child: DsBottomSheetHandle()),
         Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
+            horizontal: context.spacingMd,
+            vertical: context.spacingSm,
           ),
           child: onClose == null
               ? Text(

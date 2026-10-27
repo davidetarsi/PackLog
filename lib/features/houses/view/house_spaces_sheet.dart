@@ -35,8 +35,11 @@ class HouseSpacesSheet extends ConsumerWidget {
         .watch(houseNotifierProvider)
         .when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) =>
-              _error(error, () => ref.invalidate(houseNotifierProvider)),
+          error: (error, _) => _error(
+            context,
+            error,
+            () => ref.invalidate(houseNotifierProvider),
+          ),
           data: (houses) {
             final house = houses.where((h) => h.id == houseId).firstOrNull;
             if (house == null) {
@@ -65,26 +68,31 @@ class HouseSpacesSheet extends ConsumerWidget {
         ),
   );
 
-  Widget _error(Object error, VoidCallback onRetry) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-    child: DsErrorState(
-      error: error,
-      title: 'storage.load_failed'.tr(),
-      onRetry: onRetry,
-    ),
-  );
+  Widget _error(BuildContext context, Object error, VoidCallback onRetry) =>
+      Padding(
+        padding: EdgeInsets.symmetric(vertical: context.spacingMd),
+        child: DsErrorState(
+          error: error,
+          title: 'storage.load_failed'.tr(),
+          onRetry: onRetry,
+        ),
+      );
 
   Widget _spaces(BuildContext context, WidgetRef ref) => ref
       .watch(spaceNotifierProvider(houseId))
       .when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) =>
-            _error(error, () => ref.invalidate(spaceNotifierProvider(houseId))),
+        error: (error, _) => _error(
+          context,
+          error,
+          () => ref.invalidate(spaceNotifierProvider(houseId)),
+        ),
         data: (spaces) => ref
             .watch(itemNotifierProvider(houseId))
             .when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => _error(
+                context,
                 error,
                 () => ref.invalidate(itemNotifierProvider(houseId)),
               ),

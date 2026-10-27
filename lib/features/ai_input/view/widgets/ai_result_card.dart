@@ -122,7 +122,7 @@ class _AiResultCardState extends State<AiResultCard> {
                       ],
                     ),
                   ),
-                SizedBox(height: context.spacingXs / 2),
+                SizedBox(height: context.spacingXxs),
                 InkWell(
                   key: const Key('ai_result_details'),
                   onTap: widget.enabled ? widget.onOpenDetails : null,
@@ -146,7 +146,7 @@ class _AiResultCardState extends State<AiResultCard> {
                   ),
                 ),
                 if (doubts.isNotEmpty) ...[
-                  SizedBox(height: context.spacingXs / 2),
+                  SizedBox(height: context.spacingXxs),
                   Row(
                     children: [
                       Icon(

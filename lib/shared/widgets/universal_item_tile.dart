@@ -168,7 +168,7 @@ class UniversalItemTile extends StatelessWidget {
             right: 8,
             child: Icon(
               Icons.local_shipping,
-              size: 20,
+              size: context.iconSizeMd,
               color: colorScheme.primary,
             ),
           ),
@@ -198,7 +198,10 @@ class UniversalItemTile extends StatelessWidget {
       // stato si leggono come un blocco unico invece che come due livelli.
       subtitle: subtitle == null
           ? null
-          : Padding(padding: const EdgeInsets.only(top: 2), child: subtitle),
+          : Padding(
+              padding: EdgeInsets.only(top: context.spacingXxs),
+              child: subtitle,
+            ),
       trailing: trailing,
       // Un minimo esplicito tiene uniformi le righe con e senza subtitle:
       // senza, la lista prende un ritmo irregolare quando il sottotitolo

@@ -108,7 +108,7 @@ class _WasherRow extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: context.spacingMd,
-        vertical: context.spacingSm + context.spacingXs,
+        vertical: context.spacingSmPlus,
       ),
       decoration: BoxDecoration(
         color: context.groupSurface,
@@ -157,9 +157,7 @@ class _DashedCopyButton extends StatelessWidget {
           constraints: const BoxConstraints(
             minHeight: AppConstants.pillTabDefault,
           ),
-          padding: EdgeInsets.symmetric(
-            horizontal: context.spacingSm + context.spacingXs,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: context.spacingSmPlus),
           alignment: Alignment.center,
           child: Row(
             mainAxisSize: MainAxisSize.min,

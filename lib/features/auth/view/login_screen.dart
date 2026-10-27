@@ -10,6 +10,7 @@ import '../../../core/auth/auth_exceptions.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/consent/consent_provider.dart';
 import '../../../shared/config/app_config.dart';
+import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/exception_message.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
@@ -154,16 +155,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const Spacer(flex: 2),
 
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.modalBorderRadius,
+                  ),
                   child: Image.asset(
                     'assets/images/login_logo.png',
                     width: 120,
                     height: 120,
                     errorBuilder: (_, _, _) =>
-                        const Icon(Icons.app_shortcut, size: 80),
+                        Icon(Icons.app_shortcut, size: context.iconSizeDisplay),
                   ),
                 ),
-                AppSpacing.gapLg,
+                SizedBox(height: context.spacingLg),
 
                 Text(
                   'app_name'.tr(),
@@ -171,7 +174,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     color: colorScheme.onSurface,
                   ),
                 ),
-                AppSpacing.gapSm,
+                SizedBox(height: context.spacingSm),
 
                 Text(
                   'login.subtitle'.tr(),
@@ -191,7 +194,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: _signInWithGoogle,
                 ),
 
-                AppSpacing.gapSm,
+                SizedBox(height: context.spacingSm),
                 DsLinkButton(
                   key: const Key('login_promo_code'),
                   label: 'promo.link'.tr(),
@@ -199,7 +202,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       showPromoCodeSheet(context, redeemNow: false),
                 ),
 
-                AppSpacing.gapSm,
+                SizedBox(height: context.spacingSm),
                 _ConsentNotice(
                   onPrivacyTap: () => _openLegalDoc(AppConfig.privacyPolicyUrl),
                   onTermsTap: () => _openLegalDoc(AppConfig.termsOfServiceUrl),

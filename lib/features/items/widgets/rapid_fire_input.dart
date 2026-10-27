@@ -252,7 +252,10 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                 ),
                 clipBehavior: Clip.antiAlias,
                 // Gestione fluida del padding orizzontale
-                padding: EdgeInsets.only(left: context.spacingMd, right: 6.0),
+                padding: EdgeInsets.only(
+                  left: context.spacingMd,
+                  right: context.spacingXs,
+                ),
                 child: Row(
                   children: [
                     // TextField espanso al massimo (ora il testo andrà fino in fondo)

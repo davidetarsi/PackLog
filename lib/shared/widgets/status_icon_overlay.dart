@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../constants/app_constants.dart';
+import '../theme/app_spacing.dart';
 
 /// Overlay posizionato sopra un'icona per indicare uno stato dell'item.
 /// Usato per mostrare l'icona "luggage" (in viaggio) o "flight_land" (in arrivo).
@@ -53,7 +54,7 @@ class StatusIconOverlay extends StatelessWidget {
       right: -4,
       bottom: -4,
       child: Container(
-        padding: const EdgeInsets.all(2),
+        padding: EdgeInsets.all(context.spacingXxs),
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(AppConstants.badgeBorderRadius),

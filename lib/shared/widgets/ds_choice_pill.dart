@@ -48,7 +48,7 @@ class DsChoicePill extends StatelessWidget {
                 key: const Key('ds_choice_pill_face'),
                 height: AppConstants.pillTabCompact,
                 padding: EdgeInsets.symmetric(
-                  horizontal: context.spacingSm + context.spacingXs,
+                  horizontal: context.spacingSmPlus,
                 ),
                 decoration: BoxDecoration(
                   color: selected && isLight ? cs.surfaceContainerHigh : null,

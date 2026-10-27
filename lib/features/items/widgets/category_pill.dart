@@ -58,7 +58,10 @@ class CategoryPill extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: context.spacingXs),
           decoration: BoxDecoration(
             color: backgroundColor,
-            border: Border.all(color: borderColor, width: 1.5),
+            border: Border.all(
+              color: borderColor,
+              width: AppConstants.selectedBorderWidth,
+            ),
             borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
           ),
           child: Column(
@@ -69,7 +72,7 @@ class CategoryPill extends StatelessWidget {
                 size: context.iconSizeSm,
                 color: foregroundColor,
               ),
-              SizedBox(height: context.spacingXs / 4),
+              SizedBox(height: context.spacingXxs),
               // scaleDown: con caratteri di sistema grandi o in inglese
               // ("Electronics") il nome si stringe invece di sforare.
               FittedBox(

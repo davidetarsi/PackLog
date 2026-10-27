@@ -175,7 +175,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
       child: Scaffold(
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            padding: EdgeInsets.symmetric(horizontal: context.spacingLg),
             child: failure == null
                 ? _buildWaiting(context)
                 : _buildFailure(context, failure),
@@ -204,24 +204,24 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
             children: [
               Icon(
                 Icons.auto_awesome_outlined,
-                size: AppSpacing.iconXl,
+                size: context.iconSizeXl,
                 color: colorScheme.onSurfaceVariant,
               ),
-              AppSpacing.gapLg,
+              SizedBox(height: context.spacingLg),
               Text(
                 'trips.ai.wait.title'.tr(),
                 style: theme.textTheme.headlineMedium?.title,
               ),
-              AppSpacing.gapSm,
+              SizedBox(height: context.spacingSm),
               Text(
                 'trips.ai.wait.subtitle'.tr(args: [widget.job.title, nights]),
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-              AppSpacing.gapLg,
+              SizedBox(height: context.spacingLg),
               for (var i = 0; i < steps.length; i++) ...[
-                if (i > 0) AppSpacing.gapMd,
+                if (i > 0) SizedBox(height: context.spacingMd),
                 _WaitStep(
                   label: steps[i],
                   state: i < _step
@@ -231,7 +231,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
                       : _StepState.pending,
                 ),
               ],
-              AppSpacing.gapLg,
+              SizedBox(height: context.spacingLg),
               Text(
                 'trips.ai.wait.hint'.tr(),
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -244,7 +244,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
         Center(
           child: DsTextButton(onPressed: _cancel, label: 'common.cancel'.tr()),
         ),
-        AppSpacing.gapXl,
+        SizedBox(height: context.spacingXl),
       ],
     );
   }
@@ -290,12 +290,12 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
         const Spacer(),
         Icon(
           Icons.error_outline,
-          size: AppSpacing.iconXl,
+          size: context.iconSizeXl,
           color: colorScheme.onSurfaceVariant,
         ),
-        AppSpacing.gapLg,
+        SizedBox(height: context.spacingLg),
         Text(title, style: theme.textTheme.headlineSmall?.title),
-        AppSpacing.gapSm,
+        SizedBox(height: context.spacingSm),
         Text(
           body,
           style: theme.textTheme.bodyLarge?.copyWith(
@@ -312,7 +312,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
               label: 'common.close'.tr(),
             ),
           ),
-        AppSpacing.gapXl,
+        SizedBox(height: context.spacingXl),
       ],
     );
   }

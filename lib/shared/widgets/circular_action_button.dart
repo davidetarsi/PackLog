@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 
 /// Bottone circolare per azioni secondarie nelle action bar.
@@ -76,7 +77,10 @@ class CircularActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: showBorder
-                ? Border.all(color: borderColor, width: 2)
+                ? Border.all(
+                    color: borderColor,
+                    width: AppConstants.emphasisBorderWidth,
+                  )
                 : null,
           ),
           child: Icon(icon, color: iconColor, size: context.iconSizeMd),

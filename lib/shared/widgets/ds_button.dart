@@ -149,7 +149,10 @@ class DsButton extends StatelessWidget {
             // Aggiungere color in BoxDecoration causerebbe un layer di pittura
             // aggiuntivo sovrapposto a quello di Material.
             borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-            border: Border.all(color: accentColor, width: 2),
+            border: Border.all(
+              color: accentColor,
+              width: AppConstants.emphasisBorderWidth,
+            ),
           ),
           child: isLoading
               ? Center(

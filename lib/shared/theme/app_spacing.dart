@@ -4,18 +4,26 @@ import 'package:flutter/material.dart';
 /// Usa questi valori invece di numeri magici per mantenere proporzioni consistenti.
 class AppSpacing {
   // === Spaziature base ===
+  // Micro-spazi di 1-2 px tra elementi già vicini.
+  static const double xxs = 2;
   static const double xs = 4;
   static const double sm = 8;
+  // Tra sm e md: pillole e righe con più testo.
+  static const double smPlus = 12;
   static const double md = 16;
   static const double lg = 24;
   static const double xl = 32;
 
   // === Dimensioni icone base ===
+  // Icona accanto a testo piccolo (badge, riga compatta).
+  static const double iconXs = 12;
   static const double iconSm = 16;
   static const double iconMd = 24;
   static const double iconLg = 32;
   static const double iconXl = 48;
   static const double iconHero = 64;
+  // Illustrazione grande (login, onboarding).
+  static const double iconDisplay = 80;
 
   // === Font size base ===
   // Floor: fontXxs = 12px. Mai scendere sotto.
@@ -128,19 +136,23 @@ extension ResponsiveSpacing on BuildContext {
 
   // === Spaziature responsive ===
 
+  double get spacingXxs => AppSpacing.xxs * scaleFactor;
   double get spacingXs => AppSpacing.xs * scaleFactor;
   double get spacingSm => AppSpacing.sm * scaleFactor;
+  double get spacingSmPlus => AppSpacing.smPlus * scaleFactor;
   double get spacingMd => AppSpacing.md * scaleFactor;
   double get spacingLg => AppSpacing.lg * scaleFactor;
   double get spacingXl => AppSpacing.xl * scaleFactor;
 
   // === Icone responsive ===
 
+  double get iconSizeXs => AppSpacing.iconXs * scaleFactor;
   double get iconSizeSm => AppSpacing.iconSm * scaleFactor;
   double get iconSizeMd => AppSpacing.iconMd * scaleFactor;
   double get iconSizeLg => AppSpacing.iconLg * scaleFactor;
   double get iconSizeXl => AppSpacing.iconXl * scaleFactor;
   double get iconSizeHero => AppSpacing.iconHero * scaleFactor;
+  double get iconSizeDisplay => AppSpacing.iconDisplay * scaleFactor;
 
   // === Font responsive ===
 

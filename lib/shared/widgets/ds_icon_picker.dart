@@ -45,11 +45,11 @@ class DsIconPicker extends StatelessWidget {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 5,
         childAspectRatio: 1,
-        crossAxisSpacing: AppSpacing.sm,
-        mainAxisSpacing: AppSpacing.sm,
+        crossAxisSpacing: context.spacingSm,
+        mainAxisSpacing: context.spacingSm,
       ),
       itemCount: icons.length,
       itemBuilder: (context, index) {
@@ -75,7 +75,7 @@ class DsIconPicker extends StatelessWidget {
                   : context.groupSurface,
               border: Border.all(
                 color: isSelected ? cs.primary : Colors.transparent,
-                width: 1.5,
+                width: AppConstants.selectedBorderWidth,
               ),
               borderRadius: BorderRadius.circular(
                 AppConstants.inputBorderRadius,
@@ -83,7 +83,7 @@ class DsIconPicker extends StatelessWidget {
             ),
             child: Icon(
               iconData,
-              size: 26,
+              size: context.iconSizeMd,
               color: isSelected ? cs.primary : cs.onSurfaceVariant,
             ),
           ),

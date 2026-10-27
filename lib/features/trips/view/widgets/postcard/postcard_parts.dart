@@ -143,7 +143,10 @@ class Postmark extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: ink.withValues(alpha: 0.7), width: 1.5),
+          border: Border.all(
+            color: ink.withValues(alpha: 0.7),
+            width: AppConstants.selectedBorderWidth,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

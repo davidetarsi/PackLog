@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
+import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/app_spacing.dart';
 import 'postcard_parts.dart';
 
@@ -360,12 +361,14 @@ class _PileDots extends StatelessWidget {
         for (var k = 0; k < count; k++)
           AnimatedContainer(
             duration: _duration,
-            margin: EdgeInsets.symmetric(horizontal: context.spacingXs / 2),
+            margin: EdgeInsets.symmetric(horizontal: context.spacingXxs),
             width: k == index ? context.spacingMd : context.spacingSm,
             height: context.spacingSm,
             decoration: BoxDecoration(
               color: k == index ? cs.onSurface : cs.outlineVariant,
-              borderRadius: BorderRadius.circular(context.spacingXs),
+              borderRadius: BorderRadius.circular(
+                AppConstants.smallBorderRadius,
+              ),
             ),
           ),
         SizedBox(width: context.spacingSm),

@@ -36,6 +36,17 @@ class AppConstants {
   /// Border radius for dialogs and modals (20.0)
   static const double modalBorderRadius = 20.0;
 
+  /// Raggio dei dettagli minuti: strisce, angoli di riquadri piccoli (4.0).
+  static const double smallBorderRadius = 4.0;
+
+  // ── Border Width ─────────────────────────────────────────────────────────────
+
+  /// Bordo sottile di default, a riposo: pillole e riquadri non selezionati (1.0).
+  static const double hairlineBorderWidth = 1.0;
+
+  /// Bordo del campo o della scelta a fuoco, selezionata o in errore (1.5).
+  static const double selectedBorderWidth = 1.5;
+
   // ── Spacing ──────────────────────────────────────────────────────────────────
 
   /// Padding inferiore per le bottom sheet (evita sovrapposizione con elementi sotto)

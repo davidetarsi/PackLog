@@ -172,7 +172,7 @@ class _TypeRow extends StatelessWidget {
                 size: context.iconSizeSm,
                 color: cs.onSurface,
               ),
-              SizedBox(width: context.spacingXs / 2),
+              SizedBox(width: context.spacingXxs),
               Flexible(
                 child: Text(
                   doubtNote!,

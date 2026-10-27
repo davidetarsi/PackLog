@@ -95,8 +95,7 @@ class DsChoiceGroup<T> extends StatelessWidget {
                     size: context.iconSizeSm,
                     color: cs.onSurface,
                   ),
-                if (doubt && note != null)
-                  SizedBox(width: context.spacingXs / 2),
+                if (doubt && note != null) SizedBox(width: context.spacingXxs),
                 if (note != null)
                   Flexible(
                     child: Text(
