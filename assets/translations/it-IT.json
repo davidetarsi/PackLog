@@ -453,6 +453,7 @@
     "select": "Seleziona",
     "tap_to_set": "Tocca per impostare",
     "name_required_validation": "Il nome è obbligatorio",
+    "required": "obbligatorio",
     "version": "Versione",
     "storage": "Archiviazione",
     "data_saved_locally": "Dati salvati localmente",
