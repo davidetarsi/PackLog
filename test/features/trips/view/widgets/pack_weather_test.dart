@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
-import 'package:pack_log/features/trips/model/trip_weather.dart';
 import 'package:pack_log/features/trips/providers/trip_weather_provider.dart';
 import 'package:pack_log/features/trips/view/widgets/pack/pack_weather.dart';
 
