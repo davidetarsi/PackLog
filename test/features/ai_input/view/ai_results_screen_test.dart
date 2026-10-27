@@ -278,6 +278,23 @@ void main() {
     await app.finish();
   });
 
+  testWidgets('la lista scorre fin sotto la fascia del bottone', (
+    tester,
+  ) async {
+    final app = await _openResults(tester);
+    final list = find.descendant(
+      of: find.byType(AiResultsScreen),
+      matching: find.byType(SingleChildScrollView),
+    );
+    // Arriva in fondo allo schermo: dietro il bottone c'è il contenuto da
+    // sfocare, non il fondo pieno.
+    expect(
+      tester.getBottomLeft(list.first).dy,
+      tester.view.physicalSize.height / tester.view.devicePixelRatio,
+    );
+    await app.finish();
+  });
+
   testWidgets('plurali singolari per un solo capo nuovo o aggiornato', (
     tester,
   ) async {
