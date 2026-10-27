@@ -20,4 +20,8 @@ abstract final class AppOpacity {
 
   /// Colore del testo selezionato (velo sul testo, non sullo sfondo).
   static const double textSelection = 0.24;
+
+  /// Colore di fondo al bordo dello schermo nell'effetto in fondo
+  /// (DsGlassBand): il contenuto si intuisce appena.
+  static const double edgeTint = 0.85;
 }

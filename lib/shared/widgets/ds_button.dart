@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
@@ -39,12 +41,12 @@ enum DsButtonVariant {
 /// | primary | `primary` | `primary` | `onPrimary` |
 /// | destructive | `error` | `error` | `onError` |
 /// | secondary | superficie sotto | `primary` | `primary` |
-/// | neutral | superficie sotto | `outline` | `onSurface` |
+/// | neutral | vetro | `outline` | `onSurface` |
 /// | disabilitato | superficie sotto | `outline` | `onSurface` al 38% |
 ///
 /// "Superficie sotto" è il fondo della pagina, del foglio o del dialog in cui
-/// sta il bottone: pieno, così sopra la fascia di vetro il contenuto sfocato
-/// non si vede dentro il bottone.
+/// sta il bottone, pieno. "Vetro" è lo stesso della barra delle tab:
+/// `surfaceContainer` semitrasparente con la sfocatura di ciò che sta sotto.
 ///
 /// `neutral` è l'azione secondaria accanto alla principale: l'arancio resta
 /// solo alla principale.
@@ -130,8 +132,16 @@ class DsButton extends StatelessWidget {
       }
     }
 
-    return Material(
-      color: backgroundColor,
+    // Il neutro attivo è una pillola di vetro come la barra delle tab:
+    // superficie semitrasparente con la sfocatura di ciò che sta sotto. Lo
+    // spento no: sul vetro il testo al 38% si perdeva, quindi resta pieno del
+    // fondo su cui sta.
+    final glass = !looksDisabled && variant == DsButtonVariant.neutral;
+    final pill = BorderRadius.circular(AppConstants.pillBorderRadius);
+    final button = Material(
+      color: glass
+          ? colorScheme.surfaceContainer.withValues(alpha: AppOpacity.navGlass)
+          : backgroundColor,
       borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
       // elevation: 0 elimina il layer di ombra nel compositing: quando il
       // bottone fluttua sopra liste scorrevoli, ogni frame non richiede un
@@ -197,6 +207,17 @@ class DsButton extends StatelessWidget {
                   ],
                 ),
         ),
+      ),
+    );
+    if (!glass) return button;
+    return ClipRRect(
+      borderRadius: pill,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: AppConstants.ctaBlurSigma,
+          sigmaY: AppConstants.ctaBlurSigma,
+        ),
+        child: button,
       ),
     );
   }

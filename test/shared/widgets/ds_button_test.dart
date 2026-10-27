@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
 
@@ -79,7 +80,7 @@ void main() {
                 color: dialogColor,
                 child: DsButton(
                   label: 'Etichetta',
-                  variant: DsButtonVariant.neutral,
+                  variant: DsButtonVariant.secondary,
                   onPressed: () {},
                 ),
               ),
@@ -88,6 +89,19 @@ void main() {
         ),
       );
       expect(backgroundOf(tester), dialogColor);
+    });
+
+    testWidgets('lo spento è pieno del fondo, senza vetro', (tester) async {
+      // Sul vetro il testo al 38% si perdeva: lo spento resta pieno.
+      await pumpButton(tester, variant: DsButtonVariant.neutral);
+      expect(backgroundOf(tester), AppTheme.dark.scaffoldBackgroundColor);
+      expect(
+        find.descendant(
+          of: find.byType(DsButton),
+          matching: find.byType(BackdropFilter),
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('il primario è a riempimento pieno', (tester) async {
@@ -115,7 +129,19 @@ void main() {
         ),
       );
 
-      expect(backgroundOf(tester), AppTheme.dark.scaffoldBackgroundColor);
+      // Vetro come la barra delle tab: superficie semitrasparente sopra la
+      // sfocatura di ciò che sta sotto.
+      expect(
+        backgroundOf(tester),
+        scheme.surfaceContainer.withValues(alpha: AppOpacity.navGlass),
+      );
+      expect(
+        find.descendant(
+          of: find.byType(DsButton),
+          matching: find.byType(BackdropFilter),
+        ),
+        findsOneWidget,
+      );
       expect(borderOf(tester), scheme.outline);
       expect(borderOf(tester), isNot(scheme.primary));
       expect(label.style?.color, scheme.onSurface);
