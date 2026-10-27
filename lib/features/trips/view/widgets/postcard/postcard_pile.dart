@@ -6,6 +6,7 @@ import 'package:flutter/semantics.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/app_spacing.dart';
+import '../../../../../shared/theme/app_motion.dart';
 import 'postcard_parts.dart';
 
 /// Pila di cartoline da sfogliare orizzontalmente.
@@ -47,7 +48,7 @@ class PostcardPile extends StatefulWidget {
 
 class _PostcardPileState extends State<PostcardPile>
     with SingleTickerProviderStateMixin {
-  static const Duration _animationDuration = Duration(milliseconds: 250);
+  static const Duration _animationDuration = AppMotion.medium;
 
   /// Frazione della larghezza oltre la quale lo spostamento conta come swipe.
   static const double _commitFraction = 0.25;
@@ -123,7 +124,9 @@ class _PostcardPileState extends State<PostcardPile>
 
   void _onTick() {
     setState(() {
-      _dx = _from + (_to - _from) * Curves.easeOut.transform(_controller.value);
+      _dx =
+          _from +
+          (_to - _from) * AppMotion.emphasized.transform(_controller.value);
     });
   }
 
@@ -348,7 +351,7 @@ class _PileDots extends StatelessWidget {
 
   const _PileDots({super.key, required this.count, required this.index});
 
-  static const Duration _duration = Duration(milliseconds: 200);
+  static const Duration _duration = AppMotion.medium;
 
   @override
   Widget build(BuildContext context) {

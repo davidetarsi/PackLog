@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_opacity.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_spacing.dart';
 import '../theme/surface_colors.dart';
 
@@ -67,7 +68,7 @@ class DsIconPicker extends StatelessWidget {
           },
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+            duration: AppMotion.fast,
             // Come le pill scelte: velo arancio leggero e bordo, niente pieno.
             decoration: BoxDecoration(
               color: isSelected

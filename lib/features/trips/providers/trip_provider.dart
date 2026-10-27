@@ -14,6 +14,9 @@ import '../services/trip_lifecycle_service.dart';
 
 part 'trip_provider.g.dart';
 
+/// Margine sopra l'orario di scadenza del viaggio, prima del ricaricamento.
+const _kRefreshBuffer = Duration(seconds: 2);
+
 @Riverpod(keepAlive: true)
 class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   TripRepository get _repo => ref.read(tripRepositoryProvider);
@@ -53,8 +56,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   void _scheduleRefreshAt(DateTime? at) {
     if (at == null) return;
     // +2s buffer per assorbire imprecisioni di scheduling del SO.
-    final Duration delay =
-        at.difference(DateTime.now()) + const Duration(seconds: 2);
+    final Duration delay = at.difference(DateTime.now()) + _kRefreshBuffer;
     final Timer timer = Timer(delay, () {
       debugPrint('[TripNotifier] Auto-refresh: cambio di stato viaggio');
       ref.invalidateSelf();

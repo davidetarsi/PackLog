@@ -181,11 +181,11 @@ class _AppPillState extends State<AppPill> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 100),
+      duration: AppMotion.fast,
       vsync: this,
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _scaleController, curve: AppMotion.standard),
     );
   }
 
@@ -251,8 +251,8 @@ class _AppPillState extends State<AppPill> with SingleTickerProviderStateMixin {
           onTapUp: _handleTapUp,
           onTapCancel: _handleTapCancel,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
+            duration: AppMotion.medium,
+            curve: AppMotion.standard,
             padding: EdgeInsets.symmetric(
               horizontal: effectiveHorizontalPadding,
               vertical: effectiveVerticalPadding,

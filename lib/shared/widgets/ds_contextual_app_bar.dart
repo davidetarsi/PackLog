@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_motion.dart';
 
 /// AppBar animata che transita tra una modalità **normale** e una
 /// **contestuale** (es. selezione multipla item).
@@ -36,7 +37,7 @@ class DsContextualAppBar extends StatelessWidget
     required this.normalAppBar,
     required this.selectionAppBar,
     required this.isInSelectionMode,
-    this.switchDuration = const Duration(milliseconds: 220),
+    this.switchDuration = AppMotion.medium,
   });
 
   @override

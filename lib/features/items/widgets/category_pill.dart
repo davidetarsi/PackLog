@@ -3,6 +3,7 @@ import '../model/item_model.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/theme/app_opacity.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/app_motion.dart';
 
 enum CategoryPillState { inactive, inferred, forced }
 
@@ -54,7 +55,7 @@ class CategoryPill extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: AppMotion.fast,
           padding: EdgeInsets.symmetric(horizontal: context.spacingXs),
           decoration: BoxDecoration(
             color: backgroundColor,
