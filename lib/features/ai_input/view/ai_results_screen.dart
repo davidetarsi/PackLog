@@ -34,6 +34,7 @@ import 'widgets/ai_photo_group_header.dart';
 import 'widgets/ai_result_card.dart';
 import 'widgets/already_here_sheet.dart';
 import 'widgets/image_source_sheet.dart';
+import '../../../shared/theme/app_text_styles.dart';
 
 /// Page 2 of the AI import flow: shows loading progress while GPT-4o Vision
 /// analyses the images, then the editable results list with save CTA.
@@ -585,10 +586,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
             child: Text(
               'ai_import.analysis_in_progress'.tr(),
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
             ),
           ),
           SizedBox(height: context.spacingMd),
@@ -854,10 +854,8 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                 Expanded(
                   child: Text(
                     state.failureReason?.messageKey.tr() ?? state.errorMessage!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onErrorContainer,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall?.strong
+                        .copyWith(color: colorScheme.onErrorContainer),
                   ),
                 ),
                 if (state.failureReason?.isRetryable ?? false) ...[
@@ -867,11 +865,8 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                     onPressed: notifier.retryFailed,
                     style: TextButton.styleFrom(
                       foregroundColor: colorScheme.onErrorContainer,
-                      textStyle: Theme.of(context).textTheme.labelLarge
-                          ?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            decoration: TextDecoration.underline,
-                          ),
+                      textStyle: Theme.of(context).textTheme.labelLarge?.strong
+                          .copyWith(decoration: TextDecoration.underline),
                     ),
                     child: Text('ai_import.retry'.tr()),
                   ),

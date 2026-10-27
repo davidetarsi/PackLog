@@ -168,7 +168,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Text(
                   'app_name'.tr(),
                   style: textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
                     color: colorScheme.onSurface,
                   ),
                 ),
@@ -249,13 +248,13 @@ class _ConsentNoticeState extends State<_ConsentNotice> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final linkStyle = TextStyle(
-      color: cs.onSurface,
-      decoration: TextDecoration.underline,
-    );
     final baseStyle = Theme.of(
       context,
     ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant);
+    final linkStyle = baseStyle?.copyWith(
+      color: cs.onSurface,
+      decoration: TextDecoration.underline,
+    );
 
     _privacyRecognizer.onTap = widget.onPrivacyTap;
     _termsRecognizer.onTap = widget.onTermsTap;

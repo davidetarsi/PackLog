@@ -444,9 +444,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
               place.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.bodyLarge?.strong,
             ),
           ),
         if (showError) _FieldError('trips.new.where_missing'.tr()),
@@ -485,7 +483,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: value == null
                       ? tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant)
-                      : tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                      : tt.bodyLarge?.strong,
                 ),
               ),
               if (value != null && nights != null)

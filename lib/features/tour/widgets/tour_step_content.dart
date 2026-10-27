@@ -64,10 +64,7 @@ class TourStepContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: context.spacingXs),
-          Text(
-            title,
-            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
+          Text(title, style: textTheme.titleMedium),
           SizedBox(height: context.spacingXs),
           Text(
             body,

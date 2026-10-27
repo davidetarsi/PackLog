@@ -6,6 +6,7 @@ import '../providers/item_selection_provider.dart';
 import '../../../shared/widgets/widgets.dart';
 import 'item_sheet.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/app_text_styles.dart';
 
 class ItemCard extends ConsumerWidget {
   final ItemModel item;
@@ -142,9 +143,7 @@ class ItemCard extends ConsumerWidget {
       leading: leading,
       title: Text(
         item.name,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+        style: Theme.of(context).textTheme.bodyMedium?.strong,
       ),
       subtitle: subtitle,
       trailing: isSelectionActive

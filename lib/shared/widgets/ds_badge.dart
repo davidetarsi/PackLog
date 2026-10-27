@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DsQuantityBadge
@@ -210,10 +211,9 @@ class DsInfoBadge extends StatelessWidget {
             // bodyMedium e non bodyLarge: sono metadati (date, destinazione,
             // bagagli), non testo di contenuto. A 16 occupavano la stessa
             // taglia del corpo e mandavano a capo il Wrap della card viaggio.
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.strong.copyWith(color: cs.onSurfaceVariant),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

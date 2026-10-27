@@ -200,10 +200,7 @@ class _HouseCard extends ConsumerWidget {
                           Flexible(
                             child: Text(
                               house.displayName,
-                              style: tt.titleMedium?.copyWith(
-                                fontSize: AppSpacing.fontMd,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: tt.cardTitle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),

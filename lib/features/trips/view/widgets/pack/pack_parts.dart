@@ -280,10 +280,7 @@ class PackAddRow extends StatelessWidget {
     final text = TextSpan(
       children: [
         TextSpan(text: parts.first),
-        TextSpan(
-          text: name,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
+        TextSpan(text: name, style: tt.bodyLarge?.strong),
         TextSpan(text: parts.skip(1).join()),
       ],
     );

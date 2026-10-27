@@ -187,7 +187,7 @@ class _StopRow extends StatelessWidget {
                   stop.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                  style: tt.bodyLarge?.strong,
                 ),
                 Text(
                   _details(context),
@@ -202,7 +202,7 @@ class _StopRow extends StatelessWidget {
               'trips.weather.temps'.tr(
                 args: [min.round().toString(), max.round().toString()],
               ),
-              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: tt.titleMedium?.title,
             ),
           ],
           if (onTap != null) ...[

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/app_spacing.dart';
 import '../../../../../shared/theme/surface_colors.dart';
+import '../../../../../shared/theme/app_text_styles.dart';
 
 /// Carta della cartolina: superficie di gruppo, angoli contenuti, bordo
 /// sottile e ombra leggera come la barra flottante.
@@ -157,10 +158,7 @@ class Postmark extends StatelessWidget {
             FittedBox(
               child: Text(
                 DateFormat('d MMM', locale).format(date).toUpperCase(),
-                style: tt.labelLarge?.copyWith(
-                  color: ink,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: tt.labelLarge?.postcard.copyWith(color: ink),
               ),
             ),
             FittedBox(

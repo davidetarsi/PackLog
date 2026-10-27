@@ -10,6 +10,7 @@ import '../../../shared/widgets/ds_button.dart';
 import '../../profile/providers/gpt_usage_provider.dart';
 import '../model/ai_packing.dart';
 import '../services/pack_trip_service.dart';
+import '../../../shared/theme/app_text_styles.dart';
 
 /// Ciò che serve a `pack-trip` per generare la valigia, e a mostrare l'attesa.
 class PackTripJob {
@@ -208,9 +209,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
               AppSpacing.gapLg,
               Text(
                 'trips.ai.wait.title'.tr(),
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: theme.textTheme.headlineMedium?.title,
               ),
               AppSpacing.gapSm,
               Text(
@@ -298,12 +297,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
           color: colorScheme.onSurfaceVariant,
         ),
         AppSpacing.gapLg,
-        Text(
-          title,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        Text(title, style: theme.textTheme.headlineSmall?.title),
         AppSpacing.gapSm,
         Text(
           body,
@@ -362,7 +356,6 @@ class _WaitStep extends StatelessWidget {
             label,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: pending ? colorScheme.outline : colorScheme.onSurface,
-              fontWeight: state == _StepState.current ? FontWeight.w500 : null,
             ),
           ),
         ),

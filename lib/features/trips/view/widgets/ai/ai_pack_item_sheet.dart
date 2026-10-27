@@ -95,12 +95,7 @@ class _AiPackItemSheetState extends State<_AiPackItemSheet> {
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   SizedBox(height: context.spacingXs),
-                  Text(
-                    reason.label,
-                    style: tt.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  Text(reason.label, style: tt.titleMedium?.title),
                   SizedBox(height: context.spacingXs),
                   Text(reason.sentence, style: tt.bodyMedium),
                 ],

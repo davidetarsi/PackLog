@@ -7,6 +7,7 @@ import '../providers/date_range_selection_provider.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'widgets/trip_calendar.dart';
+import '../../../shared/theme/app_text_styles.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TripDateRangeScreen
@@ -57,9 +58,8 @@ class TripDateRangeScreen extends ConsumerWidget {
               onPressed: () => ref.read(provider.notifier).clear(),
               child: Text(
                 'common.cancel'.tr(),
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelLarge?.strong.copyWith(
                   color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

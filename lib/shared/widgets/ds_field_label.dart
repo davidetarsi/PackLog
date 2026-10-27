@@ -24,11 +24,10 @@ class DsFieldLabel extends StatelessWidget {
       ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
 
   /// Lo stile della variante evidente.
-  static TextStyle? prominentStyle(BuildContext context) =>
-      Theme.of(context).textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-        color: Theme.of(context).colorScheme.onSurface,
-      );
+  static TextStyle? prominentStyle(BuildContext context) => Theme.of(context)
+      .textTheme
+      .titleMedium
+      ?.copyWith(color: Theme.of(context).colorScheme.onSurface);
 
   @override
   Widget build(BuildContext context) {

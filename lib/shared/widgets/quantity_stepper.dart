@@ -91,10 +91,9 @@ class QuantityStepper extends StatelessWidget {
             value.toString(),
             style:
                 valueTextStyle ??
-                Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w500, // titleMedium ≈ 16px → w500
-                  color: effectiveAccent,
-                ),
+                Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: effectiveAccent),
           ),
         ),
         SizedBox(width: context.spacingXs),

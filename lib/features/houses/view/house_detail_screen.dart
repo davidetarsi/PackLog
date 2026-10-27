@@ -815,7 +815,6 @@ class _HouseSelectionAppBar extends ConsumerWidget
               ? 'items.select_items'.tr()
               : 'items.selected_count'.plural(selectedCount),
           key: ValueKey(selectedCount),
-          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
       actions: [
@@ -828,7 +827,9 @@ class _HouseSelectionAppBar extends ConsumerWidget
           },
           child: Text(
             allSelected ? 'items.deselect_all'.tr() : 'items.select_all'.tr(),
-            style: TextStyle(color: colorScheme.onSurface),
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(color: colorScheme.onSurface),
           ),
         ),
       ],

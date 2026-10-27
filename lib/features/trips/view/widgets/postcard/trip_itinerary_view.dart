@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_spacing.dart';
 import '../../../../../shared/theme/surface_colors.dart';
 import '../../../model/trip_postcard.dart';
+import '../../../../../shared/theme/app_text_styles.dart';
 
 /// Itinerario della cartolina: una linea verticale che collega Andata, luoghi,
 /// spostamenti e Ritorno. Icone e pallini interrompono la linea.
@@ -193,7 +194,7 @@ class _ItineraryRow extends StatelessWidget {
           entry.name ?? '',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+          style: tt.titleMedium?.postcard,
         ),
         Text(
           _periodLabel(context),
@@ -228,7 +229,7 @@ class _ItineraryRow extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.end,
-          style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+          style: tt.labelLarge?.title,
         ),
       ],
     );

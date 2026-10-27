@@ -58,7 +58,6 @@ class _AiResultCardState extends State<AiResultCard> {
     final active = widget.included;
     final muted = colors.onSurface.withValues(alpha: 0.38);
     final nameStyle = textTheme.titleMedium?.copyWith(
-      fontWeight: FontWeight.w600,
       color: active ? colors.onSurface : muted,
     );
     final detailStyle = textTheme.bodyMedium?.copyWith(

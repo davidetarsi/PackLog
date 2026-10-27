@@ -870,7 +870,7 @@ void main() {
       final bold = <String>[];
       rich.text.visitChildren((span) {
         if (span is TextSpan &&
-            span.style?.fontWeight == FontWeight.w700 &&
+            span.style?.fontWeight == FontWeight.w600 &&
             span.text != null) {
           bold.add(span.text!);
         }

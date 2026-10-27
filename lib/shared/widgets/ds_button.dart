@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_text_styles.dart';
 
 /// Livello semantico di un [DsButton].
 enum DsButtonVariant {
@@ -165,10 +166,8 @@ class DsButton extends StatelessWidget {
                     Flexible(
                       child: Text(
                         label,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: contentColor,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium?.strong
+                            .copyWith(color: contentColor),
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                       ),

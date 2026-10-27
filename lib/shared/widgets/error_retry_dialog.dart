@@ -130,9 +130,7 @@ class _ErrorDialog extends StatelessWidget {
       title: Text(
         title ?? 'common.error'.tr(),
         textAlign: TextAlign.center,
-        style: theme.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w400,
-        ),
+        style: theme.textTheme.titleLarge,
       ),
       content: Text(
         message,

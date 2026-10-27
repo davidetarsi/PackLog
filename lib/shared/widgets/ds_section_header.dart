@@ -15,7 +15,7 @@ import '../theme/app_spacing.dart';
 /// DsSectionHeader.withIcon(icon: Icons.luggage, label: 'Bagagli', trailing: badge)
 /// ```
 ///
-/// Regola tipografica (DS Fase 3 §3.2): 14px → FontWeight.w500.
+/// Regola tipografica (DS Fase 3 §3.2): 14px, peso dal tema.
 /// Colore di default: `colorScheme.primary` (per entrambe le varianti).
 class DsSectionHeader extends StatelessWidget {
   /// Testo del header.

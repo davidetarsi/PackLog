@@ -124,9 +124,7 @@ class _DayCard extends StatelessWidget {
                     toBeginningOfSentenceCase(date),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: tt.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: tt.titleMedium?.title,
                   ),
                 ),
                 if (min != null && max != null)
@@ -134,9 +132,7 @@ class _DayCard extends StatelessWidget {
                     'trips.weather.temps'.tr(
                       args: [min.round().toString(), max.round().toString()],
                     ),
-                    style: tt.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: tt.titleMedium?.title,
                   ),
               ],
             ),
@@ -224,7 +220,7 @@ class _BandColumn extends StatelessWidget {
           temp == null
               ? '–'
               : 'trips.weather.temp'.tr(args: [temp.round().toString()]),
-          style: tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+          style: tt.bodyLarge?.strong,
         ),
         Text(
           probability == null

@@ -7,6 +7,7 @@ import '../../../../../shared/widgets/ds_group_header.dart';
 import '../../../model/trip_model.dart';
 import '../../../model/trip_postcard.dart';
 import 'postcard_parts.dart';
+import '../../../../../shared/theme/app_text_styles.dart';
 
 /// Gruppo dell'album: etichetta (anno o "Da riusare") e i viaggi del gruppo.
 class TripAlbumGroup {
@@ -178,10 +179,7 @@ class _AlbumPostcard extends StatelessWidget {
               postcardTitle(trip, destination: destination),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: tt.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-                height: _titleHeight,
-              ),
+              style: tt.titleLarge?.postcard.copyWith(height: _titleHeight),
             ),
             if (nights != null)
               Text(
@@ -242,10 +240,7 @@ class _AlbumStamp extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '${day.day}',
-                  style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
+                Text('${day.day}', style: tt.titleLarge?.postcard),
                 Text(
                   DateFormat(
                     'MMM yy',

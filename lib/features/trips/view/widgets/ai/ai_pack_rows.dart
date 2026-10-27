@@ -137,10 +137,7 @@ class _Row extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: tt.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: titleColor,
-                    ),
+                    style: tt.bodyLarge?.strong.copyWith(color: titleColor),
                   ),
                   if (subtitle != null) ...[
                     SizedBox(height: context.spacingXs / 2),
@@ -197,10 +194,7 @@ class _CountBadge extends StatelessWidget {
       ),
       child: Text(
         '$count',
-        style: tt.labelMedium?.copyWith(
-          color: warning,
-          fontWeight: FontWeight.w700,
-        ),
+        style: tt.labelMedium?.strong.copyWith(color: warning),
       ),
     );
   }
@@ -307,16 +301,10 @@ class _WarningCard extends StatelessWidget {
         children: [
           Text(
             levelKey.tr(),
-            style: tt.labelLarge?.copyWith(
-              color: levelColor,
-              fontWeight: FontWeight.w700,
-            ),
+            style: tt.labelLarge?.strong.copyWith(color: levelColor),
           ),
           SizedBox(height: context.spacingXs),
-          Text(
-            warning.title,
-            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
+          Text(warning.title, style: tt.titleMedium?.title),
           SizedBox(height: context.spacingXs),
           Text(warning.why, style: tt.bodyMedium),
           SizedBox(height: context.spacingMd),
@@ -400,12 +388,7 @@ class _ReasonsSheet extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          point.title,
-                          style: tt.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                        Text(point.title, style: tt.titleMedium?.title),
                         SizedBox(height: context.spacingXs),
                         for (final sentence in point.sentences)
                           Text(sentence, style: tt.bodyMedium),

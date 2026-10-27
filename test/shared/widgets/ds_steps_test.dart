@@ -53,8 +53,8 @@ void main() {
       final current = tester.widget<Text>(find.text('Valigia'));
       final other = tester.widget<Text>(find.text('Viaggio'));
 
-      expect(current.style?.fontWeight, FontWeight.w700);
-      expect(other.style?.fontWeight, isNot(FontWeight.w700));
+      expect(current.style?.fontWeight, FontWeight.w600);
+      expect(other.style?.fontWeight, isNot(FontWeight.w600));
     });
 
     testWidgets('mostra tutte le etichette e un divisore tra i passi', (

@@ -403,7 +403,7 @@ class _AccountHeader extends StatelessWidget {
                   hasName ? name : email,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: tt.titleMedium,
                 ),
                 if (hasName && email.isNotEmpty)
                   Text(
