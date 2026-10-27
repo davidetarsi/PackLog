@@ -21,11 +21,15 @@ import '../../providers/user_colors_provider.dart';
 /// [doubts] sono i campi che il server segnala incerti ('subCategory',
 /// 'warmth', 'waterResistance', 'formality'): mostrano "da controllare" finché
 /// l'utente non li tocca, e il tocco chiama [onDoubtResolved] con il campo.
+///
+/// [fields] dice quali dettagli mostrare, secondo la categoria dell'oggetto
+/// ([clothingFieldsFor]); di default tutti.
 class ClothingDetailsSection extends ConsumerWidget {
   final ClothingDetails details;
   final ValueChanged<ClothingDetails> onChanged;
   final Set<String> doubts;
   final ValueChanged<String>? onDoubtResolved;
+  final Set<ClothingField> fields;
 
   const ClothingDetailsSection({
     super.key,
@@ -33,6 +37,7 @@ class ClothingDetailsSection extends ConsumerWidget {
     required this.onChanged,
     this.doubts = const {},
     this.onDoubtResolved,
+    this.fields = const {...ClothingField.values},
   });
 
   /// Se i colori dell'utente non arrivano (in caricamento o in errore) si
@@ -49,63 +54,69 @@ class ClothingDetailsSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _TypeRow(
-          value: details.subCategory,
-          doubtNote: toCheck('subCategory'),
-          onPicked: (type) {
-            onChanged(details.copyWith(subCategory: type));
-            resolved('subCategory');
-          },
-        ),
-        _ColorChoice(
-          color: details.color,
-          userColors: userColors,
-          onChanged: (color) => onChanged(
-            color == null
-                ? details.copyWith(clearColor: true)
-                : details.copyWith(color: color),
+        if (fields.contains(ClothingField.type))
+          _TypeRow(
+            value: details.subCategory,
+            doubtNote: toCheck('subCategory'),
+            onPicked: (type) {
+              onChanged(details.copyWith(subCategory: type));
+              resolved('subCategory');
+            },
           ),
-        ),
-        DsChoiceGroup<int>(
-          title: 'clothing.details.warmth'.tr(),
-          options: kWarmthLevels,
-          labelOf: warmthLabel,
-          selected: {details.warmth},
-          onChanged: (s) => onChanged(details.copyWith(warmth: s.single)),
-          doubt: doubts.contains('warmth'),
-          note: toCheck('warmth'),
-          onTouched: () => resolved('warmth'),
-        ),
-        DsChoiceGroup<int>(
-          title: 'clothing.details.water'.tr(),
-          options: kWaterResistanceLevels,
-          labelOf: waterResistanceLabel,
-          selected: {details.waterResistance},
-          onChanged: (s) =>
-              onChanged(details.copyWith(waterResistance: s.single)),
-          doubt: doubts.contains('waterResistance'),
-          note: toCheck('waterResistance'),
-          onTouched: () => resolved('waterResistance'),
-        ),
-        DsChoiceGroup<String>(
-          title: 'clothing.details.formality'.tr(),
-          options: kFormalities,
-          labelOf: formalityLabel,
-          selected: {details.formality},
-          onChanged: (s) => onChanged(details.copyWith(formality: s.single)),
-          doubt: doubts.contains('formality'),
-          note: toCheck('formality'),
-          onTouched: () => resolved('formality'),
-        ),
-        DsChoiceGroup<String>(
-          title: 'clothing.details.uses'.tr(),
-          options: kActivityTags,
-          labelOf: activityLabel,
-          selected: details.uses,
-          multiple: true,
-          note: 'clothing.details.uses_hint'.tr(),
-          onChanged: (s) => onChanged(details.copyWith(uses: s)),
-        ),
+        if (fields.contains(ClothingField.color))
+          _ColorChoice(
+            color: details.color,
+            userColors: userColors,
+            onChanged: (color) => onChanged(
+              color == null
+                  ? details.copyWith(clearColor: true)
+                  : details.copyWith(color: color),
+            ),
+          ),
+        if (fields.contains(ClothingField.warmth))
+          DsChoiceGroup<int>(
+            title: 'clothing.details.warmth'.tr(),
+            options: kWarmthLevels,
+            labelOf: warmthLabel,
+            selected: {details.warmth},
+            onChanged: (s) => onChanged(details.copyWith(warmth: s.single)),
+            doubt: doubts.contains('warmth'),
+            note: toCheck('warmth'),
+            onTouched: () => resolved('warmth'),
+          ),
+        if (fields.contains(ClothingField.waterResistance))
+          DsChoiceGroup<int>(
+            title: 'clothing.details.water'.tr(),
+            options: kWaterResistanceLevels,
+            labelOf: waterResistanceLabel,
+            selected: {details.waterResistance},
+            onChanged: (s) =>
+                onChanged(details.copyWith(waterResistance: s.single)),
+            doubt: doubts.contains('waterResistance'),
+            note: toCheck('waterResistance'),
+            onTouched: () => resolved('waterResistance'),
+          ),
+        if (fields.contains(ClothingField.formality))
+          DsChoiceGroup<String>(
+            title: 'clothing.details.formality'.tr(),
+            options: kFormalities,
+            labelOf: formalityLabel,
+            selected: {details.formality},
+            onChanged: (s) => onChanged(details.copyWith(formality: s.single)),
+            doubt: doubts.contains('formality'),
+            note: toCheck('formality'),
+            onTouched: () => resolved('formality'),
+          ),
+        if (fields.contains(ClothingField.uses))
+          DsChoiceGroup<String>(
+            title: 'clothing.details.uses'.tr(),
+            options: kActivityTags,
+            labelOf: activityLabel,
+            selected: details.uses,
+            multiple: true,
+            note: 'clothing.details.uses_hint'.tr(),
+            onChanged: (s) => onChanged(details.copyWith(uses: s)),
+          ),
       ],
     );
   }

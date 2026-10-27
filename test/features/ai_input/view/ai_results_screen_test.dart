@@ -314,44 +314,45 @@ void main() {
     await app.finish();
   });
 
-  testWidgets('rinomina due capi e Salva invia subito i nomi aggiornati', (
-    tester,
-  ) async {
-    final app = await _openResults(tester);
-    for (final (index, name) in const [
-      (0, 'Camicia rinominata'),
-      (1, 'T-shirt rinominata'),
-    ]) {
-      final card = find.byKey(ValueKey('ai_result_0_$index'));
-      await tester.ensureVisible(card);
-      await tester.tap(
-        find.descendant(
-          of: card,
-          matching: find.byKey(const Key('ai_result_name')),
-        ),
-      );
-      await tester.pump();
-      await tester.enterText(
-        find.descendant(of: card, matching: find.byType(TextField)),
-        name,
-      );
-    }
-    await tester.tap(find.text('Salva: 3 nuovi'));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'rinomina due capi dalla scheda e Salva invia i nomi aggiornati',
+    (tester) async {
+      final app = await _openResults(tester);
+      for (final (index, name) in const [
+        (0, 'Camicia rinominata'),
+        (1, 'T-shirt rinominata'),
+      ]) {
+        final details = find.descendant(
+          of: find.byKey(ValueKey('ai_result_0_$index')),
+          matching: find.byKey(const Key('ai_result_details')),
+        );
+        await tester.ensureVisible(details);
+        await tester.tap(details);
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byKey(const Key('item_sheet_name')), name);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('item_sheet_save')));
+        await tester.tap(find.byKey(const Key('item_sheet_save')));
+        await tester.pumpAndSettle();
+        expect(find.text(name), findsOneWidget);
+      }
+      await tester.tap(find.text('Salva: 3 nuovi'));
+      await tester.pumpAndSettle();
 
-    final captured = verify(
-      () => app.itemRepository.saveAiItemsToHouse(
-        houseId: captureAny(named: 'houseId'),
-        newItems: captureAny(named: 'newItems'),
-      ),
-    ).captured;
-    final savedItems = captured[1] as List<ItemModel>;
-    expect(
-      savedItems.map((item) => item.name),
-      containsAll(['Camicia rinominata', 'T-shirt rinominata']),
-    );
-    await app.finish();
-  });
+      final captured = verify(
+        () => app.itemRepository.saveAiItemsToHouse(
+          houseId: captureAny(named: 'houseId'),
+          newItems: captureAny(named: 'newItems'),
+        ),
+      ).captured;
+      final savedItems = captured[1] as List<ItemModel>;
+      expect(
+        savedItems.map((item) => item.name),
+        containsAll(['Camicia rinominata', 'T-shirt rinominata']),
+      );
+      await app.finish();
+    },
+  );
 
   testWidgets('doppio tap su Salva completa una sola uscita riuscita', (
     tester,

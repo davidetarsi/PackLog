@@ -629,7 +629,7 @@
     "save_success": "{} items saved successfully!",
     "save_success_generic": "Results saved successfully.",
     "save_new": {"one": "Save: {} new", "other": "Save: {} new"},
-    "rename_hint": "Tap a name to call it what you like",
+    "results_hint": "Untick the items you don't want to save. Tap an item to fix it.",
     "source_camera": "Camera",
     "source_gallery": "Gallery",
     "source_sheet_title": "Add photos",

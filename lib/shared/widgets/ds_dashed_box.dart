@@ -19,7 +19,8 @@ class DsDashedBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _DashedRRectPainter(
+      // Sopra il figlio: un riempimento del figlio non copre il tratteggio.
+      foregroundPainter: _DashedRRectPainter(
         color: color ?? Theme.of(context).colorScheme.outline,
         radius: radius,
       ),

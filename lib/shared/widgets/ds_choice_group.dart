@@ -118,6 +118,8 @@ class DsChoiceGroup<T> extends StatelessWidget {
               DsChoicePill(
                 label: labelOf(option),
                 selected: selected.contains(option),
+                // Il valore proposto e ancora da controllare è tratteggiato.
+                dashed: doubt && selected.contains(option),
                 onTap: () => _handleTap(option),
               ),
             if (trailing != null) trailing!,

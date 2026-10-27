@@ -711,9 +711,11 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                 ],
               ),
               SizedBox(height: context.spacingXs),
+              // Cosa si fa in questa pagina: scegliere e correggere i capi.
               Text(
-                'ai_import.rename_hint'.tr(),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                'ai_import.results_hint'.tr(),
+                key: const Key('ai_results_hint'),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -788,8 +790,6 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                           key: ValueKey('ai_result_${gi}_$ii'),
                           item: state.photoGroups[gi].results[ii],
                           controller: _controllers[gi][ii],
-                          onNameChanged: (value) =>
-                              notifier.updateItemName(gi, ii, value),
                           included: !state.photoGroups[gi].excluded.contains(
                             ii,
                           ),

@@ -204,6 +204,19 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
         (_details != null && _details != _originalDetails);
   }
 
+  /// La categoria che la scheda mostra adesso: scelta, della scansione o
+  /// dell'oggetto salvato.
+  ItemCategory? get _currentCategory =>
+      _chosenCategory ?? _scanCategory ?? _item()?.category;
+
+  /// I dettagli da mostrare per la categoria di adesso: cambiano subito se
+  /// l'utente sceglie un'altra categoria. I valori nascosti restano.
+  Set<ClothingField> _fieldsFor(ClothingDetails? details) {
+    final category = _currentCategory;
+    if (category == null || details == null) return const {};
+    return clothingFieldsFor(category, details.subCategory);
+  }
+
   ItemModel? _item() =>
       (ref.read(itemNotifierProvider(widget.houseId)).valueOrNull ??
               const <ItemModel>[])
@@ -381,10 +394,12 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     if (details != null && details != _originalDetails) {
       edited = details.applyTo(edited);
     }
-    final remainingDoubts = [
+    // Un dubbio su un campo che la categoria scelta non mostra non si può
+    // controllare: non resta.
+    final remainingDoubts = visibleDoubts([
       for (final field in result.doubts)
         if (_doubts.contains(field)) field,
-    ];
+    ], _fieldsFor(details));
     Navigator.pop(
       context,
       edited.copyWith(
@@ -670,7 +685,8 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                 ),
               ),
             ],
-            if (_details case final details?) ...[
+            if (_details case final details?
+                when _fieldsFor(details).isNotEmpty) ...[
               // I dettagli hanno titoli dello stesso stile del
               // resto della scheda: una linea li separa, senza un
               // titolo "Dettagli" che li sovrasti.
@@ -680,6 +696,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
               ),
               ClothingDetailsSection(
                 details: details,
+                fields: _fieldsFor(details),
                 onChanged: (d) => setState(() => _details = d),
                 doubts: _doubts,
                 onDoubtResolved: (field) =>

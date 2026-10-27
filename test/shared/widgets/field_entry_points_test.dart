@@ -15,8 +15,6 @@ void main() {
     // La barra di scrittura del rapid fire, con il suo contenitore e il
     // bottone di invio.
     'lib/features/items/widgets/rapid_fire_input.dart',
-    // La rinomina in riga nel risultato della scansione.
-    'lib/features/ai_input/view/widgets/ai_result_card.dart',
   };
   const allowedDirs = <String>['lib/shared/dev/'];
 

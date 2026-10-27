@@ -2,10 +2,15 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../shared/theme/app_opacity.dart';
+import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/theme/app_text_styles.dart';
 import '../../../../shared/widgets/ds_checkbox.dart';
+import '../../../../shared/widgets/ds_dashed_box.dart';
 import '../../../../shared/widgets/ds_text_button.dart';
+import '../../../items/model/clothing_details.dart';
 import '../../../items/model/clothing_labels.dart';
+import '../../helpers/ai_item_category.dart';
 import '../../model/clothing_analysis_result.dart';
 
 /// Valore non utile da mostrare: vuoto o 'N/A'.
@@ -19,12 +24,14 @@ String aiDetailsLine(ClothingAnalysisResult result) => [
   colorLabel(result.baseColor),
 ].where((value) => value.isNotEmpty).join(' · ');
 
-/// Riga di un capo riconosciuto: inclusione, nome modificabile sul posto,
-/// dettagli (con accesso alla scheda) e "C'è già?".
-class AiResultCard extends StatefulWidget {
+/// Riga di un capo riconosciuto: inclusione, poi nome, tipo e colore ed
+/// eventuali dati da controllare. Toccando la riga si apre la scheda del capo,
+/// dove si cambia anche il nome. "C'è già?" a destra.
+class AiResultCard extends StatelessWidget {
   final ClothingAnalysisResult item;
+
+  /// Il nome mostrato: lo aggiorna chi apre la scheda, dopo un salvataggio.
   final TextEditingController controller;
-  final ValueChanged<String> onNameChanged;
   final bool included;
   final ValueChanged<bool> onIncludedChanged;
   final VoidCallback? onAlreadyHere;
@@ -35,7 +42,6 @@ class AiResultCard extends StatefulWidget {
     super.key,
     required this.item,
     required this.controller,
-    required this.onNameChanged,
     required this.included,
     required this.onIncludedChanged,
     required this.onOpenDetails,
@@ -44,32 +50,28 @@ class AiResultCard extends StatefulWidget {
   });
 
   @override
-  State<AiResultCard> createState() => _AiResultCardState();
-}
-
-class _AiResultCardState extends State<AiResultCard> {
-  bool _editing = false;
-
-  void _stopEditing() {
-    if (_editing) setState(() => _editing = false);
-  }
-
-  @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final active = widget.included;
     final muted = colors.onSurface.withValues(alpha: AppOpacity.disabled);
-    final nameStyle = textTheme.titleMedium?.copyWith(
-      color: active ? colors.onSurface : muted,
+    // Tre livelli: il nome in evidenza, tipo e colore in grigio, il dato da
+    // controllare in una pillola tratteggiata. Nessun testo sotto 14.
+    final nameStyle = textTheme.cardTitle?.copyWith(
+      color: included ? colors.onSurface : muted,
     );
     final detailStyle = textTheme.bodyMedium?.copyWith(
-      color: active ? colors.onSurfaceVariant : muted,
+      color: included ? colors.onSurfaceVariant : muted,
     );
-    final doubtStyle = textTheme.bodyMedium?.copyWith(
-      color: active ? colors.onSurface : muted,
+    // Solo i dubbi che la scheda mostra per la categoria del capo: gli altri
+    // non si potrebbero controllare.
+    final doubts = visibleDoubts(
+      item.doubts,
+      clothingFieldsFor(
+        aiItemCategory(item.category, appCategory: item.appCategory),
+        item.subCategory,
+      ),
     );
-    final doubts = widget.item.doubts;
+    final details = aiDetailsLine(item);
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: context.spacingXs),
@@ -77,104 +79,105 @@ class _AiResultCardState extends State<AiResultCard> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           DsCheckbox(
-            value: active,
-            onChanged: !widget.enabled
-                ? null
-                : (value) => widget.onIncludedChanged(value),
+            value: included,
+            onChanged: !enabled ? null : (value) => onIncludedChanged(value),
           ),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_editing)
-                  TextField(
-                    controller: widget.controller,
-                    enabled: widget.enabled,
-                    autofocus: true,
-                    style: nameStyle,
-                    textCapitalization: TextCapitalization.sentences,
-                    onChanged: widget.onNameChanged,
-                    onSubmitted: (_) => _stopEditing(),
-                    onTapOutside: (_) => _stopEditing(),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: 'ai_import.item_name_hint'.tr(),
-                    ),
-                  )
-                else
-                  InkWell(
-                    key: const Key('ai_result_name'),
-                    onTap: widget.enabled
-                        ? () => setState(() => _editing = true)
-                        : null,
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: Text(widget.controller.text, style: nameStyle),
-                        ),
-                        SizedBox(width: context.spacingXs),
-                        Icon(
-                          Icons.edit_outlined,
-                          size: context.iconSizeSm,
-                          color: widget.enabled
-                              ? colors.onSurfaceVariant
-                              : muted,
-                        ),
-                      ],
-                    ),
-                  ),
-                SizedBox(height: context.spacingXxs),
-                InkWell(
-                  key: const Key('ai_result_details'),
-                  onTap: widget.enabled ? widget.onOpenDetails : null,
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          aiDetailsLine(widget.item),
-                          style: detailStyle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+            child: InkWell(
+              key: const Key('ai_result_details'),
+              borderRadius: BorderRadius.circular(
+                AppConstants.inputBorderRadius,
+              ),
+              onTap: enabled ? onOpenDetails : null,
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: context.spacingXs),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: controller,
+                            builder: (context, value, _) =>
+                                Text(value.text, style: nameStyle),
+                          ),
+                          if (details.isNotEmpty) ...[
+                            SizedBox(height: context.spacingXxs),
+                            Text(
+                              details,
+                              style: detailStyle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                          if (doubts.isNotEmpty) ...[
+                            SizedBox(height: context.spacingXs),
+                            _ToCheck(
+                              count: doubts.length,
+                              color: included ? colors.onSurface : muted,
+                            ),
+                          ],
+                        ],
                       ),
-                      SizedBox(width: context.spacingXs),
-                      Icon(
-                        Icons.chevron_right,
-                        size: context.iconSizeSm,
-                        color: active ? colors.onSurfaceVariant : muted,
-                      ),
-                    ],
-                  ),
+                    ),
+                    Icon(
+                      Icons.chevron_right,
+                      size: context.iconSizeMd,
+                      color: included ? colors.onSurfaceVariant : muted,
+                    ),
+                  ],
                 ),
-                if (doubts.isNotEmpty) ...[
-                  SizedBox(height: context.spacingXxs),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.help_outline,
-                        size: context.iconSizeSm,
-                        color: active ? colors.onSurface : muted,
-                      ),
-                      SizedBox(width: context.spacingXs),
-                      Flexible(
-                        child: Text(
-                          'ai_import.to_check'.plural(doubts.length),
-                          style: doubtStyle,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
-          if (widget.onAlreadyHere != null)
+          if (onAlreadyHere != null)
             DsTextButton(
               key: const Key('ai_already_here'),
-              onPressed: widget.enabled ? widget.onAlreadyHere : null,
+              onPressed: enabled ? onAlreadyHere : null,
               label: 'ai_import.already_here'.tr(),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// "N da controllare" in una pillola tratteggiata, come i valori da
+/// controllare nella scheda del capo.
+class _ToCheck extends StatelessWidget {
+  const _ToCheck({required this.count, required this.color});
+
+  final int count;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DsDashedBox(
+      key: const Key('ai_result_to_check'),
+      radius: AppConstants.pillBorderRadius,
+      color: color,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacingSm,
+          vertical: context.spacingXxs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.help_outline, size: context.iconSizeSm, color: color),
+            SizedBox(width: context.spacingXs),
+            // Su uno schermo stretto, con "C'è già?" accanto, va a capo.
+            Flexible(
+              child: Text(
+                'ai_import.to_check'.plural(count),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: color),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
