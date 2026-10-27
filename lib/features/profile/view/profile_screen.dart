@@ -22,6 +22,7 @@ import '../../../shared/theme/nav_bar_spacing.dart';
 import '../../../shared/providers/package_info_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/widgets/ds_dialog.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_settings.dart';
 import '../../../shared/widgets/ds_inline_error.dart';
@@ -154,8 +155,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     // impiegare qualche secondo. `useRootNavigator: true` mette il dialog
     // sul root navigator, così la sua chiusura è indipendente dal branch
     // shell route della tab Profilo.
-    showDialog<void>(
-      context: context,
+    showDsDialog<void>(
+      context,
       barrierDismissible: false,
       useRootNavigator: true,
       builder: (_) => const Center(child: CircularProgressIndicator()),

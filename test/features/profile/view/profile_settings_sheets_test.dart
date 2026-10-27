@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pack_log/features/profile/view/sheets/profile_language_sheet.dart';
 import 'package:pack_log/features/profile/view/sheets/profile_theme_sheet.dart';
+import 'package:pack_log/shared/widgets/ds_dialog.dart';
 import 'package:pack_log/shared/widgets/ds_picker_sheet.dart';
 import 'package:pack_log/shared/widgets/ds_settings.dart';
 import 'package:pack_log/shared/widgets/ds_sheet_header.dart';
@@ -77,7 +78,7 @@ void main() {
       await _openAndSettle(tester);
 
       expect(find.byType(DsSheetHeader), findsOneWidget);
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(DsDialog), findsNothing);
       expect(find.text('Italiano'), findsOneWidget);
       expect(find.text('English'), findsOneWidget);
       expect(find.text('🇮🇹'), findsOneWidget);

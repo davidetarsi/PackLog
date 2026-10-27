@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/widgets/ds_dialog.dart';
 import '../../../../shared/widgets/ds_group_header.dart';
 import '../../../../shared/widgets/ds_icon_button.dart';
 
@@ -32,8 +33,8 @@ class AiPhotoGroupHeader extends StatelessWidget {
   );
 
   void _openFull(BuildContext context) {
-    showDialog<void>(
-      context: context,
+    showDsDialog<void>(
+      context,
       builder: (dialogContext) => Dialog.fullscreen(
         key: const Key('ai_photo_viewer'),
         child: Stack(

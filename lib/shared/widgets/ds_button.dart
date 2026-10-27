@@ -180,6 +180,10 @@ class DsButton extends StatelessWidget {
                         label,
                         style: Theme.of(context).textTheme.bodyMedium?.strong
                             .copyWith(color: contentColor),
+                        // Altezza fissa: una riga sola, il resto si tronca.
+                        // Senza maxLines a scala 2.0 l'etichetta va a capo e
+                        // sborda dalla pill.
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                       ),

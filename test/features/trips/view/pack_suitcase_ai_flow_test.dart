@@ -19,6 +19,7 @@ import 'package:pack_log/features/items/services/category_infer_service.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
 import 'package:pack_log/features/spaces/repositories/space_repository.dart';
+import 'package:pack_log/shared/widgets/ds_dialog.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/model/trip_weather.dart';
@@ -413,7 +414,7 @@ void main() {
       await tapKey(tester, const Key('pack_ai_suitcase'));
       await tester.tap(
         find.descendant(
-          of: find.byType(AlertDialog),
+          of: find.byType(DsDialog),
           matching: find.text('Annulla'),
         ),
       );

@@ -1,6 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_spacing.dart';
 import 'ds_button.dart';
+import 'ds_dialog.dart';
 import 'ds_text_button.dart';
 
 /// Risultato del dialog di errore.
@@ -39,8 +41,8 @@ class ErrorRetryDialog {
     IconData icon = Icons.error_outline,
     Color? iconColor,
   }) async {
-    final result = await showDialog<ErrorDialogResult>(
-      context: context,
+    final result = await showDsDialog<ErrorDialogResult>(
+      context,
       barrierDismissible: false,
       builder: (context) => _ErrorDialog(
         title: title,
@@ -124,33 +126,30 @@ class _ErrorDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return AlertDialog(
-      icon: Icon(icon, size: 48, color: iconColor),
-      title: Text(
-        title ?? 'common.error'.tr(),
-        textAlign: TextAlign.center,
-        style: theme.textTheme.titleLarge,
-      ),
-      content: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
-      actionsAlignment: MainAxisAlignment.center,
+    return DsDialog(
+      icon: icon,
+      iconColor: iconColor,
+      title: title ?? 'common.error'.tr(),
+      message: message,
+      // Le due uscite al centro, vicine e non divise a metà. Se non entrano
+      // in una riga vanno a capo, come faceva l'AlertDialog di prima.
       actions: [
-        DsTextButton(
-          onPressed: () => Navigator.pop(context, ErrorDialogResult.cancel),
-          label: cancelText ?? 'common.cancel'.tr(),
-        ),
-        DsButton(
-          variant: DsButtonVariant.secondary,
-          onPressed: () => Navigator.pop(context, ErrorDialogResult.retry),
-          icon: Icons.refresh,
-          label: retryText ?? 'common.retry'.tr(),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: context.spacingSm,
+          runSpacing: context.spacingSm,
+          children: [
+            DsTextButton(
+              onPressed: () => Navigator.pop(context, ErrorDialogResult.cancel),
+              label: cancelText ?? 'common.cancel'.tr(),
+            ),
+            DsButton(
+              variant: DsButtonVariant.secondary,
+              onPressed: () => Navigator.pop(context, ErrorDialogResult.retry),
+              icon: Icons.refresh,
+              label: retryText ?? 'common.retry'.tr(),
+            ),
+          ],
         ),
       ],
     );
