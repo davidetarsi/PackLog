@@ -1001,7 +1001,7 @@ final flows = <Flow>[
         await _houseDetail(app);
         await app.push('/houses/$kHomeId/ai-import/results');
         await _emitAi(app, aiResultsState());
-        await app.tap(find.byKey(const Key('ai_result_name')).first);
+        await app.tap(find.byKey(const Key('ai_result_details')).first);
       },
     ),
     Scenario(

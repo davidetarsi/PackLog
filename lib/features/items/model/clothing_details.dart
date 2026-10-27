@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../../ai_input/model/clothing_analysis_result.dart';
+import 'item_model.dart';
 import 'clothing_taxonomy.dart';
 
 /// I dettagli modificabili di un capo, letti da e riscritti in un
@@ -138,3 +139,48 @@ ClothingAnalysisResult? clothingFromMetadata(String? aiMetadata) {
     return null;
   }
 }
+
+/// Un dettaglio della scheda di un oggetto.
+enum ClothingField { type, color, warmth, waterResistance, formality, uses }
+
+/// Il campo di un dubbio del server ('subCategory', 'warmth', …); null per
+/// un nome che l'app non conosce.
+ClothingField? clothingFieldOfDoubt(String doubt) => switch (doubt) {
+  'subCategory' => ClothingField.type,
+  'baseColor' => ClothingField.color,
+  'warmth' => ClothingField.warmth,
+  'waterResistance' => ClothingField.waterResistance,
+  'formality' => ClothingField.formality,
+  'activityTags' => ClothingField.uses,
+  _ => null,
+};
+
+/// I dettagli che hanno senso per un oggetto di [category]:
+/// - vestiti: tutti;
+/// - varie: tipo e colore, più l'impermeabilità per borse e zaini (calore,
+///   stile e usi non dicono niente di uno zaino o di un paio di occhiali);
+/// - toiletries ed elettronica: nessuno.
+Set<ClothingField> clothingFieldsFor(
+  ItemCategory category,
+  String subCategory,
+) => switch (category) {
+  ItemCategory.vestiti => ClothingField.values.toSet(),
+  ItemCategory.varie => {
+    ClothingField.type,
+    ClothingField.color,
+    if (subCategory == 'Bag') ClothingField.waterResistance,
+  },
+  ItemCategory.toiletries || ItemCategory.elettronica => const {},
+};
+
+/// I dubbi di [doubts] che riguardano un campo fra [fields]: gli altri non
+/// si vedono e quindi non si possono controllare. Un nome sconosciuto resta.
+List<String> visibleDoubts(
+  Iterable<String> doubts,
+  Set<ClothingField> fields,
+) => [
+  for (final doubt in doubts)
+    if (clothingFieldOfDoubt(doubt) == null ||
+        fields.contains(clothingFieldOfDoubt(doubt)))
+      doubt,
+];

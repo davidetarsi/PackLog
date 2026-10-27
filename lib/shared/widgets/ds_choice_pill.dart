@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
+import 'ds_dashed_box.dart';
 
 /// Pillola di scelta compatta: bordo e testo, niente icone.
 ///
@@ -11,9 +12,12 @@ import '../theme/app_spacing.dart';
 /// outlineVariant, testo onSurfaceVariant, senza sfondo.
 ///
 /// Lo stato di selezione lo decide il chiamante (vedi [DsChoiceGroup]).
+/// Con [dashed] il bordo è tratteggiato: un valore proposto dall'AI e da
+/// controllare, senza aggiungere colore.
 class DsChoicePill extends StatelessWidget {
   final String label;
   final bool selected;
+  final bool dashed;
 
   /// `null` = pillola disabilitata.
   final VoidCallback? onTap;
@@ -23,6 +27,7 @@ class DsChoicePill extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.dashed = false,
   });
 
   @override
@@ -44,27 +49,32 @@ class DsChoicePill extends StatelessWidget {
             onTap: onTap,
             child: Center(
               widthFactor: 1,
-              child: Container(
-                key: const Key('ds_choice_pill_face'),
-                height: AppConstants.pillTabCompact,
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacingSmPlus,
-                ),
-                decoration: BoxDecoration(
-                  color: selected && isLight ? cs.surfaceContainerHigh : null,
-                  borderRadius: radius,
-                  border: Border.all(
-                    color: selected ? cs.onSurface : cs.outlineVariant,
+              child: _maybeDashed(
+                color: selected ? cs.onSurface : cs.outlineVariant,
+                child: Container(
+                  key: const Key('ds_choice_pill_face'),
+                  height: AppConstants.pillTabCompact,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacingSmPlus,
                   ),
-                ),
-                child: Center(
-                  widthFactor: 1,
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: selected ? cs.onSurface : cs.onSurfaceVariant,
+                  decoration: BoxDecoration(
+                    color: selected && isLight ? cs.surfaceContainerHigh : null,
+                    borderRadius: radius,
+                    border: dashed
+                        ? null
+                        : Border.all(
+                            color: selected ? cs.onSurface : cs.outlineVariant,
+                          ),
+                  ),
+                  child: Center(
+                    widthFactor: 1,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: selected ? cs.onSurface : cs.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),
@@ -75,4 +85,13 @@ class DsChoicePill extends StatelessWidget {
       ),
     );
   }
+
+  Widget _maybeDashed({required Color color, required Widget child}) => dashed
+      ? DsDashedBox(
+          key: const Key('ds_choice_pill_dashed'),
+          radius: AppConstants.pillBorderRadius,
+          color: color,
+          child: child,
+        )
+      : child;
 }

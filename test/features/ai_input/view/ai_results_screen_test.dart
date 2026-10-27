@@ -257,9 +257,18 @@ void main() {
   ) async {
     final app = await _openResults(tester);
     expect(find.byType(AiResultsScreen), findsOneWidget);
-    expect(find.text('Camicia di lino azzurra'), findsOneWidget);
-    expect(find.text('T-shirt bianca'), findsOneWidget);
-    expect(find.text('Pantaloni da trekking'), findsOneWidget);
+    expect(
+      find.textContaining('Camicia di lino azzurra', findRichText: true),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('T-shirt bianca', findRichText: true),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Pantaloni da trekking', findRichText: true),
+      findsOneWidget,
+    );
     expect(find.text('Salva: 3 nuovi'), findsOneWidget);
     expect(find.text('T-shirt · Bianco'), findsOneWidget);
     expect(find.text('Camicia · Azzurro'), findsOneWidget);
@@ -306,7 +315,10 @@ void main() {
     await tester.tap(checkbox);
     await tester.pumpAndSettle();
     expect(find.text('Salva: 2 nuovi'), findsOneWidget);
-    expect(find.text('T-shirt bianca'), findsOneWidget);
+    expect(
+      find.textContaining('T-shirt bianca', findRichText: true),
+      findsOneWidget,
+    );
     await tester.ensureVisible(checkbox);
     await tester.tap(checkbox);
     await tester.pumpAndSettle();
@@ -314,44 +326,45 @@ void main() {
     await app.finish();
   });
 
-  testWidgets('rinomina due capi e Salva invia subito i nomi aggiornati', (
-    tester,
-  ) async {
-    final app = await _openResults(tester);
-    for (final (index, name) in const [
-      (0, 'Camicia rinominata'),
-      (1, 'T-shirt rinominata'),
-    ]) {
-      final card = find.byKey(ValueKey('ai_result_0_$index'));
-      await tester.ensureVisible(card);
-      await tester.tap(
-        find.descendant(
-          of: card,
-          matching: find.byKey(const Key('ai_result_name')),
-        ),
-      );
-      await tester.pump();
-      await tester.enterText(
-        find.descendant(of: card, matching: find.byType(TextField)),
-        name,
-      );
-    }
-    await tester.tap(find.text('Salva: 3 nuovi'));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'rinomina due capi dalla scheda e Salva invia i nomi aggiornati',
+    (tester) async {
+      final app = await _openResults(tester);
+      for (final (index, name) in const [
+        (0, 'Camicia rinominata'),
+        (1, 'T-shirt rinominata'),
+      ]) {
+        final details = find.descendant(
+          of: find.byKey(ValueKey('ai_result_0_$index')),
+          matching: find.byKey(const Key('ai_result_details')),
+        );
+        await tester.ensureVisible(details);
+        await tester.tap(details);
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byKey(const Key('item_sheet_name')), name);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('item_sheet_save')));
+        await tester.tap(find.byKey(const Key('item_sheet_save')));
+        await tester.pumpAndSettle();
+        expect(find.textContaining(name, findRichText: true), findsOneWidget);
+      }
+      await tester.tap(find.text('Salva: 3 nuovi'));
+      await tester.pumpAndSettle();
 
-    final captured = verify(
-      () => app.itemRepository.saveAiItemsToHouse(
-        houseId: captureAny(named: 'houseId'),
-        newItems: captureAny(named: 'newItems'),
-      ),
-    ).captured;
-    final savedItems = captured[1] as List<ItemModel>;
-    expect(
-      savedItems.map((item) => item.name),
-      containsAll(['Camicia rinominata', 'T-shirt rinominata']),
-    );
-    await app.finish();
-  });
+      final captured = verify(
+        () => app.itemRepository.saveAiItemsToHouse(
+          houseId: captureAny(named: 'houseId'),
+          newItems: captureAny(named: 'newItems'),
+        ),
+      ).captured;
+      final savedItems = captured[1] as List<ItemModel>;
+      expect(
+        savedItems.map((item) => item.name),
+        containsAll(['Camicia rinominata', 'T-shirt rinominata']),
+      );
+      await app.finish();
+    },
+  );
 
   testWidgets('doppio tap su Salva completa una sola uscita riuscita', (
     tester,
@@ -514,7 +527,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ItemSheet), findsNothing);
-    expect(find.text('Pantaloni trekking impermeabili'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Pantaloni trekking impermeabili',
+        findRichText: true,
+      ),
+      findsOneWidget,
+    );
     expect(
       find.descendant(of: row, matching: find.text('1 da controllare')),
       findsNothing,

@@ -629,7 +629,7 @@
     "save_success": "{} oggetti salvati con successo!",
     "save_success_generic": "Risultati salvati con successo.",
     "save_new": {"one": "Salva: {} nuovo", "other": "Salva: {} nuovi"},
-    "rename_hint": "Tocca un nome per chiamarlo come vuoi tu",
+    "results_hint": "Togli la spunta ai capi che non vuoi salvare. Tocca un capo per correggerlo.",
     "source_camera": "Fotocamera",
     "source_gallery": "Galleria",
     "source_sheet_title": "Aggiungi foto",

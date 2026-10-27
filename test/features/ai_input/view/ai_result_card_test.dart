@@ -61,7 +61,6 @@ Future<void> _pumpCard(
               body: AiResultCard(
                 item: item,
                 controller: controller,
-                onNameChanged: (_) {},
                 included: included,
                 onIncludedChanged: (_) {},
                 onOpenDetails: onOpenDetails,
@@ -115,9 +114,92 @@ void main() {
   });
 
   group('AiResultCard', () {
-    testWidgets('conta i dubbi con la riga "da controllare"', (tester) async {
-      await _pumpCard(tester, item: _result(doubts: const ['colore', 'tipo']));
+    testWidgets('conta i dubbi con la pillola tratteggiata "da controllare"', (
+      tester,
+    ) async {
+      await _pumpCard(
+        tester,
+        item: _result(doubts: const ['warmth', 'formality']),
+      );
       expect(find.text('2 da controllare'), findsOneWidget);
+      expect(find.byKey(const Key('ai_result_to_check')), findsOneWidget);
+    });
+
+    testWidgets('nelle varie conta solo i dubbi dei campi che si vedono', (
+      tester,
+    ) async {
+      // Uno zaino: calore e stile non si mostrano, l'impermeabilità sì.
+      await _pumpCard(
+        tester,
+        item: _result(
+          subCategory: 'Bag',
+          doubts: const ['warmth', 'formality', 'waterResistance'],
+        ).copyWith(category: 'Accessory', appCategory: 'varie'),
+      );
+      expect(find.text('1 da controllare'), findsOneWidget);
+    });
+
+    testWidgets('nome in evidenza, tipo e colore e dubbi mai sotto 14', (
+      tester,
+    ) async {
+      await _pumpCard(tester, item: _result(doubts: const ['warmth']));
+      double sizeOf(String text) =>
+          tester.widget<Text>(find.text(text)).style!.fontSize!;
+      expect(
+        tester
+            .widget<RichText>(
+              find.textContaining('Camicia di lino', findRichText: true),
+            )
+            .text
+            .style!
+            .fontSize!,
+        greaterThan(16),
+      );
+      expect(sizeOf('1 da controllare'), greaterThanOrEqualTo(14));
+      final details = find.byWidgetPredicate(
+        (w) => w is Text && (w.data ?? '').contains(' · '),
+      );
+      expect(
+        tester.widget<Text>(details).style!.fontSize!,
+        greaterThanOrEqualTo(14),
+      );
+    });
+
+    testWidgets('la freccia segue il nome, non sta in fondo alla riga', (
+      tester,
+    ) async {
+      await _pumpCard(tester, item: _result(), onAlreadyHere: () {});
+      final chevron = tester.getRect(
+        find.byKey(const Key('ai_result_chevron')),
+      );
+      final button = tester.getRect(find.byKey(const Key('ai_already_here')));
+      // Subito dopo "Camicia di lino", ben lontana da "C'è già?".
+      expect(chevron.right, lessThan(button.left - 48));
+    });
+
+    testWidgets('nome su due righe: la freccia segue tipo e colore', (
+      tester,
+    ) async {
+      await _pumpCard(
+        tester,
+        item: _result().copyWith(
+          name: 'Camicia di lino a maniche lunghe azzurra per le cene eleganti',
+        ),
+        onAlreadyHere: () {},
+      );
+      final chevron = tester.getRect(
+        find.byKey(const Key('ai_result_chevron')),
+      );
+      final details = tester.getRect(find.text('Camicia · Bianco'));
+      expect(chevron.center.dy, closeTo(details.center.dy, 4));
+      expect(chevron.left, greaterThanOrEqualTo(details.right));
+    });
+
+    testWidgets('niente matita: il nome si cambia nella scheda', (
+      tester,
+    ) async {
+      await _pumpCard(tester, item: _result());
+      expect(find.byIcon(Icons.edit_outlined), findsNothing);
     });
 
     testWidgets('senza dubbi non mostra la riga di controllo', (tester) async {

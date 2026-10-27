@@ -227,28 +227,27 @@ class AppTheme {
       ),
 
       // === Checkbox Theme ===
-      // Spuntata: bordo e spunta arancioni, senza riempimento. Come le
-      // pillole delle categorie, la selezione si vede senza blocchi pieni:
-      // l'arancio pieno resta all'azione principale dello schermo.
+      // Spuntata: piena e neutra, del colore del testo, con la spunta del
+      // colore del fondo, come gli interruttori. Con il solo bordo arancio
+      // una colonna di caselle spuntate sembrava una fila di icone. L'arancio
+      // pieno resta all'azione principale dello schermo.
       checkboxTheme: CheckboxThemeData(
-        fillColor: const WidgetStatePropertyAll(Colors.transparent),
-        checkColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.disabled)
-              ? colorScheme.onSurface.withValues(alpha: AppOpacity.disabled)
-              : colorScheme.primary,
-        ),
-        side: WidgetStateBorderSide.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) {
-            return BorderSide(
-              color: colorScheme.onSurface.withValues(
-                alpha: AppOpacity.disabled,
-              ),
-              width: AppConstants.emphasisBorderWidth,
-            );
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (!states.contains(WidgetState.selected)) {
+            return Colors.transparent;
           }
+          return states.contains(WidgetState.disabled)
+              ? colorScheme.onSurface.withValues(alpha: AppOpacity.disabled)
+              : colorScheme.onSurface;
+        }),
+        checkColor: WidgetStatePropertyAll(colorScheme.surface),
+        side: WidgetStateBorderSide.resolveWith((states) {
+          final disabled = states.contains(WidgetState.disabled);
           return BorderSide(
-            color: states.contains(WidgetState.selected)
-                ? colorScheme.primary
+            color: disabled
+                ? colorScheme.onSurface.withValues(alpha: AppOpacity.disabled)
+                : states.contains(WidgetState.selected)
+                ? colorScheme.onSurface
                 : colorScheme.onSurfaceVariant,
             width: AppConstants.emphasisBorderWidth,
           );
