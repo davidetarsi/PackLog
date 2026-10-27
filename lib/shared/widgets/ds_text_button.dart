@@ -68,6 +68,8 @@ class DsTextButton extends StatelessWidget {
 
     return TextButton(
       style: TextButton.styleFrom(
+        // Anche il ripple prende il colore del testo, non l'arancio del tema.
+        foregroundColor: color,
         minimumSize: const Size(
           kMinInteractiveDimension,
           kMinInteractiveDimension,
