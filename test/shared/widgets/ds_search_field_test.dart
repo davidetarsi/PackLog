@@ -72,6 +72,22 @@ void main() {
     expect(find.byKey(const Key('ds_search_clear')), findsNothing);
   });
 
+  testWidgets('la rotella è del colore della x, non arancio', (tester) async {
+    final controller = TextEditingController(text: 'rom');
+    addTearDown(controller.dispose);
+    await pump(
+      tester,
+      DsSearchField(controller: controller, hintText: 'Cerca', isLoading: true),
+    );
+    final scheme = Theme.of(
+      tester.element(find.byType(DsSearchField)),
+    ).colorScheme;
+    final spinner = tester.widget<CircularProgressIndicator>(
+      find.byType(CircularProgressIndicator),
+    );
+    expect(spinner.color, scheme.onSurfaceVariant);
+  });
+
   testWidgets('lente a sinistra, tranne nella barra', (tester) async {
     await pump(tester, const DsSearchField(hintText: 'Cerca'));
     expect(find.byIcon(Icons.search), findsOneWidget);

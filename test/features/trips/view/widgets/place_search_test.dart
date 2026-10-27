@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,7 +58,7 @@ final _places = [
 ];
 
 Finder _houseRow(String id) => find.byKey(Key('place_search_house_$id'));
-Finder _placeRow(int index) => find.byKey(Key('place_search_location_$index'));
+Finder _placeRow(int index) => find.byKey(Key('location_result_$index'));
 
 void main() {
   late _MockLocationSearchService service;
@@ -90,6 +92,29 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('mentre cerca, la rotella sostituisce la x come nella casa', (
+    tester,
+  ) async {
+    final pending = Completer<List<LocationSuggestionModel>>();
+    when(
+      () => service.search(any(), lang: any(named: 'lang')),
+    ).thenAnswer((_) => pending.future);
+    await pumpSearch(tester, onSelected: (_) {});
+
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'Marsiglia');
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byKey(const Key('ds_search_clear')), findsNothing);
+
+    pending.complete(_places);
+    await tester.pumpAndSettle();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byKey(const Key('ds_search_clear')), findsOneWidget);
+  });
 
   testWidgets('al tocco compaiono tutte le case, senza cercare luoghi', (
     tester,
