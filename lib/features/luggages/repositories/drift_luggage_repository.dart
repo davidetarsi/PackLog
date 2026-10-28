@@ -66,7 +66,7 @@ class DriftLuggageRepository implements LuggageRepository {
 
     if (!result.success) {
       debugPrint('[LuggageRepo] Errore caricando bagagli: ${result.error}');
-      return [];
+      throw EntityLoadException('getAllLuggages', cause: result.error);
     }
 
     return result.data!.map(_toModel).toList();
@@ -83,7 +83,10 @@ class DriftLuggageRepository implements LuggageRepository {
       debugPrint(
         '[LuggageRepo] Errore caricando bagagli per casa: ${result.error}',
       );
-      return [];
+      throw EntityLoadException(
+        'getLuggagesByHouseId($houseId)',
+        cause: result.error,
+      );
     }
 
     return result.data!.map(_toModel).toList();

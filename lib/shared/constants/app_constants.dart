@@ -1,23 +1,11 @@
 // Regola border radius (DS Phase 1):
 // - Token noti (cardBorderRadius, pillBorderRadius, …) → BorderRadius.circular(AppConstants.X) raw.
 //   Scalare con responsiveBorderRadius su token noti è impercettibile e aggiunge complessità.
-// - Valori contestuali/magici (es. cardBorderRadius + 4) → context.responsiveBorderRadius(X).
+// - Valori contestuali/magici (es. raggi derivati da un'altra misura) → context.responsiveBorderRadius(X).
 class AppConstants {
   static const String housesKey = 'houses';
   static const String itemsKey = 'items';
   static const String tripsKey = 'trips';
-
-  // ── UI Layout Tokens ────────────────────────────────────────────────────────
-
-  /// Gutter orizzontale standard di pagina.
-  /// Fonte unica: usare per ogni padding left/right a livello di schermata.
-  /// Equivale ad AppSpacing.md (= 16.0). Valore duplicato deliberatamente
-  /// per evitare dipendenza circolare tra app_constants e app_spacing.
-  static const double screenHorizontalGutter = 16.0;
-
-  /// Altezza della floating tab bar (senza safe area).
-  /// Bumpata a 60 in Fase 3 per accomodare label 12px + icona 22px senza overflow.
-  static const double tabBarHeight = 60.0;
 
   // ── Border Radius ────────────────────────────────────────────────────────────
 
@@ -36,10 +24,24 @@ class AppConstants {
   /// Border radius for dialogs and modals (20.0)
   static const double modalBorderRadius = 20.0;
 
+  /// Raggio dei dettagli minuti: strisce, angoli di riquadri piccoli (4.0).
+  static const double smallBorderRadius = 4.0;
+
+  // ── Border Width ─────────────────────────────────────────────────────────────
+
+  /// Bordo sottile di default, a riposo: pillole e riquadri non selezionati (1.0).
+  static const double hairlineBorderWidth = 1.0;
+
+  /// Bordo del campo o della scelta a fuoco, selezionata o in errore (1.5).
+  static const double selectedBorderWidth = 1.5;
+
   // ── Spacing ──────────────────────────────────────────────────────────────────
 
   /// Padding inferiore per le bottom sheet (evita sovrapposizione con elementi sotto)
   static const double bottomSheetBottomPadding = 24.0;
+
+  /// Altezza massima dei fogli: si vede sempre un pezzo della pagina sotto.
+  static const double sheetMaxHeightFactor = 0.9;
 
   /// Altezza fissa riservata per i tab contenuto filtri (AppPillTab standard).
   static const double pillTabDefault = 36.0;
@@ -47,8 +49,30 @@ class AppConstants {
   /// Altezza fissa per tab filtri compatti (raro).
   static const double pillTabCompact = 32.0;
 
-  // ── AI Import ────────────────────────────────────────────────────────────────
+  /// Altezza della riga delle 4 categorie (pillole con icona e nome), come
+  /// gli elementi della barra in basso della casa.
+  static const double categoryRowHeight = 50.0;
 
-  /// Width of score label column in AI result cards.
-  static const double aiScoreLabelWidth = 76.0;
+  /// Sfocatura del contenuto che scorre sotto la fascia di vetro in fondo
+  /// (DsGlassBand). Senza velo: si vedono i colori veri, sfocati.
+  static const double ctaBlurSigma = 16.0;
+
+  /// Altezza del bottone principale in fondo (DsButton) e dei bottoni che gli
+  /// stanno accanto o al suo posto (es. "Avanti" del foglio AI).
+  static const double ctaHeight = 56.0;
+
+  /// Bordo più spesso del solito, per un contorno che deve farsi notare
+  /// (es. il numero degli avvisi, "Prepara con AI").
+  static const double emphasisBorderWidth = 2.0;
+
+  /// Bordo tratteggiato (es. "Uguale a …"): lunghezza di un tratto e spazio
+  /// tra due tratti.
+  static const double dashLength = 4.0;
+  static const double dashGap = 3.0;
+
+  /// Lato del francobollo delle cartoline piccole dell'album.
+  static const double albumStampSize = 56.0;
+
+  /// Altezza dei segmenti di avanzamento (es. le tappe del foglio AI).
+  static const double progressSegmentHeight = 4.0;
 }

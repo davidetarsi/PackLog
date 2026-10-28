@@ -328,6 +328,12 @@ mixin _$TripModel {
   /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
   List<TripLeg> get legs => throw _privateConstructorUsedError;
 
+  /// Risposte del foglio della valigia AI. `null` = nessuna informazione.
+  AiPackingSetup? get aiSetup => throw _privateConstructorUsedError;
+
+  /// Valigia proposta dalla valigia AI. `null` = nessuna informazione.
+  AiPackingResult? get aiResult => throw _privateConstructorUsedError;
+
   /// Viaggio salvato/preferito
   bool get isSaved => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -359,12 +365,16 @@ abstract class $TripModelCopyWith<$Res> {
     LocationSuggestionModel? destinationLocation,
     List<LuggageModel> luggages,
     List<TripLeg> legs,
+    AiPackingSetup? aiSetup,
+    AiPackingResult? aiResult,
     bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
   });
 
   $LocationSuggestionModelCopyWith<$Res>? get destinationLocation;
+  $AiPackingSetupCopyWith<$Res>? get aiSetup;
+  $AiPackingResultCopyWith<$Res>? get aiResult;
 }
 
 /// @nodoc
@@ -392,6 +402,8 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
     Object? destinationLocation = freezed,
     Object? luggages = null,
     Object? legs = null,
+    Object? aiSetup = freezed,
+    Object? aiResult = freezed,
     Object? isSaved = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -438,6 +450,14 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
                 ? _value.legs
                 : legs // ignore: cast_nullable_to_non_nullable
                       as List<TripLeg>,
+            aiSetup: freezed == aiSetup
+                ? _value.aiSetup
+                : aiSetup // ignore: cast_nullable_to_non_nullable
+                      as AiPackingSetup?,
+            aiResult: freezed == aiResult
+                ? _value.aiResult
+                : aiResult // ignore: cast_nullable_to_non_nullable
+                      as AiPackingResult?,
             isSaved: null == isSaved
                 ? _value.isSaved
                 : isSaved // ignore: cast_nullable_to_non_nullable
@@ -470,6 +490,34 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
       return _then(_value.copyWith(destinationLocation: value) as $Val);
     });
   }
+
+  /// Create a copy of TripModel
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $AiPackingSetupCopyWith<$Res>? get aiSetup {
+    if (_value.aiSetup == null) {
+      return null;
+    }
+
+    return $AiPackingSetupCopyWith<$Res>(_value.aiSetup!, (value) {
+      return _then(_value.copyWith(aiSetup: value) as $Val);
+    });
+  }
+
+  /// Create a copy of TripModel
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $AiPackingResultCopyWith<$Res>? get aiResult {
+    if (_value.aiResult == null) {
+      return null;
+    }
+
+    return $AiPackingResultCopyWith<$Res>(_value.aiResult!, (value) {
+      return _then(_value.copyWith(aiResult: value) as $Val);
+    });
+  }
 }
 
 /// @nodoc
@@ -492,6 +540,8 @@ abstract class _$$TripModelImplCopyWith<$Res>
     LocationSuggestionModel? destinationLocation,
     List<LuggageModel> luggages,
     List<TripLeg> legs,
+    AiPackingSetup? aiSetup,
+    AiPackingResult? aiResult,
     bool isSaved,
     DateTime createdAt,
     DateTime updatedAt,
@@ -499,6 +549,10 @@ abstract class _$$TripModelImplCopyWith<$Res>
 
   @override
   $LocationSuggestionModelCopyWith<$Res>? get destinationLocation;
+  @override
+  $AiPackingSetupCopyWith<$Res>? get aiSetup;
+  @override
+  $AiPackingResultCopyWith<$Res>? get aiResult;
 }
 
 /// @nodoc
@@ -525,6 +579,8 @@ class __$$TripModelImplCopyWithImpl<$Res>
     Object? destinationLocation = freezed,
     Object? luggages = null,
     Object? legs = null,
+    Object? aiSetup = freezed,
+    Object? aiResult = freezed,
     Object? isSaved = null,
     Object? createdAt = null,
     Object? updatedAt = null,
@@ -571,6 +627,14 @@ class __$$TripModelImplCopyWithImpl<$Res>
             ? _value._legs
             : legs // ignore: cast_nullable_to_non_nullable
                   as List<TripLeg>,
+        aiSetup: freezed == aiSetup
+            ? _value.aiSetup
+            : aiSetup // ignore: cast_nullable_to_non_nullable
+                  as AiPackingSetup?,
+        aiResult: freezed == aiResult
+            ? _value.aiResult
+            : aiResult // ignore: cast_nullable_to_non_nullable
+                  as AiPackingResult?,
         isSaved: null == isSaved
             ? _value.isSaved
             : isSaved // ignore: cast_nullable_to_non_nullable
@@ -602,6 +666,8 @@ class _$TripModelImpl extends _TripModel {
     this.destinationLocation,
     final List<LuggageModel> luggages = const [],
     final List<TripLeg> legs = const [],
+    this.aiSetup,
+    this.aiResult,
     this.isSaved = false,
     required this.createdAt,
     required this.updatedAt,
@@ -669,6 +735,14 @@ class _$TripModelImpl extends _TripModel {
     return EqualUnmodifiableListView(_legs);
   }
 
+  /// Risposte del foglio della valigia AI. `null` = nessuna informazione.
+  @override
+  final AiPackingSetup? aiSetup;
+
+  /// Valigia proposta dalla valigia AI. `null` = nessuna informazione.
+  @override
+  final AiPackingResult? aiResult;
+
   /// Viaggio salvato/preferito
   @override
   @JsonKey()
@@ -680,7 +754,7 @@ class _$TripModelImpl extends _TripModel {
 
   @override
   String toString() {
-    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocation: $destinationLocation, luggages: $luggages, legs: $legs, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocation: $destinationLocation, luggages: $luggages, legs: $legs, aiSetup: $aiSetup, aiResult: $aiResult, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -703,6 +777,9 @@ class _$TripModelImpl extends _TripModel {
                 other.destinationLocation == destinationLocation) &&
             const DeepCollectionEquality().equals(other._luggages, _luggages) &&
             const DeepCollectionEquality().equals(other._legs, _legs) &&
+            (identical(other.aiSetup, aiSetup) || other.aiSetup == aiSetup) &&
+            (identical(other.aiResult, aiResult) ||
+                other.aiResult == aiResult) &&
             (identical(other.isSaved, isSaved) || other.isSaved == isSaved) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
@@ -724,6 +801,8 @@ class _$TripModelImpl extends _TripModel {
     destinationLocation,
     const DeepCollectionEquality().hash(_luggages),
     const DeepCollectionEquality().hash(_legs),
+    aiSetup,
+    aiResult,
     isSaved,
     createdAt,
     updatedAt,
@@ -755,6 +834,8 @@ abstract class _TripModel extends TripModel {
     final LocationSuggestionModel? destinationLocation,
     final List<LuggageModel> luggages,
     final List<TripLeg> legs,
+    final AiPackingSetup? aiSetup,
+    final AiPackingResult? aiResult,
     final bool isSaved,
     required final DateTime createdAt,
     required final DateTime updatedAt,
@@ -797,6 +878,14 @@ abstract class _TripModel extends TripModel {
   /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
   @override
   List<TripLeg> get legs;
+
+  /// Risposte del foglio della valigia AI. `null` = nessuna informazione.
+  @override
+  AiPackingSetup? get aiSetup;
+
+  /// Valigia proposta dalla valigia AI. `null` = nessuna informazione.
+  @override
+  AiPackingResult? get aiResult;
 
   /// Viaggio salvato/preferito
   @override

@@ -265,6 +265,23 @@ void main() {
       ).called(1);
     });
 
+    test(
+      'trackItemDetailsEdited emits item_details_edited with source and fields',
+      () async {
+        service.trackItemDetailsEdited(source: 'house', fields: ['warmth']);
+        await pump();
+        verify(
+          () => mockAnalytics.logEvent(
+            'item_details_edited',
+            properties: {
+              'source': 'house',
+              'fields': ['warmth'],
+            },
+          ),
+        ).called(1);
+      },
+    );
+
     test('trackItemUpdated emits item_updated with category', () async {
       service.trackItemUpdated(category: 'vestiti');
       await pump();
@@ -314,15 +331,26 @@ void main() {
   });
 
   group('AI & onboarding funnel (P2 #14)', () {
+    test('trackAiItemsSaved logs count + is_onboarding', () async {
+      service.trackAiItemsSaved(count: 4, isOnboarding: true);
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_items_saved',
+          properties: {'count': 4, 'is_onboarding': true},
+        ),
+      ).called(1);
+    });
+
     test(
-      'trackAiItemsSaved logs ai_items_saved with count + is_onboarding',
+      'trackAlreadyHereOpened logs whether manual candidates exist',
       () async {
-        service.trackAiItemsSaved(count: 4, isOnboarding: true);
+        service.trackAlreadyHereOpened(hasManualCandidates: true);
         await pump();
         verify(
           () => mockAnalytics.logEvent(
-            'ai_items_saved',
-            properties: {'count': 4, 'is_onboarding': true},
+            'already_here_opened',
+            properties: {'has_manual_candidates': true},
           ),
         ).called(1);
       },
@@ -371,5 +399,83 @@ void main() {
       expect(() => service.trackHouseDeleted(), returnsNormally);
       await pump();
     });
+  });
+
+  group('navigation_', () {
+    test('trackCreateTapped logs create_tapped', () async {
+      service.trackCreateTapped(tab: 'houses');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'create_tapped',
+          properties: {'tab': 'houses'},
+        ),
+      ).called(1);
+    });
+
+    test('trackCreateSheetChoice logs create_sheet_choice', () async {
+      service.trackCreateSheetChoice(choice: 'ai_scan', tab: 'trips');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'create_sheet_choice',
+          properties: {'choice': 'ai_scan', 'tab': 'trips'},
+        ),
+      ).called(1);
+    });
+  });
+
+  group('search_', () {
+    test('trackSearchOpened logs search_opened', () async {
+      service.trackSearchOpened(context: 'house');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'search_opened',
+          properties: {'context': 'house'},
+        ),
+      ).called(1);
+    });
+
+    test('trackSearchResultTapped logs search_result_tapped', () async {
+      service.trackSearchResultTapped(context: 'house', position: 2);
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'search_result_tapped',
+          properties: {'context': 'house', 'position': 2},
+        ),
+      ).called(1);
+    });
+
+    test(
+      'trackSearchNoResults logs search_no_results without the text',
+      () async {
+        service.trackSearchNoResults(context: 'house', queryLength: 4);
+        await pump();
+        verify(
+          () => mockAnalytics.logEvent(
+            'search_no_results',
+            properties: {'context': 'house', 'query_length': 4},
+          ),
+        ).called(1);
+      },
+    );
+  });
+
+  group('add_', () {
+    test(
+      'trackAddExistingMatchTapped logs add_existing_match_tapped',
+      () async {
+        service.trackAddExistingMatchTapped(position: 1);
+        await pump();
+        verify(
+          () => mockAnalytics.logEvent(
+            'add_existing_match_tapped',
+            properties: {'position': 1},
+          ),
+        ).called(1);
+      },
+    );
   });
 }

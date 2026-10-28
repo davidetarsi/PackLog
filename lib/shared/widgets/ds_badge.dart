@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_text_styles.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DsQuantityBadge
@@ -154,7 +156,10 @@ class DsStatusBadge extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacingSm,
+        vertical: context.spacingXxs,
+      ),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
@@ -163,8 +168,8 @@ class DsStatusBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12, color: fg),
-            const SizedBox(width: 4),
+            Icon(icon, size: context.iconSizeXs, color: fg),
+            SizedBox(width: context.spacingXs),
           ],
           Text(
             label,
@@ -202,18 +207,17 @@ class DsInfoBadge extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: cs.onSurfaceVariant),
-        const SizedBox(width: 6),
+        Icon(icon, size: context.iconSizeSm, color: cs.onSurfaceVariant),
+        SizedBox(width: context.spacingXs),
         Flexible(
           child: Text(
             label,
             // bodyMedium e non bodyLarge: sono metadati (date, destinazione,
             // bagagli), non testo di contenuto. A 16 occupavano la stessa
             // taglia del corpo e mandavano a capo il Wrap della card viaggio.
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.strong.copyWith(color: cs.onSurfaceVariant),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

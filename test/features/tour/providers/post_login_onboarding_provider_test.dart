@@ -61,7 +61,7 @@ void main() {
       final repo = MockOnboardingRepository();
       _setupDefaultMock(
         repo,
-        step: OnboardingStep.houseTooltip,
+        step: OnboardingStep.houseDetailTooltip,
         skippedAi: true,
         defaultHouseId: 'house-1',
       );
@@ -69,7 +69,7 @@ void main() {
       addTearDown(container.dispose);
 
       final result = await container.read(postLoginOnboardingProvider.future);
-      expect(result.step, OnboardingStep.houseTooltip);
+      expect(result.step, OnboardingStep.houseDetailTooltip);
       expect(result.skippedAi, isTrue);
       expect(result.defaultHouseId, 'house-1');
     });
@@ -77,7 +77,7 @@ void main() {
     // "Salta" sulla AI intro chiude l'INTERO tour, non solo la demo AI:
     // l'utente che preme Salta non vuole essere guidato oltre. Il flag
     // skippedAi resta salvato per distinguere questa uscita dal completamento
-    // naturale (analytics) e per lo stato legacy — vedi il test su _nextStep.
+    // naturale (analytics).
     test('skipAi() ends the whole tour (step=done)', () async {
       final repo = MockOnboardingRepository();
       _setupDefaultMock(repo);
@@ -95,7 +95,7 @@ void main() {
     });
 
     test(
-      'completeAi() advances to houseTooltip when hasExistingHouses=false',
+      'completeAi() advances to houseDetailTooltip when hasExistingHouses=false',
       () async {
         final repo = MockOnboardingRepository();
         _setupDefaultMock(repo);
@@ -108,7 +108,7 @@ void main() {
             .completeAi('new-house-id');
 
         final state = container.read(postLoginOnboardingProvider).valueOrNull!;
-        expect(state.step, OnboardingStep.houseTooltip);
+        expect(state.step, OnboardingStep.houseDetailTooltip);
         expect(state.defaultHouseId, 'new-house-id');
       },
     );
@@ -129,66 +129,54 @@ void main() {
     });
 
     test(
-      'advance() skippedAi=false: houseTooltip -> defaultHouseTooltip',
+      'advance() full chain: houseDetailTooltip -> done (3 advances)',
       () async {
         final repo = MockOnboardingRepository();
-        _setupDefaultMock(repo, step: OnboardingStep.houseTooltip);
-        final container = makeContainer(repo: repo);
-        addTearDown(container.dispose);
-
-        await container.read(postLoginOnboardingProvider.future);
-        await container.read(postLoginOnboardingProvider.notifier).advance();
-
-        expect(
-          container.read(postLoginOnboardingProvider).valueOrNull?.step,
-          OnboardingStep.defaultHouseTooltip,
-        );
-      },
-    );
-
-    test(
-      'advance() skippedAi=true: houseTooltip -> createTripTooltip',
-      () async {
-        final repo = MockOnboardingRepository();
-        _setupDefaultMock(
-          repo,
-          step: OnboardingStep.houseTooltip,
-          skippedAi: true,
-        );
-        final container = makeContainer(repo: repo);
-        addTearDown(container.dispose);
-
-        await container.read(postLoginOnboardingProvider.future);
-        await container.read(postLoginOnboardingProvider.notifier).advance();
-
-        expect(
-          container.read(postLoginOnboardingProvider).valueOrNull?.step,
-          OnboardingStep.createTripTooltip,
-        );
-      },
-    );
-
-    test(
-      'advance() full chain without skip: houseTooltip -> done (5 advances)',
-      () async {
-        final repo = MockOnboardingRepository();
-        _setupDefaultMock(repo, step: OnboardingStep.houseTooltip);
+        _setupDefaultMock(repo, step: OnboardingStep.houseDetailTooltip);
         final container = makeContainer(repo: repo);
         addTearDown(container.dispose);
 
         await container.read(postLoginOnboardingProvider.future);
         final notifier = container.read(postLoginOnboardingProvider.notifier);
 
-        for (var i = 0; i < 5; i++) {
+        final steps = <OnboardingStep?>[];
+        for (var i = 0; i < 3; i++) {
           await notifier.advance();
+          steps.add(
+            container.read(postLoginOnboardingProvider).valueOrNull?.step,
+          );
         }
 
-        expect(
-          container.read(postLoginOnboardingProvider).valueOrNull?.step,
+        expect(steps, [
+          OnboardingStep.createTripTooltip,
+          OnboardingStep.tripCreationTooltip,
           OnboardingStep.done,
-        );
+        ]);
       },
     );
+
+    // Stato salvato da una build col tour precedente: i suoi tip non esistono
+    // più, e si riprende dal tip su Crea.
+    for (final legacy in [
+      OnboardingStep.houseTooltip,
+      OnboardingStep.defaultHouseTooltip,
+      OnboardingStep.moveItemsTooltip,
+    ]) {
+      test(
+        'build() porta ${legacy.name} (legacy) su createTripTooltip',
+        () async {
+          final repo = MockOnboardingRepository();
+          _setupDefaultMock(repo, step: legacy);
+          final container = makeContainer(repo: repo);
+          addTearDown(container.dispose);
+
+          final result = await container.read(
+            postLoginOnboardingProvider.future,
+          );
+          expect(result.step, OnboardingStep.createTripTooltip);
+        },
+      );
+    }
 
     group('tour_completed', () {
       test('emitted once when advance() reaches done, with context', () async {
@@ -204,14 +192,14 @@ void main() {
         verify(
           () => analytics.logEvent(
             'tour_completed',
-            properties: {'skipped_ai': false, 'last_step_index': 5},
+            properties: {'skipped_ai': false, 'last_step_index': 3},
           ),
         ).called(1);
       });
 
       test('not emitted on the intermediate steps of the tour', () async {
         final repo = MockOnboardingRepository();
-        _setupDefaultMock(repo, step: OnboardingStep.houseTooltip);
+        _setupDefaultMock(repo, step: OnboardingStep.houseDetailTooltip);
         final analytics = _makeAnalytics();
         final container = makeContainer(repo: repo, analytics: analytics);
         addTearDown(container.dispose);
@@ -232,7 +220,7 @@ void main() {
       // alla differenza fra chi finisce e chi molla.
       test('not emitted by markDone() (abbandono da un tip)', () async {
         final repo = MockOnboardingRepository();
-        _setupDefaultMock(repo, step: OnboardingStep.moveItemsTooltip);
+        _setupDefaultMock(repo, step: OnboardingStep.createTripTooltip);
         final analytics = _makeAnalytics();
         final container = makeContainer(repo: repo, analytics: analytics);
         addTearDown(container.dispose);

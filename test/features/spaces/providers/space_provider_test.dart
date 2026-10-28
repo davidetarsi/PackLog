@@ -1,3 +1,4 @@
+import 'package:pack_log/core/database/exceptions/database_exceptions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -50,6 +51,57 @@ void main() {
   tearDown(() {
     container.dispose();
   });
+
+  test(
+    'eliminazione rifiutata dal repository resta un errore recuperabile',
+    () async {
+      when(
+        () => mockRepository.getSpacesByHouseId('h-1'),
+      ).thenAnswer((_) async => <SpaceModel>[]);
+      when(
+        () => mockRepository.deleteSpace('missing'),
+      ).thenAnswer((_) async => false);
+      await container.read(spaceNotifierProvider('h-1').future);
+      await expectLater(
+        container
+            .read(spaceNotifierProvider('h-1').notifier)
+            .deleteSpace('missing'),
+        throwsA(isA<AppDatabaseException>()),
+      );
+      verifyNever(() => mockSync.requestSync());
+    },
+  );
+
+  test(
+    'un reload fallito dopo insert riuscito non richiede una seconda scrittura',
+    () async {
+      final model = SpaceModel(
+        id: 'new',
+        houseId: 'h-1',
+        name: 'Nuovo',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      var reads = 0;
+      when(() => mockRepository.getSpacesByHouseId('h-1')).thenAnswer((
+        _,
+      ) async {
+        if (reads++ > 0) throw const EntityLoadException('reload');
+        return <SpaceModel>[];
+      });
+      when(() => mockRepository.addSpace(any())).thenAnswer((_) async {});
+      await container.read(spaceNotifierProvider('h-1').future);
+      await expectLater(
+        container.read(spaceNotifierProvider('h-1').notifier).addSpace(model),
+        completes,
+      );
+      expect(container.read(spaceNotifierProvider('h-1')).requireValue, [
+        model,
+      ]);
+      verify(() => mockRepository.addSpace(model)).called(1);
+      verify(() => mockSync.requestSync()).called(1);
+    },
+  );
 
   group('SpaceNotifier - Family by houseId (P2 #12)', () {
     test('build only loads spaces for the requested houseId', () async {

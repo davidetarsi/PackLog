@@ -4,18 +4,26 @@ import 'package:flutter/material.dart';
 /// Usa questi valori invece di numeri magici per mantenere proporzioni consistenti.
 class AppSpacing {
   // === Spaziature base ===
+  // Micro-spazi di 1-2 px tra elementi già vicini.
+  static const double xxs = 2;
   static const double xs = 4;
   static const double sm = 8;
+  // Tra sm e md: pillole e righe con più testo.
+  static const double smPlus = 12;
   static const double md = 16;
   static const double lg = 24;
   static const double xl = 32;
 
   // === Dimensioni icone base ===
+  // Icona accanto a testo piccolo (badge, riga compatta).
+  static const double iconXs = 12;
   static const double iconSm = 16;
   static const double iconMd = 24;
   static const double iconLg = 32;
   static const double iconXl = 48;
   static const double iconHero = 64;
+  // Illustrazione grande (login, onboarding).
+  static const double iconDisplay = 80;
 
   // === Font size base ===
   // Floor: fontXxs = 12px. Mai scendere sotto.
@@ -42,52 +50,17 @@ class AppSpacing {
 
   // === Padding predefiniti ===
 
-  /// Padding standard per le schermate
-  static const EdgeInsets screenPadding = EdgeInsets.all(md);
-
-  /// Padding per le card (vedi cardPaddingHero / cardPaddingDense per i token semantici)
-  static const EdgeInsets cardPadding = EdgeInsets.all(sm);
-
   /// Padding semantico per card eroiche/isolate (una per schermata o in liste poco fitte).
-  /// Casi d'uso: HouseCard, TripSummaryCard, TripCard masonry, TemplateCard, card date TripInfoForm.
+  /// Casi d'uso: HouseCard, TemplateCard, card date TripInfoForm.
   static const EdgeInsets cardPaddingHero = EdgeInsets.all(md); // 16
 
-  /// Padding semantico per item ad alta frequenza in lista (BulkItemRow, UniversalItemTile, ListTile).
+  /// Padding semantico per item ad alta frequenza in lista (UniversalItemTile, ListTile).
   static const EdgeInsets cardPaddingDense = EdgeInsets.all(sm); // 8
 
   // Regola di scelta:
   // • Hero  (16): card "grande" o card in lista poco fitta.
   // • Dense  (8): item in lista ad alta frequenza.
   // Il valore 12 (spacingSm + 4) è eliminato. Ogni caso va mappato su Hero o Dense.
-
-  /// Padding per gli elementi di una lista
-  static const EdgeInsets listItemPadding = EdgeInsets.symmetric(
-    horizontal: md,
-    vertical: sm,
-  );
-
-  /// Padding per i contenuti di un bottom sheet
-  static const EdgeInsets sheetPadding = EdgeInsets.all(md);
-
-  // === Gap verticali ===
-
-  /// Gap piccolo tra elementi correlati
-  static const SizedBox gapSm = SizedBox(height: sm);
-
-  /// Gap medio tra sezioni
-  static const SizedBox gapMd = SizedBox(height: md);
-
-  /// Gap grande tra gruppi di contenuto
-  static const SizedBox gapLg = SizedBox(height: lg);
-
-  /// Gap extra-large per sezioni isolate (es. CTA finale di un form)
-  static const SizedBox gapXl = SizedBox(height: xl);
-
-  // === Gap orizzontali ===
-
-  static const SizedBox hGapSm = SizedBox(width: sm);
-  static const SizedBox hGapMd = SizedBox(width: md);
-  static const SizedBox hGapLg = SizedBox(width: lg);
 }
 
 /// Extension per calcolare valori responsive basati sulla larghezza dello schermo.
@@ -128,37 +101,29 @@ extension ResponsiveSpacing on BuildContext {
 
   // === Spaziature responsive ===
 
+  double get spacingXxs => AppSpacing.xxs * scaleFactor;
   double get spacingXs => AppSpacing.xs * scaleFactor;
   double get spacingSm => AppSpacing.sm * scaleFactor;
+  double get spacingSmPlus => AppSpacing.smPlus * scaleFactor;
   double get spacingMd => AppSpacing.md * scaleFactor;
   double get spacingLg => AppSpacing.lg * scaleFactor;
   double get spacingXl => AppSpacing.xl * scaleFactor;
 
   // === Icone responsive ===
 
+  double get iconSizeXs => AppSpacing.iconXs * scaleFactor;
   double get iconSizeSm => AppSpacing.iconSm * scaleFactor;
   double get iconSizeMd => AppSpacing.iconMd * scaleFactor;
   double get iconSizeLg => AppSpacing.iconLg * scaleFactor;
   double get iconSizeXl => AppSpacing.iconXl * scaleFactor;
   double get iconSizeHero => AppSpacing.iconHero * scaleFactor;
+  double get iconSizeDisplay => AppSpacing.iconDisplay * scaleFactor;
 
   // === Font responsive ===
 
-  double get fontSizeXxs => AppSpacing.fontXxs * fontScaleFactor;
   double get fontSizeXs => AppSpacing.fontXs * fontScaleFactor;
-  double get fontSizeSm => AppSpacing.fontSm * fontScaleFactor;
-  double get fontSizeMd => AppSpacing.fontMd * fontScaleFactor;
-  double get fontSizeLg => AppSpacing.fontLg * fontScaleFactor;
-  double get fontSizeXl => AppSpacing.fontXl * fontScaleFactor;
-  double get fontSizeTitle => AppSpacing.fontTitle * fontScaleFactor;
-  double get fontSizeHeading => AppSpacing.fontHeading * fontScaleFactor;
-  double get fontSizeDisplay => AppSpacing.fontDisplay * fontScaleFactor;
 
   // === Padding responsive ===
-
-  EdgeInsets get responsiveScreenPadding => EdgeInsets.all(spacingMd);
-
-  EdgeInsets get responsiveCardPadding => EdgeInsets.all(spacingSm);
 
   /// Padding semantico responsive per card eroiche/isolate.
   /// Corrisponde ad AppSpacing.cardPaddingHero scalato al device.
@@ -167,37 +132,6 @@ extension ResponsiveSpacing on BuildContext {
   /// Padding semantico responsive per item ad alta frequenza in lista.
   /// Corrisponde ad AppSpacing.cardPaddingDense scalato al device.
   EdgeInsets get cardPaddingDense => EdgeInsets.all(spacingSm);
-
-  @Deprecated(
-    'Usa EdgeInsets.symmetric(horizontal: context.spacingMd, vertical: context.spacingSm) '
-    'oppure i token context.cardPaddingHero / context.cardPaddingDense. '
-    'Rimosso nella Fase 1 del design system refactor (DS_FIXES 1.10).',
-  )
-  EdgeInsets responsiveSymmetricPadding({
-    double horizontal = 0,
-    double vertical = 0,
-  }) => EdgeInsets.symmetric(
-    horizontal: horizontal * scaleFactor,
-    vertical: vertical * scaleFactor,
-  );
-
-  EdgeInsets responsivePadding({
-    double left = 0,
-    double top = 0,
-    double right = 0,
-    double bottom = 0,
-  }) => EdgeInsets.only(
-    left: left * scaleFactor,
-    top: top * scaleFactor,
-    right: right * scaleFactor,
-    bottom: bottom * scaleFactor,
-  );
-
-  // === SizedBox responsive ===
-
-  SizedBox responsiveGap(double height) =>
-      SizedBox(height: height * scaleFactor);
-  SizedBox responsiveHGap(double width) => SizedBox(width: width * scaleFactor);
 
   // === BorderRadius responsive ===
 

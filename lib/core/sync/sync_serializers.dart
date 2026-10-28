@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../features/houses/model/house_model.dart';
 import '../../features/items/model/item_model.dart';
@@ -192,7 +193,7 @@ abstract final class SyncSerializers {
     return LuggagesCompanion(
       id: Value(r['id'] as String),
       userId: Value(r['user_id'] as String?),
-      houseId: Value(r['house_id'] as String),
+      houseId: Value(r['house_id'] as String?),
       name: Value(r['name'] as String),
       sizeType: Value(parseLuggageSize(r['size_type'])),
       volumeLiters: Value(r['volume_liters'] as int?),
@@ -248,6 +249,14 @@ abstract final class SyncSerializers {
       legs: r['legs'] == null
           ? const Value.absent()
           : Value(jsonEncode(r['legs'])),
+      // Stesse regole di `legs`: `null` non tocca il locale, un oggetto lo
+      // sostituisce.
+      aiPackingSetup: r['ai_packing_setup'] == null
+          ? const Value.absent()
+          : Value(jsonEncode(r['ai_packing_setup'])),
+      aiPackingResult: r['ai_packing_result'] == null
+          ? const Value.absent()
+          : Value(jsonEncode(r['ai_packing_result'])),
       createdAt: Value(DateTime.parse(r['created_at'] as String)),
       updatedAt: Value(DateTime.parse(r['updated_at'] as String)),
       isDeleted: Value(r['is_deleted'] as bool? ?? false),
@@ -394,6 +403,30 @@ abstract final class SyncSerializers {
       // Sempre una lista: `null` significherebbe "nessuna informazione" e la
       // rimozione delle tappe non si propagherebbe mai.
       'legs': trip.legs == null ? const <dynamic>[] : jsonDecode(trip.legs!),
+      // Chiavi omesse quando il dato manca: upsertTrip è un upsert di una
+      // riga sola, quindi una colonna omessa conserva il valore sul server.
+      // Mandare `null` lo sovrascriverebbe.
+      ..._aiJsonEntry('ai_packing_setup', trip.aiPackingSetup),
+      ..._aiJsonEntry('ai_packing_result', trip.aiPackingResult),
     };
+  }
+
+  /// Una sola chiave AI nel payload, oppure nessuna se il dato manca.
+  static Map<String, Object?> _aiJsonEntry(String key, String? raw) {
+    final value = _jsonObjectOrNull(raw);
+    return value == null ? const {} : {key: value};
+  }
+
+  /// Oggetto JSON salvato nel viaggio, o `null` se manca o è corrotto: un
+  /// dato AI illeggibile non deve bloccare il push di tutto il viaggio.
+  static Object? _jsonObjectOrNull(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (e) {
+      debugPrint('[SyncSerializers] JSON AI corrotto ignorato: $e');
+      return null;
+    }
   }
 }

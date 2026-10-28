@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
 
@@ -53,17 +54,54 @@ void main() {
   }
 
   group('DsButton — scala a tre livelli', () {
-    testWidgets('il secondario non ha sfondo proprio', (tester) async {
-      // Sfondo opaco: dentro un dialog, il cui fondo è più chiaro della
-      // surface, il bottone disegnava un rettangolo scuro attorno all'etichetta.
+    testWidgets('il secondario è pieno del fondo su cui sta', (tester) async {
+      // Pieno: sopra la fascia di vetro il contenuto sfocato non si vede
+      // dentro il bottone. Il fondo è quello della pagina.
       await pumpButton(
         tester,
         variant: DsButtonVariant.secondary,
         onPressed: () {},
       );
 
-      expect(backgroundOf(tester), Colors.transparent);
+      expect(backgroundOf(tester), AppTheme.dark.scaffoldBackgroundColor);
       expect(borderOf(tester), AppTheme.dark.colorScheme.primary);
+    });
+
+    testWidgets('dentro un dialog prende il fondo del dialog', (tester) async {
+      // Un fondo diverso da quello della pagina (dialog, gruppo): il bottone
+      // non deve disegnare un rettangolo di un altro colore.
+      const dialogColor = Color(0xFF334455);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: Center(
+              child: Material(
+                color: dialogColor,
+                child: DsButton(
+                  label: 'Etichetta',
+                  variant: DsButtonVariant.secondary,
+                  onPressed: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(backgroundOf(tester), dialogColor);
+    });
+
+    testWidgets('lo spento è pieno del fondo, senza vetro', (tester) async {
+      // Sul vetro il testo spento si perdeva: lo spento resta pieno.
+      await pumpButton(tester, variant: DsButtonVariant.neutral);
+      expect(backgroundOf(tester), AppTheme.dark.scaffoldBackgroundColor);
+      expect(
+        find.descendant(
+          of: find.byType(DsButton),
+          matching: find.byType(BackdropFilter),
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('il primario è a riempimento pieno', (tester) async {
@@ -74,6 +112,39 @@ void main() {
       );
 
       expect(backgroundOf(tester), AppTheme.dark.colorScheme.primary);
+    });
+
+    testWidgets('neutral: contorno e testo senza arancio', (tester) async {
+      await pumpButton(
+        tester,
+        variant: DsButtonVariant.neutral,
+        onPressed: () {},
+      );
+      final scheme = AppTheme.dark.colorScheme;
+
+      final label = tester.widget<Text>(
+        find.descendant(
+          of: find.byType(DsButton),
+          matching: find.text('Etichetta'),
+        ),
+      );
+
+      // Vetro come la barra delle tab: superficie semitrasparente sopra la
+      // sfocatura di ciò che sta sotto.
+      expect(
+        backgroundOf(tester),
+        scheme.surfaceContainer.withValues(alpha: AppOpacity.navGlass),
+      );
+      expect(
+        find.descendant(
+          of: find.byType(DsButton),
+          matching: find.byType(BackdropFilter),
+        ),
+        findsOneWidget,
+      );
+      expect(borderOf(tester), scheme.outline);
+      expect(borderOf(tester), isNot(scheme.primary));
+      expect(label.style?.color, scheme.onSurface);
     });
 
     testWidgets('disabilitato perde l accento anche da secondario', (

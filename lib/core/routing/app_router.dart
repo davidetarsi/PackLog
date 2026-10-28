@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
-import '../../shared/theme/app_spacing.dart';
 
 import '../../bootstrap.dart';
 import '../../features/onboarding/providers/onboarding_status_provider.dart';
@@ -16,18 +15,16 @@ import '../auth/auth_provider.dart';
 import '../auth/auth_state.dart';
 import '../../features/auth/view/login_screen.dart';
 import '../../features/houses/view/houses_screen.dart';
+import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
 import '../../features/profile/view/profile_screen.dart';
+import '../../features/trips/view/ai_packing_wait_screen.dart';
 import '../../features/trips/view/trips_screen.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
-import '../../features/trips/view/add_trip_screen.dart';
-import '../../features/trips/view/edit_trip_info_screen.dart';
-import '../../features/trips/view/edit_trip_items_screen.dart';
-import '../../features/ai_input/view/ai_clothing_sandbox_screen.dart';
+import '../../features/trips/view/new_trip_screen.dart';
+import '../../features/trips/view/pack_suitcase_screen.dart';
+import '../../features/trips/view/trip_weather_screen.dart';
 import '../../features/ai_input/view/ai_results_screen.dart';
-import '../../features/bulk_creation/view/house_selection_screen.dart';
-import '../../features/bulk_creation/view/template_selection_screen.dart';
-import '../../features/bulk_creation/view/bulk_item_list_screen.dart';
 import '../../features/tour/controllers/tour_orchestrator.dart';
 import '../../features/tour/model/onboarding_state.dart';
 import '../../features/tour/providers/post_login_onboarding_provider.dart';
@@ -36,12 +33,11 @@ import '../../features/tour/view/ai_onboarding_intro_screen.dart';
 import '../../features/tour/widgets/tour_trigger_wrapper.dart';
 import '../../shared/dev/ds_theme_showcase_screen.dart';
 import '../../shared/widgets/main_shell.dart';
-import '../../shared/widgets/ds_button.dart';
+import '../../shared/widgets/ds_not_found_state.dart';
 
 part 'app_router.g.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
-final _profileNavigatorKey = GlobalKey<NavigatorState>();
 final _housesNavigatorKey = GlobalKey<NavigatorState>();
 final _tripsNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -117,6 +113,13 @@ GoRouter appRouter(Ref ref) {
         if (postLoginStep != null &&
             postLoginStep != OnboardingStep.aiIntro &&
             isOnAiIntro) {
+          // Dopo la prova AI si entra nella casa appena creata, con i capi
+          // scansionati e il primo tip del tour.
+          final houseId = postLoginAsync.valueOrNull?.defaultHouseId;
+          if (postLoginStep == OnboardingStep.houseDetailTooltip &&
+              houseId != null) {
+            return '/houses/$houseId';
+          }
           return '/';
         }
       }
@@ -150,16 +153,6 @@ GoRouter appRouter(Ref ref) {
             TourListener(child: MainShell(navigationShell: navigationShell)),
         branches: [
           StatefulShellBranch(
-            navigatorKey: _profileNavigatorKey,
-            routes: [
-              GoRoute(
-                path: '/profile',
-                name: 'profile',
-                builder: (context, state) => const ProfileScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
             navigatorKey: _housesNavigatorKey,
             routes: [
               GoRoute(
@@ -182,41 +175,39 @@ GoRouter appRouter(Ref ref) {
         ],
       ),
       GoRoute(
+        path: '/profile',
+        name: 'profile',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
         path: '/houses/:id',
         name: 'house-detail',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           return TourTriggerWrapper(
-            triggerStep: OnboardingStep.moveItemsTooltip,
+            triggerStep: OnboardingStep.houseDetailTooltip,
             houseId: id,
-            title: 'tour.move_items_tooltip.title'.tr(),
-            body: 'tour.move_items_tooltip.body'.tr(),
-            keyTarget: tourKeys.houseItemsAnchor,
+            title: 'tour.house_detail_tooltip.title'.tr(),
+            body: 'tour.house_detail_tooltip.body'.tr(),
+            keyTarget: tourKeys.houseTitle,
             isSpotlight: true,
-            // Target vicino alla cima dello schermo: la card deve stare
-            // sotto, non sopra (il default per gli step spotlight la
-            // metterebbe fuori vista, sopra l'AppBar).
+            // Target nell'AppBar: la card deve stare sotto, non sopra (il
+            // default per gli step spotlight la metterebbe fuori vista).
             align: ContentAlign.bottom,
             advancesOnOk: true,
-            requiresMultipleHouses: true,
-            child: HouseDetailScreen(houseId: id),
+            // Toccare il nome evidenziato fa quello che il tip suggerisce.
+            onTargetTap: () => showAddEditHouseSheet(context, houseId: id),
+            child: HouseDetailScreen(
+              houseId: id,
+              // `?add=manual` arriva da Crea → "scrivili a mano".
+              openRapidFire: state.uri.queryParameters['add'] == 'manual',
+            ),
           );
-        },
-      ),
-      GoRoute(
-        path: '/houses/:id/ai-import',
-        name: 'ai-import',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final id = state.pathParameters['id'];
-          if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
-          }
-          return AiClothingSandboxScreen(houseId: id);
         },
       ),
       GoRoute(
@@ -226,7 +217,7 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           return AiResultsScreen(houseId: id, isFirstTimeOnboarding: false);
         },
@@ -238,7 +229,7 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           return TripDetailScreen(tripId: id);
         },
@@ -252,20 +243,10 @@ GoRouter appRouter(Ref ref) {
           title: 'tour.trip_creation_tooltip.title'.tr(),
           body: 'tour.trip_creation_tooltip.body'.tr(),
           advancesOnOk: true,
-          child: const AddTripScreen(),
+          child: NewTripScreen(
+            aiIntent: state.uri.queryParameters['ai'] == '1',
+          ),
         ),
-      ),
-      GoRoute(
-        path: '/trips/:id/edit',
-        name: 'trip-edit',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final id = state.pathParameters['id'];
-          if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_list_id'.tr());
-          }
-          return AddTripScreen(tripId: id);
-        },
       ),
       GoRoute(
         path: '/trips/:id/edit-info',
@@ -274,9 +255,13 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
-          return EditTripInfoScreen(tripId: id);
+          // Stessa pagina del nuovo viaggio, in modifica.
+          return NewTripScreen(
+            tripId: id,
+            discardOnExit: state.uri.queryParameters['reuse'] == '1',
+          );
         },
       ),
       GoRoute(
@@ -286,39 +271,42 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'];
           if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
+          }
+          return PackSuitcaseScreen(
+            tripId: id,
+            fromNewTrip: state.uri.queryParameters['from'] == 'new',
+            startAi: state.uri.queryParameters['ai'] == '1',
+          );
+        },
+      ),
+      GoRoute(
+        path: '/trips/:id/weather',
+        name: 'trip-weather',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
+          }
+          return TripWeatherScreen(
+            tripId: id,
+            stopIndex:
+                int.tryParse(state.uri.queryParameters['stop'] ?? '') ?? 0,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/trips/:id/ai-packing',
+        name: 'trip-ai-packing',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          final job = state.extra;
+          if (id == null || id.isEmpty || job is! PackTripJob) {
             return _ErrorScreen(message: 'errors.invalid_trip_id'.tr());
           }
-          return EditTripItemsScreen(tripId: id);
-        },
-      ),
-      GoRoute(
-        path: '/bulk-creation/select-house',
-        name: 'bulk-house-selection',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const HouseSelectionScreen(),
-      ),
-      GoRoute(
-        path: '/bulk-creation/templates/:houseId',
-        name: 'bulk-template-selection',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final houseId = state.pathParameters['houseId'];
-          if (houseId == null || houseId.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
-          }
-          return TemplateSelectionScreen(houseId: houseId);
-        },
-      ),
-      GoRoute(
-        path: '/bulk-creation/items/:houseId',
-        name: 'bulk-item-list',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final houseId = state.pathParameters['houseId'];
-          if (houseId == null || houseId.isEmpty) {
-            return _ErrorScreen(message: 'errors.invalid_house_id'.tr());
-          }
-          return BulkItemListScreen(houseId: houseId);
+          return AiPackingWaitScreen(tripId: id, job: job);
         },
       ),
       GoRoute(
@@ -334,7 +322,8 @@ GoRouter appRouter(Ref ref) {
       ),
     ],
     errorBuilder: (context, state) => _ErrorScreen(
-      message: 'common.navigation_error'.tr(args: [state.error.toString()]),
+      title: 'common.page_not_found'.tr(),
+      message: 'common.page_not_found_hint'.tr(),
     ),
   );
 }
@@ -346,37 +335,18 @@ GoRouter appRouter(Ref ref) {
 /// separata, con lo stesso layout copiato due volte.
 class _ErrorScreen extends StatelessWidget {
   final String message;
+  final String? title;
 
-  const _ErrorScreen({required this.message});
+  const _ErrorScreen({required this.message, this.title});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('common.error'.tr())),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            AppSpacing.gapMd,
-            Text(
-              message,
-              style: Theme.of(context).textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            AppSpacing.gapMd,
-            DsButton(
-              label: 'common.back_to_home'.tr(),
-              variant: DsButtonVariant.secondary,
-              onPressed: () => context.go('/'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title ?? 'common.page_unavailable'.tr())),
+    body: DsNotFoundState(
+      title: title ?? 'common.page_unavailable'.tr(),
+      message: message,
+      actionLabel: 'houses.back_to_houses'.tr(),
+      onAction: () => context.go('/'),
+    ),
+  );
 }

@@ -43,6 +43,7 @@ class SkeletonBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
+        // Maschera dello shimmer, non un colore visibile.
         color: Colors.white,
         borderRadius: BorderRadius.circular(borderRadius),
       ),

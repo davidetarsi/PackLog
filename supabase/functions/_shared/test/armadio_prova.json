@@ -1,0 +1,3752 @@
+[
+ {
+  "id": "w001",
+  "name": "T-shirt bianca",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt bianca",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Bianca",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w002",
+  "name": "T-shirt nera",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt nera",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Nera",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w003",
+  "name": "T-shirt grigia",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt grigia",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Grigia",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w004",
+  "name": "T-shirt blu navy",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt blu navy",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w005",
+  "name": "T-shirt verde militare",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt verde militare",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Verde militare",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w006",
+  "name": "T-shirt bordeaux",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt bordeaux",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Bordeaux",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w007",
+  "name": "T-shirt beige",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt beige",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w008",
+  "name": "T-shirt a righe",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt a righe",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Bianco",
+   "pattern": "Striped",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w009",
+  "name": "T-shirt con stampa grafica",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt con stampa grafica",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Nero",
+   "pattern": "Graphic",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w010",
+  "name": "T-shirt con logo",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt con logo",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Bianco",
+   "pattern": "Logo",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w011",
+  "name": "T-shirt tecnica nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt tecnica nero",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Skinny",
+   "warmth": 2,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w012",
+  "name": "T-shirt tecnica blu",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt tecnica blu",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Blu",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Skinny",
+   "warmth": 2,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w013",
+  "name": "T-shirt tecnica grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt tecnica grigio",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Skinny",
+   "warmth": 2,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport",
+    "Hiking"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w014",
+  "name": "T-shirt manica lunga bianca",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt manica lunga bianca",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w015",
+  "name": "T-shirt manica lunga nera",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt manica lunga nera",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w016",
+  "name": "Canottiera bianco",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Canottiera bianco",
+   "category": "Upper Body",
+   "subCategory": "Tank Top",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "Sleeveless",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w017",
+  "name": "Canottiera nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Canottiera nero",
+   "category": "Upper Body",
+   "subCategory": "Tank Top",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Sleeveless",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w018",
+  "name": "Canottiera grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Canottiera grigio",
+   "category": "Upper Body",
+   "subCategory": "Tank Top",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Sleeveless",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w019",
+  "name": "Polo blu navy",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Polo blu navy",
+   "category": "Upper Body",
+   "subCategory": "Polo",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w020",
+  "name": "Polo bianco",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Polo bianco",
+   "category": "Upper Body",
+   "subCategory": "Polo",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w021",
+  "name": "Polo verde",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Polo verde",
+   "category": "Upper Body",
+   "subCategory": "Polo",
+   "baseColor": "Verde",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w022",
+  "name": "Polo bordeaux",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Polo bordeaux",
+   "category": "Upper Body",
+   "subCategory": "Polo",
+   "baseColor": "Bordeaux",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w023",
+  "name": "Polo manica lunga grigia",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Polo manica lunga grigia",
+   "category": "Upper Body",
+   "subCategory": "Polo",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w024",
+  "name": "Camicia bianco in cotone",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia bianco in cotone",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w025",
+  "name": "Camicia azzurro in cotone",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia azzurro in cotone",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Azzurro",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w026",
+  "name": "Camicia rosa in cotone",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia rosa in cotone",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Rosa",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w027",
+  "name": "Camicia grigio in cotone",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia grigio in cotone",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w028",
+  "name": "Camicia bianca elegante",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia bianca elegante",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Formal",
+   "activityTags": [
+    "Formal",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w029",
+  "name": "Camicia a quadretti rossa",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia a quadretti rossa",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Rosso",
+   "pattern": "Plaid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w030",
+  "name": "Camicia a quadretti blu",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia a quadretti blu",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Blu navy",
+   "pattern": "Plaid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w031",
+  "name": "Camicia di lino azzurra",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia di lino azzurra",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Azzurro",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w032",
+  "name": "Camicia di lino bianca",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia di lino bianca",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w033",
+  "name": "Camicia jeans",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia jeans",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w034",
+  "name": "Camicia a maniche corte fantasia",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia a maniche corte fantasia",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Verde",
+   "pattern": "Floral",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w035",
+  "name": "Felpa con cappuccio grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Felpa con cappuccio grigio",
+   "category": "Upper Body",
+   "subCategory": "Hoodie",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Lounge"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w036",
+  "name": "Felpa con cappuccio nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Felpa con cappuccio nero",
+   "category": "Upper Body",
+   "subCategory": "Hoodie",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Lounge"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w037",
+  "name": "Felpa con cappuccio blu navy",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Felpa con cappuccio blu navy",
+   "category": "Upper Body",
+   "subCategory": "Hoodie",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Lounge"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w038",
+  "name": "Felpa con cappuccio verde",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Felpa con cappuccio verde",
+   "category": "Upper Body",
+   "subCategory": "Hoodie",
+   "baseColor": "Verde",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Lounge"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w039",
+  "name": "Felpa girocollo blu navy",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Felpa girocollo blu navy",
+   "category": "Upper Body",
+   "subCategory": "Sweatshirt",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w040",
+  "name": "Felpa girocollo grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Felpa girocollo grigio",
+   "category": "Upper Body",
+   "subCategory": "Sweatshirt",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w041",
+  "name": "Felpa girocollo bordeaux",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Felpa girocollo bordeaux",
+   "category": "Upper Body",
+   "subCategory": "Sweatshirt",
+   "baseColor": "Bordeaux",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w042",
+  "name": "Felpa girocollo beige",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Felpa girocollo beige",
+   "category": "Upper Body",
+   "subCategory": "Sweatshirt",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w043",
+  "name": "Maglione di lana nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Maglione di lana nero",
+   "category": "Upper Body",
+   "subCategory": "Sweater",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w044",
+  "name": "Maglione di lana grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Maglione di lana grigio",
+   "category": "Upper Body",
+   "subCategory": "Sweater",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w045",
+  "name": "Maglione dolcevita nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Maglione dolcevita nero",
+   "category": "Upper Body",
+   "subCategory": "Sweater",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w046",
+  "name": "Maglione grosso da montagna",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Maglione grosso da montagna",
+   "category": "Upper Body",
+   "subCategory": "Sweater",
+   "baseColor": "Bordeaux",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 5,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w047",
+  "name": "Maglioncino leggero beige",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Maglioncino leggero beige",
+   "category": "Upper Body",
+   "subCategory": "Sweater",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w048",
+  "name": "Cardigan grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Cardigan grigio",
+   "category": "Upper Body",
+   "subCategory": "Sweater",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w049",
+  "name": "Pile tecnico verde",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pile tecnico verde",
+   "category": "Upper Body",
+   "subCategory": "Sweater",
+   "baseColor": "Verde",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w050",
+  "name": "Pile tecnico nero pesante",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pile tecnico nero pesante",
+   "category": "Upper Body",
+   "subCategory": "Sweater",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w051",
+  "name": "Maglia termica base layer",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Maglia termica base layer",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Skinny",
+   "warmth": 3,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Hiking",
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w052",
+  "name": "Crop top bianco",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Crop top bianco",
+   "category": "Upper Body",
+   "subCategory": "Crop Top",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "Sleeveless",
+   "fit": "Skinny",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w053",
+  "name": "Jeans slim blu navy",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Jeans slim blu navy",
+   "category": "Lower Body",
+   "subCategory": "Jeans",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Skinny",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w054",
+  "name": "Jeans slim nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Jeans slim nero",
+   "category": "Lower Body",
+   "subCategory": "Jeans",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Skinny",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w055",
+  "name": "Jeans slim grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Jeans slim grigio",
+   "category": "Lower Body",
+   "subCategory": "Jeans",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Skinny",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w056",
+  "name": "Jeans regular scuri",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Jeans regular scuri",
+   "category": "Lower Body",
+   "subCategory": "Jeans",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w057",
+  "name": "Jeans chiari estivi",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Jeans chiari estivi",
+   "category": "Lower Body",
+   "subCategory": "Jeans",
+   "baseColor": "Azzurro",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w058",
+  "name": "Chino beige",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Chino beige",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w059",
+  "name": "Chino blu navy",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Chino blu navy",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w060",
+  "name": "Chino verde militare",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Chino verde militare",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Verde militare",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w061",
+  "name": "Chino grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Chino grigio",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w062",
+  "name": "Pantaloni eleganti grigi",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni eleganti grigi",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w063",
+  "name": "Pantaloni eleganti neri",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni eleganti neri",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Formal",
+   "activityTags": [
+    "Formal",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w064",
+  "name": "Pantaloni da completo blu",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni da completo blu",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w065",
+  "name": "Pantaloni da trekking verdi",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni da trekking verdi",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Verde",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w066",
+  "name": "Pantaloni da trekking convertibili",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni da trekking convertibili",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w067",
+  "name": "Pantaloni impermeabili da montagna",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni impermeabili da montagna",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 2
+  }
+ },
+ {
+  "id": "w068",
+  "name": "Pantaloni di lino bianchi",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni di lino bianchi",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Beach",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w069",
+  "name": "Bermuda in cotone beige",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Bermuda in cotone beige",
+   "category": "Lower Body",
+   "subCategory": "Shorts",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w070",
+  "name": "Bermuda in cotone blu navy",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Bermuda in cotone blu navy",
+   "category": "Lower Body",
+   "subCategory": "Shorts",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w071",
+  "name": "Bermuda in cotone nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Bermuda in cotone nero",
+   "category": "Lower Body",
+   "subCategory": "Shorts",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w072",
+  "name": "Bermuda in cotone verde",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Bermuda in cotone verde",
+   "category": "Lower Body",
+   "subCategory": "Shorts",
+   "baseColor": "Verde",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w073",
+  "name": "Shorts sportivi neri",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Shorts sportivi neri",
+   "category": "Lower Body",
+   "subCategory": "Shorts",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w074",
+  "name": "Shorts da running",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Shorts da running",
+   "category": "Lower Body",
+   "subCategory": "Shorts",
+   "baseColor": "Blu",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Skinny",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w075",
+  "name": "Pantaloncini da mare",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloncini da mare",
+   "category": "Lower Body",
+   "subCategory": "Shorts",
+   "baseColor": "Verde",
+   "pattern": "Floral",
+   "coverage": "Shorts",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Swimming"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w076",
+  "name": "Costume da bagno blu navy",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Costume da bagno blu navy",
+   "category": "Lower Body",
+   "subCategory": "Swimwear",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Swimming",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w077",
+  "name": "Costume da bagno nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Costume da bagno nero",
+   "category": "Lower Body",
+   "subCategory": "Swimwear",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Swimming",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w078",
+  "name": "Costume da bagno verde",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Costume da bagno verde",
+   "category": "Lower Body",
+   "subCategory": "Swimwear",
+   "baseColor": "Verde",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Swimming",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w079",
+  "name": "Costume intero da piscina",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Costume intero da piscina",
+   "category": "Lower Body",
+   "subCategory": "Swimwear",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Skinny",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Swimming",
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w080",
+  "name": "Pantaloni della tuta grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni della tuta grigio",
+   "category": "Lower Body",
+   "subCategory": "Sweatpants",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Lounge"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w081",
+  "name": "Pantaloni della tuta nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni della tuta nero",
+   "category": "Lower Body",
+   "subCategory": "Sweatpants",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Lounge"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w082",
+  "name": "Pantaloni termici",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni termici",
+   "category": "Lower Body",
+   "subCategory": "Thermal Bottoms",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Skinny",
+   "warmth": 4,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Hiking",
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w083",
+  "name": "Leggings sportivi",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Leggings sportivi",
+   "category": "Lower Body",
+   "subCategory": "Leggings",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Skinny",
+   "warmth": 2,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w086",
+  "name": "Sneakers bianco",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Sneakers bianco",
+   "category": "Shoes",
+   "subCategory": "Sneakers",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w087",
+  "name": "Sneakers nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Sneakers nero",
+   "category": "Shoes",
+   "subCategory": "Sneakers",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w088",
+  "name": "Sneakers grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Sneakers grigio",
+   "category": "Shoes",
+   "subCategory": "Sneakers",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w089",
+  "name": "Sneakers da running",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Sneakers da running",
+   "category": "Shoes",
+   "subCategory": "Sneakers",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w090",
+  "name": "Sneakers alte in tela",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Sneakers alte in tela",
+   "category": "Shoes",
+   "subCategory": "Sneakers",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w091",
+  "name": "Scarpe da trail",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Scarpe da trail",
+   "category": "Shoes",
+   "subCategory": "Sneakers",
+   "baseColor": "Verde",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Sport"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w092",
+  "name": "Scarponi da trekking",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Scarponi da trekking",
+   "category": "Shoes",
+   "subCategory": "Hiking Boots",
+   "baseColor": "Marrone",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 2
+  }
+ },
+ {
+  "id": "w093",
+  "name": "Scarponi da neve",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Scarponi da neve",
+   "category": "Shoes",
+   "subCategory": "Boots",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 5,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Everyday"
+   ],
+   "waterResistance": 2
+  }
+ },
+ {
+  "id": "w094",
+  "name": "Stivaletti in pelle marroni",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Stivaletti in pelle marroni",
+   "category": "Shoes",
+   "subCategory": "Boots",
+   "baseColor": "Marrone",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w095",
+  "name": "Stivaletti Chelsea neri",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Stivaletti Chelsea neri",
+   "category": "Shoes",
+   "subCategory": "Boots",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w096",
+  "name": "Scarpe eleganti nere",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Scarpe eleganti nere",
+   "category": "Shoes",
+   "subCategory": "Dress Shoes",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Formal",
+   "activityTags": [
+    "Formal",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w097",
+  "name": "Scarpe eleganti marroni",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Scarpe eleganti marroni",
+   "category": "Shoes",
+   "subCategory": "Dress Shoes",
+   "baseColor": "Marrone",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w098",
+  "name": "Mocassini blu",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Mocassini blu",
+   "category": "Shoes",
+   "subCategory": "Loafers",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Office",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w099",
+  "name": "Mocassini in camoscio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Mocassini in camoscio",
+   "category": "Shoes",
+   "subCategory": "Loafers",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w100",
+  "name": "Sandali marrone",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Sandali marrone",
+   "category": "Shoes",
+   "subCategory": "Sandals",
+   "baseColor": "Marrone",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w101",
+  "name": "Sandali nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Sandali nero",
+   "category": "Shoes",
+   "subCategory": "Sandals",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w102",
+  "name": "Sandali da trekking",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Sandali da trekking",
+   "category": "Shoes",
+   "subCategory": "Sandals",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w103",
+  "name": "Infradito",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Infradito",
+   "category": "Shoes",
+   "subCategory": "Flip-Flops",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Beach",
+    "Swimming"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w104",
+  "name": "Ciabatte da piscina",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Ciabatte da piscina",
+   "category": "Shoes",
+   "subCategory": "Flip-Flops",
+   "baseColor": "Blu",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Swimming",
+    "Lounge"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w105",
+  "name": "Giacca antipioggia hardshell",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Giacca antipioggia hardshell",
+   "category": "Outerwear",
+   "subCategory": "Rain Jacket",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Everyday"
+   ],
+   "waterResistance": 2
+  }
+ },
+ {
+  "id": "w106",
+  "name": "Giacca antipioggia leggera",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Giacca antipioggia leggera",
+   "category": "Outerwear",
+   "subCategory": "Rain Jacket",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 2
+  }
+ },
+ {
+  "id": "w107",
+  "name": "Giacca a vento leggera",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Giacca a vento leggera",
+   "category": "Outerwear",
+   "subCategory": "Windbreaker",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w108",
+  "name": "Giacca a vento sportiva",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Giacca a vento sportiva",
+   "category": "Outerwear",
+   "subCategory": "Windbreaker",
+   "baseColor": "Blu",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport",
+    "Hiking"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w109",
+  "name": "Softshell grigia",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Softshell grigia",
+   "category": "Outerwear",
+   "subCategory": "Windbreaker",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Everyday"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w110",
+  "name": "Piumino invernale",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Piumino invernale",
+   "category": "Outerwear",
+   "subCategory": "Down Jacket",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 5,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w111",
+  "name": "Piumino leggero comprimibile",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Piumino leggero comprimibile",
+   "category": "Outerwear",
+   "subCategory": "Down Jacket",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w112",
+  "name": "Cappotto di lana grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Cappotto di lana grigio",
+   "category": "Outerwear",
+   "subCategory": "Coat",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w113",
+  "name": "Cappotto lungo nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Cappotto lungo nero",
+   "category": "Outerwear",
+   "subCategory": "Coat",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Formal",
+   "activityTags": [
+    "Formal",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w114",
+  "name": "Trench beige",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Trench beige",
+   "category": "Outerwear",
+   "subCategory": "Coat",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Office",
+    "Everyday"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w115",
+  "name": "Parka invernale",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Parka invernale",
+   "category": "Outerwear",
+   "subCategory": "Coat",
+   "baseColor": "Verde militare",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 5,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 2
+  }
+ },
+ {
+  "id": "w116",
+  "name": "Blazer blu",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Blazer blu",
+   "category": "Outerwear",
+   "subCategory": "Blazer",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w117",
+  "name": "Blazer grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Blazer grigio",
+   "category": "Outerwear",
+   "subCategory": "Blazer",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w118",
+  "name": "Giacca da completo nera",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Giacca da completo nera",
+   "category": "Outerwear",
+   "subCategory": "Blazer",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Formal",
+   "activityTags": [
+    "Formal",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w119",
+  "name": "Giacca di jeans",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Giacca di jeans",
+   "category": "Outerwear",
+   "subCategory": "Casual Jacket",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w120",
+  "name": "Cappellino da baseball nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Cappellino da baseball nero",
+   "category": "Accessory",
+   "subCategory": "Cap/Hat",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w121",
+  "name": "Cappello di paglia",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Cappello di paglia",
+   "category": "Accessory",
+   "subCategory": "Cap/Hat",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w122",
+  "name": "Berretto di lana grigio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Berretto di lana grigio",
+   "category": "Accessory",
+   "subCategory": "Cap/Hat",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w123",
+  "name": "Berretto di lana nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Berretto di lana nero",
+   "category": "Accessory",
+   "subCategory": "Cap/Hat",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w124",
+  "name": "Bandana",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Bandana",
+   "category": "Accessory",
+   "subCategory": "Cap/Hat",
+   "baseColor": "Blu",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w125",
+  "name": "Cintura in pelle nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Cintura in pelle nero",
+   "category": "Accessory",
+   "subCategory": "Belt",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w126",
+  "name": "Cintura in pelle marrone",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Cintura in pelle marrone",
+   "category": "Accessory",
+   "subCategory": "Belt",
+   "baseColor": "Marrone",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w127",
+  "name": "Cintura in pelle nero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Cintura in pelle nero",
+   "category": "Accessory",
+   "subCategory": "Belt",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Formal",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w128",
+  "name": "Cintura da trekking",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Cintura da trekking",
+   "category": "Accessory",
+   "subCategory": "Belt",
+   "baseColor": "Verde",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w129",
+  "name": "Zaino da giorno",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Zaino da giorno",
+   "category": "Accessory",
+   "subCategory": "Bag",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w130",
+  "name": "Zaino da trekking 40L",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Zaino da trekking 40L",
+   "category": "Accessory",
+   "subCategory": "Bag",
+   "baseColor": "Verde",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w131",
+  "name": "Borsa da lavoro in pelle",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Borsa da lavoro in pelle",
+   "category": "Accessory",
+   "subCategory": "Bag",
+   "baseColor": "Marrone",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w132",
+  "name": "Tracolla piccola",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Tracolla piccola",
+   "category": "Accessory",
+   "subCategory": "Bag",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w133",
+  "name": "Borsone da palestra",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Borsone da palestra",
+   "category": "Accessory",
+   "subCategory": "Bag",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w134",
+  "name": "Sciarpa di lana grigia",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Sciarpa di lana grigia",
+   "category": "Accessory",
+   "subCategory": "Scarf",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w135",
+  "name": "Sciarpa di lana blu",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Sciarpa di lana blu",
+   "category": "Accessory",
+   "subCategory": "Scarf",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w136",
+  "name": "Scaldacollo tecnico",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Scaldacollo tecnico",
+   "category": "Accessory",
+   "subCategory": "Scarf",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Sport"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w137",
+  "name": "Foulard leggero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Foulard leggero",
+   "category": "Accessory",
+   "subCategory": "Scarf",
+   "baseColor": "Bianco",
+   "pattern": "Floral",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w138",
+  "name": "Occhiali da sole neri",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Occhiali da sole neri",
+   "category": "Accessory",
+   "subCategory": "Sunglasses",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w139",
+  "name": "Occhiali da sole sportivi",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Occhiali da sole sportivi",
+   "category": "Accessory",
+   "subCategory": "Sunglasses",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport",
+    "Hiking"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w140",
+  "name": "Orologio da polso",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Orologio da polso",
+   "category": "Accessory",
+   "subCategory": "Watch",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w141",
+  "name": "Orologio elegante",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Orologio elegante",
+   "category": "Accessory",
+   "subCategory": "Watch",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Formal",
+   "activityTags": [
+    "Formal",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w142",
+  "name": "Orologio sportivo GPS",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Orologio sportivo GPS",
+   "category": "Accessory",
+   "subCategory": "Watch",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport",
+    "Hiking"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w143",
+  "name": "Bracciale in cuoio",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Bracciale in cuoio",
+   "category": "Accessory",
+   "subCategory": "Jewelry",
+   "baseColor": "Marrone",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w144",
+  "name": "Catenina d'argento",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Catenina d'argento",
+   "category": "Accessory",
+   "subCategory": "Jewelry",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w145",
+  "name": "Gemelli da polso",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Gemelli da polso",
+   "category": "Accessory",
+   "subCategory": "Jewelry",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Formal",
+   "activityTags": [
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w146",
+  "name": "Guanti di lana",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Guanti di lana",
+   "category": "Accessory",
+   "subCategory": "Gloves",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w147",
+  "name": "Guanti tecnici da sci",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Guanti tecnici da sci",
+   "category": "Accessory",
+   "subCategory": "Gloves",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 5,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Sport"
+   ],
+   "waterResistance": 2
+  }
+ },
+ {
+  "id": "w148",
+  "name": "Boxer neri",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Boxer neri",
+   "category": "Essentials",
+   "subCategory": "Underwear",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w149",
+  "name": "Boxer bianchi",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Boxer bianchi",
+   "category": "Essentials",
+   "subCategory": "Underwear",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w150",
+  "name": "Boxer grigi",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Boxer grigi",
+   "category": "Essentials",
+   "subCategory": "Underwear",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w151",
+  "name": "Boxer blu",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Boxer blu",
+   "category": "Essentials",
+   "subCategory": "Underwear",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w152",
+  "name": "Boxer a righe",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Boxer a righe",
+   "category": "Essentials",
+   "subCategory": "Underwear",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w153",
+  "name": "Boxer verdi",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Boxer verdi",
+   "category": "Essentials",
+   "subCategory": "Underwear",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w154",
+  "name": "Boxer bordeaux",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Boxer bordeaux",
+   "category": "Essentials",
+   "subCategory": "Underwear",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w155",
+  "name": "Boxer beige",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Boxer beige",
+   "category": "Essentials",
+   "subCategory": "Underwear",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w156",
+  "name": "Calzini corti bianchi",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Calzini corti bianchi",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w157",
+  "name": "Calzini corti neri",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Calzini corti neri",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w158",
+  "name": "Calzini corti grigi",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Calzini corti grigi",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w159",
+  "name": "Calzini corti blu",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Calzini corti blu",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w160",
+  "name": "Calzini corti fantasia",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Calzini corti fantasia",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w161",
+  "name": "Calzini corti sportivi",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Calzini corti sportivi",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w162",
+  "name": "Calzini di lana",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Calzini di lana",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w163",
+  "name": "Calzini termici",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Calzini termici",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w164",
+  "name": "Calzini da trekking",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Calzini da trekking",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w165",
+  "name": "Calzini alti neri",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Calzini alti neri",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w166",
+  "name": "Calzini eleganti neri",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Calzini eleganti neri",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Formal",
+   "activityTags": [
+    "Formal",
+    "Office"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w167",
+  "name": "Canottiera intima bianca",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Canottiera intima bianca",
+   "category": "Essentials",
+   "subCategory": "Underwear",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w168",
+  "name": "Pigiama di cotone",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Pigiama di cotone",
+   "category": "Essentials",
+   "subCategory": "Pajamas",
+   "baseColor": "Blu navy",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Lounge"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w169",
+  "name": "Pigiama invernale",
+  "category": "varie",
+  "ai_metadata": {
+   "name": "Pigiama invernale",
+   "category": "Essentials",
+   "subCategory": "Pajamas",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Lounge"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w170",
+  "name": "Giubbotto di jeans vintage",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w171",
+  "name": "Maglietta a righe blu",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w172",
+  "name": "Scarpe da barca",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w173",
+  "name": "Poncho antipioggia",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w174",
+  "name": "Cappello da pescatore",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w175",
+  "name": "Cravatta blu",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w176",
+  "name": "Papillon nero",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w177",
+  "name": "Costume da surf",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w178",
+  "name": "Muta da sub 3mm",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w179",
+  "name": "Ghette da neve",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w180",
+  "name": "Cintura elastica",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w181",
+  "name": "Guanti senza dita",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w182",
+  "name": "Scaldamuscoli",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w183",
+  "name": "Tuta da sci",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w184",
+  "name": "Copriscarpe impermeabili",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w185",
+  "name": "Borsello",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w186",
+  "name": "Fascia per capelli",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w187",
+  "name": "Ombrello pieghevole",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w188",
+  "name": "Coprizaino",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w189",
+  "name": "Sciarpa di seta",
+  "category": "varie",
+  "ai_metadata": null
+ },
+ {
+  "id": "w190",
+  "name": "T-shirt gialla",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt gialla",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Giallo",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w191",
+  "name": "T-shirt arancione",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "T-shirt arancione",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "Arancione",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w192",
+  "name": "Camicia nera elegante",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia nera elegante",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Formal",
+   "activityTags": [
+    "Formal"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w193",
+  "name": "Tunica lunga di cotone",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Tunica lunga di cotone",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Bianco",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w194",
+  "name": "Kaftano leggero",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Kaftano leggero",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w195",
+  "name": "Camicia UPF da sole",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Camicia UPF da sole",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "Grigio",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Beach"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w196",
+  "name": "Pantaloni ampi di cotone",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni ampi di cotone",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w197",
+  "name": "Pantaloni cargo",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Pantaloni cargo",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "Verde militare",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ },
+ {
+  "id": "w199",
+  "name": "Scarpe da acqua",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Scarpe da acqua",
+   "category": "Shoes",
+   "subCategory": "Sandals",
+   "baseColor": "Nero",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Swimming",
+    "Beach"
+   ],
+   "waterResistance": 1
+  }
+ },
+ {
+  "id": "w200",
+  "name": "Espadrillas",
+  "category": "vestiti",
+  "ai_metadata": {
+   "name": "Espadrillas",
+   "category": "Shoes",
+   "subCategory": "Loafers",
+   "baseColor": "Beige",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Everyday"
+   ],
+   "waterResistance": 0
+  }
+ }
+]

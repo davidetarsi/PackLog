@@ -1,7 +1,11 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
+import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_text_styles.dart';
 
 /// Livello semantico di un [DsButton].
 enum DsButtonVariant {
@@ -13,6 +17,10 @@ enum DsButtonVariant {
 
   /// Azione distruttiva (elimina, esci definitivamente). Riempimento rosso.
   destructive,
+
+  /// Azione secondaria accanto alla principale: contorno e testo neutri,
+  /// senza arancio.
+  neutral,
 }
 
 /// Bottone pill dell'app: **unica** implementazione di forma, colore e stati.
@@ -32,8 +40,16 @@ enum DsButtonVariant {
 /// |---|---|---|---|
 /// | primary | `primary` | `primary` | `onPrimary` |
 /// | destructive | `error` | `error` | `onError` |
-/// | secondary | trasparente | `primary` | `primary` |
-/// | disabilitato | `surface` | `outline` | `onSurface` al 38% |
+/// | secondary | superficie sotto | `primary` | `primary` |
+/// | neutral | vetro | `outline` | `onSurface` |
+/// | disabilitato | superficie sotto | `outline` | `onSurface` al 50% |
+///
+/// "Superficie sotto" è il fondo della pagina, del foglio o del dialog in cui
+/// sta il bottone, pieno. "Vetro" è lo stesso della barra delle tab:
+/// `surfaceContainer` semitrasparente con la sfocatura di ciò che sta sotto.
+///
+/// `neutral` è l'azione secondaria accanto alla principale: l'arancio resta
+/// solo alla principale.
 ///
 /// Il testo chiaro sul riempimento arancione non è un'opzione: dà 2,33:1 nel
 /// tema scuro, contro i 4,5:1 richiesti. Da qui `onPrimary` scuro.
@@ -84,12 +100,13 @@ class DsButton extends StatelessWidget {
     final Color contentColor;
 
     if (looksDisabled) {
-      // 38% è la convenzione Material per il disabilitato: volutamente sotto
-      // le soglie di contrasto, perché "non toccabile" deve leggersi prima
-      // ancora del testo.
-      backgroundColor = colorScheme.surface;
+      // Testo al 50% (AppOpacity.disabled): "non toccabile" deve leggersi
+      // prima ancora del testo, ma il testo deve restare leggibile.
+      backgroundColor = _ambientSurface(context, colorScheme);
       accentColor = colorScheme.outline;
-      contentColor = colorScheme.onSurface.withValues(alpha: 0.38);
+      contentColor = colorScheme.onSurface.withValues(
+        alpha: AppOpacity.disabled,
+      );
     } else {
       switch (variant) {
         case DsButtonVariant.destructive:
@@ -97,25 +114,33 @@ class DsButton extends StatelessWidget {
           accentColor = colorScheme.error;
           contentColor = colorScheme.onError;
         case DsButtonVariant.secondary:
-          // Sfondo trasparente e non `surface`: così il bottone prende il
-          // colore di ciò che gli sta sotto. Dentro un dialog, il cui fondo è
-          // più chiaro della surface, una superficie opaca disegnava un
-          // rettangolo scuro visibile attorno all'etichetta.
-          //
-          // Sicuro perché nessun call site monta un secondary sopra contenuto
-          // scorrevole: le CTA sticky sono tutte primary o destructive.
-          backgroundColor = Colors.transparent;
+          // Pieno del colore della superficie su cui sta: sopra la fascia di
+          // vetro il contenuto sfocato non si vede dentro il bottone, e in un
+          // dialog prende il fondo del dialog, senza rettangoli scuri.
+          backgroundColor = _ambientSurface(context, colorScheme);
           accentColor = colorScheme.primary;
           contentColor = colorScheme.primary;
         case DsButtonVariant.primary:
           backgroundColor = colorScheme.primary;
           accentColor = colorScheme.primary;
           contentColor = colorScheme.onPrimary;
+        case DsButtonVariant.neutral:
+          backgroundColor = _ambientSurface(context, colorScheme);
+          accentColor = colorScheme.outline;
+          contentColor = colorScheme.onSurface;
       }
     }
 
-    return Material(
-      color: backgroundColor,
+    // Il neutro attivo è una pillola di vetro come la barra delle tab:
+    // superficie semitrasparente con la sfocatura di ciò che sta sotto. Lo
+    // spento no: sul vetro il testo spento si perdeva, quindi resta pieno del
+    // fondo su cui sta.
+    final glass = !looksDisabled && variant == DsButtonVariant.neutral;
+    final pill = BorderRadius.circular(AppConstants.pillBorderRadius);
+    final button = Material(
+      color: glass
+          ? colorScheme.surfaceContainer.withValues(alpha: AppOpacity.navGlass)
+          : backgroundColor,
       borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
       // elevation: 0 elimina il layer di ombra nel compositing: quando il
       // bottone fluttua sopra liste scorrevoli, ogni frame non richiede un
@@ -129,14 +154,17 @@ class DsButton extends StatelessWidget {
         onTap: canTap ? onPressed : (isLoading ? null : onDisabledTap),
         child: Container(
           width: expand ? double.infinity : null,
-          height: context.responsive(56),
+          height: context.responsive(AppConstants.ctaHeight),
           padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
           decoration: BoxDecoration(
             // Nessun colore qui: lo sfondo è già gestito da Material.
             // Aggiungere color in BoxDecoration causerebbe un layer di pittura
             // aggiuntivo sovrapposto a quello di Material.
             borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-            border: Border.all(color: accentColor, width: 2),
+            border: Border.all(
+              color: accentColor,
+              width: AppConstants.emphasisBorderWidth,
+            ),
           ),
           child: isLoading
               ? Center(
@@ -165,10 +193,12 @@ class DsButton extends StatelessWidget {
                     Flexible(
                       child: Text(
                         label,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: contentColor,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium?.strong
+                            .copyWith(color: contentColor),
+                        // Altezza fissa: una riga sola, il resto si tronca.
+                        // Senza maxLines a scala 2.0 l'etichetta va a capo e
+                        // sborda dalla pill.
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                       ),
@@ -178,5 +208,26 @@ class DsButton extends StatelessWidget {
         ),
       ),
     );
+    if (!glass) return button;
+    return ClipRRect(
+      borderRadius: pill,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: AppConstants.ctaBlurSigma,
+          sigmaY: AppConstants.ctaBlurSigma,
+        ),
+        child: button,
+      ),
+    );
   }
+}
+
+/// Colore della superficie su cui sta un bottone a contorno: il [Material] più
+/// vicino se è opaco (un dialog, un gruppo), altrimenti `surface`, il fondo
+/// delle pagine e dei fogli. Così il bottone è pieno ma non si stacca dal
+/// suo sfondo.
+Color _ambientSurface(BuildContext context, ColorScheme colorScheme) {
+  final color = context.findAncestorWidgetOfExactType<Material>()?.color;
+  if (color == null || color.a < 1) return colorScheme.surface;
+  return color;
 }

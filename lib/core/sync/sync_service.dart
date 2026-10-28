@@ -418,7 +418,16 @@ class SyncService {
             await _replaceTripLuggagesFromJson(id, r['luggage_ids']);
             updated++;
           } else {
-            skipped++;
+            // Il remoto non è più recente, ma il locale può non avere il
+            // risultato AI (viaggio modificato offline mentre un altro
+            // dispositivo lo generava): si riempie solo quella colonna.
+            final riempiti =
+                !remoteIsDeleted && await _riempiAiMancante(local, r);
+            if (riempiti) {
+              updated++;
+            } else {
+              skipped++;
+            }
           }
         } catch (e, st) {
           debugPrint(
@@ -795,6 +804,24 @@ class SyncService {
     );
     await _replaceTripItemsFromJson(id, remote['items']);
     await _replaceTripLuggagesFromJson(id, remote['luggage_ids']);
+  }
+
+  /// Colonne AI del viaggio che il locale non ha e il remoto sì. Non sovrascrive
+  /// mai un dato AI già presente in locale e non tocca nessun'altra colonna.
+  Future<bool> _riempiAiMancante(Trip local, Map<String, dynamic> remoto) async {
+    final ricevuto = SyncSerializers.buildTripCompanion(
+      remoto,
+      includeSyncFields: false,
+    );
+    return _tripsDao.riempiColonneAi(
+      local.id,
+      aiPackingSetup: local.aiPackingSetup == null
+          ? ricevuto.aiPackingSetup
+          : const Value.absent(),
+      aiPackingResult: local.aiPackingResult == null
+          ? ricevuto.aiPackingResult
+          : const Value.absent(),
+    );
   }
 
   /// Sostituisce le associazioni trip↔luggage con [luggageIdsJson] se presente.

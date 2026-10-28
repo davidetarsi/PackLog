@@ -3,6 +3,16 @@ name: 🛠️ Build DEV
 on:
   push:
     branches: [ "develop" ]
+    # Niente APK se il push cambia solo cose che non entrano nell'app
+    # (backend Supabase, documentazione, test): sarebbe identico al precedente.
+    # Basta un file fuori da questi percorsi per avviare la build.
+    paths-ignore:
+      - "supabase/**"
+      - "docs/**"
+      - "test/**"
+      - "**/*.md"
+  # Avvio manuale dalla tab Actions (es. per rimandare l'ultima build).
+  workflow_dispatch:
 
 jobs:
   build-dev-apk:
@@ -62,33 +72,72 @@ jobs:
       - name: 📖 Extract Version from pubspec.yaml
         id: get_version
         run: |
-          # Estrae la riga "version: 1.0.0+1", prende la seconda colonna e la salva in una variabile d'ambiente
+          # Da "version: 1.1.3+6" prende "1.1.3" e ci aggiunge il numero della
+          # run: ogni build dev è riconoscibile (1.1.3-dev.42) e, con il numero
+          # della run come versionCode, si installa sempre sopra la precedente.
+          # L'app dev ha un id suo (.dev), quindi non interferisce con la prod.
           VERSION=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2)
-          echo "App version is $VERSION"
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+          DEV_VERSION="${VERSION%%+*}-dev.${{ github.run_number }}"
+          echo "App version is $VERSION, dev build $DEV_VERSION"
+          echo "DEV_VERSION=$DEV_VERSION" >> $GITHUB_ENV
 
+      # Il progetto Supabase DEV (secret DEV_SUPABASE_URL / DEV_SUPABASE_ANON_KEY),
+      # separato da PROD che usa release_prod.yml. Finché i due secret non
+      # esistono l'APK resta su quelli di PROD (SUPABASE_URL / SUPABASE_ANON_KEY).
       - name: 🏗️ Build DEV APK
         run: |
           flutter build apk --flavor dev --target lib/main_dev.dart --target-platform android-arm64 \
-            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
+            --build-name=${{ env.DEV_VERSION }} \
+            --build-number=${{ github.run_number }} \
+            --dart-define=SUPABASE_URL=${{ secrets.DEV_SUPABASE_URL || secrets.SUPABASE_URL }} \
+            --dart-define=SUPABASE_ANON_KEY=${{ secrets.DEV_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }} \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
             --dart-define=AMPLITUDE_API_KEY=${{ secrets.AMPLITUDE_API_KEY }} \
             --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }} \
             --dart-define=TGRAM_API_KEY=${{ secrets.TGRAM_API_KEY }}
 
-      # ── NUOVO STEP: Ridenominazione del file ──
       - name: 🏷️ Rename APK File
         run: |
-          # Spostiamo e rinominiamo il file generato da Flutter
-          # Il nome diventerà, ad esempio: PackLog-dev-v1.0.0+1.apk
-          mv build/app/outputs/flutter-apk/app-dev-release.apk build/app/outputs/flutter-apk/PackLog-dev-v${{ env.APP_VERSION }}.apk
+          # Es.: PackLog-dev-v1.1.3-dev.42.apk
+          mv build/app/outputs/flutter-apk/app-dev-release.apk build/app/outputs/flutter-apk/PackLog-dev-v${{ env.DEV_VERSION }}.apk
 
       - name: ☁️ Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           # Il "name" qui definisce come si chiamerà lo ZIP che GitHub ti fa scaricare
-          name: PackLog-dev-v${{ env.APP_VERSION }}
-          # Il "path" punta al nuovo file appena rinominato
-          path: build/app/outputs/flutter-apk/PackLog-dev-v${{ env.APP_VERSION }}.apk
+          name: PackLog-dev-v${{ env.DEV_VERSION }}
+          path: build/app/outputs/flutter-apk/PackLog-dev-v${{ env.DEV_VERSION }}.apk
           retention-days: 7
+
+      # Manda l'APK in chat Telegram, così si installa direttamente dal telefono.
+      # Senza i due segreti lo step si salta: l'APK resta comunque come artifact.
+      - name: 📲 Send APK to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+            echo "::notice::TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID non configurati: APK solo come artifact."
+            exit 0
+          fi
+          APK="build/app/outputs/flutter-apk/PackLog-dev-v${DEV_VERSION}.apk"
+          SUBJECT=$(git log -1 --format=%s | cut -c1-200)
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          CAPTION=$(printf 'PackLog dev %s\n%s\n%s' "$DEV_VERSION" "$SUBJECT" "$RUN_URL")
+          # I bot Telegram accettano file fino a 50 MB: oltre, arriva almeno un
+          # messaggio con il link alla run, da cui scaricare l'artifact.
+          SIZE=$(stat -c %s "$APK")
+          if (( SIZE > 50 * 1024 * 1024 )); then
+            SIZE_MB=$((SIZE / 1024 / 1024))
+            echo "::warning::APK di ${SIZE_MB} MB: oltre il limite di 50 MB dei bot Telegram, mando solo il link."
+            curl -sS --fail-with-body -o /dev/null \
+              --data-urlencode chat_id="$TELEGRAM_CHAT_ID" \
+              --data-urlencode text="$(printf '%s\n\nAPK di %s MB, troppo grande per Telegram: scaricalo dalla run (artifact).' "$CAPTION" "$SIZE_MB")" \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+            exit 0
+          fi
+          curl -sS --fail-with-body -o /dev/null \
+            -F chat_id="$TELEGRAM_CHAT_ID" \
+            -F caption="$CAPTION" \
+            -F document=@"$APK" \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument"

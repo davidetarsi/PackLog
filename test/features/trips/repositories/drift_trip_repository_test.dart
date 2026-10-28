@@ -4,6 +4,7 @@ import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/database/exceptions/database_exceptions.dart';
 import 'package:pack_log/core/database/services/database_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/trips/model/trip_leg.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart' as model;
@@ -60,7 +61,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: luggageId,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Blue Suitcase',
             sizeType: LuggageSize.holdBaggage,
             volumeLiters: const Value(60),
@@ -237,7 +238,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: luggage1Id,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Cabin Suitcase',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),
@@ -248,7 +249,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: luggage2Id,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Hold Suitcase',
             sizeType: LuggageSize.holdBaggage,
             createdAt: DateTime.now(),
@@ -259,7 +260,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: luggage3Id,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Small Backpack',
             sizeType: LuggageSize.smallBackpack,
             createdAt: DateTime.now(),
@@ -409,7 +410,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: luggageId,
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Shared Luggage',
           sizeType: LuggageSize.cabinBaggage,
           createdAt: DateTime.now(),
@@ -529,7 +530,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: luggage1Id,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Luggage 1',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),
@@ -540,7 +541,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: luggage2Id,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Luggage 2',
             sizeType: LuggageSize.holdBaggage,
             createdAt: DateTime.now(),
@@ -869,6 +870,99 @@ void main() {
       final row = await database.tripsDao.findTripById('trip-legs-2');
 
       expect(row!.legs, '[]');
+    });
+  });
+
+  group('DriftTripRepository — valigia AI', () {
+    test(
+      'aiSetup e aiResult sopravvivono al salvataggio e alla rilettura',
+      () async {
+        final setup = AiPackingSetup(
+          houseId: 'h1',
+          luggageId: 'l1',
+          stops: {
+            'stop-1': const AiStopAnswers(
+              activities: [AiActivity.city, AiActivity.sea],
+              stay: AiStay.hotel,
+              washer: true,
+            ),
+          },
+        );
+        final result = AiPackingResult(
+          generatedAt: DateTime(2026, 10, 24, 8, 30),
+          houseId: 'h1',
+          proposal: const [
+            AiPackedItem(
+              itemId: 'i1',
+              quantity: 2,
+              inDeparture: true,
+              reason: AiReason(
+                code: 'clima',
+                label: 'Clima',
+                sentence: 'Caldo',
+              ),
+            ),
+          ],
+          warnings: const [
+            AiWarning(
+              id: 'w1',
+              code: 'adattatore',
+              level: AiWarningLevel.important,
+              title: 'Adattatore',
+              why: 'Prese diverse',
+            ),
+          ],
+          dismissedWarnings: const ['w0'],
+        );
+        final trip = model.TripModel(
+          id: 'trip-ai-1',
+          name: 'Toscana',
+          aiSetup: setup,
+          aiResult: result,
+          createdAt: DateTime(2026, 9, 1),
+          updatedAt: DateTime(2026, 9, 1),
+        );
+
+        await repository.addTrip(trip);
+        final loaded = await repository.getTripById('trip-ai-1');
+
+        expect(loaded.aiSetup, setup);
+        expect(loaded.aiResult, result);
+      },
+    );
+
+    test('un viaggio senza dati AI resta null', () async {
+      final trip = model.TripModel(
+        id: 'trip-ai-2',
+        name: 'Weekend',
+        createdAt: DateTime(2026, 9, 1),
+        updatedAt: DateTime(2026, 9, 1),
+      );
+
+      await repository.addTrip(trip);
+      final loaded = await repository.getTripById('trip-ai-2');
+
+      expect(loaded.aiSetup, null);
+      expect(loaded.aiResult, null);
+    });
+
+    test('JSON corrotto nel database: il viaggio si legge con null', () async {
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 'trip-ai-3',
+          name: 'Corrotto',
+          createdAt: DateTime(2026, 9, 1),
+          updatedAt: DateTime(2026, 9, 1),
+          aiPackingSetup: const Value('{non è json'),
+          aiPackingResult: const Value('[1,2'),
+        ),
+      );
+
+      final loaded = await repository.getTripById('trip-ai-3');
+
+      expect(loaded.name, 'Corrotto');
+      expect(loaded.aiSetup, null);
+      expect(loaded.aiResult, null);
     });
   });
 }

@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
-import '../constants/app_constants.dart';
-import 'ds_bottom_sheet_handle.dart';
-import '../theme/app_spacing.dart';
 
-/// Bottom sheet generico per la **selezione di un elemento da una lista**.
+import 'ds_form_sheet.dart';
+import 'ds_group_header.dart';
+import 'ds_settings.dart';
+
+/// Foglio per la **selezione di un elemento da una lista**.
 ///
-/// Struttura: `BottomSheetHandle → titolo → Divider → ListView` di opzioni.
-/// Toccare un'opzione chiude il sheet e restituisce il valore.
+/// Struttura: [DsFormSheet] (testata con la x, trascinamento) → un
+/// [DsSettingsGroup] per gruppo di righe. Toccare una riga chiude il foglio e
+/// restituisce il valore.
 ///
-/// Distinto da [StandardBottomSheetLayout] (usato per form di entità):
-/// qui non c'è action bar finale, basta toccare per confermare.
+/// Distinto dai fogli di entità (form con CTA): qui non c'è action bar finale,
+/// basta toccare per confermare.
+///
+/// Con [groupOf] gli elementi consecutivi dello stesso gruppo stanno in un
+/// blocco preceduto da un'intestazione con il nome del gruppo (es. la categoria
+/// dei tipi di capo). Un gruppo vuoto (`''`) non ha intestazione.
 ///
 /// Uso tipico:
 /// ```dart
@@ -29,8 +35,16 @@ class DsPickerSheet<T> extends StatelessWidget {
   final String Function(T) getLabel;
   final String? Function(T)? getSubtitle;
   final IconData? Function(T)? getIcon;
+
+  /// Widget di inizio riga al posto dell'icona, per es. la bandiera della
+  /// lingua. Se restituisce `null` vale [getIcon].
+  final Widget? Function(T)? getLeading;
   final T? selected;
   final ValueChanged<T> onSelected;
+  final Widget? footer;
+
+  /// Gruppo di ogni elemento, per le intestazioni (vedi la classe).
+  final String Function(T)? groupOf;
 
   const DsPickerSheet({
     super.key,
@@ -40,7 +54,10 @@ class DsPickerSheet<T> extends StatelessWidget {
     required this.onSelected,
     this.getSubtitle,
     this.getIcon,
+    this.getLeading,
     this.selected,
+    this.footer,
+    this.groupOf,
   });
 
   /// Mostra il picker sheet e restituisce il valore selezionato (null se
@@ -52,93 +69,96 @@ class DsPickerSheet<T> extends StatelessWidget {
     required String Function(T) getLabel,
     String? Function(T)? getSubtitle,
     IconData? Function(T)? getIcon,
+    Widget? Function(T)? getLeading,
     T? selected,
+    Widget Function(BuildContext)? footerBuilder,
+    String Function(T)? groupOf,
   }) {
-    return showModalBottomSheet<T>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    return showDsSheet<T>(
+      context,
       builder: (sheetContext) => DsPickerSheet<T>(
         title: title,
         items: items,
         getLabel: getLabel,
         getSubtitle: getSubtitle,
         getIcon: getIcon,
+        getLeading: getLeading,
         selected: selected,
+        footer: footerBuilder?.call(sheetContext),
+        groupOf: groupOf,
         onSelected: (item) => Navigator.pop(sheetContext, item),
       ),
     );
   }
 
+  /// Gruppi in ordine: ogni gruppo ha il nome (null se non ne ha) e gli indici
+  /// dei suoi elementi in [items]. Un cambio di gruppo apre un nuovo blocco.
+  List<({String? label, List<int> indices})> get _sections {
+    final result = <({String? label, List<int> indices})>[];
+    String? lastGroup;
+    for (var index = 0; index < items.length; index++) {
+      final group = groupOf?.call(items[index]);
+      if (result.isEmpty || group != lastGroup) {
+        result.add((
+          label: group == null || group.isEmpty ? null : group,
+          indices: <int>[],
+        ));
+      }
+      result.last.indices.add(index);
+      lastGroup = group;
+    }
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppConstants.modalBorderRadius),
-        ),
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const DsBottomSheetHandle(),
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
+    return DsFormSheet(
+      title: title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (items.isEmpty)
+            Center(
               child: Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-            const Divider(height: 1),
-            if (items.isEmpty)
-              Padding(
-                padding: EdgeInsets.all(AppSpacing.lg),
-                child: Center(
-                  child: Text(
-                    '—',
-                    style: TextStyle(color: cs.onSurfaceVariant),
-                  ),
-                ),
-              )
-            else
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: items.length,
-                  itemBuilder: (_, index) {
-                    final item = items[index];
-                    final isSelected = item == selected;
-                    final iconData = getIcon?.call(item);
-                    final subtitle = getSubtitle?.call(item);
-
-                    return ListTile(
-                      leading: iconData != null
-                          ? Icon(iconData, color: cs.primary)
-                          : null,
-                      title: Text(getLabel(item)),
-                      subtitle: subtitle != null ? Text(subtitle) : null,
-                      trailing: isSelected
-                          ? Icon(Icons.check, color: cs.primary)
-                          : null,
-                      onTap: () => onSelected(item),
-                    );
-                  },
+                '—',
+                style: textTheme.bodyLarge?.copyWith(
+                  color: cs.onSurfaceVariant,
                 ),
               ),
-            AppSpacing.gapSm,
-          ],
-        ),
+            )
+          else
+            for (final section in _sections) ...[
+              if (section.label != null) DsGroupHeader(label: section.label!),
+              DsSettingsGroup(
+                children: [
+                  for (final index in section.indices) _row(context, index, cs),
+                ],
+              ),
+            ],
+          if (footer != null) footer!,
+        ],
       ),
+    );
+  }
+
+  Widget _row(BuildContext context, int index, ColorScheme cs) {
+    final item = items[index];
+    final iconData = getIcon?.call(item);
+    final leading =
+        getLeading?.call(item) ??
+        (iconData != null ? Icon(iconData, color: cs.onSurfaceVariant) : null);
+    final subtitle = getSubtitle?.call(item);
+
+    return DsSettingsRow(
+      key: ValueKey('picker_item_$index'),
+      leading: leading,
+      label: getLabel(item),
+      subtitle: subtitle,
+      trailing: item == selected ? Icon(Icons.check, color: cs.primary) : null,
+      onTap: () => onSelected(item),
     );
   }
 }

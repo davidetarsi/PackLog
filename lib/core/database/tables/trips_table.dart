@@ -68,6 +68,17 @@ class Trips extends Table with SyncableTable {
   /// una cancellazione da un'assenza.
   TextColumn get legs => text().nullable()();
 
+  /// Risposte del foglio della valigia AI, serializzate come JSON di
+  /// `AiPackingSetup`.
+  ///
+  /// Stessa semantica di [legs]: `NULL` è "nessuna informazione" e il sync
+  /// non la scrive sul server né la cancella dal pull.
+  TextColumn get aiPackingSetup => text().nullable()();
+
+  /// Valigia proposta dalla valigia AI, serializzata come JSON di
+  /// `AiPackingResult`. Stesse regole di [aiPackingSetup].
+  TextColumn get aiPackingResult => text().nullable()();
+
   /// Data di creazione
   DateTimeColumn get createdAt => dateTime()();
 

@@ -1,9 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
-import '../../luggages/view/luggages_management_screen.dart';
-import '../../spaces/view/spaces_management_screen.dart';
+import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/ds_form_sheet.dart';
+import '../../../shared/widgets/ds_settings.dart';
 import 'add_edit_house_screen.dart';
+import 'house_spaces_sheet.dart';
 
 /// Shows the "manage house" bottom sheet.
 ///
@@ -16,68 +18,67 @@ Future<void> showHouseManageSheet(
   required String houseName,
   required VoidCallback onSetPrimary,
   required VoidCallback onDelete,
+  VoidCallback? onSelectItems,
 }) {
-  return showModalBottomSheet(
-    context: context,
-    builder: (sheetContext) => SafeArea(
+  return showDsSheet<void>(
+    context,
+    builder: (sheetContext) => DsFormSheet(
+      title: 'houses.manage_sheet_title'.tr(),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ListTile(
-            leading: const Icon(Icons.edit),
-            title: Text('houses.edit_info'.tr()),
-            onTap: () {
-              Navigator.pop(sheetContext);
-              showAddEditHouseSheet(context, houseId: houseId);
-            },
-          ),
-          ListTile(
-            leading: Icon(
-              Icons.push_pin,
-              color: isPrimary
-                  ? null
-                  : Theme.of(sheetContext).colorScheme.primary,
-            ),
-            title: Text('houses.set_as_primary'.tr()),
-            enabled: !isPrimary,
-            onTap: isPrimary
-                ? null
-                : () {
+          DsSettingsGroup(
+            children: [
+              if (onSelectItems != null)
+                DsSettingsRow(
+                  leading: const Icon(Icons.checklist),
+                  label: 'items.select_items'.tr(),
+                  onTap: () {
                     Navigator.pop(sheetContext);
-                    onSetPrimary();
+                    onSelectItems();
                   },
+                ),
+              DsSettingsRow(
+                leading: const Icon(Icons.edit),
+                label: 'houses.edit_info'.tr(),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  showAddEditHouseSheet(context, houseId: houseId);
+                },
+              ),
+              DsSettingsRow(
+                leading: const Icon(Icons.meeting_room_outlined),
+                label: 'spaces.title'.tr(),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  showHouseSpacesSheet(context, houseId: houseId);
+                },
+              ),
+              DsSettingsRow(
+                leading: const Icon(Icons.push_pin_outlined),
+                label: 'houses.set_as_primary'.tr(),
+                enabled: !isPrimary,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  onSetPrimary();
+                },
+              ),
+            ],
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.meeting_room),
-            title: Text('spaces.manage'.tr()),
-            onTap: () async {
-              Navigator.pop(sheetContext);
-              await showSpacesManagementSheet(context, houseId: houseId);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.luggage),
-            title: Text('luggages.manage'.tr()),
-            onTap: () async {
-              Navigator.pop(sheetContext);
-              await showLuggagesManagementSheet(context, houseId: houseId);
-            },
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(
-              Icons.delete_outline,
-              color: Theme.of(sheetContext).colorScheme.error,
-            ),
-            title: Text(
-              'common.delete'.tr(),
-              style: TextStyle(color: Theme.of(sheetContext).colorScheme.error),
-            ),
-            onTap: () {
-              Navigator.pop(sheetContext);
-              onDelete();
-            },
+          SizedBox(height: context.spacingMd),
+          DsSettingsGroup(
+            children: [
+              DsSettingsRow(
+                leading: const Icon(Icons.delete_outline),
+                label: 'common.delete'.tr(),
+                destructive: true,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  onDelete();
+                },
+              ),
+            ],
           ),
         ],
       ),

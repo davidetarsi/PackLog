@@ -79,10 +79,81 @@ class CoreAnalyticsService {
     _safeLogEvent('item_bulk_moved', properties: {'count': count});
   }
 
+  /// Dettagli di un capo modificati a mano (tag): `fields` sono i nomi dei
+  /// campi cambiati, mai i valori.
+  void trackItemDetailsEdited({
+    required String source,
+    required List<String> fields,
+  }) {
+    _safeLogEvent(
+      'item_details_edited',
+      properties: {'source': source, 'fields': fields},
+    );
+  }
+
   void trackItemsAddedToTrip({required String tripId, required int count}) {
     _safeLogEvent(
       'items_added_to_trip',
       properties: {'trip_id': tripId, 'count': count},
+    );
+  }
+
+  // ── navigation_ ───────────────────────────────────────────────────────────
+
+  /// Tocco su "Crea" nella barra. `tab` = tab da cui si apre il foglio
+  /// (`houses`/`trips`): l'ordine delle voci del foglio dipende da lì.
+  void trackCreateTapped({required String tab}) {
+    _safeLogEvent('create_tapped', properties: {'tab': tab});
+  }
+
+  /// Scelta nel foglio Crea: `ai_scan`, `manual_items`, `new_house`,
+  /// `new_trip`.
+  void trackCreateSheetChoice({required String choice, required String tab}) {
+    _safeLogEvent(
+      'create_sheet_choice',
+      properties: {'choice': choice, 'tab': tab},
+    );
+  }
+
+  // ── search_ ───────────────────────────────────────────────────────────────
+
+  /// Ricerca aperta. `context`: `house` (dentro una casa) o `houses_tab`
+  /// (ricerca globale, fase successiva).
+  void trackSearchOpened({required String context}) {
+    _safeLogEvent('search_opened', properties: {'context': context});
+  }
+
+  /// Risultato aperto; `position` parte da 1.
+  void trackSearchResultTapped({
+    required String context,
+    required int position,
+  }) {
+    _safeLogEvent(
+      'search_result_tapped',
+      properties: {'context': context, 'position': position},
+    );
+  }
+
+  /// Ricerca senza risultati. Solo la lunghezza: il testo cercato è un dato
+  /// dell'utente e non lascia il telefono.
+  void trackSearchNoResults({
+    required String context,
+    required int queryLength,
+  }) {
+    _safeLogEvent(
+      'search_no_results',
+      properties: {'context': context, 'query_length': queryLength},
+    );
+  }
+
+  // ── add_ ──────────────────────────────────────────────────────────────────
+
+  /// Nella pagina "aggiungi" della casa si è aperto un oggetto di "Già in
+  /// casa": la pagina ha evitato un doppione. `position` parte da 1.
+  void trackAddExistingMatchTapped({required int position}) {
+    _safeLogEvent(
+      'add_existing_match_tapped',
+      properties: {'position': position},
     );
   }
 
@@ -167,6 +238,14 @@ class CoreAnalyticsService {
     _safeLogEvent(
       'ai_items_saved',
       properties: {'count': count, 'is_onboarding': isOnboarding},
+    );
+  }
+
+  /// Apre il foglio che confronta i risultati AI con gli oggetti esistenti.
+  void trackAlreadyHereOpened({required bool hasManualCandidates}) {
+    _safeLogEvent(
+      'already_here_opened',
+      properties: {'has_manual_candidates': hasManualCandidates},
     );
   }
 

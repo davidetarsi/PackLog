@@ -4,15 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/analytics/analytics_service.dart';
+import '../../../shared/theme/app_theme.dart';
 import '../model/onboarding_state.dart';
 import '../providers/post_login_onboarding_provider.dart';
 import '../tour_keys.dart';
 import '../widgets/tour_step_content.dart';
 
-/// Wraps [MainShell] and shows overlay tooltips for the three steps
-/// whose targets live in the shell: [houseTooltip], [defaultHouseTooltip],
-/// and [createTripTooltip]. The remaining steps ([moveItemsTooltip] and
-/// [tripCreationTooltip]) are handled by [TourTriggerWrapper] in the router.
+/// Wraps [MainShell] and shows the tour tip whose target lives in the shell:
+/// [OnboardingStep.createTripTooltip] on the Crea button. The other steps
+/// ([OnboardingStep.houseDetailTooltip] and
+/// [OnboardingStep.tripCreationTooltip]) are handled by [TourTriggerWrapper]
+/// in the router.
 class PostLoginOnboardingListener extends ConsumerStatefulWidget {
   final Widget child;
   const PostLoginOnboardingListener({super.key, required this.child});
@@ -44,7 +46,7 @@ class _PostLoginOnboardingListenerState
     // e continua quindi a ricostruirsi. Senza questo gate, un avanzamento di
     // step fatto da un `TourTriggerWrapper` su quelle route farebbe scattare
     // qui il tip successivo sopra la schermata sbagliata, per giunta puntando
-    // a una GlobalKey (`tourKeys.houseFab`) in quel momento coperta.
+    // a una GlobalKey (`tourKeys.primaryAction`) in quel momento coperta.
     //
     // `ModalRoute.of` registra una dipendenza da `_ModalScopeStatus`, che
     // notifica i dipendenti quando `isCurrent` cambia: al ritorno sulla shell
@@ -90,13 +92,13 @@ class _PostLoginOnboardingListenerState
     return widget.child;
   }
 
-  bool _isListenerStep(OnboardingStep step) {
-    return step == OnboardingStep.houseTooltip ||
-        step == OnboardingStep.defaultHouseTooltip ||
-        step == OnboardingStep.createTripTooltip;
-  }
+  bool _isListenerStep(OnboardingStep step) =>
+      step == OnboardingStep.createTripTooltip;
 
-  void _showTooltip(BuildContext context, OnboardingState onboarding) {
+  Future<void> _showTooltip(
+    BuildContext context,
+    OnboardingState onboarding,
+  ) async {
     // `_lastShownStep` è già stato marcato nel `build` che ha schedulato
     // questa chiamata — vedi il commento lì.
     final notifier = ref.read(postLoginOnboardingProvider.notifier);
@@ -135,15 +137,13 @@ class _PostLoginOnboardingListenerState
           enableTargetTab: cfg.isSpotlight,
           contents: [
             TargetContent(
-              align:
-                  cfg.align ??
-                  (cfg.isSpotlight ? ContentAlign.top : ContentAlign.bottom),
+              align: cfg.isSpotlight ? ContentAlign.top : ContentAlign.bottom,
               builder: (ctx, controller) {
                 return TourStepContent(
                   title: cfg.title,
                   body: cfg.body,
-                  stepIndex: 0,
-                  totalSteps: 1,
+                  stepIndex: (onboarding.step.tourStepIndex ?? 1) - 1,
+                  totalSteps: kTourLength,
                   onSkip: () {
                     controller.skip();
                     // Chiude l'intero tour, non solo lo step corrente — vedi
@@ -158,14 +158,14 @@ class _PostLoginOnboardingListenerState
                     controller.next();
                     advance();
                   },
-                  isLastStep: true,
+                  isLastStep: onboarding.step.tourStepIndex == kTourLength,
                 );
               },
             ),
           ],
         ),
       ],
-      colorShadow: Colors.black,
+      colorShadow: context.appColors.tourScrim,
       opacityShadow: 0.8,
       hideSkip: true,
       pulseEnable: cfg.isSpotlight,
@@ -176,21 +176,8 @@ class _PostLoginOnboardingListenerState
 
   _StepConfig _stepConfig(OnboardingStep step) {
     return switch (step) {
-      OnboardingStep.houseTooltip => _StepConfig(
-        key: tourKeys.houseFab,
-        title: 'tour.house_tooltip.title'.tr(),
-        body: 'tour.house_tooltip.body'.tr(),
-        isSpotlight: true,
-      ),
-      OnboardingStep.defaultHouseTooltip => _StepConfig(
-        key: tourKeys.infoCardTarget,
-        title: 'tour.default_house_tooltip.title'.tr(),
-        body: 'tour.default_house_tooltip.body'.tr(),
-        isSpotlight: false,
-        align: ContentAlign.top,
-      ),
       OnboardingStep.createTripTooltip => _StepConfig(
-        key: tourKeys.houseFab,
+        key: tourKeys.primaryAction,
         title: 'tour.create_trip_tooltip.title'.tr(),
         body: 'tour.create_trip_tooltip.body'.tr(),
         isSpotlight: true,
@@ -205,13 +192,11 @@ class _StepConfig {
   final String title;
   final String body;
   final bool isSpotlight;
-  final ContentAlign? align;
 
   const _StepConfig({
     required this.key,
     required this.title,
     required this.body,
     required this.isSpotlight,
-    this.align,
   });
 }

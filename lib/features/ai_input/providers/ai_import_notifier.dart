@@ -12,10 +12,12 @@ import '../../../core/sync/sync_provider.dart';
 import '../../houses/model/house_model.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../houses/repositories/house_repository.dart';
+import '../../items/model/clothing_details.dart';
 import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/repositories/item_repository.dart';
 import '../../tour/providers/post_login_onboarding_provider.dart';
+import '../helpers/ai_item_category.dart';
 import '../model/ai_failure_reason.dart';
 import '../model/ai_import_state.dart';
 import '../model/clothing_analysis_result.dart';
@@ -28,6 +30,10 @@ class AiImportNotifier extends _$AiImportNotifier {
   static const _maxPhotos = 5;
   final _uuid = const Uuid();
 
+  /// I capi come li ha letti l'analisi, per gruppo e posizione: a fine
+  /// scansione si vede quali dettagli l'utente ha cambiato dalla scheda.
+  final Map<(int, int), ClothingAnalysisResult> _analyzed = {};
+
   @override
   AiImportState build() => const AiImportState();
 
@@ -37,6 +43,26 @@ class AiImportNotifier extends _$AiImportNotifier {
 
   List<ClothingAnalysisResult> get allResults =>
       state.photoGroups.expand((g) => g.results).toList();
+
+  /// I capi che il salvataggio scrive: quelli non esclusi, con la loro
+  /// posizione nella scansione.
+  Iterable<({int group, int item, ClothingAnalysisResult result})>
+  get _savedEntries sync* {
+    for (var g = 0; g < state.photoGroups.length; g++) {
+      final group = state.photoGroups[g];
+      for (var i = 0; i < group.results.length; i++) {
+        if (!group.excluded.contains(i)) {
+          yield (group: g, item: i, result: group.results[i]);
+        }
+      }
+    }
+  }
+
+  List<ClothingAnalysisResult> get _newResults => [
+    for (final entry in _savedEntries) entry.result,
+  ];
+
+  int get newCount => _newResults.length;
 
   // ── Processing ────────────────────────────────────────────────────────────
 
@@ -74,6 +100,10 @@ class AiImportNotifier extends _$AiImportNotifier {
         final result = await service.processClothingItem(file);
         durations.add(DateTime.now().difference(started).inMilliseconds);
 
+        final groupIndex = state.photoGroups.length;
+        for (var j = 0; j < result.length; j++) {
+          _analyzed[(groupIndex, j)] = result[j];
+        }
         state = state.copyWith(
           photoGroups: [
             ...state.photoGroups,
@@ -138,35 +168,68 @@ class AiImportNotifier extends _$AiImportNotifier {
 
   // ── Item management ───────────────────────────────────────────────────────
 
-  void deleteItem(int groupIndex, int itemIndex) {
-    final groups = List<PhotoGroup>.from(state.photoGroups);
-    final group = groups[groupIndex];
-    final newResults = List<ClothingAnalysisResult>.from(group.results)
-      ..removeAt(itemIndex);
+  PhotoGroup _group(int index) => state.photoGroups[index];
 
-    if (newResults.isEmpty) {
-      groups.removeAt(groupIndex);
-    } else {
-      groups[groupIndex] = group.copyWith(results: newResults);
-    }
+  void _replaceGroup(int index, PhotoGroup group) {
+    final groups = List<PhotoGroup>.from(state.photoGroups);
+    groups[index] = group;
     state = state.copyWith(photoGroups: groups);
   }
 
+  void setIncluded(int groupIndex, int itemIndex, bool included) {
+    final group = _group(groupIndex);
+    final excluded = Set<int>.from(group.excluded);
+    if (included) {
+      excluded.remove(itemIndex);
+    } else {
+      excluded.add(itemIndex);
+    }
+    _replaceGroup(groupIndex, group.copyWith(excluded: excluded));
+  }
+
   void updateItemName(int groupIndex, int itemIndex, String name) {
+    final current = _group(groupIndex).results[itemIndex];
+    updateResult(groupIndex, itemIndex, current.copyWith(name: name));
+  }
+
+  /// Sostituisce il capo (per esempio dopo la scheda della scansione). Il
+  /// nome è quello di [result]: non c'è un campo separato.
+  void updateResult(
+    int groupIndex,
+    int itemIndex,
+    ClothingAnalysisResult result,
+  ) {
     final groups = List<PhotoGroup>.from(state.photoGroups);
     final group = groups[groupIndex];
     final newResults = List<ClothingAnalysisResult>.from(group.results);
-    newResults[itemIndex] = newResults[itemIndex].copyWith(name: name);
+    newResults[itemIndex] = result;
     groups[groupIndex] = group.copyWith(results: newResults);
     state = state.copyWith(photoGroups: groups);
   }
 
   void setSelectedHouseId(String id) {
+    if (state.selectedHouseId == id) return;
     state = state.copyWith(selectedHouseId: id);
   }
 
   void reset() {
+    _analyzed.clear();
     state = const AiImportState();
+  }
+
+  /// Un evento per capo salvato i cui dettagli sono cambiati dalla scheda
+  /// della scansione rispetto all'analisi.
+  void _trackScanEdits() {
+    final analytics = ref.read(coreAnalyticsServiceProvider);
+    for (final entry in _savedEntries) {
+      final original = _analyzed[(entry.group, entry.item)];
+      if (original == null) continue;
+      final fields = ClothingDetails.of(
+        entry.result,
+      ).changedFields(ClothingDetails.of(original));
+      if (fields.isEmpty) continue;
+      analytics.trackItemDetailsEdited(source: 'scan', fields: fields);
+    }
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -174,13 +237,14 @@ class AiImportNotifier extends _$AiImportNotifier {
   /// Saves items to the house specified by [state.selectedHouseId].
   /// Throws if [state.selectedHouseId] is null.
   Future<void> saveItems() async {
+    if (state.isLoading) return;
     final houseId = state.selectedHouseId;
     if (houseId == null) {
       state = state.copyWith(errorMessage: 'ai_import.no_house_selected'.tr());
       return;
     }
 
-    final results = allResults;
+    final results = _newResults;
     if (results.isEmpty) return;
 
     state = state.copyWith(isLoading: true);
@@ -192,7 +256,7 @@ class AiImportNotifier extends _$AiImportNotifier {
               id: _uuid.v4(),
               houseId: houseId,
               name: r.name,
-              category: _mapCategory(r.category),
+              category: aiItemCategory(r.category, appCategory: r.appCategory),
               quantity: 1,
               createdAt: now,
               updatedAt: now,
@@ -201,12 +265,16 @@ class AiImportNotifier extends _$AiImportNotifier {
           )
           .toList();
 
-      await ref.read(itemRepositoryProvider).insertMultipleItems(items);
+      await ref
+          .read(itemRepositoryProvider)
+          .saveAiItemsToHouse(houseId: houseId, newItems: items);
       ref.invalidate(itemNotifierProvider(houseId));
       ref.read(syncOrchestratorProvider).requestSync();
       ref
           .read(coreAnalyticsServiceProvider)
           .trackAiItemsSaved(count: items.length, isOnboarding: false);
+      _trackScanEdits();
+      _analyzed.clear();
       state = const AiImportState();
     } catch (e) {
       state = state.copyWith(
@@ -219,7 +287,8 @@ class AiImportNotifier extends _$AiImportNotifier {
   /// Creates a default house, saves all AI items to it, advances onboarding.
   /// Used only during first-time onboarding.
   Future<void> saveItemsOnboarding() async {
-    final results = allResults;
+    if (state.isLoading) return;
+    final results = _newResults;
     if (results.isEmpty) return;
 
     state = state.copyWith(isLoading: true);
@@ -238,7 +307,7 @@ class AiImportNotifier extends _$AiImportNotifier {
               id: _uuid.v4(),
               houseId: houseId,
               name: r.name,
-              category: _mapCategory(r.category),
+              category: aiItemCategory(r.category, appCategory: r.appCategory),
               quantity: 1,
               createdAt: now,
               updatedAt: now,
@@ -256,6 +325,8 @@ class AiImportNotifier extends _$AiImportNotifier {
       ref
           .read(coreAnalyticsServiceProvider)
           .trackAiItemsSaved(count: items.length, isOnboarding: true);
+      _trackScanEdits();
+      _analyzed.clear();
       await ref.read(postLoginOnboardingProvider.notifier).completeAi(houseId);
       state = const AiImportState();
     } catch (e) {
@@ -264,13 +335,5 @@ class AiImportNotifier extends _$AiImportNotifier {
         errorMessage: 'ai_import.save_error'.tr(args: [e.toString()]),
       );
     }
-  }
-
-  // ── Private helpers ───────────────────────────────────────────────────────
-
-  static ItemCategory _mapCategory(String aiCategory) {
-    final lower = aiCategory.toLowerCase();
-    if (lower.contains('accessory')) return ItemCategory.varie;
-    return ItemCategory.vestiti;
   }
 }

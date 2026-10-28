@@ -1,0 +1,398 @@
+diff --git a/lib/features/ai_input/view/widgets/ai_photo_group_header.dart b/lib/features/ai_input/view/widgets/ai_photo_group_header.dart
+index c45b371..5b5b515 100644
+--- a/lib/features/ai_input/view/widgets/ai_photo_group_header.dart
++++ b/lib/features/ai_input/view/widgets/ai_photo_group_header.dart
+@@ -65,39 +65,35 @@ class AiPhotoGroupHeader extends StatelessWidget {
+ 
+   @override
+   Widget build(BuildContext context) {
+-    // Miniatura piccola: è il riferimento del gruppo, toccandola si apre.
+-    final size = context.responsive(56);
++    // MOCK: foto intera e grande, l'etichetta sotto.
++    final height = context.responsive(160);
+     final radius = BorderRadius.circular(AppConstants.cardBorderRadius);
+     return Padding(
+       padding: EdgeInsets.only(top: context.spacingLg),
+-      child: Row(
++      child: Column(
++        crossAxisAlignment: CrossAxisAlignment.stretch,
+         children: [
+-          Material(
+-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+-            borderRadius: radius,
+-            clipBehavior: Clip.antiAlias,
++          Align(
++            alignment: Alignment.centerLeft,
+             child: InkWell(
+               key: const Key('ai_photo_preview'),
+               borderRadius: radius,
+               onTap: () => _openFull(context),
+-              child: Image.file(
+-                photo,
+-                width: size,
+-                height: size,
+-                fit: BoxFit.contain,
+-                errorBuilder: (context, error, stackTrace) => SizedBox.square(
+-                  dimension: size,
+-                  child: _missingPhoto(context),
++              child: ClipRRect(
++                borderRadius: radius,
++                child: Image.file(
++                  photo,
++                  height: height,
++                  fit: BoxFit.contain,
++                  errorBuilder: (context, error, stackTrace) =>
++                      SizedBox(height: height, child: _missingPhoto(context)),
+                 ),
+               ),
+             ),
+           ),
+-          SizedBox(width: context.spacingMd),
+-          Expanded(
+-            child: DsGroupHeader(
+-              label: 'ai_import.photo_number'.tr(args: ['$photoIndex']),
+-              detail: 'ai_import.items_count'.plural(itemCount),
+-            ),
++          DsGroupHeader(
++            label: 'ai_import.photo_number'.tr(args: ['$photoIndex']),
++            detail: 'ai_import.items_count'.plural(itemCount),
+           ),
+         ],
+       ),
+diff --git a/lib/features/ai_input/view/widgets/ai_result_card.dart b/lib/features/ai_input/view/widgets/ai_result_card.dart
+index d6dcfe8..86afc3f 100644
+--- a/lib/features/ai_input/view/widgets/ai_result_card.dart
++++ b/lib/features/ai_input/view/widgets/ai_result_card.dart
+@@ -8,7 +8,6 @@ import '../../model/clothing_analysis_result.dart';
+ String aiDetailsLine(ClothingAnalysisResult result) => [
+   result.subCategory,
+   result.baseColor.toLowerCase(),
+-  result.pattern.toLowerCase(),
+ ].where((value) => value.trim().isNotEmpty).join(' · ');
+ 
+ /// Riga di un capo riconosciuto con inclusione, modifica del nome e collegamento.
+@@ -56,11 +55,12 @@ class _AiResultCardState extends State<AiResultCard> {
+     final linked = widget.isLinked || widget.linkedItemName != null;
+     final active = widget.included && !linked;
+     final muted = colors.onSurface.withValues(alpha: 0.38);
+-    final nameStyle = textTheme.bodyLarge?.copyWith(
+-      fontWeight: FontWeight.w500,
++    // MOCK: nome e dettagli più grandi.
++    final nameStyle = textTheme.titleMedium?.copyWith(
++      fontWeight: FontWeight.w600,
+       color: active ? colors.onSurface : muted,
+     );
+-    final detailStyle = textTheme.bodySmall?.copyWith(
++    final detailStyle = textTheme.bodyMedium?.copyWith(
+       color: active ? colors.onSurfaceVariant : muted,
+     );
+ 
+@@ -116,30 +116,51 @@ class _AiResultCardState extends State<AiResultCard> {
+                     ),
+                   ),
+                 SizedBox(height: context.spacingXs / 2),
+-                Text(
+-                  linked
+-                      ? widget.linkedItemName == null
+-                            ? 'ai_import.linked_unknown'.tr()
+-                            : 'ai_import.linked'.tr(
+-                                args: [widget.linkedItemName!],
+-                              )
+-                      : aiDetailsLine(widget.item),
+-                  style: detailStyle,
++                // MOCK: i dettagli aprono la scheda; un "?" se c'è da controllare.
++                InkWell(
++                  key: const Key('mock_details'),
++                  onTap: () {},
++                  child: Row(
++                    children: [
++                      Flexible(
++                        child: Text(
++                          aiDetailsLine(widget.item),
++                          style: detailStyle,
++                        ),
++                      ),
++                      Icon(
++                        Icons.chevron_right,
++                        size: context.iconSizeSm,
++                        color: active ? colors.onSurfaceVariant : muted,
++                      ),
++                    ],
++                  ),
+                 ),
++                if (widget.item.subCategory == 'Pantaloni')
++                  Padding(
++                    padding: EdgeInsets.only(top: context.spacingXs / 2),
++                    child: Row(
++                      children: [
++                        Icon(
++                          Icons.help_outline,
++                          size: context.iconSizeSm,
++                          color: active ? colors.onSurface : muted,
++                        ),
++                        SizedBox(width: context.spacingXs),
++                        Text(
++                          '1 da controllare',
++                          style: detailStyle?.copyWith(
++                            color: active ? colors.onSurface : muted,
++                          ),
++                        ),
++                      ],
++                    ),
++                  ),
+               ],
+             ),
+           ),
+-          if (linked && widget.onUnlink != null)
+-            TextButton(
+-              style: TextButton.styleFrom(
+-                foregroundColor: colors.onSurfaceVariant,
+-              ),
+-              onPressed: widget.enabled ? widget.onUnlink : null,
+-              child: Text('common.undo'.tr()),
+-            )
+-          else if (widget.onAlreadyHere != null)
++          if (widget.onAlreadyHere != null && !linked)
+             TextButton(
+-              key: const Key('ai_already_here'),
+               style: TextButton.styleFrom(
+                 foregroundColor: colors.onSurfaceVariant,
+               ),
+diff --git a/lib/features/items/view/item_sheet.dart b/lib/features/items/view/item_sheet.dart
+index df3cbe2..842a990 100644
+--- a/lib/features/items/view/item_sheet.dart
++++ b/lib/features/items/view/item_sheet.dart
+@@ -24,6 +24,8 @@ import '../providers/item_provider.dart';
+ import '../services/category_infer_service.dart';
+ import '../widgets/category_pill.dart';
+ import 'bulk_move_sheet.dart';
++import '../../../shared/widgets/ds_settings.dart';
++import '../../trips/view/widgets/pack/pack_parts.dart';
+ 
+ /// Apre la scheda di un oggetto esistente.
+ Future<void> showItemSheet(
+@@ -517,7 +519,90 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
+                               ),
+                             ),
+                           ),
++                          // MOCK: dettagli che servono alla valigia.
+                           DsFieldLabel('items.details_label'.tr()),
++                          Padding(
++                            padding: EdgeInsets.only(bottom: context.spacingSm),
++                            child: Text(
++                              'Servono a preparare la valigia giusta.',
++                              style: textTheme.bodySmall?.copyWith(
++                                color: cs.onSurfaceVariant,
++                              ),
++                            ),
++                          ),
++                          _InlineField(
++                            label: 'Tipo',
++                            child: Row(
++                              mainAxisSize: MainAxisSize.min,
++                              children: [
++                                Text('Maglione', style: textTheme.bodyLarge),
++                                Icon(
++                                  Icons.chevron_right,
++                                  size: context.iconSizeMd,
++                                  color: cs.onSurfaceVariant,
++                                ),
++                              ],
++                            ),
++                          ),
++                          _MockTags(
++                            label: 'Colore',
++                            tags: const [
++                              ('Bianco', false),
++                              ('Nero', false),
++                              ('Grigio', false),
++                              ('Blu', true),
++                              ('Verde', false),
++                              ('Rosso', false),
++                              ('Giallo', false),
++                              ('Rosa chiaro', false),
++                              ('Beige', false),
++                            ],
++                            extra: '+ Altro colore',
++                          ),
++                          _MockTags(
++                            label: 'Calore',
++                            tags: const [
++                              ('Molto leggero', false),
++                              ('Leggero', false),
++                              ('Medio', false),
++                              ('Caldo', true),
++                              ('Molto caldo', false),
++                            ],
++                          ),
++                          _MockTags(
++                            label: 'Pioggia',
++                            doubt: true,
++                            tags: const [
++                              ('Si bagna', true),
++                              ('Pioggia leggera', false),
++                              ('Impermeabile', false),
++                            ],
++                          ),
++                          _MockTags(
++                            label: 'Stile',
++                            tags: const [
++                              ('Da casa', false),
++                              ('Casual', true),
++                              ('Curato', false),
++                              ('Lavoro', false),
++                              ('Elegante', false),
++                            ],
++                          ),
++                          _MockTags(
++                            label: 'Usi',
++                            hint: 'anche più di uno',
++                            tags: const [
++                              ('Tutti i giorni', true),
++                              ('Montagna', true),
++                              ('Sport', false),
++                              ('Ufficio', false),
++                              ('Mare', false),
++                              ('Nuoto', false),
++                              ('Elegante', false),
++                              ('Casa', false),
++                            ],
++                          ),
++                          DsFieldLabel('Nota'),
+                           TextFormField(
+                             key: const Key('item_sheet_note'),
+                             controller: _noteController,
+@@ -592,3 +677,113 @@ class _InlineField extends StatelessWidget {
+     );
+   }
+ }
++
++/// MOCK: un gruppo di tag; scelti quelli del modello, gli altri si aggiungono.
++class _MockTags extends StatelessWidget {
++  final String label;
++  final List<(String, bool)> tags;
++  final String? extra;
++  final bool doubt;
++  final String? hint;
++
++  const _MockTags({
++    required this.label,
++    required this.tags,
++    this.extra,
++    this.doubt = false,
++    this.hint,
++  });
++
++  @override
++  Widget build(BuildContext context) {
++    final cs = Theme.of(context).colorScheme;
++    final tt = Theme.of(context).textTheme;
++    final note = doubt ? 'da controllare' : hint;
++    return Column(
++      crossAxisAlignment: CrossAxisAlignment.start,
++      children: [
++        Padding(
++          padding: EdgeInsets.only(top: context.spacingLg),
++          child: Row(
++            crossAxisAlignment: CrossAxisAlignment.center,
++            children: [
++              Text(
++                label,
++                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w600),
++              ),
++              if (note != null) ...[
++                SizedBox(width: context.spacingSm),
++                if (doubt) ...[
++                  Icon(
++                    Icons.help_outline,
++                    size: context.iconSizeSm,
++                    color: cs.onSurface,
++                  ),
++                  SizedBox(width: context.spacingXs / 2),
++                ],
++                Text(
++                  note,
++                  style: tt.bodySmall?.copyWith(
++                    color: doubt ? cs.onSurface : cs.onSurfaceVariant,
++                  ),
++                ),
++              ],
++            ],
++          ),
++        ),
++        Wrap(
++          spacing: context.spacingXs,
++          children: [
++            for (final (text, on) in tags)
++              _MockChoicePill(label: text, selected: on),
++            if (extra != null) _MockChoicePill(label: extra!, selected: false),
++          ],
++        ),
++      ],
++    );
++  }
++}
++
++/// MOCK: la pillola di "Valigia con AI" (bordo e testo, niente spunta), più
++/// compatta; scelta = bordo e testo onSurface, e nel tema chiaro anche lo
++/// sfondo.
++class _MockChoicePill extends StatelessWidget {
++  final String label;
++  final bool selected;
++
++  const _MockChoicePill({required this.label, required this.selected});
++
++  @override
++  Widget build(BuildContext context) {
++    final cs = Theme.of(context).colorScheme;
++    final light = Theme.of(context).brightness == Brightness.light;
++    return SizedBox(
++      height: kMinInteractiveDimension,
++      child: Center(
++        widthFactor: 1,
++        child: Container(
++          height: AppConstants.pillTabCompact,
++          padding: EdgeInsets.symmetric(
++            horizontal: context.spacingSm + context.spacingXs,
++          ),
++          decoration: BoxDecoration(
++            color: selected && light ? cs.surfaceContainerHigh : null,
++            borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
++            border: Border.all(
++              color: selected ? cs.onSurface : cs.outlineVariant,
++            ),
++          ),
++          child: Center(
++            widthFactor: 1,
++            child: Text(
++              label,
++              style: Theme.of(context).textTheme.labelLarge?.copyWith(
++                color: selected ? cs.onSurface : cs.onSurfaceVariant,
++              ),
++            ),
++          ),
++        ),
++      ),
++    );
++  }
++}
+diff --git a/test/screenshots/support/fakes.dart b/test/screenshots/support/fakes.dart
+index a0379a7..3b0763a 100644
+--- a/test/screenshots/support/fakes.dart
++++ b/test/screenshots/support/fakes.dart
+@@ -204,13 +204,13 @@ AiImportState aiResultsState({String? houseId = kHomeId}) => AiImportState(
+     PhotoGroup(
+       photo: photoShirt,
+       results: [
+-        _garment('Camicia di lino azzurra', 'Azzurro', 'Camicia'),
++        _garment('Pantaloni da trekking', 'Grigio', 'Pantaloni'),
+         _garment('T-shirt bianca', 'Bianco', 'T-shirt'),
+       ],
+     ),
+     PhotoGroup(
+       photo: photoJeans,
+-      results: [_garment('Jeans slim blu scuro', 'Blu', 'Pantaloni')],
++      results: [_garment('Camicia di lino azzurra', 'Azzurro', 'Camicia')],
+     ),
+   ],
+ );

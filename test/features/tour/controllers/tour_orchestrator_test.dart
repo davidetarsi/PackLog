@@ -12,6 +12,7 @@ import 'package:pack_log/features/tour/providers/post_login_onboarding_provider.
 import 'package:pack_log/features/tour/repositories/i_onboarding_repository.dart';
 import 'package:pack_log/features/tour/repositories/shared_prefs_onboarding_repository.dart';
 import 'package:pack_log/features/tour/tour_keys.dart';
+import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/features/tour/widgets/tour_step_content.dart';
 
 class MockOnboardingRepository extends Mock implements IOnboardingRepository {}
@@ -51,15 +52,22 @@ void main() {
       saveLocale: false,
       child: UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(home: PostLoginOnboardingListener(child: shell)),
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: PostLoginOnboardingListener(child: shell),
+        ),
       ),
     );
   }
 
-  /// Schermata che espone il target dei tip spotlight della shell.
+  /// Schermata che espone tutti i bersagli dei tip della shell.
   Widget shellScreen() => Scaffold(
-    body: Center(
-      child: SizedBox(key: tourKeys.houseFab, width: 48, height: 48),
+    body: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(key: tourKeys.tripsTab, width: 48, height: 48),
+        SizedBox(key: tourKeys.primaryAction, width: 48, height: 48),
+      ],
     ),
   );
 
@@ -95,11 +103,11 @@ void main() {
         () => analytics.logEvent(any(), properties: any(named: 'properties')),
       ).thenAnswer((_) async {});
 
-      // moveItemsTooltip non è uno step del listener: nulla scatta all'avvio.
+      // houseDetailTooltip non è uno step del listener: nulla scatta all'avvio.
       final container = ProviderContainer(
         overrides: [
           onboardingRepositoryProvider.overrideWithValue(
-            repoAt(OnboardingStep.moveItemsTooltip),
+            repoAt(OnboardingStep.houseDetailTooltip),
           ),
           analyticsServiceProvider.overrideWithValue(analytics),
         ],
@@ -124,7 +132,7 @@ void main() {
       expect(find.text('house detail'), findsOneWidget);
 
       // Il TourTriggerWrapper della route avanza lo step:
-      // moveItemsTooltip -> createTripTooltip, che È uno step del listener.
+      // houseDetailTooltip -> createTripTooltip, che È uno step del listener.
       await container.read(postLoginOnboardingProvider.notifier).advance();
       await settleTooltip(tester);
 
@@ -162,7 +170,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         onboardingRepositoryProvider.overrideWithValue(
-          repoAt(OnboardingStep.houseTooltip),
+          repoAt(OnboardingStep.createTripTooltip),
         ),
         analyticsServiceProvider.overrideWithValue(analytics),
       ],

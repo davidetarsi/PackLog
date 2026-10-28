@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../model/item_model.dart';
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/theme/app_opacity.dart';
+import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/app_motion.dart';
+import '../../../shared/theme/surface_colors.dart';
 
 enum CategoryPillState { inactive, inferred, forced }
 
@@ -27,61 +31,69 @@ class CategoryPill extends StatelessWidget {
 
     switch (pillState) {
       case CategoryPillState.inactive:
-        backgroundColor = colorScheme.surfaceContainerLow;
-        foregroundColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.5);
+        // In chiaro il bianco delle card, staccato dalla pagina grigia.
+        backgroundColor = Theme.of(context).brightness == Brightness.light
+            ? context.groupSurface
+            : colorScheme.surfaceContainerLow;
+        foregroundColor = colorScheme.onSurfaceVariant;
         borderColor = Colors.transparent;
+      // Proposta dall'app: solo il contorno, si legge come un suggerimento.
       case CategoryPillState.inferred:
-        backgroundColor = categoryColor.withValues(alpha: 0.1);
+        backgroundColor = Colors.transparent;
         foregroundColor = categoryColor;
-        borderColor = categoryColor;
+        borderColor = categoryColor.withValues(alpha: AppOpacity.mutedBorder);
+      // Scelta: fondo tenue, mai pieno. L'arancio pieno resta all'azione
+      // principale dello schermo (regola "un solo arancio").
       case CategoryPillState.forced:
-        backgroundColor = categoryColor;
-        foregroundColor = colorScheme.onPrimary;
+        backgroundColor = categoryColor.withValues(alpha: AppOpacity.selected);
+        foregroundColor = categoryColor;
         borderColor = categoryColor;
     }
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          border: Border.all(color: borderColor, width: 1.5),
-          borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(_iconForCategory(category), size: 16, color: foregroundColor),
-            const SizedBox(width: 6),
-            Text(
-              _labelForCategory(category),
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(color: foregroundColor),
+    // Icona sopra e nome intero sotto, come le voci della barra di
+    // navigazione: con la pagina "aggiungi" lo spazio c'è e le iniziali
+    // (V, T, E, ?) non servono più.
+    return Semantics(
+      button: true,
+      selected: pillState == CategoryPillState.forced,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: AppMotion.fast,
+          padding: EdgeInsets.symmetric(horizontal: context.spacingXs),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            border: Border.all(
+              color: borderColor,
+              width: AppConstants.selectedBorderWidth,
             ),
-          ],
+            borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                category.icon,
+                size: context.iconSizeSm,
+                color: foregroundColor,
+              ),
+              SizedBox(height: context.spacingXxs),
+              // scaleDown: con caratteri di sistema grandi o in inglese
+              // ("Electronics") il nome si stringe invece di sforare.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  category.displayName,
+                  maxLines: 1,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: foregroundColor),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
-  }
-
-  static IconData _iconForCategory(ItemCategory category) {
-    return switch (category) {
-      ItemCategory.vestiti => Icons.checkroom,
-      ItemCategory.toiletries => Icons.soap,
-      ItemCategory.elettronica => Icons.devices,
-      ItemCategory.varie => Icons.category,
-    };
-  }
-
-  static String _labelForCategory(ItemCategory category) {
-    return switch (category) {
-      ItemCategory.vestiti => 'V',
-      ItemCategory.toiletries => 'T',
-      ItemCategory.elettronica => 'E',
-      ItemCategory.varie => '?',
-    };
   }
 }

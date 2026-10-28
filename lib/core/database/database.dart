@@ -40,7 +40,7 @@ part 'database.g.dart';
 /// - [Houses]: le case/luoghi dove sono conservati gli oggetti
 /// - [Items]: gli oggetti, ognuno appartiene a una casa
 /// - [Spaces]: spazi/armadi all'interno delle case (flat structure)
-/// - [Luggages]: bagagli riutilizzabili associati a case
+/// - [Luggages]: bagagli riutilizzabili dell'utente
 /// - [Trips]: i viaggi
 /// - [TripItemEntries]: gli oggetti associati a ogni viaggio (snapshot pattern)
 /// - [TripLuggageEntries]: junction table per la relazione M:N trips-luggages
@@ -76,7 +76,7 @@ class AppDatabase extends _$AppDatabase {
   /// Versione dello schema del database.
   /// Incrementa quando modifichi la struttura delle tabelle.
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 12;
 
   /// Gestione delle migrazioni del database.
   @override
@@ -347,6 +347,17 @@ class AppDatabase extends _$AppDatabase {
           // da quello dichiarato in trips_table.dart. Le migrazioni precedenti
           // usano SQL scritto a mano; da qui in poi si usa questo.
           await m.addColumn(trips, trips.legs);
+        }
+        if (from < 11) {
+          // Casa opzionale e ON DELETE SET NULL. Drift ricostruisce la tabella
+          // copiando tutte le colonne e preservando ID, sync e junction.
+          await m.alterTable(TableMigration(luggages));
+        }
+        if (from < 12) {
+          // Valigia AI: risposte del foglio e valigia proposta sul viaggio.
+          // Due colonne nullable in coda, come `legs`: nessuna riscrittura.
+          await m.addColumn(trips, trips.aiPackingSetup);
+          await m.addColumn(trips, trips.aiPackingResult);
         }
       },
       beforeOpen: (details) async {

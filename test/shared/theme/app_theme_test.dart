@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/shared/constants/app_constants.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/theme/error_empty_theme_extension.dart';
 
 /// Il textTheme di [AppTheme] è la fonte di verità tipografica dell'app: lo
 /// usano ~66 call site che nessun altro test copre. Questi test bloccano le
@@ -136,16 +138,19 @@ void main() {
         }
       });
 
-      testWidgets('il titolo AppBar pesa quanto titleLarge', (tester) async {
+      testWidgets('il titolo AppBar ha la size di titleLarge', (tester) async {
         final textTheme = await resolvedTextTheme(tester, themeData);
 
         expect(
           themeData.appBarTheme.titleTextStyle?.fontSize,
           textTheme.titleLarge?.fontSize,
         );
+      });
+
+      testWidgets('la barra in alto pesa come i titoli', (tester) async {
         expect(
-          themeData.appBarTheme.titleTextStyle?.fontWeight,
-          textTheme.titleLarge?.fontWeight,
+          themeData.appBarTheme.titleTextStyle!.fontWeight,
+          FontWeight.w700,
         );
       });
     });
@@ -181,5 +186,110 @@ void main() {
         expect(resolvedBodySize, AppSpacing.fontXs);
       });
     }
+  });
+
+  // Valori che il tema legge dai token: oggi coincidono con i numeri che
+  // sostituiscono, quindi passano già. Servono a bloccare una regressione
+  // silenziosa se un token cambia o un numero torna a mano.
+  group('il tema usa i token', () {
+    for (final (themeName, themeData) in [
+      ('light', AppTheme.light),
+      ('dark', AppTheme.dark),
+    ]) {
+      test('$themeName: il raggio del bottom sheet è modalBorderRadius', () {
+        final shape =
+            themeData.bottomSheetTheme.shape! as RoundedRectangleBorder;
+        expect(
+          shape.borderRadius,
+          BorderRadius.vertical(
+            top: Radius.circular(AppConstants.modalBorderRadius),
+          ),
+        );
+      });
+
+      test('$themeName: contentPadding dei campi è md × smPlus', () {
+        expect(
+          themeData.inputDecorationTheme.contentPadding,
+          EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.smPlus,
+          ),
+        );
+      });
+
+      test('$themeName: l\'icona dello stato vuoto è iconDisplay', () {
+        final ext = themeData.extension<ErrorEmptyThemeExtension>()!;
+        expect(ext.emptyStateIconSize, AppSpacing.iconDisplay);
+      });
+    }
+  });
+
+  group('colori d\'errore', () {
+    double contrast(Color a, Color b) {
+      final la = a.computeLuminance();
+      final lb = b.computeLuminance();
+      final (hi, lo) = la > lb ? (la, lb) : (lb, la);
+      return (hi + 0.05) / (lo + 0.05);
+    }
+
+    for (final (name, theme) in [
+      ('light', AppTheme.light),
+      ('dark', AppTheme.dark),
+    ]) {
+      test('$name: errorContainer è un avviso, non il rosso pieno', () {
+        final cs = theme.colorScheme;
+        expect(cs.errorContainer, isNot(cs.error));
+        expect(cs.onErrorContainer, isNot(cs.onError));
+      });
+
+      test('$name: testo su errorContainer sopra AA (4.5:1)', () {
+        final cs = theme.colorScheme;
+        expect(
+          contrast(cs.onErrorContainer, cs.errorContainer),
+          greaterThanOrEqualTo(4.5),
+        );
+      });
+    }
+  });
+
+  group('tema chiaro neutro', () {
+    double contrast(Color a, Color b) {
+      final la = a.computeLuminance();
+      final lb = b.computeLuminance();
+      final (hi, lo) = la > lb ? (la, lb) : (lb, la);
+      return (hi + 0.05) / (lo + 0.05);
+    }
+
+    final cs = AppTheme.light.colorScheme;
+
+    test('testo sui bottoni pieni sopra AA (4.5:1)', () {
+      expect(contrast(cs.onPrimary, cs.primary), greaterThanOrEqualTo(4.5));
+    });
+
+    test('testo sui contenitori arancio sopra AA (4.5:1)', () {
+      expect(
+        contrast(cs.onPrimaryContainer, cs.primaryContainer),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
+
+    test('superfici e testi senza tinta: canali quasi uguali', () {
+      for (final color in [
+        cs.surface,
+        cs.surfaceContainerLow,
+        cs.surfaceContainer,
+        cs.surfaceContainerHigh,
+        cs.surfaceContainerHighest,
+        cs.onPrimary,
+        cs.onSurface,
+        cs.onSurfaceVariant,
+      ]) {
+        final channels = [color.r, color.g, color.b];
+        final spread =
+            channels.reduce((a, b) => a > b ? a : b) -
+            channels.reduce((a, b) => a < b ? a : b);
+        expect(spread, lessThan(0.05), reason: '$color tira verso un colore');
+      }
+    });
   });
 }

@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/profile/widgets/sync_status_tile.dart';
-import 'package:pack_log/shared/helpers/exception_message.dart';
+import 'package:pack_log/shared/widgets/ds_dialog.dart';
 
 void main() {
   Widget wrap(Widget child, {required List<Override> overrides}) {
@@ -38,7 +38,7 @@ void main() {
 
     expect(find.byIcon(Icons.cloud_done_outlined), findsOneWidget);
     // No retry button when synced.
-    expect(find.byType(TextButton), findsNothing);
+    expect(find.bySubtype<TextButton>(), findsNothing);
   });
 
   testWidgets('shows pending count and retry button when there are changes', (
@@ -54,13 +54,13 @@ void main() {
 
     expect(find.byIcon(Icons.cloud_upload_outlined), findsOneWidget);
     expect(
-      find.byType(TextButton),
+      find.bySubtype<TextButton>(),
       findsOneWidget,
       reason: 'retry button must be visible when there are pending changes',
     );
   });
 
-  testWidgets('error state usa exceptionMessage, non e.toString()', (
+  testWidgets('errore di lettura offre Riprova senza dettagli tecnici', (
     tester,
   ) async {
     final err = Exception('raw-technical-detail');
@@ -75,9 +75,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
-    // exceptionMessage(err) è calcolabile qui: dopo pumpWidget la
-    // Localization di easy_localization è inizializzata.
-    expect(find.text(exceptionMessage(err)), findsOneWidget);
+    expect(find.textContaining('raw-technical-detail'), findsNothing);
+    expect(find.text('common.retry'.tr()), findsOneWidget);
   });
 
   testWidgets(
@@ -94,16 +93,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tapped via the leading icon rather than the ListTile's bounding-box
-      // center: with an unresolved (raw-key) translation the trailing retry
-      // TextButton renders wide enough to visually cover the ListTile's
-      // geometric center in this test harness, which would make a
-      // center-point tap land on the retry button's onPressed instead of the
-      // tile's own onTap.
-      await tester.tap(find.byIcon(Icons.cloud_upload_outlined));
+      // Si tocca l'etichetta, non il centro della riga: a destra c'è il
+      // bottone "Riprova", che ha un suo onPressed.
+      await tester.tap(find.text('profile.sync_status_title'.tr()));
       await tester.pumpAndSettle();
 
-      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byType(DsDialog), findsOneWidget);
     },
   );
 
@@ -121,6 +116,6 @@ void main() {
     await tester.tap(find.byType(ListTile));
     await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(DsDialog), findsNothing);
   });
 }

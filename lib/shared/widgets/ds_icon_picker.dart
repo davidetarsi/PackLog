@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
+import '../theme/app_opacity.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_spacing.dart';
+import '../theme/surface_colors.dart';
 
 /// Picker icone a griglia 5×N. Sostituisce i layout custom in
-/// [HouseFormContent] (GridView 5xN) e [SpaceFormContent] (Wrap).
+/// [AddEditHouseSheet] e [AddEditSpaceSheet].
 ///
-/// La griglia 5 colonne è coerente con il resto dell'app (palette colori,
-/// gender picker in TemplateSelectionScreen, ecc.).
+/// La griglia 5 colonne è coerente con il resto dell'app (es. la palette
+/// colori).
 ///
 /// ```dart
 /// DsIconPicker(
@@ -43,11 +46,11 @@ class DsIconPicker extends StatelessWidget {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 5,
         childAspectRatio: 1,
-        crossAxisSpacing: AppSpacing.sm,
-        mainAxisSpacing: AppSpacing.sm,
+        crossAxisSpacing: context.spacingSm,
+        mainAxisSpacing: context.spacingSm,
       ),
       itemCount: icons.length,
       itemBuilder: (context, index) {
@@ -65,12 +68,15 @@ class DsIconPicker extends StatelessWidget {
           },
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+            duration: AppMotion.fast,
+            // Come le pill scelte: velo arancio leggero e bordo, niente pieno.
             decoration: BoxDecoration(
-              color: isSelected ? cs.primaryContainer : cs.surface,
+              color: isSelected
+                  ? cs.primary.withValues(alpha: AppOpacity.selected)
+                  : context.groupSurface,
               border: Border.all(
-                color: isSelected ? cs.primary : cs.outlineVariant,
-                width: isSelected ? 2 : 1,
+                color: isSelected ? cs.primary : Colors.transparent,
+                width: AppConstants.selectedBorderWidth,
               ),
               borderRadius: BorderRadius.circular(
                 AppConstants.inputBorderRadius,
@@ -78,8 +84,8 @@ class DsIconPicker extends StatelessWidget {
             ),
             child: Icon(
               iconData,
-              size: 26,
-              color: isSelected ? cs.onPrimaryContainer : cs.onSurface,
+              size: context.iconSizeMd,
+              color: isSelected ? cs.primary : cs.onSurfaceVariant,
             ),
           ),
         );

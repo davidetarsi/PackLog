@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
 
 /// Widget riutilizzabile per regolare la quantità di un item.
@@ -70,13 +71,18 @@ class QuantityStepper extends StatelessWidget {
             Icons.remove_circle_outline,
             color: canDecrement
                 ? effectiveAccent
-                : cs.onSurface.withValues(alpha: 0.38),
+                : cs.onSurface.withValues(alpha: AppOpacity.disabled),
           ),
           onPressed: canDecrement ? () => onChanged(value - 1) : null,
           iconSize: effectiveIconSize,
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          visualDensity: VisualDensity.compact,
+          // Area di tocco minima da 48: l'icona resta piccola, il tocco no.
+          constraints: const BoxConstraints(
+            minWidth: kMinInteractiveDimension,
+            minHeight: kMinInteractiveDimension,
+          ),
+          // Standard, non compact: il compact ridurrebbe il minimo di 48.
+          visualDensity: VisualDensity.standard,
         ),
         SizedBox(width: context.spacingXs),
         Container(
@@ -86,10 +92,9 @@ class QuantityStepper extends StatelessWidget {
             value.toString(),
             style:
                 valueTextStyle ??
-                Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w500, // titleMedium ≈ 16px → w500
-                  color: effectiveAccent,
-                ),
+                Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: effectiveAccent),
           ),
         ),
         SizedBox(width: context.spacingXs),
@@ -98,13 +103,18 @@ class QuantityStepper extends StatelessWidget {
             Icons.add_circle_outline,
             color: canIncrement
                 ? effectiveAccent
-                : cs.onSurface.withValues(alpha: 0.38),
+                : cs.onSurface.withValues(alpha: AppOpacity.disabled),
           ),
           onPressed: canIncrement ? () => onChanged(value + 1) : null,
           iconSize: effectiveIconSize,
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          visualDensity: VisualDensity.compact,
+          // Area di tocco minima da 48: l'icona resta piccola, il tocco no.
+          constraints: const BoxConstraints(
+            minWidth: kMinInteractiveDimension,
+            minHeight: kMinInteractiveDimension,
+          ),
+          // Standard, non compact: il compact ridurrebbe il minimo di 48.
+          visualDensity: VisualDensity.standard,
         ),
       ],
     );

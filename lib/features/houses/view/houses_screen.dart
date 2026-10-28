@@ -11,13 +11,12 @@ import '../../../shared/theme/theme.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/entity_action_handler.dart';
-import '../../../shared/widgets/ds_badge.dart';
 import '../../../shared/widgets/entity_context_menu.dart';
-import 'add_edit_house_screen.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
 import '../../../shared/widgets/refreshable_empty_state.dart';
-import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/tab_header.dart';
+import 'widgets/new_house_row.dart';
 
 class HousesScreen extends ConsumerStatefulWidget {
   const HousesScreen({super.key});
@@ -34,63 +33,72 @@ class _HousesScreenState extends ConsumerState<HousesScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return ShellTabScaffold(
-      body: housesAsync.when(
-        skipLoadingOnReload: true,
-        data: (houses) {
-          // Lista vuota durante un fullPull = DB appena svuotato (account switch
-          // o primo avvio), non "utente senza case". Mostra skeleton finché il
-          // pull non porta i dati reali.
-          if (houses.isEmpty && isSyncing) {
-            return const SkeletonHousesBody();
-          }
-          if (houses.isEmpty) {
-            // Stato vuoto scrollabile: senza AlwaysScrollableScrollPhysics
-            // il gesto pull-to-refresh non verrebbe rilevato.
-            return RefreshableEmptyState(
-              onRefresh: () => ref.refresh(houseNotifierProvider.future),
-              icon: Icons.home_outlined,
-              title: 'houses.no_houses_title'.tr(),
-              action: DsButton(
-                label: 'houses.no_houses_subtitle'.tr(),
-                icon: Icons.add,
-                onPressed: () => showAddEditHouseSheet(context),
-              ),
-            );
-          }
+      body: Column(
+        children: [
+          TabHeader(title: 'navigation.houses'.tr()),
+          Expanded(
+            child: housesAsync.when(
+              skipLoadingOnReload: true,
+              data: (houses) {
+                // Lista vuota durante un fullPull = DB appena svuotato (account switch
+                // o primo avvio), non "utente senza case". Mostra skeleton finché il
+                // pull non porta i dati reali.
+                if (houses.isEmpty && isSyncing) {
+                  return const SkeletonHousesBody();
+                }
+                if (houses.isEmpty) {
+                  // Stato vuoto scrollabile: senza AlwaysScrollableScrollPhysics
+                  // il gesto pull-to-refresh non verrebbe rilevato.
+                  return RefreshableEmptyState(
+                    onRefresh: () => ref.refresh(houseNotifierProvider.future),
+                    icon: Icons.home_outlined,
+                    title: 'houses.no_houses_title'.tr(),
+                    action: const NewHouseRow(emphasized: true),
+                  );
+                }
 
-          // Ordina le case: prima quella principale, poi le altre
-          final sortedHouses = houses.toList()
-            ..sort((a, b) {
-              if (a.isPrimary && !b.isPrimary) return -1;
-              if (!a.isPrimary && b.isPrimary) return 1;
-              return 0;
-            });
+                // Ordina le case: prima quella principale, poi le altre
+                final sortedHouses = houses.toList()
+                  ..sort((a, b) {
+                    if (a.isPrimary && !b.isPrimary) return -1;
+                    if (!a.isPrimary && b.isPrimary) return 1;
+                    return 0;
+                  });
 
-          return RefreshIndicator(
-            onRefresh: () async => ref.refresh(houseNotifierProvider.future),
-            color: colorScheme.primary,
-            child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              // `bottom`: vedi [ShellTabScaffold] — il contenuto scorre dietro
-              // la nav bar flottante, questo padding tiene l'ultima card
-              // raggiungibile.
-              padding: EdgeInsets.only(
-                top: context.spacingMd,
-                bottom: context.navBarReservedHeight,
-              ),
-              itemCount: sortedHouses.length,
-              itemBuilder: (context, index) {
-                final house = sortedHouses[index];
-                return _HouseCard(house: house);
+                return RefreshIndicator(
+                  onRefresh: () async =>
+                      ref.refresh(houseNotifierProvider.future),
+                  color: colorScheme.primary,
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    // `bottom`: vedi [ShellTabScaffold] — il contenuto scorre dietro
+                    // la nav bar flottante, questo padding tiene l'ultima card
+                    // raggiungibile.
+                    padding: EdgeInsets.only(
+                      top: context.spacingSm,
+                      bottom: context.navBarReservedHeight,
+                    ),
+                    itemCount: sortedHouses.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == sortedHouses.length) {
+                        return const NewHouseRow();
+                      }
+                      final house = sortedHouses[index];
+                      return _HouseCard(house: house);
+                    },
+                  ),
+                );
               },
+              loading: () => const SkeletonHousesBody(),
+              error: (error, stack) => DsErrorState(
+                error: error,
+                title: 'errors.load_houses'.tr(),
+                onRetry: () =>
+                    ref.read(houseNotifierProvider.notifier).refresh(),
+              ),
             ),
-          );
-        },
-        loading: () => const SkeletonHousesBody(),
-        error: (error, stack) => DsErrorState(
-          error: error,
-          onRetry: () => ref.read(houseNotifierProvider.notifier).refresh(),
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -105,6 +113,7 @@ class _HouseCard extends ConsumerWidget {
     final action = await showEntityContextMenu(
       context: context,
       entityType: 'common.house_type'.tr(),
+      title: house.displayName,
       showSetPrimaryAction: true,
       isPrimary: house.isPrimary,
     );
@@ -136,163 +145,105 @@ class _HouseCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final statsAsync = ref.watch(houseStatsProvider(house.id));
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final stats = ref.watch(houseStatsProvider(house.id)).valueOrNull;
+    final place = house.name.trim().isNotEmpty
+        ? house.locationDisplayName ?? house.description
+        : null;
+    final statsLine = stats == null
+        ? null
+        : [
+            'houses.total_items'.tr(args: [stats.totalItems.toString()]),
+            if (stats.hasItemsInTrip) 'houses.badge_in_trip'.tr(),
+            if (stats.hasTemporaryItems) 'houses.badge_guest'.tr(),
+          ].join(' · ');
+    final radius = BorderRadius.circular(AppConstants.cardBorderRadius);
 
-    return Card(
-      margin: EdgeInsets.symmetric(
+    // Blocco come i gruppi del resto dell'app: superficie appena diversa,
+    // niente bordo né divisori. Icona e puntina grigie: in questa pagina
+    // l'arancio è solo di Crea.
+    return Padding(
+      padding: EdgeInsets.symmetric(
         horizontal: context.spacingMd,
-        vertical: context.spacingSm,
+        vertical: context.spacingXs,
       ),
-      elevation: 0,
-      color: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: context.responsiveBorderRadius(
-          AppConstants.cardBorderRadius + 4,
-        ),
-        side: BorderSide(
-          color: colorScheme.outlineVariant,
-          width: /* house.isPrimary ? 1.5 : */ 1,
-        ),
-      ),
-      child: Stack(
-        children: [
-          InkWell(
-            borderRadius: context.responsiveBorderRadius(
-              AppConstants.cardBorderRadius + 4,
-            ),
-            onTap: () {
-              context.push('/houses/${house.id}');
-            },
-            onLongPress: () => _onLongPress(context, ref),
-            child: Padding(
-              padding: EdgeInsets.all(context.spacingMd),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+      child: Material(
+        color: context.groupSurface,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.push('/houses/${house.id}'),
+          onLongPress: () => _onLongPress(context, ref),
+          child: Padding(
+            padding: EdgeInsets.all(context.spacingMd),
+            child: Row(
+              children: [
+                Container(
+                  padding: context.cardPaddingDense,
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest,
+                    borderRadius: radius,
+                  ),
+                  child: Icon(
+                    HouseIcons.getIcon(house.iconName),
+                    color: cs.onSurfaceVariant,
+                    size: context.iconSizeMd,
+                  ),
+                ),
+                SizedBox(width: context.spacingMd),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: context.cardPaddingDense,
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer,
-                          borderRadius: context.responsiveBorderRadius(
-                            AppConstants.cardBorderRadius,
-                          ),
-                        ),
-                        child: Icon(
-                          HouseIcons.getIcon(house.iconName),
-                          color: house.isPrimary
-                              ? colorScheme.primary
-                              : colorScheme.onPrimaryContainer,
-                          size: context.iconSizeMd,
-                        ),
-                      ),
-                      SizedBox(width: context.spacingMd),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
                               house.displayName,
-                              style: Theme.of(context).textTheme.titleLarge,
+                              style: tt.cardTitle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (house.name.trim().isNotEmpty &&
-                                (house.locationDisplayName != null ||
-                                    house.description != null)) ...[
-                              SizedBox(height: context.spacingXs),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.location_on_outlined,
-                                    size: 14,
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      house.locationDisplayName ??
-                                          house.description!,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.copyWith(
-                                            color: colorScheme.onSurfaceVariant,
-                                          ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                          ),
+                          // push_pin = casa principale (il segnalibro è dei
+                          // viaggi salvati).
+                          if (house.isPrimary) ...[
+                            SizedBox(width: context.spacingXs),
+                            Icon(
+                              Icons.push_pin_outlined,
+                              key: const Key('house_primary_pin'),
+                              size: context.iconSizeSm,
+                              color: cs.onSurfaceVariant,
+                            ),
                           ],
-                        ),
+                        ],
                       ),
+                      if (place != null)
+                        Text(
+                          place,
+                          style: tt.bodyLarge?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      if (statsLine != null)
+                        Text(
+                          statsLine,
+                          style: tt.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                     ],
                   ),
-
-                  // Divider
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: context.spacingMd),
-                    child: Divider(
-                      height: 1,
-                      color: colorScheme.outlineVariant,
-                    ),
-                  ),
-
-                  // Stats row
-                  statsAsync.when(
-                    skipLoadingOnReload: true,
-                    data: (stats) => Row(
-                      children: [
-                        Icon(
-                          Icons.inventory_2_outlined,
-                          size: 16,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'houses.total_items'.tr(
-                            args: [stats.totalItems.toString()],
-                          ),
-                          style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(color: colorScheme.onSurfaceVariant),
-                        ),
-                        const Spacer(),
-                        if (stats.hasItemsInTrip)
-                          DsStatusBadge(
-                            type: DsStatusBadgeType.onTrip,
-                            label: 'houses.badge_in_trip'.tr(),
-                          ),
-                        if (stats.hasItemsInTrip && stats.hasTemporaryItems)
-                          AppSpacing.hGapSm,
-                        if (stats.hasTemporaryItems)
-                          DsStatusBadge(
-                            type: DsStatusBadgeType.temporary,
-                            label: 'houses.badge_guest'.tr(),
-                          ),
-                      ],
-                    ),
-                    loading: () => const SizedBox(height: 20),
-                    error: (error, stackTrace) => const SizedBox(height: 20),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-
-          // Badge principale in alto a destra (stile bookmark/salvato)
-          if (house.isPrimary)
-            // push_pin = "casa principale/fissata" — non bookmark (riservato ai viaggi salvati)
-            Positioned(
-              top: 0,
-              right: 12,
-              child: Icon(Icons.push_pin, size: 20, color: colorScheme.primary),
-            ),
-        ],
+        ),
       ),
     );
   }

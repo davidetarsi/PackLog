@@ -125,6 +125,17 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Inserisce i nuovi oggetti della scansione AI in una sola transazione.
+  Future<void> saveAiItemsToHouse({
+    required List<ItemsCompanion> newItems,
+  }) async {
+    if (newItems.isEmpty) return;
+
+    await transaction(() async {
+      await batch((batch) => batch.insertAll(items, newItems));
+    });
+  }
+
   // === Space Filtering Methods ===
 
   /// Ottiene gli oggetti non eliminati di una casa filtrati per spazio specifico

@@ -37,7 +37,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: 'l-server-ts',
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Zaino',
           sizeType: LuggageSize.cabinBaggage,
           createdAt: DateTime(2026, 5, 1, 7, 0),
@@ -72,7 +72,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: 'l-race',
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Zaino Race',
           sizeType: LuggageSize.cabinBaggage,
           createdAt: DateTime(2026, 6, 1, 7, 0),
@@ -115,7 +115,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: 'l-blocked',
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Zaino',
           sizeType: LuggageSize.cabinBaggage,
           createdAt: DateTime.now(),
@@ -139,7 +139,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: 'l-wipe-1',
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'A',
           sizeType: LuggageSize.cabinBaggage,
           createdAt: DateTime.now(),
@@ -149,7 +149,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: 'l-wipe-2',
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'B',
           sizeType: LuggageSize.holdBaggage,
           createdAt: DateTime.now(),
@@ -170,7 +170,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: 'l-keep-sync',
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Original',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime(2026, 5, 1, 7, 0),

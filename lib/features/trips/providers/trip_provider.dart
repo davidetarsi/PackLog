@@ -14,6 +14,9 @@ import '../services/trip_lifecycle_service.dart';
 
 part 'trip_provider.g.dart';
 
+/// Margine sopra l'orario di scadenza del viaggio, prima del ricaricamento.
+const _kRefreshBuffer = Duration(seconds: 2);
+
 @Riverpod(keepAlive: true)
 class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   TripRepository get _repo => ref.read(tripRepositoryProvider);
@@ -53,8 +56,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   void _scheduleRefreshAt(DateTime? at) {
     if (at == null) return;
     // +2s buffer per assorbire imprecisioni di scheduling del SO.
-    final Duration delay =
-        at.difference(DateTime.now()) + const Duration(seconds: 2);
+    final Duration delay = at.difference(DateTime.now()) + _kRefreshBuffer;
     final Timer timer = Timer(delay, () {
       debugPrint('[TripNotifier] Auto-refresh: cambio di stato viaggio');
       ref.invalidateSelf();
@@ -181,6 +183,23 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
           tripId,
           nameSuffix: nameSuffix ?? ' (Copia)',
         );
+      },
+      reload: _repo.getAllTrips,
+      rethrowOnly: true,
+      onSuccess: (_) => _analytics.trackTripDuplicated(),
+    );
+    return newTripId;
+  }
+
+  /// Riusa un viaggio: crea una copia senza date, con tappe, oggetti
+  /// (non spuntati) e bagagli.
+  ///
+  /// Returns: ID del nuovo viaggio creato.
+  Future<String> reuseTrip(String tripId) async {
+    late String newTripId;
+    await mutate(
+      operation: () async {
+        newTripId = await _repo.reuseTrip(tripId);
       },
       reload: _repo.getAllTrips,
       rethrowOnly: true,

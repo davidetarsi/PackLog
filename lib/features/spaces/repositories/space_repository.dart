@@ -27,6 +27,8 @@ abstract class SpaceRepository {
   Future<void> addSpace(SpaceModel model);
   Future<SpaceModel> getSpaceById(String id);
   Future<List<SpaceModel>> getAllSpaces();
+
+  /// Propaga gli errori di lettura; una lista vuota indica assenza di spazi.
   Future<List<SpaceModel>> getSpacesByHouseId(String houseId);
   Future<bool> deleteSpace(String id);
   Future<void> updateSpace(SpaceModel model);

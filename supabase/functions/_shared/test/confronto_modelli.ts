@@ -1,0 +1,276 @@
+// Confronto Claude Haiku 5.5 (con e senza ragionamento) / GPT-6 Luna sulle due
+// chiamate che costano:
+// lo scan di una foto (prompt di item-metadata) e la valigia (pack-trip). Jev
+// non dipende dal modello: di base resta fuori; con --jev (e TYPESAFE_API_KEY)
+// entra nella valigia, chiesto una volta sola per viaggio e dato uguale a tutti
+// e due i modelli, cosi' la differenza resta solo quella del modello. Per ogni chiamata: token, costo, tempo e
+// risposta, per confrontare anche la qualita'. COSTA (pochi centesimi): le
+// chiavi arrivano dall'ambiente, mai stampate.
+//
+// Uso (dalla radice del repo):
+//   ANTHROPIC_API_KEY=... OPENAI_KEY=... deno run --allow-net --allow-read --allow-write --allow-env \
+//     --config supabase/functions/item-metadata/deno.json \
+//     supabase/functions/_shared/test/confronto_modelli.ts \
+//     --foto CARTELLA_JPG --armadio ARMADIO.json --uscita confronto.json [--ripeti 1] [--jev]
+//     [--openai gpt-6-luna|gpt-4o-mini] [--solo claude,claude-senza,openai]
+//
+// --openai sceglie il modello OpenAI (predefinito gpt-6-luna; gpt-4o-mini e'
+// quello di prima, chiamato come lo chiamava l'app). --solo fa girare solo
+// alcune varianti, per esempio `--openai gpt-4o-mini --solo openai`; serve
+// solo la chiave dei modelli scelti.
+//
+// ARMADIO.json: la lista dei capi come la legge pack-trip, [{ id, name, category, ai_metadata }, ...].
+// test/armadio_prova.json e' l'armadio da 197 capi del bench (inventory_cache.json), gia' in questo formato.
+import { parseArgs } from "node:util";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { extname, join } from "node:path";
+import { claudeHttp, MODELLO as MODELLO_CLAUDE } from "../claude.ts";
+import { bloccoImmagine } from "../immagine.ts";
+import { leggiJson, promptScan } from "../capi/scheda.ts";
+import { MAX_TOKENS_FOTO } from "../capi/analisi.ts";
+import { climaViaggio, type Servizi } from "../clima/meteo.ts";
+import { generaValigia, MAX_TOKENS_VALIGIA, scenarioDaApp } from "../valigia/genera.ts";
+import { validaViaggio } from "../valigia/ingresso.ts";
+import type { RigaArmadio } from "../valigia/capo.ts";
+import { type ChiediJev, jevHttp } from "../valigia/jev.ts";
+
+const { values: arg } = parseArgs({
+  options: {
+    foto: { type: "string" },
+    armadio: { type: "string" },
+    uscita: { type: "string", default: "confronto.json" },
+    openai: { type: "string" },
+    luna: { type: "string" },
+    solo: { type: "string", default: "claude,claude-senza,openai" },
+    ripeti: { type: "string", default: "1" },
+    jev: { type: "boolean", default: false },
+  },
+});
+// --luna resta come nome vecchio di --openai.
+const MODELLO_OPENAI = arg.openai ?? arg.luna ?? "gpt-6-luna";
+const scelti = new Set(arg.solo!.split(",").map((x) => x.trim()));
+for (const x of scelti) {
+  if (!["claude", "claude-senza", "openai"].includes(x)) throw new Error(`--solo: variante sconosciuta '${x}'`);
+}
+const conClaude = scelti.has("claude") || scelti.has("claude-senza");
+const chiaveClaude = Deno.env.get("ANTHROPIC_API_KEY"), chiaveOpenai = Deno.env.get("OPENAI_KEY");
+if (conClaude && !chiaveClaude) throw new Error("ANTHROPIC_API_KEY nell'ambiente");
+if (scelti.has("openai") && !chiaveOpenai) throw new Error("OPENAI_KEY nell'ambiente");
+if (!arg.foto && !arg.armadio) throw new Error("serve --foto, --armadio o tutti e due");
+const chiaveJev = Deno.env.get("TYPESAFE_API_KEY");
+if (arg.jev && !chiaveJev) throw new Error("--jev vuole TYPESAFE_API_KEY nell'ambiente");
+
+// Jev con la memoria: la stessa domanda sullo stesso stato si paga una volta e
+// torna identica per tutti e due i modelli.
+const memoriaJev = new Map<string, ReturnType<ChiediJev>>();
+const jevVero = arg.jev ? jevHttp(chiaveJev!) : null;
+const jev: ChiediJev | null = jevVero
+  ? (stato, domande) => {
+    const k = JSON.stringify([stato, domande]);
+    if (!memoriaJev.has(k)) memoriaJev.set(k, jevVero(stato, domande));
+    return memoriaJev.get(k)!;
+  }
+  : null;
+
+// Le varianti a confronto: Claude con e senza ragionamento, Luna.
+const CLAUDE_SENZA = `${MODELLO_CLAUDE} senza ragionamento`;
+
+// $ per milione di token (listino ottobre 2026, prompt sotto 100k): da
+// ricontrollare sulle pagine dei prezzi prima di trarre conclusioni.
+const LISTINO_OPENAI: Record<string, { in: number; out: number }> = {
+  "gpt-6-luna": { in: 0.10, out: 0.50 },
+  "gpt-4o-mini": { in: 0.15, out: 0.60 },
+};
+if (scelti.has("openai") && !LISTINO_OPENAI[MODELLO_OPENAI]) {
+  throw new Error(`prezzo di ${MODELLO_OPENAI} sconosciuto: aggiungilo a LISTINO_OPENAI`);
+}
+const PREZZI: Record<string, { in: number; out: number }> = {
+  [MODELLO_CLAUDE]: { in: 0.10, out: 0.50 },
+  [CLAUDE_SENZA]: { in: 0.10, out: 0.50 },
+  [MODELLO_OPENAI]: LISTINO_OPENAI[MODELLO_OPENAI],
+};
+
+interface Chiamata {
+  modello: string;
+  testo: string;
+  ingresso: number;
+  uscita: number;
+  ms: number;
+  /** La risposta e' finita contro max_tokens (tagliata). */
+  troncata?: boolean;
+  errore?: string;
+}
+type Contenuto = { testo: string } | { testo: string; immagineBase64: string };
+type Chiedi = (c: Contenuto, maxTokens: number) => Promise<Chiamata>;
+
+function chiediClaude(nome: string, ragiona: boolean): Chiedi {
+  const claude = claudeHttp(chiaveClaude!, undefined, 120000, ragiona);
+  return async (c, maxTokens) => {
+    const t0 = Date.now();
+    const contenuto = "immagineBase64" in c
+      ? [bloccoImmagine(c.immagineBase64), { type: "text" as const, text: c.testo }]
+      : c.testo;
+    const r = await claude(contenuto, maxTokens);
+    return {
+      modello: nome, testo: r.testo, ms: Date.now() - t0, troncata: r.uso.stop_reason === "max_tokens",
+      ingresso: Number(r.uso.input_tokens ?? 0), uscita: Number(r.uso.output_tokens ?? 0),
+    };
+  };
+}
+
+// OpenAI con lo stesso compito, immagine in dettaglio alto come lo scan.
+// Luna (modello che ragiona): ragionamento basso come effort "low" di Claude.
+// gpt-4o-mini (non ragiona): max_tokens e temperature come li usava l'app,
+// 0 per la foto e 0,2 per la valigia.
+const ragionaOpenai = !MODELLO_OPENAI.startsWith("gpt-4");
+const chiediOpenai: Chiedi = async (c, maxTokens) => {
+  const t0 = Date.now();
+  const content = "immagineBase64" in c
+    ? [
+      { type: "text", text: c.testo },
+      { type: "image_url", image_url: { url: `data:${bloccoImmagine(c.immagineBase64).source.media_type};base64,${c.immagineBase64}`, detail: "high" } },
+    ]
+    : c.testo;
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${chiaveOpenai}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: MODELLO_OPENAI, messages: [{ role: "user", content }],
+      ...(ragionaOpenai
+        ? { max_completion_tokens: maxTokens, reasoning_effort: "low" }
+        : { max_tokens: maxTokens, temperature: "immagineBase64" in c ? 0 : 0.2 }),
+    }),
+    signal: AbortSignal.timeout(120000),
+  });
+  if (r.status >= 400) throw new Error(`${MODELLO_OPENAI}: ${r.status} ${(await r.text()).slice(0, 300)}`);
+  const d = await r.json();
+  return {
+    modello: MODELLO_OPENAI, testo: d.choices[0].message.content ?? "", ms: Date.now() - t0,
+    troncata: d.choices[0].finish_reason === "length",
+    ingresso: d.usage?.prompt_tokens ?? 0, uscita: d.usage?.completion_tokens ?? 0,
+  };
+};
+
+const MODELLI: [string, Chiedi][] = [
+  ...(scelti.has("claude") ? [[MODELLO_CLAUDE, chiediClaude(MODELLO_CLAUDE, true)] as [string, Chiedi]] : []),
+  ...(scelti.has("claude-senza") ? [[CLAUDE_SENZA, chiediClaude(CLAUDE_SENZA, false)] as [string, Chiedi]] : []),
+  ...(scelti.has("openai") ? [[MODELLO_OPENAI, chiediOpenai] as [string, Chiedi]] : []),
+];
+const costo = (c: Chiamata) => (c.ingresso * PREZZI[c.modello].in + c.uscita * PREZZI[c.modello].out) / 1e6;
+
+async function prova(chiedi: Chiedi, c: Contenuto, maxTokens: number, nome: string): Promise<Chiamata> {
+  try {
+    return await chiedi(c, maxTokens);
+  } catch (e) {
+    return { modello: nome, testo: "", ingresso: 0, uscita: 0, ms: 0, errore: (e as Error).message };
+  }
+}
+
+// ── Foto ────────────────────────────────────────────────────────────────────
+const foto: unknown[] = [];
+if (arg.foto) {
+  const file = readdirSync(arg.foto).filter((f) => [".jpg", ".jpeg", ".png", ".webp"].includes(extname(f).toLowerCase()));
+  for (const f of file) {
+    const immagineBase64 = btoa(Array.from(readFileSync(join(arg.foto, f)), (b) => String.fromCharCode(b)).join(""));
+    for (let i = 0; i < Number(arg.ripeti); i++) {
+      for (const [nome, chiedi] of MODELLI) {
+        const r = await prova(chiedi, { testo: promptScan(), immagineBase64 }, MAX_TOKENS_FOTO, nome);
+        const capi = leggiJson(r.testo);
+        foto.push({ file: f, ...r, costo: costo(r), capi: Array.isArray(capi) ? capi.length : capi ? 1 : 0, risposta: capi ?? r.testo });
+        console.log(`foto ${f} ${nome}: ${r.errore ?? `${r.ingresso}+${r.uscita} token, ${r.ms} ms`}`);
+      }
+    }
+  }
+}
+
+// ── Valigie ─────────────────────────────────────────────────────────────────
+const cache = new Map<string, any>();
+const meteo: Servizi = {
+  async scarica(url, params) {
+    const u = new URL(url);
+    for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
+    const r = await fetch(u, { signal: AbortSignal.timeout(30000) });
+    return { status: r.status, json: () => r.json() };
+  },
+  async leggiCache(k) { return cache.has(k) ? structuredClone(cache.get(k)) : null; },
+  async scriviCache(k, v) { cache.set(k, structuredClone(v)); },
+  oggiUtc: () => new Date().toISOString().slice(0, 10),
+  oggi: () => new Date().toISOString().slice(0, 10),
+  attendi: (t) => new Promise<void>((r) => setTimeout(r, 1000 * (t + 1))),
+};
+
+// Gli stessi viaggi della prova dal vivo del generatore, nel futuro.
+const tra = (giorni: number) => new Date(Date.now() + giorni * 86400000).toISOString().slice(0, 10);
+const VIAGGI: [string, unknown][] = [
+  ["lisbona_citta", { data_inizio: tra(5), giorni: 4,
+    destinazione: { nome: "Lisbona", paese: "Portogallo", lat: 38.7223, lon: -9.1393 },
+    attivita: ["visite in citta", "cene al ristorante"], bagaglio: "trolley medio", alloggio: "hotel" }],
+  ["milano_lavoro", { data_inizio: tra(8), giorni: 3,
+    destinazione: { nome: "Milano", paese: "Italia", lat: 45.4642, lon: 9.19 },
+    attivita: ["riunioni di lavoro", "cena elegante"], bagaglio: "borsa a tracolla", alloggio: "hotel" }],
+  ["cortina_trekking", { data_inizio: tra(60), giorni: 5,
+    destinazione: { nome: "Cortina d'Ampezzo", paese: "Italia", lat: 46.5369, lon: 12.13903 },
+    attivita: ["trekking", "cene al ristorante"], bagaglio: "zaino da 40 litri", alloggio: "rifugio" }],
+  ["bali_mare", { data_inizio: tra(90), giorni: 10,
+    destinazione: { nome: "Ubud", paese: "Indonesia", lat: -8.5069, lon: 115.2625 },
+    attivita: ["mare", "visita ai templi", "snorkeling", "cene informali"], bagaglio: "valigia grande",
+    alloggio: "villa", lavatrice: true }],
+  ["islanda_olanda", { data_inizio: tra(120), tappe: [
+    { nome: "Reykjavik", paese: "Islanda", lat: 64.1355, lon: -21.8954, giorni: 5,
+      attivita: ["aurora boreale", "terme geotermali", "escursioni leggere"] },
+    { nome: "Amsterdam", paese: "Paesi Bassi", lat: 52.3676, lon: 4.9041, giorni: 4,
+      attivita: ["visite in citta", "musei", "cene informali"] }],
+    bagaglio: "valigia grande", alloggio: "hotel" }],
+];
+
+const valigie: unknown[] = [];
+if (arg.armadio) {
+  const righe: RigaArmadio[] = JSON.parse(readFileSync(arg.armadio, "utf8"));
+  for (const [id, corpo] of VIAGGI) {
+    const v = validaViaggio(corpo, new Date().toISOString().slice(0, 10));
+    for (let i = 0; i < Number(arg.ripeti); i++) {
+      for (const [nome, chiedi] of MODELLI) {
+        let chiamata: Chiamata | undefined;
+        try {
+          const r = await generaValigia(scenarioDaApp(v), righe, {
+            clima: () => climaViaggio(v.data_inizio, v.giorni, v.destinazione ?? null, v.tappe ?? null, meteo),
+            modello: async (prompt) => {
+              chiamata = await chiedi({ testo: prompt }, MAX_TOKENS_VALIGIA);
+              return { testo: chiamata.testo };
+            },
+            jev,
+          });
+          const s = r.valigia;
+          const nomi = (xs: any[] = []) => xs.map((x) => x?.name ?? x?.nome ?? x);
+          valigie.push({ viaggio: id, ...chiamata, costo: costo(chiamata!), ideali: nomi(s.ideali),
+            ripieghi: nomi(s.ripieghi), essenziali: nomi(s.essenziali), mancanti: nomi(s.mancanti) });
+          console.log(`valigia ${id} ${nome}: ${chiamata!.ingresso}+${chiamata!.uscita} token, ${chiamata!.ms} ms, `
+            + `${s.ideali.length} ideali, ${(s.mancanti ?? []).length} mancanti`);
+        } catch (e) {
+          valigie.push({ viaggio: id, modello: nome, errore: (e as Error).message, ...(chiamata ?? {}) });
+          console.log(`valigia ${id} ${nome}: ERRORE ${(e as Error).message}`);
+        }
+      }
+    }
+  }
+}
+
+// ── Riepilogo ───────────────────────────────────────────────────────────────
+function riepilogo(righe: any[]) {
+  const per: Record<string, any> = {};
+  for (const [m] of MODELLI) {
+    const ok = righe.filter((r) => r.modello === m && !r.errore);
+    const media = (k: string) => ok.length ? ok.reduce((a, r) => a + r[k], 0) / ok.length : 0;
+    per[m] = {
+      chiamate: righe.filter((r) => r.modello === m).length, errori: righe.filter((r) => r.modello === m && r.errore).length,
+      troncate: righe.filter((r) => r.modello === m && r.troncata).length,
+      token_ingresso_medi: Math.round(media("ingresso")), token_uscita_medi: Math.round(media("uscita")),
+      costo_medio_usd: Number(media("costo").toFixed(6)), ms_medi: Math.round(media("ms")),
+    };
+  }
+  return per;
+}
+const esito = { data: new Date().toISOString(), prezzi: PREZZI, riepilogo: { foto: riepilogo(foto), valigie: riepilogo(valigie) }, foto, valigie };
+writeFileSync(arg.uscita!, JSON.stringify(esito, null, 1));
+console.log(JSON.stringify(esito.riepilogo, null, 1));
+console.log(`dettaglio in ${arg.uscita}`);

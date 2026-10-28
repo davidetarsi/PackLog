@@ -94,6 +94,118 @@ void main() {
       final restored = ClothingAnalysisResult.fromJson(original.toJson());
       expect(restored, original);
     });
+
+    test('unknown fields survive the round-trip in extras', () {
+      final json = {..._fullJson(), 'waterResistance': 2, 'bulk': 3};
+      final result = ClothingAnalysisResult.fromJson(json);
+      expect(result.extras, {'waterResistance': 2, 'bulk': 3});
+      expect(result.toJson(), json);
+    });
+  });
+
+  group('fromItemMetadata()', () {
+    test('reads the metadata and the app category', () {
+      final result = ClothingAnalysisResult.fromItemMetadata({
+        'metadata': {..._fullJson(), 'bulk': 2},
+        'app_category': 'vestiti',
+        'dubbi': [],
+      });
+      expect(result.name, 'Jeans slim');
+      expect(result.appCategory, 'vestiti');
+      expect(result.extras, {'bulk': 2});
+      // app_category non finisce in items.ai_metadata.
+      expect(result.toJson().containsKey('app_category'), isFalse);
+    });
+
+    test('a missing metadata falls back to the defaults', () {
+      final result = ClothingAnalysisResult.fromItemMetadata({'items': 1});
+      expect(result.name, 'Sconosciuto');
+      expect(result.appCategory, isNull);
+    });
+  });
+
+  group('dubbi (doubts)', () {
+    test('fromItemMetadata legge il campo di ogni dubbio', () {
+      final result = ClothingAnalysisResult.fromItemMetadata({
+        'metadata': _fullJson(),
+        'dubbi': [
+          {'campo': 'warmth', 'motivo': 'incerto'},
+          {'campo': 'baseColor'},
+        ],
+      });
+      expect(result.doubts, ['warmth', 'baseColor']);
+    });
+
+    test('scarta i dubbi malformati', () {
+      final result = ClothingAnalysisResult.fromItemMetadata({
+        'metadata': _fullJson(),
+        'dubbi': [
+          'stringa',
+          {'campo': 42},
+          {'motivo': 'senza campo'},
+          {'campo': 'fit'},
+          null,
+        ],
+      });
+      expect(result.doubts, ['fit']);
+    });
+
+    test('senza dubbi o con dubbi non lista: lista vuota', () {
+      expect(
+        ClothingAnalysisResult.fromItemMetadata({
+          'metadata': _fullJson(),
+        }).doubts,
+        isEmpty,
+      );
+      expect(
+        ClothingAnalysisResult.fromItemMetadata({
+          'metadata': _fullJson(),
+          'dubbi': 'no',
+        }).doubts,
+        isEmpty,
+      );
+    });
+
+    test('toJson non contiene doubts', () {
+      final r = _fullResult().withDoubts(const ['warmth']);
+      expect(r.toJson().containsKey('doubts'), isFalse);
+      expect(r.toJson().containsKey('dubbi'), isFalse);
+    });
+
+    test('fromJson non legge doubts', () {
+      final r = ClothingAnalysisResult.fromJson({
+        ..._fullJson(),
+        'doubts': ['warmth'],
+      });
+      expect(r.doubts, isEmpty);
+    });
+
+    test('withDoubts cambia solo doubts', () {
+      final base = _fullResult();
+      final r = base.withDoubts(const ['fit']);
+      expect(r.doubts, ['fit']);
+      expect(r.name, base.name);
+      expect(base.doubts, isEmpty);
+    });
+  });
+
+  group('waterResistance', () {
+    test('legge extras["waterResistance"] come intero', () {
+      final r = ClothingAnalysisResult.fromJson({
+        ..._fullJson(),
+        'waterResistance': 2,
+      });
+      expect(r.waterResistance, 2);
+    });
+
+    test('default 0 se assente o non numerico', () {
+      expect(_fullResult().waterResistance, 0);
+      final r = ClothingAnalysisResult.fromJson({
+        ..._fullJson(),
+        'waterResistance': 'alta',
+      });
+      expect(r.waterResistance, 0);
+    });
   });
 
   // ── Equality and hashCode ─────────────────────────────────────────────────────

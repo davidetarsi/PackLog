@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/sync/sync_provider.dart';
+import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/widgets/ds_dialog.dart';
+import '../../../shared/widgets/ds_inline_error.dart';
+import '../../../shared/widgets/ds_settings.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 
 /// Dialog di dettaglio aperto dal tap sulla SyncStatusTile quando ci sono
 /// modifiche non ancora sincronizzate. Mostra, per tipo di entità, quante
@@ -13,8 +18,8 @@ class SyncDetailsDialog extends ConsumerWidget {
   const SyncDetailsDialog({super.key});
 
   static Future<void> show(BuildContext context) {
-    return showDialog<void>(
-      context: context,
+    return showDsDialog<void>(
+      context,
       builder: (_) => const SyncDetailsDialog(),
     );
   }
@@ -31,8 +36,8 @@ class SyncDetailsDialog extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final breakdownAsync = ref.watch(syncUnsyncedBreakdownProvider);
 
-    return AlertDialog(
-      title: Text('profile.sync_details_dialog_title'.tr()),
+    return DsDialog(
+      title: 'profile.sync_details_dialog_title'.tr(),
       content: SizedBox(
         width: double.maxFinite,
         child: breakdownAsync.when(
@@ -40,36 +45,33 @@ class SyncDetailsDialog extends ConsumerWidget {
             if (breakdown.isEmpty) {
               return Text('profile.sync_status_synced'.tr());
             }
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: breakdown
-                  .map(
-                    (status) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        _entityIcons[status.entityLabelKey] ??
-                            Icons.info_outline,
-                      ),
-                      title: Text(
-                        '${status.entityLabelKey.tr()} — ${status.count}',
-                      ),
-                      subtitle: Text(status.reasonKey.tr()),
+            return DsSettingsGroup(
+              children: [
+                for (final status in breakdown)
+                  DsSettingsRow(
+                    label: '${status.entityLabelKey.tr()} — ${status.count}',
+                    leading: Icon(
+                      _entityIcons[status.entityLabelKey] ?? Icons.info_outline,
                     ),
-                  )
-                  .toList(),
+                    subtitle: status.reasonKey.tr(),
+                  ),
+              ],
             );
           },
-          loading: () => const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
+          loading: () => Padding(
+            padding: EdgeInsets.all(context.spacingMd),
+            child: const Center(child: CircularProgressIndicator()),
           ),
-          error: (_, _) => Text('errors.load_failed'.tr()),
+          error: (_, _) => DsInlineError(
+            message: 'profile.sync_details_load_failed'.tr(),
+            onRetry: () => ref.invalidate(syncUnsyncedBreakdownProvider),
+          ),
         ),
       ),
       actions: [
-        TextButton(
+        DsTextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('common.close'.tr()),
+          label: 'common.close'.tr(),
         ),
       ],
     );

@@ -5,12 +5,13 @@ final tourKeys = _TourKeys();
 class _TourKeys {
   final housesTab = GlobalKey();
   final tripsTab = GlobalKey();
-  final profileTab = GlobalKey();
   final infoCardTarget = GlobalKey();
-  final houseFab = GlobalKey();
 
-  /// Riga filtri categoria in cima a [HouseDetailScreen]. Target di
-  /// [OnboardingStep.moveItemsTooltip]: sempre presente (anche a lista
-  /// vuota), a differenza di evidenziare una card item specifica.
-  final houseItemsAnchor = GlobalKey();
+  /// Voce "Crea" al centro della barra. Target di
+  /// [OnboardingStep.createTripTooltip].
+  final primaryAction = GlobalKey();
+
+  /// Nome della casa nell'AppBar di [HouseDetailScreen]. Target di
+  /// [OnboardingStep.houseDetailTooltip].
+  final houseTitle = GlobalKey();
 }

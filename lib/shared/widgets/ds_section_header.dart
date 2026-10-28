@@ -5,8 +5,8 @@ import '../theme/app_spacing.dart';
 ///
 /// Variante **text-only** (settings, lista generica):
 /// ```dart
-/// DsSectionHeader(label: 'backup.title'.tr())
-/// DsSectionHeader(label: 'about.title'.tr(), trailing: Icon(Icons.info))
+/// DsSectionHeader(label: 'profile.section_preferences'.tr())
+/// DsSectionHeader(label: 'profile.section_account'.tr(), trailing: Icon(Icons.info))
 /// ```
 ///
 /// Variante **icon-text** (gruppi di contenuto con icona):
@@ -15,7 +15,7 @@ import '../theme/app_spacing.dart';
 /// DsSectionHeader.withIcon(icon: Icons.luggage, label: 'Bagagli', trailing: badge)
 /// ```
 ///
-/// Regola tipografica (DS Fase 3 §3.2): 14px → FontWeight.w500.
+/// Regola tipografica (DS Fase 3 §3.2): 14px, peso dal tema.
 /// Colore di default: `colorScheme.primary` (per entrambe le varianti).
 class DsSectionHeader extends StatelessWidget {
   /// Testo del header.

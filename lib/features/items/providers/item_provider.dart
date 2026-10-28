@@ -1,10 +1,16 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/item_model.dart';
 import '../repositories/item_repository.dart';
+import 'item_metadata_service_provider.dart';
 import 'item_selection_provider.dart';
+import 'user_colors_provider.dart';
 
 part 'item_provider.g.dart';
 
@@ -32,24 +38,74 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
   Future<List<ItemModel>> getItemsInGeneralPool(String houseId) =>
       _repo.getItemsInGeneralPool(houseId);
 
-  Future<void> addItem(ItemModel model) => mutate(
-    operation: () => _repo.addItem(model),
-    reload: () => _repo.getItemsByHouseId(houseId),
-    rethrowOnly: true,
-    onSuccess: (items) => _analytics.trackItemAdded(
-      itemId: model.id,
-      houseId: model.houseId,
-      category: model.category.name,
-      totalItems: items.length,
-    ),
-  );
+  /// Aggiunge un oggetto. Se è stato scritto a mano (niente [ItemModel.aiMetadata])
+  /// la scheda arriva subito dopo da `item-metadata`, senza far aspettare chi
+  /// lo aggiunge: vedi [_schedaDalNome]. [categoryChosen] dice se la categoria
+  /// l'ha scelta l'utente: in quel caso il server non la cambia.
+  Future<void> addItem(ItemModel model, {bool categoryChosen = false}) async {
+    await mutate(
+      operation: () => _repo.addItem(model),
+      reload: () => _repo.getItemsByHouseId(houseId),
+      rethrowOnly: true,
+      onSuccess: (items) => _analytics.trackItemAdded(
+        itemId: model.id,
+        houseId: model.houseId,
+        category: model.category.name,
+        totalItems: items.length,
+      ),
+    );
+    ref.invalidate(userColorsProvider);
+    if (model.aiMetadata == null && model.name.trim().isNotEmpty) {
+      unawaited(_schedaDalNome(model, categoryChosen: categoryChosen));
+    }
+  }
+
+  /// La scheda di un oggetto aggiunto a mano, chiesta a `item-metadata` dal
+  /// nome. Si scrive solo se nel frattempo l'oggetto esiste ancora, ha lo
+  /// stesso nome e nessuno gli ha già dato una scheda; la categoria cambia
+  /// solo se l'utente non l'aveva scelta e non l'ha toccata dopo. Senza rete o
+  /// a limite raggiunto l'oggetto resta com'è.
+  Future<void> _schedaDalNome(
+    ItemModel model, {
+    required bool categoryChosen,
+  }) async {
+    try {
+      final scheda = await ref
+          .read(itemMetadataServiceProvider)
+          .fromName(model.name);
+      if (scheda == null) return;
+      final current = await _repo.getItemById(model.id);
+      if (current.name != model.name || current.aiMetadata != null) return;
+      final category =
+          !categoryChosen &&
+              current.category == model.category &&
+              scheda.category != null
+          ? scheda.category!
+          : current.category;
+      final updated = current.copyWith(
+        aiMetadata: jsonEncode(scheda.metadata),
+        category: category,
+        updatedAt: DateTime.now(),
+      );
+      await mutate(
+        operation: () => _repo.updateItem(updated),
+        reload: () => _repo.getItemsByHouseId(houseId),
+        rethrowOnError: false,
+        onSuccess: (_) => ref.invalidate(userColorsProvider),
+      );
+    } catch (e) {
+      debugPrint('[ItemNotifier] scheda dal nome non salvata: $e');
+    }
+  }
 
   Future<void> updateItem(ItemModel model) => mutate(
     operation: () => _repo.updateItem(model),
     reload: () => _repo.getItemsByHouseId(houseId),
     rethrowOnly: true,
-    onSuccess: (_) =>
-        _analytics.trackItemUpdated(category: model.category.name),
+    onSuccess: (_) {
+      _analytics.trackItemUpdated(category: model.category.name);
+      ref.invalidate(userColorsProvider);
+    },
   );
 
   Future<void> deleteItem(String id, String houseId) async {

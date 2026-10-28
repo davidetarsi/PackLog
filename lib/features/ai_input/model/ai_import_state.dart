@@ -12,6 +12,9 @@ class PhotoGroup with _$PhotoGroup {
   const factory PhotoGroup({
     required File photo,
     required List<ClothingAnalysisResult> results,
+
+    /// Indici dei capi esclusi: restano visibili e possono essere inclusi di nuovo.
+    @Default(<int>{}) Set<int> excluded,
   }) = _PhotoGroup;
 }
 

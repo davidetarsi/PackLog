@@ -7,9 +7,13 @@
 library;
 
 export 'app_colors.dart';
+export 'app_motion.dart';
+export 'app_opacity.dart';
 export 'app_spacing.dart';
+export 'app_text_styles.dart';
 export 'app_theme.dart';
 export 'cta_reserved_space.dart';
 export 'error_empty_theme_extension.dart';
 export 'nav_bar_spacing.dart';
 export 'semantic_colors.dart';
+export 'surface_colors.dart';

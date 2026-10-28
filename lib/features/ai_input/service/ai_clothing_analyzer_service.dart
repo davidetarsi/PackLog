@@ -14,16 +14,15 @@ import '../model/clothing_analysis_result.dart';
 
 /// Orchestrates the AI clothing analysis pipeline:
 /// 1. [TEMPORANEAMENTE DISABILITATO] Background removal via Remove.bg API.
-/// 2. Structured fashion analysis via OpenAI GPT-4o Vision API
-///    (instradata attraverso l'edge function `openai-proxy`).
+/// 2. Scheda dei capi dalla foto con l'edge function `item-metadata`
+///    (Claude riempie la scheda, il server la pulisce e la controlla).
 ///
 /// Inject an [http.Client] for testability; defaults to `http.Client()`.
 ///
-/// **Nota sicurezza**: model, prompt, max_tokens e temperature sono fissati
-/// SERVER-SIDE nel proxy. Questo servizio invia solo `image_base64`; tutto
-/// il resto è ignorato dal proxy by design (vedi
-/// `supabase/functions/openai-proxy/index.ts`). Non aggiungere altri campi
-/// al body: verrebbero scartati e potrebbero falsare i test.
+/// **Nota sicurezza**: modello, prompt e limiti sono fissati SERVER-SIDE.
+/// Questo servizio invia solo `image_base64` e `lang`, la lingua del nome dei
+/// capi (vedi `supabase/functions/item-metadata/index.ts`, che rifiuta un
+/// body con anche `name`). Non aggiungere altri campi al body.
 class AiClothingAnalyzerService {
   // static const _removeBgEndpoint = 'https://api.remove.bg/v1.0/removebg'; // ← REMOVE.BG DISABILITATO
 
@@ -32,6 +31,9 @@ class AiClothingAnalyzerService {
   final String _anonKey;
   final http.Client _client;
   final String? Function() _jwtProvider;
+
+  /// La lingua dell'app ('it' o 'en'): il nome dei capi si scrive in questa.
+  final String Function() _language;
   final CoreAnalyticsService? _analytics;
   final AppMonitoringService? _monitoring;
 
@@ -41,6 +43,7 @@ class AiClothingAnalyzerService {
     required String anonKey,
     http.Client? client,
     String? Function()? jwtProvider,
+    String Function()? language,
     CoreAnalyticsService? analytics,
     AppMonitoringService? monitoring,
   }) : // _removeBgApiKey = removeBgApiKey, // ← REMOVE.BG DISABILITATO
@@ -50,13 +53,14 @@ class AiClothingAnalyzerService {
        _jwtProvider =
            jwtProvider ??
            (() => Supabase.instance.client.auth.currentSession?.accessToken),
+       _language = language ?? (() => 'it'),
        _analytics = analytics,
        _monitoring = monitoring;
 
   // ── Public orchestrators ──────────────────────────────────────────────────
 
-  /// Analizza il file immagine passando direttamente a GPT-4o Vision
-  /// (senza step di rimozione background).
+  /// Analizza il file immagine con `item-metadata` (senza step di rimozione
+  /// background).
   ///
   /// Throws a [ClothingAnalysisException] subclass on any failure.
   Future<List<ClothingItem>> processClothingItem(File imageFile) async {
@@ -122,16 +126,16 @@ class AiClothingAnalyzerService {
 
   // ── Step 2: Vision analysis ───────────────────────────────────────────────
 
-  /// Sends the image bytes to GPT-4o Vision and parses the result.
+  /// Sends the image bytes to `item-metadata` and parses the result.
   ///
   /// Throws [VisionAnalysisException] on non-2xx response.
   /// Throws [ResponseParsingException] on schema mismatch or malformed JSON.
   Future<List<ClothingItem>> _analyzeImage(Uint8List imageBytes) async {
     final base64Image = base64Encode(imageBytes);
 
-    // Body minimale: il proxy ricostruisce model/prompt/max_tokens server-side
+    // Body minimale: la funzione decide modello, prompt e limiti server-side
     // per impedire al client di alterare costi o uso del modello.
-    final body = jsonEncode({'image_base64': base64Image});
+    final body = jsonEncode({'image_base64': base64Image, 'lang': _language()});
 
     final jwt = _jwtProvider();
     if (jwt == null || jwt.isEmpty) {
@@ -168,48 +172,33 @@ class AiClothingAnalyzerService {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw VisionAnalysisException(
-        'OpenAI returned ${response.statusCode}: ${response.body}',
+        'item-metadata returned ${response.statusCode}: ${response.body}',
       );
     }
 
-    return _parseOpenAiResponse(response.body);
+    return _parseItemMetadataResponse(response.body);
   }
 
   // ── Response parsing ──────────────────────────────────────────────────────
 
-  /// Extracts the assistant message content from the OpenAI response envelope
-  /// and parses it into a list of [ClothingItem].
+  /// Legge `{ items: [{ metadata, app_category, dubbi }], note_tecniche }`.
+  /// Nessun capo riconosciuto (anche una risposta del modello che non era
+  /// JSON) arriva come `items: []`.
   ///
-  /// Throws [ResponseParsingException] on any schema or JSON error.
-  List<ClothingItem> _parseOpenAiResponse(String responseBody) {
+  /// Throws [ResponseParsingException] if the body doesn't have that shape.
+  List<ClothingItem> _parseItemMetadataResponse(String responseBody) {
     try {
-      final envelope = jsonDecode(responseBody) as Map<String, dynamic>;
-      final choices = envelope['choices'] as List<dynamic>;
-      final content =
-          (choices.first as Map<String, dynamic>)['message']['content']
-              as String;
-
-      // Pulizia di sicurezza nel caso GPT aggiunga markdown tipo ```json
-      final cleaned = content
-          .replaceAll('```json', '')
-          .replaceAll('```', '')
-          .trim();
-
-      // GPT può rispondere con testo libero invece di JSON (es. rifiuto
-      // per policy, "no clothing found", ecc.). Se il contenuto non è un
-      // array JSON, trattiamo come lista vuota (nessun capo trovato).
-      if (!cleaned.startsWith('[')) return [];
-
-      final List<dynamic> parsedList = jsonDecode(cleaned) as List<dynamic>;
-
-      return parsedList
-          .map((item) => ClothingItem.fromJson(item as Map<String, dynamic>))
+      final body = jsonDecode(responseBody) as Map<String, dynamic>;
+      final items = body['items'] as List<dynamic>;
+      return items
+          .map(
+            (item) =>
+                ClothingItem.fromItemMetadata(item as Map<String, dynamic>),
+          )
           .toList();
-    } on ResponseParsingException {
-      rethrow;
     } catch (e) {
       throw ResponseParsingException(
-        'Could not parse OpenAI response: $e\nRaw body: $responseBody',
+        'Could not parse item-metadata response: $e\nRaw body: $responseBody',
       );
     }
   }

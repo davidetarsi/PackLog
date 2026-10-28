@@ -60,9 +60,6 @@ abstract class AppColors {
   @Deprecated('Usa context.appColors.warning. DS Fase 2.')
   static const Color warningLight = Color(0xFF3D2000);
 
-  @Deprecated('Usa colorScheme.onSurface.withValues(alpha: 0.38). DS Fase 2.')
-  static const Color disabled = Color(0xFF6E6E6E);
-
   @Deprecated('Usa colorScheme.onSurfaceVariant. DS Fase 2.')
   static const Color hint = Color(0xFF9E9E9E);
 
@@ -120,6 +117,10 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   final Color itemTemporaryBackground;
   final Color itemTemporaryText;
 
+  // ── Velo del tour ─────────────────────────────────────────────────────────
+  // Sfondo scuro dietro il tour guidato: nero in entrambi i temi.
+  final Color tourScrim;
+
   const AppColorsExtension({
     required this.success,
     required this.onSuccess,
@@ -132,6 +133,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     required this.itemTemporary,
     required this.itemTemporaryBackground,
     required this.itemTemporaryText,
+    required this.tourScrim,
   });
 
   /// Valori per light mode.
@@ -141,8 +143,9 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     onSuccess: Colors.white,
     successContainer: Color(0xFFE8F5E9),
     onSuccessContainer: Color(0xFF1B5E20),
-    // Ambra avviso — leggibile su sfondo chiaro
-    warning: Color(0xFFB45309),
+    // Ambra avviso — oro scuro, lontano dall'arancio del brand e leggibile sul
+    // bianco (contrasto 5,5:1)
+    warning: Color(0xFF8A6100),
     onWarning: Colors.white,
     warningContainer: Color(0xFFFEF3C7),
     onWarningContainer: Color(0xFF451A03),
@@ -150,6 +153,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     itemTemporary: Color(0xFF1976D2),
     itemTemporaryBackground: Color(0xFFE3F2FD),
     itemTemporaryText: Color(0xFF0D47A1),
+    tourScrim: Colors.black,
   );
 
   /// Valori per dark mode.
@@ -168,6 +172,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     itemTemporary: Color(0xFF42A5F5),
     itemTemporaryBackground: Color(0xFF1A3A5C),
     itemTemporaryText: Color(0xFF82B1FF),
+    tourScrim: Colors.black,
   );
 
   @override
@@ -183,6 +188,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     Color? itemTemporary,
     Color? itemTemporaryBackground,
     Color? itemTemporaryText,
+    Color? tourScrim,
   }) {
     return AppColorsExtension(
       success: success ?? this.success,
@@ -197,6 +203,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
       itemTemporaryBackground:
           itemTemporaryBackground ?? this.itemTemporaryBackground,
       itemTemporaryText: itemTemporaryText ?? this.itemTemporaryText,
+      tourScrim: tourScrim ?? this.tourScrim,
     );
   }
 
@@ -242,6 +249,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
         other.itemTemporaryText,
         t,
       )!,
+      tourScrim: Color.lerp(tourScrim, other.tourScrim, t)!,
     );
   }
 }

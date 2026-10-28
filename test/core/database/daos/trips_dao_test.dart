@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
+import 'package:pack_log/features/trips/model/trip_leg.dart';
 import '../../../helpers/test_database_setup.dart';
 
 /// Unit tests for TripsDao.
@@ -45,7 +48,7 @@ void main() {
         final luggageId = 'test-luggage-1';
         final luggageCompanion = LuggagesCompanion.insert(
           id: luggageId,
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Test Suitcase',
           sizeType: LuggageSize.holdBaggage,
           createdAt: DateTime.now(),
@@ -57,7 +60,7 @@ void main() {
         final luggage2Id = 'test-luggage-2';
         final luggage2Companion = LuggagesCompanion.insert(
           id: luggage2Id,
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Test Backpack',
           sizeType: LuggageSize.smallBackpack,
           createdAt: DateTime.now(),
@@ -286,7 +289,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: luggageId,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'PK Test Luggage',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),
@@ -699,7 +702,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: lugId,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Luggage $lugId',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: DateTime.now(),
@@ -765,7 +768,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: luggage1Id,
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Luggage 1',
           sizeType: LuggageSize.smallBackpack,
           createdAt: DateTime.now(),
@@ -776,7 +779,7 @@ void main() {
       await database.luggagesDao.insertLuggage(
         LuggagesCompanion.insert(
           id: luggage2Id,
-          houseId: houseId,
+          houseId: Value(houseId),
           name: 'Luggage 2',
           sizeType: LuggageSize.holdBaggage,
           createdAt: DateTime.now(),
@@ -929,7 +932,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: lug1Id,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Batch Luggage 1',
             sizeType: LuggageSize.smallBackpack,
             createdAt: now,
@@ -940,7 +943,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: lug2Id,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Batch Luggage 2',
             sizeType: LuggageSize.cabinBaggage,
             createdAt: now,
@@ -951,7 +954,7 @@ void main() {
         await database.luggagesDao.insertLuggage(
           LuggagesCompanion.insert(
             id: lug3Id,
-            houseId: houseId,
+            houseId: Value(houseId),
             name: 'Batch Luggage 3',
             sizeType: LuggageSize.holdBaggage,
             createdAt: now,
@@ -1184,6 +1187,227 @@ void main() {
         newTripId,
       );
       expect(duplicatedItems.length, 0);
+    });
+
+    test(
+      'duplicateTrip does not copy luggage links (current behavior pinned)',
+      () async {
+        final houseId = 'house-dup-no-lug';
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: houseId,
+            name: 'Dup House',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        await database.luggagesDao.insertLuggage(
+          LuggagesCompanion.insert(
+            id: 'dup-lug-1',
+            houseId: Value(houseId),
+            name: 'Dup Luggage',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: 'dup-lug-orig',
+            name: 'Trip With Luggage',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        await database.luggagesDao.linkLuggageToTrip(
+          'dup-lug-orig',
+          'dup-lug-1',
+        );
+
+        await database.tripsDao.duplicateTrip('dup-lug-orig', 'dup-lug-copy');
+
+        final copyLuggages = await database.luggagesDao.getLuggagesByTrip(
+          'dup-lug-copy',
+        );
+        expect(copyLuggages, isEmpty);
+      },
+    );
+  });
+
+  group('TripsDao - Reuse Trip', () {
+    test(
+      'reuseTrip copies trip without dates, unsaved, legs without dates, unchecked items and luggage links',
+      () async {
+        // === ARRANGE ===
+        final houseId = 'reuse-house';
+        await database.housesDao.insertHouse(
+          HousesCompanion.insert(
+            id: houseId,
+            name: 'Reuse House',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        await database.luggagesDao.insertLuggage(
+          LuggagesCompanion.insert(
+            id: 'reuse-lug-1',
+            houseId: Value(houseId),
+            name: 'Reuse Luggage',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+        final legsJson = jsonEncode([
+          TripLeg(
+            id: 'leg-1',
+            locationDisplayName: 'Roma',
+            from: DateTime(2026, 7, 3),
+            to: DateTime(2026, 7, 5),
+          ).toJson(),
+          TripLeg(
+            id: 'leg-2',
+            locationDisplayName: 'Firenze',
+            from: DateTime(2026, 7, 6),
+            to: DateTime(2026, 7, 8),
+          ).toJson(),
+        ]);
+
+        const originalTripId = 'reuse-orig';
+        await database.tripsDao.insertTrip(
+          TripsCompanion.insert(
+            id: originalTripId,
+            name: 'Summer 2026',
+            description: const Value('Beach vacation'),
+            departureDateTime: Value(DateTime(2026, 7, 1)),
+            returnDateTime: Value(DateTime(2026, 7, 15)),
+            isSaved: const Value(true),
+            legs: Value(legsJson),
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        await database.tripsDao.insertMultipleTripItems([
+          TripItemEntriesCompanion.insert(
+            id: 'reuse-item-1',
+            tripId: originalTripId,
+            name: 'Sunscreen',
+            category: ItemCategory.toiletries,
+            quantity: const Value(2),
+            originHouseId: Value(houseId),
+            isChecked: const Value(true),
+          ),
+          TripItemEntriesCompanion.insert(
+            id: 'reuse-item-2',
+            tripId: originalTripId,
+            name: 'T-shirt',
+            category: ItemCategory.vestiti,
+            quantity: const Value(5),
+            originHouseId: Value(houseId),
+            isChecked: const Value(false),
+          ),
+        ]);
+        await database.luggagesDao.linkLuggageToTrip(
+          originalTripId,
+          'reuse-lug-1',
+        );
+
+        // === ACT ===
+        final returnedId = await database.tripsDao.reuseTrip(
+          originalTripId,
+          'reuse-new',
+        );
+
+        // === ASSERT ===
+        expect(returnedId, 'reuse-new');
+
+        // 1. Name without suffix, description kept, no dates, not saved
+        final reused = await database.tripsDao.getTripById('reuse-new');
+        expect(reused, isNotNull);
+        expect(reused!.name, 'Summer 2026');
+        expect(reused.description, 'Beach vacation');
+        expect(reused.departureDateTime, isNull);
+        expect(reused.returnDateTime, isNull);
+        expect(reused.isSaved, false);
+
+        // 2. Legs keep id and name, from/to nulled
+        final reusedLegs = (jsonDecode(reused.legs!) as List)
+            .cast<Map<String, dynamic>>();
+        expect(reusedLegs, hasLength(2));
+        expect(reusedLegs[0]['id'], 'leg-1');
+        expect(reusedLegs[0]['location_display_name'], 'Roma');
+        expect(reusedLegs[0]['from'], isNull);
+        expect(reusedLegs[0]['to'], isNull);
+        expect(reusedLegs[1]['id'], 'leg-2');
+        expect(reusedLegs[1]['location_display_name'], 'Firenze');
+        expect(reusedLegs[1]['from'], isNull);
+        expect(reusedLegs[1]['to'], isNull);
+
+        // 3. Items copied, all unchecked
+        final reusedItems = await database.tripsDao.getTripItemsByTripId(
+          'reuse-new',
+        );
+        expect(reusedItems, hasLength(2));
+        expect(reusedItems.every((i) => !i.isChecked), isTrue);
+        expect(reusedItems.map((i) => i.name).toSet(), {
+          'Sunscreen',
+          'T-shirt',
+        });
+
+        // 4. One luggage link for the new trip
+        final reusedLuggages = await database.luggagesDao.getLuggagesByTrip(
+          'reuse-new',
+        );
+        expect(reusedLuggages.map((l) => l.id).toList(), ['reuse-lug-1']);
+
+        // 5. Original trip unchanged
+        final original = await database.tripsDao.getTripById(originalTripId);
+        expect(original!.name, 'Summer 2026');
+        expect(original.departureDateTime, DateTime(2026, 7, 1));
+        expect(original.returnDateTime, DateTime(2026, 7, 15));
+        expect(original.isSaved, true);
+        final originalLegs = (jsonDecode(original.legs!) as List)
+            .cast<Map<String, dynamic>>();
+        expect(originalLegs[0]['from'], isNotNull);
+        expect(originalLegs[1]['to'], isNotNull);
+        final originalItems = await database.tripsDao.getTripItemsByTripId(
+          originalTripId,
+        );
+        expect(originalItems, hasLength(2));
+        expect(
+          originalItems.firstWhere((i) => i.name == 'Sunscreen').isChecked,
+          true,
+        );
+        final originalLuggages = await database.luggagesDao.getLuggagesByTrip(
+          originalTripId,
+        );
+        expect(originalLuggages.map((l) => l.id).toList(), ['reuse-lug-1']);
+      },
+    );
+
+    test('reuseTrip keeps null legs as null', () async {
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 'reuse-null-legs',
+          name: 'Legacy Trip',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      await database.tripsDao.reuseTrip('reuse-null-legs', 'reuse-null-copy');
+
+      final copy = await database.tripsDao.getTripById('reuse-null-copy');
+      expect(copy!.name, 'Legacy Trip');
+      expect(copy.legs, isNull);
+    });
+
+    test('reuseTrip throws when the original trip does not exist', () async {
+      expect(
+        () => database.tripsDao.reuseTrip('non-existent-trip', 'new-id'),
+        throwsA(isA<Exception>()),
+      );
     });
   });
 

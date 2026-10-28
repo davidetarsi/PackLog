@@ -444,6 +444,107 @@ void main() {
     });
   });
 
+  group('ItemsDao - AI result persistence', () {
+    test('inserts the new items and leaves existing items untouched', () async {
+      final now = DateTime(2026, 10, 14);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'ai-house',
+          name: 'Casa AI',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'existing',
+          houseId: 'ai-house',
+          name: 'Esistente',
+          category: ItemCategory.vestiti,
+          createdAt: now,
+          updatedAt: now,
+          aiMetadata: const Value('{"color":"blu"}'),
+        ),
+      );
+
+      await database.itemsDao.saveAiItemsToHouse(
+        newItems: [
+          ItemsCompanion.insert(
+            id: 'new-ai-item',
+            houseId: 'ai-house',
+            name: 'Nuovo',
+            category: ItemCategory.vestiti,
+            createdAt: now,
+            updatedAt: now,
+            aiMetadata: const Value('{"color":"rosso"}'),
+          ),
+        ],
+      );
+
+      final created = (await database.itemsDao.findItemById('new-ai-item'))!;
+      expect(created.name, 'Nuovo');
+      expect(created.aiMetadata, '{"color":"rosso"}');
+      final existing = (await database.itemsDao.findItemById('existing'))!;
+      expect(existing.aiMetadata, '{"color":"blu"}');
+      expect(existing.updatedAt, now);
+    });
+
+    test('rolls back all inserts when one insert fails', () async {
+      final now = DateTime(2026, 10, 14);
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'rollback-house',
+          name: 'Rollback',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'rollback-existing',
+          houseId: 'rollback-house',
+          name: 'Esistente',
+          category: ItemCategory.varie,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await expectLater(
+        database.itemsDao.saveAiItemsToHouse(
+          newItems: [
+            ItemsCompanion.insert(
+              id: 'must-rollback',
+              houseId: 'rollback-house',
+              name: 'Nuovo',
+              category: ItemCategory.varie,
+              createdAt: now,
+              updatedAt: now,
+            ),
+            // Stesso id di un oggetto già presente: l'inserimento fallisce.
+            ItemsCompanion.insert(
+              id: 'rollback-existing',
+              houseId: 'rollback-house',
+              name: 'Duplicato',
+              category: ItemCategory.varie,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          ],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(await database.itemsDao.findItemById('must-rollback'), isNull);
+    });
+
+    test('empty input performs no changes', () async {
+      await database.itemsDao.saveAiItemsToHouse(newItems: const []);
+
+      expect(await database.itemsDao.getAllItems(), isEmpty);
+    });
+  });
+
   group('ItemsDao - incrementSyncRetry', () {
     test('non modifica updatedAt (pivot LWW)', () async {
       final t0 = DateTime(2026, 5, 1, 8, 0);

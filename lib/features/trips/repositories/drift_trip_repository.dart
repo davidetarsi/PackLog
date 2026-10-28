@@ -14,6 +14,7 @@ import '../../../core/database/daos/luggages_dao.dart';
 import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../core/database/services/database_service.dart';
 import '../../luggages/model/luggage_model.dart';
+import '../model/ai_packing.dart';
 
 /// Implementazione del repository Trip usando Drift (SQLite).
 ///
@@ -195,6 +196,24 @@ class DriftTripRepository implements TripRepository {
   }
 
   @override
+  Future<String> reuseTrip(String tripId) async {
+    final newTripId = const Uuid().v4();
+
+    final result = await _dbService.executeAtomicWithRetry(
+      () => _dao.reuseTrip(tripId, newTripId),
+      operationName: 'reuseTrip($tripId)',
+      config: RetryConfig.criticalConfig,
+    );
+
+    if (!result.success) {
+      throw EntitySaveException('reuseTrip($tripId)', cause: result.error);
+    }
+
+    debugPrint('[TripRepo] Viaggio riusato: $tripId -> $newTripId');
+    return newTripId;
+  }
+
+  @override
   Future<void> setTripItemChecked(
     String tripId,
     String itemId,
@@ -335,6 +354,8 @@ class DriftTripRepository implements TripRepository {
       destinationLocation: destinationLocation,
       luggages: luggages.map(_luggageToModel).toList(),
       legs: _decodeLegs(trip.legs),
+      aiSetup: _decodeAiJson(trip.aiPackingSetup, AiPackingSetup.fromJson),
+      aiResult: _decodeAiJson(trip.aiPackingResult, AiPackingResult.fromJson),
       isSaved: trip.isSaved,
       createdAt: trip.createdAt,
       updatedAt: trip.updatedAt,
@@ -376,6 +397,21 @@ class DriftTripRepository implements TripRepository {
         .toList();
   }
 
+  /// Un JSON corrotto non deve far fallire la lettura del viaggio: il dato
+  /// AI si perde (si legge come `null`), il resto del viaggio resta
+  /// disponibile.
+  T? _decodeAiJson<T>(String? raw, T Function(Map<String, dynamic>) fromJson) {
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return null;
+      return fromJson(decoded);
+    } catch (e) {
+      debugPrint('[TripRepo] JSON AI corrotto ignorato: $e');
+      return null;
+    }
+  }
+
   TripsCompanion _toTripCompanion(model.TripModel trip) {
     final location = trip.destinationLocation;
 
@@ -399,6 +435,13 @@ class DriftTripRepository implements TripRepository {
       // Sempre una lista, mai null: vedi il commento sulla colonna in
       // trips_table.dart.
       legs: Value(jsonEncode(trip.legs.map((l) => l.toJson()).toList())),
+      // `null` resta `null`: nessuna informazione, vedi trips_table.dart.
+      aiPackingSetup: Value(
+        trip.aiSetup == null ? null : jsonEncode(trip.aiSetup!.toJson()),
+      ),
+      aiPackingResult: Value(
+        trip.aiResult == null ? null : jsonEncode(trip.aiResult!.toJson()),
+      ),
       isSaved: Value(trip.isSaved),
       createdAt: Value(trip.createdAt),
       updatedAt: Value(trip.updatedAt),

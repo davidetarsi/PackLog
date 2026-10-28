@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
 
 class ContentSlide extends StatefulWidget {
@@ -75,12 +76,18 @@ class _ContentSlideState extends State<ContentSlide> {
       visual = AspectRatio(
         aspectRatio: _controller!.value.aspectRatio,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
           child: VideoPlayer(_controller!),
         ),
       );
     } else {
-      visual = Icon(widget.icon, size: 80, color: colorScheme.primary);
+      // Solo finché il video non è pronto: grigia, per non fare da secondo
+      // arancio accanto al bottone.
+      visual = Icon(
+        widget.icon,
+        size: context.iconSizeDisplay,
+        color: colorScheme.onSurfaceVariant,
+      );
     }
 
     return Padding(

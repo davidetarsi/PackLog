@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -9,28 +8,44 @@ import 'package:image_picker/image_picker.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../shared/constants/app_constants.dart';
+import '../../../shared/constants/house_icons.dart';
+import '../../../shared/helpers/dialog_helpers.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/app_theme.dart';
 import '../../../shared/theme/cta_reserved_space.dart';
-import '../../../shared/widgets/circular_action_button.dart';
+import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_error_state.dart';
+import '../../../shared/widgets/ds_icon_button.dart';
+import '../../../shared/widgets/ds_picker_sheet.dart';
+import '../../../shared/widgets/ds_settings.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import '../../houses/model/house_model.dart';
 import '../../houses/providers/house_provider.dart';
+import '../../items/model/item_model.dart';
+import '../../items/providers/item_provider.dart';
+import '../../items/view/item_sheet.dart';
 import '../../tour/tour_keys.dart';
+import '../helpers/ai_item_category.dart';
+import '../model/clothing_analysis_result.dart';
 import '../model/ai_failure_reason.dart';
 import '../model/ai_import_state.dart';
+import '../helpers/start_ai_scan.dart';
 import '../providers/ai_import_notifier.dart';
 import 'widgets/ai_analysis_progress.dart';
 import 'widgets/ai_photo_group_header.dart';
 import 'widgets/ai_result_card.dart';
+import 'widgets/already_here_sheet.dart';
+import 'widgets/image_source_sheet.dart';
+import '../../../shared/theme/app_text_styles.dart';
 
 /// Page 2 of the AI import flow: shows loading progress while GPT-4o Vision
 /// analyses the images, then the editable results list with save CTA.
 ///
-/// Always reached by pushing from [AiClothingSandboxScreen] (normal flow) or
-/// [AiOnboardingIntroScreen] (onboarding flow), both of which call
-/// [AiImportNotifier.processFiles] before navigating here.
+/// Normal scans arrive through [startAiScan]; the onboarding scan arrives
+/// through [AiOnboardingIntroScreen]. Both start processing before navigation.
 class AiResultsScreen extends ConsumerStatefulWidget {
   final String? houseId;
   final bool isFirstTimeOnboarding;
@@ -48,11 +63,21 @@ class AiResultsScreen extends ConsumerStatefulWidget {
 class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
   final List<List<TextEditingController>> _controllers = [];
   bool _onboardingTooltipShown = false;
-  Timer? _nameDebounce;
+  bool _pickerOpen = false;
+  bool _exitDialogOpen = false;
+  bool _allowProgrammaticPop = false;
+  bool _exitStarted = false;
+  bool _saveRequested = false;
+  bool _alreadyHereOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncControllers(ref.read(aiImportNotifierProvider));
+  }
 
   @override
   void dispose() {
-    _nameDebounce?.cancel();
     for (final group in _controllers) {
       for (final c in group) {
         c.dispose();
@@ -61,7 +86,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     super.dispose();
   }
 
-  void _syncControllers(AiImportState? prev, AiImportState next) {
+  void _syncControllers(AiImportState next) {
     while (_controllers.length < next.photoGroups.length) {
       final gi = _controllers.length;
       _controllers.add(
@@ -101,62 +126,149 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
   // ── Picker (add more photos) ──────────────────────────────────────────────
 
   Future<void> _showPickerSheet() async {
+    if (!mounted) return;
+    if (_pickerOpen || ref.read(aiImportNotifierProvider).isLoading) return;
+    _pickerOpen = true;
     final notifier = ref.read(aiImportNotifierProvider.notifier);
-    if (notifier.remainingSlots <= 0) return;
-
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: Text('ai_import.source_gallery'.tr()),
-              subtitle: Text(
-                'ai_import.gallery_subtitle'.tr(
-                  args: [notifier.remainingSlots.toString()],
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromGallery();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: Text('ai_import.source_camera'.tr()),
-              subtitle: Text('ai_import.camera_subtitle'.tr()),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromCamera();
-              },
-            ),
-          ],
+    try {
+      if (notifier.remainingSlots <= 0) return;
+      final source = await showImageSourceSheet(
+        context,
+        gallerySubtitle: 'ai_import.gallery_subtitle'.tr(
+          args: [notifier.remainingSlots.toString()],
         ),
-      ),
-    );
+        cameraSubtitle: 'ai_import.camera_subtitle'.tr(),
+      );
+      if (!mounted) return;
+      switch (source) {
+        case ImageSource.gallery:
+          await _pickFromGallery();
+        case ImageSource.camera:
+          await _pickFromCamera();
+        case null:
+          return;
+      }
+    } on Object {
+      if (mounted) {
+        AppSnackBar.showAction(
+          context,
+          'ai_import.picker_error'.tr(),
+          actionLabel: 'ai_import.picker_retry'.tr(),
+          onAction: () {
+            if (!mounted) return;
+            _showPickerSheet();
+          },
+          key: const Key('ai_picker_error'),
+        );
+      }
+    } finally {
+      _pickerOpen = false;
+    }
   }
 
   Future<void> _pickFromGallery() async {
     final notifier = ref.read(aiImportNotifierProvider.notifier);
-    final pickedFiles = await ImagePicker().pickMultiImage(
+    final remainingSlots = notifier.remainingSlots;
+    if (remainingSlots <= 0) return;
+    final picker = ImagePicker();
+    if (remainingSlots == 1) {
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: kAiScanMaxImageSide,
+        maxHeight: kAiScanMaxImageSide,
+      );
+      if (picked == null || !mounted) return;
+      await notifier.processFiles([File(picked.path)]);
+      return;
+    }
+    final pickedFiles = await picker.pickMultiImage(
       imageQuality: 80,
-      limit: notifier.remainingSlots,
+      maxWidth: kAiScanMaxImageSide,
+      maxHeight: kAiScanMaxImageSide,
+      limit: remainingSlots,
     );
     if (pickedFiles.isEmpty || !mounted) return;
-    await notifier.processFiles(pickedFiles.map((f) => File(f.path)).toList());
+    await notifier.processFiles(
+      pickedFiles.take(remainingSlots).map((file) => File(file.path)).toList(),
+    );
   }
 
   Future<void> _pickFromCamera() async {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.camera,
       imageQuality: 80,
+      maxWidth: kAiScanMaxImageSide,
+      maxHeight: kAiScanMaxImageSide,
     );
     if (picked == null || !mounted) return;
     await ref.read(aiImportNotifierProvider.notifier).processFiles([
       File(picked.path),
     ]);
+  }
+
+  // ── Uscita dal flusso ─────────────────────────────────────────────────────
+
+  /// Nomi delle route che compongono il flusso di scansione (vedi
+  /// `app_router.dart`): sono quelle da togliere dallo stack in uscita.
+  static const _flowRouteNames = {'ai-import-results'};
+
+  /// Chiude il flusso e lascia lo stack come [shell, dettaglio casa].
+  ///
+  /// Non usa `go()`: rimpiazzerebbe lo stack radice con il solo dettaglio, la
+  /// shell sparirebbe e il tasto indietro di Android chiuderebbe l'app. Toglie
+  /// invece le route del flusso e apre il dettaglio solo se quello che resta in
+  /// cima non è già il dettaglio della stessa casa (flusso partito da lì).
+  void _exitToHouse() {
+    final houseId = widget.houseId;
+    if (houseId == null) return;
+    if (_exitStarted || ref.read(aiImportNotifierProvider).isLoading) return;
+    _exitStarted = true;
+    final router = GoRouter.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
+
+    if (!_allowProgrammaticPop) {
+      setState(() => _allowProgrammaticPop = true);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      Route<dynamic>? remaining;
+      navigator.popUntil((route) {
+        final isFlowRoute = _flowRouteNames.contains(route.settings.name);
+        if (!isFlowRoute) remaining = route;
+        return !isFlowRoute;
+      });
+
+      final args = remaining?.settings.arguments;
+      final isSameHouseDetail =
+          remaining?.settings.name == 'house-detail' &&
+          args is Map &&
+          args['id'] == houseId;
+      if (!isSameHouseDetail) router.push('/houses/$houseId');
+    });
+  }
+
+  Future<void> _confirmExit() async {
+    final state = ref.read(aiImportNotifierProvider);
+    if (state.isLoading || _exitDialogOpen || _exitStarted) return;
+    final notifier = ref.read(aiImportNotifierProvider.notifier);
+    if (notifier.newCount > 0) {
+      _exitDialogOpen = true;
+      try {
+        final confirmed = await DialogHelpers.showConfirmation(
+          context: context,
+          title: 'ai_import.discard_title'.tr(),
+          message: 'ai_import.discard_body'.tr(),
+          confirmLabel: 'ai_import.discard'.tr(),
+          isDestructive: true,
+        );
+        if (!confirmed || !mounted) return;
+      } finally {
+        _exitDialogOpen = false;
+      }
+    }
+    _exitToHouse();
   }
 
   // ── Onboarding tooltip ────────────────────────────────────────────────────
@@ -171,6 +283,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
           keyTarget: tourKeys.infoCardTarget,
           shape: ShapeLightFocus.Circle,
           radius: 1,
+          paddingFocus: 0,
           contents: [
             TargetContent(
               align: ContentAlign.bottom,
@@ -198,9 +311,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                       SizedBox(height: context.spacingMd),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: FilledButton(
+                        child: DsButton(
+                          label: 'common.ok'.tr(),
                           onPressed: () => controller.next(),
-                          child: Text('tour.finish'.tr()),
                         ),
                       ),
                     ],
@@ -211,7 +324,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
           ],
         ),
       ],
-      colorShadow: Colors.black,
+      colorShadow: context.appColors.tourScrim,
       opacityShadow: 0.8,
       hideSkip: true,
     ).show(context: context);
@@ -225,7 +338,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
     final notifier = ref.read(aiImportNotifierProvider.notifier);
 
     ref.listen<AiImportState>(aiImportNotifierProvider, (prev, next) {
-      _syncControllers(prev, next);
+      _syncControllers(next);
 
       if (widget.isFirstTimeOnboarding &&
           next.photoGroups.isNotEmpty &&
@@ -235,25 +348,20 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
         });
       }
 
-      // Detect successful save: results gone, no error, not loading
-      if (prev != null &&
+      // Il repository può saltare un aggiornamento concorrente, quindi il
+      // messaggio di esito resta generico.
+      if (_saveRequested &&
+          prev != null &&
+          prev.isLoading &&
           prev.photoGroups.isNotEmpty &&
           !next.isLoading &&
           next.photoGroups.isEmpty &&
+          next.failureReason == null &&
           next.errorMessage == null) {
-        final count = prev.photoGroups.expand((g) => g.results).length;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'ai_import.save_success'.tr(args: [count.toString()]),
-            ),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppSnackBar.showSuccess(context, 'ai_import.save_success_generic'.tr());
         if (!widget.isFirstTimeOnboarding && widget.houseId != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) context.go('/houses/${widget.houseId}');
+            if (mounted) _exitToHouse();
           });
         }
         // In onboarding mode the router redirect handles navigation when
@@ -261,23 +369,46 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       }
     });
 
-    return StickyCtaScaffold(
-      appBar: AppBar(title: Text('ai_import.title'.tr())),
-      // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
-      // StickyCtaScaffold inserisce come discendente di `body` — serve un
-      // context interno a questo subtree, non quello del metodo build
-      // esterno (che sta sopra lo scope e non lo vedrebbe mai).
-      body: Builder(
-        builder: (context) => SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(
-              context.spacingMd,
-            ).copyWith(bottom: context.spacingMd + context.ctaReservedHeight),
-            child: _buildBody(context, aiState, notifier),
+    return PopScope<Object?>(
+      canPop: widget.isFirstTimeOnboarding || _allowProgrammaticPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || widget.isFirstTimeOnboarding || aiState.isLoading) return;
+        _confirmExit();
+      },
+      child: StickyCtaScaffold(
+        appBar: AppBar(
+          title: Text('ai_import.title'.tr()),
+          leading: widget.isFirstTimeOnboarding || widget.houseId == null
+              ? null
+              : DsIconButton(
+                  key: const Key('ai_results_close'),
+                  icon: Icons.close,
+                  tooltip: 'common.close'.tr(),
+                  onPressed: aiState.isLoading || _exitStarted
+                      ? null
+                      : _confirmExit,
+                ),
+        ),
+        // Builder: ctaReservedHeight legge CtaReservedSpaceScope, che
+        // StickyCtaScaffold inserisce come discendente di `body` — serve un
+        // context interno a questo subtree, non quello del metodo build
+        // esterno (che sta sopra lo scope e non lo vedrebbe mai).
+        body: Builder(
+          // Niente SafeArea in basso: con extendBody conterebbe anche la
+          // fascia dei bottoni e la lista si fermerebbe sopra, senza niente
+          // da sfocare dietro il bottone. Lo spazio lo dà ctaReservedHeight.
+          builder: (context) => SafeArea(
+            bottom: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(
+                context.spacingMd,
+              ).copyWith(bottom: context.spacingMd + context.ctaReservedHeight),
+              child: _buildBody(context, aiState, notifier),
+            ),
           ),
         ),
+        bottomContent: _buildBottomContent(context, aiState, notifier),
       ),
-      bottomContent: _buildBottomContent(context, aiState, notifier),
     );
   }
 
@@ -323,120 +454,121 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       );
     }
 
-    final String primaryLabel;
-    final VoidCallback? onPrimaryPressed;
-
-    if (widget.isFirstTimeOnboarding) {
-      primaryLabel = 'ai_import.save_button'.tr(args: [totalItems.toString()]);
-      onPrimaryPressed = state.isLoading ? null : notifier.saveItemsOnboarding;
-    } else {
-      final houses = ref.watch(houseNotifierProvider).valueOrNull ?? [];
-      final matching = houses.where((h) => h.id == state.selectedHouseId);
-      final HouseModel? selectedHouse = matching.isEmpty
-          ? null
-          : matching.first;
-
-      if (selectedHouse != null) {
-        primaryLabel = 'ai_import.save_in_house'.tr(
-          args: [selectedHouse.name, totalItems.toString()],
-        );
-        onPrimaryPressed = state.isLoading ? null : notifier.saveItems;
-      } else {
-        primaryLabel = 'ai_import.choose_house'.tr();
-        onPrimaryPressed = null;
-      }
-    }
+    final newCount = notifier.newCount;
+    final selectedHouse = widget.isFirstTimeOnboarding
+        ? null
+        : _selectedHouse(state.selectedHouseId);
+    final canSave =
+        !state.isLoading &&
+        newCount > 0 &&
+        (widget.isFirstTimeOnboarding || selectedHouse != null);
+    final label = newCount == 0
+        ? 'common.save'.tr()
+        : 'ai_import.save_new'.plural(newCount);
 
     return UniversalActionBar(
-      primaryLabel: primaryLabel,
+      primaryLabel: label,
       isLoading: state.isLoading,
-      onPrimaryPressed: onPrimaryPressed,
-      leftAction: !widget.isFirstTimeOnboarding
-          ? CircularActionButton(
-              icon: Icons.other_houses_outlined,
-              onPressed: state.isLoading
-                  ? null
-                  : () => _showHousePicker(state, notifier),
-            )
-          : null,
-      // Via d'uscita senza salvare. Non un `pop()`: sotto c'è il selettore
-      // delle foto da cui si è passati, e tornarci significherebbe rientrare
-      // nel flusso appena abbandonato. Va alla casa, la stessa destinazione
-      // del salvataggio riuscito.
-      //
-      // Assente in onboarding: lì la schermata è un passo obbligato del tour,
-      // e non esiste ancora una casa a cui tornare.
-      rightAction: !widget.isFirstTimeOnboarding && widget.houseId != null
-          ? CircularActionButton(
-              icon: Icons.close,
-              onPressed: state.isLoading
-                  ? null
-                  : () => context.go('/houses/${widget.houseId}'),
-            )
-          : null,
+      onPrimaryPressed: canSave ? () => _saveResults(notifier) : null,
     );
+  }
+
+  Future<void> _saveResults(AiImportNotifier notifier) async {
+    if (_saveRequested) return;
+    _saveRequested = true;
+    try {
+      if (widget.isFirstTimeOnboarding) {
+        await notifier.saveItemsOnboarding();
+      } else {
+        await notifier.saveItems();
+      }
+    } finally {
+      _saveRequested = false;
+    }
+  }
+
+  HouseModel? _selectedHouse(String? id) {
+    if (id == null) return null;
+    return ref
+        .watch(houseNotifierProvider)
+        .when(
+          data: (houses) => houses.where((house) => house.id == id).firstOrNull,
+          loading: () => null,
+          error: (_, _) => null,
+        );
   }
 
   Future<void> _showHousePicker(
     AiImportState state,
     AiImportNotifier notifier,
   ) async {
-    final houses = ref.read(houseNotifierProvider).valueOrNull;
-    if (houses == null || houses.isEmpty) return;
+    final houses = ref
+        .read(houseNotifierProvider)
+        .when(
+          data: (items) => items,
+          loading: () => const <HouseModel>[],
+          error: (_, _) => const <HouseModel>[],
+        );
+    if (houses.isEmpty) return;
 
-    await showModalBottomSheet<void>(
+    final selected = await DsPickerSheet.show<HouseModel>(
       context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.spacingMd,
-                context.spacingMd,
-                context.spacingMd,
-                context.spacingXs,
-              ),
-              child: Text(
-                'ai_import.choose_house_title'.tr(),
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: EdgeInsets.only(bottom: context.spacingSm),
-                itemCount: houses.length,
-                itemBuilder: (context, index) {
-                  final house = houses[index];
-                  final isSelected = state.selectedHouseId == house.id;
-                  return ListTile(
-                    leading: Icon(
-                      isSelected ? Icons.home : Icons.home_outlined,
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                    ),
-                    title: Text(house.name),
-                    trailing: isSelected
-                        ? Icon(
-                            Icons.check_circle,
-                            color: Theme.of(context).colorScheme.primary,
-                          )
-                        : null,
-                    onTap: () {
-                      notifier.setSelectedHouseId(house.id);
-                      Navigator.pop(sheetContext);
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+      title: 'ai_import.choose_house_title'.tr(),
+      items: houses,
+      getLabel: (h) => h.displayName,
+      getIcon: (_) => Icons.home_outlined,
+      selected: houses.where((h) => h.id == state.selectedHouseId).firstOrNull,
     );
+    if (selected != null) notifier.setSelectedHouseId(selected.id);
+  }
+
+  bool _hasSameCategory(
+    List<ItemModel>? items,
+    ClothingAnalysisResult result,
+  ) =>
+      items?.any(
+        (item) =>
+            item.category ==
+            aiItemCategory(result.category, appCategory: result.appCategory),
+      ) ??
+      false;
+
+  Future<void> _openAlreadyHere(
+    AiImportState state,
+    int groupIndex,
+    int itemIndex,
+  ) async {
+    final houseId = state.selectedHouseId;
+    if (_alreadyHereOpen || houseId == null || state.isLoading) return;
+    _alreadyHereOpen = true;
+    try {
+      await showAlreadyHereSheet(
+        context,
+        houseId: houseId,
+        scanned: state.photoGroups[groupIndex].results[itemIndex],
+      );
+    } finally {
+      _alreadyHereOpen = false;
+    }
+  }
+
+  /// Apre la scheda del capo. Se l'utente salva, il capo sostituisce quello
+  /// della scansione e il nome nel campo si aggiorna.
+  Future<void> _openDetails(int groupIndex, int itemIndex) async {
+    final notifier = ref.read(aiImportNotifierProvider.notifier);
+    final current = ref.read(aiImportNotifierProvider);
+    if (current.isLoading ||
+        groupIndex >= current.photoGroups.length ||
+        itemIndex >= current.photoGroups[groupIndex].results.length) {
+      return;
+    }
+    final edited = await showScanItemSheet(
+      context,
+      result: current.photoGroups[groupIndex].results[itemIndex],
+    );
+    if (edited == null || !mounted) return;
+    notifier.updateResult(groupIndex, itemIndex, edited);
+    _controllers[groupIndex][itemIndex].text = edited.name;
   }
 
   // ── Loading state ─────────────────────────────────────────────────────────
@@ -454,10 +586,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
             child: Text(
               'ai_import.analysis_in_progress'.tr(),
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
             ),
           ),
           SizedBox(height: context.spacingMd),
@@ -491,9 +622,9 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                   state.photoGroups.expand((g) => g.results).length.toString(),
                 ],
               ),
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: colorScheme.primary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ],
@@ -521,6 +652,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
       height: context.screenHeight * 0.6,
       child: DsErrorState(
         error: reason,
+        title: 'ai_import.error_title'.tr(),
         message: reason.messageKey.tr(),
         retryLabel: 'ai_import.retry'.tr(),
         // Su quota esaurita e sessione scaduta riprovare non può funzionare:
@@ -541,6 +673,19 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
   ) {
     final allResults = state.photoGroups.expand((g) => g.results).toList();
     final colorScheme = Theme.of(context).colorScheme;
+    final selectedHouse = widget.isFirstTimeOnboarding
+        ? null
+        : _selectedHouse(state.selectedHouseId);
+    final existingItems =
+        !widget.isFirstTimeOnboarding && state.selectedHouseId != null
+        ? ref
+              .watch(itemNotifierProvider(state.selectedHouseId!))
+              .when(
+                data: (items) => items,
+                loading: () => null,
+                error: (_, _) => null,
+              )
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -562,9 +707,7 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                   ),
                   SizedBox(width: context.spacingXs),
                   Text(
-                    'ai_import.items_identified'.tr(
-                      args: [allResults.length.toString()],
-                    ),
+                    'ai_import.items_identified'.plural(allResults.length),
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -572,12 +715,55 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                 ],
               ),
               SizedBox(height: context.spacingXs),
+              // Cosa si fa in questa pagina: scegliere e correggere i capi.
               Text(
-                'ai_import.edit_hint'.tr(),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                'ai_import.results_hint'.tr(),
+                key: const Key('ai_results_hint'),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (selectedHouse != null) ...[
+                SizedBox(height: context.spacingXs),
+                InkWell(
+                  key: const Key('ai_destination'),
+                  borderRadius: BorderRadius.circular(
+                    AppConstants.pillBorderRadius,
+                  ),
+                  onTap: state.isLoading
+                      ? null
+                      : () => _showHousePicker(state, notifier),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: context.spacingXs),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          HouseIcons.getIcon(selectedHouse.iconName),
+                          size: context.iconSizeSm,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        SizedBox(width: context.spacingXs),
+                        Flexible(
+                          child: Text(
+                            'create_sheet.in_house'.tr(
+                              args: [selectedHouse.displayName],
+                            ),
+                            style: Theme.of(context).textTheme.labelLarge,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Icon(
+                          Icons.expand_more,
+                          size: context.iconSizeSm,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -586,32 +772,49 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
           AiPhotoGroupHeader(
             photo: state.photoGroups[gi].photo,
             photoIndex: gi + 1,
-            totalPhotos: state.photoGroups.length,
+            itemCount: state.photoGroups[gi].results.length,
           ),
-          SizedBox(height: context.spacingSm),
-          if (gi < _controllers.length)
-            for (var ii = 0; ii < state.photoGroups[gi].results.length; ii++)
-              if (ii < _controllers[gi].length)
-                Padding(
-                  padding: EdgeInsets.only(bottom: context.spacingMd),
-                  child: AiResultCard(
-                    item: state.photoGroups[gi].results[ii],
-                    index: ii + 1,
-                    controller: _controllers[gi][ii],
-                    // Nessun autofocus: aprire la tastiera all'ingresso copre
-                    // metà dei capi da rivedere, che è il compito principale
-                    // di questa schermata.
-                    autofocus: false,
-                    onNameChanged: (value) {
-                      _nameDebounce?.cancel();
-                      _nameDebounce = Timer(
-                        const Duration(milliseconds: 300),
-                        () => notifier.updateItemName(gi, ii, value),
-                      );
-                    },
-                    onDelete: () => notifier.deleteItem(gi, ii),
-                  ),
-                ),
+          // I capi di una foto in un blocco, come gli oggetti nelle categorie
+          // della casa.
+          if (gi < _controllers.length &&
+              state.photoGroups[gi].results.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: context.spacingSm),
+              child: DsSettingsGroup(
+                children: [
+                  for (
+                    var ii = 0;
+                    ii < state.photoGroups[gi].results.length;
+                    ii++
+                  )
+                    if (ii < _controllers[gi].length)
+                      Padding(
+                        padding: EdgeInsets.only(right: context.spacingXs),
+                        child: AiResultCard(
+                          key: ValueKey('ai_result_${gi}_$ii'),
+                          item: state.photoGroups[gi].results[ii],
+                          controller: _controllers[gi][ii],
+                          included: !state.photoGroups[gi].excluded.contains(
+                            ii,
+                          ),
+                          onIncludedChanged: (included) =>
+                              notifier.setIncluded(gi, ii, included),
+                          onOpenDetails: state.isLoading
+                              ? null
+                              : () => _openDetails(gi, ii),
+                          onAlreadyHere:
+                              _hasSameCategory(
+                                existingItems,
+                                state.photoGroups[gi].results[ii],
+                              )
+                              ? () => _openAlreadyHere(state, gi, ii)
+                              : null,
+                          enabled: !state.isLoading,
+                        ),
+                      ),
+                ],
+              ),
+            ),
           if (state.photoGroups[gi].results.isEmpty)
             Padding(
               padding: EdgeInsets.symmetric(vertical: context.spacingMd),
@@ -623,11 +826,6 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-            ),
-          if (gi < state.photoGroups.length - 1)
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: context.spacingSm),
-              child: Divider(color: colorScheme.outlineVariant),
             ),
         ],
 
@@ -656,17 +854,16 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
                 Expanded(
                   child: Text(
                     state.failureReason?.messageKey.tr() ?? state.errorMessage!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onErrorContainer,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall?.strong
+                        .copyWith(color: colorScheme.onErrorContainer),
                   ),
                 ),
                 if (state.failureReason?.isRetryable ?? false) ...[
                   SizedBox(width: context.spacingSm),
-                  TextButton(
+                  DsTextButton(
+                    key: const Key('ai_partial_error_retry'),
                     onPressed: notifier.retryFailed,
-                    child: Text('ai_import.retry'.tr()),
+                    label: 'ai_import.retry'.tr(),
                   ),
                 ],
               ],

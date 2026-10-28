@@ -2,24 +2,29 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../providers/trip_provider.dart';
+import '../../../core/monitoring/monitoring_service.dart';
+import '../../houses/providers/house_provider.dart';
 import '../model/trip_model.dart';
-import '../../../shared/theme/theme.dart';
-import '../../../shared/widgets/trip_cards.dart';
-import '../../../shared/widgets/app_pill_tab.dart';
-import '../../../shared/widgets/entity_context_menu.dart';
+import '../model/trip_postcard.dart';
+import '../providers/trip_provider.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/entity_action_handler.dart';
-import '../../../shared/widgets/skeleton/skeleton.dart';
+import '../../../shared/helpers/snack_bar_helper.dart';
+import '../../../shared/theme/theme.dart';
+import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
-import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/skeleton/skeleton.dart';
+import '../../../shared/widgets/tab_header.dart';
+import 'widgets/postcard/postcard_pile.dart';
+import 'widgets/postcard/trip_album.dart';
+import 'widgets/postcard/trip_postcard.dart';
 
-/// Enum per le tab di filtro
+/// Filtri della tab Viaggi. Neutri: nessun colore d'accento.
 enum TripFilterTab {
   upcoming('trips.filter_upcoming'),
   past('trips.filter_past'),
-  saved('trips.filter_saved'),
-  all('trips.filter_all');
+  saved('trips.filter_saved');
 
   final String labelKey;
   const TripFilterTab(this.labelKey);
@@ -37,76 +42,49 @@ class TripsScreen extends ConsumerStatefulWidget {
 class _TripsScreenState extends ConsumerState<TripsScreen> {
   TripFilterTab _selectedTab = TripFilterTab.upcoming;
 
-  /// Trova il prossimo viaggio più vicino (in corso o futuro)
-  TripModel? _findNextTrip(List<TripModel> trips) {
-    // Prima cerca un viaggio attivo (in corso)
-    final activeTrips = trips.where((t) => t.isActive).toList();
-    if (activeTrips.isNotEmpty) {
-      // Prendi quello che finisce prima
-      activeTrips.sort((a, b) {
-        final aReturn = a.returnDateTime ?? DateTime(2099);
-        final bReturn = b.returnDateTime ?? DateTime(2099);
-        return aReturn.compareTo(bReturn);
-      });
-      return activeTrips.first;
-    }
+  /// Viaggio chiesto dalla rotta (`/trips?focus=<id>`), da portare in cima
+  /// alla pila appena compare tra i prossimi.
+  String? _focusId;
 
-    // Altrimenti cerca il prossimo viaggio futuro
-    final upcomingTrips = trips.where((t) => t.isUpcoming).toList();
-    if (upcomingTrips.isNotEmpty) {
-      // Ordina per data di partenza
-      upcomingTrips.sort((a, b) {
-        final aDeparture = a.departureDateTime ?? DateTime(2099);
-        final bDeparture = b.departureDateTime ?? DateTime(2099);
-        return aDeparture.compareTo(bDeparture);
-      });
-      return upcomingTrips.first;
-    }
+  /// Ultimo focus già portato in cima: un focus uguale non riporta la pila
+  /// indietro dopo uno scorrimento.
+  String? _focusApplied;
 
-    return null;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final focus = GoRouterState.of(context).uri.queryParameters['focus'];
+    if (focus != null) _focusId = focus;
   }
 
-  /// Filtra i viaggi in base alla tab selezionata
-  List<TripModel> _filterTrips(List<TripModel> trips, TripModel? nextTrip) {
-    switch (_selectedTab) {
-      case TripFilterTab.upcoming:
-        return trips.where((t) => t.isActive || t.isUpcoming).toList();
-      case TripFilterTab.past:
-        return trips.where((t) => t.isCompleted).toList();
-      case TripFilterTab.saved:
-        return trips.where((t) => t.isSaved).toList();
-      case TripFilterTab.all:
-        return trips;
-    }
+  /// Indice in [upcoming] del viaggio da portare in cima, se il focus non è
+  /// ancora applicato e il viaggio è tra i prossimi. Null altrimenti.
+  int? _pendingFocusIndex(List<TripModel> upcoming) {
+    final focus = _focusId;
+    if (focus == null || focus == _focusApplied) return null;
+    final index = upcoming.indexWhere((trip) => trip.id == focus);
+    return index < 0 ? null : index;
   }
 
-  /// Ordina i viaggi (più recenti prima per passati, più vicini prima per prossimi)
-  List<TripModel> _sortTrips(List<TripModel> trips) {
-    final sorted = List<TripModel>.from(trips);
-
-    if (_selectedTab == TripFilterTab.past) {
-      // Passati: più recenti prima
-      sorted.sort((a, b) {
-        final aReturn = a.returnDateTime ?? a.departureDateTime ?? a.createdAt;
-        final bReturn = b.returnDateTime ?? b.departureDateTime ?? b.createdAt;
-        return bReturn.compareTo(aReturn);
+  /// Dopo il frame in cui la pila si apre sul focus, il focus è applicato: la
+  /// tab e lo scorrimento tornano liberi.
+  void _applyFocusAfterFrame() {
+    final focus = _focusId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || focus == null || focus != _focusId) return;
+      if (focus == _focusApplied) return;
+      setState(() {
+        _focusApplied = focus;
+        _selectedTab = TripFilterTab.upcoming;
       });
-    } else {
-      // Prossimi/Tutti: più vicini prima
-      sorted.sort((a, b) {
-        final aDeparture = a.departureDateTime ?? DateTime(2099);
-        final bDeparture = b.departureDateTime ?? DateTime(2099);
-        return aDeparture.compareTo(bDeparture);
-      });
-    }
-
-    return sorted;
+    });
   }
 
   Future<void> _handleTripLongPress(TripModel trip) async {
     final action = await showEntityContextMenu(
       context: context,
       entityType: 'common.trip_type'.tr(),
+      title: trip.name,
       showSaveAction: true,
       isSaved: trip.isSaved,
     );
@@ -134,262 +112,300 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     );
   }
 
+  /// Riusa il viaggio: copia senza date, poi apre la modifica in modalità
+  /// riuso. Se l'utente esce senza salvare, la copia viene eliminata dalla
+  /// rotta di modifica.
+  Future<void> _handleReuse(TripModel trip) async {
+    // Letto prima dell'await: il catch può arrivare dopo il dispose.
+    final monitoring = ref.read(monitoringServiceProvider);
+    try {
+      final newId = await ref
+          .read(tripNotifierProvider.notifier)
+          .reuseTrip(trip.id);
+      if (!mounted) return;
+      context.push('/trips/$newId/edit-info?reuse=1');
+    } catch (error, stack) {
+      monitoring.captureException(error, stackTrace: stack);
+      if (!mounted) return;
+      AppSnackBar.showError(
+        context,
+        'errors.duplicate_trip_failed'.tr(args: [trip.name]),
+      );
+    }
+  }
+
+  void _onPileCta(TripModel trip, PostcardCta cta) {
+    if (cta == PostcardCta.prepare) {
+      context.push('/trips/${trip.id}/edit-items');
+    } else {
+      context.push('/trips/${trip.id}');
+    }
+  }
+
+  /// Nome della meta: casa di destinazione se esiste, altrimenti città o
+  /// nome del viaggio. [houseNames] è costruita una volta per build.
+  String _destinationOf(TripModel trip, Map<String, String> houseNames) {
+    return tripDestinationName(
+      trip,
+      houseName: houseNames[trip.destinationHouseId],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripNotifierProvider);
+    final houses = ref.watch(houseNotifierProvider).valueOrNull ?? const [];
+    final houseNames = {
+      for (final house in houses) house.id: house.displayName,
+    };
     final colorScheme = Theme.of(context).colorScheme;
 
+    final loadedTrips = tripsAsync.valueOrNull;
+    final focusIndex = loadedTrips == null
+        ? null
+        : _pendingFocusIndex(upcomingTrips(loadedTrips));
+    if (focusIndex != null) _applyFocusAfterFrame();
+    final activeTab = focusIndex == null
+        ? _selectedTab
+        : TripFilterTab.upcoming;
+
     return ShellTabScaffold(
-      body: tripsAsync.when(
-        skipLoadingOnReload: true,
-        data: (trips) => _buildTripsContent(context, ref, colorScheme, trips),
-        loading: () => const SkeletonTripsBody(),
-        error: (error, stack) => RefreshIndicator(
-          onRefresh: () => ref.refresh(tripNotifierProvider.future),
-          color: colorScheme.primary,
-          child: LayoutBuilder(
-            builder: (_, constraints) => SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: SizedBox(
-                height: constraints.maxHeight,
-                child: _buildErrorState(context, ref, error),
+      body: Column(
+        children: [
+          TabHeader(title: 'navigation.trips'.tr()),
+          // A sinistra, allineati al titolo della tab, come nel mock. Il
+          // margine sta dentro lo scorrimento: su schermi stretti le pillole
+          // arrivano fino al bordo.
+          SizedBox(
+            width: double.infinity,
+            child: AppPillTab<TripFilterTab>(
+              items: TripFilterTab.values,
+              selectedItem: activeTab,
+              getLabel: (tab) => tab.label,
+              onSelected: (tab) => setState(() => _selectedTab = tab),
+              selectedColor: colorScheme.onSurface,
+              selectedTextColor: colorScheme.onSurface,
+              scrollPadding: EdgeInsets.symmetric(
+                horizontal: context.spacingMd,
               ),
             ),
           ),
-        ),
+          SizedBox(height: context.spacingMd),
+          Expanded(
+            child: tripsAsync.when(
+              skipLoadingOnReload: true,
+              data: (trips) => _buildContent(
+                context,
+                trips,
+                houseNames,
+                tab: activeTab,
+                focusIndex: focusIndex,
+              ),
+              loading: () => const SkeletonTripsBody(),
+              error: (error, stack) => RefreshIndicator(
+                onRefresh: () => ref.refresh(tripNotifierProvider.future),
+                color: colorScheme.primary,
+                child: LayoutBuilder(
+                  builder: (_, constraints) => SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: constraints.maxHeight,
+                      child: _buildErrorState(context, error),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  /// Costruisce il contenuto principale. Titolo e filtri sono SEMPRE visibili,
-  /// indipendentemente dal fatto che la lista sia vuota o meno.
-  Widget _buildTripsContent(
+  Widget _buildContent(
     BuildContext context,
-    WidgetRef ref,
-    ColorScheme colorScheme,
     List<TripModel> trips,
-  ) {
-    final nextTrip = _findNextTrip(trips);
-    final filteredTrips = _filterTrips(trips, nextTrip);
-    final sortedTrips = _sortTrips(filteredTrips);
+    Map<String, String> houseNames, {
+    required TripFilterTab tab,
+    required int? focusIndex,
+  }) {
+    if (trips.isEmpty) {
+      return _buildScrollableEmpty(
+        context,
+        DsEmptyState(
+          icon: Icons.luggage_outlined,
+          title: 'trips.no_trips_title'.tr(),
+          ctaLabel: 'trips.no_trips_subtitle'.tr(),
+          ctaIcon: Icons.add,
+          onCta: () => context.push('/new-trip'),
+        ),
+      );
+    }
 
-    final showNextTripCard =
-        nextTrip != null &&
-        (_selectedTab == TripFilterTab.upcoming ||
-            _selectedTab == TripFilterTab.all);
-    final tripsForMasonry = showNextTripCard
-        ? sortedTrips.where((t) => t.id != nextTrip.id).toList()
-        : sortedTrips;
+    switch (tab) {
+      case TripFilterTab.upcoming:
+        final upcoming = upcomingTrips(trips);
+        if (upcoming.isEmpty) {
+          return _buildScrollableEmpty(
+            context,
+            DsEmptyState(
+              icon: Icons.calendar_today_outlined,
+              title: 'trips.no_upcoming'.tr(),
+              ctaLabel: 'create_sheet.new_trip'.tr(),
+              ctaIcon: Icons.add,
+              onCta: () => context.push('/new-trip'),
+            ),
+          );
+        }
+        return _buildPile(
+          context,
+          upcoming,
+          houseNames,
+          focusIndex: focusIndex,
+        );
 
-    return RefreshIndicator(
-      onRefresh: () => ref.refresh(tripNotifierProvider.future),
-      color: colorScheme.primary,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Header sempre visibile: titolo + pill tabs.
-          // Estratto come lista per evitare duplicazioni tra i due branch.
-          final headerWidgets = <Widget>[
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.spacingXs,
-                vertical: context.spacingSm,
-              ),
-              child: Text(
-                'trips.welcome_title'.tr(),
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  color: colorScheme.onSurface,
-                  height: 1.2,
-                ),
-              ),
+      case TripFilterTab.past:
+        final past = pastTrips(trips);
+        if (past.isEmpty) {
+          return _buildScrollableEmpty(
+            context,
+            DsEmptyState(
+              icon: Icons.history_outlined,
+              title: 'trips.no_past'.tr(),
             ),
-            SizedBox(height: context.spacingMd),
-            Center(
-              child: AppPillTab<TripFilterTab>(
-                items: TripFilterTab.values,
-                selectedItem: _selectedTab,
-                getLabel: (tab) => tab.label,
-                onSelected: (tab) => setState(() => _selectedTab = tab),
-              ),
-            ),
-            SizedBox(height: context.spacingLg),
-          ];
+          );
+        }
+        return _buildAlbum(
+          context,
+          groups: [
+            for (final entry in groupByYear(past))
+              TripAlbumGroup('${entry.key}', entry.value),
+          ],
+          cancelledStamps: true,
+          houseNames: houseNames,
+        );
 
-          return SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            // `bottom`: vedi [ShellTabScaffold] — il contenuto scorre dietro
-            // la nav bar flottante, questo padding tiene l'ultimo viaggio
-            // raggiungibile.
-            padding: EdgeInsets.only(
-              left: context.spacingMd,
-              right: context.spacingMd,
-              top: context.spacingSm,
-              bottom: context.navBarReservedHeight,
+      case TripFilterTab.saved:
+        final saved = savedTrips(trips);
+        if (saved.isEmpty) {
+          return _buildScrollableEmpty(
+            context,
+            DsEmptyState(
+              icon: Icons.bookmark_border_outlined,
+              title: 'trips.no_saved'.tr(),
+              subtitle: 'trips.no_saved_hint'.tr(),
             ),
-            // Quando la lista è vuota, SizedBox con altezza DELIMITATA permette
-            // a Expanded di funzionare per centrare verticalmente l'empty state.
-            // Quando ci sono dati, ConstrainedBox con minHeight garantisce che
-            // il contenuto riempia lo schermo e sia scrollabile se supera l'altezza.
-            child: trips.isEmpty
-                ? SizedBox(
-                    height: constraints.maxHeight,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ...headerWidgets,
-                        Expanded(
-                          child: Center(child: _buildEmptyState(context)),
-                        ),
-                      ],
-                    ),
-                  )
-                : ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ...headerWidgets,
-                        if (showNextTripCard) ...[
-                          TripCardHero(
-                            trip: nextTrip,
-                            onTap: () => context.push('/trips/${nextTrip.id}'),
-                            onLongPress: () => _handleTripLongPress(nextTrip),
-                          ),
-                          SizedBox(height: context.spacingSm),
-                        ],
-                        if (tripsForMasonry.isEmpty && !showNextTripCard)
-                          _buildFilterEmptyState(context, colorScheme)
-                        else if (tripsForMasonry.isNotEmpty)
-                          _TripsMasonry(trips: tripsForMasonry),
-                      ],
-                    ),
-                  ),
+          );
+        }
+        return _buildAlbum(
+          context,
+          groups: [TripAlbumGroup('trips.album.saved_group'.tr(), saved)],
+          cancelledStamps: false,
+          houseNames: houseNames,
+        );
+    }
+  }
+
+  Widget _buildPile(
+    BuildContext context,
+    List<TripModel> upcoming,
+    Map<String, String> houseNames, {
+    required int? focusIndex,
+  }) {
+    // La chiave cambia solo quando un focus viene applicato, così la pila si
+    // ricrea con [initialIndex] e non a ogni rebuild.
+    final pileFocus = focusIndex != null ? _focusId : _focusApplied;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        context.spacingMd,
+        0,
+        context.spacingMd,
+        context.navBarReservedHeight + context.spacingLg,
+      ),
+      child: PostcardPile(
+        key: ValueKey('postcard_pile_$pileFocus'),
+        itemCount: upcoming.length,
+        initialIndex: focusIndex ?? 0,
+        semanticLabel: (index) => 'trips.pile.semantics'.tr(
+          args: [
+            '${index + 1}',
+            '${upcoming.length}',
+            postcardTitle(
+              upcoming[index],
+              destination: _destinationOf(upcoming[index], houseNames),
+            ),
+          ],
+        ),
+        itemBuilder: (context, index) {
+          final trip = upcoming[index];
+          return GestureDetector(
+            onTap: () => context.push('/trips/${trip.id}'),
+            onLongPress: () => _handleTripLongPress(trip),
+            child: TripPostcard(
+              trip: trip,
+              destination: _destinationOf(trip, houseNames),
+              houseNames: houseNames,
+              onCta: (cta) => _onPileCta(trip, cta),
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return DsEmptyState(
-      icon: Icons.luggage_outlined,
-      title: 'trips.no_trips_title'.tr(),
-      action: DsButton(
-        label: 'trips.no_trips_subtitle'.tr(),
-        icon: Icons.add,
-        onPressed: () => context.push('/new-trip'),
+  Widget _buildAlbum(
+    BuildContext context, {
+    required List<TripAlbumGroup> groups,
+    required bool cancelledStamps,
+    required Map<String, String> houseNames,
+  }) {
+    return RefreshIndicator(
+      onRefresh: () => ref.refresh(tripNotifierProvider.future),
+      color: Theme.of(context).colorScheme.primary,
+      child: TripAlbum(
+        groups: groups,
+        cancelledStamps: cancelledStamps,
+        destinationOf: (trip) => _destinationOf(trip, houseNames),
+        onTap: (trip) => context.push('/trips/${trip.id}'),
+        onLongPress: _handleTripLongPress,
+        onReuse: _handleReuse,
+        padding: EdgeInsets.only(
+          left: context.spacingMd,
+          right: context.spacingMd,
+          bottom: context.navBarReservedHeight,
+        ),
       ),
     );
   }
 
-  Widget _buildFilterEmptyState(BuildContext context, ColorScheme colorScheme) {
-    String message;
-    IconData icon;
-
-    switch (_selectedTab) {
-      case TripFilterTab.upcoming:
-        message = 'trips.no_upcoming'.tr();
-        icon = Icons.calendar_today_outlined;
-        break;
-      case TripFilterTab.past:
-        message = 'trips.no_past'.tr();
-        icon = Icons.history_outlined;
-        break;
-      case TripFilterTab.saved:
-        message = 'trips.no_saved'.tr();
-        icon = Icons.bookmark_border_outlined;
-        break;
-      case TripFilterTab.all:
-        message = 'errors.no_trips'.tr();
-        icon = Icons.luggage_outlined;
-        break;
-    }
-
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: context.spacingXl * 2),
-      child: DsEmptyState(icon: icon, title: message),
+  /// Stato vuoto trascinabile per il refresh, centrato nello spazio
+  /// disponibile sopra la nav bar.
+  Widget _buildScrollableEmpty(BuildContext context, Widget empty) {
+    return RefreshIndicator(
+      onRefresh: () => ref.refresh(tripNotifierProvider.future),
+      color: Theme.of(context).colorScheme.primary,
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: context.spacingMd,
+            right: context.spacingMd,
+            bottom: context.navBarReservedHeight,
+          ),
+          child: SizedBox(
+            height: constraints.maxHeight,
+            child: Center(child: empty),
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildErrorState(BuildContext context, WidgetRef ref, Object error) {
+  Widget _buildErrorState(BuildContext context, Object error) {
     return DsErrorState(
       error: error,
+      title: 'errors.load_trips'.tr(),
       onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
-    );
-  }
-}
-
-/// Masonry a 2 colonne per le trip card compatte.
-///
-/// Distribuisce le card tra colonne sinistra/destra usando una stima
-/// dell'altezza per bilanciare le colonne. Ogni card usa [TripCardCompact]
-/// (estratto in shared).
-class _TripsMasonry extends StatelessWidget {
-  final List<TripModel> trips;
-
-  const _TripsMasonry({required this.trips});
-
-  static double _estimateCardHeight(TripModel trip) {
-    const maxPreviewItems = 5;
-    double h = 64; // titolo + padding + spacing
-    if (trip.description != null) h += 22;
-    if (trip.items.isNotEmpty) {
-      h += 36; // progress + counter
-      final preview = trip.items.length.clamp(0, maxPreviewItems);
-      h += preview * 26;
-      if (trip.items.length > maxPreviewItems) h += 22;
-    }
-    return h;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final left = <TripModel>[];
-    final right = <TripModel>[];
-    double lh = 0;
-    double rh = 0;
-
-    for (final trip in trips) {
-      final h = _estimateCardHeight(trip) + AppSpacing.md;
-      if (lh <= rh) {
-        left.add(trip);
-        lh += h;
-      } else {
-        right.add(trip);
-        rh += h;
-      }
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            children: left
-                .map(
-                  (t) => Padding(
-                    padding: EdgeInsets.only(bottom: context.spacingMd),
-                    child: TripCardCompact(trip: t),
-                  ),
-                )
-                .toList(),
-          ),
-        ),
-        SizedBox(width: context.spacingMd),
-        Expanded(
-          child: Column(
-            children: right
-                .map(
-                  (t) => Padding(
-                    padding: EdgeInsets.only(bottom: context.spacingMd),
-                    child: TripCardCompact(trip: t),
-                  ),
-                )
-                .toList(),
-          ),
-        ),
-      ],
     );
   }
 }

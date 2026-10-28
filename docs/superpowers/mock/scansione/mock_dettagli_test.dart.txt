@@ -1,0 +1,55 @@
+// MOCK usa e getta: scheda oggetto con i dettagli.
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/fakes.dart';
+import 'support/fonts.dart';
+import 'support/harness.dart';
+import 'support/seed.dart';
+
+void main() {
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    await EasyLocalization.ensureInitialized();
+    useSystemSqlite();
+    await loadRealFonts();
+    await createPhotoFixtures();
+  });
+  tearDownAll(Manifest.write);
+
+  Shot shot(String state, ShotTheme theme, int order) => Shot(
+    flow: 'mock-dettagli',
+    flowTitle: 'Mock dettagli',
+    order: order,
+    screen: 'scheda',
+    state: state,
+    source: 'lib/features/items/view/item_sheet.dart',
+    description: 'mock',
+    theme: theme,
+  );
+
+  for (final theme in ShotTheme.values) {
+    testWidgets('scheda ${theme.name}', (tester) async {
+      final app = await ScreenshotApp.start(tester, theme: theme);
+      await app.go('/');
+      await app.push('/houses/$kHomeId');
+      await app.tap(find.text('Maglione di lana'));
+      await app.capture(shot('alto', theme, 1));
+      await tester.drag(
+        find.byKey(const Key('item_sheet_name')),
+        const Offset(0, -380),
+      );
+      await app.settle();
+      await app.capture(shot('dettagli-alto', theme, 2));
+      await tester.drag(
+        find.byType(SingleChildScrollView).last,
+        const Offset(0, -700),
+      );
+      await app.settle();
+      await app.capture(shot('dettagli', theme, 3));
+      await app.finish();
+    });
+  }
+}

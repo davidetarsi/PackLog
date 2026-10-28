@@ -5,8 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../features/onboarding/providers/onboarding_status_provider.dart';
+import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/app_motion.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
 import 'widgets/content_slide.dart';
 
@@ -48,19 +51,30 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       return;
     }
     _pageController.nextPage(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+      duration: AppMotion.slow,
+      curve: AppMotion.standard,
     );
   }
 
-  Future<void> _handleComplete() async {
+  /// Segna l'onboarding come completato. Il router, vedendolo completato,
+  /// porta al login: vale sia per "Inizia" sia per "Salta".
+  Future<void> _handleComplete({bool skipped = false}) async {
     if (_isCompleting) return;
     setState(() => _isCompleting = true);
     try {
-      ref.read(coreAnalyticsServiceProvider).trackOnboardingCompleted();
+      if (skipped) {
+        ref
+            .read(analyticsServiceProvider)
+            .logEvent(
+              'onboarding_skipped',
+              properties: {'page_index': _currentPage},
+            );
+      } else {
+        ref.read(coreAnalyticsServiceProvider).trackOnboardingCompleted();
+      }
       await ref.read(onboardingStatusProvider.notifier).markCompleted();
       if (mounted && ref.read(onboardingStatusProvider) is AsyncError) {
-        AppSnackBar.showError(context, 'Errore. Riprova.');
+        AppSnackBar.showError(context, 'onboarding.complete_failed'.tr());
       }
     } finally {
       if (mounted) setState(() => _isCompleting = false);
@@ -73,6 +87,28 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // "Salta" sulle prime slide; sull'ultima c'è già "Inizia".
+            // maintainSize: l'altezza non cambia fra le slide, quindi il
+            // contenuto non salta quando il bottone sparisce.
+            Align(
+              alignment: Alignment.centerRight,
+              child: Visibility(
+                visible: !_isLastPage,
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: Padding(
+                  padding: EdgeInsets.only(right: context.spacingSm),
+                  child: DsTextButton(
+                    key: const Key('onboarding_skip'),
+                    onPressed: _isCompleting
+                        ? null
+                        : () => _handleComplete(skipped: true),
+                    label: 'onboarding.skip'.tr(),
+                  ),
+                ),
+              ),
+            ),
             const Spacer(),
             Expanded(
               flex: 6,
@@ -117,7 +153,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             _DotsIndicator(
               count: 3,
               currentIndex: _currentPage,
-              activeColor: Theme.of(context).colorScheme.primary,
+              // Neutri: l'arancio di questa pagina è solo il bottone.
+              activeColor: Theme.of(context).colorScheme.onSurface,
               inactiveColor: Theme.of(context).colorScheme.outlineVariant,
             ),
             SizedBox(height: context.spacingMd),
@@ -159,13 +196,13 @@ class _DotsIndicator extends StatelessWidget {
       children: List.generate(count, (index) {
         final isActive = index == currentIndex;
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 4),
+          duration: AppMotion.medium,
+          margin: EdgeInsets.symmetric(horizontal: context.spacingXs),
           width: isActive ? 20 : 8,
           height: 8,
           decoration: BoxDecoration(
             color: isActive ? activeColor : inactiveColor,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppConstants.smallBorderRadius),
           ),
         );
       }),

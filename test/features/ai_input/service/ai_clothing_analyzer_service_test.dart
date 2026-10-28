@@ -11,14 +11,30 @@ import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/features/ai_input/model/clothing_analysis_exception.dart';
 import 'package:pack_log/features/ai_input/service/ai_clothing_analyzer_service.dart';
 
-/// Wraps a content string in the minimal OpenAI response envelope.
-String _openAiResponse(String content) => jsonEncode({
-  'choices': [
-    {
-      'message': {'content': content},
-    },
-  ],
-});
+const _tShirt = {
+  'name': 'T-Shirt',
+  'category': 'Upper Body',
+  'subCategory': 'T-Shirt',
+  'baseColor': 'Bianco',
+  'pattern': 'Solid',
+  'coverage': 'Short-sleeve',
+  'fit': 'Regular',
+  'warmth': 2,
+  'formality': 'Casual',
+  'activityTags': ['Everyday'],
+  'waterResistance': 0,
+  'bulk': 1,
+};
+
+/// La risposta di `item-metadata`: un elemento per capo.
+String _itemMetadataResponse(List<Map<String, dynamic>> metadata) =>
+    jsonEncode({
+      'items': [
+        for (final m in metadata)
+          {'metadata': m, 'app_category': 'vestiti', 'dubbi': []},
+      ],
+      'note_tecniche': [],
+    });
 
 File _fakeImageFile() {
   final f = File('${Directory.systemTemp.path}/test_img.png')
@@ -34,11 +50,13 @@ AiClothingAnalyzerService _makeService(
   http.Client mockClient, {
   CoreAnalyticsService? analytics,
   AppMonitoringService? monitoring,
+  String Function()? language,
 }) => AiClothingAnalyzerService(
-  proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
+  proxyUrl: 'https://fake.supabase.co/functions/v1/item-metadata',
   anonKey: 'fake-anon-key',
   client: mockClient,
   jwtProvider: () => 'fake-jwt-token',
+  language: language,
   analytics: analytics,
   monitoring: monitoring,
 );
@@ -90,7 +108,7 @@ void main() {
       'throws AnalysisNotAuthenticatedException when jwtProvider returns null',
       () async {
         final service = AiClothingAnalyzerService(
-          proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
+          proxyUrl: 'https://fake.supabase.co/functions/v1/item-metadata',
           anonKey: 'fake-anon-key',
           jwtProvider: () => null,
         );
@@ -103,38 +121,10 @@ void main() {
     );
 
     group('processClothingItem — success and parsing', () {
-      const validItemsJson =
-          '[{"name":"T-Shirt","category":"Upper Body","subCategory":"T-Shirt","baseColor":"Bianco",'
-          '"pattern":"Solid","coverage":"Short-sleeve","fit":"Regular",'
-          '"warmth":2,"formality":"Casual","activityTags":["Everyday"]}]';
-
-      test(
-        'returns correct ClothingItem list from valid JSON response',
-        () async {
-          final service = _makeService(
-            MockClient(
-              (_) async => http.Response(_openAiResponse(validItemsJson), 200),
-            ),
-          );
-
-          final items = await service.processClothingItem(_fakeImageFile());
-
-          expect(items, hasLength(1));
-          expect(items.first.name, 'T-Shirt');
-          expect(items.first.category, 'Upper Body');
-          expect(items.first.subCategory, 'T-Shirt');
-          expect(items.first.baseColor, 'Bianco');
-          expect(items.first.warmth, 2);
-          expect(items.first.activityTags, ['Everyday']);
-        },
-      );
-
-      test('strips markdown fences from content before parsing', () async {
-        // GPT sometimes wraps its JSON output in ```json ... ``` fences.
-        const fencedContent = '```json\n$validItemsJson\n```';
+      test('returns the ClothingItem list from item-metadata', () async {
         final service = _makeService(
           MockClient(
-            (_) async => http.Response(_openAiResponse(fencedContent), 200),
+            (_) async => http.Response(_itemMetadataResponse([_tShirt]), 200),
           ),
         );
 
@@ -142,35 +132,34 @@ void main() {
 
         expect(items, hasLength(1));
         expect(items.first.name, 'T-Shirt');
+        expect(items.first.category, 'Upper Body');
+        expect(items.first.subCategory, 'T-Shirt');
+        expect(items.first.baseColor, 'Bianco');
+        expect(items.first.warmth, 2);
+        expect(items.first.activityTags, ['Everyday']);
+        expect(items.first.appCategory, 'vestiti');
+        // I campi che la UI non mostra restano per items.ai_metadata.
+        expect(items.first.toJson()['waterResistance'], 0);
+        expect(items.first.toJson()['bulk'], 1);
+      });
+
+      test('returns empty list when no item was recognised', () async {
+        // Anche una risposta del modello che non era JSON arriva come [].
+        final service = _makeService(
+          MockClient(
+            (_) async => http.Response(_itemMetadataResponse([]), 200),
+          ),
+        );
+
+        final items = await service.processClothingItem(_fakeImageFile());
+        expect(items, isEmpty);
       });
 
       test(
-        'returns empty list when GPT responds with text refusal instead of JSON',
+        'throws ResponseParsingException on a body that is not JSON',
         () async {
-          // GPT può rifiutare con testo libero (content policy, nessun vestito, ecc.)
-          // invece di restituire un array JSON. La risposta corretta è lista vuota.
           final service = _makeService(
-            MockClient(
-              (_) async => http.Response(
-                _openAiResponse("I'm sorry, I can't assist with that."),
-                200,
-              ),
-            ),
-          );
-
-          final items = await service.processClothingItem(_fakeImageFile());
-          expect(items, isEmpty);
-        },
-      );
-
-      test(
-        'throws ResponseParsingException on broken JSON array content',
-        () async {
-          // Se il content INIZIA con '[' ma è JSON non valido → parse error reale
-          final service = _makeService(
-            MockClient(
-              (_) async => http.Response(_openAiResponse('[broken json'), 200),
-            ),
+            MockClient((_) async => http.Response('[broken json', 200)),
           );
 
           await expectLater(
@@ -180,41 +169,27 @@ void main() {
         },
       );
 
-      test(
-        'throws ResponseParsingException when choices array is empty',
-        () async {
-          final service = _makeService(
-            MockClient(
-              (_) async => http.Response(jsonEncode({'choices': []}), 200),
-            ),
-          );
+      test('throws ResponseParsingException when items is missing', () async {
+        final service = _makeService(
+          MockClient((_) async => http.Response(jsonEncode({}), 200)),
+        );
 
-          await expectLater(
-            service.processClothingItem(_fakeImageFile()),
-            throwsA(isA<ResponseParsingException>()),
-          );
-        },
-      );
+        await expectLater(
+          service.processClothingItem(_fakeImageFile()),
+          throwsA(isA<ResponseParsingException>()),
+        );
+      });
     });
 
     group('Body sent to proxy', () {
       test(
-        'envia SOLO image_base64, niente model/messages/max_tokens/prompt',
+        'envia SOLO image_base64 e lang, niente model/messages/max_tokens/prompt',
         () async {
           http.Request? capturedRequest;
           final service = _makeService(
             MockClient((req) async {
               capturedRequest = req;
-              return http.Response(
-                _openAiResponse(
-                  '[{"name":"T","category":"Upper Body",'
-                  '"subCategory":"T-Shirt","baseColor":"Bianco",'
-                  '"pattern":"Solid","coverage":"Short-sleeve",'
-                  '"fit":"Regular","warmth":2,"formality":"Casual",'
-                  '"activityTags":["Everyday"]}]',
-                ),
-                200,
-              );
+              return http.Response(_itemMetadataResponse([_tShirt]), 200);
             }),
           );
 
@@ -223,8 +198,9 @@ void main() {
           expect(capturedRequest, isNotNull);
           final body =
               jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
-          // Solo image_base64. Tutto il resto è server-side.
-          expect(body.keys, ['image_base64']);
+          // Solo image_base64 e la lingua. Tutto il resto è server-side.
+          expect(body.keys, ['image_base64', 'lang']);
+          expect(body['lang'], 'it');
           expect(body['image_base64'], isA<String>());
           expect((body['image_base64'] as String).isNotEmpty, true);
           // Difese esplicite contro regressioni: se qualcuno reintroduce
@@ -236,12 +212,32 @@ void main() {
           expect(body.containsKey('temperature'), false);
         },
       );
+
+      test(
+        'manda la lingua dell\'app: il nome dei capi torna in quella',
+        () async {
+          http.Request? capturedRequest;
+          final service = _makeService(
+            MockClient((req) async {
+              capturedRequest = req;
+              return http.Response(_itemMetadataResponse([_tShirt]), 200);
+            }),
+            language: () => 'en',
+          );
+
+          await service.processClothingItem(_fakeImageFile());
+
+          final body =
+              jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
+          expect(body['lang'], 'en');
+        },
+      );
     });
 
     group('processClothingItem — auth and network', () {
       test('throws AnalysisNotAuthenticatedException on empty JWT', () async {
         final service = AiClothingAnalyzerService(
-          proxyUrl: 'https://fake.supabase.co/functions/v1/openai-proxy',
+          proxyUrl: 'https://fake.supabase.co/functions/v1/item-metadata',
           anonKey: 'fake-anon-key',
           jwtProvider: () => '',
         );
@@ -270,15 +266,7 @@ void main() {
       late MockCoreAnalyticsService mockAnalytics;
       late MockAppMonitoringService mockMonitoring;
 
-      const validOpenAiResponse = '''
-{
-  "choices": [{
-    "message": {
-      "content": "[{\\"name\\": \\"T-Shirt\\", \\"category\\": \\"Upper Body\\", \\"subCategory\\": \\"T-Shirt\\", \\"baseColor\\": \\"Bianco\\", \\"pattern\\": \\"Solid\\", \\"coverage\\": \\"Short-sleeve\\", \\"fit\\": \\"Regular\\", \\"warmth\\": 2, \\"formality\\": \\"Casual\\", \\"activityTags\\": [\\"Everyday\\"]}]"
-    }
-  }]
-}
-''';
+      final validResponse = _itemMetadataResponse([_tShirt]);
 
       setUp(() {
         mockAnalytics = MockCoreAnalyticsService();
@@ -307,7 +295,7 @@ void main() {
         'processClothingItem fires submitted + completed on success',
         () async {
           final service = _makeService(
-            MockClient((_) async => http.Response(validOpenAiResponse, 200)),
+            MockClient((_) async => http.Response(validResponse, 200)),
             analytics: mockAnalytics,
           );
 

@@ -16,6 +16,23 @@ const Object _unset = Object();
 /// CHECK constraint: `char_length(name) >= 1`), even though the local
 /// schema allows an empty name (city/location shown as fallback in UI).
 void main() {
+  test(
+    'un bagaglio remoto senza casa viene importato senza inventare una casa',
+    () {
+      final companion = SyncSerializers.buildLuggageCompanion({
+        'id': 'global-luggage',
+        'user_id': 'u1',
+        'house_id': null,
+        'name': 'Zaino',
+        'size_type': 'smallBackpack',
+        'created_at': '2026-10-22T10:00:00Z',
+        'updated_at': '2026-10-22T10:00:00Z',
+      }, syncedAt: DateTime.utc(2026, 10, 22));
+      expect(companion.houseId.value, isNull);
+      expect(companion.id.value, 'global-luggage');
+    },
+  );
+
   late AppDatabase database;
 
   setUp(() {
@@ -198,6 +215,152 @@ void main() {
       );
 
       expect(companion.legs.value, contains('Siena'));
+    });
+  });
+
+  group('SyncSerializers - valigia AI', () {
+    Future<Trip> insertAndFetchTrip(TripsCompanion companion) async {
+      await database.tripsDao.insertTrip(companion);
+      return (await database.tripsDao.findTripById(companion.id.value))!;
+    }
+
+    test('senza dati AI: le chiavi sono omesse, non null', () async {
+      final trip = await insertAndFetchTrip(
+        TripsCompanion.insert(
+          id: 'trip-ai-1',
+          name: 'Weekend',
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
+
+      final json = SyncSerializers.tripToJson(trip, items: [], luggageIds: []);
+
+      // Omesse, non `null`: un null nel payload sovrascriverebbe il server.
+      expect(json.containsKey('ai_packing_setup'), isFalse);
+      expect(json.containsKey('ai_packing_result'), isFalse);
+    });
+
+    test('con dati AI: vanno come oggetti JSON, non come stringhe', () async {
+      final trip = await insertAndFetchTrip(
+        TripsCompanion.insert(
+          id: 'trip-ai-2',
+          name: 'Toscana',
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+          aiPackingSetup: const Value('{"houseId":"h1","stops":{}}'),
+          aiPackingResult: const Value('{"houseId":"h1","proposal":[]}'),
+        ),
+      );
+
+      final json = SyncSerializers.tripToJson(trip, items: [], luggageIds: []);
+
+      expect(json['ai_packing_setup'], isA<Map<String, dynamic>>());
+      expect(json['ai_packing_setup']['houseId'], 'h1');
+      expect(json['ai_packing_result'], isA<Map<String, dynamic>>());
+      expect(json['ai_packing_result']['proposal'], isEmpty);
+    });
+
+    test(
+      'JSON locale corrotto: omette la chiave invece di far fallire il push',
+      () async {
+        final trip = await insertAndFetchTrip(
+          TripsCompanion.insert(
+            id: 'trip-ai-3',
+            name: 'Corrotto',
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+            aiPackingSetup: const Value('{non è json'),
+          ),
+        );
+
+        final json = SyncSerializers.tripToJson(
+          trip,
+          items: [],
+          luggageIds: [],
+        );
+
+        expect(json.containsKey('ai_packing_setup'), isFalse);
+      },
+    );
+
+    test(
+      'solo ai_packing_result presente: si invia solo quella chiave',
+      () async {
+        final trip = await insertAndFetchTrip(
+          TripsCompanion.insert(
+            id: 'trip-ai-4',
+            name: 'Parziale',
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+            aiPackingResult: const Value('{"houseId":"h1","proposal":[]}'),
+          ),
+        );
+
+        final json = SyncSerializers.tripToJson(
+          trip,
+          items: [],
+          luggageIds: [],
+        );
+
+        expect(json.containsKey('ai_packing_setup'), isFalse);
+        expect(json['ai_packing_result']['houseId'], 'h1');
+      },
+    );
+  });
+
+  group('SyncSerializers.buildTripCompanion - valigia AI', () {
+    Map<String, dynamic> remotePayload({
+      Object? aiPackingSetup = _unset,
+      Object? aiPackingResult = _unset,
+    }) => {
+      'id': 'trip-1',
+      'name': 'Toscana',
+      'created_at': '2026-09-01T00:00:00.000Z',
+      'updated_at': '2026-09-01T00:00:00.000Z',
+      if (!identical(aiPackingSetup, _unset))
+        'ai_packing_setup': aiPackingSetup,
+      if (!identical(aiPackingResult, _unset))
+        'ai_packing_result': aiPackingResult,
+    };
+
+    test('chiavi assenti: non toccano i dati AI locali', () {
+      final companion = SyncSerializers.buildTripCompanion(
+        remotePayload(),
+        syncedAt: DateTime(2026),
+      );
+
+      expect(companion.aiPackingSetup.present, isFalse);
+      expect(companion.aiPackingResult.present, isFalse);
+    });
+
+    test('ai_packing_result a null: non tocca il dato locale', () {
+      final companion = SyncSerializers.buildTripCompanion(
+        remotePayload(aiPackingResult: null),
+        syncedAt: DateTime(2026),
+      );
+
+      expect(companion.aiPackingResult.present, isFalse);
+    });
+
+    test('ai_packing_result oggetto: salva il JSON', () {
+      final companion = SyncSerializers.buildTripCompanion(
+        remotePayload(aiPackingResult: const {'houseId': 'h1', 'proposal': []}),
+        syncedAt: DateTime(2026),
+      );
+
+      expect(companion.aiPackingResult.present, isTrue);
+      expect(companion.aiPackingResult.value, contains('"houseId":"h1"'));
+    });
+
+    test('ai_packing_setup oggetto: salva il JSON', () {
+      final companion = SyncSerializers.buildTripCompanion(
+        remotePayload(aiPackingSetup: const {'houseId': 'h2', 'stops': {}}),
+        syncedAt: DateTime(2026),
+      );
+
+      expect(companion.aiPackingSetup.present, isTrue);
+      expect(companion.aiPackingSetup.value, contains('"houseId":"h2"'));
     });
   });
 }

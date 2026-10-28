@@ -1,94 +1,14 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/items/model/item_model.dart';
-import '../../features/trips/model/trip_model.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_opacity.dart';
 import '../widgets/ds_badge.dart';
-import '../widgets/trip_cards.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Stub data
-// ─────────────────────────────────────────────────────────────────────────────
-
-final _stubTrip = TripModel(
-  id: 'showcase-1',
-  name: 'Vacanza a Milano',
-  departureDateTime: DateTime.now().add(const Duration(days: 3)),
-  returnDateTime: DateTime.now().add(const Duration(days: 10)),
-  destinationLocation: null,
-  items: [
-    TripItem(
-      id: 'i1',
-      name: 'Passaporto',
-      category: ItemCategory.varie,
-      quantity: 1,
-      isChecked: true,
-    ),
-    TripItem(
-      id: 'i2',
-      name: 'Caricabatterie',
-      category: ItemCategory.elettronica,
-      quantity: 2,
-      isChecked: true,
-    ),
-    TripItem(
-      id: 'i3',
-      name: 'Maglione',
-      category: ItemCategory.vestiti,
-      quantity: 3,
-      isChecked: false,
-    ),
-    TripItem(
-      id: 'i4',
-      name: 'Scarpe',
-      category: ItemCategory.vestiti,
-      quantity: 1,
-      isChecked: false,
-    ),
-    TripItem(
-      id: 'i5',
-      name: 'Shampoo',
-      category: ItemCategory.toiletries,
-      quantity: 1,
-      isChecked: false,
-    ),
-  ],
-  isSaved: false,
-  createdAt: DateTime.now(),
-  updatedAt: DateTime.now(),
-);
-
-final _stubTripCompleted = TripModel(
-  id: 'showcase-2',
-  name: 'Weekend Roma',
-  departureDateTime: DateTime.now().subtract(const Duration(days: 10)),
-  returnDateTime: DateTime.now().subtract(const Duration(days: 7)),
-  items: [
-    TripItem(
-      id: 'c1',
-      name: 'Passaporto',
-      category: ItemCategory.varie,
-      quantity: 1,
-      isChecked: true,
-    ),
-    TripItem(
-      id: 'c2',
-      name: 'Maglione',
-      category: ItemCategory.vestiti,
-      quantity: 2,
-      isChecked: true,
-    ),
-  ],
-  isSaved: true,
-  createdAt: DateTime.now(),
-  updatedAt: DateTime.now(),
-);
+import '../widgets/ds_divider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DsThemeShowcaseScreen
@@ -104,8 +24,7 @@ final _stubTripCompleted = TripModel(
 ///  1. Palette semantica (colori + opacità)
 ///  2. Scala tipografica
 ///  3. Badges (DsQuantityBadge, DsStatusBadge, DsInfoBadge)
-///  4. Card viaggi (TripCardHero, TripCardCompact)
-///  5. Card case (HouseCard mock)
+///  4. Card case (HouseCard mock)
 class DsThemeShowcaseScreen extends StatelessWidget {
   const DsThemeShowcaseScreen({super.key});
 
@@ -136,9 +55,7 @@ class DsThemeShowcaseScreen extends StatelessWidget {
           _TypographySection(),
           _SectionDivider(label: '3 · Badge System'),
           _BadgesSection(),
-          _SectionDivider(label: '4 · Trip Cards'),
-          _TripCardsSection(),
-          _SectionDivider(label: '5 · House Card Mock'),
+          _SectionDivider(label: '4 · House Card Mock'),
           _HouseCardSection(),
           SizedBox(height: AppSpacing.xl),
         ],
@@ -168,9 +85,7 @@ class _SectionDivider extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Divider(color: Theme.of(context).colorScheme.outlineVariant),
-          ),
+          Expanded(child: DsDivider()),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             child: Text(
@@ -181,9 +96,7 @@ class _SectionDivider extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Divider(color: Theme.of(context).colorScheme.outlineVariant),
-          ),
+          Expanded(child: DsDivider()),
         ],
       ),
     );
@@ -426,9 +339,9 @@ class _TypographySection extends StatelessWidget {
                 ).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
               ),
               Text(
-                'disabled · alpha 0.38',
+                'disabled · alpha ${AppOpacity.disabled}',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: cs.onSurface.withValues(alpha: 0.38),
+                  color: cs.onSurface.withValues(alpha: AppOpacity.disabled),
                 ),
               ),
             ],
@@ -486,66 +399,7 @@ class _BadgesSection extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4 · Trip Cards
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _TripCardsSection extends StatelessWidget {
-  const _TripCardsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs,
-          ),
-          child: Text(
-            'TripCardHero',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-        _DualThemeColumn(
-          builder: (ctx, theme) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              child: ProviderScope(child: TripCardHero(trip: _stubTrip)),
-            );
-          },
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs,
-          ),
-          child: Text(
-            'TripCardCompact',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-        _DualThemeColumn(
-          builder: (ctx, theme) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              child: ProviderScope(
-                child: TripCardCompact(trip: _stubTripCompleted),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5 · House Card Mock
+// 4 · House Card Mock
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _HouseCardSection extends StatelessWidget {

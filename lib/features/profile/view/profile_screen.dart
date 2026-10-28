@@ -2,7 +2,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../shared/widgets/shell_tab_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/analytics/analytics_service.dart';
@@ -13,27 +12,35 @@ import '../../../core/auth/auth_state.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../features/houses/providers/house_provider.dart';
 import '../../../features/tour/providers/post_login_onboarding_provider.dart';
-import '../../../shared/widgets/universal_action_bar.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../providers/gpt_usage_provider.dart';
+import '../../promo/view/promo_code_sheet.dart';
 import '../../../shared/config/app_config.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/nav_bar_spacing.dart';
 import '../../../shared/providers/package_info_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
-import '../../../shared/widgets/ds_section_header.dart';
+import '../../../shared/constants/app_constants.dart';
+import '../../../shared/widgets/ds_checkbox.dart';
+import '../../../shared/widgets/ds_dialog.dart';
+import '../../../shared/widgets/ds_group_header.dart';
+import '../../../shared/widgets/ds_settings.dart';
+import '../../../shared/widgets/ds_inline_error.dart';
+import '../../../shared/widgets/tab_header.dart' show profileInitials;
 import '../services/feedback_url_service.dart';
 import '../widgets/sync_status_tile.dart';
 import 'dialogs/profile_delete_account_dialog.dart';
-import 'dialogs/profile_language_dialog.dart';
 import 'dialogs/profile_logout_dialog.dart';
-import 'dialogs/profile_theme_dialog.dart';
+import 'sheets/profile_language_sheet.dart';
+import 'sheets/profile_theme_sheet.dart';
 
 /// Schermata di profilo: unico punto di accesso a preferenze,
 /// sync e informazioni sull'app.
 ///
-/// È una schermata autonoma con proprio [Scaffold] e [AppBar], esposta
-/// come branch nella [StatefulShellRoute] del router (tab "Profilo").
+/// È una schermata autonoma con proprio [Scaffold] e [AppBar], aperta come
+/// route radice (`/profile`) dall'avatar nell'intestazione delle tab: non fa
+/// parte della shell, quindi ha la freccia indietro.
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -142,15 +149,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     // il pop del loader non scatterebbe più. `rootNavigator` invece punta
     // al Navigator dentro MaterialApp, che sopravvive alle navigazioni.
     final rootNav = Navigator.of(context, rootNavigator: true);
+    // Il messenger resta valido anche quando ProfileScreen viene smontata
+    // dal logout, quindi lo snackbar d'errore passa da qui e non dal context.
     final messenger = ScaffoldMessenger.of(context);
-    final errorColor = Theme.of(context).colorScheme.error;
 
     // Loading dialog: l'operazione tocca rete + più DELETE Postgres → può
     // impiegare qualche secondo. `useRootNavigator: true` mette il dialog
     // sul root navigator, così la sua chiusura è indipendente dal branch
     // shell route della tab Profilo.
-    showDialog<void>(
-      context: context,
+    showDsDialog<void>(
+      context,
       barrierDismissible: false,
       useRootNavigator: true,
       builder: (_) => const Center(child: CircularProgressIndicator()),
@@ -175,12 +183,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // throws prima di signOut) → ProfileScreen ancora mounted →
       // messenger riferimento valido.
       if (rootNav.canPop()) rootNav.pop();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('profile.delete_account_failed'.tr()),
-          backgroundColor: errorColor,
-        ),
-      );
+      AppSnackBar.showErrorOn(messenger, 'profile.delete_account_failed'.tr());
     }
   }
 
@@ -216,184 +219,200 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       error: (_, _) => 'settings.theme_dark'.tr(),
     );
 
-    return ShellTabScaffold(
-      appBar: AppBar(
-        title: Text('settings.title'.tr()),
-        // Nessun leading: schermata radice del tab bar, nessun pop a livello superiore.
-        automaticallyImplyLeading: false,
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(gptUsageProvider),
-        child: ListView(
-          // Padding esplicito: senza, ListView (padding null) auto-inietta
-          // MediaQuery.padding.top come proprio sliver padding. Scaffold NON
-          // azzera quel padding per il body quando extendBodyBehindAppBar è
-          // false (default) — l'AppBar occupa già visivamente quello spazio,
-          // ma il valore di MediaQuery resta quello dell'intero schermo.
-          // Risultato senza questo fix: un secondo "status bar" di spazio
-          // vuoto sopra il primo ListTile, sommato a quello già coperto
-          // dall'AppBar.
-          // `bottom`: riserva l'altezza della nav bar flottante dentro lo
-          // scrollable, così il contenuto le scorre DIETRO ma l'ultimo
-          // elemento resta comunque raggiungibile. Vedi [ShellTabScaffold].
-          padding: EdgeInsets.only(
-            top: context.spacingSm,
-            bottom: context.navBarReservedHeight,
-          ),
-          children: [
-            // ── Account identity ────────────────────────────────────────────
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: Text(
-                (displayName != null && displayName.isNotEmpty)
-                    ? displayName
-                    : userEmail,
-              ),
-              subtitle: userEmail.isNotEmpty ? Text(userEmail) : null,
+    final version = ref
+        .watch(packageInfoProvider)
+        .when(
+          data: (info) => info.version,
+          loading: () => '…',
+          error: (_, _) => '—',
+        );
+    final externalIcon = Icon(
+      Icons.open_in_new,
+      size: context.iconSizeSm,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+
+    return Scaffold(
+      appBar: AppBar(title: Text('settings.title'.tr())),
+      body: SafeArea(
+        top: false,
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: () async => ref.invalidate(gptUsageProvider),
+          child: ListView(
+            // Padding esplicito: senza, ListView (padding null) auto-inietta
+            // MediaQuery.padding.top come proprio sliver padding. Scaffold NON
+            // azzera quel padding per il body quando extendBodyBehindAppBar è
+            // false (default) — l'AppBar occupa già visivamente quello spazio,
+            // ma il valore di MediaQuery resta quello dell'intero schermo.
+            // `bottom`: fuori dalla shell non c'è più la nav bar flottante, resta
+            // solo la gesture bar di sistema: è lo spazio che `navBarReservedHeight`
+            // riserva, così l'ultimo elemento resta raggiungibile.
+            padding: EdgeInsets.fromLTRB(
+              context.spacingMd,
+              context.spacingSm,
+              context.spacingMd,
+              context.navBarReservedHeight,
             ),
-            const Divider(),
+            children: [
+              _AccountHeader(displayName: displayName, email: userEmail),
 
-            // ── Preferenze ──────────────────────────────────────────────────
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: Text('settings.language'.tr()),
-              subtitle: Text(languageName),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => showProfileLanguageDialog(context),
-            ),
-            const Divider(),
-
-            ListTile(
-              leading: Icon(
-                themeModeAsync.valueOrNull == ThemeMode.light
-                    ? Icons.light_mode
-                    : themeModeAsync.valueOrNull == ThemeMode.dark
-                    ? Icons.dark_mode
-                    : Icons.brightness_auto,
-              ),
-              title: Text('settings.theme'.tr()),
-              subtitle: Text(themeModeName),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => showProfileThemeDialog(
-                context,
-                currentThemeMode:
-                    ref.read(themeModeNotifierProvider).valueOrNull ??
-                    ThemeMode.dark,
-                onSetThemeMode: (mode) => ref
-                    .read(themeModeNotifierProvider.notifier)
-                    .setThemeMode(mode),
-              ),
-            ),
-            const Divider(),
-
-            // ── AI usage ────────────────────────────────────────────────────
-            const _GptUsageTile(),
-            const Divider(),
-
-            // ── Sync status ───────────────────────────────────────────────────
-            const SyncStatusTile(),
-            const Divider(),
-
-            // ── Tour ──────────────────────────────────────────────────────────────────
-            ListTile(
-              leading: const Icon(Icons.tour_outlined),
-              title: Text('tour.relaunch_title'.tr()),
-              subtitle: Text('tour.relaunch_subtitle'.tr()),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () async {
-                ref.read(analyticsServiceProvider).logEvent('tour_relaunched');
-                final houses =
-                    ref.read(houseNotifierProvider).valueOrNull ?? [];
-                await ref
-                    .read(postLoginOnboardingProvider.notifier)
-                    .reset(hasExistingHouses: houses.isNotEmpty);
-                if (context.mounted) context.go('/');
-              },
-            ),
-            const Divider(),
-
-            // ── Privacy ───────────────────────────────────────────────────────
-            const _AnalyticsToggleTile(),
-            const Divider(),
-
-            // ── About ────────────────────────────────────────────────────────
-            DsSectionHeader(
-              label: 'settings.about_section_title'.tr(),
-              padding: EdgeInsets.fromLTRB(
-                context.spacingMd,
-                context.spacingLg,
-                context.spacingMd,
-                context.spacingSm,
-              ),
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.feedback_outlined),
-              title: Text('settings.feedback'.tr()),
-              subtitle: Text('settings.feedback_subtitle'.tr()),
-              trailing: const Icon(Icons.open_in_new, size: 18),
-              onTap: () => _openFeedbackForm(context),
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.code),
-              title: Text('settings.view_project'.tr()),
-              subtitle: Text('settings.view_project_subtitle'.tr()),
-              trailing: const Icon(Icons.open_in_new, size: 18),
-              onTap: () => _launchUrl(context, AppConfig.githubUrl),
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: Text('settings.about'.tr()),
-              subtitle: ref
-                  .watch(packageInfoProvider)
-                  .when(
-                    data: (info) =>
-                        Text('${'common.version'.tr()} ${info.version}'),
-                    loading: () => Text('${'common.version'.tr()} …'),
-                    error: (_, _) => Text('${'common.version'.tr()} —'),
+              // ── Preferenze ──────────────────────────────────────────────────
+              DsGroupHeader(label: 'profile.section_preferences'.tr()),
+              DsSettingsGroup(
+                children: [
+                  DsSettingsRow(
+                    label: 'settings.language'.tr(),
+                    value: languageName,
+                    onTap: () => showProfileLanguageSheet(context),
                   ),
-            ),
-
-            /* ListTile(
-            leading: const Icon(Icons.storage),
-            title: Text('common.storage'.tr()),
-            subtitle: Text('common.data_saved_locally'.tr()),
-          ), */
-            const Divider(),
-
-            // ── Account ─────────────────────────────────────────────────
-            AppSpacing.gapSm,
-
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-              child: UniversalActionBar(
-                primaryLabel: 'login.sign_out'.tr(),
-                primaryIcon: Icons.logout,
-                onPrimaryPressed: () => _handleSignOut(context),
-                isSecondary: true,
+                  DsSettingsRow(
+                    label: 'settings.theme'.tr(),
+                    value: themeModeName,
+                    onTap: () => showProfileThemeSheet(
+                      context,
+                      currentThemeMode:
+                          ref.read(themeModeNotifierProvider).valueOrNull ??
+                          ThemeMode.dark,
+                      onSetThemeMode: (mode) => ref
+                          .read(themeModeNotifierProvider.notifier)
+                          .setThemeMode(mode),
+                    ),
+                  ),
+                ],
               ),
-            ),
 
-            AppSpacing.gapSm,
+              // ── AI usage ────────────────────────────────────────────────────
+              DsGroupHeader(label: 'profile.ai_usage_title'.tr()),
+              const _GptUsageGroup(),
 
-            // Hard-delete account (GDPR Art. 17). Distruttivo e irreversibile,
-            // protetto da dialog con conferma email.
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-              child: UniversalActionBar(
-                primaryLabel: 'profile.delete_account_cta'.tr(),
-                primaryIcon: Icons.delete_forever,
-                onPrimaryPressed: () => _handleDeleteAccount(context),
-                isDestructive: true,
+              // ── Account ─────────────────────────────────────────────────────
+              DsGroupHeader(label: 'profile.section_account'.tr()),
+              DsSettingsGroup(
+                children: [
+                  const SyncStatusTile(),
+                  DsSettingsRow(
+                    key: const Key('profile_sign_out'),
+                    label: 'login.sign_out'.tr(),
+                    onTap: () => _handleSignOut(context),
+                  ),
+                ],
               ),
-            ),
 
-            // Gap sotto l'ultimo bottone = gap tra i due bottoni, per coerenza.
-            AppSpacing.gapSm,
-          ],
+              // ── Aiuto e info ────────────────────────────────────────────────
+              DsGroupHeader(label: 'settings.about_section_title'.tr()),
+              DsSettingsGroup(
+                children: [
+                  DsSettingsRow(
+                    label: 'tour.relaunch_title'.tr(),
+                    trailing: Icon(
+                      Icons.chevron_right,
+                      size: context.iconSizeSm,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    onTap: () async {
+                      ref
+                          .read(analyticsServiceProvider)
+                          .logEvent('tour_relaunched');
+                      final houses =
+                          ref.read(houseNotifierProvider).valueOrNull ?? [];
+                      await ref
+                          .read(postLoginOnboardingProvider.notifier)
+                          .reset(hasExistingHouses: houses.isNotEmpty);
+                      if (context.mounted) context.go('/');
+                    },
+                  ),
+                  DsSettingsRow(
+                    label: 'settings.feedback'.tr(),
+                    trailing: externalIcon,
+                    onTap: () => _openFeedbackForm(context),
+                  ),
+                  DsSettingsRow(
+                    label: 'settings.view_project'.tr(),
+                    trailing: externalIcon,
+                    onTap: () => _launchUrl(context, AppConfig.githubUrl),
+                  ),
+                  // In fondo, non in Preferenze: va lasciato a disposizione
+                  // (GDPR art. 7 e 21, "raccolta facoltativa" nel Data safety
+                  // di Play) ma non serve in vista. Attivo di default.
+                  const _AnalyticsToggleTile(),
+                  DsSettingsRow(label: 'common.version'.tr(), value: version),
+                ],
+              ),
+
+              SizedBox(height: context.spacingXl),
+
+              // Hard-delete account (GDPR Art. 17). Distruttivo e irreversibile:
+              // si trova, ma è solo testo rosso in fondo alla pagina, staccato
+              // da "Esci", così non è l'elemento più evidente. Protetto da
+              // dialog con conferma email.
+              Center(
+                child: DsTextButton(
+                  key: const Key('profile_delete_account'),
+                  onPressed: () => _handleDeleteAccount(context),
+                  label: 'profile.delete_account_cta'.tr(),
+                  destructive: true,
+                ),
+              ),
+
+              SizedBox(height: context.spacingSm),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// Chi è collegato: iniziali (come l'avatar nelle tab), nome ed email. Non è
+/// toccabile: nome ed email arrivano dal login.
+class _AccountHeader extends StatelessWidget {
+  final String? displayName;
+  final String email;
+
+  const _AccountHeader({required this.displayName, required this.email});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final name = displayName;
+    final hasName = name != null && name.isNotEmpty;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: context.spacingSm),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: context.responsive(28),
+            backgroundColor: cs.primaryContainer,
+            child: Text(
+              profileInitials(displayName, email),
+              style: tt.titleMedium?.copyWith(color: cs.onPrimaryContainer),
+            ),
+          ),
+          SizedBox(width: context.spacingMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasName ? name : email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tt.titleMedium,
+                ),
+                if (hasName && email.isNotEmpty)
+                  Text(
+                    email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -424,98 +443,123 @@ class _AnalyticsToggleTileState extends ConsumerState<_AnalyticsToggleTile> {
   Widget build(BuildContext context) {
     final consent = ref.watch(consentServiceProvider);
 
-    return SwitchListTile(
-      secondary: const Icon(Icons.insights_outlined),
-      title: Text('settings.analytics_title'.tr()),
-      subtitle: Text('settings.analytics_subtitle'.tr()),
-      value: consent.analyticsEnabled,
-      onChanged: (value) async {
-        final analytics = ref.read(analyticsServiceProvider);
-
-        // Disattivando: prima si emette l'evento che documenta la scelta,
-        // poi si chiude il gate. Nell'ordine inverso l'evento verrebbe
-        // scartato dal gate stesso, e non resterebbe traccia dell'opt-out.
-        if (!value) {
-          analytics.logEvent(
-            'analytics_opt_out',
-            properties: {'enabled': false},
-          );
-        }
-
-        await consent.setAnalyticsEnabled(value);
-
-        if (value) {
-          // Riattivando, l'evento va emesso DOPO: prima il gate era chiuso.
-          analytics.logEvent('analytics_opt_in', properties: {'enabled': true});
-        } else {
-          // Dissocia l'identità già inviata ai backend. `clearUser` è
-          // deliberatamente fuori dal gate proprio per questo caso: riduce i
-          // dati, non li trasmette.
-          analytics.clearUser();
-        }
-
-        if (mounted) setState(() {});
-      },
+    return DsSettingsRow(
+      label: 'settings.analytics_title'.tr(),
+      subtitle: 'settings.analytics_subtitle'.tr(),
+      trailing: DsSwitch(value: consent.analyticsEnabled, onChanged: _toggle),
+      onTap: () => _toggle(!consent.analyticsEnabled),
     );
+  }
+
+  Future<void> _toggle(bool value) async {
+    final consent = ref.read(consentServiceProvider);
+    final analytics = ref.read(analyticsServiceProvider);
+
+    // Disattivando: prima si emette l'evento che documenta la scelta,
+    // poi si chiude il gate. Nell'ordine inverso l'evento verrebbe
+    // scartato dal gate stesso, e non resterebbe traccia dell'opt-out.
+    if (!value) {
+      analytics.logEvent('analytics_opt_out', properties: {'enabled': false});
+    }
+
+    await consent.setAnalyticsEnabled(value);
+
+    if (value) {
+      // Riattivando, l'evento va emesso DOPO: prima il gate era chiuso.
+      analytics.logEvent('analytics_opt_in', properties: {'enabled': true});
+    } else {
+      // Dissocia l'identità già inviata ai backend. `clearUser` è
+      // deliberatamente fuori dal gate proprio per questo caso: riduce i
+      // dati, non li trasmette.
+      analytics.clearUser();
+    }
+
+    if (mounted) setState(() {});
   }
 }
 
-class _GptUsageTile extends ConsumerWidget {
-  const _GptUsageTile();
+/// Gli usi AI del mese: quanti ne restano, quando si rinnovano, i bonus, e
+/// il codice promo se si può ancora usare.
+///
+/// La barra è neutra: è un contatore, non un'azione, e l'arancio in questa
+/// pagina resta ai controlli.
+class _GptUsageGroup extends ConsumerWidget {
+  const _GptUsageGroup();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final gptUsageAsync = ref.watch(gptUsageProvider);
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final smallText = tt.bodySmall?.copyWith(color: cs.onSurfaceVariant);
+    final dateFormat = DateFormat.MMMd(context.locale.toString());
+    final usage = ref.watch(gptUsageProvider);
 
-    return gptUsageAsync.when(
-      data: (usage) => ListTile(
-        leading: const Icon(Icons.auto_awesome_outlined),
-        title: Text('profile.ai_usage_title'.tr()),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: context.spacingXs),
-            LinearProgressIndicator(
-              value: usage.progress,
-              backgroundColor: Theme.of(
-                context,
-              ).colorScheme.surfaceContainerHighest,
-              color: Theme.of(context).colorScheme.primary,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            SizedBox(height: context.spacingXs),
-            Text(
-              'profile.ai_usage_subtitle'.tr(
-                args: [usage.usageCount.toString(), usage.usageCap.toString()],
-              ),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
+    Widget bar(double? value) => ClipRRect(
+      borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
+      child: LinearProgressIndicator(
+        value: value,
+        minHeight: context.spacingXs,
+        backgroundColor: cs.surfaceContainerHighest,
+        color: cs.onSurface,
       ),
-      loading: () => ListTile(
-        leading: const Icon(Icons.auto_awesome_outlined),
-        title: Text('profile.ai_usage_title'.tr()),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: context.spacingXs),
-            const LinearProgressIndicator(),
-          ],
-        ),
-      ),
-      error: (_, _) => ListTile(
-        leading: const Icon(Icons.auto_awesome_outlined),
-        title: Text('profile.ai_usage_title'.tr()),
-        subtitle: Text(
-          'errors.load_failed'.tr(),
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.error,
+    );
+
+    final summary = usage.when(
+      data: (usage) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'profile.ai_usage_subtitle'.tr(
+              args: [usage.usageCount.toString(), usage.usageCap.toString()],
+            ),
+            style: tt.bodyLarge,
           ),
-        ),
+          SizedBox(height: context.spacingSm),
+          bar(usage.progress),
+          if (usage.resetsAt != null) ...[
+            SizedBox(height: context.spacingSm),
+            Text(
+              'profile.ai_usage_resets'.tr(
+                args: [dateFormat.format(usage.resetsAt!)],
+              ),
+              style: smallText,
+            ),
+          ],
+          if (usage.bonusAvailable > 0 && usage.bonusExpiresAt != null)
+            Text(
+              'profile.ai_usage_bonus'.tr(
+                args: [
+                  usage.bonusAvailable.toString(),
+                  dateFormat.format(usage.bonusExpiresAt!),
+                ],
+              ),
+              key: const Key('profile_ai_bonus'),
+              style: smallText,
+            ),
+        ],
       ),
+      loading: () => bar(null),
+      error: (_, _) => DsInlineError(
+        message: 'profile.ai_usage_load_failed'.tr(),
+        onRetry: () => ref.invalidate(gptUsageProvider),
+      ),
+    );
+
+    return DsSettingsGroup(
+      children: [
+        Padding(padding: EdgeInsets.all(context.spacingMd), child: summary),
+        if (usage.valueOrNull?.canRedeemPromo ?? false)
+          DsSettingsRow(
+            key: const Key('profile_promo_code'),
+            label: 'promo.link'.tr(),
+            trailing: Icon(
+              Icons.chevron_right,
+              size: context.iconSizeSm,
+              color: cs.onSurfaceVariant,
+            ),
+            onTap: () => showPromoCodeSheet(context, redeemNow: true),
+          ),
+      ],
     );
   }
 }

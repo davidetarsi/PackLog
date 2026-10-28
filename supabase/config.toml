@@ -424,13 +424,20 @@ verify_jwt = true
 import_map = "./functions/hard-delete-account/deno.json"
 entrypoint = "./functions/hard-delete-account/index.ts"
 
-[functions.openai-proxy]
+[functions.item-metadata]
 enabled = true
 verify_jwt = true
-import_map = "./functions/openai-proxy/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
-entrypoint = "./functions/openai-proxy/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/openai-proxy/*.html" ]
+import_map = "./functions/item-metadata/deno.json"
+entrypoint = "./functions/item-metadata/index.ts"
+
+[functions.pack-trip]
+enabled = true
+verify_jwt = true
+import_map = "./functions/pack-trip/deno.json"
+entrypoint = "./functions/pack-trip/index.ts"
+
+[functions.trip-weather]
+enabled = true
+verify_jwt = true
+import_map = "./functions/trip-weather/deno.json"
+entrypoint = "./functions/trip-weather/index.ts"

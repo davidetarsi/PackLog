@@ -5,7 +5,7 @@ import 'mixins/syncable_table.dart';
 
 /// Tabella per i bagagli riutilizzabili.
 ///
-/// I bagagli sono entità globali che appartengono a una casa specifica
+/// I bagagli sono entità dell'utente, con casa opzionale per i dati legacy,
 /// e possono essere linkati a viaggi multipli tramite la junction table
 /// `trip_luggage_entries`.
 ///
@@ -16,9 +16,9 @@ class Luggages extends Table with SyncableTable {
   /// ID univoco del bagaglio (UUID)
   TextColumn get id => text()();
 
-  /// ID della casa a cui appartiene il bagaglio
+  /// Casa legacy opzionale: eliminarla non elimina il bagaglio.
   TextColumn get houseId =>
-      text().references(Houses, #id, onDelete: KeyAction.cascade)();
+      text().nullable().references(Houses, #id, onDelete: KeyAction.setNull)();
 
   /// Nome del bagaglio (es. "Zaino Blu", "Valigia Grande")
   TextColumn get name => text().withLength(min: 1, max: 100)();

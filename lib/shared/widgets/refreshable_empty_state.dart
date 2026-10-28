@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'ds_button.dart';
 import 'ds_empty_state.dart';
 
 /// Incapsula il pattern pull-to-refresh su stato vuoto.
@@ -8,6 +9,8 @@ import 'ds_empty_state.dart';
 /// centrare il contenuto nel viewport abilitando il gesto pull-to-refresh,
 /// con degradazione graceful a scrollabile se il contenuto supera l'altezza
 /// disponibile (font grandi, landscape, testi lunghi).
+///
+/// I contenuti (CTA, link, [action]) sono quelli di [DsEmptyState].
 ///
 /// ```dart
 /// RefreshableEmptyState(
@@ -21,8 +24,20 @@ class RefreshableEmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
+
+  /// Contenuto libero, non insieme a CTA e link. Vedi [DsEmptyState.action].
   final Widget? action;
   final Color? iconColor;
+
+  final String? ctaLabel;
+  final IconData? ctaIcon;
+  final VoidCallback? onCta;
+  final DsButtonVariant ctaVariant;
+  final Key? ctaKey;
+
+  final String? linkLabel;
+  final VoidCallback? onLink;
+  final Key? linkKey;
 
   const RefreshableEmptyState({
     super.key,
@@ -32,6 +47,14 @@ class RefreshableEmptyState extends StatelessWidget {
     this.subtitle,
     this.action,
     this.iconColor,
+    this.ctaLabel,
+    this.ctaIcon,
+    this.onCta,
+    this.ctaVariant = DsButtonVariant.primary,
+    this.ctaKey,
+    this.linkLabel,
+    this.onLink,
+    this.linkKey,
   });
 
   @override
@@ -50,6 +73,14 @@ class RefreshableEmptyState extends StatelessWidget {
               subtitle: subtitle,
               action: action,
               iconColor: iconColor,
+              ctaLabel: ctaLabel,
+              ctaIcon: ctaIcon,
+              onCta: onCta,
+              ctaVariant: ctaVariant,
+              ctaKey: ctaKey,
+              linkLabel: linkLabel,
+              onLink: onLink,
+              linkKey: linkKey,
             ),
           ),
         ],

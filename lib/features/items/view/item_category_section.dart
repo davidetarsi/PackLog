@@ -1,23 +1,30 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/view/item_card.dart';
-import 'package:pack_log/shared/widgets/category_section_header.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
+import 'package:pack_log/shared/widgets/ds_group_header.dart';
+import 'package:pack_log/shared/widgets/ds_group_surface_sliver.dart';
 
-/// Sezione collassabile per categoria — basata su [SliverMainAxisGroup].
+/// Gruppo di una categoria nella lista della casa.
 ///
-/// Ritorna un raggruppamento di Sliver per essere inserito direttamente
-/// nel [slivers] di un [CustomScrollView], eliminando il `shrinkWrap: true`
-/// che forzava il calcolo sincrono di tutti i figli (Raster Jank).
+/// L'etichetta sta in un [PinnedHeaderSliver]: dentro il
+/// [SliverMainAxisGroup] resta fissa in alto finché si scorre il gruppo, così
+/// con molti oggetti si sa sempre in quale categoria si è. Toccarla chiude o
+/// riapre il gruppo.
 ///
-/// Il [SliverList.builder] interno istanzia le [ItemCard] in modo pigro:
-/// ogni card è costruita solo quando entra nel viewport.
+/// Le righe sono in un [SliverList.builder]: costruite solo quando entrano a
+/// schermo.
 class ItemCategorySection extends StatefulWidget {
   final ItemCategory category;
   final List<ItemModel> items;
   final String houseId;
   final Map<String, int> itemQuantitiesOnTrip;
+
+  /// Key dell'etichetta (il primo gruppo della lista porta quella del tour).
+  final Key? headerKey;
+
+  /// Chiamato quando si apre un oggetto, con il suo indice nel gruppo.
+  final void Function(int index)? onItemOpened;
 
   const ItemCategorySection({
     super.key,
@@ -25,6 +32,8 @@ class ItemCategorySection extends StatefulWidget {
     required this.items,
     required this.houseId,
     required this.itemQuantitiesOnTrip,
+    this.headerKey,
+    this.onItemOpened,
   });
 
   @override
@@ -32,71 +41,45 @@ class ItemCategorySection extends StatefulWidget {
 }
 
 class _ItemCategorySectionState extends State<ItemCategorySection> {
-  /// Controlla la visibilità degli item della sezione.
   bool _isExpanded = true;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
+    final onItemOpened = widget.onItemOpened;
     return SliverMainAxisGroup(
       slivers: [
-        // ── Header con toggle expand/collapse ────────────────────────────────
-        // Usa InkWell invece di ExpansionTile: ExpansionTile forza Flutter a
-        // misurare tutti i figli in altezza per l'animazione, anche con
-        // shrinkWrap. InkWell + setState elimina questo overhead.
-        SliverToBoxAdapter(
-          child: InkWell(
+        PinnedHeaderSliver(
+          child: DsGroupHeader(
+            key: widget.headerKey,
+            label: widget.category.displayName,
+            count: widget.items.length,
+            prominent: true,
+            expanded: _isExpanded,
             onTap: () => setState(() => _isExpanded = !_isExpanded),
-            child: CategorySectionHeader(
-              category: widget.category,
-              iconSize: context.iconSizeLg,
-              horizontalPadding: context.spacingSm,
-              // Raddoppiato: senza stacco il titolo di gruppo si incollava
-              // alla prima riga, mentre tutte le altre sono separate da un
-              // divisore. Si somma al padding verticale della riga sotto.
-              verticalPadding: context.spacingSm,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'common.items_count'.tr(
-                      args: [widget.items.length.toString()],
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  SizedBox(width: context.spacingXs),
-                  Icon(
-                    _isExpanded ? Icons.expand_less : Icons.expand_more,
-                    size: context.iconSizeMd,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ],
-              ),
-            ),
           ),
         ),
-
-        // ── Items (lazy, istanziati solo quando entrano nel viewport) ─────────
-        // SliverList.builder non usa shrinkWrap, quindi non misura tutti gli
-        // item in anticipo: le ItemCard sono costruite one-by-one on demand.
         if (_isExpanded)
-          SliverList.builder(
-            itemCount: widget.items.length,
-            itemBuilder: (context, index) {
-              final item = widget.items[index];
-              return ItemCard(
-                item: item,
-                houseId: widget.houseId,
-                quantityOnTrip: widget.itemQuantitiesOnTrip[item.id] ?? 0,
-              );
-            },
+          DsGroupSurfaceSliver(
+            surfaceKey: ValueKey('house_group_surface_${widget.category.name}'),
+            sliver: SliverList.builder(
+              itemCount: widget.items.length,
+              itemBuilder: (context, index) {
+                final item = widget.items[index];
+                return ItemCard(
+                  item: item,
+                  houseId: widget.houseId,
+                  quantityOnTrip: widget.itemQuantitiesOnTrip[item.id] ?? 0,
+                  onOpened: onItemOpened == null
+                      ? null
+                      : () => onItemOpened(index),
+                  dividerInsets: EdgeInsets.symmetric(
+                    horizontal: context.spacingMd,
+                  ),
+                  showDivider: index < widget.items.length - 1,
+                );
+              },
+            ),
           ),
-
-        // ── Spaziatura inferiore tra sezioni ─────────────────────────────────
-        SliverToBoxAdapter(child: SizedBox(height: context.spacingSm)),
       ],
     );
   }

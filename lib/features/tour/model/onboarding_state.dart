@@ -31,6 +31,16 @@ class OnboardingState {
   }
 }
 
+/// Passi del tour dopo il login.
+///
+/// Persistiti per **indice** (`SharedPrefsOnboardingRepository`): l'ordine
+/// non si cambia e i valori non si tolgono, si aggiungono solo in fondo.
+///
+/// Il tour attuale è di tre tip: [houseDetailTooltip] → [createTripTooltip] →
+/// [tripCreationTooltip]. [houseTooltip], [defaultHouseTooltip] e
+/// [moveItemsTooltip] sono del tour precedente: restano solo per leggere lo
+/// stato salvato da una build vecchia, che [OnboardingStepLegacy.current]
+/// riporta sul tour attuale.
 enum OnboardingStep {
   aiIntro,
   houseTooltip,
@@ -39,22 +49,41 @@ enum OnboardingStep {
   createTripTooltip,
   tripCreationTooltip,
   done,
+
+  /// Dentro la casa creata dalla prova AI: "tocca il nome per darle nome e
+  /// luogo".
+  houseDetailTooltip,
 }
 
-/// Numero d'ordine 1-based dei tip del tour guidato, per analytics.
+extension OnboardingStepLegacy on OnboardingStep {
+  /// Il passo del tour attuale da mostrare per uno stato salvato. I tip del
+  /// tour precedente (crea una casa, apri la casa di prova, sposta gli
+  /// oggetti) non esistono più: chi era lì riprende dal tip su Crea.
+  OnboardingStep get current => switch (this) {
+    OnboardingStep.houseTooltip ||
+    OnboardingStep.defaultHouseTooltip ||
+    OnboardingStep.moveItemsTooltip => OnboardingStep.createTripTooltip,
+    _ => this,
+  };
+}
+
+/// Quanti tip ha il tour: il totale del contatore "1 / 3" nelle schede.
+const kTourLength = 3;
+
+/// Numero d'ordine 1-based dei tip del tour guidato, per analytics e per il
+/// contatore delle schede.
 ///
-/// Permette di segmentare/ordinare il funnel per numero di step invece che
-/// per nome. Chi salta l'AI intro non vede mai gli step 2 e 3 (vedi
-/// `_nextStep` in `post_login_onboarding_provider.dart`): i numeri restano
-/// comunque corretti, è solo che quella distribuzione risulterà vuota per
-/// quegli utenti — un dato legittimo, non un buco nella numerazione.
+/// Chi salta l'AI intro chiude l'intero tour, quindi non vede nessun tip.
+/// I numeri del tour precedente (1–5) non sono confrontabili con questi.
 extension OnboardingStepTourIndex on OnboardingStep {
   int? get tourStepIndex => switch (this) {
-    OnboardingStep.houseTooltip => 1,
-    OnboardingStep.defaultHouseTooltip => 2,
-    OnboardingStep.moveItemsTooltip => 3,
-    OnboardingStep.createTripTooltip => 4,
-    OnboardingStep.tripCreationTooltip => 5,
-    OnboardingStep.aiIntro || OnboardingStep.done => null,
+    OnboardingStep.houseDetailTooltip => 1,
+    OnboardingStep.createTripTooltip => 2,
+    OnboardingStep.tripCreationTooltip => 3,
+    OnboardingStep.aiIntro ||
+    OnboardingStep.houseTooltip ||
+    OnboardingStep.defaultHouseTooltip ||
+    OnboardingStep.moveItemsTooltip ||
+    OnboardingStep.done => null,
   };
 }

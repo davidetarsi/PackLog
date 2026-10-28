@@ -1,3 +1,4 @@
+import 'package:pack_log/core/database/exceptions/database_exceptions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -54,9 +55,101 @@ void main() {
     container.dispose();
   });
 
-  group('LuggageNotifier - Family by houseId (P2 #12)', () {
-    test('build only loads luggages for the requested houseId', () async {
-      when(() => mockRepository.getLuggagesByHouseId('h-1')).thenAnswer(
+  test(
+    'una rinomina aggiorna anche i bagagli del viaggio già osservati',
+    () async {
+      var stored = LuggageModel(
+        id: 'l-1',
+        houseId: 'h-1',
+        name: 'Zaino',
+        sizeType: LuggageSize.smallBackpack,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      when(
+        () => mockRepository.getAllLuggages(),
+      ).thenAnswer((_) async => [stored]);
+      when(
+        () => mockRepository.getLuggagesByTripId('t-1'),
+      ).thenAnswer((_) async => [stored]);
+      when(() => mockRepository.updateLuggage(any())).thenAnswer((call) async {
+        stored = call.positionalArguments.first as LuggageModel;
+      });
+      final subscription = container.listen(
+        luggagesByTripProvider('t-1'),
+        (_, _) {},
+      );
+      addTearDown(subscription.close);
+      expect(
+        (await container.read(
+          luggagesByTripProvider('t-1').future,
+        )).single.name,
+        'Zaino',
+      );
+      await container.read(luggageNotifierProvider.future);
+      await container
+          .read(luggageNotifierProvider.notifier)
+          .updateLuggage(stored.copyWith(name: 'Zaino nuovo'));
+      expect(
+        (await container.read(
+          luggagesByTripProvider('t-1').future,
+        )).single.name,
+        'Zaino nuovo',
+      );
+    },
+  );
+
+  test(
+    'eliminazione rifiutata dal repository resta un errore recuperabile',
+    () async {
+      when(
+        () => mockRepository.getAllLuggages(),
+      ).thenAnswer((_) async => <LuggageModel>[]);
+      when(
+        () => mockRepository.deleteLuggage('missing'),
+      ).thenAnswer((_) async => false);
+      await container.read(luggageNotifierProvider.future);
+      await expectLater(
+        container
+            .read(luggageNotifierProvider.notifier)
+            .deleteLuggage('missing'),
+        throwsA(isA<AppDatabaseException>()),
+      );
+      verifyNever(() => mockSync.requestSync());
+    },
+  );
+
+  test(
+    'un reload fallito dopo insert riuscito non richiede una seconda scrittura',
+    () async {
+      final model = LuggageModel(
+        id: 'new',
+        houseId: 'h-1',
+        name: 'Nuovo',
+        sizeType: LuggageSize.smallBackpack,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      var reads = 0;
+      when(() => mockRepository.getAllLuggages()).thenAnswer((_) async {
+        if (reads++ > 0) throw const EntityLoadException('reload');
+        return <LuggageModel>[];
+      });
+      when(() => mockRepository.addLuggage(any())).thenAnswer((_) async {});
+      await container.read(luggageNotifierProvider.future);
+      await expectLater(
+        container.read(luggageNotifierProvider.notifier).addLuggage(model),
+        completes,
+      );
+      expect(container.read(luggageNotifierProvider).requireValue, [model]);
+      verify(() => mockRepository.addLuggage(model)).called(1);
+      verify(() => mockSync.requestSync()).called(1);
+    },
+  );
+
+  group('LuggageNotifier - elenco globale', () {
+    test('build carica bagagli senza filtro per casa', () async {
+      when(() => mockRepository.getAllLuggages()).thenAnswer(
         (_) async => [
           LuggageModel(
             id: 'l-1',
@@ -69,24 +162,21 @@ void main() {
         ],
       );
 
-      final result = await container.read(
-        luggageNotifierProvider('h-1').future,
-      );
+      final result = await container.read(luggageNotifierProvider.future);
 
       expect(result, hasLength(1));
       expect(result.first.houseId, equals('h-1'));
-      verify(() => mockRepository.getLuggagesByHouseId('h-1')).called(1);
-      verifyNever(() => mockRepository.getAllLuggages());
+      verify(() => mockRepository.getAllLuggages()).called(1);
     });
 
     test(
       'addLuggage rethrows when repository fails (and preserves previous AsyncData)',
       () async {
         when(
-          () => mockRepository.getLuggagesByHouseId('h-1'),
+          () => mockRepository.getAllLuggages(),
         ).thenAnswer((_) async => <LuggageModel>[]);
 
-        final provider = luggageNotifierProvider('h-1');
+        final provider = luggageNotifierProvider;
         await container.read(provider.future);
 
         final newLuggage = LuggageModel(
@@ -115,7 +205,7 @@ void main() {
     );
   });
 
-  group('allLuggagesProvider (cross-house list for trip selection)', () {
+  group('luggageNotifierProvider (cross-house list for trip selection)', () {
     test('returns the full luggages list via getAllLuggages', () async {
       when(() => mockRepository.getAllLuggages()).thenAnswer(
         (_) async => [
@@ -129,7 +219,6 @@ void main() {
           ),
           LuggageModel(
             id: 'l-b',
-            houseId: 'h-2',
             name: 'B',
             sizeType: LuggageSize.holdBaggage,
             createdAt: DateTime.now(),
@@ -138,9 +227,9 @@ void main() {
         ],
       );
 
-      final result = await container.read(allLuggagesProvider.future);
+      final result = await container.read(luggageNotifierProvider.future);
       expect(result, hasLength(2));
-      expect(result.map((l) => l.houseId).toSet(), equals({'h-1', 'h-2'}));
+      expect(result.map((l) => l.houseId).toSet(), equals({'h-1', null}));
     });
   });
 }

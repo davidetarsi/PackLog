@@ -10,8 +10,10 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../features/ai_input/providers/ai_import_notifier.dart';
 import '../../../shared/theme/app_spacing.dart';
-import '../../../shared/widgets/circular_action_button.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../../../shared/widgets/universal_action_bar.dart';
+import '../../ai_input/helpers/start_ai_scan.dart';
+import '../../ai_input/view/widgets/image_source_sheet.dart';
 import '../providers/post_login_onboarding_provider.dart';
 
 class AiOnboardingIntroScreen extends ConsumerStatefulWidget {
@@ -41,38 +43,23 @@ class _AiOnboardingIntroScreenState
   }
 
   Future<void> _showSourceSheet() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: Text('ai_import.source_gallery'.tr()),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromGallery();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: Text('ai_import.source_camera'.tr()),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickFromCamera();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+    final source = await showImageSourceSheet(context);
+    switch (source) {
+      case ImageSource.gallery:
+        await _pickFromGallery();
+      case ImageSource.camera:
+        await _pickFromCamera();
+      case null:
+        return;
+    }
   }
 
   Future<void> _pickFromGallery() async {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 80,
+      maxWidth: kAiScanMaxImageSide,
+      maxHeight: kAiScanMaxImageSide,
     );
     if (picked == null || !mounted) return;
     _startProcessing([File(picked.path)]);
@@ -82,6 +69,8 @@ class _AiOnboardingIntroScreenState
     final picked = await ImagePicker().pickImage(
       source: ImageSource.camera,
       imageQuality: 80,
+      maxWidth: kAiScanMaxImageSide,
+      maxHeight: kAiScanMaxImageSide,
     );
     if (picked == null || !mounted) return;
     _startProcessing([File(picked.path)]);
@@ -101,22 +90,35 @@ class _AiOnboardingIntroScreenState
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    // Stessa forma delle slide di benvenuto: "Salta" in alto a destra, testo
+    // al centro, un solo bottone pieno in fondo.
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: EdgeInsets.only(right: context.spacingSm),
+                child: DsTextButton(
+                  key: const Key('ai_intro_skip'),
+                  onPressed: _handleSkip,
+                  label: 'onboarding_tour.ai_intro.skip'.tr(),
+                ),
+              ),
+            ),
             const Spacer(),
             Icon(
-              Icons.auto_awesome,
+              Icons.auto_awesome_outlined,
               size: context.iconSizeHero,
-              color: colorScheme.primary,
+              color: colorScheme.onSurfaceVariant,
             ),
             SizedBox(height: context.spacingLg),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: context.spacingLg),
               child: Text(
                 'onboarding_tour.ai_intro.title'.tr(),
-                style: textTheme.headlineSmall,
+                style: textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),
             ),
@@ -125,7 +127,7 @@ class _AiOnboardingIntroScreenState
               padding: EdgeInsets.symmetric(horizontal: context.spacingLg),
               child: Text(
                 'onboarding_tour.ai_intro.body'.tr(),
-                style: textTheme.bodyMedium?.copyWith(
+                style: textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
@@ -138,13 +140,6 @@ class _AiOnboardingIntroScreenState
                 primaryLabel: 'onboarding_tour.ai_intro.cta'.tr(),
                 primaryIcon: Icons.photo_camera_outlined,
                 onPrimaryPressed: _showSourceSheet,
-                rightAction: Tooltip(
-                  message: 'onboarding_tour.ai_intro.skip'.tr(),
-                  child: CircularActionButton(
-                    icon: Icons.close,
-                    onPressed: _handleSkip,
-                  ),
-                ),
               ),
             ),
             SizedBox(height: context.spacingMd),

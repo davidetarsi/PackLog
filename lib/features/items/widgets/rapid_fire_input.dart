@@ -8,21 +8,42 @@ import '../providers/item_provider.dart';
 import '../services/category_infer_service.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/app_motion.dart';
 import 'category_pill.dart';
+
+/// Gruppo dei tocchi "dentro" il rapid fire. Chi mostra contenuti legati al
+/// campo (la pagina "aggiungi" della casa) li avvolge in un [TapRegion] con
+/// questo gruppo: toccarli non chiude il campo.
+const Object rapidFireTapRegionGroup = _RapidFireTapRegionGroup();
+
+class _RapidFireTapRegionGroup {
+  const _RapidFireTapRegionGroup();
+}
 
 class RapidFireInput extends ConsumerStatefulWidget {
   final String houseId;
   final String? currentSpaceId;
-  final void Function(String name, ItemCategory category)? onOpenFullForm;
   final ValueChanged<bool>? onExpandedChanged;
   final double height;
+
+  /// Ogni modifica del testo (anche lo svuotamento dopo il salvataggio).
+  final ValueChanged<String>? onTextChanged;
+
+  /// Focus del campo, se lo gestisce il chiamante (la casa lo usa per aprire
+  /// la pagina "aggiungi" dallo stato vuoto). Se nullo il campo ne crea uno.
+  final FocusNode? focusNode;
+
+  /// Prende il focus appena montato (tastiera su, modalità espansa).
+  final bool autofocus;
 
   const RapidFireInput({
     super.key,
     required this.houseId,
+    this.autofocus = false,
     this.currentSpaceId,
-    this.onOpenFullForm,
     this.onExpandedChanged,
+    this.onTextChanged,
+    this.focusNode,
     this.height = 50.0,
   });
 
@@ -32,7 +53,9 @@ class RapidFireInput extends ConsumerStatefulWidget {
 
 class _RapidFireInputState extends ConsumerState<RapidFireInput> {
   final _textController = TextEditingController();
-  final _focusNode = FocusNode();
+  FocusNode? _ownFocusNode;
+  FocusNode get _focusNode =>
+      widget.focusNode ?? (_ownFocusNode ??= FocusNode());
   bool _isExpanded = false;
   ItemCategory? _forcedCategory;
   ({ItemCategory category, InferConfidence confidence})? _inferResult;
@@ -42,13 +65,20 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
   void initState() {
     super.initState();
     _focusNode.addListener(_onFocusChanged);
+    if (widget.autofocus) {
+      // Dopo il primo frame: durante la transizione di route il focus
+      // richiesto subito andrebbe perso.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focusNode.requestFocus();
+      });
+    }
   }
 
   @override
   void dispose() {
     _focusNode.removeListener(_onFocusChanged);
     _textController.dispose();
-    _focusNode.dispose();
+    _ownFocusNode?.dispose();
     super.dispose();
   }
 
@@ -61,6 +91,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
   }
 
   void _handleTextChanged(String value) {
+    widget.onTextChanged?.call(value);
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
       setState(() => _inferResult = null);
@@ -120,9 +151,10 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
     try {
       await ref
           .read(itemNotifierProvider(widget.houseId).notifier)
-          .addItem(item);
+          .addItem(item, categoryChosen: _forcedCategory != null);
 
       _textController.clear();
+      widget.onTextChanged?.call('');
       _forcedCategory = null;
       _inferResult = null;
       HapticFeedback.lightImpact();
@@ -149,6 +181,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
         }
       },
       child: TapRegion(
+        groupId: rapidFireTapRegionGroup,
         onTapOutside: (event) {
           if (_focusNode.hasFocus) {
             _focusNode.unfocus();
@@ -162,29 +195,35 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
           children: [
             // --- BLOCCO 1: ROW DELLE CATEGORIE (Separate e fluttuanti) ---
             AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
+              duration: AppMotion.medium,
+              curve: AppMotion.emphasized,
               alignment: Alignment.bottomCenter,
               child: _isExpanded
                   ? AnimatedOpacity(
-                      duration: const Duration(milliseconds: 150),
+                      duration: AppMotion.fast,
                       opacity: _isExpanded ? 1.0 : 0.0,
                       child: Padding(
                         // Spazio visivo tra le categorie fluttuanti e l'input sottostante
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            for (final category in ItemCategory.values) ...[
-                              if (category != ItemCategory.values.first)
-                                SizedBox(width: context.responsive(6)),
-                              CategoryPill(
-                                category: category,
-                                pillState: _computePillState(category),
-                                onTap: () => _toggleForcedCategory(category),
-                              ),
+                        padding: EdgeInsets.only(bottom: context.spacingSm),
+                        // Larga quanto il campo, quattro pillole uguali.
+                        child: SizedBox(
+                          height: widget.height,
+                          child: Row(
+                            children: [
+                              for (final category in ItemCategory.values) ...[
+                                if (category != ItemCategory.values.first)
+                                  SizedBox(width: context.spacingXs),
+                                Expanded(
+                                  child: CategoryPill(
+                                    category: category,
+                                    pillState: _computePillState(category),
+                                    onTap: () =>
+                                        _toggleForcedCategory(category),
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     )
@@ -200,48 +239,26 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
               },
               behavior: HitTestBehavior.opaque,
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
+                duration: AppMotion.medium,
+                curve: AppMotion.emphasized,
                 height: widget.height,
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceContainerLow,
-                  // Bordo d'accento, spesso come quello di [DsButton]: nella
-                  // schermata della casa questa è l'azione principale, e senza
-                  // bordo non si distingueva dai due bottoni circolari ai lati.
-                  // Il riempimento arancione non è un'opzione — dentro ci sono
-                  // un campo di testo e il suo hint, che devono restare
-                  // leggibili.
-                  border: Border.all(color: colorScheme.primary, width: 2),
+                  // Bordo neutro: nella casa l'arancio è del bottone AI, la
+                  // strada che vogliamo far prendere. Il campo resta
+                  // riconoscibile per la forma e il segnaposto.
+                  border: Border.all(color: colorScheme.outlineVariant),
                   // Mantiene perennemente la forma a pillola (metà altezza)
                   borderRadius: BorderRadius.circular(widget.height / 2),
                 ),
                 clipBehavior: Clip.antiAlias,
                 // Gestione fluida del padding orizzontale
                 padding: EdgeInsets.only(
-                  left: _isExpanded ? context.spacingSm : context.spacingMd,
-                  right: 6.0,
+                  left: context.spacingMd,
+                  right: context.spacingXs,
                 ),
                 child: Row(
                   children: [
-                    // Pulsante "+" visibile solo in stato espanso
-                    if (_isExpanded) ...[
-                      IconButton(
-                        icon: Icon(Icons.add, size: context.responsive(24)),
-                        onPressed: () {
-                          final name = _textController.text.trim();
-                          final category =
-                              _forcedCategory ??
-                              _inferResult?.category ??
-                              ItemCategory.varie;
-                          widget.onOpenFullForm?.call(name, category);
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      AppSpacing.hGapSm,
-                    ],
-
                     // TextField espanso al massimo (ora il testo andrà fino in fondo)
                     Expanded(
                       child: TextField(
@@ -260,6 +277,11 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                           isDense: true,
                         ),
                         textInputAction: TextInputAction.done,
+                        // Il campo resta attivo dopo l'invio: il rapid fire
+                        // serve a scrivere più oggetti di fila (vedi "Aggiunti
+                        // ora" nella pagina aggiungi). Si chiude con indietro o
+                        // toccando fuori.
+                        onEditingComplete: () {},
                         onSubmitted: (_) => _handleSubmit(),
                         onChanged: _handleTextChanged,
                         style: Theme.of(context).textTheme.bodyLarge,
@@ -307,19 +329,23 @@ class _SubmitButton extends StatelessWidget {
     return GestureDetector(
       onTap: enabled ? onPressed : null,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 32,
-        height: 32,
+        duration: AppMotion.fast,
+        width: context.iconSizeLg,
+        height: context.iconSizeLg,
         decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
         child: isSubmitting
             ? Padding(
-                padding: const EdgeInsets.all(6),
+                padding: EdgeInsets.all(context.spacingXs),
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: iconColor,
                 ),
               )
-            : Icon(Icons.arrow_upward, size: 18, color: iconColor),
+            : Icon(
+                Icons.arrow_upward,
+                size: context.iconSizeSm,
+                color: iconColor,
+              ),
       ),
     );
   }

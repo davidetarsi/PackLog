@@ -114,9 +114,7 @@ class LocationSuggestionModel with _$LocationSuggestionModel {
 
     case 'state':
     case 'region':
-    case 'county':
-    case 'province':
-      return (LocationType.state, p.state ?? p.county ?? p.name);
+      return (LocationType.state, p.state ?? p.name);
 
     case 'city':
     case 'town':
@@ -124,19 +122,24 @@ class LocationSuggestionModel with _$LocationSuggestionModel {
     case 'municipality':
       return (LocationType.city, p.city ?? p.name);
 
+    // Province e contee scartate: "Milano" la provincia ha `state`
+    // = Lombardia, e mostrata come regione compariva *prima* della città
+    // con il nome sbagliato. Come meta di un viaggio o luogo di una casa
+    // basta la città.
+    case 'county':
+    case 'province':
+      return (LocationType.other, p.county ?? p.name);
+
     case 'postcode':
     case 'suburb':
     case 'district':
     case 'locality':
     case 'neighbourhood':
-      // Sottotipi: determina in base ai campi disponibili
-      if (p.city != null) {
-        return (LocationType.city, p.city);
-      } else if (p.state != null || p.county != null) {
-        return (LocationType.state, p.state ?? p.county);
-      } else {
-        return (LocationType.other, p.name ?? p.country);
-      }
+      // Una parte di città vale come la sua città. Senza città non la
+      // promuoviamo a regione: il titolo sarebbe il nome della regione, non
+      // del posto cercato.
+      if (p.city != null) return (LocationType.city, p.city);
+      return (LocationType.other, p.name ?? p.country);
 
     default:
       // Fallback: deduce dal contesto
@@ -146,8 +149,6 @@ class LocationSuggestionModel with _$LocationSuggestionModel {
           p.country != null &&
           p.name == p.country) {
         return (LocationType.country, p.country);
-      } else if (p.city == null && (p.state != null || p.county != null)) {
-        return (LocationType.state, p.state ?? p.county ?? p.name);
       } else if (p.city != null) {
         return (LocationType.city, p.city);
       } else {

@@ -562,8 +562,11 @@ class MyApp extends ConsumerWidget {
           body: Center(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
+              // In debug anche l'errore tecnico, come exceptionMessage.
               child: Text(
-                'Errore di avvio: $error',
+                kDebugMode
+                    ? '${'errors.startup'.tr()}\n$error'
+                    : 'errors.startup'.tr(),
                 textAlign: TextAlign.center,
               ),
             ),

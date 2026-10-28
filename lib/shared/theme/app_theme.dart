@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'app_opacity.dart';
 import 'app_spacing.dart';
 import 'error_empty_theme_extension.dart';
 import '../constants/app_constants.dart';
@@ -12,21 +13,24 @@ import '../constants/app_constants.dart';
 /// - tertiary = stati transienti (es. "in viaggio"). Ambra in entrambi i temi.
 /// - State layer alpha: 0.08 (hover) / 0.12 (selected) / 0.16 (dragged).
 class AppTheme {
-  /// Tema chiaro — arancione brand su sfondo caldo beige.
+  /// Tema chiaro — arancione brand su superfici grigie neutre.
+  ///
+  /// Il colore sta solo dove ha un significato (brand, avvisi): superfici,
+  /// testi e testo sui bottoni pieni non hanno tinta, così il tema non tira
+  /// verso il panna o il marrone.
   static ThemeData get light {
     const colorScheme = ColorScheme.light(
       // ── Primary ───────────────────────────────────────────────────────────
-      // #E85D04: arancione brand light.
+      // #F4801F: arancione chiaro e spostato verso il giallo, che sul fondo
+      // chiaro non legge come rosso.
       //
-      // onPrimary scuro e non bianco: il bianco su questo arancione dà 3,50:1,
-      // sotto la soglia WCAG AA di 4,5:1 per il testo di un bottone (il
-      // commento precedente dichiarava il contrario, misurandolo si scopre che
-      // non regge). Il marrone quasi nero arriva a 4,96:1 e conserva
-      // l'arancione vivo, che scurire il riempimento avrebbe spento.
-      primary: Color(0xFFE85D04),
-      onPrimary: Color(0xFF2A1508),
-      primaryContainer: Color.fromARGB(255, 255, 245, 238),
-      onPrimaryContainer: Color(0xFF4A1F00),
+      // onPrimary quasi nero neutro: il bianco su questo arancione non arriva
+      // ad AA (4,5:1), il quasi nero sta a 6,7:1.
+      primary: Color(0xFFF4801F),
+      onPrimary: Color(0xFF18181B),
+      primaryContainer: Color(0xFFFFF3EA),
+      // Arancio scuro e non marrone: 4,7:1 sul contenitore.
+      onPrimaryContainer: Color(0xFFC2410C),
       // ── Secondary ─────────────────────────────────────────────────────────
       // Grigio neutro per azioni secondarie, distinto dal brand orange.
       secondary: Color(0xFF6B7280),
@@ -39,23 +43,28 @@ class AppTheme {
       onTertiary: Colors.white,
       tertiaryContainer: Color(0xFFFEF3C7),
       onTertiaryContainer: Color(0xFF451A03),
-      // ── Superfici (beige caldo) ────────────────────────────────────────────
-      surface: Color.fromARGB(255, 255, 252, 249),
-      onSurface: Color(0xFF1A1A1A),
+      // ── Superfici (grigio neutro, appena freddo) ──────────────────────────
+      surface: Color(0xFFF7F7F8),
+      onSurface: Color(0xFF18181B),
       // onSurfaceVariant calibrato per leggibilità secondaria WCAG AA in light.
-      onSurfaceVariant: Color(0xFF595959),
+      onSurfaceVariant: Color(0xFF52525B),
       surfaceContainerLowest: Colors.white,
-      surfaceContainerLow: Color(0xFFF5F0EC),
-      surfaceContainer: Color.fromARGB(255, 255, 248, 235),
-      surfaceContainerHigh: Color.fromARGB(255, 218, 210, 196),
-      surfaceContainerHighest: Color.fromARGB(255, 220, 209, 195),
+      surfaceContainerLow: Color(0xFFF5F5F6),
+      surfaceContainer: Color(0xFFF4F4F5),
+      surfaceContainerHigh: Color(0xFFE4E4E7),
+      surfaceContainerHighest: Color(0xFFD4D4D8),
       // ── Bordi ─────────────────────────────────────────────────────────────
       // outline: bordo forte (selezionato, focus). outlineVariant: divider/card.
-      outline: Color(0xFFB8B8B8),
-      outlineVariant: Color(0xFFE0E0E0),
+      outline: Color(0xFFA1A1AA),
+      outlineVariant: Color(0xFFE4E4E7),
       // ── Error / Inverse ───────────────────────────────────────────────────
       error: Color(0xFFBA1A1A),
       onError: Colors.white,
+      // Container d'errore per avvisi (box di errore parziale): rosa tenue con
+      // testo scuro. Senza, Flutter usa `error` pieno e il box diventa un
+      // blocco rosso.
+      errorContainer: Color(0xFFFFDAD6),
+      onErrorContainer: Color(0xFF93000A),
       inverseSurface: Color(0xFF2D2D2D),
       onInverseSurface: Color(0xFFF5F5F5),
       inversePrimary: Color(0xFFFFAB73),
@@ -100,6 +109,8 @@ class AppTheme {
       // ── Error / Inverse ───────────────────────────────────────────────────
       error: Color(0xFFFFB4AB),
       onError: Color(0xFF690005),
+      errorContainer: Color(0xFF93000A),
+      onErrorContainer: Color(0xFFFFDAD6),
       inverseSurface: Color(0xFFE8E8E8),
       onInverseSurface: Color(0xFF1E1E1E),
       inversePrimary: Color(0xFFBF360C),
@@ -185,15 +196,6 @@ class AppTheme {
         ),
       ),
 
-      // === Card Theme ===
-      cardTheme: CardThemeData(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-        ),
-        margin: const EdgeInsets.only(bottom: 8),
-      ),
-
       // === Input Decoration Theme ===
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
@@ -205,7 +207,10 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+          borderSide: BorderSide(
+            color: colorScheme.primary,
+            width: AppConstants.emphasisBorderWidth,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
@@ -213,52 +218,87 @@ class AppTheme {
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          borderSide: BorderSide(color: colorScheme.error, width: 2),
+          borderSide: BorderSide(
+            color: colorScheme.error,
+            width: AppConstants.emphasisBorderWidth,
+          ),
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.smPlus,
         ),
+      ),
+
+      // === Checkbox Theme ===
+      // Spuntata: piena e neutra, del colore del testo, con la spunta del
+      // colore del fondo, come gli interruttori. Con il solo bordo arancio
+      // una colonna di caselle spuntate sembrava una fila di icone. L'arancio
+      // pieno resta all'azione principale dello schermo.
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (!states.contains(WidgetState.selected)) {
+            return Colors.transparent;
+          }
+          return states.contains(WidgetState.disabled)
+              ? colorScheme.onSurface.withValues(alpha: AppOpacity.disabled)
+              : colorScheme.onSurface;
+        }),
+        checkColor: WidgetStatePropertyAll(colorScheme.surface),
+        side: WidgetStateBorderSide.resolveWith((states) {
+          final disabled = states.contains(WidgetState.disabled);
+          return BorderSide(
+            color: disabled
+                ? colorScheme.onSurface.withValues(alpha: AppOpacity.disabled)
+                : states.contains(WidgetState.selected)
+                ? colorScheme.onSurface
+                : colorScheme.onSurfaceVariant,
+            width: AppConstants.emphasisBorderWidth,
+          );
+        }),
+      ),
+
+      // === Switch Theme ===
+      // Interruttori neutri: acceso = traccia del colore del testo (bianca
+      // sul tema scuro, quasi nera sul chiaro) con pallino del colore della
+      // pagina. L'arancio pieno resta alla CTA principale.
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) &&
+                  !states.contains(WidgetState.disabled)
+              ? colorScheme.surface
+              : null,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) &&
+                  !states.contains(WidgetState.disabled)
+              ? colorScheme.onSurface
+              : null,
+        ),
+      ),
+
+      // === Text Selection Theme ===
+      // Cursore, selezione e maniglie neutri: l'arancio resta alle azioni.
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: colorScheme.onSurface,
+        selectionColor: colorScheme.onSurface.withValues(
+          alpha: AppOpacity.textSelection,
+        ),
+        selectionHandleColor: colorScheme.onSurface,
       ),
 
       // === List Tile Theme ===
       listTileTheme: const ListTileThemeData(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      ),
-
-      // === Elevated Button Theme ===
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          ),
-        ),
-      ),
-
-      // === Outlined Button Theme ===
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          ),
-        ),
-      ),
-
-      // === Filled Button Theme ===
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          ),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
         ),
       ),
 
       // === Divider Theme ===
       dividerTheme: DividerThemeData(
-        thickness: 1,
+        thickness: AppConstants.hairlineBorderWidth,
         color: colorScheme.outlineVariant,
       ),
 
@@ -275,10 +315,9 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
-        // Allineato a textTheme.titleLarge: il titolo dell'AppBar e i titoli
-        // di sezione devono pesare uguale.
+        // titolo della barra, dei fogli e delle sezioni: stesso peso.
         titleTextStyle: TextStyle(
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: colorScheme.onSurface,
           fontSize: AppSpacing.fontLg, // 20
         ),
@@ -287,7 +326,9 @@ class AppTheme {
       // === Bottom Sheet Theme ===
       bottomSheetTheme: BottomSheetThemeData(
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppConstants.modalBorderRadius),
+          ),
         ),
         backgroundColor: colorScheme.surface,
       ),
@@ -318,7 +359,7 @@ class AppTheme {
             fontWeight: FontWeight.w400,
             color: colorScheme.onSurfaceVariant,
           ),
-          emptyStateIconSize: 80,
+          emptyStateIconSize: AppSpacing.iconDisplay,
           // Stesso colore del titolo e del sottotitolo: l'icona è parte del
           // messaggio, non un elemento a sé. Al 38% sembrava disabilitata, e
           // in arancione competeva con l'unica cosa toccabile della schermata,
@@ -330,12 +371,12 @@ class AppTheme {
             fontSize: AppSpacing.fontSm,
             fontWeight: FontWeight.w400,
           ),
-          errorStateIconSize: 80,
+          errorStateIconSize: AppSpacing.iconDisplay,
           errorStateIconColor: colorScheme.error,
           errorStateRetryLabel: 'common.retry',
-          stateSpacingMd: 16,
-          stateSpacingLg: 24,
-          stateSpacingSm: 8,
+          stateSpacingMd: AppSpacing.md,
+          stateSpacingLg: AppSpacing.lg,
+          stateSpacingSm: AppSpacing.sm,
         ),
       ],
     );

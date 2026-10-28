@@ -1,13 +1,20 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../constants/app_constants.dart';
+
+import '../theme/app_spacing.dart';
+import 'ds_form_sheet.dart';
+import 'ds_settings.dart';
 
 enum EntityContextMenuAction { copy, save, setPrimary, delete }
 
+/// Foglio della pressione lunga su una casa o un viaggio. Ogni voce chiude il
+/// foglio e restituisce la sua azione; la x e il tasto indietro restituiscono
+/// null. [title] è il nome dell'entità, [entityType] il tipo per le etichette.
 Future<EntityContextMenuAction?> showEntityContextMenu({
   required BuildContext context,
   required String entityType,
+  String? title,
   bool showSaveAction = false,
   bool isSaved = false,
   bool showSetPrimaryAction = false,
@@ -15,103 +22,61 @@ Future<EntityContextMenuAction?> showEntityContextMenu({
 }) {
   HapticFeedback.mediumImpact();
 
-  return showDialog<EntityContextMenuAction>(
-    context: context,
-    builder: (dialogContext) {
-      final colorScheme = Theme.of(dialogContext).colorScheme;
-
-      return Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(
-            AppConstants.cardBorderRadius + 4,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+  return showDsSheet<EntityContextMenuAction>(
+    context,
+    builder: (sheetContext) => DsFormSheet(
+      title: title ?? entityType,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DsSettingsGroup(
             children: [
-              ListTile(
-                leading: Icon(Icons.copy_rounded, color: colorScheme.primary),
-                title: Text(
-                  'dialogs.context_menu_copy'.tr(args: [entityType]),
-                  style: TextStyle(color: colorScheme.onSurface),
-                ),
+              DsSettingsRow(
+                leading: const Icon(Icons.copy_rounded),
+                label: 'dialogs.context_menu_copy'.tr(args: [entityType]),
                 onTap: () =>
-                    Navigator.pop(dialogContext, EntityContextMenuAction.copy),
+                    Navigator.pop(sheetContext, EntityContextMenuAction.copy),
               ),
-              if (showSaveAction) ...[
-                Divider(
-                  height: 1,
-                  indent: 16,
-                  endIndent: 16,
-                  color: colorScheme.outlineVariant,
-                ),
-                ListTile(
+              if (showSaveAction)
+                DsSettingsRow(
                   leading: Icon(
                     isSaved
                         ? Icons.bookmark_remove_outlined
                         : Icons.bookmark_add_outlined,
-                    color: colorScheme.primary,
                   ),
-                  title: Text(
-                    isSaved
-                        ? 'dialogs.context_menu_unsave'.tr(args: [entityType])
-                        : 'dialogs.context_menu_save'.tr(args: [entityType]),
-                    style: TextStyle(color: colorScheme.onSurface),
-                  ),
-                  onTap: () => Navigator.pop(
-                    dialogContext,
-                    EntityContextMenuAction.save,
-                  ),
+                  label: isSaved
+                      ? 'dialogs.context_menu_unsave'.tr(args: [entityType])
+                      : 'dialogs.context_menu_save'.tr(args: [entityType]),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, EntityContextMenuAction.save),
                 ),
-              ],
-              if (showSetPrimaryAction && !isPrimary) ...[
-                Divider(
-                  height: 1,
-                  indent: 16,
-                  endIndent: 16,
-                  color: colorScheme.outlineVariant,
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.star_outline_rounded,
-                    color: colorScheme.primary,
-                  ),
-                  title: Text(
-                    'dialogs.context_menu_set_primary'.tr(),
-                    style: TextStyle(color: colorScheme.onSurface),
-                  ),
+              if (showSetPrimaryAction)
+                DsSettingsRow(
+                  leading: const Icon(Icons.star_outline_rounded),
+                  label: 'dialogs.context_menu_set_primary'.tr(),
+                  enabled: !isPrimary,
                   onTap: () => Navigator.pop(
-                    dialogContext,
+                    sheetContext,
                     EntityContextMenuAction.setPrimary,
                   ),
                 ),
-              ],
-              Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-                color: colorScheme.outlineVariant,
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.delete_outline_rounded,
-                  color: colorScheme.error,
-                ),
-                title: Text(
-                  'dialogs.context_menu_delete'.tr(args: [entityType]),
-                  style: TextStyle(color: colorScheme.error),
-                ),
-                onTap: () => Navigator.pop(
-                  dialogContext,
-                  EntityContextMenuAction.delete,
-                ),
+            ],
+          ),
+          SizedBox(height: sheetContext.spacingMd),
+          DsSettingsGroup(
+            children: [
+              DsSettingsRow(
+                leading: const Icon(Icons.delete_outline_rounded),
+                label: 'dialogs.context_menu_delete'.tr(args: [entityType]),
+                destructive: true,
+                onTap: () =>
+                    Navigator.pop(sheetContext, EntityContextMenuAction.delete),
               ),
             ],
           ),
-        ),
-      );
-    },
+        ],
+      ),
+    ),
   );
 }

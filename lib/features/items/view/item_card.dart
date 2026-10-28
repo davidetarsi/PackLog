@@ -4,18 +4,42 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/item_model.dart';
 import '../providers/item_selection_provider.dart';
 import '../../../shared/widgets/widgets.dart';
-import 'add_edit_item_screen.dart';
+import 'item_sheet.dart';
+import '../../../shared/theme/app_opacity.dart';
+import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/app_text_styles.dart';
+import '../../../shared/widgets/ds_checkbox.dart';
 
 class ItemCard extends ConsumerWidget {
   final ItemModel item;
   final String houseId;
   final int quantityOnTrip;
 
+  /// Chiamato in modalità normale appena prima di aprire la scheda
+  /// dell'oggetto (la ricerca lo usa per l'evento del risultato aperto).
+  final VoidCallback? onOpened;
+
+  /// Chiamato quando la scheda aperta da questa riga si chiude.
+  final VoidCallback? onSheetClosed;
+
+  /// `false` dove la selezione multipla non deve partire (la pagina
+  /// "aggiungi" della casa): il long press non fa nulla.
+  final bool allowSelection;
+
+  /// Rientro e visibilità del divisore quando la riga è dentro un gruppo.
+  final EdgeInsets dividerInsets;
+  final bool showDivider;
+
   const ItemCard({
     super.key,
     required this.item,
     required this.houseId,
     required this.quantityOnTrip,
+    this.onOpened,
+    this.onSheetClosed,
+    this.allowSelection = true,
+    this.dividerInsets = EdgeInsets.zero,
+    this.showDivider = true,
   });
 
   @override
@@ -44,10 +68,10 @@ class ItemCard extends ConsumerWidget {
             children: [
               Icon(
                 Icons.flight_takeoff,
-                size: 12,
+                size: Theme.of(context).textTheme.bodySmall?.fontSize,
                 color: colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: context.spacingXs),
               Text(
                 'common.in_transit'.tr(),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -74,10 +98,10 @@ class ItemCard extends ConsumerWidget {
               ),
               Icon(
                 Icons.flight_takeoff,
-                size: 12,
+                size: Theme.of(context).textTheme.bodySmall?.fontSize,
                 color: colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: context.spacingXs),
               Text(
                 '$quantityOnTrip ${'common.in_transit'.tr().toLowerCase()}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -100,29 +124,27 @@ class ItemCard extends ConsumerWidget {
     // In modalità selezione il leading diventa un Checkbox; altrimenti assente
     // così il titolo si posiziona automaticamente a sinistra.
     final Widget? leading = isSelectionActive
-        ? Checkbox(
+        ? DsCheckbox(
             value: isSelected,
             onChanged: (_) => ref
                 .read(itemSelectionNotifierProvider.notifier)
                 .toggleItem(item.id),
-            activeColor: colorScheme.primary,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           )
         : null;
 
-    // Il colore di sfondo segnala visivamente la selezione.
+    // Velo neutro: l'arancio della selezione sta solo nella casella.
     final Color? bgColor = isSelected
-        ? colorScheme.primary.withValues(alpha: 0.08)
+        ? colorScheme.onSurface.withValues(alpha: AppOpacity.pressed)
         : null;
 
     return UniversalItemTile(
       backgroundColor: bgColor,
+      dividerInsets: dividerInsets,
+      showDivider: showDivider,
       leading: leading,
       title: Text(
         item.name,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+        style: Theme.of(context).textTheme.bodyMedium?.strong,
       ),
       subtitle: subtitle,
       trailing: isSelectionActive
@@ -134,14 +156,18 @@ class ItemCard extends ConsumerWidget {
           ? () => ref
                 .read(itemSelectionNotifierProvider.notifier)
                 .toggleItem(item.id)
-          : () => showAddEditItemSheet(
-              context,
-              houseId: item.houseId,
-              itemId: item.id,
-            ),
+          : () {
+              onOpened?.call();
+              showItemSheet(
+                context,
+                houseId: item.houseId,
+                itemId: item.id,
+              ).then((_) => onSheetClosed?.call());
+            },
       // Long press attiva la selezione multipla dal primo item premuto.
-      // Disabilitato se in selezione o se l'item è in viaggio.
-      onLongPress: isSelectionActive || hasAnyOnTrip
+      // Disabilitato se in selezione, se l'item è in viaggio o se la
+      // selezione non è permessa qui.
+      onLongPress: isSelectionActive || hasAnyOnTrip || !allowSelection
           ? null
           : () {
               ref.read(itemSelectionNotifierProvider.notifier).toggleMode();

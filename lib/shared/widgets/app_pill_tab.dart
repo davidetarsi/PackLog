@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../constants/app_constants.dart';
 import '../theme/theme.dart';
 
 /// Widget riutilizzabile per pill-style tabs con supporto per due comportamenti:
@@ -112,7 +113,7 @@ class AppPillTab<T> extends StatelessWidget {
 
           return Padding(
             padding: EdgeInsets.only(right: effectiveSpacing),
-            child: _RawPillTab(
+            child: AppPill(
               label: getLabel(item),
               icon: getIcon?.call(item),
               isSelected: isSelected,
@@ -137,14 +138,12 @@ class AppPillTab<T> extends StatelessWidget {
   }
 }
 
-/// Widget privato che si occupa esclusivamente del rendering di una singola pill.
-/// Non contiene logica di business, solo UI e animazioni.
+/// Una singola pill del design system: lo stesso aspetto di [AppPillTab].
 ///
-/// Principi seguiti:
-/// - Single Responsibility: solo rendering
-/// - Separation of Concerns: nessuna logica applicativa
-/// - Reusability: può essere usato da qualsiasi wrapper
-class _RawPillTab extends StatefulWidget {
+/// Si usa da sola quando la scelta non è "uno fra tanti" (es. selezione
+/// multipla dei bagagli, in un `Wrap`). Solo rendering e animazione: lo
+/// stato di selezione lo decide il chiamante.
+class AppPill extends StatefulWidget {
   final String label;
   final Widget? icon;
   final bool isSelected;
@@ -156,7 +155,8 @@ class _RawPillTab extends StatefulWidget {
   final double? horizontalPadding;
   final double? verticalPadding;
 
-  const _RawPillTab({
+  const AppPill({
+    super.key,
     required this.label,
     required this.isSelected,
     required this.onTap,
@@ -170,11 +170,10 @@ class _RawPillTab extends StatefulWidget {
   });
 
   @override
-  State<_RawPillTab> createState() => _RawPillTabState();
+  State<AppPill> createState() => _AppPillState();
 }
 
-class _RawPillTabState extends State<_RawPillTab>
-    with SingleTickerProviderStateMixin {
+class _AppPillState extends State<AppPill> with SingleTickerProviderStateMixin {
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
 
@@ -182,11 +181,11 @@ class _RawPillTabState extends State<_RawPillTab>
   void initState() {
     super.initState();
     _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 100),
+      duration: AppMotion.fast,
       vsync: this,
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _scaleController, curve: AppMotion.standard),
     );
   }
 
@@ -225,12 +224,13 @@ class _RawPillTabState extends State<_RawPillTab>
     final accent = widget.selectedColor ?? colorScheme.primary;
 
     final backgroundColor = widget.isSelected
-        ? accent.withValues(alpha: 0.14)
+        ? accent.withValues(alpha: AppOpacity.selected)
         : (widget.unselectedColor ?? Colors.transparent);
 
     final borderColor = widget.isSelected ? accent : colorScheme.outlineVariant;
 
-    // In dark l'accento su un suo fill al 14% dà ~6.2:1, sopra AA.
+    // In dark l'accento su un suo fill al 18% (AppOpacity.selected) dà ~5.4:1,
+    // sopra AA.
     // In light lo stesso accostamento scende a ~2.9:1 (l'arancione brand è
     // troppo chiaro per fare testo su fondo chiaro), quindi il testo passa
     // alla tinta scura della stessa famiglia: stessa idea, direzione tonale
@@ -251,8 +251,8 @@ class _RawPillTabState extends State<_RawPillTab>
           onTapUp: _handleTapUp,
           onTapCancel: _handleTapCancel,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
+            duration: AppMotion.medium,
+            curve: AppMotion.standard,
             padding: EdgeInsets.symmetric(
               horizontal: effectiveHorizontalPadding,
               vertical: effectiveVerticalPadding,
@@ -260,7 +260,10 @@ class _RawPillTabState extends State<_RawPillTab>
             decoration: BoxDecoration(
               color: backgroundColor,
               borderRadius: context.responsiveBorderRadius(20),
-              border: Border.all(color: borderColor, width: 1),
+              border: Border.all(
+                color: borderColor,
+                width: AppConstants.hairlineBorderWidth,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

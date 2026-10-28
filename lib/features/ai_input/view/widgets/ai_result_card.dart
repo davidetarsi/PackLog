@@ -1,76 +1,235 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../shared/theme/app_opacity.dart';
+import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
-import '../../../../shared/widgets/universal_item_tile.dart';
+import '../../../../shared/theme/app_text_styles.dart';
+import '../../../../shared/widgets/ds_checkbox.dart';
+import '../../../../shared/widgets/ds_dashed_box.dart';
+import '../../../../shared/widgets/ds_text_button.dart';
+import '../../../items/model/clothing_details.dart';
+import '../../../items/model/clothing_labels.dart';
+import '../../helpers/ai_item_category.dart';
 import '../../model/clothing_analysis_result.dart';
 
+/// Valore non utile da mostrare: vuoto o 'N/A'.
+bool _isMissing(String value) =>
+    value.trim().isEmpty || value.trim().toUpperCase() == 'N/A';
+
+/// Riga dei dettagli del capo: tipo e colore di base, tradotti e nell'ordine
+/// della scheda. I valori vuoti o 'N/A' non compaiono.
+String aiDetailsLine(ClothingAnalysisResult result) => [
+  if (!_isMissing(result.subCategory)) clothingTypeLabel(result.subCategory),
+  colorLabel(result.baseColor),
+].where((value) => value.isNotEmpty).join(' · ');
+
+/// Riga di un capo riconosciuto: inclusione, poi nome, tipo e colore ed
+/// eventuali dati da controllare. Toccando la riga si apre la scheda del capo,
+/// dove si cambia anche il nome. "C'è già?" a destra.
 class AiResultCard extends StatelessWidget {
   final ClothingAnalysisResult item;
-  final int index;
+
+  /// Il nome mostrato: lo aggiorna chi apre la scheda, dopo un salvataggio.
   final TextEditingController controller;
-  final ValueChanged<String> onNameChanged;
-  final VoidCallback onDelete;
-  final bool autofocus;
+  final bool included;
+  final ValueChanged<bool> onIncludedChanged;
+  final VoidCallback? onAlreadyHere;
+  final VoidCallback? onOpenDetails;
+  final bool enabled;
 
   const AiResultCard({
     super.key,
     required this.item,
-    required this.index,
     required this.controller,
-    required this.onNameChanged,
-    required this.onDelete,
-    this.autofocus = false,
+    required this.included,
+    required this.onIncludedChanged,
+    required this.onOpenDetails,
+    this.onAlreadyHere,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final muted = colors.onSurface.withValues(alpha: AppOpacity.disabled);
+    // Tre livelli: il nome in evidenza, tipo e colore in grigio, il dato da
+    // controllare in una pillola tratteggiata. Nessun testo sotto 14.
+    final nameStyle = textTheme.cardTitle?.copyWith(
+      color: included ? colors.onSurface : muted,
+    );
+    final detailStyle = textTheme.bodyMedium?.copyWith(
+      color: included ? colors.onSurfaceVariant : muted,
+    );
+    // Solo i dubbi che la scheda mostra per la categoria del capo: gli altri
+    // non si potrebbero controllare.
+    final doubts = visibleDoubts(
+      item.doubts,
+      clothingFieldsFor(
+        aiItemCategory(item.category, appCategory: item.appCategory),
+        item.subCategory,
+      ),
+    );
+    final details = aiDetailsLine(item);
 
-    return UniversalItemTile(
-      backgroundColor: Colors.transparent,
-      margin: EdgeInsets.zero,
-      useListTile: false,
-      contentPadding: EdgeInsets.symmetric(vertical: context.spacingXs),
-      // Grigio e non arancione: l'icona dice da dove viene la riga, non è
-      // un'azione. L'unico arancione della schermata resta la CTA.
-      leading: Icon(
-        Icons.auto_awesome_outlined,
-        size: context.iconSizeSm,
-        color: colorScheme.onSurfaceVariant,
-      ),
-      title: TextField(
-        controller: controller,
-        onChanged: onNameChanged,
-        autofocus: autofocus,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-        // Nessun riquadro attorno al nome: la pill lo faceva sembrare un
-        // bottone, e la riga ha già il suo bordo inferiore (vedi
-        // [UniversalItemTile], ramo `_isFlatRow`) a separarla dalla
-        // successiva. Il campo si segnala solo quando lo si sta scrivendo.
-        decoration: InputDecoration(
-          hintText: 'ai_import.item_name_hint'.tr(),
-          contentPadding: EdgeInsets.symmetric(vertical: context.spacingSm),
-          isDense: true,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: colorScheme.primary, width: 2),
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: context.spacingXs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          DsCheckbox(
+            value: included,
+            onChanged: !enabled ? null : (value) => onIncludedChanged(value),
           ),
-        ),
+          Expanded(
+            child: InkWell(
+              key: const Key('ai_result_details'),
+              borderRadius: BorderRadius.circular(
+                AppConstants.inputBorderRadius,
+              ),
+              onTap: enabled ? onOpenDetails : null,
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: context.spacingXs),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: controller,
+                        builder: (context, value, _) => LayoutBuilder(
+                          builder: (context, constraints) {
+                            final chevron = Padding(
+                              padding: EdgeInsets.only(left: context.spacingXs),
+                              child: Icon(
+                                Icons.chevron_right,
+                                key: const Key('ai_result_chevron'),
+                                size: context.iconSizeMd,
+                                color: included
+                                    ? colors.onSurfaceVariant
+                                    : muted,
+                              ),
+                            );
+                            // Nome su una riga: la freccia lo segue. Nome su
+                            // più righe: la freccia segue tipo e colore.
+                            final chevronWidth =
+                                context.iconSizeMd + context.spacingXs;
+                            final painter =
+                                TextPainter(
+                                  text: TextSpan(
+                                    text: value.text,
+                                    style: nameStyle,
+                                  ),
+                                  textDirection: Directionality.of(context),
+                                  textScaler: MediaQuery.textScalerOf(context),
+                                  maxLines: 1,
+                                )..layout(
+                                  maxWidth:
+                                      (constraints.maxWidth - chevronWidth)
+                                          .clamp(0, double.infinity),
+                                );
+                            final nameOnOneLine =
+                                !painter.didExceedMaxLines || details.isEmpty;
+                            painter.dispose();
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (nameOnOneLine)
+                                  Text.rich(
+                                    TextSpan(
+                                      text: value.text,
+                                      children: [
+                                        WidgetSpan(
+                                          alignment:
+                                              PlaceholderAlignment.middle,
+                                          child: chevron,
+                                        ),
+                                      ],
+                                    ),
+                                    style: nameStyle,
+                                  )
+                                else
+                                  Text(value.text, style: nameStyle),
+                                if (details.isNotEmpty) ...[
+                                  SizedBox(height: context.spacingXxs),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          details,
+                                          style: detailStyle,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (!nameOnOneLine) chevron,
+                                    ],
+                                  ),
+                                ],
+                                if (doubts.isNotEmpty) ...[
+                                  SizedBox(height: context.spacingXs),
+                                  _ToCheck(
+                                    count: doubts.length,
+                                    color: included ? colors.onSurface : muted,
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (onAlreadyHere != null)
+            DsTextButton(
+              key: const Key('ai_already_here'),
+              onPressed: enabled ? onAlreadyHere : null,
+              label: 'ai_import.already_here'.tr(),
+            ),
+        ],
       ),
-      trailing: IconButton(
-        onPressed: onDelete,
-        icon: const Icon(Icons.delete_outline),
-        color: colorScheme.error,
-        tooltip: 'common.delete'.tr(),
-        visualDensity: VisualDensity.compact,
-        padding: EdgeInsets.zero,
-        constraints: BoxConstraints(
-          minWidth: context.iconSizeMd,
-          minHeight: context.iconSizeMd,
+    );
+  }
+}
+
+/// "N da controllare" in una pillola tratteggiata, come i valori da
+/// controllare nella scheda del capo.
+class _ToCheck extends StatelessWidget {
+  const _ToCheck({required this.count, required this.color});
+
+  final int count;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DsDashedBox(
+      key: const Key('ai_result_to_check'),
+      radius: AppConstants.pillBorderRadius,
+      color: color,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacingSm,
+          vertical: context.spacingXxs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.help_outline, size: context.iconSizeSm, color: color),
+            SizedBox(width: context.spacingXs),
+            // Su uno schermo stretto, con "C'è già?" accanto, va a capo.
+            Flexible(
+              child: Text(
+                'ai_import.to_check'.plural(count),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: color),
+              ),
+            ),
+          ],
         ),
       ),
     );
