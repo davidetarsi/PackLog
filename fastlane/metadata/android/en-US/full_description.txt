@@ -1,0 +1,29 @@
+Tell PackLog where you're going and when: it packs your suitcase with the clothes you already own, based on the weather, your stops and what you'll be doing. Then check items off as you pack.
+
+AN AI-PACKED SUITCASE
+• Add your trip's stops, what you'll do and where you'll stay: city, beach, hiking, work, a formal dinner.
+• The AI picks clothes from your wardrobe based on the weather at each stop and the length of the trip.
+• If there's a washing machine, you pack fewer clothes.
+• See why each item is in your suitcase, and get a heads-up when the trip is missing something: a rain jacket, hiking boots.
+• Change anything you like: remove, add, adjust quantities.
+
+YOUR CLOTHES FROM A PHOTO
+• Take a photo or pick one from your gallery: the AI recognizes each item.
+• For every item it suggests type, colour, warmth and rain resistance. You review and save.
+• No inventory to type by hand.
+
+WEATHER FOR YOUR TRIP
+• Temperatures, rain and wind for every stop.
+• For trips far ahead it uses past years' averages, then switches to the forecast.
+
+CHECKLIST AND LUGGAGE
+• Check items off as you pack.
+• Add toiletries, electronics and everything else from home.
+• Set up your bags once (carry-on, backpack, tote) and reuse them on every trip.
+
+YOUR THINGS, ACROSS HOMES AND SPACES
+• Create the homes you need, yours, the beach house, your parents' place, and split them into spaces: wardrobe, drawers, cellar.
+• Every item has its place and quantity, and shows as travelling when it leaves with you.
+
+WORKS OFFLINE TOO
+Your inventory and checklists live on your phone and work offline. When you're online, PackLog syncs everything to your account, so your things follow you to a new phone. AI packing, photo recognition and weather need a connection.
