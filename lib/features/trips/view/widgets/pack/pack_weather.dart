@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/helpers/snack_bar_helper.dart';
 import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/ds_section_title.dart';
 import '../../../model/trip_model.dart';
@@ -98,7 +99,7 @@ class _WeatherCard extends StatelessWidget {
 
   final String tripId;
   final TripWeather weather;
-  final VoidCallback onRefresh;
+  final Future<bool> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +127,7 @@ class _WeatherCard extends StatelessWidget {
     );
   }
 
-  /// "Previsione · aggiornata alle 10:32", "Media degli ultimi 5 anni · …".
+  /// "Previsione · aggiornato poco fa", "Media degli ultimi 5 anni · …".
   String _sourceLine(BuildContext context) {
     final source = switch (weather.source) {
       WeatherSource.forecast => 'trips.weather.source_forecast'.tr(),
@@ -135,22 +136,38 @@ class _WeatherCard extends StatelessWidget {
       ),
       null => 'trips.weather.source_mixed'.plural(weather.years ?? 0),
     };
-    final locale = context.locale.toString();
-    final fetched = weather.fetchedAt;
-    final now = DateTime.now();
-    final sameDay =
-        fetched.year == now.year &&
-        fetched.month == now.month &&
-        fetched.day == now.day;
-    final updated = sameDay
-        ? 'trips.weather.updated_at'.tr(
-            args: [DateFormat.Hm(locale).format(fetched)],
-          )
-        : 'trips.weather.updated_on'.tr(
-            args: [DateFormat('d MMM', locale).format(fetched)],
-          );
+    final updated = weatherUpdatedLabel(
+      weather.fetchedAt,
+      now: DateTime.now(),
+      locale: context.locale.toString(),
+    );
     return '$source · $updated';
   }
+}
+
+/// Da quanto è arrivato il meteo, senza l'ora esatta: "aggiornato poco fa"
+/// entro un'ora, "aggiornato 3 ore fa" nello stesso giorno o nelle 24 ore,
+/// "aggiornato ieri", poi la data.
+String weatherUpdatedLabel(
+  DateTime fetchedAt, {
+  required DateTime now,
+  required String locale,
+}) {
+  final age = now.difference(fetchedAt);
+  if (age < const Duration(hours: 1)) {
+    return 'trips.weather.updated_just_now'.tr();
+  }
+  if (age < const Duration(hours: 24)) {
+    return 'trips.weather.updated_hours_ago'.plural(age.inHours);
+  }
+  final today = DateTime(now.year, now.month, now.day);
+  final day = DateTime(fetchedAt.year, fetchedAt.month, fetchedAt.day);
+  if (today.difference(day).inDays == 1) {
+    return 'trips.weather.updated_yesterday'.tr();
+  }
+  return 'trips.weather.updated_on'.tr(
+    args: [DateFormat('d MMM', locale).format(fetchedAt)],
+  );
 }
 
 /// Il meteo di una sola tappa, con la stessa riga della sezione "Meteo" ma
@@ -296,21 +313,24 @@ class _WeatherFooter extends StatefulWidget {
   const _WeatherFooter({required this.text, this.onRefresh});
 
   final String text;
-  final VoidCallback? onRefresh;
+
+  /// `false` se il meteo era già aggiornato e non si è richiesto.
+  final Future<bool> Function()? onRefresh;
 
   @override
   State<_WeatherFooter> createState() => _WeatherFooterState();
 }
 
 class _WeatherFooterState extends State<_WeatherFooter> {
-  /// Giri dell'icona: uno a ogni tocco. Anche quando il meteo è fresco e non si
-  /// richiede, il giro dice che il tocco è arrivato; l'ora resta quella vera
-  /// dei dati.
+  /// Giri dell'icona: uno a ogni tocco, così si vede che il tocco è arrivato.
   double _turns = 0;
 
-  void _refresh() {
+  Future<void> _refresh() async {
     setState(() => _turns += 1);
-    widget.onRefresh?.call();
+    final refreshed = await widget.onRefresh?.call();
+    if (refreshed == false && mounted) {
+      AppSnackBar.showSuccess(context, 'trips.weather.already_fresh'.tr());
+    }
   }
 
   @override

@@ -45,6 +45,14 @@ class TripWeatherFailed extends TripWeatherState {
 /// stessa richiesta in corso invece di farne un'altra.
 @Riverpod(keepAlive: true)
 class TripWeatherNotifier extends _$TripWeatherNotifier {
+  /// Età oltre la quale "Aggiorna" richiede di nuovo. All'apertura invece
+  /// vale [TripWeather.isFresh] (24 ore): così il tetto si consuma solo per
+  /// una richiesta esplicita.
+  static const manualRefreshAge = Duration(hours: 1);
+
+  /// Il prossimo caricamento salta la cache: lo chiede "Aggiorna".
+  bool _skipCache = false;
+
   @override
   Future<TripWeatherState> build(String tripId) async {
     final trips = await ref.watch(tripNotifierProvider.future);
@@ -67,7 +75,9 @@ class TripWeatherNotifier extends _$TripWeatherNotifier {
     final cache = ref.read(tripWeatherCacheProvider);
     final cached = await cache.read(tripId);
     final sameTrip = cached != null && cached.signature == request.signature;
-    if (sameTrip && cached.isFresh(DateTime.now())) {
+    final skipCache = _skipCache;
+    _skipCache = false;
+    if (!skipCache && sameTrip && cached.isFresh(DateTime.now())) {
       return TripWeatherReady(cached);
     }
 
@@ -86,20 +96,24 @@ class TripWeatherNotifier extends _$TripWeatherNotifier {
     }
   }
 
-  /// "Aggiorna": con un meteo arrivato da meno di 24 ore non fa nulla, perché
-  /// richiederlo consumerebbe il tetto per gli stessi dati. Altrimenti richiede.
-  Future<void> refresh() async {
+  /// "Aggiorna": con un meteo arrivato da meno di [manualRefreshAge] non fa
+  /// nulla e restituisce `false` (la pagina dice che è già aggiornato).
+  /// Altrimenti richiede, anche se la copia ha meno di 24 ore, e restituisce
+  /// `true`.
+  Future<bool> refresh() async {
     final current = state.valueOrNull;
-    if (state.isLoading) return;
+    if (state.isLoading) return false;
     if (current is TripWeatherReady) {
       final cached = await ref.read(tripWeatherCacheProvider).read(tripId);
       if (cached != null &&
           cached.signature == current.weather.signature &&
-          cached.isFresh(DateTime.now())) {
-        return;
+          cached.isFresh(DateTime.now(), maxAge: manualRefreshAge)) {
+        return false;
       }
     }
+    _skipCache = true;
     ref.invalidateSelf();
     await future;
+    return true;
   }
 }
