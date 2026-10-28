@@ -329,8 +329,11 @@
       "source_forecast": "Previsione",
       "source_climate": {"one": "Media dell'ultimo anno", "other": "Media degli ultimi {} anni"},
       "source_mixed": {"one": "Previsione e media dell'ultimo anno", "other": "Previsione e media degli ultimi {} anni"},
-      "updated_at": "aggiornato alle {}",
       "updated_on": "aggiornato il {}",
+      "updated_just_now": "aggiornato poco fa",
+      "updated_hours_ago": {"one": "aggiornato un'ora fa", "other": "aggiornato {} ore fa"},
+      "updated_yesterday": "aggiornato ieri",
+      "already_fresh": "Il meteo è già aggiornato",
       "refresh": "Aggiorna il meteo",
       "cap_reached": "Meteo non disponibile oggi, riprova domani.",
       "failed": "Meteo non disponibile al momento.",
@@ -342,7 +345,7 @@
       "rain_mm": "{} mm",
       "detail_missing": "Il dettaglio di questa tappa non è disponibile.",
       "detail_later": {"one": "L'ultimo giorno comparirà quando sarà nei prossimi 7.", "other": "Gli altri {} giorni compariranno quando saranno nei prossimi 7."},
-      "detail_footer": "Previsione Open-Meteo in ora locale, aggiornata alle {}."
+      "detail_footer": "Previsione Open-Meteo in ora locale · {}."
     },
     "title": "Viaggi",
     "trip_picker_sheet_title": "Aggiungi a un viaggio",
