@@ -19,7 +19,7 @@ import sys
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 WIDTH, HEIGHT = 1080, 1920
-BACKGROUND = (244, 128, 31)  # primary del tema chiaro, #F4801F
+BACKGROUND = (255, 236, 220)  # arancio molto chiaro, #FFECDC
 TEXT = (24, 24, 27)  # onSurface
 OUTLINE = (228, 228, 231)  # outlineVariant
 PHONE_TOP = 400
