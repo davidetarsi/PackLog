@@ -331,8 +331,11 @@
       "source_forecast": "Forecast",
       "source_climate": {"one": "Average of the last year", "other": "Average of the last {} years"},
       "source_mixed": {"one": "Forecast and average of the last year", "other": "Forecast and average of the last {} years"},
-      "updated_at": "updated at {}",
       "updated_on": "updated on {}",
+      "updated_just_now": "updated just now",
+      "updated_hours_ago": {"one": "updated an hour ago", "other": "updated {} hours ago"},
+      "updated_yesterday": "updated yesterday",
+      "already_fresh": "The weather is already up to date",
       "refresh": "Refresh the weather",
       "cap_reached": "Weather not available today, try again tomorrow.",
       "failed": "Weather not available right now.",
@@ -344,7 +347,7 @@
       "rain_mm": "{} mm",
       "detail_missing": "Details for this stop are not available.",
       "detail_later": {"one": "The last day will show up once it is within the next 7.", "other": "The other {} days will show up once they are within the next 7."},
-      "detail_footer": "Open-Meteo forecast in local time, updated at {}."
+      "detail_footer": "Open-Meteo forecast in local time · {}."
     },
     "title": "Trips",
     "trip_picker_sheet_title": "Add to a trip",
