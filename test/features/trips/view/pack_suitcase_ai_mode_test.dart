@@ -503,7 +503,7 @@ void main() {
 
         expect(find.text('Dalla casa · 3 oggetti'), findsOneWidget);
         expect(
-          find.text('Toiletries, elettronica e varie: li scegli tu'),
+          find.text('Igiene, elettronica e varie: li scegli tu'),
           findsOneWidget,
         );
         expect(find.text('Spazzolino'), findsNothing);
@@ -522,7 +522,7 @@ void main() {
         expect(find.text('Pila'), findsOneWidget);
         expect(find.text('Felpa'), findsNothing);
         // Divisi per categoria come la valigia sopra.
-        expect(find.text('Toiletries · 1'), findsOneWidget);
+        expect(find.text('Igiene · 1'), findsOneWidget);
         expect(find.text('Elettronica · 1'), findsOneWidget);
         expect(find.text('Varie · 1'), findsOneWidget);
 

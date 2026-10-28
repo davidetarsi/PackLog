@@ -197,7 +197,7 @@
     "city": "Cities and museums",
     "walks": "Walks and hikes",
     "trekking": "Trekking",
-    "cammino": "Cammino",
+    "cammino": "Long-distance walks",
     "high_mountain": "High mountains",
     "sea": "Sea",
     "diving": "Diving and snorkeling",
@@ -495,6 +495,7 @@
   },
   "errors": {
     "retry_hint": "Try again in a moment.",
+    "startup": "The app couldn't start. Close it and open it again.",
     "load_houses": "Unable to load houses",
     "load_items": "Unable to load items",
     "load_trips": "Unable to load trips",

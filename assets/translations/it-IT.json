@@ -98,7 +98,7 @@
   },
   "categories": {
     "vestiti": "Vestiti",
-    "toiletries": "Toiletries",
+    "toiletries": "Igiene",
     "elettronica": "Elettronica",
     "varie": "Varie"
   },
@@ -298,7 +298,7 @@
           "one": "Dalla casa · {} oggetto",
           "other": "Dalla casa · {} oggetti"
         },
-        "home_subtitle": "Toiletries, elettronica e varie: li scegli tu",
+        "home_subtitle": "Igiene, elettronica e varie: li scegli tu",
         "home_add": "Aggiungi",
         "prepare_button": "Prepara con AI",
         "regenerate": "Rigenera",
@@ -495,6 +495,7 @@
   },
   "errors": {
     "retry_hint": "Riprova tra un momento.",
+    "startup": "L'app non è riuscita ad avviarsi. Chiudila e riaprila.",
     "load_houses": "Impossibile caricare le case",
     "load_items": "Impossibile caricare gli oggetti",
     "load_trips": "Impossibile caricare i viaggi",
