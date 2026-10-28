@@ -235,6 +235,79 @@ void main() {
     await app.finish();
   });
 
+  /// Una felpa viola: nessun capo di casa Milano le somiglia.
+  AiImportState felpaViola() => AiImportState(
+    selectedHouseId: kHomeId,
+    photoGroups: [
+      PhotoGroup(
+        photo: photoShirt,
+        results: [
+          _scanned('Upper Body').copyWith(
+            name: 'Felpa con cappuccio',
+            subCategory: 'Hoodie',
+            baseColor: 'Viola',
+          ),
+        ],
+      ),
+    ],
+  );
+
+  for (final (locale, expected) in [
+    (const Locale('it', 'IT'), 'Niente di simile in Casa Milano'),
+    (const Locale('en', 'US'), 'Nothing similar in Casa Milano'),
+  ]) {
+    testWidgets('senza capi simili lo dice, sopra gli altri [$locale]', (
+      tester,
+    ) async {
+      final app = await ScreenshotApp.start(
+        tester,
+        theme: ShotTheme.light,
+        setup: AppSetup(
+          locale: locale,
+          extraOverrides: [
+            aiImportNotifierProvider.overrideWith(
+              () => FakeAiImport(felpaViola()),
+            ),
+          ],
+        ),
+      );
+      await _openResults(app);
+      await app.tap(find.byKey(const Key('ai_already_here')));
+
+      expect(find.text(expected), findsOneWidget);
+      final line = tester.getTopLeft(
+        find.byKey(const Key('already_here_nothing_similar')),
+      );
+      final others = tester.getTopLeft(
+        find.textContaining(
+          locale.languageCode == 'it' ? 'Altri vestiti' : 'Other clothes',
+        ),
+      );
+      expect(line.dy, lessThan(others.dy));
+      await app.finish();
+    });
+  }
+
+  testWidgets('con capi simili la riga non c è', (tester) async {
+    final app = await ScreenshotApp.start(
+      tester,
+      theme: ShotTheme.light,
+      setup: AppSetup(
+        extraOverrides: [
+          aiImportNotifierProvider.overrideWith(
+            () => FakeAiImport(_state('Upper Body')),
+          ),
+        ],
+      ),
+    );
+    await _openResults(app);
+    await app.tap(find.byKey(const Key('ai_already_here')));
+
+    expect(find.textContaining('Più simili'), findsOneWidget);
+    expect(find.byKey(const Key('already_here_nothing_similar')), findsNothing);
+    await app.finish();
+  });
+
   testWidgets('Accessory usa Varie e il gruppo altri si può espandere', (
     tester,
   ) async {

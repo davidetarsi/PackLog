@@ -195,6 +195,21 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Senza capi simili lo si dice, prima degli altri: così
+                    // si capisce che il controllo c'è stato.
+                    if (similar.isEmpty)
+                      Padding(
+                        key: const Key('already_here_nothing_similar'),
+                        padding: EdgeInsets.only(top: context.spacingMd),
+                        child: Text(
+                          houseName == null
+                              ? 'ai_import.nothing_similar_default'.tr()
+                              : 'ai_import.nothing_similar'.tr(
+                                  args: [houseName],
+                                ),
+                          style: theme.textTheme.bodyLarge?.strong,
+                        ),
+                      ),
                     if (similar.isNotEmpty) ...[
                       DsGroupHeader(
                         label: 'ai_import.most_similar'.tr(),

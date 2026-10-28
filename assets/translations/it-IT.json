@@ -601,6 +601,8 @@
     "to_check": {"one": "{} da controllare", "other": "{} da controllare"},
     "from_photo": "Dalla foto: {}",
     "most_similar": "Più simili",
+    "nothing_similar": "Niente di simile in {}",
+    "nothing_similar_default": "Niente di simile in casa",
     "others_of": "Altri {}",
     "others_items": "Altri oggetti",
     "already_here": "C'è già?",
