@@ -72,3 +72,30 @@ test("dalla foto: immagine nel messaggio, un capo o tanti, testo libero = nessun
   const tanti = JSON.stringify(Array(20).fill(pile));
   assert.equal((await schedeDaFoto("x", { modello: modelloFinto([tanti], []), jev: null })).items.length, MAX_CAPI_SCAN);
 });
+
+test("in inglese: il nome dallo scan e le note di Jev in inglese, il resto uguale", async () => {
+  assert.equal(promptScan("it"), promptScan());
+  assert.equal(promptNome("felpa", "it"), promptNome("felpa"));
+  const scan = promptScan("en");
+  assert.match(scan, /Short descriptive name in English, e\.g\. "Leather jacket"/);
+  assert.doesNotMatch(scan, /in Italian/);
+  // Il colore resta la parola italiana della tavolozza: la traduce l'app.
+  assert.match(scan, /"baseColor": string \(ONE OF: "Bianco", "Nero"/);
+  assert.match(promptNome("hoodie", "en"), /in English: "hoodie"/);
+  assert.doesNotMatch(promptNome("hoodie", "en"), /in Italian/);
+
+  const chiamate: unknown[][] = [];
+  const stati: Record<string, unknown>[] = [];
+  const jev: ChiediJev = async (stato) => {
+    stati.push(stato as Record<string, unknown>);
+    return { answers: {} };
+  };
+  await schedeDaFoto("aGVsbG8=", { modello: modelloFinto([JSON.stringify([pile])], chiamate), jev }, "en");
+  const testo = (chiamate[0][0] as { type: string; text?: string }[]).find((b) => b.type === "text")!.text;
+  assert.equal(testo, scan);
+  assert.match(String(stati[0].note), /written in English by another model/);
+
+  await schedaDaNome("hoodie", { modello: modelloFinto([JSON.stringify(pile)], chiamate), jev }, "en");
+  assert.equal(chiamate[1][0], promptNome("hoodie", "en"));
+  assert.match(String(stati[1].note), /^Name typed by the user, in English,/);
+});

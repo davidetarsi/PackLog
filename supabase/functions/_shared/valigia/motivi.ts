@@ -6,6 +6,7 @@ import { lavanderiaPresunta } from "./dopo.ts";
 import { get } from "./slots.ts";
 import type { RigaArmadio } from "./capo.ts";
 import { massimo, minimo, o, ordina, pyRound, vero } from "./py.ts";
+import type { Lingua } from "../lingua.ts";
 
 type Record_ = Record<string, any>;
 
@@ -34,6 +35,15 @@ export const CATALOGO: Record<string, [string, number]> = {
   giorno: ["Tutti i giorni", 20],
   essenziale: ["Essenziali", 21],
   consigliato: ["Utile in viaggio", 30],
+};
+
+/** Le etichette del catalogo in inglese (l'italiano e' nel CATALOGO, uguale al bench). */
+const ETICHETTE_EN: Record<string, string> = {
+  culto: "Places of worship", formale: "Formal occasion", trekking: "Trekking", neve: "Snow", muta: "Diving",
+  mare: "Sea", sera: "For the evening", capospalla_caldo: "Cold", pioggia: "Rain", strato_caldo: "Warm layer",
+  strato_base: "Base layer", testa: "Cold", collo: "Cold", guanti: "Cold", riverbero: "Snow or altitude",
+  scarpe_neve: "Snow and ice", sole: "Sun", cammino: "Comfortable shoes", secondo_paio: "Second pair",
+  vento: "Mid-season", giorno: "Every day", essenziale: "Essentials", consigliato: "Handy on the trip",
 };
 
 /** Nomi fissi degli slot che mette il codice del generatore. */
@@ -81,6 +91,8 @@ interface Contesto {
   meteo: Record_;
   attivita: string[];
   richiesti: Map<string, Record_>;
+  /** La lingua delle frasi per l'utente (la scelta dei motivi non cambia). */
+  lingua: Lingua;
 }
 
 const gradi = (t: number | null) => (t != null ? `${pyRound(t)}°` : "?");
@@ -92,7 +104,7 @@ function attivitaDi(sc: Record_): string[] {
 }
 
 /** Dati del viaggio che servono alle frasi: giorni, clima per tappa, attivita'. */
-export function contesto(v: Valigia): Contesto {
+export function contesto(v: Valigia, lingua: Lingua = "it"): Contesto {
   const sc = v.scenario, m = o(v.meteo, {}) as Record_, s = v.slots;
   const tappe = new Map<string, Record_>();
   if (vero(get(m, "_per_tappa"))) {
@@ -120,7 +132,7 @@ export function contesto(v: Valigia): Contesto {
     trekking: att.some((a) => ["trekking", "escursion", "cammino", "hiking", "alpinismo"]
       .some((r) => a.toLowerCase().includes(r))),
     escursioni: soloEscursioni(att),
-    meteo: m, attivita: att, richiesti,
+    meteo: m, attivita: att, richiesti, lingua,
   };
 }
 
@@ -150,6 +162,13 @@ function attivitaCapo(ctx: Contesto, tappeCapo: string[]): unknown[] {
 
 /** L'etichetta del motivo, detta con le parole del viaggio. */
 export function etichetta(codice: string, ctx: Contesto): string {
+  if (ctx.lingua === "en") {
+    if (codice === "trekking" && ctx.escursioni) return "Hikes";
+    if (codice === "mare") {
+      return ({ mare: "Sea", terme: "Hot springs", piscina: "Pool" } as Record<string, string>)[acqua(ctx.attivita)] ?? "Water";
+    }
+    return ETICHETTE_EN[codice];
+  }
   if (codice === "trekking" && ctx.escursioni) return "Escursioni";
   if (codice === "mare") {
     return ({ mare: "Mare", terme: "Terme", piscina: "Piscina" } as Record<string, string>)[acqua(ctx.attivita)] ?? "Acqua";
@@ -157,10 +176,10 @@ export function etichetta(codice: string, ctx: Contesto): string {
   return CATALOGO[codice][0];
 }
 
-function elenco(nomi: string[]): string {
+function elenco(nomi: string[], e = "e"): string {
   const n = [...new Set(nomi.filter((x) => x))];
   if (!n.length) return "";
-  return n.length === 1 ? n[0] : n.slice(0, -1).join(", ") + " e " + n[n.length - 1];
+  return n.length === 1 ? n[0] : n.slice(0, -1).join(", ") + ` ${e} ` + n[n.length - 1];
 }
 
 const a = (luogo: string) => (luogo.slice(0, 1).toLowerCase() === "a" ? "ad " : "a ") + luogo;
@@ -249,6 +268,7 @@ const FORMALI: [string, string][] = [
 ];
 
 export function frase(codice: string, capo: Record_, ctx: Contesto, nomeSlot = ""): string {
+  if (ctx.lingua === "en") return fraseEn(codice, capo, ctx, nomeSlot);
   const c = clima(ctx, get(capo, "tappe"));
   let dove = "";
   const tappeCapo = o(get(capo, "tappe"), []) as string[];
@@ -305,6 +325,68 @@ export function frase(codice: string, capo: Record_, ctx: Contesto, nomeSlot = "
   return "Utile per le attività del viaggio";
 }
 
+const FORMALI_EN: Record<string, string> = {
+  matrimon: "the wedding", cerimon: "the ceremony", riunion: "the work meetings", lavoro: "work",
+  congress: "the conference", opera: "the opera", gala: "the gala evening",
+};
+
+/** frase() in inglese: gli stessi casi, le stesse soglie. */
+function fraseEn(codice: string, capo: Record_, ctx: Contesto, nomeSlot: string): string {
+  const c = clima(ctx, get(capo, "tappe"));
+  let dove = "";
+  const tappeCapo = o(get(capo, "tappe"), []) as string[];
+  if (ctx.tappe.size && tappeCapo.length && tappeCapo.length < ctx.tappe.size && new Set(tappeCapo).size <= 3) {
+    const luoghi = elenco(tappeCapo, "and");
+    if (luoghi) dove = " in " + luoghi;
+  }
+  const att = ctx.attivita.join(" ").toLowerCase();
+  switch (codice) {
+    case "culto": {
+      const parte = nomeSlot === "ginocchia coperte" ? "knees covered" : "shoulders covered";
+      return `Visiting temples or churches${dove}: ${parte}`;
+    }
+    case "formale":
+      for (const [parola] of FORMALI) if (att.includes(parola)) return `For ${FORMALI_EN[parola]}${dove}`;
+      return `For smart occasions${dove}`;
+    case "trekking": return ctx.escursioni ? `For the hikes${dove}` : `For trekking${dove}`;
+    case "neve": return "For skiing and snow";
+    case "muta": return "For diving or surfing";
+    case "mare": {
+      const w = acqua(attivitaCapo(ctx, tappeCapo));
+      if (w === "terme") return `For the hot springs${dove}`;
+      if (w === "piscina") return `For the pool${dove}`;
+      if (get(capo, "subCategory") === "Swimwear") return w === "mare" ? `For the sea${dove}` : `For swimming${dove}`;
+      return `Sea or pool${dove}`;
+    }
+    case "sera": return "For dinners and evenings out: something presentable";
+    case "capospalla_caldo": return `Lows down to ${gradi(c.tmin_ass)}: you need something warm${dove}`;
+    case "pioggia": {
+      const n = pyRound(o(c.pioggia, 0) as number);
+      return n >= 2 ? `About ${n} rainy days expected${dove}` : `Rain possible${dove}`;
+    }
+    case "strato_caldo": {
+      const t = c.tmin;
+      if (t != null && t <= 8) return `Low of ${gradi(t)}: a warm layer under your jacket`;
+      if (t != null && t > 18) return `Low of ${gradi(t)}: something light for cool evenings`;
+      return `Low of ${gradi(t)}: a warm layer for evenings and cool weather`;
+    }
+    case "strato_base": return `Low of ${gradi(c.tmin)}: a light layer under your sweaters`;
+    case "testa": return `Low of ${gradi(c.tmin)}: keep your head covered`;
+    case "collo": return `Low of ${gradi(c.tmin)}: keep your neck covered`;
+    case "guanti": return `Low of ${gradi(c.tmin)}: keep your hands covered`;
+    case "scarpe_neve": return `Low of ${gradi(c.tmin)}: shoes that can handle snow and wet`;
+    case "riverbero": return "Snow, glaciers or altitude: protects from the glare";
+    case "sole": return "Strong sun or days outdoors";
+    case "cammino": return "Lots of walking: a closed, comfortable shoe";
+    case "secondo_paio": return `${ctx.giorni} days: a second pair of shoes`;
+    case "vento": return `For wind and cool evenings${dove}`;
+    case "giorno": return `For every day${dove}`;
+    case "essenziale": return "";
+  }
+  if (get(capo, "subCategory") === "Scarf") return "A light scarf: covers shoulders or neck when needed";
+  return "Useful for the trip's activities";
+}
+
 export interface Motivo { codice: string; etichetta: string; frase: string; anche: string[]; note: string[] }
 
 /** Il motivo principale e le note del capo. */
@@ -318,9 +400,10 @@ export function motivoCapo(capo: Record_, ctx: Contesto): Motivo {
   }
   const [codice, nome] = minimo(candidati, (x) => CATALOGO[x[0]][1])!;
   const note: string[] = [];
-  if (vero(get(capo, "in_partenza"))) note.push("Da indossare in partenza");
+  const en = ctx.lingua === "en";
+  if (vero(get(capo, "in_partenza"))) note.push(en ? "Wear it when you leave" : "Da indossare in partenza");
   const manche = (o(get(capo, "assegnazioni"), []) as Record_[]).flatMap((a) => o(get(a, "manchevolezze"), []) as unknown[]);
-  if (get(capo, "match") === "ripiego" || manche.length) note.push("Il più adatto che hai");
+  if (get(capo, "match") === "ripiego" || manche.length) note.push(en ? "The best fit you have" : "Il più adatto che hai");
   const et = etichetta(codice, ctx);
   const altri = ordina(new Set(candidati.filter(([c]) => c !== codice).map(([c]) => etichetta(c, ctx))))
     .filter((e) => e !== et);
@@ -328,6 +411,7 @@ export function motivoCapo(capo: Record_, ctx: Contesto): Motivo {
 }
 
 const pezzi = (n: number) => (n === 1 ? "1 pezzo" : `${n} pezzi`);
+const pezziEn = (n: number) => (n === 1 ? "1 piece" : `${n} pieces`);
 
 /** Per i capi di tutti i giorni: perche' sono QUANTI sono (T-shirt x10). */
 export function fraseQuantita(gruppo: Record_[], ctx: Contesto): string {
@@ -336,6 +420,18 @@ export function fraseQuantita(gruppo: Record_[], ctx: Contesto): string {
   const c = clima(ctx, null);
   const caldo = c.tmax != null && c.tmax > 24;
   const sopra = get(gruppo[0], "category") === "Upper Body";
+  if (ctx.lingua === "en") {
+    const inizio = `${pezziEn(p)} for ${g} days`;
+    if (ctx.lavanderia && p > 1) return `${inizio}: washed along the way`;
+    if (ctx.lavatrice && g > 5) return `${inizio}: washed along the way with the washing machine`;
+    if (caldo && sopra && p >= Math.min(g, 4)) return `${inizio}: one a day in the heat`;
+    if (caldo && !sopra && p > 1) return `${inizio}: changed more often in the heat`;
+    if (p > 1) {
+      const ogni = Math.max(1, Math.floor(g / p + 0.5));
+      return ogni === 1 ? `${inizio}: one a day` : `${inizio}: one every ${ogni} days or so`;
+    }
+    return "";
+  }
   if (ctx.lavanderia && p > 1) return `${pezzi(p)} per ${g} giorni: si lavano strada facendo`;
   if (ctx.lavatrice && g > 5) return `${pezzi(p)} per ${g} giorni: con la lavatrice si rilavano strada facendo`;
   if (caldo && sopra && p >= Math.min(g, 4)) return `${pezzi(p)} per ${g} giorni: col caldo uno al giorno`;
@@ -350,6 +446,14 @@ export function fraseQuantita(gruppo: Record_[], ctx: Contesto): string {
 
 export function fraseEssenziale(e: Record_, ctx: Contesto): string {
   const q = get(e, "quantita", 1) as number, g = ctx.giorni;
+  if (ctx.lingua === "en") {
+    if (["pigiama", "pyjama", "pajama", "camicia da notte"].includes(get(e, "radice"))) return "One for the trip";
+    if (q <= 1) return "One is enough for the trip";
+    if (ctx.lavanderia && q < g) return `${q}: washing along the way they last ${q - 1} days, plus a spare`;
+    if (ctx.lavatrice && q < g) return `${q}: with the washing machine they last ${q - 1} days, plus a spare`;
+    if (q === g + 1) return `${q}: one a day plus a spare`;
+    return `${q} for ${g} days`;
+  }
   if (["pigiama", "pyjama", "pajama", "camicia da notte"].includes(get(e, "radice"))) return "Uno per il viaggio";
   if (q <= 1) return "Uno basta per il viaggio";
   if (ctx.lavanderia && q < g) return `${q}: lavando strada facendo bastano per ${q - 1} giorni, più un ricambio`;
@@ -379,8 +483,8 @@ export interface MotiviValigia {
 }
 
 /** Tutti i motivi di una valigia: capi, riepilogo per gruppo, essenziali. */
-export function motiviValigia(v: Valigia, tag: Record<string, string[]>): MotiviValigia {
-  const ctx = contesto(v);
+export function motiviValigia(v: Valigia, tag: Record<string, string[]>, lingua: Lingua = "it"): MotiviValigia {
+  const ctx = contesto(v, lingua);
   const s = v.slots;
   const capi: Record_[] = [];
   for (const x0 of [...s.ideali, ...s.ripieghi] as Record_[]) {
@@ -398,7 +502,7 @@ export function motiviValigia(v: Valigia, tag: Record<string, string[]>): Motivi
   const riepilogo: Record<string, string> = {};
   for (const [sub, g] of gruppi) riepilogo[String(sub)] = fraseQuantita(g, ctx);
   const essenziali = (o(get(s, "essenziali"), []) as Record_[]).map((e) => ({
-    ...e, motivo: { codice: "essenziale", etichetta: "Essenziali", frase: fraseEssenziale(e, ctx), anche: [], note: [] },
+    ...e, motivo: { codice: "essenziale", etichetta: etichetta("essenziale", ctx), frase: fraseEssenziale(e, ctx), anche: [], note: [] },
   }));
   return { capi, riepilogo, essenziali };
 }
@@ -410,6 +514,27 @@ export const NOMI_PLURALI: Record<string, string> = {
   Dress: "vestiti", "Crop Top": "top", "Thermal Top": "maglie termiche",
   "Thermal Bottoms": "pantaloni termici",
 };
+/** [singolare, plurale, paio]: "1 T-shirt", "3 T-shirts", "2 pairs of jeans". */
+const NOMI_EN: Record<string, [string, string, boolean]> = {
+  "T-Shirt": ["T-shirt", "T-shirts", false], Shirt: ["shirt", "shirts", false], Polo: ["polo shirt", "polo shirts", false],
+  "Tank Top": ["tank top", "tank tops", false], Shorts: ["shorts", "shorts", true], Trousers: ["trousers", "trousers", true],
+  Jeans: ["jeans", "jeans", true], Skirt: ["skirt", "skirts", false], Leggings: ["leggings", "leggings", true],
+  Sweatpants: ["sweatpants", "sweatpants", true], Dress: ["dress", "dresses", false], "Crop Top": ["crop top", "crop tops", false],
+  "Thermal Top": ["thermal top", "thermal tops", false], "Thermal Bottoms": ["thermal bottoms", "thermal bottoms", true],
+  Hoodie: ["hoodie", "hoodies", false], Sweatshirt: ["sweatshirt", "sweatshirts", false],
+  Sweater: ["sweater", "sweaters", false], Fleece: ["fleece", "fleeces", false], Swimwear: ["swimsuit", "swimsuits", false],
+  "Ski Pants": ["ski trousers", "ski trousers", true], Wetsuit: ["wetsuit", "wetsuits", false],
+};
+
+/** "1 T-shirt", "3 T-shirts", "1 pair of jeans", "2 pairs of jeans"; un tipo sconosciuto com'e'. */
+function quantiEn(n: number, sub: string): string {
+  const voce = NOMI_EN[sub];
+  if (!voce) return `${n} ${sub.toLowerCase()}`;
+  const [uno, tanti, paio] = voce;
+  if (paio) return `${n} ${n === 1 ? "pair" : "pairs"} of ${tanti}`;
+  return `${n} ${n === 1 ? uno : tanti}`;
+}
+
 /** Nomi femminili: "2 camicie: una ogni 4 giorni" (non "uno"). */
 const FEMMINILI = new Set(["T-Shirt", "Shirt", "Polo", "Tank Top", "Skirt", "Thermal Top"]);
 
@@ -420,8 +545,11 @@ export interface Punto { codice: string; titolo: string; frasi: string[]; capi: 
 
 /** La scheda "Perche' queste scelte": un punto per motivo, nell'ordine del
  *  catalogo, con i capi che ci rientrano. */
-export function percheValigia(v: Valigia, tag: Record<string, string[]>, m = motiviValigia(v, tag)): Punto[] {
-  const ctx = contesto(v);
+export function percheValigia(v: Valigia, tag: Record<string, string[]>, m?: MotiviValigia,
+  lingua: Lingua = "it"): Punto[] {
+  m ??= motiviValigia(v, tag, lingua);
+  const ctx = contesto(v, lingua);
+  const en = lingua === "en";
   const gruppi = new Map<string, Record_[]>();
   for (const x of m.capi) {
     const k = x.motivo.codice;
@@ -442,14 +570,23 @@ export function percheValigia(v: Valigia, tag: Record<string, string[]>, m = mot
           .reduce((t, x) => t + (get(x, "quantita", 1) as number), 0);
         const i = testo.indexOf(": ");
         let resto = i < 0 ? testo : testo.slice(i + 2);
+        if (en) {
+          frasi.push(`${quantiEn(n, sub)}: ` + resto);
+          continue;
+        }
         if (FEMMINILI.has(sub)) resto = resto.replace("uno ", "una ");
         frasi.push(`${n} ${NOMI_PLURALI[sub] ?? sub.toLowerCase()}: ` + resto);
       }
-      if (!frasi.length) frasi = ["Da usare tutti i giorni"];
+      if (!frasi.length) frasi = [en ? "For every day" : "Da usare tutti i giorni"];
     } else if (codice === "culto") {
-      const parti = new Set(frasi.map((f) => (f.includes("ginocchia") ? "ginocchia" : "spalle")));
       const dove = frasi[0].split(":")[0];
-      frasi = [`${dove}: ` + ordina(parti, (x) => x, true).join(" e ") + " coperte, con capi leggeri"];
+      if (en) {
+        const parti = new Set(frasi.map((f) => (f.includes("knees") ? "knees" : "shoulders")));
+        frasi = [`${dove}: ` + ordina(parti, (x) => x, true).join(" and ") + " covered, in light clothes"];
+      } else {
+        const parti = new Set(frasi.map((f) => (f.includes("ginocchia") ? "ginocchia" : "spalle")));
+        frasi = [`${dove}: ` + ordina(parti, (x) => x, true).join(" e ") + " coperte, con capi leggeri"];
+      }
     } else if (frasi.length > 1) {
       frasi = [massimo(frasi, (f) => [...f].length)!]; // la stessa idea detta meglio
     }
@@ -457,8 +594,10 @@ export function percheValigia(v: Valigia, tag: Record<string, string[]>, m = mot
   }
   if (m.essenziali.length) {
     punti.push({
-      codice: "essenziale", titolo: "Essenziali",
-      frasi: [`${ctx.giorni} giorni` + (ctx.lavanderia ? " lavando strada facendo" : ctx.lavatrice ? " con la lavatrice" : "")],
+      codice: "essenziale", titolo: etichetta("essenziale", ctx),
+      frasi: [en
+        ? `${ctx.giorni} days` + (ctx.lavanderia ? ", washing along the way" : ctx.lavatrice ? " with the washing machine" : "")
+        : `${ctx.giorni} giorni` + (ctx.lavanderia ? " lavando strada facendo" : ctx.lavatrice ? " con la lavatrice" : "")],
       capi: m.essenziali.map((e) => (e.quantita > 1 ? `${e.item} ×${e.quantita}` : e.item)),
     });
   }

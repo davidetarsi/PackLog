@@ -4,7 +4,9 @@
 // l'utente vede.
 // Porting di scheda_capo.py del bench (oracolo in _shared/capi/test).
 //
-// POST { name: "pantaloni da trekking decathlon" }  oppure  { image_base64 }
+// POST { name: "pantaloni da trekking decathlon" }  oppure  { image_base64 },
+//   piu' lang facoltativo ("it" | "en", lingua dell'app: il nome dallo scan;
+//   senza, italiano come le versioni vecchie dell'app)
 //   -> { items: [{ metadata, app_category, dubbi }], note_tecniche }
 // metadata: da salvare in items.ai_metadata (con waterResistance e bulk);
 // app_category: items.category (vestiti, varie, toiletries, elettronica);
@@ -18,6 +20,7 @@ import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
 import { RispostaIlleggibile, schedaDaNome, schedeDaFoto } from "../_shared/capi/analisi.ts";
 import { pulisciNome } from "../_shared/capi/scheda.ts";
+import { linguaDa } from "../_shared/lingua.ts";
 import { claudeHttp, type Contenuto } from "../_shared/claude.ts";
 import { jevHttp } from "../_shared/valigia/jev.ts";
 import {
@@ -66,6 +69,8 @@ Deno.serve(async (req) => {
 
   const conNome = "name" in b, conFoto = "image_base64" in b;
   if (conNome === conFoto) return errore(400, "Send exactly one of 'name' or 'image_base64'");
+  const lingua = linguaDa(b.lang);
+  if (!lingua) return errore(400, "'lang' must be 'it' or 'en'");
 
   if (conNome) {
     if (typeof b.name !== "string" || !pulisciNome(b.name)) return errore(400, "'name' must be a non-empty string");
@@ -74,7 +79,7 @@ Deno.serve(async (req) => {
     if (ok instanceof Response) return ok;
     if (!ok) return errore(429, "Item name rate limit reached");
     try {
-      const r = await schedaDaNome(b.name, servizi);
+      const r = await schedaDaNome(b.name, servizi, lingua);
       for (const n of r.note_tecniche) console.warn("[item-metadata]", n);
       return json(200, r);
     } catch (e) {
@@ -89,7 +94,7 @@ Deno.serve(async (req) => {
   if (consumo instanceof Response) return consumo;
   if (!consumo) return errore(429, "AI usage limit reached");
   try {
-    const r = await schedeDaFoto(immagine, servizi);
+    const r = await schedeDaFoto(immagine, servizi, lingua);
     for (const n of r.note_tecniche) console.warn("[item-metadata]", n);
     return json(200, r);
   } catch (e) {

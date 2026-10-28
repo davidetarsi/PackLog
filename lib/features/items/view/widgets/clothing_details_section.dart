@@ -269,7 +269,7 @@ class _ColorChoiceState extends State<_ColorChoice> {
     Set<String> selected = {};
     if (current != null && current.isNotEmpty) {
       final match = options.where(
-        (o) => o.toLowerCase() == current.toLowerCase(),
+        (o) => colorIdentity(o) == colorIdentity(current),
       );
       if (match.isNotEmpty) {
         selected = {match.first};

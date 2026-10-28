@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/monitoring/monitoring_service.dart';
 import '../../../shared/config/app_config.dart';
+import '../../../shared/providers/language_locale.dart';
 import '../service/ai_clothing_analyzer_service.dart';
 
 part 'ai_clothing_analyzer_service_provider.g.dart';
@@ -13,6 +14,7 @@ AiClothingAnalyzerService aiClothingAnalyzerService(Ref ref) {
   return AiClothingAnalyzerService(
     proxyUrl: '${AppConfig.supabaseUrl}/functions/v1/item-metadata',
     anonKey: AppConfig.supabaseAnonKey,
+    language: () => ref.read(languageLocaleProvider),
     analytics: ref.watch(coreAnalyticsServiceProvider),
     monitoring: ref.watch(monitoringServiceProvider),
   );

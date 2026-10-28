@@ -5,6 +5,7 @@
 import { caricaArmadio, type RigaArmadio } from "./capo.ts";
 import { type ChiediJev, datiJev, type DatiJev, type ProfiloNoto } from "./jev.ts";
 import { motiviValigia, percheValigia, tagArmadio } from "./motivi.ts";
+import type { Lingua } from "../lingua.ts";
 import { attivitaScenario, promptValigia } from "./prompt.ts";
 import { parseJsonBlock, strategySlots } from "./slots.ts";
 import { strategySlotsMultitappa } from "./tappe.ts";
@@ -57,6 +58,8 @@ export interface Servizi {
   /** null: si va avanti senza Jev. */
   jev: ChiediJev | null;
   profiliNoti?: Record<string, ProfiloNoto>;
+  /** La lingua dei motivi e della scheda "perche'"; predefinita l'italiano del bench. */
+  lingua?: Lingua;
 }
 
 export interface Risultato {
@@ -103,9 +106,9 @@ export async function generaValigia(sc: Record_, righe: RigaArmadio[], s: Serviz
   const valigia = valigiaDa(risposta.testo, sc, geo, meteo, righe, jev);
   const v = { scenario: sc, meteo, slots: valigia };
   const tag = tagArmadio(righe);
-  const motivi = motiviValigia(v, tag);
+  const motivi = motiviValigia(v, tag, s.lingua);
   return {
-    valigia, motivi, perche: percheValigia(v, tag, motivi), geo, meteo,
+    valigia, motivi, perche: percheValigia(v, tag, motivi, s.lingua), geo, meteo,
     jev: { profili_nuovi: jev.profili_nuovi, errori: jev.errori }, uso: risposta.uso,
     diagnostica: { prompt, testo: risposta.testo, jev },
   };

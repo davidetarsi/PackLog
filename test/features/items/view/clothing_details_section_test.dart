@@ -134,7 +134,7 @@ void main() {
       tester,
       value: details,
       onChanged: (_) {},
-      userColors: const ['Rosa chiaro'],
+      userColors: const ['Verde salvia'],
     );
     await tester.pumpAndSettle();
 
@@ -142,8 +142,8 @@ void main() {
         .widgetList<DsChoicePill>(find.byType(DsChoicePill))
         .map((p) => p.label)
         .toList();
-    final rosa = labels.indexOf('Rosa chiaro');
-    expect(rosa, greaterThan(labels.indexOf(colorLabel('Beige'))));
+    final salvia = labels.indexOf('Verde salvia');
+    expect(salvia, greaterThan(labels.indexOf(colorLabel('Beige'))));
   });
 
   testWidgets('"+ Altro colore" aggiunge il colore scritto e lo seleziona', (
@@ -155,11 +155,11 @@ void main() {
 
     await tester.tap(find.text('+ Altro colore'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '  Rosa chiaro ');
+    await tester.enterText(find.byType(TextField), '  Verde salvia ');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
 
-    expect(emitted?.color, 'Rosa chiaro');
+    expect(emitted?.color, 'Verde salvia');
     expect(find.byType(TextField), findsNothing);
   });
 

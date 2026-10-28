@@ -29,7 +29,9 @@ class ItemMetadataService {
     required String anonKey,
     http.Client? client,
     String? Function()? jwtProvider,
+    String Function()? language,
   }) : _url = url,
+       _language = language ?? (() => 'it'),
        _anonKey = anonKey,
        _client = client ?? http.Client(),
        _jwtProvider =
@@ -40,6 +42,9 @@ class ItemMetadataService {
   final String _anonKey;
   final http.Client _client;
   final String? Function() _jwtProvider;
+
+  /// La lingua dell'app ('it' o 'en'), per i testi che scrive il server.
+  final String Function() _language;
 
   Future<ItemMetadataResult?> fromName(String name) async {
     try {
@@ -53,7 +58,9 @@ class ItemMetadataService {
               'apikey': _anonKey,
               'Content-Type': 'application/json',
             },
-            body: utf8.encode(jsonEncode({'name': name.trim()})),
+            body: utf8.encode(
+              jsonEncode({'name': name.trim(), 'lang': _language()}),
+            ),
           )
           .timeout(const Duration(seconds: 60));
       if (response.statusCode != 200) {
