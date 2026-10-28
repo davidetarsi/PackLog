@@ -415,6 +415,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
           plan: plan,
           setup: setup,
           houseId: houseId,
+          language: context.locale.languageCode,
           luggage: luggage,
         ),
         houseId: houseId,

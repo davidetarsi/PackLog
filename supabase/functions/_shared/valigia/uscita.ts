@@ -3,6 +3,7 @@
 // su cio' che manca. Non tocca la scelta dei capi: lavora sul risultato del generatore.
 import { lavanderiaPresunta } from "./dopo.ts";
 import { vero } from "./py.ts";
+import type { Lingua } from "../lingua.ts";
 
 type Record_ = Record<string, any>;
 
@@ -50,6 +51,54 @@ const NOME_CATEGORIA: Record<string, string> = {
   "Upper Body": "una maglia", "Lower Body": "un paio di pantaloni", "Full Body": "un vestito",
   "Shoes": "un paio di scarpe", "Outerwear": "una giacca", "Accessory": "un accessorio",
 };
+
+// In inglese l'articolo e "a pair of" si mettono scrivendo la frase: "a light sweater",
+// "more than one pair of jeans". [nome, paio]
+const EN_SOTTOCATEGORIA: Record<string, [string, boolean]> = {
+  "T-Shirt": ["T-shirt", false], "Shirt": ["shirt", false], "Polo": ["polo shirt", false],
+  "Hoodie": ["hoodie", false], "Sweatshirt": ["sweatshirt", false], "Sweater": ["sweater", false],
+  "Tank Top": ["tank top", false], "Crop Top": ["crop top", false], "Thermal Top": ["thermal top", false],
+  "Fleece": ["fleece", false], "Jeans": ["jeans", true], "Shorts": ["shorts", true], "Trousers": ["trousers", true],
+  "Leggings": ["leggings", true], "Skirt": ["skirt", false], "Sweatpants": ["sweatpants", true],
+  "Swimwear": ["swimsuit", false], "Thermal Bottoms": ["thermal bottoms", true], "Ski Pants": ["ski trousers", true],
+  "Wetsuit": ["wetsuit", false], "Dress": ["dress", false], "Sneakers": ["sneakers", true],
+  "Sandals": ["sandals", true], "Boots": ["boots", true], "Flip-Flops": ["flip-flops", true],
+  "Loafers": ["loafers", true], "Dress Shoes": ["dress shoes", true], "Hiking Boots": ["hiking boots", true],
+  "Water Shoes": ["water shoes", true], "Snow Boots": ["snow boots", true], "Coat": ["coat", false],
+  "Rain Jacket": ["rain jacket", false], "Down Jacket": ["down jacket", false], "Windbreaker": ["windbreaker", false],
+  "Blazer": ["blazer", false], "Ski Jacket": ["ski jacket", false], "Ski Suit": ["ski suit", false],
+  "Casual Jacket": ["casual jacket", false], "Vest": ["gilet", false], "Cap/Hat": ["hat", false],
+  "Belt": ["belt", false], "Bag": ["bag", false], "Scarf": ["scarf", false], "Sunglasses": ["sunglasses", true],
+  "Jewelry": ["piece of jewellery", false], "Watch": ["watch", false], "Gloves": ["gloves", true],
+  "Tie": ["tie", false], "Umbrella": ["umbrella", false],
+};
+const EN_CATEGORIA: Record<string, [string, boolean]> = {
+  "Upper Body": ["top", false], "Lower Body": ["trousers", true], "Full Body": ["dress", false],
+  "Shoes": ["shoes", true], "Outerwear": ["jacket", false], "Accessory": ["accessory", false],
+};
+
+const conArticolo = (t: string) => (/^[aeiou]/i.test(t) ? "an " : "a ") + t;
+
+/** "a sweater", "a light sweater", "a pair of light trousers". */
+function unoEn([nome, paio]: [string, boolean], leggero = false): string {
+  const t = (leggero ? "light " : "") + nome;
+  return paio ? `a pair of ${t}` : conArticolo(t);
+}
+
+/** Il capo del gap in inglese, dalla scelta fatta per l'italiano. */
+function capoEn(capo: { nome: string; sub: string | null; categoria: string }, leggero = false): string {
+  if (capo.nome === "una felpa o un maglione") {
+    return `${unoEn(EN_SOTTOCATEGORIA.Sweatshirt, leggero)} or ${unoEn(EN_SOTTOCATEGORIA.Sweater, leggero)}`;
+  }
+  const n = (capo.sub && EN_SOTTOCATEGORIA[capo.sub]) || EN_CATEGORIA[capo.categoria];
+  return n ? unoEn(n, leggero) : (leggero ? "a light item" : "an item");
+}
+
+/** "more than one sweater", "more than one pair of jeans". */
+function piuDiUnoEn(capo: { sub: string | null; categoria: string }): string {
+  const [nome, paio] = (capo.sub && EN_SOTTOCATEGORIA[capo.sub]) || EN_CATEGORIA[capo.categoria] || ["item", false];
+  return paio ? `more than one pair of ${nome}` : `more than one ${nome}`;
+}
 
 // Il meteo si nomina solo per i capi che lo riguardano: niente "pioggia" per un paio di
 // infradito, niente "freddo" per un costume. Altrimenti la frase dice "a questo viaggio".
@@ -111,15 +160,19 @@ function leggero(nome: string): string {
   return `${nome} ${nome.startsWith("una ") ? "leggera" : "leggero"}`;
 }
 
-/** "A", "A e B", "A, B e C" (oppure con "o"), senza nomi vuoti ne' ripetuti. */
-function elenco(valori: unknown[], congiunzione: "e" | "o"): string {
+/** "A", "A e B", "A, B e C" (oppure con "o", o in inglese "and"), senza nomi vuoti ne' ripetuti. */
+function elenco(valori: unknown[], congiunzione: "e" | "o" | "and"): string {
   const nomi = [...new Set(valori.map((n) => String(n ?? "").trim()).filter((n) => n !== ""))];
   if (nomi.length <= 1) return nomi.join("");
   return `${nomi.slice(0, -1).join(", ")} ${congiunzione} ${nomi[nomi.length - 1]}`;
 }
 
 /** "per Reykjavik", "per Reykjavik e Akureyri"; senza tappe: il viaggio intero. */
-function perTappe(g: Record_): string {
+function perTappe(g: Record_, lingua: Lingua = "it"): string {
+  if (lingua === "en") {
+    const nomi = elenco(Array.isArray(g.tappe) ? g.tappe : [], "and");
+    return nomi ? `for ${nomi}` : "for the trip";
+  }
   const nomi = elenco(Array.isArray(g.tappe) ? g.tappe : [], "e");
   return nomi ? `per ${nomi}` : "per il viaggio";
 }
@@ -146,21 +199,40 @@ function meteoDelGap(g: Record_, capo: { sub: string | null; categoria: string }
 
 // Calzature da acqua: se il viaggio ha mare o terme, la frase lo dice (le infradito di Reykjavik).
 const DA_ACQUA = new Set(["Flip-Flops", "Sandals", "Water Shoes"]);
-const LUOGHI_D_ACQUA: [string, string][] = [["mare", "al mare"], ["immersioni", "al mare"], ["terme", "alle terme"]];
+const LUOGHI_D_ACQUA: [string, string, string][] = [["mare", "al mare", "the sea"], ["immersioni", "al mare", "the sea"],
+  ["terme", "alle terme", "the hot springs"]];
+
+/** Le frasi fisse degli avvisi. */
+const TESTI = {
+  it: {
+    freddoEPioggia: "al freddo e alla pioggia previsti", freddo: "al freddo previsto", pioggia: "alla pioggia prevista",
+    viaggio: "a questo viaggio", e: "e" as const,
+    pesante: "è troppo pesante per il clima previsto", nonAdatto: (a: string) => `non è adatto ${a}`,
+    eleganteEFreddo: "non è abbastanza elegante né adatto al freddo previsto", elegante: "non è abbastanza elegante",
+  },
+  en: {
+    freddoEPioggia: "the expected cold and rain", freddo: "the expected cold", pioggia: "the expected rain",
+    viaggio: "this trip", e: "and" as const,
+    pesante: "is too heavy for the expected weather", nonAdatto: (a: string) => `isn't suited to ${a}`,
+    eleganteEFreddo: "isn't smart enough or suited to the expected cold", elegante: "isn't smart enough",
+  },
+};
 
 /** A cosa non basta quello che c'e': il freddo e la pioggia solo se il capo li riguarda;
  *  per le calzature da acqua il mare o le terme delle tappe del mancante. */
 function adattoA(g: Record_, capo: { sub: string | null; categoria: string }, viaggioFreddo = false,
-  attivita: string[] = []): string {
+  attivita: string[] = [], lingua: Lingua = "it"): string {
+  const t = TESTI[lingua];
   const { freddo, acqua } = meteoDelGap(g, capo, viaggioFreddo);
-  if (freddo && acqua) return "al freddo e alla pioggia previsti";
-  if (freddo) return "al freddo previsto";
-  if (acqua) return "alla pioggia prevista";
+  if (freddo && acqua) return t.freddoEPioggia;
+  if (freddo) return t.freddo;
+  if (acqua) return t.pioggia;
   if (capo.sub && DA_ACQUA.has(capo.sub)) {
-    const luoghi = elenco(LUOGHI_D_ACQUA.filter(([a]) => attivita.includes(a)).map(([, l]) => l), "e");
+    const luoghi = elenco(LUOGHI_D_ACQUA.filter(([a]) => attivita.includes(a))
+      .map(([, it, en]) => (lingua === "en" ? en : it)), t.e);
     if (luoghi) return luoghi;
   }
-  return "a questo viaggio";
+  return t.viaggio;
 }
 
 /** Le attivita' delle tappe del mancante (tutte, se non le dice), o quelle del viaggio. */
@@ -187,27 +259,30 @@ function troppoPesante(g: Record_, freddo: boolean): boolean {
 /** Perche' il candidato non va, dai suoi dati: troppo pesante, poco caldo, non regge la
  *  pioggia, poco elegante. Il soggetto e' sempre "Il piu' simile che hai". */
 function percheNonVa(g: Record_, capo: { sub: string | null; categoria: string }, viaggioFreddo: boolean,
-  attivita: string[]): string {
+  attivita: string[], lingua: Lingua = "it"): string {
+  const t = TESTI[lingua];
   const w = calore(g);
   const cw = g.candidato_warmth == null ? NaN : Number(g.candidato_warmth);
   const { freddo, acqua } = meteoDelGap(g, capo, viaggioFreddo);
   const wr = g.candidato_wr == null ? NaN : Number(g.candidato_wr);
   const req = Number(g.impermeabilita_richiesta ?? g.requiredWaterResistance ?? 0);
   const poco = { caldo: freddo && w !== null && Number.isFinite(cw) && cw < w[0], acqua: acqua && Number.isFinite(wr) && wr < req };
-  if (troppoPesante(g, freddo)) return "è troppo pesante per il clima previsto";
-  if (poco.caldo && poco.acqua) return "non è adatto al freddo e alla pioggia previsti";
-  if (poco.caldo) return "non è adatto al freddo previsto";
-  if (poco.acqua) return "non è adatto alla pioggia prevista";
+  if (troppoPesante(g, freddo)) return t.pesante;
+  if (poco.caldo && poco.acqua) return t.nonAdatto(t.freddoEPioggia);
+  if (poco.caldo) return t.nonAdatto(t.freddo);
+  if (poco.acqua) return t.nonAdatto(t.pioggia);
   if (soloElegante(g) || (Array.isArray(g.formality) && g.formality.length && g.formality.every(
     (x: unknown) => x === "Business" || x === "Formal" || x === "Smart Casual"))) {
     // Il lino a Mosca: il generatore lo scarta per l'eleganza, ma l'utente vede anche il freddo.
     const estivo = viaggioFreddo && Number.isFinite(cw) && cw <= 1 && !(capo.sub && MAI_PER_IL_FREDDO.has(capo.sub));
-    return estivo ? "non è abbastanza elegante né adatto al freddo previsto" : "non è abbastanza elegante";
+    return estivo ? t.eleganteEFreddo : t.elegante;
   }
-  return `non è adatto ${adattoA(g, capo, viaggioFreddo, attivita)}`;
+  return t.nonAdatto(adattoA(g, capo, viaggioFreddo, attivita, lingua));
 }
 
-export function copyMancante(g: Record_, viaggioFreddo = false, attivita: string[] = []): { titolo: string; perche: string } {
+export function copyMancante(g: Record_, viaggioFreddo = false, attivita: string[] = [],
+  lingua: Lingua = "it"): { titolo: string; perche: string } {
+  if (lingua === "en") return copyMancanteEn(g, viaggioFreddo, attivita);
   if (g.tipo === "volume_eccedente") {
     const nomi = elenco(Array.isArray(g.da_valutare) ? g.da_valutare : [], "e");
     return { titolo: "Il bagaglio è troppo pieno",
@@ -229,6 +304,30 @@ export function copyMancante(g: Record_, viaggioFreddo = false, attivita: string
   }
   return { titolo: `Manca ${capo.nome} ${tappe}`,
     perche: `Nell'armadio di questa casa non c'è niente di adatto ${adattoA(g, capo, viaggioFreddo, attivita)}.` };
+}
+
+/** copyMancante in inglese: le stesse scelte, le frasi scritte per l'inglese. */
+function copyMancanteEn(g: Record_, viaggioFreddo: boolean, attivita: string[]): { titolo: string; perche: string } {
+  if (g.tipo === "volume_eccedente") {
+    const nomi = elenco(Array.isArray(g.da_valutare) ? g.da_valutare : [], "and");
+    return { titolo: "Your luggage is too full",
+      perche: nomi ? `Consider a bigger bag, or leave one of these at home: ${nomi}.`
+        : "What this trip needs doesn't fit in the chosen luggage: consider a bigger one." };
+  }
+  const capo = capoDelGap(g, viaggioFreddo || (calore(g)?.[0] ?? 0) >= 3);
+  const tappe = perTappe(g, "en");
+  if (g.tipo === "quantita_insufficiente") {
+    return { titolo: `You need ${piuDiUnoEn(capo)} ${tappe}`,
+      perche: "This home's wardrobe has fewer than you need." };
+  }
+  const candidato = typeof g.candidato_scartato === "string" ? g.candidato_scartato.trim() : "";
+  if (g.tipo === "posseduto_ma_inadatto" && candidato) {
+    const leggero = troppoPesante(g, meteoDelGap(g, capo, viaggioFreddo).freddo);
+    return { titolo: `Missing ${capoEn(capo, leggero)} ${tappe}`,
+      perche: `The closest you have, ${candidato}, ${percheNonVa(g, capo, viaggioFreddo, attivita, "en")}.` };
+  }
+  return { titolo: `Missing ${capoEn(capo)} ${tappe}`,
+    perche: `Nothing in this home's wardrobe is suited to ${adattoA(g, capo, viaggioFreddo, attivita, "en")}.` };
 }
 
 /** Minima media sotto cui il viaggio (o la tappa) e' freddo, per i mancanti che non dicono il calore. */
@@ -254,11 +353,12 @@ function perQuestoArmadio(g: Record_, armadio: Set<string> | null): Record_ | nu
 
 /** Capi (uniti per item_id, quantita' sommata, tetto dell'armadio) e avvisi della valigia.
  *  meteo: quello della risposta del generatore; armadio: le sottocategorie dei capi della casa;
- *  viaggio: quello dell'app (giorni, lavatrice, tappe). */
+ *  viaggio: quello dell'app (giorni, lavatrice, tappe); lingua: quella dei testi degli avvisi. */
 export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenziali: Record_[] },
   salvate: Map<string, number | null>,
-  contesto: { meteo?: Record_ | null; armadio?: Iterable<string>; viaggio?: Record_ | null } = {},
+  contesto: { meteo?: Record_ | null; armadio?: Iterable<string>; viaggio?: Record_ | null; lingua?: Lingua } = {},
 ): { capi: CapoApp[]; avvisi: AvvisoApp[] } {
+  const en = contesto.lingua === "en";
   const armadio = contesto.armadio ? new Set(contesto.armadio) : null;
   // Lo stesso capo puo' stare in piu' tappe, come ideale e ripiego, o tra gli essenziali:
   // una riga sola, con la quantita' di tutti i posti in cui serve.
@@ -295,8 +395,9 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
       avvisi.push({
         codice: CODICE_POCHI,
         livello: essenziale && c.quantita - tetto > 1 ? "importante" : "utile",
-        titolo: `Ti servono più pezzi di ${c.item.trim()}`,
-        perche: `Ne servirebbero ${c.quantita}, nell'armadio ne hai ${tetto}.`,
+        titolo: en ? `You need more of ${c.item.trim()}` : `Ti servono più pezzi di ${c.item.trim()}`,
+        perche: en ? `You'd need ${c.quantita}, the wardrobe has ${tetto}.`
+          : `Ne servirebbero ${c.quantita}, nell'armadio ne hai ${tetto}.`,
         cerca: c.item.trim(),
       });
     }
@@ -306,7 +407,7 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
     const g = perQuestoArmadio(originale, armadio);
     if (!g) continue;
     const viaggioFreddo = freddoPer(g, contesto.meteo);
-    const { titolo, perche } = copyMancante(g, viaggioFreddo, attivitaPer(g, contesto.viaggio));
+    const { titolo, perche } = copyMancante(g, viaggioFreddo, attivitaPer(g, contesto.viaggio), contesto.lingua);
     const { freddo, acqua } = meteoDelGap(g, capoDelGap(g, viaggioFreddo), viaggioFreddo);
     avvisi.push({
       codice: String(g.tipo),
@@ -324,8 +425,9 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
   const v = contesto.viaggio;
   if (v && !(Array.isArray(v.tappe) && v.tappe.length) && lavanderiaPresunta(v.giorni, v.lavatrice)) {
     avvisi.push({
-      codice: CODICE_LAVANDERIA, livello: "utile", titolo: "Prevedi una lavanderia",
-      perche: "Il viaggio è lungo: la valigia conta di lavare i vestiti strada facendo.", cerca: null,
+      codice: CODICE_LAVANDERIA, livello: "utile", titolo: en ? "Plan to do laundry" : "Prevedi una lavanderia",
+      perche: en ? "It's a long trip: the packing list counts on washing clothes along the way."
+        : "Il viaggio è lungo: la valigia conta di lavare i vestiti strada facendo.", cerca: null,
     });
   }
 

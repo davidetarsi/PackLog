@@ -4,9 +4,11 @@
 // (profilo dei capi, voti, classificazione del viaggio), il meteo del viaggio,
 // poi il codice sceglie i capi e spiega perche'.
 //
-// POST { house_id, trip: { data_inizio, giorni, destinazione: {nome, paese, lat,
+// POST { house_id, lang?, trip: { data_inizio, giorni, destinazione: {nome, paese, lat,
 //   lon} | tappe: [{nome, paese, lat, lon, giorni, attivita, alloggio, lavatrice}],
 //   attivita, bagaglio, alloggio, lavatrice } }
+// lang: "it" | "en", la lingua dei testi per l'utente (motivi, perche, avvisi);
+// senza, italiano come le versioni vecchie dell'app. Il prompt resta in italiano.
 //   -> { valigia, motivi, perche, geo, meteo, note_tecniche, capi, avvisi }
 // Alloggio e lavatrice stanno per tappa (alloggio testo, lavatrice booleano); il
 // viaggio li ricava dalle tappe, o usa i propri se mandati (formato vecchio).
@@ -23,6 +25,7 @@ import { IngressoNonValido, validaViaggio } from "../_shared/valigia/ingresso.ts
 import { jevHttp, MODELLO as MODELLO_JEV, type ProfiloNoto } from "../_shared/valigia/jev.ts";
 import { uscitaApp } from "../_shared/valigia/uscita.ts";
 import { caricaArmadio, type RigaArmadio } from "../_shared/valigia/capo.ts";
+import { linguaDa } from "../_shared/lingua.ts";
 import {
   consumaCreditoAi, corpo, CORS_HEADERS, errore, json, restituisciCreditoAi, serviziMeteo, utente,
 } from "../_shared/servizi.ts";
@@ -53,6 +56,8 @@ Deno.serve(async (req) => {
   const chiaveJev = Deno.env.get("TYPESAFE_API_KEY");
 
   if (typeof b.house_id !== "string" || !UUID.test(b.house_id)) return errore(400, "'house_id' non valido");
+  const lingua = linguaDa(b.lang);
+  if (!lingua) return errore(400, "'lang' must be 'it' or 'en'");
   let viaggio;
   try {
     viaggio = validaViaggio(b.trip, new Date().toISOString().slice(0, 10));
@@ -102,6 +107,7 @@ Deno.serve(async (req) => {
       modello: conRiprova((prompt) => claude(prompt, MAX_TOKENS_VALIGIA)),
       jev: chiaveJev ? jevHttp(chiaveJev) : null,
       profiliNoti,
+      lingua,
     });
 
     const nuovi = Object.entries(r.jev.profili_nuovi).map(([id, p]) => ({
@@ -121,6 +127,7 @@ Deno.serve(async (req) => {
       ...uscitaApp(r.valigia, r.motivi as { capi: Record<string, any>[]; essenziali: Record<string, any>[] }, salvate, {
         meteo: r.meteo as Record<string, any> | null, viaggio: viaggio as Record<string, any>,
         armadio: caricaArmadio(righe as RigaArmadio[]).flatMap((g) => [g.sub_fine, g.sub_category]),
+        lingua,
       }),
     });
   } catch (e) {

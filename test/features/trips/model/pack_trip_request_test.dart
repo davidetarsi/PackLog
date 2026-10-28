@@ -54,6 +54,18 @@ void main() {
   final cabin = _luggage();
 
   group('packTripBody', () {
+    test('la lingua: italiano o inglese, le altre diventano inglese', () {
+      String? lang(String language) => packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: language,
+      )['lang'];
+      expect(lang('it'), 'it');
+      expect(lang('en'), 'en');
+      expect(lang('de'), 'en');
+    });
+
     test('una tappa sola: destinazione e campi di viaggio, mai tappe', () {
       final body = packTripBody(
         plan: _onePlacePlan,
@@ -67,9 +79,11 @@ void main() {
           },
         ),
         houseId: 'h1',
+        language: 'it',
         luggage: cabin,
       );
       expect(body['house_id'], 'h1');
+      expect(body['lang'], 'it');
       final trip = body['trip'] as Map<String, dynamic>;
       expect(trip.containsKey('tappe'), isFalse);
       expect(trip['data_inizio'], '2026-10-30');
@@ -91,6 +105,7 @@ void main() {
         plan: _onePlacePlan,
         setup: const AiPackingSetup(),
         houseId: 'h1',
+        language: 'it',
       );
       final trip = body['trip'] as Map<String, dynamic>;
       expect(trip.containsKey('alloggio'), isFalse);
@@ -117,6 +132,7 @@ void main() {
           },
         ),
         houseId: 'h1',
+        language: 'it',
         luggage: cabin,
       );
       final trip = body['trip'] as Map<String, dynamic>;
@@ -155,6 +171,7 @@ void main() {
           },
         ),
         houseId: 'h1',
+        language: 'it',
       );
       final tappe = (body['trip'] as Map<String, dynamic>)['tappe'] as List;
       expect(tappe.map((t) => (t as Map)['giorni']), [2, 2, 2]);
@@ -182,6 +199,7 @@ void main() {
           },
         ),
         houseId: 'h1',
+        language: 'it',
       );
       final trip = body['trip'] as Map<String, dynamic>;
       expect(trip['attivita'], ['immersioni', 'mare']);

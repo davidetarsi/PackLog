@@ -57,10 +57,13 @@ String? luggageDescription(LuggageModel? luggage) {
 ///
 /// Un solo luogo nel piano: `destinazione` e i campi di viaggio. Più luoghi:
 /// `tappe`, una voce per ogni periodo, con le risposte del suo luogo.
+/// [language] è la lingua dell'app: motivi e avvisi tornano in quella (le
+/// lingue diverse dall'italiano diventano inglese, come l'app).
 Map<String, dynamic> packTripBody({
   required TripWeatherRequest plan,
   required AiPackingSetup setup,
   required String houseId,
+  required String language,
   LuggageModel? luggage,
 }) {
   final stops = aiStopsOf(plan);
@@ -83,7 +86,11 @@ Map<String, dynamic> packTripBody({
         },
     ];
   }
-  return {'house_id': houseId, 'trip': trip};
+  return {
+    'house_id': houseId,
+    'lang': language == 'it' ? 'it' : 'en',
+    'trip': trip,
+  };
 }
 
 Map<String, dynamic> _place(WeatherStopRequest stop) => {
