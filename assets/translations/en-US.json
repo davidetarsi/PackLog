@@ -315,6 +315,8 @@
         "level_useful": "Useful",
         "warning_search": "Search the wardrobe",
         "warning_dismiss": "Got it",
+        "warning_read": "Read",
+        "discard_message": "Changes made since then will be lost. The suitcase packed by AI stays saved.",
         "stops_join": "{} and {}",
         "items_error": "The house's items could not be read: the proposal is saved, but the suitcase has not changed."
       }

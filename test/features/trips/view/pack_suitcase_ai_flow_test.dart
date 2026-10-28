@@ -194,6 +194,7 @@ TripModel _viaggioAi({
   List<TripItem>? items,
   List<AiWarning> warnings = const [],
   List<AiReasonPoint> reasons = const [],
+  List<String> dismissed = const [],
 }) => _viaggio(
   items: items ?? _suitcaseItems,
   aiResult: AiPackingResult(
@@ -202,6 +203,7 @@ TripModel _viaggioAi({
     proposal: _suitcaseProposal,
     warnings: warnings,
     reasons: reasons,
+    dismissedWarnings: dismissed,
   ),
 );
 
@@ -514,7 +516,7 @@ void main() {
 
   group('valigia AI: avvisi e motivi', () {
     testWidgets(
-      'la riga degli avvisi apre il foglio; "Ok, capito" toglie l avviso e "Fatto" lo salva',
+      '"Ok, capito" segna l avviso come letto: resta nel foglio e si salva subito',
       (tester) async {
         arrange(
           trip: _viaggioAi(warnings: [_avvisoBoxer]),
@@ -522,8 +524,14 @@ void main() {
         );
         await pumpPack(tester);
 
+        expect(find.text('Cosa manca a questo viaggio'), findsOneWidget);
         await tapKey(tester, const Key('pack_row_missing'));
         expect(find.byType(DsFormSheet), findsOneWidget);
+        expect(find.text('Importante'), findsOneWidget);
+
+        await tapKey(tester, const Key('ai_warning_dismiss_w1'));
+
+        // L'avviso resta, segnato come letto e senza "Ok, capito".
         expect(
           find.descendant(
             of: find.byType(DsFormSheet),
@@ -531,16 +539,15 @@ void main() {
           ),
           findsOneWidget,
         );
-        expect(find.text('Importante'), findsOneWidget);
+        expect(find.text('Letto'), findsOneWidget);
+        expect(find.text('Importante'), findsNothing);
+        expect(find.byKey(const Key('ai_warning_dismiss_w1')), findsNothing);
+        expect(find.byKey(const Key('ai_warning_search_w1')), findsOneWidget);
 
-        await tapKey(tester, const Key('ai_warning_dismiss_w1'));
-        expect(
-          find.descendant(
-            of: find.byType(DsFormSheet),
-            matching: find.text(_avvisoBoxer.title),
-          ),
-          findsNothing,
-        );
+        // Salvato senza "Fatto".
+        final saved = savedTrip().aiResult!;
+        expect(saved.dismissedWarnings, ['w1']);
+
         await tester.tap(
           find.descendant(
             of: find.byType(DsFormSheet),
@@ -548,15 +555,92 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.text('Non manca niente'), findsOneWidget);
 
-        await tapText(tester, 'Fatto · 4 oggetti');
+        // La riga resta da riaprire, senza il numero dei non letti.
+        expect(find.text('Cosa manca a questo viaggio'), findsOneWidget);
+        expect(find.text('Non manca niente'), findsNothing);
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('pack_row_missing')),
+            matching: find.text('1'),
+          ),
+          findsNothing,
+        );
 
-        final saved = savedTrip().aiResult!;
-        expect(saved.dismissedWarnings, ['w1']);
-        expect(saved.openWarnings, isEmpty);
+        await tapKey(tester, const Key('pack_row_missing'));
+        expect(find.text('Letto'), findsOneWidget);
       },
     );
+
+    testWidgets('gli avvisi letti vanno in fondo, dopo quelli da leggere', (
+      tester,
+    ) async {
+      arrange(
+        trip: _viaggioAi(
+          warnings: [_avvisoBoxer, _avvisoSenzaCerca],
+          dismissed: const ['w1'],
+        ),
+        items: _houseItems,
+      );
+      await pumpPack(tester);
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('pack_row_missing')),
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
+      await tapKey(tester, const Key('pack_row_missing'));
+      final unread = tester.getTopLeft(find.byKey(const Key('ai_warning_w2')));
+      final read = tester.getTopLeft(find.byKey(const Key('ai_warning_w1')));
+      expect(unread.dy, lessThan(read.dy));
+    });
+
+    testWidgets('segnare un avviso come letto non chiede conferma uscendo', (
+      tester,
+    ) async {
+      arrange(
+        trip: _viaggioAi(warnings: [_avvisoBoxer]),
+        items: _houseItems,
+      );
+      await pumpPack(tester);
+
+      await tapKey(tester, const Key('pack_row_missing'));
+      await tapKey(tester, const Key('ai_warning_dismiss_w1'));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(DsFormSheet),
+          matching: find.byIcon(Icons.close),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Uscire senza salvare?'), findsNothing);
+      expect(find.text('apri'), findsOneWidget);
+    });
+
+    testWidgets('uscendo con modifiche dice che la valigia AI resta salvata', (
+      tester,
+    ) async {
+      arrange(trip: _viaggioAi(), items: _houseItems);
+      await pumpPack(tester);
+
+      await tapKey(tester, const Key('pack_remove_i-calzino'));
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Uscire senza salvare?'), findsOneWidget);
+      expect(
+        find.text(
+          "Le modifiche fatte dopo andranno perse. La valigia preparata "
+          "dall'AI resta salvata.",
+        ),
+        findsOneWidget,
+      );
+    });
 
     testWidgets('"Cerca nell armadio" chiude il foglio e scrive la ricerca', (
       tester,
@@ -593,7 +677,9 @@ void main() {
       expect(find.byKey(const Key('ai_warning_dismiss_w2')), findsOneWidget);
     });
 
-    testWidgets('"Importante" è in ambra, "Utile" in grigio', (tester) async {
+    testWidgets('"Importante" è in arancio scuro, "Utile" in grigio', (
+      tester,
+    ) async {
       arrange(
         trip: _viaggioAi(warnings: [_avvisoBoxer, _avvisoSenzaCerca]),
         items: _houseItems,
@@ -605,7 +691,10 @@ void main() {
       final context = tester.element(find.text('Utile'));
       Color? colorOf(String text) =>
           tester.widget<Text>(find.text(text)).style?.color;
-      expect(colorOf('Importante'), context.appColors.warning);
+      expect(
+        colorOf('Importante'),
+        Theme.of(context).colorScheme.onPrimaryContainer,
+      );
       expect(colorOf('Utile'), Theme.of(context).colorScheme.onSurfaceVariant);
     });
 
