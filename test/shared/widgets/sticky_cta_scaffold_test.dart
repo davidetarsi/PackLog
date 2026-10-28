@@ -164,7 +164,7 @@ void main() {
     expect(gap, closeTo(tester.element(band).spacingXs, 0.01));
   });
 
-  testWidgets('l\'effetto parte sopra i bottoni e sfuma nel fondo', (
+  testWidgets('l\'effetto parte 4 px sopra i bottoni e sfuma nel fondo', (
     tester,
   ) async {
     const ctaKey = Key('cta');
@@ -177,14 +177,10 @@ void main() {
       ),
     );
     final edge = find.byKey(const Key('ds_glass_band_edge'));
-    final band = find.byType(DsGlassBand);
-    // Comincia sopra l'area dei bottoni, così non si vede dove inizia.
+    // Comincia appena sopra i bottoni, a topGap (spacingXs, 4 px).
     expect(
-      tester.getTopLeft(edge).dy,
-      closeTo(
-        tester.getTopLeft(band).dy - DsGlassBand.rise(tester.element(band)),
-        0.01,
-      ),
+      tester.getTopLeft(find.byKey(ctaKey)).dy - tester.getTopLeft(edge).dy,
+      closeTo(tester.element(edge).spacingXs, 0.01),
     );
     // Trasparente in alto, colore di fondo in basso.
     final box = tester.widget<DecoratedBox>(
