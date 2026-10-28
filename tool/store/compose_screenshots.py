@@ -4,7 +4,11 @@ Legge `build/store-screenshots/<lingua>/` (vedi
 `test/screenshots/store_screenshots_test.dart`) e scrive PNG 1080x1920 con
 la didascalia sopra il telefono.
 
-    python3 tool/store/compose_screenshots.py <cartella-flutter> <uscita>
+    python3 tool/store/compose_screenshots.py <cartella-flutter> <uscita> \
+        [<lingua>:<numero>=<png> ...]
+
+Le coppie finali sostituiscono una schermata con una cattura dal telefono,
+già senza barra di stato e barra dei gesti (es. `it-IT:3=scansione.png`).
 
 `<uscita>/<lingua>/images/phoneScreenshots/` è la cartella della scheda.
 """
@@ -105,7 +109,7 @@ def compose(raw_path, caption, font):
     return canvas
 
 
-def main(flutter_root, out_root):
+def main(flutter_root, out_root, replacements):
     font_path = os.path.join(
         flutter_root, "bin/cache/artifacts/material_fonts/Roboto-Bold.ttf"
     )
@@ -119,10 +123,16 @@ def main(flutter_root, out_root):
         for old in glob.glob(os.path.join(out_dir, "*.png")):
             os.remove(old)
         for index, (raw, caption) in enumerate(zip(raws, captions), start=1):
+            raw = replacements.get((lang, index), raw)
             out = os.path.join(out_dir, f"{index}_{lang}.png")
             compose(raw, caption, font).save(out, optimize=True)
             print(out)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    replacements = {}
+    for arg in sys.argv[3:]:
+        key, path = arg.split("=", 1)
+        lang, index = key.split(":")
+        replacements[(lang, int(index))] = path
+    main(sys.argv[1], sys.argv[2], replacements)
