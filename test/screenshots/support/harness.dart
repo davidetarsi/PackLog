@@ -90,6 +90,12 @@ class AppSetup {
   final int unsyncedChanges;
   final List<Override> extraOverrides;
 
+  /// Dati al posto di [seed] (gli screenshot dello Store hanno i loro).
+  final Future<void> Function(ProviderContainer c)? seedWith;
+
+  /// Lingua dell'app e dei formati di data.
+  final Locale locale;
+
   const AppSetup({
     this.onboardingCompleted = true,
     this.authenticated = true,
@@ -99,6 +105,8 @@ class AppSetup {
     this.aiPacking = false,
     this.unsyncedChanges = 0,
     this.extraOverrides = const [],
+    this.seedWith,
+    this.locale = const Locale('it', 'IT'),
   });
 }
 
@@ -243,7 +251,7 @@ class ScreenshotApp {
     // Su un telefono in italiano `findSystemLocale()` restituisce it_IT e i
     // `DateFormat` senza locale esplicito formattano "9 ott". Sull'host Linux
     // verrebbe en_US ("9 Oct").
-    Intl.systemLocale = 'it_IT';
+    Intl.systemLocale = setup.locale.toString();
 
     SharedPreferences.setMockInitialValues({
       'onboarding_completed': setup.onboardingCompleted,
@@ -314,7 +322,12 @@ class ScreenshotApp {
     );
 
     await tester.runAsync(() async {
-      await seed(container, setup.seed);
+      final seedWith = setup.seedWith;
+      if (seedWith != null) {
+        await seedWith(container);
+      } else {
+        await seed(container, setup.seed);
+      }
       if (setup.aiPacking) await seedValigiaAi(container);
       // `MyApp` crea il router solo a bootstrap concluso e onboarding letto,
       // e il redirect del router non fa nulla finché il bootstrap è in
@@ -345,7 +358,7 @@ class ScreenshotApp {
           supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
           path: 'assets/translations',
           fallbackLocale: const Locale('en', 'US'),
-          startLocale: const Locale('it', 'IT'),
+          startLocale: setup.locale,
           useOnlyLangCode: false,
           child: UncontrolledProviderScope(
             container: container,
@@ -472,6 +485,9 @@ class Shot {
   final String? route;
   final ShotTheme theme;
 
+  /// Cartella di destinazione; gli screenshot dello Store ne hanno una loro.
+  final String outputDir;
+
   const Shot({
     required this.flow,
     required this.flowTitle,
@@ -482,12 +498,13 @@ class Shot {
     required this.description,
     required this.theme,
     this.route,
+    this.outputDir = kOutputDir,
   });
 
   String get fileName =>
       '${order.toString().padLeft(2, '0')}-$screen-$state-${theme.name}.png';
 
-  String get path => '$kOutputDir/$flow/$fileName';
+  String get path => '$outputDir/$flow/$fileName';
 
   Map<String, Object?> toJson() => {
     'flow': flow,

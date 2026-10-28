@@ -42,8 +42,10 @@ class FakeTripWeather extends TripWeatherService {
   static const _table = {
     // nome: (minima, massima, quota di giorni di pioggia, vento max)
     'Lisbona': (15.0, 22.0, 0.2, 28.0),
+    'Lisbon': (15.0, 22.0, 0.2, 28.0),
     'Sintra': (13.0, 19.0, 0.67, 46.0),
     'Firenze': (14.0, 24.0, 0.0, 18.0),
+    'Florence': (14.0, 24.0, 0.0, 18.0),
     'Casa al mare': (17.0, 25.0, 0.0, 22.0),
   };
 
