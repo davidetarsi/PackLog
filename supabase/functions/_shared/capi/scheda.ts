@@ -7,6 +7,7 @@
 // campi che l'utente vede: un campo e' in dubbio se Jev e' sotto SOGLIA_DUBBIO
 // o non e' d'accordo con GPT. Jev non riempie mai: sbaglia piu' di GPT.
 import * as tassonomia from "../valigia/tassonomia.ts";
+import type { Lingua } from "../lingua.ts";
 
 type Record_ = Record<string, any>;
 
@@ -18,7 +19,27 @@ export const COPERTURE = ["Short-sleeve", "Long-sleeve", "Sleeveless", "Shorts",
 export const FIT = ["Skinny", "Regular", "Oversize", "N/A"];
 export const FORMALITA = ["Loungewear", "Casual", "Smart Casual", "Business", "Formal"];
 export const TAG = ["Everyday", "Office", "Beach", "Swimming", "Hiking", "Sport", "Formal", "Lounge"];
+/** Colori di base (Davide, 28 ottobre): una tavolozza chiusa, perche' l'app li
+ *  traduce; i primi sei nell'ordine concordato per le pillole dell'app. Si
+ *  salva la parola italiana anche con l'app in inglese. */
+export const COLORI = ["Bianco", "Nero", "Grigio", "Blu", "Marrone", "Beige", "Blu navy", "Azzurro", "Verde", "Rosso",
+  "Bordeaux", "Rosa", "Giallo", "Arancione", "Viola", "Multicolore"];
+/** Altri nomi dello stesso colore (minuscoli), anche in inglese: il modello a
+ *  volte non segue la lista, e i capi salvati prima avevano il colore libero. */
+export const SINONIMI_COLORE: Record<string, string> = {
+  "celeste": "Azzurro", "blu scuro": "Blu navy", "blu notte": "Blu navy", "navy": "Blu navy",
+  "crema": "Beige", "panna": "Bianco", "avorio": "Bianco", "cammello": "Beige", "kaki": "Beige",
+  "cachi": "Beige", "tortora": "Beige", "antracite": "Grigio", "fucsia": "Rosa", "lilla": "Viola",
+  "porpora": "Viola", "bordò": "Bordeaux", "denim": "Blu", "multicolor": "Multicolore",
+  "fantasia": "Multicolore", "white": "Bianco", "black": "Nero", "grey": "Grigio", "gray": "Grigio",
+  "brown": "Marrone", "blue": "Blu", "navy blue": "Blu navy", "light blue": "Azzurro", "green": "Verde",
+  "red": "Rosso", "burgundy": "Bordeaux", "pink": "Rosa", "yellow": "Giallo", "orange": "Arancione",
+  "purple": "Viola", "multicolour": "Multicolore", "multicolored": "Multicolore",
+  "multicoloured": "Multicolore",
+};
 export const NA = "N/A";
+
+export type { Lingua } from "../lingua.ts";
 export const MAX_NOME = 80;
 export const MAX_CAPI_SCAN = 12;
 
@@ -64,6 +85,7 @@ const RIGHE_CAMPI = `- "baseColor": string ({colore})
 - "bulk": integer (1 = folds small: t-shirts, shirts, polos, shorts, skirts, leggings, linen or light trousers, thin packable jackets, underwear, accessories; 2 = medium: jeans, chinos, sweaters, hoodies, fleece, blazers, sneakers, loafers, dress shoes; 3 = bulky: coats, trench coats, winter down jackets, boots, hiking and snow boots, ski clothes)`;
 
 const CATEGORIE_PROMPT = tassonomia.CATEGORIE.map((c) => `"${c}"`).join(", ");
+const COLORI_PROMPT = COLORI.map((c) => `"${c}"`).join(", ");
 
 /** Aggiunta a mano: il prompt provato sulla lista di Davide il 19 ottobre, piu'
  *  il tipo di oggetto quando non e' un vestito. */
@@ -77,7 +99,7 @@ Respond ONLY with a raw JSON object — no markdown, no code fences — with EXA
 - "subCategory": string (ONE OF based on category, "N/A" if "Not Clothing"):
 {sottocategorie}
 - "notClothingKind": string (ONLY if "Not Clothing", ONE OF: "Toiletries", "Electronics", "Other"; else "N/A")
-` + RIGHE_CAMPI.replace("{colore}", 'primary color in Italian if the name says it, else "N/A"') + `
+` + RIGHE_CAMPI.replace("{colore}", `ONE OF: ${COLORI_PROMPT}; only if the name says the color, else "N/A"`) + `
 Brand names are a hint: use what you know about the brand.`;
 
 /** Scan: il prompt di openai-proxy con la tassonomia nuova e i due campi. */
@@ -92,21 +114,35 @@ Each object must have EXACTLY these keys:
 - "category": string (ONE OF: ${CATEGORIE_PROMPT})
 - "subCategory": string (ONE OF based on category):
 {sottocategorie}
-` + RIGHE_CAMPI.replace("{colore}", 'Primary color in Italian, e.g. "Nero", "Bianco", "Blu navy"');
+` + RIGHE_CAMPI.replace("{colore}", `ONE OF: ${COLORI_PROMPT}; the main color, or the closest one`);
+
+/** Le frasi che cambiano con la lingua dell'app (il bench e' solo in italiano). */
+const IN_INGLESE: [string, string][] = [
+  ["in Italian: {nome}", "in English: {nome}"],
+  ['Short descriptive name in Italian, e.g. "Giacca in pelle", "Jeans slim"',
+    'Short descriptive name in English, e.g. "Leather jacket", "Slim jeans"'],
+  ["Name typed by the user, in Italian,", "Name typed by the user, in English,"],
+  ["written in Italian by another model", "written in English by another model"],
+];
+
+function inLingua(testo: string, lingua: Lingua): string {
+  if (lingua !== "en") return testo;
+  return IN_INGLESE.reduce((t, [it, en]) => t.replace(it, en), testo);
+}
 
 /** json.dumps(nome, ensure_ascii=False): il nome dell'utente resta dentro il campo. */
 function stringaJson(t: string): string {
   return JSON.stringify(t);
 }
 
-export function promptNome(nome: string): string {
+export function promptNome(nome: string, lingua: Lingua = "it"): string {
   // Prima la tassonomia: un nome che contiene "{sottocategorie}" resta com'e'.
-  return PROMPT_NOME.replace("{sottocategorie}", () => tassonomia.testoPerPrompt())
+  return inLingua(PROMPT_NOME, lingua).replace("{sottocategorie}", () => tassonomia.testoPerPrompt())
     .replace("{nome}", () => stringaJson(nome));
 }
 
-export function promptScan(): string {
-  return PROMPT_SCAN.replace("{sottocategorie}", () => tassonomia.testoPerPrompt());
+export function promptScan(lingua: Lingua = "it"): string {
+  return inLingua(PROMPT_SCAN, lingua).replace("{sottocategorie}", () => tassonomia.testoPerPrompt());
 }
 
 // Gli spazi di str.split() di Python.
@@ -115,6 +151,17 @@ const SPAZI = /[\t\n\x0b\x0c\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\
 /** " ".join(t.split())[:massimo] di Python (taglio per caratteri, non per unita' UTF-16). */
 function compatta(t: string, massimo: number): string {
   return Array.from(t.split(SPAZI).filter((x) => x !== "").join(" ")).slice(0, massimo).join("");
+}
+
+/** Il colore della tavolozza: uguale (senza maiuscole), un sinonimo, o la parola
+ *  piu' lunga con cui comincia ("Verde oliva" -> Verde, "Blu navy scuro" -> Blu
+ *  navy); se no N/A. */
+export function colore(v: unknown): string {
+  const t = typeof v === "string" ? v.split(SPAZI).filter((x) => x !== "").join(" ").toLowerCase() : "";
+  const nomi: Record<string, string> = { ...Object.fromEntries(COLORI.map((c) => [c.toLowerCase(), c])), ...SINONIMI_COLORE };
+  if (Object.hasOwn(nomi, t)) return nomi[t];
+  const inizi = Object.keys(nomi).filter((k) => t.startsWith(k + " "));
+  return inizi.length ? nomi[inizi.reduce((a, b) => (b.length > a.length ? b : a))] : NA;
 }
 
 /** Il nome digitato: spazi in fila ridotti, al massimo MAX_NOME caratteri. */
@@ -185,7 +232,7 @@ export function normalizza(grezzo: unknown, nome?: string | null): Normalizzata 
     }
   }
 
-  const m: Record_ = { name: nomeOk, category: cat, subCategory: sub, baseColor: testo(g.baseColor, 40) || NA };
+  const m: Record_ = { name: nomeOk, category: cat, subCategory: sub, baseColor: colore(g.baseColor) };
   for (const [campo, ammessi, riserva] of [["pattern", PATTERN, "Solid"], ["coverage", COPERTURE, NA],
     ["fit", FIT, NA]] as [string, string[], string][]) {
     m[campo] = scelta(g[campo], ammessi) ?? riserva;
@@ -257,19 +304,19 @@ export function domandeJev(): Record<string, Record_> {
 
 /** Cosa legge Jev. Dal nome: solo il nome digitato. Dalla foto Jev non vede
  *  l'immagine: legge il nome scritto da GPT e i campi che NON controlla. */
-export function statoJev(metadata: Record_, daFoto: boolean): Record_ {
+export function statoJev(metadata: Record_, daFoto: boolean, lingua: Lingua = "it"): Record_ {
   if (!daFoto) {
     return {
       item_name: metadata.name,
-      note: "Name typed by the user, in Italian, for one item they want to add "
-        + "to their wardrobe app. No photo. Brand names are a hint.",
+      note: inLingua("Name typed by the user, in Italian, for one item they want to add "
+        + "to their wardrobe app. No photo. Brand names are a hint.", lingua),
     };
   }
   return {
     item_name: metadata.name, color: metadata.baseColor ?? null, pattern: metadata.pattern ?? null,
     coverage: metadata.coverage ?? null, fit: metadata.fit ?? null,
-    note: "Description of one clothing item seen in a photo, written in Italian "
-      + "by another model. You do not see the photo.",
+    note: inLingua("Description of one clothing item seen in a photo, written in Italian "
+      + "by another model. You do not see the photo.", lingua),
   };
 }
 

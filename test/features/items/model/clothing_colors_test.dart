@@ -64,9 +64,14 @@ void main() {
       expect(colorChoices(const []), kBaseColors);
     });
 
-    test('non ripete i colori di base, senza maiuscole', () {
-      final choices = colorChoices(const ['blu', 'Rosa chiaro', 'BEIGE ']);
-      expect(choices, [...kBaseColors, 'Rosa chiaro']);
+    test('non ripete i colori di base, senza maiuscole né sfumature', () {
+      final choices = colorChoices(const [
+        'blu',
+        'Verde salvia',
+        'Rosa chiaro',
+        'BEIGE ',
+      ]);
+      expect(choices, [...kBaseColors, 'Verde salvia']);
     });
   });
 }

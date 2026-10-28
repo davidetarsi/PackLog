@@ -39,13 +39,19 @@ List<String> usedColorsFrom(Iterable<String?> aiMetadata) {
   return [for (final key in keys) displayOf(key)];
 }
 
+/// Lo stesso colore per le pillole: quello della tavolozza se lo è ("Verde
+/// oliva" e "verde" sono la pillola Verde), se no il testo senza maiuscole né
+/// spazi ai bordi.
+String colorIdentity(String color) =>
+    (paletteColor(color) ?? color.trim()).toLowerCase();
+
 /// Pillole del colore: i colori di base, seguiti dai colori dell'utente che
-/// non sono già tra quelli di base (confronto senza maiuscole né spazi).
+/// non sono già tra quelli di base (vedi [colorIdentity]).
 List<String> colorChoices(List<String> userColors) {
-  final seen = {for (final c in kBaseColors) c.toLowerCase()};
+  final seen = {for (final c in kBaseColors) colorIdentity(c)};
   return [
     ...kBaseColors,
     for (final color in userColors)
-      if (seen.add(color.trim().toLowerCase())) color.trim(),
+      if (seen.add(colorIdentity(color))) color.trim(),
   ];
 }

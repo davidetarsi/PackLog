@@ -473,18 +473,18 @@ void main() {
       final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
       await openMaglione(tester, app);
 
-      await app.tap(find.text('+ Altro colore'));
+      await tapDetail(tester, app, find.text('+ Altro colore'));
       await app.enterText(
         find.byKey(const Key('clothing_color_field')),
-        'Rosa chiaro',
+        'Verde salvia',
       );
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await app.settle();
-      expect(find.text('Rosa chiaro'), findsOneWidget);
+      expect(find.text('Verde salvia'), findsOneWidget);
 
       await tapSave(tester, app);
       final meta = await storedMetadata(tester, app);
-      expect(meta['baseColor'], 'Rosa chiaro');
+      expect(meta['baseColor'], 'Verde salvia');
       await app.finish();
     });
 

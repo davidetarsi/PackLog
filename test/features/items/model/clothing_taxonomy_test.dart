@@ -52,6 +52,40 @@ void main() {
     scheda = _leggi(_schedaTs);
   });
 
+  group('coerenza col server (scheda.ts)', () {
+    test('la tavolozza è COLORI, nello stesso ordine', () {
+      expect(kBaseColors, _arrayTs(scheda, 'COLORI'));
+    });
+
+    test('i sinonimi sono SINONIMI_COLORE', () {
+      final inizio = scheda.indexOf('export const SINONIMI_COLORE');
+      final corpo = scheda.substring(inizio, scheda.indexOf('\n};', inizio));
+      final ts = {
+        for (final m in RegExp(r'"([^"]+)": "([^"]+)"').allMatches(corpo))
+          m.group(1)!: m.group(2)!,
+      };
+      expect(kColorSynonyms, ts);
+    });
+  });
+
+  group('paletteColor', () {
+    test('uguale, sinonimo o colore con una sfumatura', () {
+      expect(paletteColor('  blu   NAVY '), 'Blu navy');
+      expect(paletteColor('Celeste'), 'Azzurro');
+      expect(paletteColor('black'), 'Nero');
+      expect(paletteColor('Verde oliva'), 'Verde');
+      expect(paletteColor('grigio chiaro'), 'Grigio');
+      expect(paletteColor('dark blue'), 'Blu');
+    });
+
+    test('un colore qualsiasi resta fuori', () {
+      expect(paletteColor('Verde salvia'), isNull);
+      expect(paletteColor('Oro'), isNull);
+      expect(paletteColor(''), isNull);
+      expect(paletteColor('scuro'), isNull);
+    });
+  });
+
   group('coerenza col server (tassonomia.ts)', () {
     test('le categorie sono quelle di CATEGORIE, nello stesso ordine', () {
       expect(kClothingCategories, _arrayTs(tassonomia, 'CATEGORIE'));
@@ -144,8 +178,8 @@ void main() {
       expect(kWaterResistanceLevels, [0, 1, 2]);
     });
 
-    test('colori di base nell\'ordine concordato', () {
-      expect(kBaseColors, [
+    test('colori di base: i primi sei nell\'ordine concordato', () {
+      expect(kBaseColors.take(6), [
         'Bianco',
         'Nero',
         'Grigio',

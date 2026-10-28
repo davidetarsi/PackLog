@@ -36,15 +36,14 @@ String activityLabel(String value) => kActivityTags.contains(value)
     ? 'clothing.activity.${clothingKey(value)}'.tr()
     : value;
 
-/// Colore da mostrare: un colore di base si traduce (`clothing.color.<key>`), gli
-/// altri si mostrano come scritti, con l'iniziale maiuscola. Vuoto o 'N/A' → ''.
+/// Colore da mostrare: un colore della tavolozza (anche scritto come sinonimo o
+/// con una sfumatura, vedi [paletteColor]) si traduce (`clothing.color.<key>`),
+/// gli altri si mostrano come scritti, con l'iniziale maiuscola. Vuoto o 'N/A'
+/// → ''.
 String colorLabel(String color) {
   final testo = color.trim();
   if (testo.isEmpty || testo.toUpperCase() == 'N/A') return '';
-  for (final base in kBaseColors) {
-    if (base.toLowerCase() == testo.toLowerCase()) {
-      return 'clothing.color.${clothingKey(base)}'.tr();
-    }
-  }
+  final base = paletteColor(testo);
+  if (base != null) return 'clothing.color.${clothingKey(base)}'.tr();
   return '${testo[0].toUpperCase()}${testo.substring(1)}';
 }

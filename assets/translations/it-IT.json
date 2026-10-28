@@ -828,7 +828,17 @@
       "grigio": "Grigio",
       "blu": "Blu",
       "marrone": "Marrone",
-      "beige": "Beige"
+      "beige": "Beige",
+      "blu_navy": "Blu navy",
+      "azzurro": "Azzurro",
+      "verde": "Verde",
+      "rosso": "Rosso",
+      "bordeaux": "Bordeaux",
+      "rosa": "Rosa",
+      "giallo": "Giallo",
+      "arancione": "Arancione",
+      "viola": "Viola",
+      "multicolore": "Multicolore"
     },
     "details": {
       "title": "Dettagli",

@@ -125,8 +125,8 @@ void main() {
     ) async {
       await _pumpLocale(tester, _it);
 
-      expect(colorLabel('verde scuro'), 'Verde scuro');
-      expect(colorLabel('  rosa chiaro  '), 'Rosa chiaro');
+      expect(colorLabel('verde salvia'), 'Verde salvia');
+      expect(colorLabel('  oro rosa  '), 'Oro rosa');
     });
 
     testWidgets('vuoto o N/A diventa stringa vuota', (tester) async {
@@ -148,6 +148,16 @@ void main() {
       await _pumpLocale(tester, _en);
       expect(colorLabel('Blu'), 'Blue');
       expect(colorLabel('blu'), 'Blue');
+    });
+
+    testWidgets('sinonimi e sfumature dei colori salvati prima si traducono', (
+      tester,
+    ) async {
+      await _pumpLocale(tester, _en);
+      expect(colorLabel('Blu navy'), 'Navy');
+      expect(colorLabel('Verde oliva'), 'Green');
+      expect(colorLabel('celeste'), 'Light blue');
+      expect(colorLabel('Multicolore'), 'Multicolour');
     });
   });
 

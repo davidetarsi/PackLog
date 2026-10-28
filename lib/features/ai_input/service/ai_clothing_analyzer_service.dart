@@ -20,9 +20,9 @@ import '../model/clothing_analysis_result.dart';
 /// Inject an [http.Client] for testability; defaults to `http.Client()`.
 ///
 /// **Nota sicurezza**: modello, prompt e limiti sono fissati SERVER-SIDE.
-/// Questo servizio invia solo `image_base64` (vedi
-/// `supabase/functions/item-metadata/index.ts`, che rifiuta un body con
-/// anche `name`). Non aggiungere altri campi al body.
+/// Questo servizio invia solo `image_base64` e `lang`, la lingua del nome dei
+/// capi (vedi `supabase/functions/item-metadata/index.ts`, che rifiuta un
+/// body con anche `name`). Non aggiungere altri campi al body.
 class AiClothingAnalyzerService {
   // static const _removeBgEndpoint = 'https://api.remove.bg/v1.0/removebg'; // ← REMOVE.BG DISABILITATO
 
@@ -31,6 +31,9 @@ class AiClothingAnalyzerService {
   final String _anonKey;
   final http.Client _client;
   final String? Function() _jwtProvider;
+
+  /// La lingua dell'app ('it' o 'en'): il nome dei capi si scrive in questa.
+  final String Function() _language;
   final CoreAnalyticsService? _analytics;
   final AppMonitoringService? _monitoring;
 
@@ -40,6 +43,7 @@ class AiClothingAnalyzerService {
     required String anonKey,
     http.Client? client,
     String? Function()? jwtProvider,
+    String Function()? language,
     CoreAnalyticsService? analytics,
     AppMonitoringService? monitoring,
   }) : // _removeBgApiKey = removeBgApiKey, // ← REMOVE.BG DISABILITATO
@@ -49,6 +53,7 @@ class AiClothingAnalyzerService {
        _jwtProvider =
            jwtProvider ??
            (() => Supabase.instance.client.auth.currentSession?.accessToken),
+       _language = language ?? (() => 'it'),
        _analytics = analytics,
        _monitoring = monitoring;
 
@@ -130,7 +135,7 @@ class AiClothingAnalyzerService {
 
     // Body minimale: la funzione decide modello, prompt e limiti server-side
     // per impedire al client di alterare costi o uso del modello.
-    final body = jsonEncode({'image_base64': base64Image});
+    final body = jsonEncode({'image_base64': base64Image, 'lang': _language()});
 
     final jwt = _jwtProvider();
     if (jwt == null || jwt.isEmpty) {

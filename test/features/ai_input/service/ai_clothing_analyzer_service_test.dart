@@ -50,11 +50,13 @@ AiClothingAnalyzerService _makeService(
   http.Client mockClient, {
   CoreAnalyticsService? analytics,
   AppMonitoringService? monitoring,
+  String Function()? language,
 }) => AiClothingAnalyzerService(
   proxyUrl: 'https://fake.supabase.co/functions/v1/item-metadata',
   anonKey: 'fake-anon-key',
   client: mockClient,
   jwtProvider: () => 'fake-jwt-token',
+  language: language,
   analytics: analytics,
   monitoring: monitoring,
 );
@@ -181,7 +183,7 @@ void main() {
 
     group('Body sent to proxy', () {
       test(
-        'envia SOLO image_base64, niente model/messages/max_tokens/prompt',
+        'envia SOLO image_base64 e lang, niente model/messages/max_tokens/prompt',
         () async {
           http.Request? capturedRequest;
           final service = _makeService(
@@ -196,8 +198,9 @@ void main() {
           expect(capturedRequest, isNotNull);
           final body =
               jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
-          // Solo image_base64. Tutto il resto è server-side.
-          expect(body.keys, ['image_base64']);
+          // Solo image_base64 e la lingua. Tutto il resto è server-side.
+          expect(body.keys, ['image_base64', 'lang']);
+          expect(body['lang'], 'it');
           expect(body['image_base64'], isA<String>());
           expect((body['image_base64'] as String).isNotEmpty, true);
           // Difese esplicite contro regressioni: se qualcuno reintroduce
@@ -207,6 +210,26 @@ void main() {
           expect(body.containsKey('messages'), false);
           expect(body.containsKey('max_tokens'), false);
           expect(body.containsKey('temperature'), false);
+        },
+      );
+
+      test(
+        'manda la lingua dell\'app: il nome dei capi torna in quella',
+        () async {
+          http.Request? capturedRequest;
+          final service = _makeService(
+            MockClient((req) async {
+              capturedRequest = req;
+              return http.Response(_itemMetadataResponse([_tShirt]), 200);
+            }),
+            language: () => 'en',
+          );
+
+          await service.processClothingItem(_fakeImageFile());
+
+          final body =
+              jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
+          expect(body['lang'], 'en');
         },
       );
     });

@@ -121,8 +121,9 @@ const List<String> kActivityTags = [
   'Lounge',
 ];
 
-/// Colori di base, nell'ordine concordato. Si salva sempre la parola italiana,
-/// anche con l'app in inglese.
+/// Colori di base: la tavolozza di COLORI in scheda.ts, i primi sei
+/// nell'ordine concordato. Si salva sempre la parola italiana, anche con l'app
+/// in inglese.
 const List<String> kBaseColors = [
   'Bianco',
   'Nero',
@@ -130,7 +131,102 @@ const List<String> kBaseColors = [
   'Blu',
   'Marrone',
   'Beige',
+  'Blu navy',
+  'Azzurro',
+  'Verde',
+  'Rosso',
+  'Bordeaux',
+  'Rosa',
+  'Giallo',
+  'Arancione',
+  'Viola',
+  'Multicolore',
 ];
+
+/// Altri nomi dei colori di base (SINONIMI_COLORE in scheda.ts): i capi
+/// salvati prima della tavolozza hanno il colore scritto liberamente.
+const Map<String, String> kColorSynonyms = {
+  'celeste': 'Azzurro',
+  'blu scuro': 'Blu navy',
+  'blu notte': 'Blu navy',
+  'navy': 'Blu navy',
+  'crema': 'Beige',
+  'panna': 'Bianco',
+  'avorio': 'Bianco',
+  'cammello': 'Beige',
+  'kaki': 'Beige',
+  'cachi': 'Beige',
+  'tortora': 'Beige',
+  'antracite': 'Grigio',
+  'fucsia': 'Rosa',
+  'lilla': 'Viola',
+  'porpora': 'Viola',
+  'bordò': 'Bordeaux',
+  'denim': 'Blu',
+  'multicolor': 'Multicolore',
+  'fantasia': 'Multicolore',
+  'white': 'Bianco',
+  'black': 'Nero',
+  'grey': 'Grigio',
+  'gray': 'Grigio',
+  'brown': 'Marrone',
+  'blue': 'Blu',
+  'navy blue': 'Blu navy',
+  'light blue': 'Azzurro',
+  'green': 'Verde',
+  'red': 'Rosso',
+  'burgundy': 'Bordeaux',
+  'pink': 'Rosa',
+  'yellow': 'Giallo',
+  'orange': 'Arancione',
+  'purple': 'Viola',
+  'multicolour': 'Multicolore',
+  'multicolored': 'Multicolore',
+  'multicoloured': 'Multicolore',
+};
+
+/// Sfumature che non cambiano il colore di base: "Verde oliva" è verde,
+/// "Grigio chiaro" è grigio. "Verde salvia" no: resta com'è scritto.
+const Set<String> _sfumature = {
+  'scuro',
+  'scura',
+  'chiaro',
+  'chiara',
+  'oliva',
+  'militare',
+  'notte',
+  'pastello',
+  'acceso',
+  'accesa',
+  'melange',
+  'mélange',
+};
+
+/// Le sfumature inglesi vengono prima del colore: "dark blue".
+const Set<String> _sfumatureInglesi = {'dark', 'light'};
+
+/// Il colore della tavolozza per un colore scritto: uguale senza maiuscole,
+/// un sinonimo, o un colore di base con una sfumatura. Null se non è uno di
+/// questi.
+String? paletteColor(String raw) {
+  final testo = raw.trim().split(RegExp(r'\s+')).join(' ').toLowerCase();
+  if (testo.isEmpty) return null;
+  final nomi = <String, String>{
+    for (final colore in kBaseColors) colore.toLowerCase(): colore,
+    ...kColorSynonyms,
+  };
+  final esatto = nomi[testo];
+  if (esatto != null) return esatto;
+  final ultimo = testo.lastIndexOf(' ');
+  if (ultimo > 0 && _sfumature.contains(testo.substring(ultimo + 1))) {
+    return nomi[testo.substring(0, ultimo)];
+  }
+  final primo = testo.indexOf(' ');
+  if (primo > 0 && _sfumatureInglesi.contains(testo.substring(0, primo))) {
+    return nomi[testo.substring(primo + 1)];
+  }
+  return null;
+}
 
 /// Chiave del dizionario per un valore: minuscolo, non alfanumerici → '_'
 /// ("Cap/Hat" → "cap_hat").
