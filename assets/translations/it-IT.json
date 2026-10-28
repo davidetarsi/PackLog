@@ -315,6 +315,8 @@
         "level_useful": "Utile",
         "warning_search": "Cerca nell'armadio",
         "warning_dismiss": "Ok, capito",
+        "warning_read": "Letto",
+        "discard_message": "Le modifiche fatte dopo andranno perse. La valigia preparata dall'AI resta salvata.",
         "stops_join": "{} e {}",
         "items_error": "Non è stato possibile leggere gli oggetti della casa: la proposta è salvata, ma la valigia non è cambiata."
       }
