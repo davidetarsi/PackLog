@@ -116,6 +116,9 @@ def main(flutter_root, out_root, replacements):
     font = ImageFont.truetype(font_path, 76)
     for lang, captions in CAPTIONS.items():
         raws = sorted(glob.glob(f"build/store-screenshots/{lang}/*.png"))
+        if not raws:
+            print(f"{lang}: nessuno screenshot, salto")
+            continue
         if len(raws) != len(captions):
             sys.exit(f"{lang}: {len(raws)} screenshot, {len(captions)} didascalie")
         out_dir = os.path.join(out_root, lang, "images", "phoneScreenshots")
