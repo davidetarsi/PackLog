@@ -312,10 +312,7 @@ void main() {
       _service.last.completeError(const PackTripException('HTTP 502'));
       await _settle(tester);
 
-      expect(
-        _text('Non è stato possibile preparare la valigia'),
-        findsOneWidget,
-      );
+      expect(_text('Non è stato possibile preparare la valigia'), findsOneWidget);
       expect(_service.generateCalls, 1);
 
       await tester.tap(find.text('Riprova'));

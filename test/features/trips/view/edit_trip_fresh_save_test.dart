@@ -47,146 +47,130 @@ void main() {
     await EasyLocalization.ensureInitialized();
   });
 
-  testWidgets(
-    'salvare la modifica non cancella la valigia AI salvata nel frattempo',
-    (tester) async {
-      final trip = TripModel(
-        id: 'trip-1',
-        name: 'Toscana',
-        departureDateTime: DateTime(2026, 9, 12),
-        returnDateTime: DateTime(2026, 9, 20),
-        destinationLocation: LocationSuggestionModel(
-          placeId: 'p',
-          displayName: 'Siena, Italia',
-          city: 'Siena',
-        ),
-        createdAt: DateTime(2026),
-        updatedAt: DateTime(2026),
-      );
-      var stored = [trip];
-      final tripRepo = MockTripRepository();
-      final houseRepo = MockHouseRepository();
-      final itemRepo = MockItemRepository();
-      final analytics = MockCoreAnalyticsService();
-      final sync = MockSyncOrchestrator();
+  testWidgets('salvare la modifica non cancella la valigia AI salvata nel frattempo', (
+    tester,
+  ) async {
+    final trip = TripModel(
+      id: 'trip-1',
+      name: 'Toscana',
+      departureDateTime: DateTime(2026, 9, 12),
+      returnDateTime: DateTime(2026, 9, 20),
+      destinationLocation: LocationSuggestionModel(
+        placeId: 'p',
+        displayName: 'Siena, Italia',
+        city: 'Siena',
+      ),
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+    var stored = [trip];
+    final tripRepo = MockTripRepository();
+    final houseRepo = MockHouseRepository();
+    final itemRepo = MockItemRepository();
+    final analytics = MockCoreAnalyticsService();
+    final sync = MockSyncOrchestrator();
 
-      when(() => tripRepo.getAllTrips()).thenAnswer((_) async => stored);
-      when(() => tripRepo.updateTrip(any())).thenAnswer((invocation) async {
-        final updated = invocation.positionalArguments.first as TripModel;
-        stored = [updated];
-      });
-      when(
-        () => houseRepo.getAllHouses(),
-      ).thenAnswer((_) async => <HouseModel>[]);
-      when(() => analytics.trackTripUpdated()).thenAnswer((_) async {});
-      when(() => sync.requestSync()).thenReturn(null);
+    when(() => tripRepo.getAllTrips()).thenAnswer((_) async => stored);
+    when(() => tripRepo.updateTrip(any())).thenAnswer((invocation) async {
+      final updated = invocation.positionalArguments.first as TripModel;
+      stored = [updated];
+    });
+    when(() => houseRepo.getAllHouses()).thenAnswer((_) async => <HouseModel>[]);
+    when(() => analytics.trackTripUpdated()).thenAnswer((_) async {});
+    when(() => sync.requestSync()).thenReturn(null);
 
-      final container = ProviderContainer(
-        overrides: [
-          tripRepositoryProvider.overrideWithValue(tripRepo),
-          houseRepositoryProvider.overrideWithValue(houseRepo),
-          itemRepositoryProvider.overrideWithValue(itemRepo),
-          coreAnalyticsServiceProvider.overrideWithValue(analytics),
-          syncOrchestratorProvider.overrideWithValue(sync),
-        ],
-      );
-      addTearDown(container.dispose);
-      await container.read(tripNotifierProvider.future);
+    final container = ProviderContainer(
+      overrides: [
+        tripRepositoryProvider.overrideWithValue(tripRepo),
+        houseRepositoryProvider.overrideWithValue(houseRepo),
+        itemRepositoryProvider.overrideWithValue(itemRepo),
+        coreAnalyticsServiceProvider.overrideWithValue(analytics),
+        syncOrchestratorProvider.overrideWithValue(sync),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(tripNotifierProvider.future);
 
-      tester.view.physicalSize = const Size(1000, 2400);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
+    tester.view.physicalSize = const Size(1000, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
 
-      final router = GoRouter(
-        initialLocation: '/',
-        routes: [
-          GoRoute(
-            path: '/',
-            builder: (_, _) => Scaffold(
-              body: Builder(
-                builder: (context) => ElevatedButton(
-                  key: const Key('open_edit'),
-                  onPressed: () => context.push('/trips/trip-1/edit-info'),
-                  child: const Text('apri'),
-                ),
-              ),
-            ),
-            routes: [
-              GoRoute(
-                path: 'trips/:id/edit-info',
-                builder: (_, state) =>
-                    NewTripScreen(tripId: state.pathParameters['id']!),
-              ),
-            ],
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(
-        EasyLocalization(
-          supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
-          path: 'assets/translations',
-          fallbackLocale: const Locale('en', 'US'),
-          saveLocale: false,
-          child: Builder(
-            builder: (context) => UncontrolledProviderScope(
-              container: container,
-              child: MaterialApp.router(
-                theme: AppTheme.light,
-                locale: context.locale,
-                localizationsDelegates: context.localizationDelegates,
-                supportedLocales: context.supportedLocales,
-                routerConfig: router,
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                key: const Key('open_edit'),
+                onPressed: () => context.push('/trips/trip-1/edit-info'),
+                child: const Text('apri'),
               ),
             ),
           ),
+          routes: [
+            GoRoute(
+              path: 'trips/:id/edit-info',
+              builder: (_, state) =>
+                  NewTripScreen(tripId: state.pathParameters['id']!),
+            ),
+          ],
         ),
-      );
-      await tester.pumpAndSettle();
-      await _attendi(
-        tester,
-        () => find.byKey(const Key('open_edit')).evaluate().isNotEmpty,
-      );
+      ],
+    );
 
-      // Si apre la modifica: la copia nasce senza valigia AI.
-      await tester.tap(find.byKey(const Key('open_edit')));
-      await tester.pumpAndSettle();
-      await _attendi(
-        tester,
-        () => find.byKey(const Key('edit_trip_save')).evaluate().isNotEmpty,
-      );
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
+        path: 'assets/translations',
+        fallbackLocale: const Locale('en', 'US'),
+        saveLocale: false,
+        child: Builder(
+          builder: (context) => UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp.router(
+              theme: AppTheme.light,
+              locale: context.locale,
+              localizationsDelegates: context.localizationDelegates,
+              supportedLocales: context.supportedLocales,
+              routerConfig: router,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _attendi(tester, () => find.byKey(const Key('open_edit')).evaluate().isNotEmpty);
 
-      // Mentre la modifica è aperta, la valigia AI viene salvata sul viaggio.
-      stored = [
-        trip.copyWith(aiSetup: const AiPackingSetup(houseId: 'casa-1')),
-      ];
-      container.invalidate(tripNotifierProvider);
-      await container.read(tripNotifierProvider.future);
+    // Si apre la modifica: la copia nasce senza valigia AI.
+    await tester.tap(find.byKey(const Key('open_edit')));
+    await tester.pumpAndSettle();
+    await _attendi(tester, () => find.byKey(const Key('edit_trip_save')).evaluate().isNotEmpty);
 
-      // Poi l'utente cambia il nome e salva.
-      await tester.enterText(
-        find.byKey(const Key('new_trip_name')),
-        'Toscana 2',
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('edit_trip_save')));
-      await tester.pumpAndSettle();
+    // Mentre la modifica è aperta, la valigia AI viene salvata sul viaggio.
+    stored = [trip.copyWith(aiSetup: const AiPackingSetup(houseId: 'casa-1'))];
+    container.invalidate(tripNotifierProvider);
+    await container.read(tripNotifierProvider.future);
 
-      final salvato =
-          verify(() => tripRepo.updateTrip(captureAny())).captured.single
-              as TripModel;
-      expect(salvato.name, 'Toscana 2');
-      expect(salvato.aiSetup?.houseId, 'casa-1');
-    },
-  );
+    // Poi l'utente cambia il nome e salva.
+    await tester.enterText(find.byKey(const Key('new_trip_name')), 'Toscana 2');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('edit_trip_save')));
+    await tester.pumpAndSettle();
+
+    final salvato = verify(() => tripRepo.updateTrip(captureAny()))
+        .captured
+        .single as TripModel;
+    expect(salvato.name, 'Toscana 2');
+    expect(salvato.aiSetup?.houseId, 'casa-1');
+  });
 }
 
 /// Timer reale: l'I/O di caricamento delle traduzioni non avanza con il clock finto.
 Future<void> _attendi(WidgetTester tester, bool Function() condizione) async {
   for (var i = 0; i < 300 && !condizione(); i++) {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 15)),
-    );
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 15)));
     await tester.pumpAndSettle();
   }
 }
