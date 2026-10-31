@@ -78,6 +78,7 @@
     "to_trip": "To a trip",
     "select_all": "Select all",
     "deselect_all": "Deselect all",
+    "item_deleted": "\"{}\" deleted",
     "bulk_delete_confirm_title": "Delete {} items?",
     "bulk_delete_confirm_body": "This action cannot be undone. The selected items will be permanently deleted.",
     "bulk_delete_success": "{} items deleted",

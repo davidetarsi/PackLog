@@ -355,6 +355,35 @@ void main() {
       );
     });
 
+    test('restoreItem rimette un oggetto eliminato', () async {
+      final now = DateTime.now();
+      final house = 'house-restore';
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: house,
+          name: 'House',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final item = ItemModel(
+        id: 'item-restore',
+        houseId: house,
+        name: 'Calzini',
+        category: ItemCategory.vestiti,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await repository.addItem(item);
+      await repository.deleteItem(item.id);
+
+      final restored = await repository.restoreItem(item.id);
+
+      expect(restored, isTrue);
+      expect((await repository.getItemById(item.id)).name, 'Calzini');
+      expect(await repository.getItemsByHouseId(house), hasLength(1));
+    });
+
     test('should retrieve all items across all houses', () async {
       // === ARRANGE ===
       final house1Id = 'house-all-1';

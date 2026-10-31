@@ -78,6 +78,7 @@
     "to_trip": "In viaggio",
     "select_all": "Seleziona tutti",
     "deselect_all": "Deseleziona tutti",
+    "item_deleted": "\"{}\" eliminato",
     "bulk_delete_confirm_title": "Eliminare {} oggetti?",
     "bulk_delete_confirm_body": "Questa azione è irreversibile. Gli oggetti selezionati verranno eliminati definitivamente.",
     "bulk_delete_success": "{} oggetti eliminati",

@@ -291,6 +291,37 @@ void main() {
     });
   });
 
+  group('ItemNotifier - restoreItem', () {
+    test('rimette l\'oggetto e ricarica la lista', () async {
+      const houseId = 'test-house-restore';
+      final item = ItemModel(
+        id: 'item-restore',
+        houseId: houseId,
+        name: 'Calzini',
+        category: ItemCategory.vestiti,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => []);
+      final provider = itemNotifierProvider(houseId);
+      await container.read(provider.future);
+
+      when(
+        () => mockRepository.restoreItem(any()),
+      ).thenAnswer((_) async => true);
+      when(
+        () => mockRepository.getItemsByHouseId(houseId),
+      ).thenAnswer((_) async => [item]);
+
+      await container.read(provider.notifier).restoreItem(item.id, houseId);
+
+      expect(container.read(provider).value, [item]);
+      verify(() => mockRepository.restoreItem(item.id)).called(1);
+    });
+  });
+
   group('ItemNotifier - Failure Path', () {
     test(
       'should transition to AsyncError when repository throws during initial fetch',

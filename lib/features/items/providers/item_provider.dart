@@ -127,6 +127,17 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
     );
   }
 
+  /// Annulla l'eliminazione di [id] ("Annulla" dopo lo swipe sulla riga).
+  Future<void> restoreItem(String id, String houseId) => mutate(
+    operation: () async {
+      if (!await _repo.restoreItem(id)) {
+        throw StateError('restoreItem($id): oggetto non trovato');
+      }
+    },
+    reload: () => _repo.getItemsByHouseId(houseId),
+    rethrowOnError: false,
+  );
+
   Future<void> refresh(String houseId) => mutate(
     operation: () async {},
     reload: () => _repo.getItemsByHouseId(houseId),

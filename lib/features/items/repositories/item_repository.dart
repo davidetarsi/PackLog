@@ -30,6 +30,9 @@ abstract class ItemRepository {
   Future<List<String>> getUsedColors();
   Future<List<ItemModel>> getItemsByHouseId(String houseId);
   Future<bool> deleteItem(String id);
+
+  /// Rimette un oggetto eliminato da poco ("Annulla" dopo l'eliminazione).
+  Future<bool> restoreItem(String id);
   Future<void> updateItem(ItemModel model);
 
   /// Inserisce multipli oggetti in una singola transazione atomica
