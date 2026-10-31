@@ -351,15 +351,39 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     setState(() => _query = text.trim());
   }
 
-  /// "Ok, capito": l'avviso esce dalla lista; si salva con "Fatto".
-  void _dismissWarning(String id) {
+  /// "Ok, capito": l'avviso resta nel foglio come letto, e si salva subito.
+  ///
+  /// Non è una modifica della valigia: si scrive solo sul viaggio com'è nel
+  /// provider, senza le modifiche non salvate della pagina, e non chiede
+  /// conferma uscendo. Se la scrittura non riesce si salva con "Fatto".
+  Future<void> _dismissWarning(String id) async {
     final result = _aiResult;
     if (result == null || result.dismissedWarnings.contains(id)) return;
-    setState(() {
-      _aiResult = result.copyWith(
-        dismissedWarnings: [...result.dismissedWarnings, id],
-      );
-    });
+    final dismissed = [...result.dismissedWarnings, id];
+    setState(() => _aiResult = result.copyWith(dismissedWarnings: dismissed));
+
+    final trip = _currentTrip();
+    final saved = trip?.aiResult;
+    if (trip == null || saved == null) return;
+    if (saved.generatedAt != result.generatedAt) return;
+    try {
+      await ref
+          .read(tripNotifierProvider.notifier)
+          .updateTrip(
+            trip.copyWith(
+              aiResult: saved.copyWith(dismissedWarnings: dismissed),
+            ),
+          );
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
+    final initial = _initialAiResult;
+    if (initial != null && initial.generatedAt == result.generatedAt) {
+      setState(() {
+        _initialAiResult = initial.copyWith(dismissedWarnings: dismissed);
+      });
+    }
   }
 
   /// Il tocco sull'icona AI: se la valigia ha già capi chiede conferma, poi
@@ -538,7 +562,12 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     final leave = await DialogHelpers.showConfirmation(
       context: context,
       title: 'trips.pack.discard_title'.tr(),
-      message: 'trips.pack.discard_message'.tr(),
+      // Con una valigia AI già salvata si perde solo quello fatto dopo.
+      message:
+          (_initialAiResult == null
+                  ? 'trips.pack.discard_message'
+                  : 'trips.pack.ai.discard_message')
+              .tr(),
       isDestructive: true,
     );
     if (leave && mounted) context.pop();
@@ -644,7 +673,8 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
               if (_aiResult case final result?) ...[
                 SizedBox(height: context.spacingMd),
                 AiPackRows(
-                  warnings: result.openWarnings,
+                  warnings: result.warnings,
+                  readIds: result.dismissedWarnings.toSet(),
                   reasons: result.reasons,
                   onSearch: _searchFrom,
                   onDismiss: _dismissWarning,

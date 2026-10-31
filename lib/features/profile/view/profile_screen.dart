@@ -27,7 +27,8 @@ import '../../../shared/widgets/ds_dialog.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_settings.dart';
 import '../../../shared/widgets/ds_inline_error.dart';
-import '../../../shared/widgets/tab_header.dart' show profileInitials;
+import '../../../shared/widgets/tab_header.dart'
+    show ProfileInitialsCircle, profileInitials;
 import '../services/feedback_url_service.dart';
 import '../widgets/sync_status_tile.dart';
 import 'dialogs/profile_delete_account_dialog.dart';
@@ -383,13 +384,10 @@ class _AccountHeader extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: context.spacingSm),
       child: Row(
         children: [
-          CircleAvatar(
+          ProfileInitialsCircle(
+            initials: profileInitials(displayName, email),
             radius: context.responsive(28),
-            backgroundColor: cs.primaryContainer,
-            child: Text(
-              profileInitials(displayName, email),
-              style: tt.titleMedium?.copyWith(color: cs.onPrimaryContainer),
-            ),
+            style: tt.titleMedium,
           ),
           SizedBox(width: context.spacingMd),
           Expanded(

@@ -7,6 +7,7 @@ import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_empty_state.dart';
 import '../model/trip_weather.dart';
 import '../providers/trip_weather_provider.dart';
+import 'widgets/pack/pack_weather.dart' show weatherUpdatedLabel;
 import 'widgets/pack/weather_icons.dart';
 import '../../../shared/widgets/ds_divider.dart';
 
@@ -76,7 +77,13 @@ class _DaysList extends StatelessWidget {
             [
               if (later > 0) 'trips.weather.detail_later'.plural(later),
               'trips.weather.detail_footer'.tr(
-                args: [DateFormat.Hm(locale).format(fetchedAt)],
+                args: [
+                  weatherUpdatedLabel(
+                    fetchedAt,
+                    now: DateTime.now(),
+                    locale: locale,
+                  ),
+                ],
               ),
             ].join(' '),
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),

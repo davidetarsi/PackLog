@@ -1,0 +1,29 @@
+Dimmi dove vai e quando: PackLog ti prepara la valigia con i vestiti che hai già, in base al meteo, alle tappe e a quello che farai. Poi la spunti mentre fai i bagagli.
+
+LA VALIGIA PREPARATA CON L'AI
+• Indica le tappe del viaggio, cosa farai e dove dormi: città, mare, trekking, lavoro, una cena elegante.
+• L'AI sceglie i capi dal tuo armadio guardando il meteo di ogni tappa e la durata del viaggio.
+• Se c'è una lavatrice, porti meno vestiti.
+• Per ogni capo vedi perché è in valigia, e ti avvisa se al viaggio manca qualcosa: una giacca per la pioggia, scarpe da trekking.
+• Cambi tutto quello che vuoi: togli, aggiungi, cambia le quantità.
+
+I TUOI VESTITI DA UNA FOTO
+• Scatta una foto o sceglila dalla galleria: l'AI riconosce i capi uno per uno.
+• Per ogni capo propone tipo, colore, quanto tiene caldo e se regge la pioggia. Tu controlli e salvi.
+• Niente inventario da scrivere a mano.
+
+IL METEO DEL VIAGGIO
+• Temperature, pioggia e vento per ogni tappa.
+• Per i viaggi lontani usa la media degli anni passati, poi passa alla previsione.
+
+CHECKLIST E BAGAGLI
+• Spunta gli oggetti mentre prepari la valigia.
+• Aggiungi toiletries, elettronica e tutto il resto dalla casa.
+• Definisci i tuoi bagagli una volta (trolley, zaino, borsa) e riusali in ogni viaggio.
+
+LE TUE COSE, TRA CASE E SPAZI
+• Crea le case che ti servono, la tua, quella al mare, quella dei genitori, e dividile in spazi: armadio, cassetti, cantina.
+• Ogni oggetto ha il suo posto e la sua quantità, e quando parte con te risulta in viaggio.
+
+ANCHE SENZA CONNESSIONE
+Inventario e checklist stanno sul telefono e si consultano anche offline. Quando sei online PackLog sincronizza tutto con il tuo account, così ritrovi le tue cose anche cambiando telefono. Valigia con AI, riconoscimento delle foto e meteo richiedono una connessione.

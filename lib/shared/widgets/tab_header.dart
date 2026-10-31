@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/sync/sync_provider.dart';
+import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 
 /// Iniziali per l'avatar: prima e ultima parola del nome, altrimenti la
@@ -97,7 +98,6 @@ class ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final size = context.responsive(40);
 
     return Semantics(
@@ -109,21 +109,88 @@ class ProfileAvatar extends StatelessWidget {
         radius: size,
         child: Padding(
           padding: EdgeInsets.all(context.spacingXs),
-          child: Badge(
-            isLabelVisible: showSyncDot,
-            smallSize: context.responsive(10),
-            backgroundColor: colorScheme.primary,
-            child: CircleAvatar(
-              radius: size / 2,
-              backgroundColor: colorScheme.primaryContainer,
-              child: Text(
-                initials,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: colorScheme.onPrimaryContainer,
-                ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ProfileInitialsCircle(
+                initials: initials,
+                radius: size / 2,
+                style: Theme.of(context).textTheme.titleSmall,
               ),
-            ),
+              if (showSyncDot)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: _SyncDot(size: context.responsive(10)),
+                ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Cerchio con le iniziali dell'utente: fondo pesca, iniziali arancio scuro e
+/// un bordino arancio che lo stacca dal fondo grigio del tema chiaro. Lo
+/// stesso in alto a destra nelle tab e in cima al Profilo.
+class ProfileInitialsCircle extends StatelessWidget {
+  const ProfileInitialsCircle({
+    super.key,
+    required this.initials,
+    required this.radius,
+    this.style,
+  });
+
+  final String initials;
+  final double radius;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      key: const Key('profile_initials_circle'),
+      width: radius * 2,
+      height: radius * 2,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: colorScheme.primaryContainer,
+        border: Border.all(
+          color: colorScheme.primary,
+          width: AppConstants.selectedBorderWidth,
+        ),
+      ),
+      child: Text(
+        initials,
+        style: style?.copyWith(color: colorScheme.onPrimaryContainer),
+      ),
+    );
+  }
+}
+
+/// Pallino "modifiche da sincronizzare": arancio, con un anello del colore di
+/// fondo che lo stacca dal bordo arancio dell'avatar.
+class _SyncDot extends StatelessWidget {
+  const _SyncDot({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      key: const Key('profile_sync_dot'),
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: colorScheme.primary,
+        border: Border.all(
+          color: colorScheme.surface,
+          width: AppConstants.emphasisBorderWidth,
+          strokeAlign: BorderSide.strokeAlignOutside,
         ),
       ),
     );

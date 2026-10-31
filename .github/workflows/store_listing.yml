@@ -1,0 +1,68 @@
+name: 🛍️ Scheda Google Play
+
+# Testi, screenshot e grafica della scheda stanno in fastlane/metadata/android.
+#
+# - Su ogni PR che li tocca: prova a vuoto. Google riceve la scheda e la
+#   valida, ma niente viene pubblicato.
+# - A mano (Actions → Scheda Google Play → Run workflow): prova a vuoto, o
+#   invio vero con "pubblica" acceso. Le modifiche vanno in revisione da
+#   Google come quelle fatte dalla Console.
+#
+# Le novità della versione non passano da qui: le carica il rilascio
+# (release_prod.yml) da distribution/whatsnew.
+
+on:
+  pull_request:
+    paths:
+      - 'fastlane/metadata/**'
+      - '.github/workflows/store_listing.yml'
+  workflow_dispatch:
+    inputs:
+      pubblica:
+        description: 'Invia davvero la scheda (spento = solo prova a vuoto)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: store-listing
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  listing:
+    name: Scheda Google Play
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 💎 Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: 📦 Install fastlane
+        run: gem install fastlane -v 2.225.0 --no-document
+
+      - name: 🛍️ Invia o valida la scheda
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          VALIDATE_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.pubblica && 'false' || 'true' }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]]; then
+            echo 'Manca il secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON' >&2
+            exit 1
+          fi
+          echo "Solo prova a vuoto: $VALIDATE_ONLY"
+          fastlane supply \
+            --package_name com.davidetarsi.packlog \
+            --json_key_data "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" \
+            --metadata_path fastlane/metadata/android \
+            --skip_upload_apk true \
+            --skip_upload_aab true \
+            --skip_upload_changelogs true \
+            --sync_image_upload true \
+            --validate_only "$VALIDATE_ONLY"

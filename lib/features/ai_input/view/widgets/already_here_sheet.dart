@@ -11,6 +11,7 @@ import '../../../../shared/widgets/ds_error_state.dart';
 import '../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../../shared/widgets/ds_group_header.dart';
 import '../../../houses/providers/house_provider.dart';
+import '../../../items/model/item_metadata_merge.dart';
 import '../../../items/model/item_model.dart';
 import '../../../items/providers/item_provider.dart';
 import '../../helpers/ai_item_category.dart';
@@ -149,7 +150,7 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
                     style: theme.textTheme.bodyLarge?.strong,
                   ),
                 ),
-                if (item.aiMetadata != null) ...[
+                if (!needsAiMetadata(item.aiMetadata)) ...[
                   SizedBox(width: context.spacingXs),
                   Icon(
                     Icons.auto_awesome,
@@ -195,6 +196,21 @@ class _AlreadyHereSheetState extends ConsumerState<_AlreadyHereSheet> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Senza capi simili lo si dice, prima degli altri: così
+                    // si capisce che il controllo c'è stato.
+                    if (similar.isEmpty)
+                      Padding(
+                        key: const Key('already_here_nothing_similar'),
+                        padding: EdgeInsets.only(top: context.spacingMd),
+                        child: Text(
+                          houseName == null
+                              ? 'ai_import.nothing_similar_default'.tr()
+                              : 'ai_import.nothing_similar'.tr(
+                                  args: [houseName],
+                                ),
+                          style: theme.textTheme.bodyLarge?.strong,
+                        ),
+                      ),
                     if (similar.isNotEmpty) ...[
                       DsGroupHeader(
                         label: 'ai_import.most_similar'.tr(),

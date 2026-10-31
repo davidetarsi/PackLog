@@ -144,4 +144,8 @@ jobs:
           packageName: com.davidetarsi.packlog
           releaseFiles: build/app/outputs/bundle/prodRelease/PackLog-prod-v${{ env.APP_VERSION }}.aab
           tracks: internal
+          # Novità della versione, una per lingua (whatsnew-it-IT, ...): vanno
+          # aggiornate nella PR del rilascio. Seguono la release quando la si
+          # promuove in produzione.
+          whatsNewDirectory: distribution/whatsnew
           status: completed

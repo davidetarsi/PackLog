@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/tab_header.dart';
 
 void main() {
@@ -39,7 +40,7 @@ void main() {
       ),
     );
     expect(find.text('DR'), findsOneWidget);
-    expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isFalse);
+    expect(find.byKey(const Key('profile_sync_dot')), findsNothing);
 
     await tester.tap(find.byKey(const Key('profile_avatar')));
     expect(taps, 1);
@@ -47,6 +48,30 @@ void main() {
     await tester.pumpWidget(
       wrap(ProfileAvatar(initials: 'DR', showSyncDot: true, onTap: () {})),
     );
-    expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isTrue);
+    expect(find.byKey(const Key('profile_sync_dot')), findsOneWidget);
+  });
+
+  testWidgets('l avatar ha il bordino arancio del tema', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: ProfileAvatar(initials: 'DR', showSyncDot: true, onTap: () {}),
+        ),
+      ),
+    );
+    final cs = AppTheme.light.colorScheme;
+    BoxDecoration decorationOf(String key) =>
+        tester.widget<Container>(find.byKey(Key(key))).decoration!
+            as BoxDecoration;
+
+    final circle = decorationOf('profile_initials_circle');
+    expect(circle.color, cs.primaryContainer);
+    expect((circle.border! as Border).top.color, cs.primary);
+
+    // Il pallino ha un anello del colore di fondo: non si incolla al bordo.
+    final dot = decorationOf('profile_sync_dot');
+    expect(dot.color, cs.primary);
+    expect((dot.border! as Border).top.color, cs.surface);
   });
 }

@@ -27,6 +27,9 @@ class _FakeService extends TripWeatherService {
   int calls = 0;
   Object? error;
 
+  /// Quanto è vecchio il meteo che restituisce.
+  Duration age = Duration.zero;
+
   @override
   Future<TripWeather> fetch(TripWeatherRequest request) async {
     calls++;
@@ -34,7 +37,7 @@ class _FakeService extends TripWeatherService {
     if (failure != null) throw failure;
     return TripWeather(
       signature: request.signature,
-      fetchedAt: DateTime.now(),
+      fetchedAt: DateTime.now().subtract(age),
       stops: [
         for (final stop in request.stops)
           StopWeather(
@@ -111,11 +114,53 @@ void main() {
     expect(service.calls, 2);
   });
 
-  test('Aggiorna con meteo fresco non richiama', () async {
+  test('Aggiorna con meteo di meno di un ora non richiama', () async {
     final service = _FakeService();
     final container = _container(service, _trip());
     await container.read(tripWeatherNotifierProvider('t1').future);
-    await container.read(tripWeatherNotifierProvider('t1').notifier).refresh();
+    final refreshed = await container
+        .read(tripWeatherNotifierProvider('t1').notifier)
+        .refresh();
+    expect(refreshed, isFalse);
+    expect(service.calls, 1);
+  });
+
+  test(
+    'Aggiorna con meteo di due ore richiama, anche entro le 24 ore',
+    () async {
+      final service = _FakeService()..age = const Duration(hours: 2);
+      final container = _container(service, _trip());
+      await container.read(tripWeatherNotifierProvider('t1').future);
+
+      service.age = Duration.zero;
+      final refreshed = await container
+          .read(tripWeatherNotifierProvider('t1').notifier)
+          .refresh();
+      expect(refreshed, isTrue);
+      expect(service.calls, 2);
+      final state = container
+          .read(tripWeatherNotifierProvider('t1'))
+          .valueOrNull;
+      expect(
+        (state as TripWeatherReady).weather.isFresh(
+          DateTime.now(),
+          maxAge: const Duration(minutes: 1),
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test('aprendo di nuovo con meteo di due ore usa la copia', () async {
+    final service = _FakeService()..age = const Duration(hours: 2);
+    await _container(
+      service,
+      _trip(),
+    ).read(tripWeatherNotifierProvider('t1').future);
+    await _container(
+      service,
+      _trip(),
+    ).read(tripWeatherNotifierProvider('t1').future);
     expect(service.calls, 1);
   });
 

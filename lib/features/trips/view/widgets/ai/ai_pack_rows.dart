@@ -9,19 +9,23 @@ import '../../../model/ai_packing.dart';
 import '../../../../../shared/widgets/ds_divider.dart';
 
 /// Le due righe sotto il titolo della valigia AI: "Cosa manca a questo viaggio"
-/// (avvisi, in ambra) e "Perché queste scelte" (motivi, neutra). Ognuna apre
-/// il suo foglio.
+/// (avvisi, in arancio finché ce n'è uno da leggere) e "Perché queste scelte"
+/// (motivi, neutra). Ognuna apre il suo foglio.
 class AiPackRows extends StatelessWidget {
   const AiPackRows({
     super.key,
     required this.warnings,
+    required this.readIds,
     required this.reasons,
     required this.onSearch,
     required this.onDismiss,
   });
 
-  /// Avvisi ancora aperti (senza quelli chiusi con "Ok, capito").
+  /// Tutti gli avvisi, anche quelli già letti: restano da rivedere.
   final List<AiWarning> warnings;
+
+  /// Id degli avvisi segnati come letti con "Ok, capito".
+  final Set<String> readIds;
 
   /// Motivi, nell'ordine ricevuto da `pack-trip`.
   final List<AiReasonPoint> reasons;
@@ -30,13 +34,14 @@ class AiPackRows extends StatelessWidget {
   /// è chiuso.
   final ValueChanged<String> onSearch;
 
-  /// "Ok, capito": riceve l'id dell'avviso chiuso.
+  /// "Ok, capito": riceve l'id dell'avviso letto.
   final ValueChanged<String> onDismiss;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final hasWarnings = warnings.isNotEmpty;
+    final unread = warnings.where((w) => !readIds.contains(w.id)).length;
     final reasonTitles = [for (final reason in reasons.take(4)) reason.title];
 
     return Material(
@@ -48,17 +53,18 @@ class AiPackRows extends StatelessWidget {
           _Row(
             key: const Key('pack_row_missing'),
             icon: hasWarnings ? Icons.warning_amber_rounded : Icons.check,
-            iconColor: hasWarnings
-                ? context.appColors.warning
-                : cs.onSurfaceVariant,
+            iconColor: unread > 0 ? cs.primary : cs.onSurfaceVariant,
             title: hasWarnings
                 ? 'trips.pack.ai.missing_row'.tr()
                 : 'trips.pack.ai.nothing_missing'.tr(),
             titleColor: hasWarnings ? cs.onSurface : cs.onSurfaceVariant,
             subtitle: hasWarnings
-                ? warnings.map((warning) => warning.title).join(' · ')
+                ? _unreadFirst(
+                    warnings,
+                    readIds,
+                  ).map((warning) => warning.title).join(' · ')
                 : 'trips.pack.ai.nothing_missing_hint'.tr(),
-            trailing: hasWarnings ? _CountBadge(count: warnings.length) : null,
+            trailing: unread > 0 ? _CountBadge(count: unread) : null,
             onTap: () => _openWarnings(context),
           ),
           DsDivider(
@@ -83,6 +89,7 @@ class AiPackRows extends StatelessWidget {
     context,
     builder: (_) => _WarningsSheet(
       warnings: warnings,
+      readIds: readIds,
       onSearch: onSearch,
       onDismiss: onDismiss,
     ),
@@ -93,6 +100,12 @@ class AiPackRows extends StatelessWidget {
     builder: (_) => _ReasonsSheet(reasons: reasons),
   );
 }
+
+/// Prima gli avvisi da leggere, poi quelli letti, ognuno nell'ordine ricevuto.
+List<AiWarning> _unreadFirst(List<AiWarning> warnings, Set<String> readIds) => [
+  ...warnings.where((w) => !readIds.contains(w.id)),
+  ...warnings.where((w) => readIds.contains(w.id)),
+];
 
 /// Una riga del gruppo: icona, titolo, sottotitolo, e a destra un'aggiunta
 /// facoltativa e la freccia.
@@ -168,7 +181,8 @@ class _Row extends StatelessWidget {
   }
 }
 
-/// Il numero degli avvisi, in ambra e con il contorno.
+/// Il numero degli avvisi da leggere: contorno arancio, cifra in arancio scuro
+/// (l'arancio pieno su bianco non regge per un testo così piccolo).
 class _CountBadge extends StatelessWidget {
   const _CountBadge({required this.count});
 
@@ -176,7 +190,7 @@ class _CountBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final warning = context.appColors.warning;
+    final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     return Container(
       constraints: BoxConstraints(
@@ -188,29 +202,31 @@ class _CountBadge extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppConstants.pillBorderRadius),
         border: Border.all(
-          color: warning,
+          color: cs.primary,
           width: AppConstants.emphasisBorderWidth,
         ),
       ),
       child: Text(
         '$count',
-        style: tt.labelMedium?.strong.copyWith(color: warning),
+        style: tt.labelMedium?.strong.copyWith(color: cs.onPrimaryContainer),
       ),
     );
   }
 }
 
-/// Il foglio degli avvisi: un riquadro per avviso. "Ok, capito" lo toglie dal
-/// foglio e lo chiude nella pagina; "Cerca nell'armadio" chiude il foglio e
-/// scrive la ricerca.
+/// Il foglio degli avvisi: un riquadro per avviso, prima quelli da leggere.
+/// "Ok, capito" segna l'avviso come letto, che resta nel foglio più spento;
+/// "Cerca nell'armadio" chiude il foglio e scrive la ricerca.
 class _WarningsSheet extends StatefulWidget {
   const _WarningsSheet({
     required this.warnings,
+    required this.readIds,
     required this.onSearch,
     required this.onDismiss,
   });
 
   final List<AiWarning> warnings;
+  final Set<String> readIds;
   final ValueChanged<String> onSearch;
   final ValueChanged<String> onDismiss;
 
@@ -219,10 +235,11 @@ class _WarningsSheet extends StatefulWidget {
 }
 
 class _WarningsSheetState extends State<_WarningsSheet> {
-  late final List<AiWarning> _open = [...widget.warnings];
+  /// Copia locale: il foglio non si ricostruisce quando la pagina cambia.
+  late final Set<String> _read = {...widget.readIds};
 
   void _dismiss(AiWarning warning) {
-    setState(() => _open.removeWhere((w) => w.id == warning.id));
+    setState(() => _read.add(warning.id));
     widget.onDismiss(warning.id);
   }
 
@@ -241,14 +258,16 @@ class _WarningsSheetState extends State<_WarningsSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_open.isEmpty)
+          if (widget.warnings.isEmpty)
             Text(
               'trips.pack.ai.nothing_missing_sheet'.tr(),
               style: tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
             ),
-          for (final warning in _open) ...[
+          for (final warning in _unreadFirst(widget.warnings, _read)) ...[
             _WarningCard(
+              key: Key('ai_warning_${warning.id}'),
               warning: warning,
+              read: _read.contains(warning.id),
               onSearch: _search,
               onDismiss: () => _dismiss(warning),
             ),
@@ -260,15 +279,20 @@ class _WarningsSheetState extends State<_WarningsSheet> {
   }
 }
 
-/// Un avviso: livello ("Importante" in ambra), titolo, perché, e i bottoni.
+/// Un avviso: livello ("Importante" in arancio scuro), titolo, perché, e i
+/// bottoni. Letto: al posto del livello "Letto", testi spenti, niente "Ok,
+/// capito"; "Cerca nell'armadio" resta.
 class _WarningCard extends StatelessWidget {
   const _WarningCard({
+    super.key,
     required this.warning,
+    required this.read,
     required this.onSearch,
     required this.onDismiss,
   });
 
   final AiWarning warning;
+  final bool read;
   final ValueChanged<String> onSearch;
   final VoidCallback onDismiss;
 
@@ -277,18 +301,21 @@ class _WarningCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final search = warning.search?.trim();
-    // Solo "Importante" in ambra: "Utile" resta grigio, così il livello si
-    // legge prima del testo.
-    final (levelKey, levelColor) = switch (warning.level) {
-      AiWarningLevel.important => (
-        'trips.pack.ai.level_important',
-        context.appColors.warning,
-      ),
-      AiWarningLevel.useful => (
-        'trips.pack.ai.level_useful',
-        cs.onSurfaceVariant,
-      ),
-    };
+    // Solo "Importante" in arancio: "Utile" resta grigio, così il livello si
+    // legge prima del testo. L'arancio scuro regge su fondo bianco.
+    final (levelKey, levelColor) = read
+        ? ('trips.pack.ai.warning_read', cs.onSurfaceVariant)
+        : switch (warning.level) {
+            AiWarningLevel.important => (
+              'trips.pack.ai.level_important',
+              cs.onPrimaryContainer,
+            ),
+            AiWarningLevel.useful => (
+              'trips.pack.ai.level_useful',
+              cs.onSurfaceVariant,
+            ),
+          };
+    final textColor = read ? cs.onSurfaceVariant : null;
 
     return Container(
       padding: EdgeInsets.all(context.spacingMd),
@@ -304,9 +331,12 @@ class _WarningCard extends StatelessWidget {
             style: tt.labelLarge?.strong.copyWith(color: levelColor),
           ),
           SizedBox(height: context.spacingXs),
-          Text(warning.title, style: tt.titleMedium?.title),
+          Text(
+            warning.title,
+            style: tt.titleMedium?.title.copyWith(color: textColor),
+          ),
           SizedBox(height: context.spacingXs),
-          Text(warning.why, style: tt.bodyMedium),
+          Text(warning.why, style: tt.bodyMedium?.copyWith(color: textColor)),
           SizedBox(height: context.spacingMd),
           Wrap(
             spacing: context.spacingSm,
@@ -319,12 +349,13 @@ class _WarningCard extends StatelessWidget {
                   label: 'trips.pack.ai.warning_search'.tr(),
                   onPressed: () => onSearch(search),
                 ),
-              DsButton(
-                key: Key('ai_warning_dismiss_${warning.id}'),
-                variant: DsButtonVariant.neutral,
-                label: 'trips.pack.ai.warning_dismiss'.tr(),
-                onPressed: onDismiss,
-              ),
+              if (!read)
+                DsButton(
+                  key: Key('ai_warning_dismiss_${warning.id}'),
+                  variant: DsButtonVariant.neutral,
+                  label: 'trips.pack.ai.warning_dismiss'.tr(),
+                  onPressed: onDismiss,
+                ),
             ],
           ),
         ],
