@@ -38,6 +38,7 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/profile/providers/gpt_usage_provider.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/houses/view/add_edit_house_screen.dart';
+import 'package:pack_log/features/items/providers/item_enrichment_provider.dart';
 import 'package:pack_log/features/items/view/item_sheet.dart';
 import 'package:pack_log/features/luggages/view/add_edit_luggage_screen.dart';
 import 'package:pack_log/features/spaces/view/add_edit_space_screen.dart';
@@ -154,6 +155,13 @@ Future<void> _emitAi(ScreenshotApp app, AiImportState state) async {
 class _SyncingForever extends Syncing {
   @override
   bool build() => true;
+}
+
+/// "T-shirt bianca" (`item-0`, capo senza metadati) con la richiesta della
+/// scheda ancora in corso.
+class _PendingItemDetails extends ItemEnrichment {
+  @override
+  Set<String> build() => const {'item-0'};
 }
 
 class _UnavailableHouses extends HouseNotifier {
@@ -886,6 +894,26 @@ final flows = <Flow>[
         await _scrollSheet(app, -380);
         await app.tester.ensureVisible(_text('clothing.details.other_color'));
         await app.tap(_text('clothing.details.other_color'));
+      },
+    ),
+    Scenario(
+      8,
+      'oggetto-scheda',
+      'dettagli-in-attesa',
+      source: 'lib/features/items/view/item_sheet.dart',
+      description:
+          'Capo senza metadati mentre la scheda dell\'AI arriva: sopra i '
+          'Dettagli, la riga "Sto completando i dettagli. Puoi già '
+          'modificarli." e i dettagli ancora vuoti; il campo Nome resta '
+          'modificabile.',
+      setup: AppSetup(
+        extraOverrides: [
+          itemEnrichmentProvider.overrideWith(_PendingItemDetails.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.text('T-shirt bianca'));
       },
     ),
   ]),
