@@ -68,3 +68,15 @@ test("un valore che non e' un testo o un elenco resta, e lo rifiuta la validazio
   const senzaViaggio = traduciViaggio(null, CATALOGO_BASE);
   assert.equal(senzaViaggio, null);
 });
+
+test("un elenco di piu' di 100 attivita' non si traduce, e lo rifiuta la validazione", () => {
+  const molte = Array.from({ length: 5000 }, (_, i) => `attivita ${i}`);
+  const viaggio = { data_inizio: "2026-11-02", giorni: 2, destinazione: islanda, attivita: molte };
+  const tradotto = traduciViaggio(viaggio, CATALOGO_BASE) as { attivita: string[] };
+  assert.equal(tradotto.attivita, molte, "stesso elenco, non una copia lavorata");
+  assert.throws(() => validaViaggio(tradotto, OGGI), /al massimo 20 attivita/);
+  // fino a 100 si traduce come sempre (doppioni tolti con un Set)
+  const cento = ["city", ...Array.from({ length: 99 }, () => "city")];
+  assert.deepEqual((traduciViaggio({ ...viaggio, attivita: cento }, CATALOGO_BASE) as { attivita: string[] }).attivita,
+    ["visite in citta"]);
+});

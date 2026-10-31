@@ -91,13 +91,17 @@ export function voce(c: Catalogo, dominio: string, id: string): VoceCatalogo | u
  *  i suoi testi; un valore che non e' un id resta com'e' (le app vecchie mandano
  *  gia' i testi). Senza doppioni, nell'ordine della prima comparsa. */
 export function testiAttivita(c: Catalogo, valori: string[]): string[] {
-  const out: string[] = [];
+  const visti = new Set<string>();
   for (const valore of valori) {
     const testi = voce(c, "activity", valore)?.data.generator;
-    for (const t of Array.isArray(testi) ? testi : [valore]) if (!out.includes(t)) out.push(t);
+    for (const t of Array.isArray(testi) ? testi : [valore]) visti.add(t);
   }
-  return out;
+  return [...visti];
 }
+
+/** Piu' attivita' di cosi' in un elenco non sono di un'app vera: non si traducono
+ *  (e' lavoro inutile) e la validazione dell'ingresso le rifiuta. */
+export const MAX_ATTIVITA_DA_TRADURRE = 100;
 
 /** L'alloggio per il generatore: un id diventa il suo testo; un altro valore
  *  resta com'e'. */
@@ -110,7 +114,7 @@ export function testoAlloggio(c: Catalogo, valore: string | null | undefined): s
 /** Un elenco di attivita' come lo manda l'app. Se non e' un elenco di testi resta
  *  com'e': lo rifiuta la validazione. */
 function traduciElenco(x: unknown, c: Catalogo): unknown {
-  if (!Array.isArray(x) || !x.every((a) => typeof a === "string")) return x;
+  if (!Array.isArray(x) || x.length > MAX_ATTIVITA_DA_TRADURRE || !x.every((a) => typeof a === "string")) return x;
   return testiAttivita(c, x);
 }
 
