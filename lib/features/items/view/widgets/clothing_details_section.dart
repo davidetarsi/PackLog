@@ -24,11 +24,17 @@ import '../../providers/user_colors_provider.dart';
 ///
 /// [fields] dice quali dettagli mostrare, secondo la categoria dell'oggetto
 /// ([clothingFieldsFor]); di default tutti.
+///
+/// [onFieldTouched] avvisa di ogni interazione su un campo, anche quando il
+/// valore non cambia (la pillola già scelta, il tipo uguale nel picker, il
+/// colore): la scheda ricorda i campi scelti dall'utente. Negli usi conta solo
+/// un cambiamento: toccare l'ultimo uso, che non si toglie, non sceglie niente.
 class ClothingDetailsSection extends ConsumerWidget {
   final ClothingDetails details;
   final ValueChanged<ClothingDetails> onChanged;
   final Set<String> doubts;
   final ValueChanged<String>? onDoubtResolved;
+  final ValueChanged<ClothingField>? onFieldTouched;
   final Set<ClothingField> fields;
 
   const ClothingDetailsSection({
@@ -37,6 +43,7 @@ class ClothingDetailsSection extends ConsumerWidget {
     required this.onChanged,
     this.doubts = const {},
     this.onDoubtResolved,
+    this.onFieldTouched,
     this.fields = const {...ClothingField.values},
   });
 
@@ -48,6 +55,7 @@ class ClothingDetailsSection extends ConsumerWidget {
         ref.watch(userColorsProvider).valueOrNull ?? const <String>[];
 
     void resolved(String field) => onDoubtResolved?.call(field);
+    void touched(ClothingField field) => onFieldTouched?.call(field);
     String? toCheck(String field) =>
         doubts.contains(field) ? 'clothing.details.to_check'.tr() : null;
 
@@ -59,6 +67,7 @@ class ClothingDetailsSection extends ConsumerWidget {
             value: details.subCategory,
             doubtNote: toCheck('subCategory'),
             onPicked: (type) {
+              touched(ClothingField.type);
               onChanged(details.copyWith(subCategory: type));
               resolved('subCategory');
             },
@@ -67,11 +76,14 @@ class ClothingDetailsSection extends ConsumerWidget {
           _ColorChoice(
             color: details.color,
             userColors: userColors,
-            onChanged: (color) => onChanged(
-              color == null
-                  ? details.copyWith(clearColor: true)
-                  : details.copyWith(color: color),
-            ),
+            onChanged: (color) {
+              touched(ClothingField.color);
+              onChanged(
+                color == null
+                    ? details.copyWith(clearColor: true)
+                    : details.copyWith(color: color),
+              );
+            },
           ),
         if (fields.contains(ClothingField.warmth))
           DsChoiceGroup<int>(
@@ -82,7 +94,10 @@ class ClothingDetailsSection extends ConsumerWidget {
             onChanged: (s) => onChanged(details.copyWith(warmth: s.single)),
             doubt: doubts.contains('warmth'),
             note: toCheck('warmth'),
-            onTouched: () => resolved('warmth'),
+            onTouched: () {
+              touched(ClothingField.warmth);
+              resolved('warmth');
+            },
           ),
         if (fields.contains(ClothingField.waterResistance))
           DsChoiceGroup<int>(
@@ -94,7 +109,10 @@ class ClothingDetailsSection extends ConsumerWidget {
                 onChanged(details.copyWith(waterResistance: s.single)),
             doubt: doubts.contains('waterResistance'),
             note: toCheck('waterResistance'),
-            onTouched: () => resolved('waterResistance'),
+            onTouched: () {
+              touched(ClothingField.waterResistance);
+              resolved('waterResistance');
+            },
           ),
         if (fields.contains(ClothingField.formality))
           DsChoiceGroup<String>(
@@ -105,7 +123,10 @@ class ClothingDetailsSection extends ConsumerWidget {
             onChanged: (s) => onChanged(details.copyWith(formality: s.single)),
             doubt: doubts.contains('formality'),
             note: toCheck('formality'),
-            onTouched: () => resolved('formality'),
+            onTouched: () {
+              touched(ClothingField.formality);
+              resolved('formality');
+            },
           ),
         if (fields.contains(ClothingField.uses))
           DsChoiceGroup<String>(
@@ -115,7 +136,10 @@ class ClothingDetailsSection extends ConsumerWidget {
             selected: details.uses,
             multiple: true,
             note: 'clothing.details.uses_hint'.tr(),
-            onChanged: (s) => onChanged(details.copyWith(uses: s)),
+            onChanged: (s) {
+              touched(ClothingField.uses);
+              onChanged(details.copyWith(uses: s));
+            },
           ),
       ],
     );

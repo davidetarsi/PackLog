@@ -26,7 +26,9 @@ import '../../spaces/providers/space_provider.dart';
 import '../../spaces/view/add_edit_space_screen.dart';
 import '../../../shared/widgets/ds_link_button.dart';
 import '../model/clothing_details.dart';
+import '../model/item_metadata_merge.dart';
 import '../model/item_model.dart';
+import '../providers/item_enrichment_provider.dart';
 import '../providers/item_provider.dart';
 import '../services/category_infer_service.dart';
 import '../widgets/category_pill.dart';
@@ -163,12 +165,23 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   int _quantity = 1;
   String? _spaceId;
 
-  /// Dettagli di un capo, solo in modifica e se l'oggetto ha i metadati di un
-  /// capo: il risultato letto, i dettagli come sono salvati e quelli che
-  /// l'utente sta modificando.
-  ClothingAnalysisResult? _clothingResult;
+  /// Dettagli del capo: come sono salvati (si aggiornano quando arrivano
+  /// metadati nuovi) e come li vede l'utente. Null se per un oggetto che l'AI
+  /// ha riconosciuto come non capo.
   ClothingDetails? _originalDetails;
   ClothingDetails? _details;
+
+  /// I campi che l'utente ha toccato in questa scheda, anche senza cambiarli:
+  /// al salvataggio diventano sue scelte, e l'AI non le cambia più.
+  final Set<ClothingField> _touched = {};
+
+  /// I metadati già letti: quando cambiano (la risposta dell'AI) i campi che
+  /// l'utente non ha toccato si aggiornano.
+  String? _seenMetadata;
+
+  /// Se l'utente ha toccato una categoria. Finché no, la categoria segue
+  /// l'oggetto, perché l'AI può cambiarla.
+  bool _categoryTouched = false;
 
   /// Solo dalla scansione: i dubbi del server ancora da risolvere, e la
   /// categoria di partenza.
@@ -194,7 +207,15 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
         (_chosenCategory ?? item.category) != item.category ||
         _quantity != (item.quantity ?? 1) ||
         _spaceId != item.spaceId ||
-        (_details != null && _details != _originalDetails);
+        (_details != null && _details != _originalDetails) ||
+        _hasUnsavedTouches(item);
+  }
+
+  /// Un campo toccato che i metadati non segnano ancora come scelta dell'utente:
+  /// toccarlo e salvare lo deve salvare, anche se il valore è lo stesso.
+  bool _hasUnsavedTouches(ItemModel item) {
+    final userFields = userFieldsOf(item.aiMetadata);
+    return _touched.any((field) => !userFields.contains(metadataKeyOf(field)));
   }
 
   /// Anche un dubbio risolto conta: confermare il valore proposto toglie il
@@ -207,15 +228,17 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
         _doubts.length != result.doubts.toSet().length;
   }
 
-  /// La categoria che la scheda mostra adesso: scelta, della scansione o
-  /// dell'oggetto salvato.
-  ItemCategory? get _currentCategory =>
-      _chosenCategory ?? _scanCategory ?? _item()?.category;
+  /// La categoria che la scheda mostra adesso: scelta, della scansione, dedotta
+  /// dal nome ([inferred], nuovo oggetto) o dell'oggetto salvato.
+  ItemCategory? _currentCategory(ItemCategory? inferred) =>
+      _chosenCategory ?? _scanCategory ?? inferred ?? _item()?.category;
 
-  /// I dettagli da mostrare per la categoria di adesso: cambiano subito se
-  /// l'utente sceglie un'altra categoria. I valori nascosti restano.
-  Set<ClothingField> _fieldsFor(ClothingDetails? details) {
-    final category = _currentCategory;
+  /// I dettagli da mostrare per [category]: cambiano subito se l'utente sceglie
+  /// un'altra categoria. I valori nascosti restano.
+  Set<ClothingField> _fieldsFor(
+    ClothingDetails? details,
+    ItemCategory? category,
+  ) {
     if (category == null || details == null) return const {};
     return clothingFieldsFor(category, details.subCategory ?? '');
   }
@@ -235,6 +258,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     }
     if (_isNew) {
       _nameController.text = widget.initialName;
+      _details = ClothingDetails.empty;
       _loaded = true;
       return;
     }
@@ -247,13 +271,44 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     _chosenCategory = item.category;
     _quantity = item.quantity ?? 1;
     _spaceId = item.spaceId;
-    final clothing = clothingFromMetadata(item.aiMetadata);
-    if (clothing != null) {
-      _clothingResult = clothing;
-      _originalDetails = ClothingDetails.of(clothing);
-      _details = _originalDetails;
-    }
+    _seenMetadata = item.aiMetadata;
+    _originalDetails = _detailsOf(item.aiMetadata);
+    _details = _originalDetails;
     _loaded = true;
+  }
+
+  /// In modifica, quando i metadati cambiano (la risposta dell'AI), i campi che
+  /// l'utente non ha toccato prendono i valori nuovi; quelli toccati restano.
+  /// Anche la categoria segue l'oggetto, finché l'utente non ne tocca una.
+  void _refreshFrom(ItemModel item) {
+    if (item.aiMetadata == _seenMetadata) return;
+    _seenMetadata = item.aiMetadata;
+    final stored = _detailsOf(item.aiMetadata);
+    final shown = _details;
+    _originalDetails = stored;
+    _details = stored == null || shown == null
+        ? stored
+        : _keepTouched(stored, shown);
+    if (!_categoryTouched) _chosenCategory = item.category;
+  }
+
+  /// [stored] con i campi toccati presi da [shown].
+  ClothingDetails _keepTouched(ClothingDetails stored, ClothingDetails shown) {
+    bool touched(ClothingField field) => _touched.contains(field);
+    return ClothingDetails(
+      subCategory: touched(ClothingField.type)
+          ? shown.subCategory
+          : stored.subCategory,
+      color: touched(ClothingField.color) ? shown.color : stored.color,
+      warmth: touched(ClothingField.warmth) ? shown.warmth : stored.warmth,
+      waterResistance: touched(ClothingField.waterResistance)
+          ? shown.waterResistance
+          : stored.waterResistance,
+      formality: touched(ClothingField.formality)
+          ? shown.formality
+          : stored.formality,
+      uses: touched(ClothingField.uses) ? shown.uses : stored.uses,
+    );
   }
 
   /// Dalla scansione: nome, categoria e dettagli del capo ricevuto. I dettagli
@@ -293,9 +348,15 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   /// nella pagina "Aggiungi". Nella modifica una categoria c'è sempre.
   void _tapCategory(ItemCategory category) {
     setState(() {
+      _categoryTouched = true;
       _chosenCategory = _isNew && _chosenCategory == category ? null : category;
     });
   }
+
+  /// Un tocco su un campo dei dettagli: anche senza cambiarlo, il campo è una
+  /// scelta dell'utente.
+  void _onFieldTouched(ClothingField field) =>
+      setState(() => _touched.add(field));
 
   CategoryPillState _pillState(ItemCategory category, ItemCategory? inferred) {
     if (_chosenCategory == category) return CategoryPillState.forced;
@@ -364,7 +425,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
       category: _chosenCategory ?? item.category,
       quantity: _quantity,
       spaceId: _spaceId,
-      aiMetadata: _metadataFor(item),
+      aiMetadata: _metadataFor(item.aiMetadata),
       updatedAt: DateTime.now(),
     );
     final changedDetails = _changedDetailFields();
@@ -402,7 +463,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     final remainingDoubts = visibleDoubts([
       for (final field in result.doubts)
         if (_doubts.contains(field)) field,
-    ], _fieldsFor(details));
+    ], _fieldsFor(details, _currentCategory(null)));
     Navigator.pop(
       context,
       edited.copyWith(
@@ -413,15 +474,17 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     );
   }
 
-  /// I metadati del capo con i dettagli modificati. Senza modifiche (o per un
-  /// oggetto che non è un capo) restano quelli salvati, byte per byte.
-  String? _metadataFor(ItemModel item) {
-    final clothing = _clothingResult;
+  /// I metadati da salvare, a partire da [current], quelli dell'oggetto letti
+  /// al salvataggio. Senza campi toccati restano come sono, byte per byte. Con
+  /// campi toccati diventano scelte dell'utente: vedi [withUserDetails].
+  String? _metadataFor(String? current) {
     final details = _details;
-    if (clothing == null || details == null || details == _originalDetails) {
-      return item.aiMetadata;
-    }
-    return jsonEncode(details.applyTo(clothing).toJson());
+    if (_touched.isEmpty || details == null) return current;
+    return withUserDetails(
+      current: current,
+      details: details,
+      touched: _touched,
+    );
   }
 
   /// Campi dei dettagli cambiati rispetto a quando la scheda si è aperta.
@@ -450,6 +513,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
       description: note.isEmpty ? null : note,
       quantity: _quantity,
       spaceId: _spaceId,
+      aiMetadata: _metadataFor(null),
       createdAt: now,
       updatedAt: now,
     );
@@ -542,6 +606,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
             );
           }
           _hydrate(item);
+          _refreshFrom(item);
           return null;
         },
       );
@@ -562,6 +627,10 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
             ref.watch(categoryInferServiceProvider).valueOrNull,
           );
     final footnote = widget.footnote;
+    final category = _currentCategory(inferred);
+    // Nel nuovo oggetto e nella scansione `itemId` è null: la riga c'è solo in
+    // modifica.
+    final enriching = ref.watch(itemEnrichmentProvider).contains(widget.itemId);
 
     // Durante il salvataggio il foglio non si chiude: chi l'ha aperto aspetta
     // l'oggetto creato.
@@ -689,7 +758,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
               ),
             ],
             if (_details case final details?
-                when _fieldsFor(details).isNotEmpty) ...[
+                when _fieldsFor(details, category).isNotEmpty) ...[
               // I dettagli hanno titoli dello stesso stile del
               // resto della scheda: una linea li separa, senza un
               // titolo "Dettagli" che li sovrasti.
@@ -697,10 +766,12 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
                 padding: EdgeInsets.only(top: context.spacingLg),
                 child: const DsDivider(),
               ),
+              if (enriching) const _PendingDetailsRow(),
               ClothingDetailsSection(
                 details: details,
-                fields: _fieldsFor(details),
+                fields: _fieldsFor(details, category),
                 onChanged: (d) => setState(() => _details = d),
+                onFieldTouched: _onFieldTouched,
                 doubts: _doubts,
                 onDoubtResolved: (field) =>
                     setState(() => _doubts.remove(field)),
@@ -733,6 +804,60 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
         ),
       ),
     );
+  }
+}
+
+/// La riga sopra i dettagli mentre la scheda dell'AI arriva. L'oggetto resta
+/// modificabile.
+class _PendingDetailsRow extends StatelessWidget {
+  const _PendingDetailsRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: EdgeInsets.only(top: context.spacingSm),
+      child: Row(
+        children: [
+          SizedBox.square(
+            dimension: context.iconSizeSm,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          SizedBox(width: context.spacingSm),
+          Flexible(
+            child: Text(
+              'items.details_pending'.tr(),
+              style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// I dettagli scritti in [aiMetadata]. Senza metadati, o non leggibili, sono
+/// vuoti ("da scegliere"). Null per un oggetto che l'AI ha riconosciuto come
+/// non capo: non ha dettagli.
+ClothingDetails? _detailsOf(String? aiMetadata) {
+  final map = _decodeMetadata(aiMetadata);
+  if (map == null) return ClothingDetails.empty;
+  if (map['category'] == 'Not Clothing') return null;
+  return ClothingDetails.fromMetadata(map);
+}
+
+/// La mappa di [raw] (`items.ai_metadata`); null se manca o non si legge.
+Map<String, dynamic>? _decodeMetadata(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  try {
+    final decoded = jsonDecode(raw);
+    return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+  } on FormatException {
+    return null;
   }
 }
 

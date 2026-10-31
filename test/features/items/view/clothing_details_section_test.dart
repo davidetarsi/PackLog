@@ -36,6 +36,7 @@ void main() {
     required ValueChanged<ClothingDetails> onChanged,
     Set<String> doubts = const {},
     ValueChanged<String>? onDoubtResolved,
+    ValueChanged<ClothingField>? onFieldTouched,
     List<String> userColors = const [],
   }) async {
     // Abbastanza alto da mostrare tutti i gruppi senza scorrere.
@@ -68,6 +69,7 @@ void main() {
                     onChanged: onChanged,
                     doubts: doubts,
                     onDoubtResolved: onDoubtResolved,
+                    onFieldTouched: onFieldTouched,
                   ),
                 ),
               ),
@@ -225,4 +227,119 @@ void main() {
       expect(pill(tester, activityLabel('Everyday')).selected, isFalse);
     },
   );
+
+  group('onFieldTouched', () {
+    testWidgets(
+      'toccare la pillola già scelta conferma il campo, senza cambiarlo',
+      (tester) async {
+        final touched = <ClothingField>[];
+        var changes = 0;
+        await pump(
+          tester,
+          value: details,
+          onChanged: (_) => changes++,
+          onFieldTouched: touched.add,
+        );
+
+        await tester.tap(find.text(warmthLabel(4)));
+        await tester.pumpAndSettle();
+
+        expect(touched, [ClothingField.warmth]);
+        expect(changes, 0);
+      },
+    );
+
+    testWidgets('la scelta di un altro calore conferma il campo', (
+      tester,
+    ) async {
+      final touched = <ClothingField>[];
+      await pump(
+        tester,
+        value: details,
+        onChanged: (_) {},
+        onFieldTouched: touched.add,
+      );
+
+      await tester.tap(find.text(warmthLabel(2)));
+      await tester.pumpAndSettle();
+
+      expect(touched, [ClothingField.warmth]);
+    });
+
+    testWidgets('la formalità già scelta conferma il campo', (tester) async {
+      final touched = <ClothingField>[];
+      await pump(
+        tester,
+        value: details,
+        onChanged: (_) {},
+        onFieldTouched: touched.add,
+      );
+
+      await tester.tap(find.text(formalityLabel('Casual')));
+      await tester.pumpAndSettle();
+
+      expect(touched, [ClothingField.formality]);
+    });
+
+    testWidgets('il tipo scelto di nuovo, nel picker, conferma il tipo', (
+      tester,
+    ) async {
+      final touched = <ClothingField>[];
+      ClothingDetails? emitted;
+      await pump(
+        tester,
+        value: details,
+        onChanged: (d) => emitted = d,
+        onFieldTouched: touched.add,
+      );
+
+      await tester.tap(find.byKey(const Key('clothing_type_row')));
+      await tester.pumpAndSettle();
+      // Il tipo attuale è scritto anche nella riga: la voce del picker è l'ultima.
+      final option = find.text(clothingTypeLabel('Sweater')).last;
+      await tester.ensureVisible(option);
+      await tester.tap(option);
+      await tester.pumpAndSettle();
+
+      expect(touched, [ClothingField.type]);
+      expect(emitted?.subCategory, 'Sweater');
+    });
+
+    testWidgets('ogni cambio di colore conferma il campo', (tester) async {
+      final touched = <ClothingField>[];
+      await pump(
+        tester,
+        value: details,
+        onChanged: (_) {},
+        onFieldTouched: touched.add,
+      );
+
+      // Toccare il colore già scelto lo toglie: è un cambio.
+      await tester.tap(find.text(colorLabel('Blu')));
+      await tester.pumpAndSettle();
+
+      expect(touched, [ClothingField.color]);
+    });
+
+    testWidgets(
+      'un uso in più conferma il campo, l\'ultimo che non si toglie no',
+      (tester) async {
+        final touched = <ClothingField>[];
+        await pump(
+          tester,
+          value: details,
+          onChanged: (_) {},
+          onFieldTouched: touched.add,
+        );
+
+        await tester.tap(find.text(activityLabel('Everyday')));
+        await tester.pumpAndSettle();
+        expect(touched, isEmpty);
+
+        await tester.tap(find.text(activityLabel('Beach')));
+        await tester.pumpAndSettle();
+        expect(touched, [ClothingField.uses]);
+      },
+    );
+  });
 }
