@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/app_motion.dart';
 import 'package:pack_log/shared/widgets/app_pill_tab.dart';
+import 'package:pack_log/shared/widgets/ds_appear.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
 import '../../../shared/widgets/ds_icon_button.dart';
@@ -906,7 +907,10 @@ class _AddPage extends ConsumerWidget {
             ],
             if (added.isNotEmpty) ...[
               DsGroupHeader(label: 'items.added_now'.tr(), count: added.length),
-              for (final item in added) card(item),
+              // Solo le righe nuove compaiono con la dissolvenza: la chiave
+              // dell'id fa sì che le altre non si rianimino.
+              for (final item in added)
+                DsAppear(key: ValueKey(item.id), child: card(item)),
             ],
           ],
         ),
