@@ -1,5 +1,6 @@
 // Il capo dell'armadio come lo vede il generatore. Porting della classe Garment
 // e di load_inventory del bench (packlog_checklist_bench_48.py).
+import * as K from "./costanti.ts";
 import { perIlGeneratore } from "./tassonomia.ts";
 import { senzaAccenti } from "./py.ts";
 
@@ -28,6 +29,8 @@ export interface Capo {
   water_resistance: number | null;
   bulk: number | null;
   has_metadata: boolean;
+  /** Copie possedute (items.quantity). null = non si sa: valgono i tetti di sempre. */
+  copie: number | null;
 }
 
 /** Una riga della tabella items: nome e ai_metadata (stringa JSON o oggetto). */
@@ -37,6 +40,28 @@ export interface RigaArmadio {
   house_id?: string | number | null;
   ai_metadata?: string | Record<string, unknown> | null;
   category?: string | null;
+  quantity?: number | null;
+}
+
+// ── Copie possedute (Davide, 31 ottobre) ────────────────────────────────────
+// La quantita' di un oggetto nell'app e' il numero VERO di copie, calzini e
+// mutande compresi: il generatore non ne mette mai di piu'. Senza quantita'
+// (null) restano i tetti di sempre.
+// Valori di partenza da costanti.ts (generato dal bench); modificabili solo nelle prove.
+export const opzioniCopie = {
+  /** false: si ignorano (le misure di prima). */
+  dallaQuantita: K.COPIE_DALLA_QUANTITA as boolean,
+  /** Solo per le prove: forza le copie di ogni capo. */
+  perCapo: K.COPIE_PER_CAPO as number | null,
+};
+
+/** Le copie di una riga dell'armadio: la quantita', almeno 1; null se manca. */
+export function copieDellaRiga(r: RigaArmadio): number | null {
+  if (!opzioniCopie.dallaQuantita) return null;
+  if (opzioniCopie.perCapo != null) return opzioniCopie.perCapo;
+  const q = r.quantity;
+  if (typeof q !== "number" || !Number.isFinite(q)) return null;
+  return Math.max(1, Math.trunc(q));
 }
 
 // ── Dizionario "porta sempre": intimo, calze, pigiama, igiene ───────────────
@@ -75,9 +100,10 @@ export function caricaArmadio(righe: RigaArmadio[]): Capo[] {
       id: String(r.id ?? ""), name: r.name || "", house_id: String(r.house_id || ""),
       category: "", sub_category: "", sub_fine: "", solo_neve: null, base_color: "",
       pattern: "", coverage: "", fit: "", warmth: null, formality: "", activity_tags: [],
-      sempre_in_valigia: false, water_resistance: null, bulk: null, has_metadata: false,
+      sempre_in_valigia: false, water_resistance: null, bulk: null, has_metadata: false, copie: null,
     };
     g.sempre_in_valigia = eSempreInValigia(g.name);
+    g.copie = copieDellaRiga(r);
     const raw = r.ai_metadata;
     if (raw) {
       let m: Record<string, unknown> | null = null;
