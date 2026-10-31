@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/catalog/catalog.dart';
 import 'package:pack_log/core/catalog/catalog_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -36,7 +38,33 @@ final _copiaNelRepo = jsonEncode({
   ],
 });
 
-/// Le righe della tabella catalog_entries: label_it e label_en.
+/// Una riga della tabella catalog_entries: label_it e label_en.
+Map<String, dynamic> _riga(
+  String domain,
+  String id,
+  int sort, {
+  bool active = true,
+}) => {
+  'domain': domain,
+  'id': id,
+  'sort': sort,
+  'active': active,
+  'label_it': id,
+  'label_en': id,
+  'data': <String, dynamic>{},
+};
+
+/// Una voce attiva per ognuno degli altri domini essenziali (oltre alle attività).
+List<Map<String, dynamic>> _altriDomini() => [
+  _riga('stay', 'hotel', 1),
+  _riga('clothing_type', 'Shirt', 2),
+  _riga('use', 'Everyday', 3),
+  _riga('formality', 'Casual', 4),
+  _riga('color', 'Nero', 5),
+];
+
+/// Le righe della tabella catalog_entries: label_it e label_en. Con tutti i
+/// domini essenziali, come un catalogo buono.
 final _righeTabella = [
   {
     'domain': 'activity',
@@ -71,6 +99,7 @@ final _righeTabella = [
       'generator': ['bicicletta'],
     },
   },
+  ..._altriDomini(),
 ];
 
 void main() {
@@ -84,6 +113,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     bundle = MockAssetBundle();
     source = MockCatalogSource();
+    when(() => source.hasSession).thenReturn(true);
     when(
       () => bundle.loadString(any(), cache: any(named: 'cache')),
     ).thenAnswer((_) async => _copiaNelRepo);
@@ -192,7 +222,70 @@ void main() {
         // La copia salvata si rilegge uguale.
         final riletto = await CatalogRepository(bundle: bundle).loadLocal();
         expect(riletto.version, 4);
-        expect(riletto.entries.length, 3);
+        expect(riletto.entries.length, _righeTabella.length);
+      },
+    );
+
+    test(
+      'catalogo vuoto dal server: rifiutato, la copia locale resta',
+      () async {
+        final copia = jsonEncode({
+          'version': 3,
+          'entries': _righeTabella
+              .map(CatalogEntry.fromJson)
+              .map((e) => e.toJson())
+              .toList(),
+        });
+        SharedPreferences.setMockInitialValues({
+          'catalog_json_cache': copia,
+          'catalog_version_cache': 3,
+        });
+        when(() => source.remoteVersion()).thenAnswer((_) async => 4);
+        when(() => source.remoteEntries()).thenAnswer((_) async => []);
+        final repo = CatalogRepository(source: source, bundle: bundle);
+
+        expect(await repo.refresh(3), isNull);
+
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getInt('catalog_version_cache'), 3);
+        expect(prefs.getString('catalog_json_cache'), copia);
+        expect((await repo.loadLocal()).entries.length, _righeTabella.length);
+      },
+    );
+
+    for (final dominio in kEssentialCatalogDomains) {
+      test(
+        'senza il dominio $dominio: rifiutato, niente viene salvato',
+        () async {
+          when(() => source.remoteVersion()).thenAnswer((_) async => 4);
+          when(() => source.remoteEntries()).thenAnswer(
+            (_) async =>
+                _righeTabella.where((r) => r['domain'] != dominio).toList(),
+          );
+          final repo = CatalogRepository(source: source, bundle: bundle);
+
+          expect(await repo.refresh(3), isNull);
+
+          final prefs = await SharedPreferences.getInstance();
+          expect(prefs.getString('catalog_json_cache'), isNull);
+          expect(prefs.getInt('catalog_version_cache'), isNull);
+        },
+      );
+    }
+
+    test(
+      'un dominio essenziale con tutte le voci disattivate: rifiutato',
+      () async {
+        when(() => source.remoteVersion()).thenAnswer((_) async => 4);
+        when(() => source.remoteEntries()).thenAnswer(
+          (_) async => [
+            for (final r in _righeTabella)
+              if (r['domain'] == 'stay') {...r, 'active': false} else r,
+          ],
+        );
+        final repo = CatalogRepository(source: source, bundle: bundle);
+
+        expect(await repo.refresh(3), isNull);
       },
     );
 
@@ -247,9 +340,9 @@ void main() {
     });
 
     test(
-      'un errore conta come controllo del giorno: niente nuovo tentativo a ogni avvio',
+      'una risposta d\'errore del server conta come controllo del giorno',
       () async {
-        when(() => source.remoteVersion()).thenThrow(Exception('rete assente'));
+        when(() => source.remoteVersion()).thenThrow(Exception('HTTP 500'));
         final repo = CatalogRepository(
           source: source,
           bundle: bundle,
@@ -259,6 +352,46 @@ void main() {
         await repo.refreshIfDue(localVersion: 1);
         await repo.refreshIfDue(localVersion: 1);
 
+        verify(() => source.remoteVersion()).called(1);
+      },
+    );
+
+    test(
+      'un\'eccezione di rete non consuma il giorno: si riprova all\'apertura dopo',
+      () async {
+        when(
+          () => source.remoteVersion(),
+        ).thenThrow(const SocketException('rete assente'));
+        final repo = CatalogRepository(
+          source: source,
+          bundle: bundle,
+          now: () => DateTime(2026, 10, 31, 9),
+        );
+
+        await repo.refreshIfDue(localVersion: 1);
+        await repo.refreshIfDue(localVersion: 1);
+
+        verify(() => source.remoteVersion()).called(2);
+      },
+    );
+
+    test(
+      'senza sessione non si interroga il server e il giorno resta libero',
+      () async {
+        when(() => source.hasSession).thenReturn(false);
+        when(() => source.remoteVersion()).thenAnswer((_) async => 1);
+        final repo = CatalogRepository(
+          source: source,
+          bundle: bundle,
+          now: () => DateTime(2026, 10, 31, 9),
+        );
+
+        await repo.refreshIfDue(localVersion: 1);
+        verifyNever(() => source.remoteVersion());
+
+        // Dopo il login lo stesso giorno si controlla.
+        when(() => source.hasSession).thenReturn(true);
+        await repo.refreshIfDue(localVersion: 1);
         verify(() => source.remoteVersion()).called(1);
       },
     );

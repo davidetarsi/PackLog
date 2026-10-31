@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../once_per_day.dart';
 import 'catalog.dart';
 
 /// Il file del repo, copia identica di `supabase/functions/_shared/catalogo/catalogo.json`.
@@ -19,12 +20,29 @@ abstract class CatalogSource {
 
   /// Tutte le righe di `catalog_entries`.
   Future<List<Map<String, dynamic>>> remoteEntries();
+
+  /// C'è un utente autenticato: la tabella si legge solo da `authenticated`.
+  bool get hasSession;
 }
+
+/// I domini senza i quali l'app non funziona: un catalogo del server che non li
+/// ha tutti (con almeno una voce attiva) non si salva.
+const List<String> kEssentialCatalogDomains = [
+  'activity',
+  'stay',
+  'clothing_type',
+  'use',
+  'formality',
+  'color',
+];
 
 class SupabaseCatalogSource implements CatalogSource {
   SupabaseCatalogSource(this._client);
 
   final SupabaseClient _client;
+
+  @override
+  bool get hasSession => _client.auth.currentSession != null;
 
   @override
   Future<int?> remoteVersion() async {
@@ -86,34 +104,55 @@ class CatalogRepository {
   /// Il catalogo dal server se la sua versione è più nuova di [localVersion]
   /// (salvato in locale), altrimenti null. Gli errori diventano null e un log.
   Future<Catalog?> refresh(int localVersion) async {
-    final fonte = source;
-    if (fonte == null) return null;
     try {
-      final remota = await fonte.remoteVersion();
-      if (remota == null || remota <= localVersion) return null;
-      final righe = await fonte.remoteEntries();
-      final catalogo = Catalog.fromJson({'entries': righe}, version: remota);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_jsonKey, jsonEncode(catalogo.toJson()));
-      await prefs.setInt(_versionKey, remota);
-      return catalogo;
+      return await _refreshOrThrow(localVersion);
     } catch (e) {
       debugPrint('[CatalogRepository] aggiornamento non riuscito: $e');
       return null;
     }
   }
 
-  /// Il controllo del server al massimo una volta al giorno, all'apertura
-  /// (decisione di Davide del 31 ottobre: letture rare). Un errore conta come
-  /// controllo: niente nuovo tentativo a ogni avvio.
-  Future<Catalog?> refreshIfDue({required int localVersion}) async {
+  Future<Catalog?> _refreshOrThrow(int localVersion) async {
+    final fonte = source;
+    if (fonte == null) return null;
+    final remota = await fonte.remoteVersion();
+    if (remota == null || remota <= localVersion) return null;
+    final righe = await fonte.remoteEntries();
+    final catalogo = Catalog.fromJson({'entries': righe}, version: remota);
+    final mancanti = kEssentialCatalogDomains
+        .where((d) => catalogo.domain(d).isEmpty)
+        .toList();
+    if (mancanti.isNotEmpty) {
+      // Un catalogo vuoto o parziale (tabella ricaricata a metà, policy persa)
+      // non sostituisce quello buono: si tiene la copia locale.
+      debugPrint(
+        '[CatalogRepository] catalogo del server rifiutato, mancano: ${mancanti.join(', ')}',
+      );
+      return null;
+    }
     final prefs = await SharedPreferences.getInstance();
-    final oggi = _giorno(_now());
-    if (prefs.getString(_controlloKey) == oggi) return null;
-    await prefs.setString(_controlloKey, oggi);
-    return refresh(localVersion);
+    await prefs.setString(_jsonKey, jsonEncode(catalogo.toJson()));
+    await prefs.setInt(_versionKey, remota);
+    return catalogo;
   }
 
-  static String _giorno(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  /// Il controllo del server al massimo una volta al giorno, all'apertura
+  /// (decisione di Davide del 31 ottobre: letture rare). Il giorno si segna solo
+  /// dopo una risposta del server e con l'utente autenticato: un'apertura
+  /// offline, o prima del login, non lo consuma (vedi [runOncePerDay]).
+  Future<Catalog?> refreshIfDue({required int localVersion}) async {
+    final fonte = source;
+    if (fonte == null) return null;
+    try {
+      return await runOncePerDay<Catalog?>(
+        key: _controlloKey,
+        hasSession: fonte.hasSession,
+        now: _now,
+        action: () => _refreshOrThrow(localVersion),
+      );
+    } catch (e) {
+      debugPrint('[CatalogRepository] aggiornamento non riuscito: $e');
+      return null;
+    }
+  }
 }
