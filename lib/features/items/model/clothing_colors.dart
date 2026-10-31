@@ -45,14 +45,25 @@ List<String> usedColorsFrom(Iterable<String?> aiMetadata) {
 String colorIdentity(String color) =>
     (paletteColor(color) ?? color.trim()).toLowerCase();
 
-/// Pillole del colore: i colori di base, seguiti dai colori dell'utente che
-/// non sono già tra quelli di base (vedi [colorIdentity]).
+/// Pillole del colore: i colori di base attivi, seguiti dai colori dell'utente
+/// che non sono già tra quelli di base (vedi [colorIdentity]).
+///
+/// Un colore di base disattivato dal catalogo non si propone ai capi che non lo
+/// usano: se l'utente ha un capo di quel colore non compare fra i "suoi colori".
+/// Il capo che ce l'ha lo mostra comunque (lo aggiunge la sezione dei dettagli,
+/// con il colore del capo corrente).
 List<String> colorChoices(List<String> userColors) {
   final base = baseColors();
   final seen = {for (final c in base) colorIdentity(c)};
+  final disattivati = {
+    for (final c in baseColors(activeOnly: false))
+      if (!base.contains(c)) colorIdentity(c),
+  };
   return [
     ...base,
     for (final color in userColors)
-      if (seen.add(colorIdentity(color))) color.trim(),
+      if (!disattivati.contains(colorIdentity(color)) &&
+          seen.add(colorIdentity(color)))
+        color.trim(),
   ];
 }

@@ -153,6 +153,36 @@ void main() {
     expect(salvia, greaterThan(labels.indexOf(colorLabel('Beige'))));
   });
 
+  testWidgets(
+    'un colore disattivato non compare fra quelli dell\'utente, ma il capo che ce l\'ha lo mostra',
+    (tester) async {
+      CatalogStore.set(catalogoConVoceDisattivata('color', 'Bordeaux'));
+
+      // Un capo di un altro colore: Bordeaux non si propone.
+      await pump(
+        tester,
+        value: details,
+        onChanged: (_) {},
+        userColors: const ['Bordeaux'],
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is DsChoicePill && w.label == colorLabel('Bordeaux'),
+        ),
+        findsNothing,
+      );
+
+      // Il capo che è Bordeaux lo mostra, selezionato.
+      await pump(
+        tester,
+        value: details.copyWith(color: 'Bordeaux'),
+        onChanged: (_) {},
+        userColors: const ['Bordeaux'],
+      );
+      expect(pill(tester, colorLabel('Bordeaux')).selected, isTrue);
+    },
+  );
+
   testWidgets('"+ Altro colore" aggiunge il colore scritto e lo seleziona', (
     tester,
   ) async {

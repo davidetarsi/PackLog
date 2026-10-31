@@ -80,5 +80,22 @@ void main() {
       ]);
       expect(choices, [...baseColors(), 'Verde salvia']);
     });
+
+    test(
+      'un colore disattivato non si propone per i capi che non lo usano',
+      () {
+        CatalogStore.set(catalogoConVoceDisattivata('color', 'Bordeaux'));
+
+        final choices = colorChoices(const [
+          'Bordeaux',
+          'bordò',
+          'Verde salvia',
+        ]);
+
+        expect(choices, [...baseColors(), 'Verde salvia']);
+        expect(choices, isNot(contains('Bordeaux')));
+        expect(baseColors(), isNot(contains('Bordeaux')));
+      },
+    );
   });
 }
