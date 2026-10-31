@@ -138,4 +138,45 @@ void main() {
     expect(houses, isEmpty);
     verifyNever(() => repo.updateItem(any()));
   });
+
+  test('completa anche gli oggetti con aiPending, tenendo le scelte '
+      'dell\'utente; non tocca quelli con la scheda completa', () async {
+    db = {
+      'item-1': _item(
+        1,
+        aiMetadata: jsonEncode({
+          'warmth': 4,
+          'userFields': ['warmth'],
+          'aiPending': true,
+        }),
+      ),
+      'item-2': _item(2, aiMetadata: '{"baseColor":"blu"}'),
+    };
+    final service = FakeItemMetadataService();
+
+    await backfill(service).run();
+
+    expect(service.names, ['capo 1']);
+    expect(jsonDecode(db['item-1']!.aiMetadata!), {
+      'name': 'capo 1',
+      'warmth': 4,
+      'userFields': ['warmth'],
+    });
+    expect(db['item-2']!.aiMetadata, '{"baseColor":"blu"}');
+  });
+
+  test('completato nel frattempo: la risposta non riscrive la scheda',
+      () async {
+    db = {
+      'item-1': _item(1, aiMetadata: jsonEncode({'aiPending': true})),
+    };
+    when(() => repo.getItemById('item-1')).thenAnswer(
+      (_) async => _item(1, aiMetadata: '{"baseColor":"blu"}'),
+    );
+
+    final houses = await backfill(FakeItemMetadataService()).run();
+
+    expect(houses, isEmpty);
+    verifyNever(() => repo.updateItem(any()));
+  });
 }

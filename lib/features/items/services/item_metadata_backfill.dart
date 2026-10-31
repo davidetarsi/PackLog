@@ -1,8 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../model/item_metadata_merge.dart';
 import '../model/item_model.dart';
 import '../repositories/item_repository.dart';
 import 'item_metadata_service.dart';
@@ -17,7 +16,8 @@ const kItemMetadataBackfillInterval = Duration(hours: 1);
 
 /// Completa in background la scheda degli oggetti che non ce l'hanno:
 /// aggiunti offline, o scritti a mano prima che la scheda arrivasse da
-/// `item-metadata`. Parte all'accesso (vedi `AuthNotifier`).
+/// `item-metadata` (anche quelli con solo le scelte dell'utente, vedi
+/// [needsAiMetadata]). Parte all'accesso (vedi `AuthNotifier`).
 ///
 /// Lavora un oggetto alla volta, dal più vecchio, entro
 /// [kItemMetadataBackfillDailyLimit] al giorno; si ferma alla prima risposta
@@ -77,7 +77,9 @@ class ItemMetadataBackfill {
 
     final pending =
         (await _repo.getAllItems())
-            .where((i) => i.aiMetadata == null && i.name.trim().isNotEmpty)
+            .where(
+              (i) => needsAiMetadata(i.aiMetadata) && i.name.trim().isNotEmpty,
+            )
             .toList()
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
@@ -95,16 +97,20 @@ class ItemMetadataBackfill {
   }
 
   /// Scrive la scheda solo se l'oggetto c'è ancora, con lo stesso nome e
-  /// ancora senza scheda.
+  /// ancora da completare. I campi scelti dall'utente restano suoi (vedi
+  /// [mergeAiMetadata]).
   Future<bool> _save(ItemModel item, ItemMetadataResult scheda) async {
     try {
       final current = await _repo.getItemById(item.id);
-      if (current.name != item.name || current.aiMetadata != null) {
+      if (current.name != item.name || !needsAiMetadata(current.aiMetadata)) {
         return false;
       }
       await _repo.updateItem(
         current.copyWith(
-          aiMetadata: jsonEncode(scheda.metadata),
+          aiMetadata: mergeAiMetadata(
+            current: current.aiMetadata,
+            ai: scheda.metadata,
+          ),
           updatedAt: _now(),
         ),
       );
