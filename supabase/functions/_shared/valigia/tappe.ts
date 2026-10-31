@@ -7,7 +7,7 @@ import * as rc from "./regole_capi.ts";
 import type { Capo } from "./capo.ts";
 import { eAttivitaAcqua, giorniDiMare, normIntensita, quantityFor, usiSottoSoglia } from "./quantita.ts";
 import {
-  capoLeggero, capoRiservato, eTrekking, insieme, interseca, penalitaCulto, quantiStratiMedi, type Record_,
+  capoLeggero, capoRiservato, eTrekking, insieme, interseca, penalitaCulto, quantiStratiMedi, type Record_, riverbero,
   segnaCapiDaNeve, slotCapiNuovi, sottoinsieme, stratiInTracolla, caloreMaxStrato, viaggioDiLavoro,
 } from "./inject.ts";
 import {
@@ -153,7 +153,7 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
     richieste.push({ slot: K.SLOT_CIABATTE, category: "Shoes", subCategories: [...K.SOTTOCAT_CIABATTE], minWaterResistance: 0,
       frequency: "once", reason: `${nome}: attivita' in acqua, ciabatte o sandali` });
   }
-  if (interseca(attNorm, K.ATTIVITA_RIVERBERO)) {
+  if (riverbero(attNorm, null, t.geo?.altitudine_m ?? null)) {
     richieste.push({ slot: "occhiali da sole", category: "Accessory", subCategories: ["Sunglasses"], minWaterResistance: 0,
       reason: `${nome}: neve, ghiacciaio o quota, riverbero` });
   }
@@ -345,7 +345,7 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     temp_min: base.meteo.temp_min_media ?? null, temp_max: base.meteo.temp_max_media ?? null, bagaglio,
     giorni_pioggia: base.meteo.giorni_di_pioggia ?? null, intensita: sc.intensita ?? null, voti_scarpe: a.voti_scarpe ?? null,
     temp_min_assoluta: base.meteo.temp_min_assoluta ?? null, profili_capi: profiliCapi, scarti_capi: a.scarti_capi ?? null,
-    classi_viaggio: a.classi_viaggio ?? null,
+    classi_viaggio: a.classi_viaggio ?? null, quota_m: base.geo?.altitudine_m ?? null,
   });
   for (const rec of [...r.ideali, ...r.ripieghi, ...(r.essenziali || [])]) rec.tappe = [...nomi];
   const perId = new Map(items.map((g) => [g.id, g]));

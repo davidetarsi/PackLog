@@ -207,6 +207,8 @@ export interface ArgomentiSlots {
   temp_max_essenziali?: number | null;
   /** false nei viaggi a tappe: i vestiti si mettono alla fine. */
   vestiti?: boolean;
+  /** Quota della meta, per il riverbero col trekking. */
+  quota_m?: number | null;
 }
 
 /** Contenitori dentro un oggetto o un array: `x in xs` di Python per i dict (uguaglianza). */
@@ -284,7 +286,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   slots = injectStratoFormale(slots, attivita || [], giorni, capienza);
   slots = injectParteInferioreFormale(slots, giorni, capienza);
   slots = injectFabbisogno(slots, tempMin, tempMax, giorniPioggia, giorni, capienza, attivita, classiViaggio,
-    a.temp_min_assoluta ?? null, attViaggio);
+    a.temp_min_assoluta ?? null, attViaggio, a.quota_m ?? null);
   slots.push(...slotCapiNuovi(items, tempMin, attivita, giorniPioggia, capienza, slots));
   const nImposti = slots.length - prima;
   let nClamp = 0;
