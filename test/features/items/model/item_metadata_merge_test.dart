@@ -134,6 +134,38 @@ void main() {
     );
   });
 
+  group('withUserCategory', () {
+    test('senza metadati: solo la categoria scelta, con aiPending', () {
+      expect(_json(withUserCategory(null)), {
+        'userFields': ['appCategory'],
+        'aiPending': true,
+      });
+    });
+
+    test('su una scheda completa: aggiunge la scelta e tiene il resto', () {
+      final out = _json(
+        withUserCategory(
+          jsonEncode({
+            ..._scheda(),
+            'userFields': ['warmth'],
+          }),
+        ),
+      );
+      expect(out['userFields'], ['warmth', 'appCategory']);
+      expect(out['warmth'], 4);
+      expect(out.containsKey('aiPending'), isFalse);
+    });
+
+    test('la scelta resta dopo la risposta dell\'AI', () {
+      final merged = _json(
+        mergeAiMetadata(current: withUserCategory(null), ai: _scheda()),
+      );
+      expect(merged['userFields'], ['appCategory']);
+      expect(merged.containsKey('aiPending'), isFalse);
+      expect(merged['warmth'], 4);
+    });
+  });
+
   group('mergeAiMetadata', () {
     test('senza current: il risultato dell\'AI, identico', () {
       final ai = _scheda();

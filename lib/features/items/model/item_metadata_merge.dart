@@ -11,6 +11,10 @@ const kUserFieldsKey = 'userFields';
 /// dell'AI non è ancora arrivata.
 const kAiPendingKey = 'aiPending';
 
+/// Il nome in `userFields` della categoria dell'app (Vestiti, Igiene, ...):
+/// scelta dall'utente, anche confermando quella che c'era, l'AI non la cambia.
+const kUserCategoryField = 'appCategory';
+
 /// La mappa di [aiMetadata]; null se manca, è vuota, non si legge o non è
 /// una mappa.
 Map<String, dynamic>? _readMap(String? aiMetadata) {
@@ -90,6 +94,20 @@ String withUserDetails({
   } else {
     json[kUserFieldsKey] = userFields.toList();
   }
+  if (readable == null) json[kAiPendingKey] = true;
+  return jsonEncode(json);
+}
+
+/// I metadati di [current] con la categoria dell'app segnata come scelta
+/// dall'utente ([kUserCategoryField]). Se [current] manca o non si legge, il
+/// risultato ha anche `aiPending: true`.
+String withUserCategory(String? current) {
+  final readable = _readMap(current);
+  final json = readable ?? <String, dynamic>{};
+  json[kUserFieldsKey] = {
+    ...userFieldsOf(current),
+    kUserCategoryField,
+  }.toList();
   if (readable == null) json[kAiPendingKey] = true;
   return jsonEncode(json);
 }

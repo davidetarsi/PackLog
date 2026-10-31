@@ -107,6 +107,9 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
               ),
               category:
                   !categoryChosen &&
+                      !userFieldsOf(
+                        current.aiMetadata,
+                      ).contains(kUserCategoryField) &&
                       current.category == model.category &&
                       scheda.category != null
                   ? scheda.category

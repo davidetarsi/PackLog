@@ -212,7 +212,9 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
         _quantity != (item.quantity ?? 1) ||
         _spaceId != item.spaceId ||
         (_details != null && _details != _originalDetails) ||
-        _hasUnsavedTouches(item);
+        _hasUnsavedTouches(item) ||
+        (_categoryTouched &&
+            !userFieldsOf(item.aiMetadata).contains(kUserCategoryField));
   }
 
   /// Un campo toccato che i metadati non segnano ancora come scelta dell'utente:
@@ -426,6 +428,9 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     final note = _noteController.text.trim();
     final name = _nameController.text.trim();
     var metadata = _metadataFor(item.aiMetadata);
+    // Una categoria toccata, anche se uguale, è una scelta dell'utente: l'AI
+    // non la cambia più.
+    if (_categoryTouched) metadata = withUserCategory(metadata);
     // Rinominato dopo che la scheda dell'AI era per il nome vecchio (mancava
     // all'apertura, o è arrivata a scheda aperta): i valori restano, ma la
     // scheda va chiesta di nuovo col nome nuovo.
@@ -528,7 +533,9 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
       description: note.isEmpty ? null : note,
       quantity: _quantity,
       spaceId: _spaceId,
-      aiMetadata: _metadataFor(null),
+      aiMetadata: _chosenCategory != null
+          ? withUserCategory(_metadataFor(null))
+          : _metadataFor(null),
       createdAt: now,
       updatedAt: now,
     );

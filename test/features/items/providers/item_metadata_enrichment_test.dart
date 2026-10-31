@@ -248,6 +248,19 @@ void main() {
       expect(db['item-1']!.aiMetadata, isNull);
     });
 
+    test('la categoria segnata come scelta nei metadati non cambia', () async {
+      build(scheda);
+      await add(
+        _item(aiMetadata: '{"userFields":["appCategory"],"aiPending":true}'),
+      );
+
+      final updated =
+          verify(() => repo.updateItem(captureAny())).captured.single
+              as ItemModel;
+      expect(updated.category, ItemCategory.varie);
+      expect(jsonDecode(updated.aiMetadata!)['userFields'], ['appCategory']);
+    });
+
     test('oggetto con aiPending: dopo la risposta warmth è dell\'utente, gli '
         'altri campi dell\'AI, aiPending sparisce', () async {
       build(scheda);

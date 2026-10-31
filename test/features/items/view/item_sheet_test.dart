@@ -206,12 +206,25 @@ void main() {
         .onPressed;
 
     expect(onSave(), isNull);
-    await app.tap(find.text('Varie'));
+    await app.enterText(find.byKey(const Key('item_sheet_note')), 'Di lana');
     expect(onSave(), isNotNull);
     // Tornando com'era si spegne di nuovo.
-    await app.tap(find.text('Vestiti'));
+    await app.enterText(find.byKey(const Key('item_sheet_note')), '');
     expect(onSave(), isNull);
-    await app.enterText(find.byKey(const Key('item_sheet_note')), 'Di lana');
+    await app.finish();
+  });
+
+  testWidgets('toccare una categoria, anche quella di prima, accende "Salva"', (
+    tester,
+  ) async {
+    final app = await openCalzini(tester);
+    VoidCallback? onSave() => tester
+        .widget<DsButton>(find.byKey(const Key('item_sheet_save')))
+        .onPressed;
+
+    // Toccare una categoria, anche quella di prima, è una scelta da salvare:
+    // poi l'AI non la cambia più.
+    await app.tap(find.text('Vestiti'));
     expect(onSave(), isNotNull);
     await app.finish();
   });
@@ -554,6 +567,22 @@ void main() {
       expect(meta['coverage'], 'Long');
       expect(meta['activityTags'], ['Everyday']);
       expect(meta['waterResistance'], 0);
+      await app.finish();
+    });
+
+    testWidgets('confermare la categoria la salva come scelta dell\'utente', (
+      tester,
+    ) async {
+      final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+      await openMaglione(tester, app);
+
+      await app.tap(find.text('Vestiti'));
+      await tapSave(tester, app);
+
+      final meta = await storedMetadata(tester, app);
+      expect(meta['userFields'], contains('appCategory'));
+      expect(meta['subCategory'], 'Sweater');
+      expect(meta.containsKey('aiPending'), isFalse);
       await app.finish();
     });
 

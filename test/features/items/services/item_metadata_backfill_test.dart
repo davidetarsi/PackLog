@@ -171,18 +171,20 @@ void main() {
     expect(db['item-2']!.aiMetadata, '{"baseColor":"blu"}');
   });
 
-  test('completato nel frattempo: la risposta non riscrive la scheda',
-      () async {
-    db = {
-      'item-1': _item(1, aiMetadata: jsonEncode({'aiPending': true})),
-    };
-    when(() => repo.getItemById('item-1')).thenAnswer(
-      (_) async => _item(1, aiMetadata: '{"baseColor":"blu"}'),
-    );
+  test(
+    'completato nel frattempo: la risposta non riscrive la scheda',
+    () async {
+      db = {
+        'item-1': _item(1, aiMetadata: jsonEncode({'aiPending': true})),
+      };
+      when(
+        () => repo.getItemById('item-1'),
+      ).thenAnswer((_) async => _item(1, aiMetadata: '{"baseColor":"blu"}'));
 
-    final houses = await backfill(FakeItemMetadataService()).run();
+      final houses = await backfill(FakeItemMetadataService()).run();
 
-    expect(houses, isEmpty);
-    verifyNever(() => repo.updateItem(any()));
-  });
+      expect(houses, isEmpty);
+      verifyNever(() => repo.updateItem(any()));
+    },
+  );
 }
