@@ -129,6 +129,32 @@ class DriftItemRepository implements ItemRepository {
   }
 
   @override
+  Future<ItemModel?> updateAiMetadata(
+    String id,
+    AiMetadataChange? Function(ItemModel current) compute, {
+    DateTime? updatedAt,
+  }) async {
+    final result = await _dbService.executeWithRetry(
+      () => _dao.updateAiMetadata(
+        id,
+        (row) => compute(_toModel(row)),
+        updatedAt: updatedAt,
+      ),
+      operationName: 'updateAiMetadata($id)',
+      config: RetryConfig.criticalConfig,
+    );
+
+    if (!result.success) {
+      throw EntitySaveException('updateAiMetadata($id)', cause: result.error);
+    }
+
+    final row = result.data;
+    if (row == null) return null;
+    debugPrint('[ItemRepo] Metadati AI aggiornati: ${row.name}');
+    return _toModel(row);
+  }
+
+  @override
   Future<void> insertMultipleItems(List<ItemModel> models) async {
     if (models.isEmpty) {
       debugPrint('[ItemRepo] insertMultipleItems: lista vuota, skip');

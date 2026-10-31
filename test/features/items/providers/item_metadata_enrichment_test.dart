@@ -16,6 +16,8 @@ import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/services/item_metadata_service.dart';
 
+import '../support/fake_ai_metadata_write.dart';
+
 class MockItemRepository extends Mock implements ItemRepository {}
 
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
@@ -130,10 +132,14 @@ void main() {
     });
   }
 
-  setUpAll(() => registerFallbackValue(_item()));
+  setUpAll(() {
+    registerFallbackValue(_item());
+    registerAiMetadataFallback();
+  });
 
   setUp(() {
     repo = MockItemRepository();
+    stubAiMetadataWrite(repo);
     when(() => repo.getItemsByHouseId(_houseId)).thenAnswer((_) async => []);
     when(() => repo.addItem(any())).thenAnswer((_) async {});
     when(() => repo.updateItem(any())).thenAnswer((_) async {});
@@ -307,17 +313,19 @@ void main() {
       expect(metadata.containsKey('aiPending'), isFalse);
     });
 
-    test('salvare senza rinominare non fa partire una nuova richiesta',
-        () async {
-      build(scheda);
-      service.hold('pile blu');
-      await add(_item());
+    test(
+      'salvare senza rinominare non fa partire una nuova richiesta',
+      () async {
+        build(scheda);
+        service.hold('pile blu');
+        await add(_item());
 
-      await save(db['item-1']!.copyWith(description: 'blu'));
+        await save(db['item-1']!.copyWith(description: 'blu'));
 
-      expect(service.names, ['pile blu']);
-      expect(container.read(itemEnrichmentProvider), {'item-1'});
-    });
+        expect(service.names, ['pile blu']);
+        expect(container.read(itemEnrichmentProvider), {'item-1'});
+      },
+    );
 
     test('rinomina prima della risposta: la risposta del nome vecchio non '
         'scrive, parte la richiesta per il nome nuovo', () async {
@@ -344,17 +352,69 @@ void main() {
       expect(container.read(itemEnrichmentProvider), isEmpty);
     });
 
-    test('la rinomina non cambia la categoria: l\'utente l\'ha già vista',
-        () async {
-      build(scheda);
-      service.hold('pile rosso');
-      await add(_item());
-      await save(_item(name: 'pile rosso'));
+    test(
+      'la rinomina non cambia la categoria: l\'utente l\'ha già vista',
+      () async {
+        build(scheda);
+        service.hold('pile rosso');
+        await add(_item());
+        await save(_item(name: 'pile rosso'));
 
-      service.answer('pile rosso', scheda);
+        service.answer('pile rosso', scheda);
+        await pumpEventQueue();
+
+        expect(db['item-1']!.category, ItemCategory.varie);
+      },
+    );
+
+    test('la scrittura in background che fallisce lascia l\'elenco com\'è '
+        '(niente AsyncError) e chiude l\'attesa', () async {
+      build(scheda);
+      service.hold('pile blu');
+      await add(_item());
+      when(() => repo.updateItem(any())).thenThrow(Exception('db'));
+
+      service.answer('pile blu', scheda);
       await pumpEventQueue();
 
-      expect(db['item-1']!.category, ItemCategory.varie);
+      final state = container.read(itemNotifierProvider(_houseId));
+      expect(state.hasError, isFalse);
+      expect(state.value!.single.name, 'pile blu');
+      expect(container.read(itemEnrichmentProvider), isEmpty);
+    });
+
+    test('rinominato con la scheda del nome vecchio già salvata (aiPending): '
+        'la risposta del nome nuovo tiene le scelte dell\'utente e riempie il '
+        'resto', () async {
+      build(scheda);
+      service.hold('pile rosso');
+      final old = jsonEncode({
+        ..._pile,
+        'warmth': 4,
+        'baseColor': 'verde',
+        'userFields': ['warmth'],
+        'aiPending': true,
+      });
+      await add(_item(aiMetadata: old), categoryChosen: true);
+      // La scheda aperta salva col nome nuovo e aiPending.
+      await save(_item(name: 'pile rosso', aiMetadata: old));
+
+      expect(service.names, ['pile blu', 'pile rosso']);
+
+      service.answer(
+        'pile rosso',
+        const ItemMetadataResult(
+          metadata: {..._pile, 'warmth': 1, 'baseColor': 'rosso'},
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(jsonDecode(db['item-1']!.aiMetadata!), {
+        ..._pile,
+        'warmth': 4,
+        'baseColor': 'rosso',
+        'userFields': ['warmth'],
+      });
     });
 
     test('oggetto eliminato prima della risposta: nessuna scrittura, resta '

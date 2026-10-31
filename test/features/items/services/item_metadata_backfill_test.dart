@@ -8,6 +8,8 @@ import 'package:pack_log/features/items/services/item_metadata_backfill.dart';
 import 'package:pack_log/features/items/services/item_metadata_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_ai_metadata_write.dart';
+
 class MockItemRepository extends Mock implements ItemRepository {}
 
 /// item-metadata finto: risponde finché ha risposte, poi null (limite/rete).
@@ -51,12 +53,16 @@ void main() {
         now: () => now,
       );
 
-  setUpAll(() => registerFallbackValue(_item(0)));
+  setUpAll(() {
+    registerFallbackValue(_item(0));
+    registerAiMetadataFallback();
+  });
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     now = DateTime(2026, 10, 21, 10);
     repo = MockItemRepository();
+    stubAiMetadataWrite(repo);
     db = {};
     when(() => repo.getAllItems()).thenAnswer((_) async => db.values.toList());
     when(

@@ -90,31 +90,34 @@ class ItemNotifier extends _$ItemNotifier with SyncedCrudNotifier<ItemModel> {
           .read(itemMetadataServiceProvider)
           .fromName(model.name);
       if (scheda == null || !laPiuRecente()) return;
-      // Se l'oggetto è stato eliminato, getItemById lancia: lo prende il catch.
-      final current = await _repo.getItemById(id);
-      if (!laPiuRecente() ||
-          current.name != model.name ||
-          !needsAiMetadata(current.aiMetadata)) {
-        return;
-      }
-      final category =
-          !categoryChosen &&
-              current.category == model.category &&
-              scheda.category != null
-          ? scheda.category!
-          : current.category;
-      final updated = current.copyWith(
-        aiMetadata: mergeAiMetadata(
-          current: current.aiMetadata,
-          ai: scheda.metadata,
-        ),
-        category: category,
-        updatedAt: DateTime.now(),
-      );
+      // Le guardie girano sulla riga riletta dentro la transazione: un
+      // salvataggio della scheda concorrente non viene annullato.
       await mutate(
-        operation: () => _repo.updateItem(updated),
+        operation: () async {
+          await _repo.updateAiMetadata(id, (current) {
+            if (!laPiuRecente() ||
+                current.name != model.name ||
+                !needsAiMetadata(current.aiMetadata)) {
+              return null;
+            }
+            return (
+              aiMetadata: mergeAiMetadata(
+                current: current.aiMetadata,
+                ai: scheda.metadata,
+              ),
+              category:
+                  !categoryChosen &&
+                      current.category == model.category &&
+                      scheda.category != null
+                  ? scheda.category
+                  : null,
+            );
+          });
+        },
         reload: () => _repo.getItemsByHouseId(houseId),
-        rethrowOnError: false,
+        // Scrittura in background: se fallisce la lista resta com'è (il catch
+        // qui sotto la registra), non diventa AsyncError.
+        rethrowOnly: true,
         onSuccess: (_) => ref.invalidate(userColorsProvider),
       );
     } catch (e) {

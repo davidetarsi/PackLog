@@ -101,20 +101,21 @@ class ItemMetadataBackfill {
   /// [mergeAiMetadata]).
   Future<bool> _save(ItemModel item, ItemMetadataResult scheda) async {
     try {
-      final current = await _repo.getItemById(item.id);
-      if (current.name != item.name || !needsAiMetadata(current.aiMetadata)) {
-        return false;
-      }
-      await _repo.updateItem(
-        current.copyWith(
+      // Le guardie girano sulla riga riletta dentro la transazione: un
+      // salvataggio della scheda concorrente non viene annullato.
+      final written = await _repo.updateAiMetadata(item.id, (current) {
+        if (current.name != item.name || !needsAiMetadata(current.aiMetadata)) {
+          return null;
+        }
+        return (
           aiMetadata: mergeAiMetadata(
             current: current.aiMetadata,
             ai: scheda.metadata,
           ),
-          updatedAt: _now(),
-        ),
-      );
-      return true;
+          category: null,
+        );
+      }, updatedAt: _now());
+      return written != null;
     } catch (e) {
       debugPrint('[Backfill] ${item.id} non aggiornato: $e');
       return false;
