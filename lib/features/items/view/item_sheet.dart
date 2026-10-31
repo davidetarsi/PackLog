@@ -179,6 +179,10 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   /// l'utente non ha toccato si aggiornano.
   String? _seenMetadata;
 
+  /// I metadati com'erano quando la scheda si è aperta: servono a sapere, se
+  /// l'utente rinomina, se la scheda dell'AI è per il nome vecchio.
+  String? _openedMetadata;
+
   /// Se l'utente ha toccato una categoria. Finché no, la categoria segue
   /// l'oggetto, perché l'AI può cambiarla.
   bool _categoryTouched = false;
@@ -272,6 +276,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
     _quantity = item.quantity ?? 1;
     _spaceId = item.spaceId;
     _seenMetadata = item.aiMetadata;
+    _openedMetadata = item.aiMetadata;
     _originalDetails = _detailsOf(item.aiMetadata);
     _details = _originalDetails;
     _loaded = true;
@@ -419,13 +424,23 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
       return;
     }
     final note = _noteController.text.trim();
+    final name = _nameController.text.trim();
+    var metadata = _metadataFor(item.aiMetadata);
+    // Rinominato dopo che la scheda dell'AI era per il nome vecchio (mancava
+    // all'apertura, o è arrivata a scheda aperta): i valori restano, ma la
+    // scheda va chiesta di nuovo col nome nuovo.
+    if (name != item.name &&
+        (needsAiMetadata(_openedMetadata) ||
+            item.aiMetadata != _openedMetadata)) {
+      metadata = withAiPending(metadata);
+    }
     final updated = item.copyWith(
-      name: _nameController.text.trim(),
+      name: name,
       description: note.isEmpty ? null : note,
       category: _chosenCategory ?? item.category,
       quantity: _quantity,
       spaceId: _spaceId,
-      aiMetadata: _metadataFor(item.aiMetadata),
+      aiMetadata: metadata,
       updatedAt: DateTime.now(),
     );
     final changedDetails = _changedDetailFields();

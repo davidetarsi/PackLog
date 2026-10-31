@@ -94,6 +94,17 @@ String withUserDetails({
   return jsonEncode(json);
 }
 
+/// I metadati di [current] con `aiPending: true`: i valori e `userFields`
+/// restano, ma la scheda dell'AI conta di nuovo come da completare (vedi
+/// [needsAiMetadata]). Se [current] manca o non si legge resta com'è: è già da
+/// completare.
+String? withAiPending(String? current) {
+  final map = _readMap(current);
+  if (map == null) return current;
+  map[kAiPendingKey] = true;
+  return jsonEncode(map);
+}
+
 void _putOrRemove(Map<String, dynamic> json, String key, Object? value) {
   if (value == null) {
     json.remove(key);

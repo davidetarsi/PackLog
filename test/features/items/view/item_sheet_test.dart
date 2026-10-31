@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/model/clothing_labels.dart';
 import 'package:pack_log/features/items/providers/item_enrichment_provider.dart';
+import 'package:pack_log/features/items/providers/item_metadata_service_provider.dart';
+import 'package:pack_log/features/items/services/item_metadata_service.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
@@ -31,6 +33,20 @@ class _GatedItems extends ItemNotifier {
   Future<void> updateItem(ItemModel model) async {
     await gate.future;
     return super.updateItem(model);
+  }
+}
+
+/// item-metadata finto: registra i nomi chiesti e risponde sempre [result].
+class _RecordingMetadata extends ItemMetadataService {
+  _RecordingMetadata(this.result) : super(url: '', anonKey: '');
+
+  final ItemMetadataResult result;
+  final names = <String>[];
+
+  @override
+  Future<ItemMetadataResult?> fromName(String name) async {
+    names.add(name);
+    return result;
   }
 }
 
@@ -723,6 +739,90 @@ void main() {
       expect(onSave(tester), isNull);
       await app.finish();
     });
+
+    testWidgets(
+      'rinomina scritta a scheda aperta, salvata dopo la risposta per il nome '
+      'vecchio: la scheda si chiede di nuovo e le scelte dell utente restano',
+      (tester) async {
+        final service = _RecordingMetadata(
+          const ItemMetadataResult(
+            metadata: {
+              'category': 'Upper Body',
+              'warmth': 5,
+              'baseColor': 'blu',
+            },
+          ),
+        );
+        final app = await ScreenshotApp.start(
+          tester,
+          theme: ShotTheme.light,
+          setup: AppSetup(
+            extraOverrides: [
+              itemMetadataServiceProvider.overrideWithValue(service),
+            ],
+          ),
+        );
+        await app.go('/');
+        await app.push('/houses/$kHomeId');
+        await app.tap(find.text('Calzini'));
+
+        // Scrive il nome nuovo e sceglie il calore; poi arriva la risposta
+        // per "Calzini" e solo dopo salva.
+        await app.enterText(
+          find.byKey(const Key('item_sheet_name')),
+          'Calzini di lana',
+        );
+        await tapDetail(tester, app, find.text(warmthLabel(4)));
+        await answerAi(
+          app,
+          itemNamed(app, 'Calzini'),
+          ai: const {
+            'category': 'Upper Body',
+            'warmth': 2,
+            'baseColor': 'rosso',
+          },
+        );
+        await tapSave(tester, app);
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 300)),
+        );
+        await app.settle();
+
+        expect(service.names, ['Calzini di lana']);
+        final meta = await storedOf(tester, app, 'Calzini di lana');
+        expect(meta['warmth'], 4);
+        expect(meta['userFields'], ['warmth']);
+        expect(meta['baseColor'], 'blu');
+        expect(meta.containsKey('aiPending'), isFalse);
+        await app.finish();
+      },
+    );
+
+    testWidgets(
+      'rinomina salvata con la risposta già arrivata: i valori restano finché '
+      'non arriva quella del nome nuovo (aiPending)',
+      (tester) async {
+        final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+        await app.go('/');
+        await app.push('/houses/$kHomeId');
+        await app.tap(find.text('Calzini'));
+        await app.enterText(
+          find.byKey(const Key('item_sheet_name')),
+          'Calzini di lana',
+        );
+        await answerAi(
+          app,
+          itemNamed(app, 'Calzini'),
+          ai: const {'category': 'Upper Body', 'warmth': 2},
+        );
+        await tapSave(tester, app);
+
+        final meta = await storedOf(tester, app, 'Calzini di lana');
+        expect(meta['aiPending'], isTrue);
+        expect(meta['warmth'], 2);
+        await app.finish();
+      },
+    );
 
     testWidgets(
       'la riga "Sto completando" sta sopra i dettagli mentre l oggetto è in attesa',
