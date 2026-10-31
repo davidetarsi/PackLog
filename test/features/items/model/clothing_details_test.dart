@@ -220,4 +220,79 @@ void main() {
       );
     },
   );
+
+  group('ClothingDetails.fromMetadata', () {
+    Map<String, dynamic> completa() => {
+      'name': 'Maglione',
+      'category': 'Upper Body',
+      'subCategory': 'Sweater',
+      'baseColor': 'Blu',
+      'pattern': 'Solid',
+      'coverage': 'Long-sleeve',
+      'fit': 'Regular',
+      'warmth': 4,
+      'formality': 'Casual',
+      'activityTags': ['Everyday', 'Hiking'],
+      'waterResistance': 1,
+      'bulk': 3,
+    };
+
+    test('{} è uguale a ClothingDetails.empty', () {
+      expect(ClothingDetails.fromMetadata({}), ClothingDetails.empty);
+    });
+
+    test('una scheda completa dà gli stessi valori di ClothingDetails.of', () {
+      final json = completa();
+      expect(
+        ClothingDetails.fromMetadata(json),
+        ClothingDetails.of(ClothingAnalysisResult.fromJson(json)),
+      );
+    });
+
+    test('una chiave assente resta null, senza i default di fromJson', () {
+      final d = ClothingDetails.fromMetadata({'name': 'Maglione'});
+      expect(d.subCategory, isNull);
+      expect(d.color, isNull);
+      expect(d.warmth, isNull);
+      expect(d.waterResistance, isNull);
+      expect(d.formality, isNull);
+      expect(d.uses, isEmpty);
+    });
+
+    test('baseColor vuoto o N/A: color null', () {
+      expect(ClothingDetails.fromMetadata({'baseColor': ''}).color, isNull);
+      expect(ClothingDetails.fromMetadata({'baseColor': 'N/A'}).color, isNull);
+      expect(ClothingDetails.fromMetadata({'baseColor': 'n/a'}).color, isNull);
+    });
+
+    test('activityTags diventa un insieme di stringhe', () {
+      final d = ClothingDetails.fromMetadata({
+        'activityTags': ['Everyday', 3, 'Hiking', 'Everyday'],
+      });
+      expect(d.uses, {'Everyday', 'Hiking'});
+    });
+  });
+
+  group('ClothingDetails.empty', () {
+    test('tutto null e nessun uso', () {
+      const d = ClothingDetails.empty;
+      expect(d.subCategory, isNull);
+      expect(d.color, isNull);
+      expect(d.warmth, isNull);
+      expect(d.waterResistance, isNull);
+      expect(d.formality, isNull);
+      expect(d.uses, isEmpty);
+    });
+  });
+
+  group('metadataKeyOf', () {
+    test('ogni campo ha la sua chiave dei metadati', () {
+      expect(metadataKeyOf(ClothingField.type), 'subCategory');
+      expect(metadataKeyOf(ClothingField.color), 'baseColor');
+      expect(metadataKeyOf(ClothingField.warmth), 'warmth');
+      expect(metadataKeyOf(ClothingField.waterResistance), 'waterResistance');
+      expect(metadataKeyOf(ClothingField.formality), 'formality');
+      expect(metadataKeyOf(ClothingField.uses), 'activityTags');
+    });
+  });
 }

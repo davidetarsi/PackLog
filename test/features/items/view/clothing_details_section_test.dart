@@ -213,4 +213,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(resolved, ['warmth']);
   });
+
+  testWidgets(
+    'senza dettagli: il tipo dice di sceglierlo, nessun calore è scelto',
+    (tester) async {
+      await pump(tester, value: ClothingDetails.empty, onChanged: (_) {});
+
+      expect(find.text('Scegli il tipo'), findsOneWidget);
+      expect(pill(tester, warmthLabel(3)).selected, isFalse);
+      expect(pill(tester, warmthLabel(4)).selected, isFalse);
+      expect(pill(tester, activityLabel('Everyday')).selected, isFalse);
+    },
+  );
 }

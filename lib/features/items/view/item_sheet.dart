@@ -217,7 +217,7 @@ class _ItemSheetState extends ConsumerState<ItemSheet> {
   Set<ClothingField> _fieldsFor(ClothingDetails? details) {
     final category = _currentCategory;
     if (category == null || details == null) return const {};
-    return clothingFieldsFor(category, details.subCategory);
+    return clothingFieldsFor(category, details.subCategory ?? '');
   }
 
   ItemModel? _item() =>

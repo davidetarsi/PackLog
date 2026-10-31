@@ -78,7 +78,7 @@ class ClothingDetailsSection extends ConsumerWidget {
             title: 'clothing.details.warmth'.tr(),
             options: kWarmthLevels,
             labelOf: warmthLabel,
-            selected: {details.warmth},
+            selected: {?details.warmth},
             onChanged: (s) => onChanged(details.copyWith(warmth: s.single)),
             doubt: doubts.contains('warmth'),
             note: toCheck('warmth'),
@@ -89,7 +89,7 @@ class ClothingDetailsSection extends ConsumerWidget {
             title: 'clothing.details.water'.tr(),
             options: kWaterResistanceLevels,
             labelOf: waterResistanceLabel,
-            selected: {details.waterResistance},
+            selected: {?details.waterResistance},
             onChanged: (s) =>
                 onChanged(details.copyWith(waterResistance: s.single)),
             doubt: doubts.contains('waterResistance'),
@@ -101,7 +101,7 @@ class ClothingDetailsSection extends ConsumerWidget {
             title: 'clothing.details.formality'.tr(),
             options: kFormalities,
             labelOf: formalityLabel,
-            selected: {details.formality},
+            selected: {?details.formality},
             onChanged: (s) => onChanged(details.copyWith(formality: s.single)),
             doubt: doubts.contains('formality'),
             note: toCheck('formality'),
@@ -125,7 +125,8 @@ class ClothingDetailsSection extends ConsumerWidget {
 /// Riga "Tipo": il valore a destra, tocco per scegliere dal picker raggruppato
 /// per categoria.
 class _TypeRow extends StatelessWidget {
-  final String value;
+  /// null se il tipo non è ancora scelto: la riga lo dice.
+  final String? value;
   final String? doubtNote;
   final ValueChanged<String> onPicked;
 
@@ -136,12 +137,13 @@ class _TypeRow extends StatelessWidget {
   });
 
   Future<void> _pick(BuildContext context) async {
+    final chosen = value;
     final options = [
       for (final category in kClothingCategories)
         for (final type in kClothingTypes[category] ?? const <String>[])
           (category: category, type: type),
     ];
-    final current = clothingCategoryOf(value);
+    final current = chosen == null ? null : clothingCategoryOf(chosen);
     final picked = await DsPickerSheet.show<({String category, String type})>(
       context: context,
       title: 'clothing.details.choose_type'.tr(),
@@ -150,7 +152,7 @@ class _TypeRow extends StatelessWidget {
       groupOf: (o) => clothingGroupLabel(o.category),
       selected: options
           .where(
-            (o) => o.type == value && (current ?? o.category) == o.category,
+            (o) => o.type == chosen && (current ?? o.category) == o.category,
           )
           .firstOrNull,
     );
@@ -202,7 +204,9 @@ class _TypeRow extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        clothingTypeLabel(value),
+                        value == null
+                            ? 'clothing.details.choose_type'.tr()
+                            : clothingTypeLabel(value!),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: textTheme.bodyLarge,

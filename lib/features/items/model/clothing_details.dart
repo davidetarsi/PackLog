@@ -10,37 +10,71 @@ import 'clothing_taxonomy.dart';
 /// [ClothingAnalysisResult] (e quindi in `items.ai_metadata`).
 @immutable
 class ClothingDetails {
-  final String subCategory;
+  /// Tipo; null se l'utente non l'ha ancora scelto.
+  final String? subCategory;
 
   /// Colore di base; null se vuoto o 'N/A'.
   final String? color;
-  final int warmth;
-  final int waterResistance;
-  final String formality;
+  final int? warmth;
+  final int? waterResistance;
+  final String? formality;
 
-  /// Usi (tag di attività), come insieme.
+  /// Usi (tag di attività), come insieme. Vuoto = nessuno.
   final Set<String> uses;
 
   const ClothingDetails({
-    required this.subCategory,
-    required this.color,
-    required this.warmth,
-    required this.waterResistance,
-    required this.formality,
-    required this.uses,
+    this.subCategory,
+    this.color,
+    this.warmth,
+    this.waterResistance,
+    this.formality,
+    this.uses = const <String>{},
   });
 
+  /// Nessun dettaglio: è quello di un oggetto aggiunto a mano.
+  static const ClothingDetails empty = ClothingDetails();
+
   factory ClothingDetails.of(ClothingAnalysisResult r) {
-    final colorValue = r.baseColor.trim();
-    final hasColor = colorValue.isNotEmpty && colorValue.toLowerCase() != 'n/a';
     return ClothingDetails(
       subCategory: r.subCategory,
-      color: hasColor ? colorValue : null,
+      color: _colorOf(r.baseColor),
       warmth: r.warmth,
       waterResistance: r.waterResistance,
       formality: r.formality,
       uses: r.activityTags.toSet(),
     );
+  }
+
+  /// I dettagli scritti in [m] (la mappa di `items.ai_metadata`). Non usa i
+  /// default di [ClothingAnalysisResult.fromJson]: una chiave assente resta
+  /// null, cioè "da scegliere".
+  factory ClothingDetails.fromMetadata(Map<String, dynamic> m) {
+    final subCategory = m['subCategory'];
+    final warmth = m['warmth'];
+    final water = m['waterResistance'];
+    final formality = m['formality'];
+    final tags = m['activityTags'];
+    return ClothingDetails(
+      subCategory: subCategory is String ? subCategory : null,
+      color: _colorOf(m['baseColor']),
+      warmth: warmth is int ? warmth : null,
+      waterResistance: water is num ? water.toInt() : null,
+      formality: formality is String ? formality : null,
+      uses: tags is List
+          ? <String>{
+              for (final tag in tags)
+                if (tag is String) tag,
+            }
+          : const <String>{},
+    );
+  }
+
+  /// Il colore senza spazi; null se manca, è vuoto o 'N/A'.
+  static String? _colorOf(Object? raw) {
+    if (raw is! String) return null;
+    final value = raw.trim();
+    final hasColor = value.isNotEmpty && value.toLowerCase() != 'n/a';
+    return hasColor ? value : null;
   }
 
   /// [clearColor] riporta il colore a null (copyWith con `color: null` non
@@ -64,20 +98,28 @@ class ClothingDetails {
     );
   }
 
-  /// Riscrive i campi su [r]; cambia anche `category` se la sottocategoria è
-  /// nota. Ogni altra chiave ed `extras` restano come sono.
+  /// Riscrive su [r] i campi che hanno un valore; cambia anche `category` se
+  /// la sottocategoria è nota. Un campo null resta quello di [r], tranne il
+  /// colore: senza colore si scrive 'N/A'. Ogni altra chiave ed `extras`
+  /// restano come sono.
   ClothingAnalysisResult applyTo(ClothingAnalysisResult r) {
+    final type = subCategory;
     return r.copyWith(
-      subCategory: subCategory,
+      subCategory: type ?? r.subCategory,
       baseColor: color ?? 'N/A',
-      warmth: warmth,
-      formality: formality,
+      warmth: warmth ?? r.warmth,
+      formality: formality ?? r.formality,
       activityTags: [
         for (final tag in kActivityTags)
           if (uses.contains(tag)) tag,
       ],
-      category: clothingCategoryOf(subCategory) ?? r.category,
-      extras: {...r.extras, 'waterResistance': waterResistance},
+      category: type == null
+          ? r.category
+          : (clothingCategoryOf(type) ?? r.category),
+      extras: {
+        ...r.extras,
+        if (waterResistance != null) 'waterResistance': waterResistance,
+      },
     );
   }
 
@@ -142,6 +184,17 @@ ClothingAnalysisResult? clothingFromMetadata(String? aiMetadata) {
 
 /// Un dettaglio della scheda di un oggetto.
 enum ClothingField { type, color, warmth, waterResistance, formality, uses }
+
+/// La chiave in `items.ai_metadata` del campo [f]: la stessa del risultato
+/// dell'AI, e quella usata in `userFields`.
+String metadataKeyOf(ClothingField f) => switch (f) {
+  ClothingField.type => 'subCategory',
+  ClothingField.color => 'baseColor',
+  ClothingField.warmth => 'warmth',
+  ClothingField.waterResistance => 'waterResistance',
+  ClothingField.formality => 'formality',
+  ClothingField.uses => 'activityTags',
+};
 
 /// Il campo di un dubbio del server ('subCategory', 'warmth', …); null per
 /// un nome che l'app non conosce.
