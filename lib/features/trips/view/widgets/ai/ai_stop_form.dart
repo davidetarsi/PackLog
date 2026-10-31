@@ -75,7 +75,7 @@ class _AiStopFormState extends ConsumerState<AiStopForm> {
             alignment: Alignment.centerLeft,
             child: _DashedCopyButton(
               label: 'trips.ai.copy_from'.tr(args: [copyFromName]),
-              onTap: onCopy!,
+              onTap: onCopy,
             ),
           ),
         // Le attività da proporre: quelle attive, più quelle che la tappa ha già.

@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:pack_log/core/catalog/catalog_choices.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/promo/view/promo_code_sheet.dart';
 import 'package:pack_log/features/ai_input/model/ai_failure_reason.dart';
@@ -45,6 +46,7 @@ import 'package:pack_log/features/spaces/view/add_edit_space_screen.dart';
 import 'package:pack_log/shared/services/location_search_service.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 
+import '../helpers/catalogo_di_prova.dart';
 import 'support/fakes.dart';
 import 'support/fonts.dart';
 import 'support/harness.dart';
@@ -1988,8 +1990,8 @@ final flows = <Flow>[
           'dice quale, e chiede se la compili ora.',
       steps: (app) async {
         await _openAiSheet(app, kUpcomingTripId);
-        await _tapShown(app, _text('trips.ai.activity.city'));
-        await _tapShown(app, _text('trips.ai.stay.hotel'));
+        await _tapShown(app, find.text(etichettaDi('activity', 'city')));
+        await _tapShown(app, find.text(etichettaDi('stay', 'hotel')));
         await _tapShown(app, find.text('trips.ai.next'.tr(args: ['Sintra'])));
         await _tapShown(
           app,
@@ -2279,6 +2281,8 @@ void main() {
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
+    // Tipi, usi, attività e alloggi si leggono dal catalogo, come in produzione.
+    caricaCatalogoDelRepo();
     useSystemSqlite();
     await loadRealFonts();
     await createPhotoFixtures();

@@ -99,7 +99,7 @@ final _scenarios = <(int, String, AppSetup, _Steps)>[
       final replace = find.text('trips.pack.ai.replace_confirm'.tr());
       if (replace.evaluate().isNotEmpty) await app.tap(replace);
       await _tapShown(app, find.text(etichettaDi('activity', 'city')));
-      await _tapShown(app, find.text(etichettaDi('activity', 'formal_dinner')));
+      await _tapShown(app, find.text(etichettaDi('activity', 'evenings')));
       await _tapShown(app, find.text(etichettaDi('stay', 'hotel')));
       await app.tester.drag(
         find.byType(SingleChildScrollView).last,
