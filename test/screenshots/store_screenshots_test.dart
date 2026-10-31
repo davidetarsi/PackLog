@@ -20,8 +20,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:pack_log/core/catalog/catalog_choices.dart';
 import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
 
+import '../helpers/catalogo_di_prova.dart';
 import 'store/store_data.dart';
 import 'support/fakes.dart';
 import 'support/fonts.dart';
@@ -96,9 +98,9 @@ final _scenarios = <(int, String, AppSetup, _Steps)>[
       await app.tap(find.byKey(const Key('pack_ai_suitcase')));
       final replace = find.text('trips.pack.ai.replace_confirm'.tr());
       if (replace.evaluate().isNotEmpty) await app.tap(replace);
-      await _tapShown(app, find.text('trips.ai.activity.city'.tr()));
-      await _tapShown(app, find.text('trips.ai.activity.formal_dinner'.tr()));
-      await _tapShown(app, find.text('trips.ai.stay.hotel'.tr()));
+      await _tapShown(app, find.text(etichettaDi('activity', 'city')));
+      await _tapShown(app, find.text(etichettaDi('activity', 'formal_dinner')));
+      await _tapShown(app, find.text(etichettaDi('stay', 'hotel')));
       await app.tester.drag(
         find.byType(SingleChildScrollView).last,
         const Offset(0, 2000),
@@ -159,6 +161,8 @@ void main() {
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
+    // Attività e alloggi si leggono dal catalogo, come in produzione.
+    caricaCatalogoDelRepo(lingua: _locale.languageCode);
     useSystemSqlite();
     await loadRealFonts();
     await createPhotoFixtures();
