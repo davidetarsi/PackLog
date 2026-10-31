@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import * as tassonomia from "../../valigia/tassonomia.ts";
 import * as scheda from "../../capi/scheda.ts";
+import { azzeraCache, CATALOGO_BASE, CONTROLLO_MS, leggiCatalogo, testiAttivita, testoAlloggio, voci as vociDi }
+  from "../catalogo.ts";
 
 type Voce = { domain: string; id: string; sort: number; active: boolean; label: { it: string; en: string };
   data: Record<string, any> };
@@ -76,4 +78,68 @@ test("la migrazione contiene il seed di catalogo.json", async () => {
   const migrazione = readFileSync(
     new URL("../../../../migrations/20261101090000_catalogo.sql", import.meta.url), "utf8");
   assert.ok(migrazione.includes(seed), "seed diverso: rigenera con node seed_sql.mjs");
+});
+
+// ── Lettura nelle funzioni ───────────────────────────────────────────────────
+
+/** Un database finto: conta le letture; [versione] e [righe] si cambiano. */
+function dbFinto(stato: { versione: string; righe: Record<string, any>[]; rotto?: boolean }) {
+  const letture = { versione: 0, righe: 0 };
+  const risposta = (dati: unknown) => stato.rotto ? { data: null, error: { message: "giu'" } } : { data: dati, error: null };
+  return {
+    letture,
+    from(tabella: string) {
+      return {
+        select() {
+          if (tabella === "catalog_entries") {
+            letture.righe++;
+            return Promise.resolve(risposta(stato.righe));
+          }
+          return { eq: () => ({ maybeSingle: () => { letture.versione++; return Promise.resolve(risposta({ value: stato.versione })); } }) };
+        },
+      };
+    },
+  };
+}
+const riga = (v: Voce) => ({ domain: v.domain, id: v.id, sort: v.sort, active: v.active, label_it: v.label.it,
+  label_en: v.label.en, data: v.data });
+
+test("cache: una lettura all'avvio, poi niente per un'ora; righe solo se la versione cambia", async () => {
+  azzeraCache();
+  const stato = { versione: "1", righe: voci.map(riga) };
+  const db = dbFinto(stato);
+  const t0 = 1_000_000;
+  const c1 = await leggiCatalogo(db, t0);
+  assert.equal(c1.voci.length, voci.length);
+  assert.deepEqual(db.letture, { versione: 1, righe: 1 });
+  await leggiCatalogo(db, t0 + CONTROLLO_MS - 1);
+  assert.deepEqual(db.letture, { versione: 1, righe: 1 });
+  await leggiCatalogo(db, t0 + CONTROLLO_MS);
+  assert.deepEqual(db.letture, { versione: 2, righe: 1 }, "versione uguale: righe non rilette");
+  stato.versione = "2";
+  stato.righe = [...voci.map(riga), { domain: "use", id: "Party", sort: 90, active: true, label_it: "Festa",
+    label_en: "Party", data: {} }];
+  const c3 = await leggiCatalogo(db, t0 + 2 * CONTROLLO_MS);
+  assert.deepEqual(db.letture, { versione: 3, righe: 2 });
+  assert.ok(vociDi(c3, "use").some((v) => v.id === "Party"));
+});
+
+test("database che non risponde: la copia nel repo, e non si riprova a ogni richiesta", async () => {
+  azzeraCache();
+  const db = dbFinto({ versione: "1", righe: [], rotto: true });
+  assert.equal(await leggiCatalogo(db, 0), CATALOGO_BASE);
+  await leggiCatalogo(db, 1000);
+  assert.deepEqual(db.letture, { versione: 1, righe: 0 });
+});
+
+test("attivita' e alloggi: dagli id ai testi, i testi vecchi restano", () => {
+  assert.deepEqual(testiAttivita(CATALOGO_BASE, ["evenings", "visite in citta"]),
+    ["cene al ristorante", "vita notturna", "visite in citta"]);
+  assert.deepEqual(testiAttivita(CATALOGO_BASE, ["diving", "sea"]), ["immersioni", "mare"]);
+  assert.deepEqual(testiAttivita(CATALOGO_BASE, ["formal_dinner"]), ["cena formale"]);
+  assert.equal(testoAlloggio(CATALOGO_BASE, "friends"), "da amici o parenti");
+  assert.equal(testoAlloggio(CATALOGO_BASE, "hotel di lusso"), "hotel di lusso");
+  assert.equal(testoAlloggio(CATALOGO_BASE, null), null);
+  assert.deepEqual(vociDi(CATALOGO_BASE, "activity").map((v) => v.id).includes("cycling"), false);
+  assert.deepEqual(vociDi(CATALOGO_BASE, "activity", false).map((v) => v.id).includes("cycling"), true);
 });
