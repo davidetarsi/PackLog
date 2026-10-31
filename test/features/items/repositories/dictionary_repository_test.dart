@@ -110,6 +110,20 @@ void main() {
       expect(enDict.version, 5);
     });
 
+    test('il controllo della versione va al massimo una volta al giorno', () async {
+      SharedPreferences.setMockInitialValues({
+        'dictionary_json_cache_it': jsonEncode(_sampleDictionaryJson),
+        'dictionary_version_cache_it': 3,
+      });
+      when(() => mockSupabase.from('app_config')).thenThrow(StateError('senza rete'));
+
+      await repository.loadDictionary('it');
+      await repository.loadDictionary('it');
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => mockSupabase.from('app_config')).called(1);
+    });
+
     test('throws when cache is empty and Supabase download fails', () async {
       SharedPreferences.setMockInitialValues({});
 

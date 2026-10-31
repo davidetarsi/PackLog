@@ -13,6 +13,7 @@ class DictionaryRepository {
 
   static const _jsonCachePrefix = 'dictionary_json_cache_';
   static const _versionCachePrefix = 'dictionary_version_cache_';
+  static const _checkedOnPrefix = 'dictionary_checked_on_';
   static const _storageBucket = 'dictionaries';
 
   Future<DynamicCategoryDictionary> loadDictionary(String locale) async {
@@ -39,6 +40,12 @@ class DictionaryRepository {
   }
 
   Future<void> _checkForUpdates(String locale, SharedPreferences prefs) async {
+    // Al massimo una volta al giorno (decisione di Davide del 31 ottobre). Un
+    // errore conta come controllo: niente nuovo tentativo a ogni avvio.
+    final oggi = _giorno(DateTime.now());
+    if (prefs.getString('$_checkedOnPrefix$locale') == oggi) return;
+    await prefs.setString('$_checkedOnPrefix$locale', oggi);
+
     final response = await _supabase
         .from('app_config')
         .select('value')
@@ -54,6 +61,9 @@ class DictionaryRepository {
       await _downloadAndCache(locale, prefs);
     }
   }
+
+  static String _giorno(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   Future<DynamicCategoryDictionary> _downloadAndCache(
     String locale,

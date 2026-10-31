@@ -132,6 +132,8 @@ flutter:
     # alta risoluzione per flutter_launcher_icons: inclusa tutta, pesava 13 MB.
     - assets/images/
     - assets/onboarding/
+    # Catalogo dei tag: copia di riserva per il primo avvio senza rete (core/catalog).
+    - supabase/functions/_shared/catalogo/catalogo.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
