@@ -235,6 +235,56 @@ void main() {
     await app.finish();
   });
 
+  testWidgets(
+    'l\'icona "analizzato" non c\'è sugli oggetti in attesa dell\'AI',
+    (tester) async {
+      final app = await ScreenshotApp.start(
+        tester,
+        theme: ShotTheme.light,
+        setup: AppSetup(
+          extraOverrides: [
+            aiImportNotifierProvider.overrideWith(
+              () => FakeAiImport(_state('Upper Body')),
+            ),
+          ],
+        ),
+      );
+
+      final repository = app.container.read(itemRepositoryProvider);
+      await tester.runAsync(() async {
+        await repository.insertMultipleItems([
+          ItemModel(
+            id: 'already-ai',
+            houseId: kHomeId,
+            name: 'T-shirt bianca AI',
+            category: ItemCategory.vestiti,
+            aiMetadata: '{}',
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+          // Solo le scelte dell'utente: la scheda dell'AI non è ancora arrivata.
+          ItemModel(
+            id: 'pending-ai',
+            houseId: kHomeId,
+            name: 'T-shirt bianca in attesa',
+            category: ItemCategory.vestiti,
+            aiMetadata: '{"warmth":4,"userFields":["warmth"],"aiPending":true}',
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+        ]);
+      });
+      app.container.invalidate(itemNotifierProvider(kHomeId));
+      await _openResults(app);
+
+      await app.tap(find.byKey(const Key('ai_already_here')));
+      expect(find.text('T-shirt bianca AI'), findsOneWidget);
+      expect(find.text('T-shirt bianca in attesa'), findsOneWidget);
+      expect(find.byIcon(Icons.auto_awesome), findsOneWidget);
+      await app.finish();
+    },
+  );
+
   /// Una felpa viola: nessun capo di casa Milano le somiglia.
   AiImportState felpaViola() => AiImportState(
     selectedHouseId: kHomeId,
