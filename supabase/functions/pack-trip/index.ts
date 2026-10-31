@@ -10,8 +10,12 @@
 // lang: "it" | "en", la lingua dei testi per l'utente (motivi, perche, avvisi);
 // senza, italiano come le versioni vecchie dell'app. Il prompt resta in italiano.
 //   -> { valigia, motivi, perche, geo, meteo, note_tecniche, capi, avvisi }
-// Alloggio e lavatrice stanno per tappa (alloggio testo, lavatrice booleano); il
+// Alloggio e lavatrice stanno per tappa (alloggio, lavatrice booleano); il
 // viaggio li ricava dalle tappe, o usa i propri se mandati (formato vecchio).
+// Attivita' e alloggio arrivano come id del catalogo (app nuova: "city",
+// "friends", ...) oppure come testi gia' tradotti (app vecchia): li traduce
+// il catalogo (_shared/catalogo) prima della validazione. Un id disattivato
+// nel catalogo si traduce comunque: il viaggio vecchio tiene il suo significato.
 // valigia: ideali, ripieghi, essenziali, mancanti, ...; motivi: un motivo per
 // capo; perche: la scheda "Perche' queste scelte"; note_tecniche: cio' che non ha
 // risposto (Jev e' un aiuto, la valigia si fa lo stesso); capi e avvisi: l'uscita
@@ -26,7 +30,7 @@ import { jevHttp, MODELLO as MODELLO_JEV, type ProfiloNoto } from "../_shared/va
 import { uscitaApp } from "../_shared/valigia/uscita.ts";
 import { caricaArmadio, type RigaArmadio } from "../_shared/valigia/capo.ts";
 import { applicaCatalogo } from "../_shared/catalogo/applica.ts";
-import { leggiCatalogo } from "../_shared/catalogo/catalogo.ts";
+import { leggiCatalogo, traduciViaggio } from "../_shared/catalogo/catalogo.ts";
 import { linguaDa } from "../_shared/lingua.ts";
 import {
   consumaCreditoAi, corpo, CORS_HEADERS, errore, json, restituisciCreditoAi, serviziMeteo, utente,
@@ -61,11 +65,12 @@ Deno.serve(async (req) => {
   const lingua = linguaDa(b.lang);
   if (!lingua) return errore(400, "'lang' must be 'it' or 'en'");
   // Il catalogo di questa richiesta: tipi, usi e colori dell'armadio, e i testi
-  // delle attivita' (Task 4) vengono da lui (spec del 31 ottobre, § 6.4).
-  applicaCatalogo(await leggiCatalogo(db));
+  // di attivita' e alloggi vengono da lui (spec del 31 ottobre, § 6.4).
+  const catalogo = await leggiCatalogo(db);
+  applicaCatalogo(catalogo);
   let viaggio;
   try {
-    viaggio = validaViaggio(b.trip, new Date().toISOString().slice(0, 10));
+    viaggio = validaViaggio(traduciViaggio(b.trip, catalogo), new Date().toISOString().slice(0, 10));
   } catch (e) {
     if (e instanceof IngressoNonValido) return errore(400, e.message);
     throw e;

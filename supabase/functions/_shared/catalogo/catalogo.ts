@@ -106,3 +106,36 @@ export function testoAlloggio(c: Catalogo, valore: string | null | undefined): s
   const testo = voce(c, "stay", valore)?.data.generator;
   return typeof testo === "string" ? testo : valore;
 }
+
+/** Un elenco di attivita' come lo manda l'app. Se non e' un elenco di testi resta
+ *  com'e': lo rifiuta la validazione. */
+function traduciElenco(x: unknown, c: Catalogo): unknown {
+  if (!Array.isArray(x) || !x.every((a) => typeof a === "string")) return x;
+  return testiAttivita(c, x);
+}
+
+function traduciAlloggio(x: unknown, c: Catalogo): unknown {
+  return typeof x === "string" ? testoAlloggio(c, x) : x;
+}
+
+/** Il viaggio come lo manda l'app, con attivita' e alloggi (del viaggio e di ogni
+ *  tappa) tradotti nei testi del generatore. Si fa PRIMA di validaViaggio: quella
+ *  unisce gli alloggi di tappa in un testo ("hotel (Islanda), friends (Olanda)"),
+ *  e da li' non si tradurrebbe piu' ogni voce. Restituisce una copia. */
+export function traduciViaggio(x: unknown, c: Catalogo): unknown {
+  if (!x || typeof x !== "object" || Array.isArray(x)) return x;
+  const v = x as Record<string, unknown>;
+  const out: Record<string, unknown> = { ...v };
+  if ("attivita" in v) out.attivita = traduciElenco(v.attivita, c);
+  if ("alloggio" in v) out.alloggio = traduciAlloggio(v.alloggio, c);
+  if (Array.isArray(v.tappe)) {
+    out.tappe = v.tappe.map((t) => {
+      if (!t || typeof t !== "object" || Array.isArray(t)) return t;
+      const r = { ...(t as Record<string, unknown>) };
+      if ("attivita" in r) r.attivita = traduciElenco(r.attivita, c);
+      if ("alloggio" in r) r.alloggio = traduciAlloggio(r.alloggio, c);
+      return r;
+    });
+  }
+  return out;
+}
