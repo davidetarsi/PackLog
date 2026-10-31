@@ -37,7 +37,7 @@ class ClothingDetails {
   factory ClothingDetails.of(ClothingAnalysisResult r) {
     return ClothingDetails(
       subCategory: r.subCategory,
-      color: _colorOf(r.baseColor),
+      color: _textOf(r.baseColor),
       warmth: r.warmth,
       waterResistance: r.waterResistance,
       formality: r.formality,
@@ -49,17 +49,15 @@ class ClothingDetails {
   /// default di [ClothingAnalysisResult.fromJson]: una chiave assente resta
   /// null, cioè "da scegliere".
   factory ClothingDetails.fromMetadata(Map<String, dynamic> m) {
-    final subCategory = m['subCategory'];
     final warmth = m['warmth'];
     final water = m['waterResistance'];
-    final formality = m['formality'];
     final tags = m['activityTags'];
     return ClothingDetails(
-      subCategory: subCategory is String ? subCategory : null,
-      color: _colorOf(m['baseColor']),
-      warmth: warmth is int ? warmth : null,
+      subCategory: _textOf(m['subCategory']),
+      color: _textOf(m['baseColor']),
+      warmth: warmth is num ? warmth.toInt() : null,
       waterResistance: water is num ? water.toInt() : null,
-      formality: formality is String ? formality : null,
+      formality: _textOf(m['formality']),
       uses: tags is List
           ? <String>{
               for (final tag in tags)
@@ -69,8 +67,9 @@ class ClothingDetails {
     );
   }
 
-  /// Il colore senza spazi; null se manca, è vuoto o 'N/A'.
-  static String? _colorOf(Object? raw) {
+  /// Un valore di testo senza spazi; null se manca, è vuoto o 'N/A' (il server
+  /// scrive 'N/A' quando non riconosce il valore).
+  static String? _textOf(Object? raw) {
     if (raw is! String) return null;
     final value = raw.trim();
     final hasColor = value.isNotEmpty && value.toLowerCase() != 'n/a';

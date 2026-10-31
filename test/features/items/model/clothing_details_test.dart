@@ -295,4 +295,30 @@ void main() {
       expect(metadataKeyOf(ClothingField.uses), 'activityTags');
     });
   });
+
+  group('ClothingDetails.fromMetadata: valori non riconosciuti', () {
+    test('subCategory N/A, vuota o di soli spazi: null', () {
+      for (final raw in ['N/A', 'n/a', '', '   ']) {
+        expect(
+          ClothingDetails.fromMetadata({'subCategory': raw}).subCategory,
+          isNull,
+          reason: 'subCategory "$raw"',
+        );
+      }
+    });
+
+    test('formality N/A o vuota: null', () {
+      for (final raw in ['N/A', '', ' ']) {
+        expect(
+          ClothingDetails.fromMetadata({'formality': raw}).formality,
+          isNull,
+          reason: 'formality "$raw"',
+        );
+      }
+    });
+
+    test('warmth decimale (3.0) si legge come 3', () {
+      expect(ClothingDetails.fromMetadata({'warmth': 3.0}).warmth, 3);
+    });
+  });
 }
