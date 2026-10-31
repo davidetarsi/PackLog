@@ -194,31 +194,6 @@
   "prepare": "Pack the suitcase",
   "incomplete": "{} is still to fill in. The weather is different there: it's worth adding what you will do and where you sleep.",
   "go_to_stop": "Fill in the stop",
-  "activity": {
-    "city": "Cities and museums",
-    "walks": "Walks and hikes",
-    "trekking": "Trekking",
-    "cammino": "Long-distance walks",
-    "high_mountain": "High mountains",
-    "sea": "Sea",
-    "diving": "Diving and snorkeling",
-    "ski": "Skiing and snow",
-    "camping": "Camping",
-    "work": "Work",
-    "formal_dinner": "Elegant dinner",
-    "wedding": "Wedding",
-    "worship": "Places of worship",
-    "nightlife": "Nightlife",
-    "cycling": "Cycling",
-    "spa": "Spa"
-  },
-  "stay": {
-    "hotel": "Hotel",
-    "apartment": "Apartment",
-    "hostel": "Hostel",
-    "camping": "Campsite",
-    "friends": "Friends or family"
-  },
   "wait": {
     "title": "Packing your suitcase",
     "subtitle": "{} · {}",

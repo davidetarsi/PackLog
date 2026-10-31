@@ -100,17 +100,14 @@ Map<String, dynamic> _place(WeatherStopRequest stop) => {
   'lon': stop.lon,
 };
 
-/// Attività (codici del generatore, senza doppioni, nell'ordine delle
-/// risposte), alloggio se scelto, lavatrice.
+/// Attività e alloggio come id del catalogo (senza doppioni, nell'ordine delle
+/// risposte): la funzione li traduce nei testi del generatore. Lavatrice.
 Map<String, dynamic> _answerFields(AiStopAnswers? answers) {
-  final codes = <String>{
-    for (final activity in answers?.activities ?? const <AiActivity>[])
-      ...activity.generatorCodes,
-  };
+  final ids = {...?answers?.activities}.toList();
   final stay = answers?.stay;
   return {
-    'attivita': codes.toList(),
-    if (stay != null) 'alloggio': stay.generatorText,
+    'attivita': ids,
+    if (stay != null) 'alloggio': stay,
     'lavatrice': answers?.washer ?? false,
   };
 }

@@ -1,6 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/catalog/catalog_choices.dart';
+import '../../../../../core/catalog/catalog_provider.dart';
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_checkbox.dart';
@@ -13,7 +16,7 @@ import '../../../model/ai_packing.dart';
 ///
 /// Niente copia automatica: il bottone "Uguale a …" compare solo se la tappa
 /// è ancora intatta ([copyFromName] dice da quale tappa copiare).
-class AiStopForm extends StatelessWidget {
+class AiStopForm extends ConsumerWidget {
   const AiStopForm({
     super.key,
     required this.answers,
@@ -34,7 +37,9 @@ class AiStopForm extends StatelessWidget {
   final VoidCallback? onCopy;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Attività e alloggi vengono dal catalogo, che può cambiare in background.
+    ref.watch(catalogRevisionProvider);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -57,10 +62,15 @@ class AiStopForm extends StatelessWidget {
               onTap: onCopy!,
             ),
           ),
-        DsChoiceGroup<AiActivity>(
+        // Le attività da proporre: quelle attive, più quelle che la tappa ha già.
+        DsChoiceGroup<String>(
           title: activitiesTitle,
-          options: AiActivity.values,
-          labelOf: (activity) => activity.labelKey.tr(),
+          options: daProporre(
+            vociDi('activity', activeOnly: false),
+            giaUsate: answers.activities,
+            dominio: 'activity',
+          ),
+          labelOf: (id) => etichettaDi('activity', id),
           selected: answers.activities.toSet(),
           multiple: true,
           required: false,
@@ -68,10 +78,14 @@ class AiStopForm extends StatelessWidget {
           onChanged: (chosen) =>
               onChanged(answers.copyWith(activities: chosen.toList())),
         ),
-        DsChoiceGroup<AiStay>(
+        DsChoiceGroup<String>(
           title: stayTitle,
-          options: AiStay.values,
-          labelOf: (stay) => stay.labelKey.tr(),
+          options: daProporre(
+            vociDi('stay', activeOnly: false),
+            giaUsate: {?answers.stay},
+            dominio: 'stay',
+          ),
+          labelOf: (id) => etichettaDi('stay', id),
           selected: {?answers.stay},
           onChanged: (chosen) =>
               onChanged(answers.copyWith(stay: chosen.first)),

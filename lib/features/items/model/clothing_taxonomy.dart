@@ -16,11 +16,6 @@ const List<int> kWarmthLevels = [1, 2, 3, 4, 5];
 
 const List<int> kWaterResistanceLevels = [0, 1, 2];
 
-/// Se la voce [id] del [dominio] si propone nelle scelte (o è sconosciuta: si
-/// tratta come attiva, com'era prima del catalogo).
-bool voceAttiva(String dominio, String id) =>
-    CatalogStore.current.find(dominio, id)?.active ?? true;
-
 /// Le categorie (gruppi dei tipi) in ordine di visualizzazione.
 List<String> clothingCategories() => [
   for (final voce in CatalogStore.current.domain('clothing_group')) voce.id,
@@ -102,17 +97,6 @@ List<String> ordinaUsi(Iterable<String> usi) {
       if (!conosciuti.contains(uso)) uso,
   ];
 }
-
-/// Le scelte da proporre: quelle attive, più quelle disattivate che il capo o il
-/// viaggio usa già (si mostrano con la loro etichetta, vedi [attiva]).
-List<String> daProporre(
-  List<String> tutte, {
-  required Iterable<String> giaUsate,
-  required String dominio,
-}) => [
-  for (final id in tutte)
-    if (voceAttiva(dominio, id) || giaUsate.contains(id)) id,
-];
 
 /// Sfumature che non cambiano il colore di base: "Verde oliva" è verde,
 /// "Grigio chiaro" è grigio. "Verde salvia" no: resta com'è scritto.

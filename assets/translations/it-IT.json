@@ -194,31 +194,6 @@
   "prepare": "Prepara la valigia",
   "incomplete": "{} è ancora da compilare. Ha un meteo diverso: conviene indicare cosa farai e dove dormi.",
   "go_to_stop": "Compila la tappa",
-  "activity": {
-    "city": "Città e musei",
-    "walks": "Passeggiate ed escursioni",
-    "trekking": "Trekking",
-    "cammino": "Cammino",
-    "high_mountain": "Alta montagna",
-    "sea": "Mare",
-    "diving": "Immersioni e snorkeling",
-    "ski": "Sci e neve",
-    "camping": "Campeggio",
-    "work": "Lavoro",
-    "formal_dinner": "Cena elegante",
-    "wedding": "Matrimonio",
-    "worship": "Luoghi di culto",
-    "nightlife": "Serate e locali",
-    "cycling": "Bicicletta",
-    "spa": "Terme"
-  },
-  "stay": {
-    "hotel": "Hotel",
-    "apartment": "Appartamento",
-    "hostel": "Ostello",
-    "camping": "Campeggio",
-    "friends": "Da amici o parenti"
-  },
   "wait": {
     "title": "Preparo la valigia",
     "subtitle": "{} · {}",

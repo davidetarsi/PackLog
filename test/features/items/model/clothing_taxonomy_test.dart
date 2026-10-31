@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/catalog/catalog.dart';
+import 'package:pack_log/core/catalog/catalog_choices.dart';
 import 'package:pack_log/core/catalog/catalog_store.dart';
 import 'package:pack_log/features/items/model/clothing_taxonomy.dart';
 
