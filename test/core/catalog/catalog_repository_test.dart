@@ -8,6 +8,8 @@ import 'package:pack_log/core/catalog/catalog.dart';
 import 'package:pack_log/core/catalog/catalog_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../helpers/catalogo_di_prova.dart';
+
 class MockAssetBundle extends Mock implements AssetBundle {}
 
 class MockCatalogSource extends Mock implements CatalogSource {}
@@ -163,15 +165,17 @@ void main() {
     });
 
     test(
-      'l\'asset dichiarato nel pubspec si legge davvero (119 voci del catalogo)',
+      'l\'asset dichiarato nel pubspec si legge davvero ed è il file del repo',
       () async {
         final catalogo = await CatalogRepository().loadLocal();
 
-        expect(catalogo.entries.length, 119);
-        expect(
-          catalogo.find('activity', 'evenings')!.label('it'),
-          'Cene e serate',
-        );
+        // Le voci sono quelle del file su disco (non un numero scritto qui, che
+        // cambierebbe a ogni voce nuova del catalogo).
+        expect(catalogo.entries.length, catalogoDelRepo().entries.length);
+        expect(catalogo.entries, isNotEmpty);
+        for (final dominio in kEssentialCatalogDomains) {
+          expect(catalogo.domain(dominio), isNotEmpty, reason: dominio);
+        }
       },
     );
 
