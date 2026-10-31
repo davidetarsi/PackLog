@@ -25,6 +25,8 @@ import { IngressoNonValido, validaViaggio } from "../_shared/valigia/ingresso.ts
 import { jevHttp, MODELLO as MODELLO_JEV, type ProfiloNoto } from "../_shared/valigia/jev.ts";
 import { uscitaApp } from "../_shared/valigia/uscita.ts";
 import { caricaArmadio, type RigaArmadio } from "../_shared/valigia/capo.ts";
+import { applicaCatalogo } from "../_shared/catalogo/applica.ts";
+import { leggiCatalogo } from "../_shared/catalogo/catalogo.ts";
 import { linguaDa } from "../_shared/lingua.ts";
 import {
   consumaCreditoAi, corpo, CORS_HEADERS, errore, json, restituisciCreditoAi, serviziMeteo, utente,
@@ -58,6 +60,9 @@ Deno.serve(async (req) => {
   if (typeof b.house_id !== "string" || !UUID.test(b.house_id)) return errore(400, "'house_id' non valido");
   const lingua = linguaDa(b.lang);
   if (!lingua) return errore(400, "'lang' must be 'it' or 'en'");
+  // Il catalogo di questa richiesta: tipi, usi e colori dell'armadio, e i testi
+  // delle attivita' (Task 4) vengono da lui (spec del 31 ottobre, § 6.4).
+  applicaCatalogo(await leggiCatalogo(db));
   let viaggio;
   try {
     viaggio = validaViaggio(b.trip, new Date().toISOString().slice(0, 10));

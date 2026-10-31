@@ -20,6 +20,8 @@ import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
 import { RispostaIlleggibile, schedaDaNome, schedeDaFoto } from "../_shared/capi/analisi.ts";
 import { pulisciNome } from "../_shared/capi/scheda.ts";
+import { applicaCatalogo } from "../_shared/catalogo/applica.ts";
+import { leggiCatalogo } from "../_shared/catalogo/catalogo.ts";
 import { linguaDa } from "../_shared/lingua.ts";
 import { claudeHttp, type Contenuto } from "../_shared/claude.ts";
 import { jevHttp } from "../_shared/valigia/jev.ts";
@@ -71,6 +73,9 @@ Deno.serve(async (req) => {
   if (conNome === conFoto) return errore(400, "Send exactly one of 'name' or 'image_base64'");
   const lingua = linguaDa(b.lang);
   if (!lingua) return errore(400, "'lang' must be 'it' or 'en'");
+  // Il catalogo di questa richiesta (cache dell'istanza, copia di riserva): prompt
+  // e pulizia dei valori vengono da lui (spec del 31 ottobre, § 6.4).
+  applicaCatalogo(await leggiCatalogo(db));
 
   if (conNome) {
     if (typeof b.name !== "string" || !pulisciNome(b.name)) return errore(400, "'name' must be a non-empty string");
