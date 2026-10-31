@@ -10,7 +10,9 @@ Catalog _catalogo({int version = 1}) => Catalog.fromJson({
       'sort': 90,
       'active': false,
       'label': {'it': 'Bicicletta', 'en': 'Cycling'},
-      'data': {'generator': ['bicicletta']},
+      'data': {
+        'generator': ['bicicletta'],
+      },
     },
     {
       'domain': 'activity',
@@ -18,7 +20,9 @@ Catalog _catalogo({int version = 1}) => Catalog.fromJson({
       'sort': 10,
       'active': true,
       'label': {'it': 'Città e musei', 'en': 'Cities and museums'},
-      'data': {'generator': ['visite in citta']},
+      'data': {
+        'generator': ['visite in citta'],
+      },
     },
     {
       'domain': 'activity',
@@ -26,7 +30,9 @@ Catalog _catalogo({int version = 1}) => Catalog.fromJson({
       'sort': 50,
       'active': true,
       'label': {'it': 'Cene e serate', 'en': 'Dinners and evenings out'},
-      'data': {'generator': ['cene al ristorante', 'vita notturna']},
+      'data': {
+        'generator': ['cene al ristorante', 'vita notturna'],
+      },
     },
     {
       'domain': 'stay',
@@ -41,15 +47,19 @@ Catalog _catalogo({int version = 1}) => Catalog.fromJson({
 
 void main() {
   group('Catalog', () {
-    test('domain esclude le voci disattivate, con activeOnly false le include', () {
-      final c = _catalogo();
+    test(
+      'domain esclude le voci disattivate, con activeOnly false le include',
+      () {
+        final c = _catalogo();
 
-      expect(c.domain('activity').map((e) => e.id), ['city', 'evenings']);
-      expect(
-        c.domain('activity', activeOnly: false).map((e) => e.id),
-        ['city', 'evenings', 'cycling'],
-      );
-    });
+        expect(c.domain('activity').map((e) => e.id), ['city', 'evenings']);
+        expect(c.domain('activity', activeOnly: false).map((e) => e.id), [
+          'city',
+          'evenings',
+          'cycling',
+        ]);
+      },
+    );
 
     test('find trova anche una voce disattivata', () {
       final c = _catalogo();
@@ -71,7 +81,11 @@ void main() {
       final c = _catalogo();
 
       expect(c.entries.map((e) => e.sort), [10, 10, 50, 90]);
-      expect(c.domain('activity', activeOnly: false).map((e) => e.sort), [10, 50, 90]);
+      expect(c.domain('activity', activeOnly: false).map((e) => e.sort), [
+        10,
+        50,
+        90,
+      ]);
     });
 
     test('data resta accessibile come mappa', () {
@@ -101,14 +115,17 @@ void main() {
       expect(CatalogStore.languageCode, 'it');
     });
 
-    test('setLanguage cambia la lingua e alza la revisione, una volta sola', () {
-      final prima = CatalogStore.revision.value;
+    test(
+      'setLanguage cambia la lingua e alza la revisione, una volta sola',
+      () {
+        final prima = CatalogStore.revision.value;
 
-      CatalogStore.setLanguage('en');
-      CatalogStore.setLanguage('en');
+        CatalogStore.setLanguage('en');
+        CatalogStore.setLanguage('en');
 
-      expect(CatalogStore.languageCode, 'en');
-      expect(CatalogStore.revision.value, prima + 1);
-    });
+        expect(CatalogStore.languageCode, 'en');
+        expect(CatalogStore.revision.value, prima + 1);
+      },
+    );
   });
 }

@@ -49,11 +49,8 @@ class SupabaseCatalogSource implements CatalogSource {
 /// Il catalogo: copia locale (SharedPreferences), file del repo come riserva,
 /// aggiornamento dal server quando la versione è più nuova.
 class CatalogRepository {
-  CatalogRepository({
-    this.source,
-    this.bundle,
-    DateTime Function()? now,
-  }) : _now = now ?? DateTime.now;
+  CatalogRepository({this.source, this.bundle, DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   /// Null: niente rete, si legge solo la copia locale o il file del repo.
   final CatalogSource? source;

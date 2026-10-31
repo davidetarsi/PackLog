@@ -23,6 +23,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../screenshots/support/harness.dart';
 import '../../../screenshots/support/seed.dart';
 
+import '../../../helpers/catalogo_di_prova.dart';
+
 /// Il salvataggio dell'oggetto aspetta [gate]: serve a tenere la scheda
 /// occupata mentre il test prova a chiuderla.
 class _GatedItems extends ItemNotifier {
@@ -51,6 +53,7 @@ class _RecordingMetadata extends ItemMetadataService {
 }
 
 void main() {
+  setUp(() => caricaCatalogoDelRepo());
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();

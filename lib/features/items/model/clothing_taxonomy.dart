@@ -1,189 +1,118 @@
-// Tassonomia dei capi lato app. Specchio di
-// supabase/functions/_shared/valigia/tassonomia.ts e di FORMALITA / TAG in
-// supabase/functions/_shared/capi/scheda.ts: il test di coerenza
-// (test/features/items/model/clothing_taxonomy_test.dart) fallisce se divergono.
+// Tassonomia dei capi lato app. Dal 31 ottobre 2026 gruppi, tipi, stile, usi e
+// colori vengono dal catalogo dei tag (core/catalog, letto da CatalogStore), non
+// da liste scritte qui: una voce nuova o disattivata si cambia sul server senza
+// store. Restano nel codice le scale numeriche (calore, impermeabilità) e le
+// regole di lettura dei colori.
 //
-// I valori salvati restano quelli del server (in inglese); qui non si traduce
-// nulla: la traduzione per la vista sta nei dizionari.
+// I valori salvati sono quelli del server (in inglese per i tipi): qui non si
+// traduce nulla. La traduzione per la vista sta in clothing_labels.dart.
 
-/// Categorie in ordine di visualizzazione.
-const List<String> kClothingCategories = [
-  'Upper Body',
-  'Lower Body',
-  'Full Body',
-  'Shoes',
-  'Outerwear',
-  'Accessory',
-  'Essentials',
-];
+import '../../../core/catalog/catalog_store.dart';
 
+/// Il tipo "altro", in ogni gruppo.
 const String kClothingOther = 'Other';
-
-/// Sottocategorie per categoria: vecchie, poi nuove (ordine di tassonomia.ts),
-/// con 'Other' in fondo a ogni gruppo.
-const Map<String, List<String>> kClothingTypes = {
-  'Upper Body': [
-    'T-Shirt',
-    'Shirt',
-    'Polo',
-    'Hoodie',
-    'Sweatshirt',
-    'Sweater',
-    'Tank Top',
-    'Crop Top',
-    'Thermal Top',
-    'Fleece',
-    kClothingOther,
-  ],
-  'Lower Body': [
-    'Jeans',
-    'Shorts',
-    'Trousers',
-    'Leggings',
-    'Skirt',
-    'Sweatpants',
-    'Swimwear',
-    'Thermal Bottoms',
-    'Ski Pants',
-    'Wetsuit',
-    kClothingOther,
-  ],
-  'Full Body': ['Dress', kClothingOther],
-  'Shoes': [
-    'Sneakers',
-    'Sandals',
-    'Boots',
-    'Flip-Flops',
-    'Loafers',
-    'Dress Shoes',
-    'Hiking Boots',
-    'Water Shoes',
-    'Snow Boots',
-    kClothingOther,
-  ],
-  'Outerwear': [
-    'Coat',
-    'Rain Jacket',
-    'Down Jacket',
-    'Windbreaker',
-    'Blazer',
-    'Ski Jacket',
-    'Ski Suit',
-    'Casual Jacket',
-    'Vest',
-    kClothingOther,
-  ],
-  'Accessory': [
-    'Cap/Hat',
-    'Belt',
-    'Bag',
-    'Scarf',
-    'Sunglasses',
-    'Jewelry',
-    'Watch',
-    'Gloves',
-    'Tie',
-    'Umbrella',
-    kClothingOther,
-  ],
-  'Essentials': ['Underwear', 'Socks', 'Pajamas', kClothingOther],
-};
-
-/// La categoria di una sottocategoria; null se sconosciuta o se è 'Other'.
-String? clothingCategoryOf(String subCategory) {
-  if (subCategory == kClothingOther) return null;
-  for (final entry in kClothingTypes.entries) {
-    if (entry.value.contains(subCategory)) return entry.key;
-  }
-  return null;
-}
 
 const List<int> kWarmthLevels = [1, 2, 3, 4, 5];
 
 const List<int> kWaterResistanceLevels = [0, 1, 2];
 
-const List<String> kFormalities = [
-  'Loungewear',
-  'Casual',
-  'Smart Casual',
-  'Business',
-  'Formal',
+/// Se la voce [id] del [dominio] si propone nelle scelte (o è sconosciuta: si
+/// tratta come attiva, com'era prima del catalogo).
+bool voceAttiva(String dominio, String id) =>
+    CatalogStore.current.find(dominio, id)?.active ?? true;
+
+/// Le categorie (gruppi dei tipi) in ordine di visualizzazione.
+List<String> clothingCategories() => [
+  for (final voce in CatalogStore.current.domain('clothing_group')) voce.id,
 ];
 
-const List<String> kActivityTags = [
-  'Everyday',
-  'Office',
-  'Beach',
-  'Swimming',
-  'Hiking',
-  'Sport',
-  'Formal',
-  'Lounge',
+/// Le sottocategorie per categoria, nell'ordine del catalogo, con 'Other' in
+/// fondo a ogni gruppo. [activeOnly] false include anche le disattivate, che
+/// servono a leggere i capi salvati prima.
+Map<String, List<String>> clothingTypes({bool activeOnly = true}) {
+  final tipi = CatalogStore.current.domain(
+    'clothing_type',
+    activeOnly: activeOnly,
+  );
+  return {
+    for (final categoria in clothingCategories())
+      categoria: [
+        for (final voce in tipi)
+          if (voce.id != kClothingOther && voce.data['group'] == categoria)
+            voce.id,
+        kClothingOther,
+      ],
+  };
+}
+
+/// La categoria di una sottocategoria, anche disattivata; null se sconosciuta
+/// o se è 'Other'.
+String? clothingCategoryOf(String subCategory) {
+  if (subCategory == kClothingOther) return null;
+  final gruppo = CatalogStore.current
+      .find('clothing_type', subCategory)
+      ?.data['group'];
+  return gruppo is String ? gruppo : null;
+}
+
+/// Gli usi (tag di attività), nell'ordine del catalogo.
+List<String> activityTags({bool activeOnly = true}) => [
+  for (final voce in CatalogStore.current.domain('use', activeOnly: activeOnly))
+    voce.id,
 ];
 
-/// Colori di base: la tavolozza di COLORI in scheda.ts, i primi sei
-/// nell'ordine concordato. Si salva sempre la parola italiana, anche con l'app
-/// in inglese.
-const List<String> kBaseColors = [
-  'Bianco',
-  'Nero',
-  'Grigio',
-  'Blu',
-  'Marrone',
-  'Beige',
-  'Blu navy',
-  'Azzurro',
-  'Verde',
-  'Rosso',
-  'Bordeaux',
-  'Rosa',
-  'Giallo',
-  'Arancione',
-  'Viola',
-  'Multicolore',
+/// Gli stili (formalità), nell'ordine del catalogo.
+List<String> formalities({bool activeOnly = true}) => [
+  for (final voce in CatalogStore.current.domain(
+    'formality',
+    activeOnly: activeOnly,
+  ))
+    voce.id,
 ];
 
-/// Altri nomi dei colori di base (SINONIMI_COLORE in scheda.ts): i capi
-/// salvati prima della tavolozza hanno il colore scritto liberamente.
-const Map<String, String> kColorSynonyms = {
-  'celeste': 'Azzurro',
-  'blu scuro': 'Blu navy',
-  'blu notte': 'Blu navy',
-  'navy': 'Blu navy',
-  'crema': 'Beige',
-  'panna': 'Bianco',
-  'avorio': 'Bianco',
-  'cammello': 'Beige',
-  'kaki': 'Beige',
-  'cachi': 'Beige',
-  'tortora': 'Beige',
-  'antracite': 'Grigio',
-  'fucsia': 'Rosa',
-  'lilla': 'Viola',
-  'porpora': 'Viola',
-  'bordò': 'Bordeaux',
-  'denim': 'Blu',
-  'multicolor': 'Multicolore',
-  'fantasia': 'Multicolore',
-  'white': 'Bianco',
-  'black': 'Nero',
-  'grey': 'Grigio',
-  'gray': 'Grigio',
-  'brown': 'Marrone',
-  'blue': 'Blu',
-  'navy blue': 'Blu navy',
-  'light blue': 'Azzurro',
-  'green': 'Verde',
-  'red': 'Rosso',
-  'burgundy': 'Bordeaux',
-  'pink': 'Rosa',
-  'yellow': 'Giallo',
-  'orange': 'Arancione',
-  'purple': 'Viola',
-  'multicolour': 'Multicolore',
-  'multicolored': 'Multicolore',
-  'multicoloured': 'Multicolore',
+/// I colori di base (la tavolozza), nell'ordine del catalogo.
+List<String> baseColors({bool activeOnly = true}) => [
+  for (final voce in CatalogStore.current.domain(
+    'color',
+    activeOnly: activeOnly,
+  ))
+    voce.id,
+];
+
+/// Altri nomi dei colori di base (minuscoli): da `data.synonyms` del catalogo.
+Map<String, String> colorSynonyms() => {
+  for (final voce in CatalogStore.current.domain('color', activeOnly: false))
+    for (final sinonimo
+        in (voce.data['synonyms'] as List<dynamic>? ?? const []))
+      (sinonimo as String): voce.id,
 };
+
+/// Ordina gli usi di un capo: prima quelli del catalogo (nel suo ordine,
+/// anche se disattivati), poi quelli che il catalogo non conosce, nell'ordine
+/// in cui erano. Non si perde nessun uso.
+List<String> ordinaUsi(Iterable<String> usi) {
+  final scelti = <String>{...usi};
+  final conosciuti = [
+    for (final id in activityTags(activeOnly: false))
+      if (scelti.contains(id)) id,
+  ];
+  return [
+    ...conosciuti,
+    for (final uso in scelti)
+      if (!conosciuti.contains(uso)) uso,
+  ];
+}
+
+/// Le scelte da proporre: quelle attive, più quelle disattivate che il capo o il
+/// viaggio usa già (si mostrano con la loro etichetta, vedi [attiva]).
+List<String> daProporre(
+  List<String> tutte, {
+  required Iterable<String> giaUsate,
+  required String dominio,
+}) => [
+  for (final id in tutte)
+    if (voceAttiva(dominio, id) || giaUsate.contains(id)) id,
+];
 
 /// Sfumature che non cambiano il colore di base: "Verde oliva" è verde,
 /// "Grigio chiaro" è grigio. "Verde salvia" no: resta com'è scritto.
@@ -207,13 +136,14 @@ const Set<String> _sfumatureInglesi = {'dark', 'light'};
 
 /// Il colore della tavolozza per un colore scritto: uguale senza maiuscole,
 /// un sinonimo, o un colore di base con una sfumatura. Null se non è uno di
-/// questi.
+/// questi. Usa anche le voci disattivate: un capo salvato le conserva.
 String? paletteColor(String raw) {
   final testo = raw.trim().split(RegExp(r'\s+')).join(' ').toLowerCase();
   if (testo.isEmpty) return null;
   final nomi = <String, String>{
-    for (final colore in kBaseColors) colore.toLowerCase(): colore,
-    ...kColorSynonyms,
+    for (final colore in baseColors(activeOnly: false))
+      colore.toLowerCase(): colore,
+    ...colorSynonyms(),
   };
   final esatto = nomi[testo];
   if (esatto != null) return esatto;
@@ -227,8 +157,3 @@ String? paletteColor(String raw) {
   }
   return null;
 }
-
-/// Chiave del dizionario per un valore: minuscolo, non alfanumerici → '_'
-/// ("Cap/Hat" → "cap_hat").
-String clothingKey(String value) =>
-    value.toLowerCase().replaceAll(RegExp('[^a-z0-9]+'), '_');

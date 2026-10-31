@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/catalog/catalog_provider.dart';
 import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/ds_choice_group.dart';
@@ -51,6 +52,8 @@ class ClothingDetailsSection extends ConsumerWidget {
   /// mostrano solo quelli di base: nessuno spinner.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Il catalogo può cambiare in background: le pillole si ricostruiscono.
+    ref.watch(catalogRevisionProvider);
     final userColors =
         ref.watch(userColorsProvider).valueOrNull ?? const <String>[];
 
@@ -117,7 +120,11 @@ class ClothingDetailsSection extends ConsumerWidget {
         if (fields.contains(ClothingField.formality))
           DsChoiceGroup<String>(
             title: 'clothing.details.formality'.tr(),
-            options: kFormalities,
+            options: daProporre(
+              formalities(activeOnly: false),
+              giaUsate: {?details.formality},
+              dominio: 'formality',
+            ),
             labelOf: formalityLabel,
             selected: {?details.formality},
             onChanged: (s) => onChanged(details.copyWith(formality: s.single)),
@@ -131,7 +138,11 @@ class ClothingDetailsSection extends ConsumerWidget {
         if (fields.contains(ClothingField.uses))
           DsChoiceGroup<String>(
             title: 'clothing.details.uses'.tr(),
-            options: kActivityTags,
+            options: daProporre(
+              activityTags(activeOnly: false),
+              giaUsate: details.uses,
+              dominio: 'use',
+            ),
             labelOf: activityLabel,
             selected: details.uses,
             multiple: true,
@@ -162,10 +173,14 @@ class _TypeRow extends StatelessWidget {
 
   Future<void> _pick(BuildContext context) async {
     final chosen = value;
+    // Le sottocategorie da proporre: quelle attive, più la scelta corrente se è
+    // disattivata (il capo la usa già, la mostra con la sua etichetta).
+    final tipi = clothingTypes(activeOnly: false);
     final options = [
-      for (final category in kClothingCategories)
-        for (final type in kClothingTypes[category] ?? const <String>[])
-          (category: category, type: type),
+      for (final category in clothingCategories())
+        for (final type in tipi[category] ?? const <String>[])
+          if (type == chosen || voceAttiva('clothing_type', type))
+            (category: category, type: type),
     ];
     final current = chosen == null ? null : clothingCategoryOf(chosen);
     final picked = await DsPickerSheet.show<({String category, String type})>(

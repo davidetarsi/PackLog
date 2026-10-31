@@ -4,10 +4,9 @@ import 'catalog_store.dart';
 
 /// La revisione di [CatalogStore]: cambia quando arriva un catalogo nuovo o una
 /// lingua nuova. I widget con pillole ed etichette la osservano e si ricostruiscono.
-final catalogRevisionProvider =
-    NotifierProvider<CatalogRevisionNotifier, int>(
-      CatalogRevisionNotifier.new,
-    );
+final catalogRevisionProvider = NotifierProvider<CatalogRevisionNotifier, int>(
+  CatalogRevisionNotifier.new,
+);
 
 class CatalogRevisionNotifier extends Notifier<int> {
   @override

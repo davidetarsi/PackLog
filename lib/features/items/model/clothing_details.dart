@@ -108,10 +108,7 @@ class ClothingDetails {
       baseColor: color ?? 'N/A',
       warmth: warmth ?? r.warmth,
       formality: formality ?? r.formality,
-      activityTags: [
-        for (final tag in kActivityTags)
-          if (uses.contains(tag)) tag,
-      ],
+      activityTags: ordinaUsi(uses),
       category: type == null
           ? r.category
           : (clothingCategoryOf(type) ?? r.category),

@@ -28,8 +28,7 @@ class CatalogEntry {
   final Map<String, dynamic> data;
 
   /// L'etichetta nella lingua data: italiano per `it`, inglese per tutto il resto.
-  String label(String languageCode) =>
-      languageCode == 'it' ? labelIt : labelEn;
+  String label(String languageCode) => languageCode == 'it' ? labelIt : labelEn;
 
   factory CatalogEntry.fromJson(Map<String, dynamic> json) {
     final label = json['label'];
@@ -73,10 +72,9 @@ class Catalog {
   final List<CatalogEntry> entries;
 
   /// Le voci di un dominio, ordinate; con [activeOnly] solo quelle da proporre.
-  List<CatalogEntry> domain(String domain, {bool activeOnly = true}) =>
-      entries
-          .where((e) => e.domain == domain && (!activeOnly || e.active))
-          .toList();
+  List<CatalogEntry> domain(String domain, {bool activeOnly = true}) => entries
+      .where((e) => e.domain == domain && (!activeOnly || e.active))
+      .toList();
 
   /// La voce [id] del dominio, anche disattivata.
   CatalogEntry? find(String domain, String id) {

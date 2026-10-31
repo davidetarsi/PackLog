@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
+import '../../../core/catalog/catalog_provider.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/helpers/dialog_helpers.dart';
@@ -334,6 +335,8 @@ class _AiResultsScreenState extends ConsumerState<AiResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Il catalogo può cambiare in background: le etichette delle righe si aggiornano.
+    ref.watch(catalogRevisionProvider);
     final aiState = ref.watch(aiImportNotifierProvider);
     final notifier = ref.read(aiImportNotifierProvider.notifier);
 

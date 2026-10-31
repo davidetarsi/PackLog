@@ -48,9 +48,10 @@ String colorIdentity(String color) =>
 /// Pillole del colore: i colori di base, seguiti dai colori dell'utente che
 /// non sono già tra quelli di base (vedi [colorIdentity]).
 List<String> colorChoices(List<String> userColors) {
-  final seen = {for (final c in kBaseColors) colorIdentity(c)};
+  final base = baseColors();
+  final seen = {for (final c in base) colorIdentity(c)};
   return [
-    ...kBaseColors,
+    ...base,
     for (final color in userColors)
       if (seen.add(colorIdentity(color))) color.trim(),
   ];

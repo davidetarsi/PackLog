@@ -1,8 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/core/catalog/catalog.dart';
+import 'package:pack_log/core/catalog/catalog_store.dart';
 import 'package:pack_log/features/items/model/clothing_details.dart';
 import 'package:pack_log/features/items/model/item_metadata_merge.dart';
+
+import '../../../helpers/catalogo_di_prova.dart';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -26,7 +30,47 @@ Map<String, dynamic> _scheda() => {
 };
 
 void main() {
+  setUp(() => caricaCatalogoDelRepo());
+  tearDown(() => CatalogStore.set(Catalog.vuoto));
+
   group('withUserDetails', () {
+    test(
+      'un uso che il catalogo non conosce resta quando si cambia il calore',
+      () {
+        final current = jsonEncode({
+          'activityTags': ['Party', 'Everyday'],
+          'warmth': 2,
+        });
+
+        final out = _json(
+          withUserDetails(
+            current: current,
+            details: const ClothingDetails(warmth: 4),
+            touched: {ClothingField.warmth},
+          ),
+        );
+
+        expect(out['warmth'], 4);
+        expect(out['activityTags'], ['Party', 'Everyday']);
+      },
+    );
+
+    test('toccati gli usi: prima quelli del catalogo, poi gli sconosciuti', () {
+      final current = jsonEncode({
+        'activityTags': ['Party', 'Everyday'],
+      });
+
+      final out = _json(
+        withUserDetails(
+          current: current,
+          details: const ClothingDetails(uses: {'Party', 'Everyday', 'Hiking'}),
+          touched: {ClothingField.uses},
+        ),
+      );
+
+      expect(out['activityTags'], ['Everyday', 'Hiking', 'Party']);
+    });
+
     test('senza metadati: scrive solo il campo toccato, con aiPending', () {
       final json = _json(
         withUserDetails(

@@ -82,10 +82,7 @@ String withUserDetails({
       case ClothingField.formality:
         _putOrRemove(json, 'formality', details.formality);
       case ClothingField.uses:
-        json['activityTags'] = [
-          for (final tag in kActivityTags)
-            if (details.uses.contains(tag)) tag,
-        ];
+        json['activityTags'] = ordinaUsi(details.uses);
     }
   }
 
