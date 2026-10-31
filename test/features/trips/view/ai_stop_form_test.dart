@@ -13,6 +13,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../helpers/catalogo_di_prova.dart';
 import '../../../helpers/memory_asset_loader.dart';
 
+// Le attività da proporre sono quelle del catalogo del repo al 31 ottobre (Cena
+// elegante e Bicicletta disattivate): se il catalogo cambia di proposito, si
+// aggiornano le etichette attese qui nello stesso commit dell'export.
 void main() {
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
@@ -22,8 +25,8 @@ void main() {
   setUp(() => caricaCatalogoDelRepo());
   tearDown(() => CatalogStore.set(Catalog.vuoto));
 
-  /// Il catalogo del repo cambiato: "Bicicletta" è disattivata, "Cene e serate" è
-  /// attiva (già nel repo).
+  /// Il catalogo del repo così com'è: "Bicicletta" e "Cena elegante" sono
+  /// disattivate, "Cene e serate" è attiva.
   Future<void> pump(
     WidgetTester tester, {
     required AiStopAnswers answers,
@@ -49,11 +52,17 @@ void main() {
               locale: context.locale,
               theme: AppTheme.light,
               home: Scaffold(
-                body: SingleChildScrollView(
-                  child: AiStopForm(
-                    answers: answers,
-                    onChanged: onChanged,
-                    stopName: 'Lisbona',
+                // Le risposte stanno qui, come nel foglio vero: ogni tocco le cambia.
+                body: StatefulBuilder(
+                  builder: (context, setState) => SingleChildScrollView(
+                    child: AiStopForm(
+                      answers: answers,
+                      onChanged: (a) {
+                        onChanged(a);
+                        setState(() => answers = a);
+                      },
+                      stopName: 'Lisbona',
+                    ),
                   ),
                 ),
               ),
@@ -118,5 +127,43 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(salvate?.activities, ['formal_dinner', 'evenings']);
+  });
+
+  testWidgets(
+    'togliere una voce disattivata della tappa non la fa sparire: si può rimettere',
+    (tester) async {
+      AiStopAnswers? salvate;
+      await pump(
+        tester,
+        answers: const AiStopAnswers(activities: ['formal_dinner', 'city']),
+        onChanged: (a) => salvate = a,
+      );
+
+      await tester.tap(find.text('Cena elegante'));
+      await tester.pumpAndSettle();
+
+      expect(salvate?.activities, ['city']);
+      expect(mostrata('Cena elegante'), isTrue);
+      expect(pill(tester, 'Cena elegante').selected, isFalse);
+
+      await tester.tap(find.text('Cena elegante'));
+      await tester.pumpAndSettle();
+      expect(salvate?.activities, ['city', 'formal_dinner']);
+    },
+  );
+
+  testWidgets('una voce disattivata che la tappa non aveva non compare', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      answers: const AiStopAnswers(activities: ['city']),
+      onChanged: (_) {},
+    );
+
+    await tester.tap(find.text('Mare'));
+    await tester.pumpAndSettle();
+
+    expect(mostrata('Cena elegante'), isFalse);
   });
 }

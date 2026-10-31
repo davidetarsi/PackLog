@@ -10,6 +10,9 @@ import 'package:pack_log/features/items/model/clothing_taxonomy.dart';
 import '../../../helpers/catalogo_di_prova.dart';
 
 // Le etichette vengono dal catalogo (31 ottobre): nessun dizionario di traduzione.
+// Le etichette scritte qui sono quelle del 31 ottobre: se una voce del catalogo
+// viene rinominata di proposito, si aggiorna l'etichetta attesa nello stesso
+// commit dell'export (vedi anche catalogo_parita.test.ts).
 
 void main() {
   setUp(() => caricaCatalogoDelRepo(lingua: 'it'));

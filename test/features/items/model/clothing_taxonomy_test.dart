@@ -1,7 +1,14 @@
 // Tassonomia dei capi dal catalogo (31 ottobre 2026): gruppi, tipi, stile, usi e
-// colori vengono da CatalogStore. Con il catalogo del repo i valori sono quelli di
-// prima (le costanti _oggi... sono la copia di HEAD prima del catalogo). Il test
-// di coerenza legge il file che è anche l'asset dell'app.
+// colori vengono da CatalogStore. Il test di coerenza legge il file che è anche
+// l'asset dell'app.
+//
+// PARITÀ CON IL 31 OTTOBRE: il gruppo "valori del catalogo del repo, come prima"
+// fissa il CONTENUTO. Le costanti _oggi... sono la copia dei valori di prima del
+// catalogo, e falliscono apposta quando il catalogo cambia (voce nuova,
+// disattivata o rinominata). Dopo un export (esporta_catalogo.mjs) si aggiornano
+// le costanti nello stesso commit, insieme ai valori scritti in
+// supabase/functions/_shared/catalogo/test/catalogo_parita.test.ts. Gli altri
+// test (forma, coerenza) non vanno toccati.
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';

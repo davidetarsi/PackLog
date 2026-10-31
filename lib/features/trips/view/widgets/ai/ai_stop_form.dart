@@ -16,7 +16,7 @@ import '../../../model/ai_packing.dart';
 ///
 /// Niente copia automatica: il bottone "Uguale a …" compare solo se la tappa
 /// è ancora intatta ([copyFromName] dice da quale tappa copiare).
-class AiStopForm extends ConsumerWidget {
+class AiStopForm extends ConsumerStatefulWidget {
   const AiStopForm({
     super.key,
     required this.answers,
@@ -37,7 +37,23 @@ class AiStopForm extends ConsumerWidget {
   final VoidCallback? onCopy;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AiStopForm> createState() => _AiStopFormState();
+}
+
+class _AiStopFormState extends ConsumerState<AiStopForm> {
+  // Le scelte della tappa all'apertura del foglio: una voce disattivata che la
+  // tappa aveva resta fra le pillole anche se l'utente la toglie, così può
+  // rimetterla.
+  late final List<String> _attivitaIniziali = widget.answers.activities;
+  late final String? _alloggioIniziale = widget.answers.stay;
+
+  @override
+  Widget build(BuildContext context) {
+    final answers = widget.answers;
+    final onChanged = widget.onChanged;
+    final stopName = widget.stopName;
+    final copyFromName = widget.copyFromName;
+    final onCopy = widget.onCopy;
     // Attività e alloggi vengono dal catalogo, che può cambiare in background.
     ref.watch(catalogRevisionProvider);
     final cs = Theme.of(context).colorScheme;
@@ -45,10 +61,10 @@ class AiStopForm extends ConsumerWidget {
 
     final activitiesTitle = stopName == null
         ? 'trips.ai.activities_title_single'.tr()
-        : 'trips.ai.activities_title'.tr(args: [stopName!]);
+        : 'trips.ai.activities_title'.tr(args: [stopName]);
     final stayTitle = stopName == null
         ? 'trips.ai.stay_title_single'.tr()
-        : 'trips.ai.stay_title'.tr(args: [stopName!]);
+        : 'trips.ai.stay_title'.tr(args: [stopName]);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -58,7 +74,7 @@ class AiStopForm extends ConsumerWidget {
             padding: EdgeInsets.only(top: context.spacingMd),
             alignment: Alignment.centerLeft,
             child: _DashedCopyButton(
-              label: 'trips.ai.copy_from'.tr(args: [copyFromName!]),
+              label: 'trips.ai.copy_from'.tr(args: [copyFromName]),
               onTap: onCopy!,
             ),
           ),
@@ -67,7 +83,7 @@ class AiStopForm extends ConsumerWidget {
           title: activitiesTitle,
           options: daProporre(
             vociDi('activity', activeOnly: false),
-            giaUsate: answers.activities,
+            giaUsate: {..._attivitaIniziali, ...answers.activities},
             dominio: 'activity',
           ),
           labelOf: (id) => etichettaDi('activity', id),
@@ -82,7 +98,7 @@ class AiStopForm extends ConsumerWidget {
           title: stayTitle,
           options: daProporre(
             vociDi('stay', activeOnly: false),
-            giaUsate: {?answers.stay},
+            giaUsate: {?_alloggioIniziale, ?answers.stay},
             dominio: 'stay',
           ),
           labelOf: (id) => etichettaDi('stay', id),
