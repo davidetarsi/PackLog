@@ -1,13 +1,14 @@
-// Il file canonico del catalogo (catalogo.json): forma, e valori uguali a
-// quelli di oggi della tassonomia e della scheda dei capi.
+// Il file canonico del catalogo (catalogo.json): FORMA (id unici, etichette
+// piene, gruppi validi), seed della migrazione e lettura nelle funzioni. Questi
+// test non dipendono dal contenuto: non si toccano quando si cambia una voce.
+// Il contenuto fissato al 31 ottobre sta in catalogo_parita.test.ts.
 // Uso: node --test test/catalogo.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import * as tassonomia from "../../valigia/tassonomia.ts";
-import * as scheda from "../../capi/scheda.ts";
 import { azzeraCache, CATALOGO_BASE, CONTROLLO_MS, leggiCatalogo, testiAttivita, testoAlloggio, voci as vociDi }
   from "../catalogo.ts";
+import type { Catalogo } from "../catalogo.ts";
 
 type Voce = { domain: string; id: string; sort: number; active: boolean; label: { it: string; en: string };
   data: Record<string, any> };
@@ -26,7 +27,7 @@ test("forma: id unici per dominio, etichette piene, gruppi e testi validi", () =
   }
   const gruppi = new Set(dominio("clothing_group").map((v) => v.id));
   for (const t of dominio("clothing_type")) {
-    if (t.id === tassonomia.ALTRO) assert.equal(t.data.everyGroup, true);
+    if (t.id === "Other") assert.equal(t.data.everyGroup, true);
     else assert.ok(gruppi.has(t.data.group), `gruppo di ${t.id}`);
   }
   for (const a of dominio("activity")) {
@@ -35,49 +36,24 @@ test("forma: id unici per dominio, etichette piene, gruppi e testi validi", () =
   for (const s of dominio("stay")) assert.equal(typeof s.data.generator, "string", s.id);
 });
 
-test("i valori degli oggetti sono quelli di oggi", () => {
-  assert.deepEqual(dominio("clothing_group").map((v) => v.id), tassonomia.CATEGORIE);
-  for (const c of tassonomia.CATEGORIE) {
-    const tipi = dominio("clothing_type").filter((t) => t.data.group === c).map((t) => t.id);
-    assert.deepEqual([...tipi, tassonomia.ALTRO], tassonomia.SOTTOCATEGORIE[c], c);
-  }
-  for (const t of dominio("clothing_type")) {
-    if (t.id === tassonomia.ALTRO) continue;
-    assert.equal(t.data.parent, tassonomia.GENITORE[t.id] ?? null, t.id);
-    assert.equal(t.data.hint, tassonomia.NUOVE[t.id]?.[2] || tassonomia.SPIEGA_VECCHIE[t.id] || null, t.id);
-  }
-  assert.deepEqual(dominio("use").map((v) => v.id), scheda.TAG);
-  assert.deepEqual(dominio("formality").map((v) => v.id), scheda.FORMALITA);
-  assert.deepEqual(dominio("color").map((v) => v.id), scheda.COLORI);
-  const sinonimi = Object.fromEntries(dominio("color").flatMap((c) => c.data.synonyms.map((s: string) => [s, c.id])));
-  assert.deepEqual(sinonimi, scheda.SINONIMI_COLORE);
-  assert.deepEqual(dominio("warmth").map((v) => v.id), ["1", "2", "3", "4", "5"]);
-  assert.deepEqual(dominio("water").map((v) => v.id), ["0", "1", "2"]);
-});
-
-test("attivita': quelle decise il 31 ottobre, con le voci tolte disattivate", () => {
-  const a = dominio("activity");
-  assert.deepEqual(a.filter((v) => v.active).map((v) => v.id),
-    ["city", "walks", "trekking", "cammino", "sea", "diving", "ski", "camping", "work", "evenings", "wedding",
-      "worship", "spa"]);
-  assert.deepEqual(a.filter((v) => !v.active).map((v) => v.id), ["high_mountain", "formal_dinner", "nightlife", "cycling"]);
-  const testi = Object.fromEntries(a.map((v) => [v.id, v.data.generator]));
-  assert.deepEqual(testi.evenings, ["cene al ristorante", "vita notturna"]);
-  assert.deepEqual(testi.work, ["riunioni di lavoro", "cene di lavoro"]);
-  assert.deepEqual(testi.wedding, ["matrimonio", "cerimonia"]);
-  assert.deepEqual(testi.walks, ["escursioni leggere"]);
-  assert.deepEqual(testi.high_mountain, ["escursioni in quota"]);
-  assert.deepEqual(dominio("stay").map((v) => [v.id, v.data.generator]),
-    [["hotel", "hotel"], ["apartment", "appartamento"], ["hostel", "ostello"], ["camping", "campeggio"],
-      ["friends", "da amici o parenti"]]);
-});
-
-test("la migrazione contiene il seed di catalogo.json", async () => {
+// Il seed della migrazione e' SOLO INIZIALE: fotografa il catalogo del 31 ottobre
+// (catalogo_seed_iniziale.json, congelato) e non segue catalogo.json. Dopo la
+// prima migrazione i cambi si fanno nella tabella (mai con migrazioni nuove) e
+// catalogo.json si riallinea con esporta_catalogo.mjs. Questo file non si modifica.
+test("la migrazione contiene il seed iniziale (catalogo_seed_iniziale.json)", async () => {
   const { execFileSync } = await import("node:child_process");
   const seed = execFileSync(process.execPath, [new URL("../seed_sql.mjs", import.meta.url).pathname], { encoding: "utf8" });
   const migrazione = readFileSync(
     new URL("../../../../migrations/20261101090000_catalogo.sql", import.meta.url), "utf8");
-  assert.ok(migrazione.includes(seed), "seed diverso: rigenera con node seed_sql.mjs");
+  assert.ok(migrazione.includes(seed),
+    "la migrazione non contiene il seed di catalogo_seed_iniziale.json: la migrazione gia' applicata non si cambia");
+});
+
+test("catalogo.json ha tutte le voci del seed iniziale (si disattiva, non si toglie)", () => {
+  const iniziale: Voce[] = JSON.parse(
+    readFileSync(new URL("../catalogo_seed_iniziale.json", import.meta.url), "utf8")).entries;
+  const attuali = new Set(voci.map((v) => `${v.domain}|${v.id}`));
+  for (const v of iniziale) assert.ok(attuali.has(`${v.domain}|${v.id}`), `${v.domain}|${v.id} tolta: si disattiva`);
 });
 
 // ── Lettura nelle funzioni ───────────────────────────────────────────────────
@@ -132,14 +108,17 @@ test("database che non risponde: la copia nel repo, e non si riprova a ogni rich
   assert.deepEqual(db.letture, { versione: 1, righe: 0 });
 });
 
-test("attivita' e alloggi: dagli id ai testi, i testi vecchi restano", () => {
-  assert.deepEqual(testiAttivita(CATALOGO_BASE, ["evenings", "visite in citta"]),
-    ["cene al ristorante", "vita notturna", "visite in citta"]);
-  assert.deepEqual(testiAttivita(CATALOGO_BASE, ["diving", "sea"]), ["immersioni", "mare"]);
-  assert.deepEqual(testiAttivita(CATALOGO_BASE, ["formal_dinner"]), ["cena formale"]);
-  assert.equal(testoAlloggio(CATALOGO_BASE, "friends"), "da amici o parenti");
-  assert.equal(testoAlloggio(CATALOGO_BASE, "hotel di lusso"), "hotel di lusso");
-  assert.equal(testoAlloggio(CATALOGO_BASE, null), null);
-  assert.deepEqual(vociDi(CATALOGO_BASE, "activity").map((v) => v.id).includes("cycling"), false);
-  assert.deepEqual(vociDi(CATALOGO_BASE, "activity", false).map((v) => v.id).includes("cycling"), true);
+test("attivita' e alloggi: dagli id ai testi, i testi vecchi restano (catalogo scritto qui)", () => {
+  const c: Catalogo = { voci: [
+    { domain: "activity", id: "uno", sort: 1, active: true, label: { it: "Uno", en: "One" }, data: { generator: ["a", "b"] } },
+    { domain: "activity", id: "due", sort: 2, active: false, label: { it: "Due", en: "Two" }, data: { generator: ["b", "c"] } },
+    { domain: "stay", id: "casa", sort: 1, active: true, label: { it: "Casa", en: "Home" }, data: { generator: "a casa" } },
+  ] };
+  assert.deepEqual(testiAttivita(c, ["uno", "libero"]), ["a", "b", "libero"]);
+  assert.deepEqual(testiAttivita(c, ["due", "uno"]), ["b", "c", "a"], "disattivata si traduce, senza doppioni");
+  assert.equal(testoAlloggio(c, "casa"), "a casa");
+  assert.equal(testoAlloggio(c, "hotel di lusso"), "hotel di lusso");
+  assert.equal(testoAlloggio(c, null), null);
+  assert.deepEqual(vociDi(c, "activity").map((v) => v.id), ["uno"]);
+  assert.deepEqual(vociDi(c, "activity", false).map((v) => v.id), ["uno", "due"]);
 });

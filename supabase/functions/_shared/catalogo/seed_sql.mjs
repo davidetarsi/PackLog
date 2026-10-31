@@ -1,9 +1,12 @@
-// Le righe del catalogo come INSERT SQL, da catalogo.json, sempre nello stesso
-// ordine: e' il seed della migrazione del catalogo.
-// Uso: node seed_sql.mjs > seed.sql
+// Le righe del catalogo come INSERT SQL, sempre nello stesso ordine: e' il seed
+// della migrazione del catalogo. Parte da catalogo_seed_iniziale.json, la
+// fotografia congelata del 31 ottobre 2026 (non da catalogo.json, che segue la
+// tabella): il seed della migrazione e' solo iniziale.
+// Uso: node seed_sql.mjs [file.json] > seed.sql
 import { readFileSync } from "node:fs";
 
-const { entries } = JSON.parse(readFileSync(new URL("catalogo.json", import.meta.url), "utf8"));
+const file = process.argv[2] ? new URL(process.argv[2], `file://${process.cwd()}/`) : new URL("catalogo_seed_iniziale.json", import.meta.url);
+const { entries } = JSON.parse(readFileSync(file, "utf8"));
 const testo = (s) => `'${String(s).replaceAll("'", "''")}'`;
 const righe = entries.map((e) =>
   `  (${[testo(e.domain), testo(e.id), e.sort, e.active, testo(e.label.it), testo(e.label.en),

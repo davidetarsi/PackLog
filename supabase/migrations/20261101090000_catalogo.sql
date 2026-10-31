@@ -3,13 +3,30 @@
 -- leggono l'app e le Edge Functions; lo scrive solo Davide (dashboard o SQL),
 -- quindi nessuna policy di scrittura.
 --
--- Una voce non cambia mai significato: un significato nuovo e' una voce nuova
--- e la vecchia si disattiva (active = false), cosi' i dati salvati la tengono.
+-- REGOLE DEL CATALOGO (valgono per chi modifica le righe dalla dashboard o da SQL):
+--   1. Mai DELETE: una voce che non si propone piu' si disattiva (active = false).
+--      I viaggi e i capi salvati la tengono: le funzioni traducono l'id di una
+--      voce disattivata nei suoi testi di sempre; se la riga sparisse, l'id
+--      arriverebbe al generatore come testo e il suo significato andrebbe perso
+--      senza errori.
+--   2. L'id non si cambia mai: e' il valore salvato nei viaggi e nei capi. Un id
+--      nuovo e' una voce nuova (e la vecchia si disattiva).
+--   3. Una voce non cambia mai significato: un significato nuovo e' una voce
+--      nuova e la vecchia si disattiva. Ai testi del generatore di una voce si
+--      aggiunge solo cio' che lascia identica la valigia.
+--   4. Dopo questa migrazione i cambi si fanno nella TABELLA, mai con migrazioni
+--      nuove; il file del repo (catalogo.json) si riallinea con lo script
+--      esporta_catalogo.mjs. Il seed qui sotto e' solo INIZIALE: nasce da
+--      supabase/functions/_shared/catalogo/catalogo_seed_iniziale.json
+--      (seed_sql.mjs) e non segue piu' catalogo.json.
+--
 -- A ogni modifica il trigger alza app_config.catalog_version: l'app e le
 -- funzioni scaricano di nuovo il catalogo solo quando cambia.
 --
--- Il seed nasce da supabase/functions/_shared/catalogo/catalogo.json
--- (seed_sql.mjs).
+-- Rilanciare questa migrazione (db push non lo fa per una gia' applicata) non e'
+-- neutro: le righe del seed cancellate a mano tornano, e il trigger FOR EACH
+-- STATEMENT scatta anche se l'INSERT ... ON CONFLICT DO NOTHING non inserisce
+-- nulla, quindi la versione sale di uno e le app riscaricano il catalogo.
 
 CREATE TABLE IF NOT EXISTS public.catalog_entries (
   domain     text        NOT NULL,
@@ -55,7 +72,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
--- Il seed qui sotto non conta come modifica: i trigger si creano dopo.
+-- Il seed qui sotto non conta come modifica solo al primo giro: i trigger si creano
+-- dopo (al secondo giro esistono gia', vedi sopra).
 INSERT INTO public.catalog_entries (domain, id, sort, active, label_it, label_en, data) VALUES
   ('clothing_group', 'Upper Body', 10, true, 'Sopra', 'Tops', '{}'::jsonb),
   ('clothing_group', 'Lower Body', 20, true, 'Sotto', 'Bottoms', '{}'::jsonb),
@@ -162,9 +180,9 @@ INSERT INTO public.catalog_entries (domain, id, sort, active, label_it, label_en
   ('activity', 'diving', 60, true, 'Immersioni e snorkeling', 'Diving and snorkeling', '{"generator":["immersioni","mare"]}'::jsonb),
   ('activity', 'ski', 70, true, 'Sci e neve', 'Skiing and snow', '{"generator":["sci"]}'::jsonb),
   ('activity', 'camping', 80, true, 'Campeggio', 'Camping', '{"generator":["campeggio"]}'::jsonb),
-  ('activity', 'work', 90, true, 'Lavoro', 'Work', '{"generator":["riunioni di lavoro","cene di lavoro"]}'::jsonb),
+  ('activity', 'work', 90, true, 'Lavoro', 'Work', '{"generator":["riunioni di lavoro"]}'::jsonb),
   ('activity', 'evenings', 100, true, 'Cene e serate', 'Dinners and evenings out', '{"generator":["cene al ristorante","vita notturna"]}'::jsonb),
-  ('activity', 'wedding', 110, true, 'Matrimoni e cerimonie', 'Weddings and ceremonies', '{"generator":["matrimonio","cerimonia"]}'::jsonb),
+  ('activity', 'wedding', 110, true, 'Matrimoni e cerimonie', 'Weddings and ceremonies', '{"generator":["matrimonio"]}'::jsonb),
   ('activity', 'worship', 120, true, 'Luoghi di culto', 'Places of worship', '{"generator":["visite a siti religiosi"]}'::jsonb),
   ('activity', 'spa', 130, true, 'Terme', 'Spa', '{"generator":["terme"]}'::jsonb),
   ('activity', 'high_mountain', 140, false, 'Alta montagna', 'High mountains', '{"generator":["escursioni in quota"]}'::jsonb),
