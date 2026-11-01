@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/ds_text_button.dart';
 import '../../../../../shared/widgets/packlog_gradient.dart';
 import '../../../../items/model/item_model.dart';
@@ -124,15 +125,12 @@ class _ContextChip extends StatelessWidget {
                 style: tt.labelLarge?.copyWith(color: cs.onSurface),
               ),
             ),
-            IconButton(
+            DsIconButton(
               key: const Key('slot_bar_close'),
               tooltip: 'common.close'.tr(),
+              icon: Icons.close,
+              color: cs.onSurfaceVariant,
               onPressed: onClose,
-              icon: Icon(
-                Icons.close,
-                size: context.iconSizeSm,
-                color: cs.onSurfaceVariant,
-              ),
             ),
           ],
         ),
