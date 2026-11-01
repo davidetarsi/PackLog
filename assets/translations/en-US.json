@@ -406,6 +406,7 @@
       "stop_save": "Save stop",
       "stop_remove": "Remove stop",
       "title": "New trip",
+      "first_title": "Where are you going?",
       "where": "Where are you going?",
       "itinerary": "Itinerary",
       "itinerary_empty": "Pick where and when: your itinerary shows up here.",

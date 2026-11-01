@@ -29,6 +29,7 @@ import '../../luggages/model/luggage_model.dart';
 import '../../luggages/providers/luggage_provider.dart';
 import '../../luggages/view/add_edit_luggage_screen.dart';
 import '../../luggages/view/luggages_management_sheet.dart';
+import '../../tour/providers/post_login_onboarding_provider.dart';
 import '../model/ai_availability.dart';
 import '../model/ai_packing.dart';
 import '../model/pack_trip_request.dart';
@@ -510,6 +511,14 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         _initialAiResult = result;
       }
     });
+
+    // La prima valigia è fatta: il passo "Dove vai?" è chiuso (già chiuso dal
+    // salvataggio del passo 1; qui per chi ci arriva da un'altra strada) e i
+    // tip di casa e viaggio non partono, ha già fatto ciò che spiegano.
+    if (saved) {
+      await ref.read(postLoginOnboardingProvider.notifier).completeFirstTrip();
+      if (!mounted) return;
+    }
 
     // Niente snack in più: la valigia si vede già. Le modifiche sono salvate
     // e `_initial*` è allineato, quindi l'uscita non chiede conferma.

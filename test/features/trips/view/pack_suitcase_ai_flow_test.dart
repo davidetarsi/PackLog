@@ -7,7 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
+import 'package:pack_log/features/tour/model/onboarding_state.dart';
+import 'package:pack_log/features/tour/repositories/i_onboarding_repository.dart';
+import 'package:pack_log/features/tour/repositories/shared_prefs_onboarding_repository.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
@@ -52,6 +56,30 @@ class MockTripLifecycleService extends Mock implements TripLifecycleService {}
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
+
+class MockAppAnalytics extends Mock implements AppAnalyticsService {}
+
+/// Onboarding in memoria: il passo salvato si legge dopo il test.
+class _MemoryOnboardingRepository implements IOnboardingRepository {
+  OnboardingStep step = OnboardingStep.firstTrip;
+
+  @override
+  Future<OnboardingStep> loadStep() async => step;
+  @override
+  Future<void> saveStep(OnboardingStep value) async => step = value;
+  @override
+  Future<bool> loadSkippedAi() async => false;
+  @override
+  Future<void> saveSkippedAi(bool value) async {}
+  @override
+  Future<bool> loadHasExistingHouses() async => false;
+  @override
+  Future<void> saveHasExistingHouses(bool value) async {}
+  @override
+  Future<String?> loadDefaultHouseId() async => null;
+  @override
+  Future<void> saveDefaultHouseId(String? id) async {}
+}
 
 class _Weather extends TripWeatherNotifier {
   @override
@@ -218,6 +246,8 @@ void main() {
   late MockTripLifecycleService lifecycle;
   late MockCoreAnalyticsService analytics;
   late MockSyncOrchestrator sync;
+  late MockAppAnalytics appAnalytics;
+  late _MemoryOnboardingRepository onboardingRepo;
 
   /// Risultato che la pagina finta del pack-trip restituisce ("Risultato").
   late AiPackingResult? aiOutcome;
@@ -243,6 +273,12 @@ void main() {
     lifecycle = MockTripLifecycleService();
     analytics = MockCoreAnalyticsService();
     sync = MockSyncOrchestrator();
+    appAnalytics = MockAppAnalytics();
+    onboardingRepo = _MemoryOnboardingRepository();
+    SharedPreferences.setMockInitialValues({});
+    when(
+      () => appAnalytics.logEvent(any(), properties: any(named: 'properties')),
+    ).thenAnswer((_) async {});
     aiOutcome = null;
     jobs = [];
 
@@ -367,6 +403,8 @@ void main() {
           ),
           tripLifecycleServiceProvider.overrideWithValue(lifecycle),
           coreAnalyticsServiceProvider.overrideWithValue(analytics),
+          analyticsServiceProvider.overrideWithValue(appAnalytics),
+          onboardingRepositoryProvider.overrideWithValue(onboardingRepo),
           syncOrchestratorProvider.overrideWithValue(sync),
           tripWeatherNotifierProvider('trip-1').overrideWith(_Weather.new),
         ],
@@ -1011,6 +1049,21 @@ void main() {
         expect(slots.firstWhere((s) => s.type == 'sciarpa').toBuy, isFalse);
       },
     );
+
+    testWidgets('la prima valigia chiude il passo "Dove vai?" (done)', (
+      tester,
+    ) async {
+      aiOutcome = withSlots([slot('s1', 'giacca')]);
+      arrange(trip: _viaggio(), items: _houseItems);
+      await pumpPack(tester, fromNew: true);
+      expect(onboardingRepo.step, OnboardingStep.firstTrip);
+
+      await prepareInSheet(tester);
+      await tapText(tester, 'Risultato');
+
+      expect(find.text('Dettaglio viaggio'), findsOneWidget);
+      expect(onboardingRepo.step, OnboardingStep.done);
+    });
 
     testWidgets('se il salvataggio fallisce la pagina resta', (tester) async {
       aiOutcome = withSlots([slot('s1', 'giacca')]);

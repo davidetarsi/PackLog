@@ -44,6 +44,16 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
     }
   }
 
+  /// Chiude il passo "Dove vai?": la X, il salvataggio del passo 1 o la prima
+  /// valigia generata. Idempotente: da `done` non scrive nulla.
+  Future<void> completeFirstTrip() async {
+    final current = await future;
+    if (current.step == OnboardingStep.done) return;
+    final repo = ref.read(onboardingRepositoryProvider);
+    await repo.saveStep(OnboardingStep.done);
+    state = AsyncData(current.copyWith(step: OnboardingStep.done));
+  }
+
   /// "Salta" sulla AI intro chiude l'INTERO tour, non solo la demo AI.
   ///
   /// Chi preme Salta sta dicendo "non voglio essere guidato", non "saltiamo
