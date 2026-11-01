@@ -8,6 +8,7 @@ import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/shared/constants/app_constants.dart';
 import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
 import 'package:pack_log/shared/widgets/universal_item_tile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -622,6 +623,19 @@ void main() {
     await app.tap(find.byKey(const Key('items_empty_manual')));
     final field = tester.widget<TextField>(rapidFire());
     expect(field.focusNode?.hasFocus, isTrue);
+    await app.finish();
+  });
+
+  testWidgets('filtri spazio: Tutti, gli spazi, poi Senza spazio in fondo', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    final pills = tester.widget<AppPillTab<String?>>(
+      find.byType(AppPillTab<String?>),
+    );
+    expect(pills.items.first, isNull);
+    expect(pills.items.last, 'default');
+    expect(pills.items.length, greaterThan(2));
     await app.finish();
   });
 

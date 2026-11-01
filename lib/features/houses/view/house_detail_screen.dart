@@ -992,7 +992,8 @@ class _SpaceFilterPills extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tabItems = <String?>[null, 'default', ...spaces.map((s) => s.id)];
+    // "Senza spazio" chiude la riga: prima "Tutti", poi gli spazi.
+    final tabItems = <String?>[null, ...spaces.map((s) => s.id), 'default'];
     final generalPoolCount = allItems.where((i) => i.spaceId == null).length;
     final spaceCounts = {
       for (final s in spaces)
