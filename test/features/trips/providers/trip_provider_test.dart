@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -7,6 +9,7 @@ import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
@@ -765,5 +768,106 @@ void main() {
         verify(() => mockAnalytics.trackTripDuplicated()).called(1);
       },
     );
+  });
+
+  group('TripNotifier - updateAiSlot', () {
+    TripModel tripWithSlot() => TripModel(
+      id: 't1',
+      name: 'Seul',
+      items: const [],
+      luggages: const [],
+      aiResult: AiPackingResult(
+        generatedAt: DateTime(2026, 11),
+        houseId: 'h1',
+        slots: const [
+          AiSlot(
+            id: 's-giacca',
+            type: 'giacca',
+            category: ItemCategory.vestiti,
+            level: AiSlotLevel.important,
+            name: 'Giacca invernale',
+            copies: 1,
+            remaining: 1,
+            addLabel: 'Aggiungi la tua',
+          ),
+        ],
+      ),
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    bool toBuyIn(TripModel trip) => trip.aiResult!.slots!.single.toBuy;
+
+    test('aggiorna subito lo stato e salva il viaggio', () async {
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => [tripWithSlot()]);
+      await container.read(tripNotifierProvider.future);
+
+      final saving = Completer<void>();
+      when(
+        () => mockRepository.updateTrip(any()),
+      ).thenAnswer((_) => saving.future);
+
+      final done = container
+          .read(tripNotifierProvider.notifier)
+          .updateAiSlot('t1', 's-giacca', (s) => s.copyWith(toBuy: true));
+
+      // Prima che il salvataggio finisca, lo stato è già cambiato.
+      expect(
+        toBuyIn(container.read(tripNotifierProvider).value!.single),
+        isTrue,
+      );
+
+      saving.complete();
+      await done;
+
+      final saved =
+          verify(() => mockRepository.updateTrip(captureAny())).captured.single
+              as TripModel;
+      expect(toBuyIn(saved), isTrue);
+      // Niente ricarica completa: getAllTrips solo nel build.
+      verify(() => mockRepository.getAllTrips()).called(1);
+    });
+
+    test('se il salvataggio fallisce torna lo stato di prima', () async {
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => [tripWithSlot()]);
+      await container.read(tripNotifierProvider.future);
+
+      final failure = Exception('save failed');
+      when(() => mockRepository.updateTrip(any())).thenThrow(failure);
+
+      await expectLater(
+        container
+            .read(tripNotifierProvider.notifier)
+            .updateAiSlot('t1', 's-giacca', (s) => s.copyWith(toBuy: true)),
+        throwsA(equals(failure)),
+      );
+
+      final state = container.read(tripNotifierProvider);
+      expect(state, isA<AsyncData<List<TripModel>>>());
+      expect(toBuyIn(state.value!.single), isFalse);
+    });
+
+    test('risultato senza posti: nessuna scrittura', () async {
+      final legacy = tripWithSlot().copyWith(
+        aiResult: AiPackingResult(
+          generatedAt: DateTime(2026, 11),
+          houseId: 'h1',
+        ),
+      );
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => [legacy]);
+      await container.read(tripNotifierProvider.future);
+
+      await container
+          .read(tripNotifierProvider.notifier)
+          .updateAiSlot('t1', 's-giacca', (s) => s.copyWith(toBuy: true));
+
+      verifyNever(() => mockRepository.updateTrip(any()));
+    });
   });
 }

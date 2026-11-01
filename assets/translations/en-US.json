@@ -245,7 +245,18 @@
       "unsave": "Remove from saved",
       "edit_suitcase": "Edit suitcase",
       "packed_count": "{} of {} packed",
+      "ready_count": "{} of {} ready",
+      "legend_mine": "{} yours",
+      "legend_proposed": "{} suggested by PackLog",
+      "legend_important": "{} important to sort out",
       "duplicated": "Trip duplicated"
+    },
+    "slots": {
+      "important": "Important",
+      "to_buy": "To buy",
+      "got_it": "Got it",
+      "proposed_header": "Suggested by PackLog · tap to add yours",
+      "marked_to_buy": "Marked to buy"
     },
     "pack": {
       "title": "Pack your suitcase",

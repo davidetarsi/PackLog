@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,11 +19,14 @@ import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../items/model/item_model.dart';
+import '../model/ai_packing.dart';
+import '../model/suitcase_progress.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_parts.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
+import 'widgets/slots/slot_widgets.dart';
 
 enum _TripMenu { edit, duplicate, save, delete }
 
@@ -33,20 +38,76 @@ enum _TripMenu { edit, duplicate, save, delete }
 /// Un solo bottone, "Modifica valigia", che apre la pagina valigia; modifica
 /// del viaggio, copia, salvati ed eliminazione stanno nel menu ⋮, come nel
 /// dettaglio casa.
-class TripDetailScreen extends ConsumerWidget {
+///
+/// Con una valigia AI fatta di posti ([AiPackingResult.hasSlots]) "Cosa
+/// porti" mostra anche gli importanti, i "da comprare" e i proposti di
+/// PackLog; senza posti resta com'era.
+class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
 
   const TripDetailScreen({super.key, required this.tripId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TripDetailScreen> createState() => _TripDetailScreenState();
+}
+
+class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
+  String get tripId => widget.tripId;
+
+  /// Apre la barra per riempire [slot] con uno dei propri oggetti: la toccano
+  /// la riga di un proposto, l'aggiunta sulla card di un importante e
+  /// "Presa" su un "da comprare". Per ora non fa nulla: la barra Rapid Fire
+  /// la aggiunge il Task 8, qui.
+  void _openSlot(AiSlot slot) {}
+
+  /// "Da comprare" sulla card di un importante: la card diventa una riga
+  /// "da comprare"; Annulla la riporta.
+  Future<void> _markToBuy(AiSlot slot) async {
+    final saved = await _updateSlot(slot, (s) => s.copyWith(toBuy: true));
+    if (!saved || !mounted) return;
+    AppSnackBar.showUndo(
+      context,
+      'trips.slots.marked_to_buy'.tr(),
+      onUndo: () =>
+          unawaited(_updateSlot(slot, (s) => s.copyWith(toBuy: false))),
+    );
+  }
+
+  /// La casella di un proposto, quando non si sta più sistemando.
+  void _toggleSlot(AiSlot slot) {
+    unawaited(_updateSlot(slot, (s) => s.copyWith(checked: !s.checked)));
+  }
+
+  /// Cambia il posto e salva; se il salvataggio non va lo dice e torna
+  /// `false` (il posto è già tornato com'era).
+  Future<bool> _updateSlot(AiSlot slot, AiSlot Function(AiSlot) change) async {
+    try {
+      await ref
+          .read(tripNotifierProvider.notifier)
+          .updateAiSlot(tripId, slot.id, change);
+      return true;
+    } catch (_) {
+      if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
+      return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripNotifierProvider);
 
     return tripsAsync.when(
       data: (trips) {
         final trip = trips.where((t) => t.id == tripId).firstOrNull;
         if (trip == null) return _notFound(context);
-        return _TripDetail(trip: trip);
+        return _TripDetail(
+          trip: trip,
+          slotActions: _SlotActions(
+            open: _openSlot,
+            markToBuy: _markToBuy,
+            toggle: _toggleSlot,
+          ),
+        );
       },
       loading: () => const SkeletonTripDetailScreen(),
       error: (error, _) => Scaffold(
@@ -73,10 +134,24 @@ class TripDetailScreen extends ConsumerWidget {
   }
 }
 
+/// Cosa si può fare sui posti della valigia; li gestisce lo schermo.
+class _SlotActions {
+  const _SlotActions({
+    required this.open,
+    required this.markToBuy,
+    required this.toggle,
+  });
+
+  final ValueChanged<AiSlot> open;
+  final ValueChanged<AiSlot> markToBuy;
+  final ValueChanged<AiSlot> toggle;
+}
+
 class _TripDetail extends ConsumerWidget {
   final TripModel trip;
+  final _SlotActions slotActions;
 
-  const _TripDetail({required this.trip});
+  const _TripDetail({required this.trip, required this.slotActions});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -84,7 +159,8 @@ class _TripDetail extends ConsumerWidget {
     final destinationHouse = houses
         .where((h) => h.id == trip.destinationHouseId)
         .firstOrNull;
-    final hasItems = trip.items.isNotEmpty;
+    // Con i posti la valigia c'è anche senza oggetti propri.
+    final hasItems = !SuitcaseProgress.of(trip).isEmpty;
 
     return StickyCtaScaffold(
       appBar: AppBar(
@@ -167,7 +243,10 @@ class _TripDetail extends ConsumerWidget {
                 ],
               ),
             ],
-            _ItemsSection(trip: trip),
+            if (trip.aiResult?.hasSlots ?? false)
+              _SlotsSection(trip: trip, actions: slotActions)
+            else
+              _ItemsSection(trip: trip),
           ],
         ),
       ),
@@ -239,15 +318,7 @@ class _ItemsSection extends ConsumerWidget {
     final tt = Theme.of(context).textTheme;
     final items = trip.items;
 
-    if (items.isEmpty) {
-      return Padding(
-        padding: EdgeInsets.only(top: context.spacingLg),
-        child: DsEmptyState(
-          icon: Icons.inventory_2_outlined,
-          title: 'trips.no_items_in_list'.tr(),
-        ),
-      );
-    }
+    if (items.isEmpty) return const _EmptySuitcase();
 
     final packed = trip.completedCount;
     return Column(
@@ -285,27 +356,142 @@ class _ItemsSection extends ConsumerWidget {
               label: category.displayName,
               count: items.where((i) => i.category == category).length,
             ),
-            Material(
-              color: context.groupSurface,
-              borderRadius: BorderRadius.circular(
-                AppConstants.cardBorderRadius,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  for (final item in items.where((i) => i.category == category))
-                    _PackedRow(
-                      item: item,
-                      onToggle: () => ref
-                          .read(tripNotifierProvider.notifier)
-                          .toggleItemCheck(trip.id, item.id),
-                    ),
-                ],
-              ),
+            _ItemsCard(
+              tripId: trip.id,
+              items: items.where((i) => i.category == category).toList(),
             ),
           ],
       ],
     );
+  }
+}
+
+/// Valigia vuota: niente oggetti (e niente posti).
+class _EmptySuitcase extends StatelessWidget {
+  const _EmptySuitcase();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: context.spacingLg),
+      child: DsEmptyState(
+        icon: Icons.inventory_2_outlined,
+        title: 'trips.no_items_in_list'.tr(),
+      ),
+    );
+  }
+}
+
+/// Gli oggetti di un gruppo, uno per riga, da spuntare.
+class _ItemsCard extends ConsumerWidget {
+  final String tripId;
+  final List<TripItem> items;
+
+  const _ItemsCard({required this.tripId, required this.items});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Material(
+      color: context.groupSurface,
+      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (final item in items)
+            _PackedRow(
+              item: item,
+              onToggle: () => ref
+                  .read(tripNotifierProvider.notifier)
+                  .toggleItemCheck(tripId, item.id),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Cosa porti" con la valigia fatta di posti: la testata con l'avanzamento,
+/// le informazioni sul viaggio, poi per categoria gli importanti aperti, i
+/// "da comprare", la card dei proposti e gli oggetti dell'utente.
+class _SlotsSection extends StatelessWidget {
+  final TripModel trip;
+  final _SlotActions actions;
+
+  const _SlotsSection({required this.trip, required this.actions});
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = SuitcaseProgress.of(trip);
+    if (progress.isEmpty) return const _EmptySuitcase();
+
+    final result = trip.aiResult!;
+    final open = (result.slots ?? const <AiSlot>[]).where((s) => s.isOpen);
+    final gap = SizedBox(height: context.spacingSm);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DsSectionTitle('trips.pack.items'.tr()),
+        SuitcaseProgressHeader(progress: progress),
+        for (final note in result.notes) TripNoteRow(note: note),
+        for (final category in ItemCategory.values)
+          ..._group(
+            context,
+            category: category,
+            slots: open.where((s) => s.category == category).toList(),
+            items: trip.items.where((i) => i.category == category).toList(),
+            sorting: progress.sorting,
+            gap: gap,
+          ),
+      ],
+    );
+  }
+
+  List<Widget> _group(
+    BuildContext context, {
+    required ItemCategory category,
+    required List<AiSlot> slots,
+    required List<TripItem> items,
+    required bool sorting,
+    required Widget gap,
+  }) {
+    if (slots.isEmpty && items.isEmpty) return const [];
+    final important = slots.where((s) => s.level == AiSlotLevel.important);
+    final toFill = important.where((s) => !s.toBuy);
+    final toBuy = important.where((s) => s.toBuy);
+    final useful = slots.where((s) => s.level == AiSlotLevel.useful).toList();
+
+    final blocks = <Widget>[
+      for (final slot in toFill)
+        ImportantSlotCard(
+          key: Key('slot_card_${slot.id}'),
+          slot: slot,
+          onAdd: () => actions.open(slot),
+          onToBuy: () => actions.markToBuy(slot),
+        ),
+      for (final slot in toBuy)
+        ToBuySlotRow(
+          key: Key('slot_to_buy_row_${slot.id}'),
+          slot: slot,
+          onGotIt: () => actions.open(slot),
+        ),
+      if (useful.isNotEmpty)
+        ProposedSlotsCard(
+          slots: useful,
+          sorting: sorting,
+          onOpen: actions.open,
+          onToggle: actions.toggle,
+        ),
+      if (items.isNotEmpty) _ItemsCard(tripId: trip.id, items: items),
+    ];
+
+    return [
+      DsGroupHeader(
+        label: category.displayName,
+        count: slots.length + items.length,
+      ),
+      for (var i = 0; i < blocks.length; i++) ...[if (i > 0) gap, blocks[i]],
+    ];
   }
 }
 

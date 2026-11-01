@@ -245,7 +245,18 @@
       "unsave": "Togli dai salvati",
       "edit_suitcase": "Modifica valigia",
       "packed_count": "{} di {} in valigia",
+      "ready_count": "{} di {} pronti",
+      "legend_mine": "{} tue",
+      "legend_proposed": "{} proposte da PackLog",
+      "legend_important": "{} importanti da sistemare",
       "duplicated": "Viaggio duplicato"
+    },
+    "slots": {
+      "important": "Importante",
+      "to_buy": "Da comprare",
+      "got_it": "Presa",
+      "proposed_header": "Proposti da PackLog · tocca per mettere i tuoi",
+      "marked_to_buy": "Segnato da comprare"
     },
     "pack": {
       "title": "Prepara la valigia",
