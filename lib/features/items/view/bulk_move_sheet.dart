@@ -9,6 +9,7 @@ import '../../spaces/providers/space_provider.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/helpers/design_system.dart';
+import '../../../shared/widgets/ds_empty_state.dart';
 import '../../../shared/widgets/ds_form_sheet.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_settings.dart';
@@ -111,7 +112,16 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
               final otherHouses = allHouses
                   .where((h) => h.id != widget.sourceHouseId)
                   .toList();
-              if (otherHouses.isEmpty) return const SizedBox.shrink();
+              // Con una sola casa non c'è dove spostare: senza dirlo il foglio
+              // restava solo la testata, una carta vuota sopra la lista.
+              if (otherHouses.isEmpty) {
+                return DsEmptyState(
+                  key: const Key('bulk_move_no_houses'),
+                  icon: Icons.home_outlined,
+                  title: 'items.bulk_move_no_houses'.tr(),
+                  subtitle: 'items.bulk_move_no_houses_hint'.tr(),
+                );
+              }
               return DsSettingsGroup(
                 children: [
                   for (final house in otherHouses)
