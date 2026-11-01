@@ -122,6 +122,7 @@
     "edit": "Edit space",
     "delete": "Delete space",
     "manage": "Edit spaces",
+    "explainer": "Spaces are the places in your home where you keep your things: closet, drawers, garage.",
     "no_spaces": "No spaces",
     "no_spaces_subtitle": "Spaces help you organize items",
     "all_items": "All",
