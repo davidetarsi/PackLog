@@ -145,6 +145,20 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Annulla il soft-delete di un singolo oggetto ("Annulla" dopo lo swipe).
+  ///
+  /// Rimette `isDeleted = false` e segna l'oggetto da sincronizzare: il
+  /// cloud riceve la rimozione dell'eliminazione, come per ogni modifica.
+  Future<int> restoreItem(String id) {
+    return (update(items)..where((i) => i.id.equals(id))).write(
+      ItemsCompanion(
+        isDeleted: const Value(false),
+        syncStatus: const Value(SyncStatus.pendingUpdate),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   /// Soft-delete di tutti gli oggetti di una casa.
   ///
   /// Usato internamente dal cascade di [HousesDao.deleteHouse].

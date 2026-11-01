@@ -34,6 +34,9 @@ abstract class ItemRepository {
   Future<List<String>> getUsedColors();
   Future<List<ItemModel>> getItemsByHouseId(String houseId);
   Future<bool> deleteItem(String id);
+
+  /// Rimette un oggetto eliminato da poco ("Annulla" dopo l'eliminazione).
+  Future<bool> restoreItem(String id);
   Future<void> updateItem(ItemModel model);
 
   /// Aggiorna solo `ai_metadata` (e la categoria, se [compute] la dà) di un

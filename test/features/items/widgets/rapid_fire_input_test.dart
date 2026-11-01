@@ -132,8 +132,8 @@ void main() {
   testWidgets('il testo scritto arriva a onTextChanged', (tester) async {
     String? last;
     await pumpInput(tester, onTextChanged: (v) => last = v);
-    await tester.enterText(find.byType(TextField), 'calz');
-    expect(last, 'calz');
+    await tester.enterText(find.byType(TextField), 'Calz');
+    expect(last, 'Calz');
   });
 
   testWidgets('usa il FocusNode passato da fuori', (tester) async {
@@ -164,5 +164,16 @@ void main() {
     // sia l'esito del salvataggio.
     await tester.pump(const Duration(milliseconds: 100));
     expect(node.hasFocus, isTrue);
+  });
+
+  testWidgets('"aux bt" diventa "Aux bt" mentre si scrive', (tester) async {
+    String? last;
+    await pumpInput(tester, onTextChanged: (v) => last = v);
+    await tester.enterText(find.byType(TextField), 'aux bt');
+    expect(last, 'Aux bt');
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller?.text,
+      'Aux bt',
+    );
   });
 }

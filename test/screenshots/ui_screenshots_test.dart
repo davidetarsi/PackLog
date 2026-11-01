@@ -792,6 +792,42 @@ final flows = <Flow>[
         await app.tap(find.text('Casa Milano'));
       },
     ),
+    Scenario(
+      19,
+      'dettaglio-casa',
+      'swipe-elimina',
+      route: '/houses/:id',
+      source: 'lib/features/items/view/swipe_to_delete_item.dart',
+      description:
+          'Swipe verso sinistra su una riga: sotto compare il fondo di errore '
+          'con il cestino.',
+      steps: (app) async {
+        await _houseDetail(app);
+        final gesture = await app.tester.startGesture(
+          app.tester.getCenter(find.text('Calzini')),
+        );
+        // Il primo spostamento serve a superare la soglia del gesto.
+        await gesture.moveBy(const Offset(-30, 0));
+        await app.tester.pump();
+        await gesture.moveBy(const Offset(-130, 0));
+        await app.tester.pump(const Duration(milliseconds: 100));
+      },
+    ),
+    Scenario(
+      20,
+      'dettaglio-casa',
+      'elimina-annulla',
+      route: '/houses/:id',
+      source: 'lib/features/items/view/swipe_to_delete_item.dart',
+      description:
+          'Riga eliminata con lo swipe: snackbar con il nome e "Annulla", '
+          'senza conferma.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tester.drag(find.text('Calzini'), const Offset(-500, 0));
+        await app.settle();
+      },
+    ),
   ]),
 
   Flow('05-oggetti', 'Oggetti: creazione e modifica', [
@@ -916,6 +952,21 @@ final flows = <Flow>[
       steps: (app) async {
         await _houseDetail(app);
         await app.tap(find.text('T-shirt bianca'));
+      },
+    ),
+    Scenario(
+      9,
+      'oggetto-scheda',
+      'sposta',
+      source: 'lib/features/items/view/bulk_move_sheet.dart',
+      description:
+          'Dal menu ⋮ della scheda, "Sposta in un\'altra casa": il foglio '
+          '"Sposta" si apre sopra la scheda.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.text('Maglione di lana'));
+        await app.tap(find.byKey(const Key('item_sheet_menu')));
+        await app.tap(_text('items.move_to_house'));
       },
     ),
   ]),

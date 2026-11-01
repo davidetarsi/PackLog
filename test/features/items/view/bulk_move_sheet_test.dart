@@ -385,4 +385,65 @@ void main() {
 
     expect(find.byType(DsSettingsGroup), findsNWidgets(2));
   });
+
+  testWidgets('senza altre case il foglio lo dice, non resta vuoto', (
+    tester,
+  ) async {
+    final houseRepository = _MockHouseRepository();
+    final spaceRepository = _MockSpaceRepository();
+    final now = DateTime(2026);
+    final source = HouseModel(
+      id: 'source',
+      name: 'Casa di partenza',
+      createdAt: now,
+      updatedAt: now,
+    );
+    when(
+      () => houseRepository.getAllHouses(),
+    ).thenAnswer((_) async => [source]);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          houseRepositoryProvider.overrideWithValue(houseRepository),
+          spaceRepositoryProvider.overrideWithValue(spaceRepository),
+        ],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('it', 'IT')],
+          path: 'assets/translations',
+          fallbackLocale: const Locale('it', 'IT'),
+          startLocale: const Locale('it', 'IT'),
+          assetLoader: assetLoader,
+          child: Builder(
+            builder: (context) => MaterialApp(
+              theme: AppTheme.light,
+              localizationsDelegates: context.localizationDelegates,
+              supportedLocales: context.supportedLocales,
+              locale: context.locale,
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: TextButton(
+                    onPressed: () => BulkMoveSheet.show(
+                      context,
+                      itemCount: 2,
+                      sourceHouseId: 'source',
+                    ),
+                    child: const Text('Apri'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apri'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DsSettingsGroup), findsNothing);
+    expect(find.text('items.bulk_move_no_houses'.tr()), findsOneWidget);
+    expect(find.text('items.bulk_move_no_houses_hint'.tr()), findsOneWidget);
+  });
 }

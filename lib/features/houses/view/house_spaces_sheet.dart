@@ -61,6 +61,16 @@ class HouseSpacesSheet extends ConsumerWidget {
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
+                // Cosa sono gli spazi, per chi li apre la prima volta.
+                Padding(
+                  padding: EdgeInsets.only(top: context.spacingXs),
+                  child: Text(
+                    'spaces.explainer'.tr(),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
                 _spaces(context, ref),
               ],
             );

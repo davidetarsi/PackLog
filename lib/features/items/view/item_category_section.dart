@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/view/item_card.dart';
+import 'package:pack_log/features/items/view/swipe_to_delete_item.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/widgets/ds_group_header.dart';
 import 'package:pack_log/shared/widgets/ds_group_surface_sliver.dart';
@@ -65,17 +66,28 @@ class _ItemCategorySectionState extends State<ItemCategorySection> {
               itemCount: widget.items.length,
               itemBuilder: (context, index) {
                 final item = widget.items[index];
-                return ItemCard(
+                final quantityOnTrip =
+                    widget.itemQuantitiesOnTrip[item.id] ?? 0;
+                return SwipeToDeleteItem(
+                  // Con la chiave lo stato "già eliminata" segue l'oggetto e
+                  // non la posizione, quando la lista si accorcia.
+                  key: ValueKey('swipe_${item.id}'),
                   item: item,
                   houseId: widget.houseId,
-                  quantityOnTrip: widget.itemQuantitiesOnTrip[item.id] ?? 0,
-                  onOpened: onItemOpened == null
-                      ? null
-                      : () => onItemOpened(index),
-                  dividerInsets: EdgeInsets.symmetric(
-                    horizontal: context.spacingMd,
+                  // Un oggetto in viaggio non si elimina a colpo d'occhio.
+                  enabled: quantityOnTrip == 0,
+                  child: ItemCard(
+                    item: item,
+                    houseId: widget.houseId,
+                    quantityOnTrip: quantityOnTrip,
+                    onOpened: onItemOpened == null
+                        ? null
+                        : () => onItemOpened(index),
+                    dividerInsets: EdgeInsets.symmetric(
+                      horizontal: context.spacingMd,
+                    ),
+                    showDivider: index < widget.items.length - 1,
                   ),
-                  showDivider: index < widget.items.length - 1,
                 );
               },
             ),
