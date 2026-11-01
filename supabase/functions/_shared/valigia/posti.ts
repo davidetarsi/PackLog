@@ -209,6 +209,8 @@ interface Grezzo {
   origine: "gap" | "pezzi" | "famiglia";
   /** Solo per i mancanti: il gap chiede un capo elegante (soloElegante). */
   elegante?: boolean;
+  /** Il posto unico del meteo (unisciIlMeteo): non si somma ad altri posti dello stesso tipo. */
+  delMeteo?: boolean;
 }
 
 /** Un posto solo per le giacche e per le scarpe del meteo (Outerwear, Shoes): "Sneakers invernali",
@@ -225,7 +227,7 @@ function unisciIlMeteo(grezzi: Grezzo[]): Grezzo[] {
     if (!delMeteo(p) || p.livello !== "importante") continue;
     const gia = uno.get(p.capo.categoria);
     if (!gia) {
-      uno.set(p.capo.categoria, { ...p, tipo: p.capo.categoria, copie: 1, capo: { sub: null, categoria: p.capo.categoria } });
+      uno.set(p.capo.categoria, { ...p, tipo: p.capo.categoria, copie: 1, delMeteo: true, capo: { sub: null, categoria: p.capo.categoria } });
     } else if (p.qualifica === "freddo") {
       gia.qualifica = "freddo";
     }
@@ -321,8 +323,10 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
   // 5. Uniti per tipo: copie sommate, importante se lo e' almeno uno, motivo e nome di quello.
   const uniti = new Map<string, Grezzo>();
   for (const p of unisciIlMeteo(grezzi)) {
-    const gia = uniti.get(p.tipo);
-    if (!gia) { uniti.set(p.tipo, { ...p }); continue; }
+    // Il posto unico del meteo ha una chiave sua: i pezzi in meno dello stesso tipo (sottocategoria sconosciuta) restano a parte.
+    const chiave = p.delMeteo ? `meteo:${p.tipo}` : p.tipo;
+    const gia = uniti.get(chiave);
+    if (!gia) { uniti.set(chiave, { ...p }); continue; }
     gia.copie += p.copie;
     if (p.livello === "importante" && gia.livello !== "importante") {
       Object.assign(gia, { livello: p.livello, motivo: p.motivo, capo: p.capo, qualifica: p.qualifica });

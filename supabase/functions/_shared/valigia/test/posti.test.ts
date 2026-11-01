@@ -530,3 +530,28 @@ test("un posto solo: id dall'ordine finale e unito al posto del primo", () => {
   posti.forEach((p, i) => assert.equal(p.id, `${p.tipo}:${i}`));
   assert.deepEqual(posti.filter((p) => p.livello === "importante").map((p) => p.id), ["Outerwear:0", "Shoes:1"]);
 });
+
+test("un posto solo: pezzi in meno su un capo Shoes 'Other' non si sommano alle Scarpe invernali", () => {
+  // "Other" e' una sottocategoria valida ma non ha nome in tabella: il tipo del posto e' la categoria, "Shoes".
+  const armadio = caricaArmadio([{ id: "o1", name: "Scarpe strane", ai_metadata: { category: "Shoes", subCategory: "Other" } }]);
+  const capi = [{ item_id: "o1", item: "Scarpe strane", quantita: 3, motivo: motivoGiorno }];
+  const posti = postiDi([freddoGap("Stivali", "Shoes", "Boots")], { armadio, capi, salvate: new Map([["o1", 1]]) });
+  const scarpe = posti.filter((p) => p.tipo === "Shoes");
+  assert.equal(scarpe.length, 2, posti.map((p) => p.nome).join(", "));
+  const meteo = scarpe.find((p) => p.livello === "importante" && p.copie === 1)!;
+  assert.equal(meteo.nome, "Scarpe invernali");
+  const pezzi = scarpe.find((p) => p !== meteo)!;
+  assert.equal(pezzi.copie, 2);
+  assert.equal(pezzi.motivo, "Ne servirebbero 3, nell'armadio ne hai 1.");
+  assert.notEqual(meteo.id, pezzi.id);
+  posti.forEach((p, i) => assert.equal(p.id, `${p.tipo}:${i}`));
+});
+
+test("un posto solo: pezzi in meno su un capo Outerwear 'Other' non si sommano alla Giacca invernale", () => {
+  const armadio = caricaArmadio([{ id: "o2", name: "Giacca strana", ai_metadata: { category: "Outerwear", subCategory: "Other" } }]);
+  const capi = [{ item_id: "o2", item: "Giacca strana", quantita: 2, motivo: motivoGiorno }];
+  const posti = postiDi([freddoGap("Cappotto", "Outerwear", "Coat")], { armadio, capi, salvate: new Map([["o2", 1]]) });
+  const giacche = posti.filter((p) => p.tipo === "Outerwear");
+  assert.deepEqual(giacche.map((p) => [p.nome, p.copie]).sort(), [["Giacca invernale", 1], ["Giacca", 1]].sort());
+  assert.ok(giacche.some((p) => p.motivo === "Ne servirebbero 2, nell'armadio ne hai 1."));
+});
