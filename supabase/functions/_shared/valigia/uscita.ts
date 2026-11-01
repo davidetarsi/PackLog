@@ -178,7 +178,7 @@ function perTappe(g: Record_, lingua: Lingua = "it"): string {
 }
 
 /** La forbice di calore chiesta, se c'e': [minimo, massimo]. */
-function calore(g: Record_): [number, number] | null {
+export function calore(g: Record_): [number, number] | null {
   const v = g.warmth_richiesto;
   if (!Array.isArray(v) || v.length !== 2) return null;
   const [a, b] = v.map((x) => (x == null ? NaN : Number(x)));
@@ -351,17 +351,10 @@ export function perQuestoArmadio(g: Record_, armadio: Set<string> | null): Recor
   return subs.length ? { ...g, subCategories: subs } : null;
 }
 
-/** Capi (uniti per item_id, quantita' sommata, tetto dell'armadio) e avvisi della valigia.
- *  meteo: quello della risposta del generatore; armadio: le sottocategorie dei capi della casa;
- *  viaggio: quello dell'app (giorni, lavatrice, tappe); lingua: quella dei testi degli avvisi. */
-export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenziali: Record_[] },
-  salvate: Map<string, number | null>,
-  contesto: { meteo?: Record_ | null; armadio?: Iterable<string>; viaggio?: Record_ | null; lingua?: Lingua } = {},
-): { capi: CapoApp[]; avvisi: AvvisoApp[] } {
-  const en = contesto.lingua === "en";
-  const armadio = contesto.armadio ? new Set(contesto.armadio) : null;
-  // Lo stesso capo puo' stare in piu' tappe, come ideale e ripiego, o tra gli essenziali:
-  // una riga sola, con la quantita' di tutti i posti in cui serve.
+/** Lo stesso capo puo' stare in piu' tappe, come ideale e ripiego, o tra gli essenziali:
+ *  una riga sola, con la quantita' di tutti i posti in cui serve. */
+export function capiUniti(motivi: { capi: Record_[]; essenziali: Record_[] }):
+  Map<string, { item: string; quantita: number; in_partenza: boolean; motivo: Record_ }> {
   const uniti = new Map<string, { item: string; quantita: number; in_partenza: boolean; motivo: Record_ }>();
   for (const x of [...motivi.capi, ...motivi.essenziali]) {
     const id = String(x.item_id);
@@ -376,14 +369,48 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
       uniti.set(id, { item: String(x.item ?? ""), quantita, in_partenza: vero(x.in_partenza), motivo: x.motivo });
     }
   }
+  return uniti;
+}
+
+/** Le copie salvate di un capo: zero, negativo o assente conta come una copia (il capo non sparisce). */
+export function tettoSalvate(salvate: Map<string, number | null>, id: string): number {
+  return Math.max(1, salvate.get(id) ?? 1);
+}
+
+/** "Ne servirebbero 6, nell'armadio ne hai 4." */
+export function frasePochi(quantita: number, tetto: number, lingua?: Lingua): string {
+  return lingua === "en" ? `You'd need ${quantita}, the wardrobe has ${tetto}.`
+    : `Ne servirebbero ${quantita}, nell'armadio ne hai ${tetto}.`;
+}
+
+/** Viaggio lungo in un posto solo, senza lavatrice: il generatore conta su un bucato
+ *  (quantita' di due settimane), e l'utente deve saperlo (Davide, 25 ottobre). */
+export function lavanderiaDelViaggio(v: Record_ | null | undefined, lingua?: Lingua):
+  { titolo: string; perche: string } | null {
+  if (!v || (Array.isArray(v.tappe) && v.tappe.length) || !lavanderiaPresunta(v.giorni, v.lavatrice)) return null;
+  const en = lingua === "en";
+  return { titolo: en ? "Plan to do laundry" : "Prevedi una lavanderia",
+    perche: en ? "It's a long trip: the packing list counts on washing clothes along the way."
+      : "Il viaggio è lungo: la valigia conta di lavare i vestiti strada facendo." };
+}
+
+/** Capi (uniti per item_id, quantita' sommata, tetto dell'armadio) e avvisi della valigia.
+ *  meteo: quello della risposta del generatore; armadio: le sottocategorie dei capi della casa;
+ *  viaggio: quello dell'app (giorni, lavatrice, tappe); lingua: quella dei testi degli avvisi. */
+export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenziali: Record_[] },
+  salvate: Map<string, number | null>,
+  contesto: { meteo?: Record_ | null; armadio?: Iterable<string>; viaggio?: Record_ | null; lingua?: Lingua } = {},
+): { capi: CapoApp[]; avvisi: AvvisoApp[] } {
+  const en = contesto.lingua === "en";
+  const armadio = contesto.armadio ? new Set(contesto.armadio) : null;
+  const uniti = capiUniti(motivi);
 
   // Un capo tra gli essenziali e' importante anche se il suo motivo principale viene dai capi.
   const essenziali = new Set(motivi.essenziali.map((x) => String(x.item_id)));
   const capi: CapoApp[] = [];
   const avvisi: Omit<AvvisoApp, "id">[] = [];
   for (const [id, c] of uniti) {
-    // Zero o negativo nell'armadio conta come una copia: il capo non sparisce.
-    const tetto = Math.max(1, salvate.get(id) ?? 1);
+    const tetto = tettoSalvate(salvate, id);
     const quantita = Math.min(c.quantita, tetto);
     capi.push({
       item_id: id, quantita, in_partenza: c.in_partenza,
@@ -396,8 +423,7 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
         codice: CODICE_POCHI,
         livello: essenziale && c.quantita - tetto > 1 ? "importante" : "utile",
         titolo: en ? `You need more of ${c.item.trim()}` : `Ti servono più pezzi di ${c.item.trim()}`,
-        perche: en ? `You'd need ${c.quantita}, the wardrobe has ${tetto}.`
-          : `Ne servirebbero ${c.quantita}, nell'armadio ne hai ${tetto}.`,
+        perche: frasePochi(c.quantita, tetto, contesto.lingua),
         cerca: c.item.trim(),
       });
     }
@@ -420,16 +446,8 @@ export function uscitaApp(valigia: Record_, motivi: { capi: Record_[]; essenzial
     });
   }
 
-  // Viaggio lungo in un posto solo, senza lavatrice: il generatore conta su un bucato
-  // (quantita' di due settimane), e l'utente deve saperlo (Davide, 25 ottobre).
-  const v = contesto.viaggio;
-  if (v && !(Array.isArray(v.tappe) && v.tappe.length) && lavanderiaPresunta(v.giorni, v.lavatrice)) {
-    avvisi.push({
-      codice: CODICE_LAVANDERIA, livello: "utile", titolo: en ? "Plan to do laundry" : "Prevedi una lavanderia",
-      perche: en ? "It's a long trip: the packing list counts on washing clothes along the way."
-        : "Il viaggio è lungo: la valigia conta di lavare i vestiti strada facendo.", cerca: null,
-    });
-  }
+  const lavanderia = lavanderiaDelViaggio(contesto.viaggio, contesto.lingua);
+  if (lavanderia) avvisi.push({ codice: CODICE_LAVANDERIA, livello: "utile", ...lavanderia, cerca: null });
 
   // Due mancanti diversi possono dare lo stesso titolo (scarpe per la citta' e scarpe da neve):
   // un avviso solo, importante se lo era almeno uno dei due, con la spiegazione di quello importante.

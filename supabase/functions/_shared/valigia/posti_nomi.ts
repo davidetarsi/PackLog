@@ -78,3 +78,12 @@ export const NOMI_CATEGORIA: Record<string, NomePosto> = {
   "Outerwear": { it: ["giacca", "giacche"], genere: "f", en: ["jacket", "jackets"], soloPlurale: false, qualificabile: true },
   "Accessory": { it: ["accessorio", "accessori"], genere: "m", en: ["accessory", "accessories"], soloPlurale: false, qualificabile: true },
 };
+
+/** Le famiglie degli essenziali di base (postiApp): chiave = il tipo del posto. Pigiama e
+ *  Necessaire sono invariabili (con una copia "Aggiungi il tuo"); Mutande e Calzini solo plurali. */
+export const NOMI_FAMIGLIA: Record<string, NomePosto> = {
+  "intimo": { it: sp("mutande"), genere: "f", en: sp("underwear"), soloPlurale: true, qualificabile: false },
+  "calzini": { it: sp("calzini"), genere: "m", en: sp("socks"), soloPlurale: true, qualificabile: false },
+  "notte": { it: ["pigiama", "pigiama"], genere: "m", en: sp("pyjamas"), soloPlurale: false, qualificabile: false },
+  "igiene": { it: ["necessaire", "necessaire"], genere: "m", en: ["toiletry bag", "toiletry bags"], soloPlurale: false, qualificabile: false },
+};

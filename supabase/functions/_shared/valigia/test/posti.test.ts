@@ -145,3 +145,200 @@ test("soloPlurale: solo i veri nomi plurali, e la tabella e' coerente", () => {
   for (const sub of ["Trousers", "Gloves", "Jeans", "Shorts", "Sneakers"]) assert.equal(NOMI_SOTTOCATEGORIA[sub].soloPlurale, true, sub);
   for (const cat of ["Shoes", "Lower Body"]) assert.equal(NOMI_CATEGORIA[cat].soloPlurale, true, cat);
 });
+
+// ── postiApp: copie, pezzi in meno, essenziali di base, informazioni ─────────
+import { postiApp, type PostoApp } from "../posti.ts";
+import { caricaArmadio } from "../capo.ts";
+import { essenzialiPerViaggio } from "../quantita.ts";
+import * as K from "../costanti.ts";
+
+const SEUL_METEO = { temp_min_media: -7, temp_max_media: 1, giorni_di_pioggia: 4 };
+const SEUL_VIAGGIO = { giorni: 31, lavatrice: false, attivita: [] as string[] };
+const motivoGiorno = { codice: "giorno", etichetta: "Tutti i giorni", frase: "x" };
+const motivoEss = { codice: "essenziale", etichetta: "Essenziali", frase: "e" };
+
+/** Un mancante come lo da' il generatore con l'armadio vuoto (canonicalizeGaps). */
+const assente = (slot: string, category: string, subCategories: string[], extra: Record<string, unknown> = {}) =>
+  ({ slot, tipo: "assente", imposto: false, category, essential: true, subCategories, reason: "r",
+    fonte: "slot", priorita: "necessario", ...extra });
+
+const SEUL_MANCANTI = [
+  assente("Giacca pesante", "Outerwear", ["Coat", "Down Jacket", "Rain Jacket", "Windbreaker"]),
+  assente("Scarpe chiuse", "Shoes", ["Boots", "Hiking Boots", "Sneakers", "Snow Boots"]),
+  assente("Cappello (Cap/Hat)", "Accessory", ["Cap/Hat"]),
+  assente("Guanti (Gloves)", "Accessory", ["Gloves"]),
+  assente("Maglione", "Upper Body", ["Sweater"]),
+  assente("Magliette", "Upper Body", ["T-Shirt"]),
+  assente("Pantaloni", "Lower Body", ["Trousers"]),
+];
+const richiestiDi = (mancanti: Record<string, any>[], freq: Record<string, string> = {}) =>
+  mancanti.map((g) => ({ slot: g.slot, category: g.category, subCategories: g.subCategories, frequency: freq[g.slot] ?? "daily" }));
+
+const seul = (lingua: "it" | "en" = "it", extra: Record<string, any> = {}) => postiApp(
+  { mancanti_canonici: SEUL_MANCANTI, richiesti: richiestiDi(SEUL_MANCANTI), essenziali: [], ...extra },
+  { capi: [], essenziali: [] }, new Map(),
+  { meteo: SEUL_METEO, viaggio: SEUL_VIAGGIO, armadio: [], lingua });
+
+const perNome = (posti: PostoApp[]) => new Map(posti.map((p) => [p.nome, p]));
+
+test("postiApp Seul, armadio vuoto: quattro importanti, il resto proposte utili", () => {
+  const { posti } = seul();
+  const importanti = posti.filter((p) => p.livello === "importante").map((p) => p.nome);
+  assert.deepEqual(new Set(importanti), new Set(["Giacca invernale", "Scarpe invernali", "Cappello caldo", "Guanti"]));
+  assert.equal(importanti.length, 4);
+  const utili = posti.filter((p) => p.livello === "utile");
+  const nomiUtili = utili.map((p) => p.nome);
+  for (const n of ["Maglioni caldi", "Magliette", "Mutande", "Calzini", "Pigiama", "Necessaire"]) {
+    assert.ok(nomiUtili.includes(n), `${n} in ${nomiUtili.join(", ")}`);
+  }
+  // I pantaloni col freddo di Seul si qualificano come gli altri capi caldi (nomePosto, Task 1).
+  assert.ok(nomiUtili.some((n) => n.startsWith("Pantaloni")), nomiUtili.join(", "));
+  for (const p of posti) assert.ok(p.copie >= 1, `${p.nome} ${p.copie}`);
+  // prima gli importanti, poi gli utili
+  const primoUtile = posti.findIndex((p) => p.livello === "utile");
+  assert.ok(posti.slice(primoUtile).every((p) => p.livello === "utile"));
+  // id dall'ordine finale
+  posti.forEach((p, i) => assert.equal(p.id, `${p.tipo}:${i}`));
+});
+
+test("postiApp Seul: copie, tipi e categorie", () => {
+  const p = perNome(seul().posti);
+  // 31 giorni senza lavatrice: le quantita' di GIORNI_LAVANDERIA giorni
+  assert.equal(K.GIORNI_LAVANDERIA, 14);
+  assert.deepEqual([p.get("Giacca invernale")!.copie, p.get("Giacca invernale")!.tipo], [1, "Outerwear"]);
+  assert.deepEqual([p.get("Guanti")!.copie, p.get("Guanti")!.tipo], [1, "Gloves"]);
+  assert.deepEqual([p.get("Maglioni caldi")!.copie, p.get("Maglioni caldi")!.tipo], [3, "Sweater"]);
+  assert.deepEqual([p.get("Magliette")!.copie, p.get("Magliette")!.tipo], [14, "T-Shirt"]);
+  assert.deepEqual([p.get("Mutande")!.tipo, p.get("Mutande")!.categoria], ["intimo", "vestiti"]);
+  assert.deepEqual([p.get("Calzini")!.tipo, p.get("Pigiama")!.tipo], ["calzini", "notte"]);
+  assert.deepEqual([p.get("Necessaire")!.tipo, p.get("Necessaire")!.categoria, p.get("Necessaire")!.copie], ["igiene", "toiletries", 1]);
+  assert.equal(p.get("Mutande")!.aggiungi, "Aggiungi le tue");
+  assert.equal(p.get("Calzini")!.aggiungi, "Aggiungi i tuoi");
+  assert.equal(p.get("Pigiama")!.aggiungi, "Aggiungi il tuo");
+  assert.equal(p.get("Necessaire")!.aggiungi, "Aggiungi il tuo");
+  // il motivo e' il perche' degli avvisi di oggi
+  assert.equal(p.get("Giacca invernale")!.motivo, "Nell'armadio di questa casa non c'è niente di adatto al freddo previsto.");
+  assert.equal(p.get("Mutande")!.motivo, null);
+});
+
+test("postiApp: l'essenziale dell'armadio vuoto ha le copie che essenzialiPerViaggio darebbe a quel capo", () => {
+  const p = perNome(seul().posti);
+  const finto = (name: string) => essenzialiPerViaggio(caricaArmadio([{ id: "x", name }]), 14, false)[0].quantita;
+  assert.equal(p.get("Mutande")!.copie, finto("Mutande"));
+  assert.equal(p.get("Calzini")!.copie, finto("Calzini"));
+  assert.equal(p.get("Pigiama")!.copie, finto("Pigiama"));
+  assert.equal(p.get("Necessaire")!.copie, finto("Necessaire"));
+});
+
+test("postiApp: un capo 'Mutande' nell'armadio (senza copie) toglie il posto dell'intimo", () => {
+  const armadio = caricaArmadio([{ id: "m1", name: "Mutande" }]);
+  const essenziali = essenzialiPerViaggio(armadio, 14, false);
+  const r = postiApp({ mancanti_canonici: [], richiesti: [], essenziali }, { capi: [], essenziali: [] }, new Map(),
+    { meteo: SEUL_METEO, viaggio: SEUL_VIAGGIO, armadio });
+  assert.ok(!r.posti.some((p) => p.tipo === "intimo"), r.posti.map((p) => p.tipo).join(", "));
+  assert.ok(r.posti.some((p) => p.tipo === "calzini"));
+});
+
+test("postiApp: quantita_insufficiente, copie dai capi diversi che mancano", () => {
+  const g = { slot: "Magliette", tipo: "quantita_insufficiente", imposto: false, category: "Upper Body", essential: true,
+    subCategories: ["T-Shirt"], usi_richiesti: 10, usi_coperti: 4, capi_diversi_necessari: 2, priorita: "necessario" };
+  const r = postiApp({ mancanti_canonici: [g], richiesti: [], essenziali: [{ radice: "mutand" }, { radice: "calz" },
+    { radice: "pigiama" }, { radice: "necessaire" }] }, { capi: [], essenziali: [] }, new Map(),
+    { meteo: SEUL_METEO, viaggio: SEUL_VIAGGIO, armadio: [] });
+  assert.deepEqual(r.posti.map((p) => [p.tipo, p.copie, p.livello]), [["T-Shirt", 1, "utile"]]);
+});
+
+test("postiApp: T-Shirt con 5 da portare e 2 nell'armadio, un posto Magliette x3", () => {
+  const armadio = caricaArmadio([{ id: "t1", name: "Maglietta bianca",
+    ai_metadata: { category: "Upper Body", subCategory: "T-Shirt" } }]);
+  const motivi = { capi: [{ item_id: "t1", item: "Maglietta bianca", quantita: 5, motivo: motivoGiorno }], essenziali: [] };
+  const tutte = [{ radice: "mutand" }, { radice: "calz" }, { radice: "pigiama" }, { radice: "necessaire" }];
+  const r = postiApp({ mancanti_canonici: [], richiesti: [], essenziali: tutte }, motivi, new Map([["t1", 2]]),
+    { meteo: SEUL_METEO, viaggio: SEUL_VIAGGIO, armadio });
+  assert.deepEqual(r.posti.map((p) => [p.nome, p.copie, p.tipo, p.livello, p.categoria]),
+    [["Magliette", 3, "T-Shirt", "utile", "vestiti"]]);
+  assert.equal(r.posti[0].motivo, "Ne servirebbero 5, nell'armadio ne hai 2.");
+  assert.equal(r.posti[0].id, "T-Shirt:0");
+});
+
+test("postiApp: mutande con 8 da portare e 3 nell'armadio, un solo posto intimo x5", () => {
+  const armadio = caricaArmadio([{ id: "m1", name: "Mutande nere", quantity: 3 }]);
+  const ess = { item_id: "m1", item: "Mutande nere", radice: "mutand", quantita: 8, bulk: 1 };
+  const motivi = { capi: [], essenziali: [{ ...ess, motivo: motivoEss }] };
+  const r = postiApp({ mancanti_canonici: [], richiesti: [], essenziali: [ess, { radice: "calz" }, { radice: "pigiama" },
+    { radice: "necessaire" }] }, motivi, new Map([["m1", 3]]), { meteo: SEUL_METEO, viaggio: SEUL_VIAGGIO, armadio });
+  const intimo = r.posti.filter((p) => p.tipo === "intimo");
+  assert.deepEqual(intimo.map((p) => [p.nome, p.copie, p.livello]), [["Mutande", 5, "utile"]]);
+  assert.equal(r.posti.length, 1);
+});
+
+test("postiApp: un pezzo solo in meno non e' mai importante", () => {
+  const armadio = caricaArmadio([{ id: "b1", name: "Scarponi", ai_metadata: { category: "Shoes", subCategory: "Hiking Boots" } }]);
+  const tutte = [{ radice: "mutand" }, { radice: "calz" }, { radice: "pigiama" }, { radice: "necessaire" }];
+  const conQuantita = (q: number) => postiApp({ mancanti_canonici: [], richiesti: [], essenziali: tutte },
+    { capi: [{ item_id: "b1", item: "Scarponi", quantita: q, motivo: motivoGiorno }], essenziali: [] }, new Map([["b1", 1]]),
+    { meteo: SEUL_METEO, viaggio: SEUL_VIAGGIO, armadio }).posti;
+  assert.deepEqual(conQuantita(2).map((p) => [p.tipo, p.copie, p.livello]), [["Hiking Boots", 1, "utile"]]);
+  assert.deepEqual(conQuantita(3).map((p) => [p.tipo, p.copie, p.livello]), [["Hiking Boots", 2, "importante"]]);
+});
+
+test("postiApp: due mancanti T-Shirt da slot diversi, un posto con le copie sommate", () => {
+  const a = assente("Magliette", "Upper Body", ["T-Shirt"]);
+  const b = assente("Magliette per la sera", "Upper Body", ["T-Shirt"]);
+  const tutte = [{ radice: "mutand" }, { radice: "calz" }, { radice: "pigiama" }, { radice: "necessaire" }];
+  const r = postiApp({ mancanti_canonici: [a, b], richiesti: richiestiDi([a, b], { "Magliette per la sera": "occasional" }),
+    essenziali: tutte }, { capi: [], essenziali: [] }, new Map(),
+  { meteo: { temp_min_media: 15, temp_max_media: 24 }, viaggio: { giorni: 5, lavatrice: false }, armadio: [] });
+  // 5 al giorno + round(5 * 0.4) = 2 per la sera
+  assert.deepEqual(r.posti.map((p) => [p.tipo, p.nome, p.copie]), [["T-Shirt", "Magliette", 7]]);
+});
+
+test("postiApp: gonna, vestito e cravatta senza averne nell'armadio non diventano posti", () => {
+  const tutte = [{ radice: "mutand" }, { radice: "calz" }, { radice: "pigiama" }, { radice: "necessaire" }];
+  const mancanti = [assente("Gonna", "Lower Body", ["Skirt"]), assente("Vestito", "Full Body", ["Dress"]),
+    assente("Cravatta", "Accessory", ["Tie"])];
+  const r = postiApp({ mancanti_canonici: mancanti, richiesti: richiestiDi(mancanti), essenziali: tutte },
+    { capi: [], essenziali: [] }, new Map(), { meteo: SEUL_METEO, viaggio: SEUL_VIAGGIO, armadio: [] });
+  assert.deepEqual(r.posti, []);
+});
+
+test("postiApp: lavanderia e bagaglio troppo pieno sono informazioni, mai posti", () => {
+  const volume = { slot: "volume del bagaglio", tipo: "volume_eccedente", category: "", essential: false, imposto: true,
+    priorita: "necessario", capienza: 30, volume: 41, da_valutare: ["Felpa grigia"] };
+  const r = seul("it", { mancanti_canonici: [...SEUL_MANCANTI, volume] });
+  assert.deepEqual(r.informazioni, [
+    { codice: "volume_eccedente", titolo: "Il bagaglio è troppo pieno",
+      perche: "Considera un bagaglio più grande oppure lascia a casa qualcosa tra Felpa grigia." },
+    { codice: "lavanderia", titolo: "Prevedi una lavanderia",
+      perche: "Il viaggio è lungo: la valigia conta di lavare i vestiti strada facendo." },
+  ]);
+  assert.ok(!r.posti.some((p) => p.tipo === "volume_eccedente" || p.tipo === "" || p.tipo === "lavanderia"));
+  assert.equal(r.posti.length, seul().posti.length);
+  // con la lavatrice niente lavanderia
+  const conLavatrice = postiApp({ mancanti_canonici: [], richiesti: [], essenziali: [] }, { capi: [], essenziali: [] },
+    new Map(), { meteo: SEUL_METEO, viaggio: { giorni: 31, lavatrice: true }, armadio: [] });
+  assert.deepEqual(conLavatrice.informazioni, []);
+});
+
+test("postiApp: a tappe i giorni sono la somma delle tappe e la lavanderia non c'e'", () => {
+  const viaggio = { giorni: 10, lavatrice: false, tappe: [{ nome: "Seul", giorni: 6 }, { nome: "Busan", giorni: 4 }] };
+  const m = [assente("Magliette", "Upper Body", ["T-Shirt"])];
+  const r = postiApp({ mancanti_canonici: m, richiesti: richiestiDi(m), essenziali: [] }, { capi: [], essenziali: [] },
+    new Map(), { meteo: SEUL_METEO, viaggio, armadio: [] });
+  const p = perNome(r.posti);
+  assert.equal(p.get("Magliette")!.copie, 10);
+  assert.equal(p.get("Mutande")!.copie, essenzialiPerViaggio(caricaArmadio([{ id: "x", name: "Mutande" }]), 10, false)[0].quantita);
+  assert.deepEqual(r.informazioni, []);
+});
+
+test("postiApp in inglese: nomi e 'aggiungi' in inglese", () => {
+  const { posti, informazioni } = seul("en");
+  const nomi = posti.map((p) => p.nome);
+  for (const n of ["Winter jacket", "Winter shoes", "Warm hat", "Gloves", "Warm sweaters", "T-shirts", "Underwear",
+    "Socks", "Pyjamas", "Toiletry bag"]) {
+    assert.ok(nomi.includes(n), `${n} in ${nomi.join(", ")}`);
+  }
+  for (const p of posti) assert.equal(p.aggiungi, "Add yours");
+  assert.equal(perNome(posti).get("Winter jacket")!.motivo, "Nothing in this home's wardrobe is suited to the expected cold.");
+  assert.deepEqual(informazioni.map((i) => i.titolo), ["Plan to do laundry"]);
+});
