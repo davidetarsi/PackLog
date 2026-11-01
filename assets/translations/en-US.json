@@ -251,6 +251,11 @@
       "legend_important": "{} important to sort out",
       "duplicated": "Trip duplicated"
     },
+    "to_buy": {
+      "entry": "To buy · {}",
+      "title": "To buy",
+      "empty": "Nothing to buy"
+    },
     "slots": {
       "important": "Important",
       "to_buy": "To buy",

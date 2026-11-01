@@ -251,6 +251,11 @@
       "legend_important": "{} importanti da sistemare",
       "duplicated": "Viaggio duplicato"
     },
+    "to_buy": {
+      "entry": "Da comprare · {}",
+      "title": "Da comprare",
+      "empty": "Niente da comprare"
+    },
     "slots": {
       "important": "Importante",
       "to_buy": "Da comprare",

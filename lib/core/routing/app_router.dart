@@ -19,6 +19,7 @@ import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
 import '../../features/profile/view/profile_screen.dart';
 import '../../features/trips/view/ai_packing_wait_screen.dart';
+import '../../features/trips/view/to_buy_screen.dart';
 import '../../features/trips/view/trips_screen.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/new_trip_screen.dart';
@@ -221,6 +222,13 @@ GoRouter appRouter(Ref ref) {
           }
           return AiResultsScreen(houseId: id, isFirstTimeOnboarding: false);
         },
+      ),
+      // Prima di `/trips/:id`, che altrimenti la prenderebbe per un id.
+      GoRoute(
+        path: '/trips/to-buy',
+        name: 'trips-to-buy',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ToBuyScreen(),
       ),
       GoRoute(
         path: '/trips/:id',
