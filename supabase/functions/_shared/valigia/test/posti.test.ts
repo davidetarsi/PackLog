@@ -149,7 +149,7 @@ test("soloPlurale: solo i veri nomi plurali, e la tabella e' coerente", () => {
 // ── postiApp: copie, pezzi in meno, essenziali di base, informazioni ─────────
 import { postiApp, type PostoApp } from "../posti.ts";
 import { caricaArmadio } from "../capo.ts";
-import { essenzialiPerViaggio } from "../quantita.ts";
+import { essenzialiPerViaggio, giorniDiMare, quantityFor } from "../quantita.ts";
 import * as K from "../costanti.ts";
 
 const SEUL_METEO = { temp_min_media: -7, temp_max_media: 1, giorni_di_pioggia: 4 };
@@ -207,8 +207,13 @@ test("postiApp Seul: copie, tipi e categorie", () => {
   assert.equal(K.GIORNI_LAVANDERIA, 14);
   assert.deepEqual([p.get("Giacca invernale")!.copie, p.get("Giacca invernale")!.tipo], [1, "Outerwear"]);
   assert.deepEqual([p.get("Guanti")!.copie, p.get("Guanti")!.tipo], [1, "Gloves"]);
-  assert.deepEqual([p.get("Maglioni caldi")!.copie, p.get("Maglioni caldi")!.tipo], [3, "Sweater"]);
-  assert.deepEqual([p.get("Magliette")!.copie, p.get("Magliette")!.tipo], [14, "T-Shirt"]);
+  // come slots.ts: quantityFor(sub, nome, giorni, lavatrice, freq, intensita, tempMax, giorniDiMare, calore)
+  const generatore = (sub: string) => quantityFor(sub, "", 14, false, "daily", null, 1, giorniDiMare(14, []), null);
+  assert.deepEqual([p.get("Maglioni caldi")!.copie, p.get("Maglioni caldi")!.tipo], [generatore("Sweater"), "Sweater"]);
+  // sotto i 18 gradi una maglietta regge due giorni: 7, non 14
+  assert.deepEqual([p.get("Magliette")!.copie, p.get("Magliette")!.tipo], [generatore("T-Shirt"), "T-Shirt"]);
+  assert.equal(p.get("Magliette")!.copie, 7);
+  assert.equal(p.get("Pantaloni caldi")!.copie, generatore("Trousers"));
   assert.deepEqual([p.get("Mutande")!.tipo, p.get("Mutande")!.categoria], ["intimo", "vestiti"]);
   assert.deepEqual([p.get("Calzini")!.tipo, p.get("Pigiama")!.tipo], ["calzini", "notte"]);
   assert.deepEqual([p.get("Necessaire")!.tipo, p.get("Necessaire")!.categoria, p.get("Necessaire")!.copie], ["igiene", "toiletries", 1]);
@@ -341,4 +346,62 @@ test("postiApp in inglese: nomi e 'aggiungi' in inglese", () => {
   for (const p of posti) assert.equal(p.aggiungi, "Add yours");
   assert.equal(perNome(posti).get("Winter jacket")!.motivo, "Nothing in this home's wardrobe is suited to the expected cold.");
   assert.deepEqual(informazioni.map((i) => i.titolo), ["Plan to do laundry"]);
+});
+
+// ── Copie come il generatore (revisione del Task 2) ─────────────────────────
+const TUTTE = [{ radice: "mutand" }, { radice: "calz" }, { radice: "pigiama" }, { radice: "necessaire" }];
+const copieDi = (mancante: Record<string, any>, richiesto: Record<string, any>, meteo: Record<string, any>,
+  viaggio: Record<string, any>) => {
+  const r = postiApp({ mancanti_canonici: [mancante], richiesti: [{ slot: mancante.slot, ...richiesto }], essenziali: TUTTE },
+    { capi: [], essenziali: [] }, new Map(), { meteo, viaggio, armadio: [] });
+  assert.equal(r.posti.length, 1);
+  return r.posti[0].copie;
+};
+
+test("postiApp: costume senza mare, una volta o ogni tanto, uno solo", () => {
+  const costume = assente("Costume", "Lower Body", ["Swimwear"]);
+  const viaggio = { giorni: 7, lavatrice: false, attivita: ["visite in citta"] };
+  const meteo = { temp_min_media: 18, temp_max_media: 27 };
+  for (const frequency of ["once", "occasional"]) {
+    const copie = copieDi(costume, { frequency }, meteo, viaggio);
+    assert.equal(copie, quantityFor("Swimwear", "", 7, false, frequency, null, 27, giorniDiMare(7, viaggio.attivita), null));
+    assert.equal(copie, 1, frequency);
+  }
+});
+
+test("postiApp: camicie con 32 gradi, una al giorno col calore minimo dello slot", () => {
+  const camicie = assente("Camicie", "Upper Body", ["Shirt"]);
+  const viaggio = { giorni: 10, lavatrice: false, attivita: [] };
+  const copie = copieDi(camicie, { frequency: "daily", minWarmth: 1 }, { temp_min_media: 24, temp_max_media: 32 }, viaggio);
+  assert.equal(copie, quantityFor("Shirt", "", 10, false, "daily", null, 32, giorniDiMare(10, []), 1));
+  assert.equal(copie, 10);
+  // senza il calore dello slot vale quello chiesto dal mancante
+  const inadatte = { ...camicie, tipo: "posseduto_ma_inadatto", candidato_scartato: "Camicia di flanella", warmth_richiesto: [1, 2] };
+  assert.equal(copieDi(inadatte, { frequency: "daily" }, { temp_min_media: 24, temp_max_media: 32 }, viaggio), 10);
+});
+
+test("postiApp: cammino a piedi con lo zaino piccolo, si lava a mano come nel generatore", () => {
+  const magliette = assente("Magliette", "Upper Body", ["T-Shirt"]);
+  const viaggio = { giorni: 12, lavatrice: false, attivita: ["cammino di Santiago"], bagaglio: "zaino da 35 litri" };
+  const meteo = { temp_min_media: 12, temp_max_media: 22 };
+  const copie = copieDi(magliette, { frequency: "daily" }, meteo, viaggio);
+  assert.equal(copie, quantityFor("T-Shirt", "", 12, true, "daily", null, 22, giorniDiMare(12, viaggio.attivita), null));
+  assert.ok(copie < quantityFor("T-Shirt", "", 12, false, "daily", null, 22, giorniDiMare(12, viaggio.attivita), null));
+  // gli essenziali invece no: la lavatrice del viaggio
+  const r = postiApp({ mancanti_canonici: [], richiesti: [], essenziali: [] }, { capi: [], essenziali: [] }, new Map(),
+    { meteo, viaggio, armadio: [] });
+  assert.equal(r.posti.find((p) => p.tipo === "intimo")!.copie,
+    essenzialiPerViaggio(caricaArmadio([{ id: "x", name: "Mutande" }]), 12, false, 22)[0].quantita);
+});
+
+test("postiApp a tappe: la massima della tappa base per i capi", () => {
+  // La tappa base e' la piu' calda (ordinaTappe): Bangkok a 33, non Seul a 1.
+  const viaggio = { giorni: 10, lavatrice: false, tappe: [{ nome: "Seul", giorni: 5 }, { nome: "Bangkok", giorni: 5 }] };
+  const meteo = { temp_min_media: -7, temp_max_media: 33, _per_tappa: [
+    { destinazione: "Seul", giorni: 5, temp_min_media: -7, temp_max_media: 1 },
+    { destinazione: "Bangkok", giorni: 5, temp_min_media: 25, temp_max_media: 33 }] };
+  const camicie = assente("Camicie", "Upper Body", ["Shirt"]);
+  const copie = copieDi(camicie, { frequency: "daily", minWarmth: 1 }, meteo, viaggio);
+  assert.equal(copie, quantityFor("Shirt", "", 10, false, "daily", null, 33, giorniDiMare(10, []), 1));
+  assert.equal(copie, 10);
 });

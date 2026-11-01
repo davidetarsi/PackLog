@@ -4,8 +4,12 @@ import type { Lingua } from "../lingua.ts";
 import * as K from "./costanti.ts";
 import { caricaArmadio, type Capo as CapoArmadio } from "./capo.ts";
 import { lavanderiaPresunta } from "./dopo.ts";
-import { vero } from "./py.ts";
-import { essenzialiPerViaggio, quantityFor, RADICI_NOTTE } from "./quantita.ts";
+import { scenarioDaApp, type ViaggioApp } from "./genera.ts";
+import { eTrekking } from "./inject.ts";
+import { attivitaScenario } from "./prompt.ts";
+import { essenzialiPerViaggio, giorniDiMare, normIntensita, quantityFor, RADICI_NOTTE } from "./quantita.ts";
+import { camminoAPiedi } from "./regole_capi.ts";
+import { ordinaTappe } from "./slots.ts";
 import { attivitaPer, calore, capiUniti, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
   meteoDelGap, perQuestoArmadio, soloElegante, tettoSalvate } from "./uscita.ts";
 import { NOMI_CATEGORIA, NOMI_FAMIGLIA, NOMI_SOTTOCATEGORIA, type NomePosto } from "./posti_nomi.ts";
@@ -112,21 +116,68 @@ const famigliaDi = (radice: unknown) => FAMIGLIE.find((f) => f.radici.has(String
 
 const TIPI_DI_POSTO = new Set(["assente", "posseduto_ma_inadatto", "quantita_insufficiente"]);
 
-/** Giorni e lavatrice delle quantita', come li usa il generatore: a tappe la somma dei giorni
- *  delle tappe; in un posto solo i giorni di GIORNI_LAVANDERIA quando conta su un bucato. */
-function giorniDelViaggio(v: Record<string, any> | null | undefined, meteo: Record<string, any> | null | undefined):
-  { giorni: number; lavatrice: boolean } {
-  const lavatrice = vero(v?.lavatrice);
-  const tappe: Record<string, any>[] = Array.isArray(v?.tappe) ? v!.tappe : [];
-  if (tappe.length) return { giorni: tappe.reduce((n, t) => n + Math.trunc(Number(t.giorni || 1)), 0), lavatrice };
-  const giorni = Math.trunc(Number(v?.giorni ?? meteo?.giorni)) || 1;
-  return { giorni: lavanderiaPresunta(giorni, v?.lavatrice) ? K.GIORNI_LAVANDERIA : giorni, lavatrice };
+/** Gli argomenti con cui il generatore conta le quantita' (genera.ts valigiaDa, slots.ts
+ *  strategySlots, tappe.ts strategySlotsMultitappa), ricostruiti dal viaggio e dal meteo. */
+export interface ParametriQuantita {
+  giorni: number;
+  /** Per i capi: col cammino a piedi e lo zaino piccolo si lava a mano (slots.ts). */
+  lavatrice: boolean;
+  /** Per gli essenziali: la lavatrice del viaggio, senza il cammino. */
+  lavatriceEssenziali: boolean;
+  /** Le attivita' dello slot (per i giorni di mare). */
+  attivita: string[];
+  intensita: string | null;
+  /** In un posto solo la massima del viaggio; a tappe quella della tappa base. */
+  tempMax: number | null;
+  /** I collant: a tappe la massima della tappa piu' fresca. */
+  tempMaxEssenziali: number | null;
+}
+
+const numeroONull = (x: unknown) => (x == null || !Number.isFinite(Number(x)) ? null : Number(x));
+
+export function parametriQuantita(v: Record<string, any> | null | undefined, meteo: Record<string, any> | null | undefined):
+  ParametriQuantita {
+  const sc = scenarioDaApp({ data_inizio: "", ...(v ?? {}),
+    giorni: Math.trunc(Number(v?.giorni ?? meteo?.giorni)) || 1 } as ViaggioApp);
+  const bagaglio = sc.bagaglio ?? "";
+  const intensita = sc.intensita ?? null;
+  const cammino = (attivita: string[], giorni: number) => Boolean(K.CAMMINO_LAVA_A_MANO) && camminoAPiedi(attivita, bagaglio, giorni);
+  const legs: Record<string, any>[] = Array.isArray(sc.legs) ? sc.legs : [];
+  if (legs.length) {
+    // Le tappe come le vede strategySlotsMultitappa: giorni interi, massima della tappa dal meteo.
+    const perMeteo: Record<string, any>[] = Array.isArray(meteo?._per_tappa) ? meteo!._per_tappa : [];
+    const perTappa = legs.map((l) => ({
+      destinazione: l.destinazione, giorni: Math.trunc(Number(l.giorni || 1)), attivita: l.attivita || [],
+      meteo: { temp_max_media: numeroONull(perMeteo.find((t) => t.destinazione === l.destinazione)?.temp_max_media) },
+    }));
+    const giorni = perTappa.reduce((n, t) => n + t.giorni, 0);
+    const base = ordinaTappe(perTappa)[0];
+    let attivita: string[] = [...(sc.attivita || []), ...(base.attivita || [])];
+    if (K.SLOT_TREKKING && perTappa.length > 1 && !eTrekking(sc.attivita) && eTrekking(base.attivita)) {
+      attivita = attivita.filter((x) => !eTrekking([x]));
+    }
+    const lavatriceEssenziali = Boolean(sc.lavatrice);
+    const massime = perTappa.map((t) => t.meteo.temp_max_media).filter((x): x is number => x != null);
+    return {
+      giorni, lavatriceEssenziali, attivita, intensita,
+      lavatrice: lavatriceEssenziali || cammino(sc.attivita, giorni) || cammino(attivita, giorni),
+      tempMax: base.meteo.temp_max_media, tempMaxEssenziali: massime.length ? Math.min(...massime) : null,
+    };
+  }
+  const giorni = lavanderiaPresunta(sc.giorni, sc.lavatrice) ? K.GIORNI_LAVANDERIA : sc.giorni;
+  const attivita = attivitaScenario(sc);
+  const tempMax = numeroONull(meteo?.temp_max_media);
+  return {
+    giorni, lavatriceEssenziali: sc.lavatrice, attivita, intensita, tempMax, tempMaxEssenziali: tempMax,
+    lavatrice: sc.lavatrice || cammino(attivita, giorni),
+  };
 }
 
 /** Le copie di un mancante: i capi diversi che mancano per una quantita' insufficiente, uno per
- *  giacche, scarpe e accessori, altrimenti la quantita' che il generatore darebbe allo slot. */
-function copieDelMancante(g: Record<string, any>, sub: string | null, frequenza: string, giorni: number,
-  lavatrice: boolean): number {
+ *  giacche, scarpe e accessori, altrimenti la quantita' che il generatore darebbe allo slot
+ *  (slots.ts, quantityFor) con il calore minimo dello slot al posto di quello del capo. */
+function copieDelMancante(g: Record<string, any>, sub: string | null, richiesto: Record<string, any> | undefined,
+  q: ParametriQuantita): number {
   let copie: number;
   if (g.tipo === "quantita_insufficiente") {
     const necessari = g.capi_diversi_necessari == null ? NaN : Number(g.capi_diversi_necessari);
@@ -137,7 +188,10 @@ function copieDelMancante(g: Record<string, any>, sub: string | null, frequenza:
   } else if (K.REUSABLE.has(g.category)) {
     copie = 1;
   } else {
-    copie = quantityFor(sub ?? "", "", giorni, lavatrice, frequenza);
+    const frequenza = String(richiesto?.frequency ?? "daily");
+    const calore = numeroONull(richiesto?.minWarmth) ?? numeroONull(Array.isArray(g.warmth_richiesto) ? g.warmth_richiesto[0] : null);
+    copie = quantityFor(sub ?? "", "", q.giorni, q.lavatrice, frequenza, normIntensita(richiesto?.intensita) || q.intensita,
+      q.tempMax, giorniDiMare(q.giorni, q.attivita), calore);
   }
   return Number.isFinite(copie) ? Math.max(1, copie) : 1;
 }
@@ -162,7 +216,7 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
 ): { posti: PostoApp[]; informazioni: InfoApp[] } {
   const lingua: Lingua = contesto.lingua ?? "it";
   const { meteo, viaggio, armadio } = contesto;
-  const { giorni, lavatrice } = giorniDelViaggio(viaggio, meteo);
+  const q = parametriQuantita(viaggio, meteo);
   const grezzi: Grezzo[] = [];
   const informazioni: InfoApp[] = [];
 
@@ -184,10 +238,9 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     const tipo = sub ?? categoria;
     if (!tipo) continue;
     const capo = { sub, categoria };
-    const frequenza = String(richiesti.find((r) => r.slot === g.slot)?.frequency ?? "daily");
     grezzi.push({
       tipo, categoria: "vestiti", livello: livelloPosto(g, capo, viaggioFreddo),
-      copie: copieDelMancante(g, sub, frequenza, giorni, lavatrice),
+      copie: copieDelMancante(g, sub, richiesti.find((r) => r.slot === g.slot), q),
       motivo: copyMancante(g, viaggioFreddo, attivita, lingua).perche,
       capo, qualifica: qualificaDelGap(g, capo, viaggioFreddo),
     });
@@ -222,7 +275,8 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
   const coperte = new Set(((valigia.essenziali ?? []) as Record<string, any>[]).map((e) => famigliaDi(e.radice)?.tipo));
   for (const f of FAMIGLIE) {
     if (coperte.has(f.tipo)) continue;
-    const [e] = essenzialiPerViaggio(caricaArmadio([{ id: `posto:${f.tipo}`, name: f.nome }]), giorni, lavatrice);
+    const [e] = essenzialiPerViaggio(caricaArmadio([{ id: `posto:${f.tipo}`, name: f.nome }]), q.giorni,
+      q.lavatriceEssenziali, q.tempMaxEssenziali);
     grezzi.push({ tipo: f.tipo, categoria: f.categoria, livello: "utile", copie: Math.max(1, e?.quantita ?? 1),
       motivo: null, capo: { sub: null, categoria: f.tipo }, qualifica: null });
   }
