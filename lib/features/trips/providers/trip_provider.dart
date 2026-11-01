@@ -239,6 +239,9 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       ),
       updatedAt: DateTime.now(),
     );
+    final AiSlotLevel level = result.slots!
+        .firstWhere((s) => s.id == slotId)
+        .level;
     final List<TripModel> newTrips = [...trips];
     newTrips[tripIndex] = updatedTrip;
     state = AsyncData(newTrips);
@@ -253,6 +256,16 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       rethrow;
     }
     ref.read(syncOrchestratorProvider).requestSync();
+
+    // Dopo il salvataggio: si misurano i fatti, non le intenzioni.
+    unawaited(
+      ref
+          .read(analyticsServiceProvider)
+          .logEvent(
+            'slot_filled',
+            properties: {'level': level.name, 'copies': item.quantity},
+          ),
+    );
   }
 
   void _emitPackingEvents({

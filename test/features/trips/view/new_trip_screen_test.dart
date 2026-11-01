@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/features/tour/model/onboarding_state.dart';
@@ -43,6 +44,8 @@ class MockItemRepository extends Mock implements ItemRepository {}
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
+
+class MockRawAnalytics extends Mock implements AppAnalyticsService {}
 
 class MockTripLifecycleService extends Mock implements TripLifecycleService {}
 
@@ -217,6 +220,7 @@ void main() {
   late MockTripLifecycleService lifecycle;
   late ProviderContainer container;
   late _MemoryOnboardingRepository onboardingRepo;
+  late MockRawAnalytics rawAnalytics;
 
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
@@ -237,6 +241,10 @@ void main() {
     locationService = MockLocationSearchService();
     lifecycle = MockTripLifecycleService();
     onboardingRepo = _MemoryOnboardingRepository();
+    rawAnalytics = MockRawAnalytics();
+    when(
+      () => rawAnalytics.logEvent(any(), properties: any(named: 'properties')),
+    ).thenAnswer((_) async {});
 
     when(() => tripRepo.getAllTrips()).thenAnswer((_) async => []);
     when(() => tripRepo.addTrip(any())).thenAnswer((_) async {});
@@ -264,6 +272,7 @@ void main() {
         tripLifecycleServiceProvider.overrideWithValue(lifecycle),
         locationSearchServiceProvider.overrideWithValue(locationService),
         onboardingRepositoryProvider.overrideWithValue(onboardingRepo),
+        analyticsServiceProvider.overrideWithValue(rawAnalytics),
       ],
     );
     addTearDown(container.dispose);
@@ -313,6 +322,7 @@ void main() {
                   'from=${state.uri.queryParameters['from']}',
                 ),
                 Text('ai=${state.uri.queryParameters['ai'] ?? 'none'}'),
+                Text('first=${state.uri.queryParameters['first'] ?? 'none'}'),
               ],
             ),
           ),
@@ -650,6 +660,45 @@ void main() {
 
       expect(onboardingRepo.step, OnboardingStep.done);
       expect(find.textContaining('edit-items'), findsOneWidget);
+    });
+
+    testWidgets('firstRun: first_trip_started parte una volta al salvataggio '
+        'e porta first=1 alla valigia', (tester) async {
+      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      verifyNever(
+        () => rawAnalytics.logEvent(
+          'first_trip_started',
+          properties: any(named: 'properties'),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => rawAnalytics.logEvent('first_trip_started', properties: {}),
+      ).called(1);
+      expect(find.textContaining('from=new'), findsOneWidget);
+      expect(find.text('first=1'), findsOneWidget);
+    });
+
+    testWidgets('senza firstRun first_trip_started non parte', (tester) async {
+      await pumpScreen(tester, open: '/new-trip?ai=1');
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+
+      verifyNever(
+        () => rawAnalytics.logEvent(
+          'first_trip_started',
+          properties: any(named: 'properties'),
+        ),
+      );
+      expect(find.text('first=none'), findsOneWidget);
     });
 
     testWidgets('senza firstRun il salvataggio non tocca il passo', (

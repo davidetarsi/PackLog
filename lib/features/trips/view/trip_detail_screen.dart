@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/analytics/analytics_service.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
@@ -136,6 +137,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   /// Se il salvataggio non va lo dice (l'oggetto resta nella casa).
   Future<void> _fillSlot(AiSlot slot, ItemModel item) async {
     final notifier = ref.read(tripNotifierProvider.notifier);
+    final analytics = ref.read(analyticsServiceProvider);
+    // Un posto "da comprare" si apre solo con "Presa" (la riga, o `?slot=`
+    // dalla vista Da comprare): riempirlo vuol dire che l'hai comprato.
+    final bought = slot.toBuy;
     try {
       await notifier.fillAiSlot(
         tripId,
@@ -148,6 +153,14 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           originHouseId: item.houseId,
         ),
       );
+      if (bought) {
+        unawaited(
+          analytics.logEvent(
+            'slot_bought',
+            properties: {'level': slot.level.name},
+          ),
+        );
+      }
     } catch (_) {
       if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
     }
@@ -156,21 +169,29 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   /// "Da comprare" sulla barra: segna il posto e chiude la barra.
   void _barToBuy(AiSlot slot) {
     _closeBar();
-    unawaited(_markToBuy(slot));
+    unawaited(_markToBuy(slot, from: 'bar'));
   }
 
   /// "Da comprare" sulla card di un importante: la card diventa una riga
   /// "da comprare"; Annulla la riporta.
-  Future<void> _markToBuy(AiSlot slot) async {
+  Future<void> _markToBuy(AiSlot slot, {String from = 'card'}) async {
     // Il notifier si legge ora: Annulla può arrivare quando la pagina non c'è
     // più, e allora `ref` non si può usare.
     final notifier = ref.read(tripNotifierProvider.notifier);
+    final analytics = ref.read(analyticsServiceProvider);
     final saved = await _updateSlot(
       notifier,
       slot,
       (s) => s.copyWith(toBuy: true),
     );
-    if (!saved || !mounted) return;
+    if (!saved) return;
+    unawaited(
+      analytics.logEvent(
+        'slot_marked_to_buy',
+        properties: {'level': slot.level.name, 'from': from},
+      ),
+    );
+    if (!mounted) return;
     AppSnackBar.showUndo(
       context,
       'trips.slots.marked_to_buy'.tr(),
@@ -224,7 +245,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           onBarToBuy: _barToBuy,
           slotActions: _SlotActions(
             open: _openSlot,
-            markToBuy: _markToBuy,
+            markToBuy: (slot) => _markToBuy(slot),
             toggle: _toggleSlot,
           ),
         );

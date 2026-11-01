@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
@@ -17,6 +18,7 @@ import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../../core/monitoring/monitoring_service.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../tour/providers/post_login_onboarding_provider.dart';
 import '../model/trip_draft.dart';
 import '../model/trip_model.dart';
@@ -242,6 +244,11 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     // Il viaggio c'è: chi abbandona dopo questo passo non torna più a "Dove
     // vai?".
     if (widget.firstRun) {
+      unawaited(
+        ref
+            .read(analyticsServiceProvider)
+            .logEvent('first_trip_started', properties: const {}),
+      );
       await ref.read(postLoginOnboardingProvider.notifier).completeFirstTrip();
       if (!mounted) return;
     }
@@ -252,7 +259,8 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       ref.read(tripWeatherNotifierProvider(trip.id));
       router.go('/trips');
       router.push(
-        '/trips/${trip.id}/edit-items?from=new${withAi ? '&ai=1' : ''}',
+        '/trips/${trip.id}/edit-items?from=new${withAi ? '&ai=1' : ''}'
+        '${widget.firstRun ? '&first=1' : ''}',
       );
     } else {
       router.go('/trips?focus=${trip.id}');

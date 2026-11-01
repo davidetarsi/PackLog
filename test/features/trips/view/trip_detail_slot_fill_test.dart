@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
@@ -35,6 +36,8 @@ class MockTripLifecycleService extends Mock implements TripLifecycleService {}
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
+
+class MockRawAnalytics extends Mock implements AppAnalyticsService {}
 
 /// Registra gli oggetti creati dal Rapid Fire, senza toccare il database.
 class _RecordingItemNotifier extends ItemNotifier {
@@ -100,6 +103,7 @@ void main() {
   late MockHouseRepository houseRepo;
   late MockTripLifecycleService lifecycle;
   late MockCoreAnalyticsService analytics;
+  late MockRawAnalytics rawAnalytics;
   late MockSyncOrchestrator sync;
   late _RecordingItemNotifier itemNotifier;
   late GoRouter router;
@@ -115,6 +119,10 @@ void main() {
     houseRepo = MockHouseRepository();
     lifecycle = MockTripLifecycleService();
     analytics = MockCoreAnalyticsService();
+    rawAnalytics = MockRawAnalytics();
+    when(
+      () => rawAnalytics.logEvent(any(), properties: any(named: 'properties')),
+    ).thenAnswer((_) async {});
     sync = MockSyncOrchestrator();
     itemNotifier = _RecordingItemNotifier();
 
@@ -166,6 +174,7 @@ void main() {
           houseRepositoryProvider.overrideWithValue(houseRepo),
           tripLifecycleServiceProvider.overrideWithValue(lifecycle),
           coreAnalyticsServiceProvider.overrideWithValue(analytics),
+          analyticsServiceProvider.overrideWithValue(rawAnalytics),
           syncOrchestratorProvider.overrideWithValue(sync),
           itemNotifierProvider('h1').overrideWith(() => itemNotifier),
         ],
@@ -387,6 +396,104 @@ void main() {
       expect(inProposed(find.text('Magliette')), findsNothing);
       expect(bar, findsNothing);
       expect(cta, findsOneWidget);
+    });
+  });
+
+  group('eventi', () {
+    void expectEvent(String name, Map<String, Object?> properties, int times) {
+      verify(
+        () => rawAnalytics.logEvent(name, properties: properties),
+      ).called(times);
+    }
+
+    void expectNoEvent(String name) {
+      verifyNever(
+        () => rawAnalytics.logEvent(name, properties: any(named: 'properties')),
+      );
+    }
+
+    TripModel withGiaccaToBuy() {
+      final trip = _trip();
+      final slots = [
+        for (final s in trip.aiResult!.slots!)
+          s.id == 'imp-giacca' ? s.copyWith(toBuy: true) : s,
+      ];
+      return trip.copyWith(aiResult: trip.aiResult!.copyWith(slots: slots));
+    }
+
+    testWidgets('slot_filled su un proposto, senza slot_bought', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _trip());
+      await openMagliette(tester);
+
+      await send(tester, '2 t-shirt nere');
+
+      expectEvent('slot_filled', {'level': 'useful', 'copies': 2}, 1);
+      expectNoEvent('slot_bought');
+    });
+
+    testWidgets('"Presa" dalla riga e poi un riempimento: slot_bought una '
+        'volta', (tester) async {
+      await pumpDetail(tester, withGiaccaToBuy());
+      await tester.tap(find.byKey(const Key('slot_got_it_imp-giacca')));
+      await tester.pumpAndSettle();
+
+      await send(tester, 'Piumino nero');
+
+      expectEvent('slot_filled', {'level': 'important', 'copies': 1}, 1);
+      expectEvent('slot_bought', {'level': 'important'}, 1);
+    });
+
+    testWidgets('?slot= (dalla vista Da comprare) e un riempimento: '
+        'slot_bought', (tester) async {
+      await pumpDetail(tester, withGiaccaToBuy(), slot: 'imp-giacca');
+
+      await send(tester, 'Piumino nero');
+
+      expectEvent('slot_bought', {'level': 'important'}, 1);
+    });
+
+    testWidgets('un posto non "da comprare" aperto dalla card non è '
+        'slot_bought', (tester) async {
+      await pumpDetail(tester, _trip());
+      await tester.tap(find.byKey(const Key('slot_add_imp-giacca')));
+      await tester.pumpAndSettle();
+
+      await send(tester, 'Piumino nero');
+
+      expectEvent('slot_filled', {'level': 'important', 'copies': 1}, 1);
+      expectNoEvent('slot_bought');
+    });
+
+    testWidgets('slot_marked_to_buy dalla card', (tester) async {
+      await pumpDetail(tester, _trip());
+
+      await tester.tap(find.byKey(const Key('slot_to_buy_imp-giacca')));
+      await tester.pumpAndSettle();
+
+      expectEvent('slot_marked_to_buy', {
+        'level': 'important',
+        'from': 'card',
+      }, 1);
+    });
+
+    testWidgets('slot_marked_to_buy dalla barra, e Annulla non ne emette '
+        'altri', (tester) async {
+      await pumpDetail(tester, _trip());
+      await tester.tap(find.byKey(const Key('slot_add_imp-giacca')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('slot_bar_to_buy')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Annulla'));
+      await tester.pumpAndSettle();
+
+      expectEvent('slot_marked_to_buy', {
+        'level': 'important',
+        'from': 'bar',
+      }, 1);
+      expectNoEvent('slot_bought');
     });
   });
 

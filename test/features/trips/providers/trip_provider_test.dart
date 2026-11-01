@@ -939,6 +939,41 @@ void main() {
       verify(() => mockRepository.getAllTrips()).called(1);
     });
 
+    test('slot_filled: livello e copie, dopo il salvataggio', () async {
+      await load(tripWith());
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await container
+          .read(tripNotifierProvider.notifier)
+          .fillAiSlot('t1', 's-magliette', item('i1', 2));
+
+      verify(
+        () => mockRawAnalytics.logEvent(
+          'slot_filled',
+          properties: {'level': 'useful', 'copies': 2},
+        ),
+      ).called(1);
+    });
+
+    test('slot_filled non parte se il salvataggio fallisce', () async {
+      await load(tripWith());
+      when(() => mockRepository.updateTrip(any())).thenThrow(Exception('x'));
+
+      await expectLater(
+        container
+            .read(tripNotifierProvider.notifier)
+            .fillAiSlot('t1', 's-magliette', item('i1', 2)),
+        throwsException,
+      );
+
+      verifyNever(
+        () => mockRawAnalytics.logEvent(
+          'slot_filled',
+          properties: any(named: 'properties'),
+        ),
+      );
+    });
+
     test('più copie di quelle rimaste: il posto si ferma a zero', () async {
       await load(tripWith());
       when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});

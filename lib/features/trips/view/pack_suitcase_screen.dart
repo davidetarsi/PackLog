@@ -4,7 +4,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/analytics/analytics_service.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
@@ -53,6 +55,10 @@ import '../../../shared/widgets/ds_search_field.dart';
 /// "Aggiungi". Senza risultati compare subito.
 const _kAddRowMinChars = 3;
 
+/// Chiave di `SharedPreferences` che ricorda se `first_suitcase_generated`
+/// è già partito.
+const _firstSuitcaseLoggedKey = 'first_suitcase_logged';
+
 /// Prepara la valigia di un viaggio: riepilogo, bagagli e oggetti.
 ///
 /// È la stessa pagina per il passo 2 di "Nuovo viaggio" ([fromNewTrip]), per
@@ -67,11 +73,15 @@ class PackSuitcaseScreen extends ConsumerStatefulWidget {
   /// Apre subito il foglio della valigia AI.
   final bool startAi;
 
+  /// Il viaggio nasce dal primo avvio ("Dove vai?"): serve solo agli eventi.
+  final bool firstRun;
+
   const PackSuitcaseScreen({
     super.key,
     required this.tripId,
     this.fromNewTrip = false,
     this.startAi = false,
+    this.firstRun = false,
   });
 
   @override
@@ -520,6 +530,11 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       if (!mounted) return;
     }
 
+    if (saved && result.hasSlots) {
+      await _logFirstSuitcase(result, items.length);
+      if (!mounted) return;
+    }
+
     // Niente snack in più: la valigia si vede già. Le modifiche sono salvate
     // e `_initial*` è allineato, quindi l'uscita non chiede conferma.
     if (saved && result.hasSlots) {
@@ -529,6 +544,31 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         context.pop();
       }
     }
+  }
+
+  /// `first_suitcase_generated`: una volta sola per account, alla prima
+  /// valigia con i posti salvata. La retention a 1 e 7 giorni si legge in
+  /// Amplitude partendo da questo evento.
+  Future<void> _logFirstSuitcase(AiPackingResult result, int tripItems) async {
+    final analytics = ref.read(analyticsServiceProvider);
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_firstSuitcaseLoggedKey) ?? false) return;
+    await prefs.setBool(_firstSuitcaseLoggedKey, true);
+    final slots = result.slots ?? const <AiSlot>[];
+    await analytics.logEvent(
+      'first_suitcase_generated',
+      properties: {
+        'slots_important': slots
+            .where((s) => s.level == AiSlotLevel.important)
+            .length,
+        'slots_proposed': slots
+            .where((s) => s.level == AiSlotLevel.useful)
+            .length,
+        'slots_total': slots.length,
+        'trip_items': tripItems,
+        'from_first_run': widget.firstRun,
+      },
+    );
   }
 
   /// I capi della proposta, con nome e categoria dell'oggetto di casa. Un

@@ -322,6 +322,7 @@ void main() {
     bool direct = false,
     bool fromNew = false,
     bool fromDetail = false,
+    bool firstRun = false,
   }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -332,11 +333,12 @@ void main() {
       tripId: state.pathParameters['id']!,
       startAi: state.uri.queryParameters['ai'] == '1',
       fromNewTrip: state.uri.queryParameters['from'] == 'new',
+      firstRun: state.uri.queryParameters['first'] == '1',
     );
 
     final router = GoRouter(
       initialLocation: fromNew
-          ? '/trips/trip-1/edit-items?from=new&ai=1'
+          ? '/trips/trip-1/edit-items?from=new&ai=1${firstRun ? '&first=1' : ''}'
           : fromDetail
           ? '/trips/trip-1'
           : direct
@@ -985,11 +987,16 @@ void main() {
   });
 
   group('valigia AI: dopo la generazione si arriva alla valigia', () {
-    AiSlot slot(String id, String type, {bool toBuy = false}) => AiSlot(
+    AiSlot slot(
+      String id,
+      String type, {
+      bool toBuy = false,
+      AiSlotLevel level = AiSlotLevel.important,
+    }) => AiSlot(
       id: id,
       type: type,
       category: ItemCategory.vestiti,
-      level: AiSlotLevel.important,
+      level: level,
       name: type,
       copies: 1,
       remaining: 1,
@@ -1055,7 +1062,7 @@ void main() {
     ) async {
       aiOutcome = withSlots([slot('s1', 'giacca')]);
       arrange(trip: _viaggio(), items: _houseItems);
-      await pumpPack(tester, fromNew: true);
+      await pumpPack(tester, fromNew: true, firstRun: true);
       expect(onboardingRepo.step, OnboardingStep.firstTrip);
 
       await prepareInSheet(tester);
@@ -1063,6 +1070,134 @@ void main() {
 
       expect(find.text('Dettaglio viaggio'), findsOneWidget);
       expect(onboardingRepo.step, OnboardingStep.done);
+    });
+
+    group('first_suitcase_generated', () {
+      void verifyFirstSuitcase(Map<String, Object?> properties, int times) {
+        verify(
+          () => appAnalytics.logEvent(
+            'first_suitcase_generated',
+            properties: properties,
+          ),
+        ).called(times);
+      }
+
+      testWidgets('alla prima valigia con i posti, con i conteggi giusti', (
+        tester,
+      ) async {
+        aiOutcome = withSlots([
+          slot('s1', 'giacca'),
+          slot('s2', 'sciarpa', level: AiSlotLevel.important),
+          slot('s3', 'magliette', level: AiSlotLevel.useful),
+        ]);
+        arrange(trip: _viaggio(), items: _houseItems);
+        await pumpPack(tester, fromNew: true, firstRun: true);
+
+        await prepareInSheet(tester);
+        await tapText(tester, 'Risultato');
+
+        verifyFirstSuitcase({
+          'slots_important': 2,
+          'slots_proposed': 1,
+          'slots_total': 3,
+          'trip_items': savedTrip().items.length,
+          'from_first_run': true,
+        }, 1);
+        expect(
+          (await SharedPreferences.getInstance()).getBool(
+            'first_suitcase_logged',
+          ),
+          isTrue,
+        );
+      });
+
+      testWidgets('fuori dal primo avvio from_first_run è falso', (
+        tester,
+      ) async {
+        aiOutcome = withSlots([slot('s1', 'giacca')]);
+        arrange(trip: _viaggio(), items: _houseItems);
+        await pumpPack(tester, fromNew: true);
+
+        await prepareInSheet(tester);
+        await tapText(tester, 'Risultato');
+
+        verify(
+          () => appAnalytics.logEvent(
+            'first_suitcase_generated',
+            properties: any(
+              named: 'properties',
+              that: containsPair('from_first_run', false),
+            ),
+          ),
+        ).called(1);
+      });
+
+      testWidgets('non riparte se la chiave dice che è già partito', (
+        tester,
+      ) async {
+        SharedPreferences.setMockInitialValues({'first_suitcase_logged': true});
+        aiOutcome = withSlots([slot('s1', 'giacca')]);
+        arrange(trip: _viaggio(), items: _houseItems);
+        await pumpPack(tester, fromNew: true, firstRun: true);
+
+        await prepareInSheet(tester);
+        await tapText(tester, 'Risultato');
+
+        verifyNever(
+          () => appAnalytics.logEvent(
+            'first_suitcase_generated',
+            properties: any(named: 'properties'),
+          ),
+        );
+      });
+
+      testWidgets('alla seconda generazione non riparte', (tester) async {
+        aiOutcome = withSlots([slot('n1', 'giacca')]);
+        arrange(
+          trip: _viaggio(
+            items: _suitcaseItems,
+            aiResult: withSlots([slot('s1', 'giacca')]),
+          ),
+          items: _houseItems,
+        );
+        await pumpPack(tester, fromDetail: true);
+
+        for (var i = 0; i < 2; i++) {
+          await tapKey(tester, const Key('pack_ai_suitcase'));
+          await tapText(tester, 'Sostituisci');
+          await prepareInSheet(tester);
+          await tapText(tester, 'Risultato');
+          if (i == 0) {
+            await tester.tap(find.text('apri'));
+            await tester.pumpAndSettle();
+          }
+        }
+
+        verify(
+          () => appAnalytics.logEvent(
+            'first_suitcase_generated',
+            properties: any(named: 'properties'),
+          ),
+        ).called(1);
+      });
+
+      testWidgets('un salvataggio fallito non lo emette', (tester) async {
+        aiOutcome = withSlots([slot('s1', 'giacca')]);
+        arrange(trip: _viaggio(), items: _houseItems);
+        await pumpPack(tester, fromNew: true, firstRun: true);
+        await prepareInSheet(tester);
+
+        when(() => tripRepo.updateTrip(any())).thenThrow(Exception('offline'));
+        await tapText(tester, 'Risultato');
+        await tapText(tester, 'Annulla');
+
+        verifyNever(
+          () => appAnalytics.logEvent(
+            'first_suitcase_generated',
+            properties: any(named: 'properties'),
+          ),
+        );
+      });
     });
 
     testWidgets('se il salvataggio fallisce la pagina resta', (tester) async {
