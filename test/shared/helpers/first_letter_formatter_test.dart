@@ -28,6 +28,17 @@ void main() {
     expect(run('  borraccia').text, '  Borraccia');
   });
 
+  test('a campo già scritto la minuscola voluta resta ("iPhone")', () {
+    final value = formatter.formatEditUpdate(
+      const TextEditingValue(text: 'IPhone'),
+      const TextEditingValue(
+        text: 'iPhone',
+        selection: TextSelection.collapsed(offset: 1),
+      ),
+    );
+    expect(value.text, 'iPhone');
+  });
+
   test('il cursore resta dov\'era', () {
     expect(run('aux bt', caret: 3).selection.baseOffset, 3);
   });

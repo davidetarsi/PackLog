@@ -8,6 +8,9 @@ import 'package:flutter/services.dart';
 /// fire della casa), con il testo incollato o con tastiere che la ignorano,
 /// il nome restava minuscolo. Questo formatter la garantisce a prescindere
 /// dalla tastiera.
+///
+/// Agisce solo quando il campo era vuoto, come la tastiera: chi poi rimette
+/// la minuscola apposta ("iPhone") la tiene.
 class FirstLetterFormatter extends TextInputFormatter {
   const FirstLetterFormatter();
 
@@ -16,6 +19,7 @@ class FirstLetterFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
+    if (oldValue.text.trim().isNotEmpty) return newValue;
     final text = newValue.text;
     final index = text.indexOf(RegExp(r'\S'));
     if (index < 0) return newValue;
