@@ -76,6 +76,32 @@ void main() {
       );
     });
 
+    test('dai passi del tour non cambia niente', () async {
+      for (final step in [
+        OnboardingStep.aiIntro,
+        OnboardingStep.houseDetailTooltip,
+        OnboardingStep.createTripTooltip,
+        OnboardingStep.tripCreationTooltip,
+      ]) {
+        final repo = MockOnboardingRepository();
+        _setupDefaultMock(repo, step: step);
+        final container = makeContainer(repo: repo);
+        addTearDown(container.dispose);
+        await container.read(postLoginOnboardingProvider.future);
+
+        await container
+            .read(postLoginOnboardingProvider.notifier)
+            .completeFirstTrip();
+
+        verifyNever(() => repo.saveStep(any()));
+        expect(
+          container.read(postLoginOnboardingProvider).valueOrNull?.step,
+          step,
+          reason: step.name,
+        );
+      }
+    });
+
     test('da done non scrive nulla', () async {
       final repo = MockOnboardingRepository();
       _setupDefaultMock(repo, step: OnboardingStep.done);

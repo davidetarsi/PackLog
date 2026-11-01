@@ -555,19 +555,22 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     if (prefs.getBool(_firstSuitcaseLoggedKey) ?? false) return;
     await prefs.setBool(_firstSuitcaseLoggedKey, true);
     final slots = result.slots ?? const <AiSlot>[];
-    await analytics.logEvent(
-      'first_suitcase_generated',
-      properties: {
-        'slots_important': slots
-            .where((s) => s.level == AiSlotLevel.important)
-            .length,
-        'slots_proposed': slots
-            .where((s) => s.level == AiSlotLevel.useful)
-            .length,
-        'slots_total': slots.length,
-        'trip_items': tripItems,
-        'from_first_run': widget.firstRun,
-      },
+    // Non si aspetta: un errore dell'analytics non deve fermare la navigazione.
+    unawaited(
+      analytics.logEvent(
+        'first_suitcase_generated',
+        properties: {
+          'slots_important': slots
+              .where((s) => s.level == AiSlotLevel.important)
+              .length,
+          'slots_proposed': slots
+              .where((s) => s.level == AiSlotLevel.useful)
+              .length,
+          'slots_total': slots.length,
+          'trip_items': tripItems,
+          'from_first_run': widget.firstRun,
+        },
+      ),
     );
   }
 

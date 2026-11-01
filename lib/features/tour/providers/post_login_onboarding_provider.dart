@@ -45,10 +45,12 @@ class PostLoginOnboarding extends _$PostLoginOnboarding {
   }
 
   /// Chiude il passo "Dove vai?": la X, il salvataggio del passo 1 o la prima
-  /// valigia generata. Idempotente: da `done` non scrive nulla.
+  /// valigia generata. Agisce solo dal passo `firstTrip`: da `done` e da
+  /// qualunque passo del tour (chi sta rifacendo il tour, un tip di casa o
+  /// viaggio) non scrive nulla e il tour continua.
   Future<void> completeFirstTrip() async {
     final current = await future;
-    if (current.step == OnboardingStep.done) return;
+    if (current.step != OnboardingStep.firstTrip) return;
     final repo = ref.read(onboardingRepositoryProvider);
     await repo.saveStep(OnboardingStep.done);
     state = AsyncData(current.copyWith(step: OnboardingStep.done));

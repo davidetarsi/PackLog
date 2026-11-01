@@ -1057,6 +1057,27 @@ void main() {
       },
     );
 
+    for (final step in [
+      OnboardingStep.aiIntro,
+      OnboardingStep.houseDetailTooltip,
+      OnboardingStep.createTripTooltip,
+      OnboardingStep.tripCreationTooltip,
+    ]) {
+      testWidgets('generare a metà del tour (${step.name}) non cambia il '
+          'passo', (tester) async {
+        onboardingRepo.step = step;
+        aiOutcome = withSlots([slot('s1', 'giacca')]);
+        arrange(trip: _viaggio(), items: _houseItems);
+        await pumpPack(tester, fromNew: true);
+
+        await prepareInSheet(tester);
+        await tapText(tester, 'Risultato');
+
+        expect(find.text('Dettaglio viaggio'), findsOneWidget);
+        expect(onboardingRepo.step, step);
+      });
+    }
+
     testWidgets('la prima valigia chiude il passo "Dove vai?" (done)', (
       tester,
     ) async {
