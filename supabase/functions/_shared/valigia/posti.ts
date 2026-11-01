@@ -48,16 +48,16 @@ const IT_AGGIUNGI = { m: ["Aggiungi il tuo", "Aggiungi i tuoi"], f: ["Aggiungi l
 const maiuscola = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
 /** Il nome del posto e la frase del bottone "aggiungi". Plurale quando le copie sono piu' di
- *  una o il nome e' solo plurale (stessa voce per singolare e plurale in tabella). */
+ *  una o il nome e' solo plurale (soloPlurale in tabella). I nomi invariabili restano singolari. */
 export function nomePosto(capo: Capo, copie: number, qualifica: Qualifica | null, lingua: Lingua):
   { nome: string; aggiungi: string } {
   const voce: NomePosto | undefined = (capo.sub && NOMI_SOTTOCATEGORIA[capo.sub]) || NOMI_CATEGORIA[capo.categoria];
   if (!voce) return lingua === "en" ? { nome: "Item", aggiungi: "Add yours" } : { nome: "Capo", aggiungi: "Aggiungi il tuo" };
   const q = voce.qualificabile ? qualifica : null;
-  const plurale = copie > 1 || voce.it[0] === voce.it[1] ? 1 : 0;
+  const plurale = copie > 1 || voce.soloPlurale ? 1 : 0;
   if (lingua === "en") {
     const invernale = capo.categoria === "Outerwear" || capo.categoria === "Shoes";
-    const nome = voce.en[copie > 1 ? 1 : 0];
+    const nome = voce.en[plurale];
     return { nome: maiuscola(q ? `${EN_QUALIFICATORE[q](invernale)} ${nome}` : nome), aggiungi: "Add yours" };
   }
   let nome = voce.it[plurale];

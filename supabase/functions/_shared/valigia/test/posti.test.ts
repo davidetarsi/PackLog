@@ -122,3 +122,26 @@ test("ogni sottocategoria e categoria ha il nome in tutte e due le lingue", () =
     }
   }
 });
+
+test("nomi invariabili (Polo, Pile, Gilet, Blazer): con una copia singolare, con piu' copie plurale", () => {
+  // stessa voce per singolare e plurale ma NON solo plurali: una copia = singolare e articolo singolare
+  assert.deepEqual(nomePosto({ sub: "Fleece", categoria: "Upper Body" }, 1, "freddo", "it"), { nome: "Pile caldo", aggiungi: "Aggiungi il tuo" });
+  assert.deepEqual(nomePosto({ sub: "Fleece", categoria: "Upper Body" }, 2, "freddo", "it"), { nome: "Pile caldi", aggiungi: "Aggiungi i tuoi" });
+  assert.deepEqual(nomePosto({ sub: "Vest", categoria: "Outerwear" }, 1, "freddo", "it"), { nome: "Gilet invernale", aggiungi: "Aggiungi il tuo" });
+  assert.deepEqual(nomePosto({ sub: "Vest", categoria: "Outerwear" }, 2, "freddo", "it"), { nome: "Gilet invernali", aggiungi: "Aggiungi i tuoi" });
+  assert.deepEqual(nomePosto({ sub: "Blazer", categoria: "Outerwear" }, 1, null, "it"), { nome: "Blazer", aggiungi: "Aggiungi il tuo" });
+  assert.deepEqual(nomePosto({ sub: "Blazer", categoria: "Outerwear" }, 2, null, "it"), { nome: "Blazer", aggiungi: "Aggiungi i tuoi" });
+  assert.deepEqual(nomePosto({ sub: "Polo", categoria: "Upper Body" }, 1, "elegante", "it"), { nome: "Polo elegante", aggiungi: "Aggiungi la tua" });
+  assert.deepEqual(nomePosto({ sub: "Polo", categoria: "Upper Body" }, 2, "elegante", "it"), { nome: "Polo eleganti", aggiungi: "Aggiungi le tue" });
+  assert.deepEqual(nomePosto({ sub: "Crop Top", categoria: "Upper Body" }, 1, null, "it"), { nome: "Top", aggiungi: "Aggiungi il tuo" });
+  assert.deepEqual(nomePosto({ sub: "Crop Top", categoria: "Upper Body" }, 3, null, "it"), { nome: "Top", aggiungi: "Aggiungi i tuoi" });
+});
+
+test("soloPlurale: solo i veri nomi plurali, e la tabella e' coerente", () => {
+  for (const [chiave, v] of [...Object.entries(NOMI_SOTTOCATEGORIA), ...Object.entries(NOMI_CATEGORIA)]) {
+    if (v.soloPlurale) assert.equal(v.it[0], v.it[1], `${chiave}: solo plurale ma voci diverse`);
+  }
+  for (const sub of ["Polo", "Fleece", "Blazer", "Vest", "Crop Top"]) assert.equal(NOMI_SOTTOCATEGORIA[sub].soloPlurale, false, sub);
+  for (const sub of ["Trousers", "Gloves", "Jeans", "Shorts", "Sneakers"]) assert.equal(NOMI_SOTTOCATEGORIA[sub].soloPlurale, true, sub);
+  for (const cat of ["Shoes", "Lower Body"]) assert.equal(NOMI_CATEGORIA[cat].soloPlurale, true, cat);
+});
