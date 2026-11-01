@@ -181,6 +181,8 @@
   "trips": {
 "ai": {
   "title": "AI packing list",
+  "house_name_label": "Leaving from",
+  "house_name_default": "Home",
   "house_title": "Which home do you take clothes from",
   "luggage_title": "Which luggage are you taking",
   "new_luggage": "New luggage",

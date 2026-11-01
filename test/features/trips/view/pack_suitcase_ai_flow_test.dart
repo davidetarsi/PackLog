@@ -31,8 +31,10 @@ import 'package:pack_log/features/trips/view/pack_suitcase_screen.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/theme/theme.dart';
+import 'package:pack_log/shared/widgets/ds_choice_pill.dart';
 import 'package:pack_log/shared/widgets/ds_form_sheet.dart';
 
+import '../../../helpers/catalogo_di_prova.dart';
 import '../../../helpers/memory_asset_loader.dart';
 
 class MockTripRepository extends Mock implements TripRepository {}
@@ -231,6 +233,8 @@ void main() {
   });
 
   setUp(() {
+    // Attività e alloggi del foglio vengono dal catalogo.
+    caricaCatalogoDelRepo();
     tripRepo = MockTripRepository();
     houseRepo = MockHouseRepository();
     itemRepo = MockItemRepository();
@@ -418,6 +422,22 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Chiude il foglio con "Prepara la valigia". Attività e alloggio sono
+  /// obbligatori: se la tappa non li ha già, si sceglie Città e musei e Hotel.
+  Future<void> prepareInSheet(WidgetTester tester) async {
+    for (final label in ['Città e musei', 'Hotel']) {
+      final pill = find.descendant(
+        of: find.byType(DsFormSheet),
+        matching: find.widgetWithText(DsChoicePill, label),
+      );
+      if (pill.evaluate().isNotEmpty &&
+          !tester.widget<DsChoicePill>(pill).selected) {
+        await tapInSheet(tester, label);
+      }
+    }
+    await tapInSheet(tester, 'Prepara la valigia');
+  }
+
   /// Tutti i salvataggi del viaggio, in ordine.
   List<TripModel> savedTrips() => verify(
     () => tripRepo.updateTrip(captureAny()),
@@ -470,7 +490,7 @@ void main() {
 
         await tapKey(tester, const Key('pack_ai_suitcase'));
         await tapInSheet(tester, 'Zaino blu');
-        await tapInSheet(tester, 'Prepara la valigia');
+        await prepareInSheet(tester);
         await tapText(tester, 'Risultato');
 
         expect(jobs, hasLength(1));
@@ -788,7 +808,7 @@ void main() {
   /// torna dalla pagina finta con [aiOutcome].
   Future<void> generate(WidgetTester tester) async {
     await tapKey(tester, const Key('pack_ai_suitcase'));
-    await tapInSheet(tester, 'Prepara la valigia');
+    await prepareInSheet(tester);
     await tapText(tester, 'Risultato');
   }
 
@@ -807,7 +827,7 @@ void main() {
           tester.element(find.byType(PackSuitcaseScreen)),
         );
         await tapKey(tester, const Key('pack_ai_suitcase'));
-        await tapInSheet(tester, 'Prepara la valigia');
+        await prepareInSheet(tester);
 
         // Da qui in poi leggere gli oggetti della casa fallisce.
         when(
@@ -848,7 +868,7 @@ void main() {
         arrange(trip: _viaggio(), items: _houseItems);
         await pumpPack(tester);
         await tapKey(tester, const Key('pack_ai_suitcase'));
-        await tapInSheet(tester, 'Prepara la valigia');
+        await prepareInSheet(tester);
 
         // Gli oggetti si leggono, ma la scrittura della valigia fallisce.
         when(() => tripRepo.updateTrip(any())).thenThrow(Exception('offline'));
@@ -953,7 +973,7 @@ void main() {
         arrange(trip: _viaggio(), items: _houseItems);
         await pumpPack(tester, fromNew: true);
 
-        await tapInSheet(tester, 'Prepara la valigia');
+        await prepareInSheet(tester);
         await tapText(tester, 'Risultato');
 
         expect(find.text('Dettaglio viaggio'), findsOneWidget);
@@ -981,7 +1001,7 @@ void main() {
 
         await tapKey(tester, const Key('pack_ai_suitcase'));
         await tapText(tester, 'Sostituisci');
-        await tapInSheet(tester, 'Prepara la valigia');
+        await prepareInSheet(tester);
         await tapText(tester, 'Risultato');
 
         expect(find.text('Dettaglio viaggio'), findsOneWidget);
@@ -996,7 +1016,7 @@ void main() {
       aiOutcome = withSlots([slot('s1', 'giacca')]);
       arrange(trip: _viaggio(), items: _houseItems);
       await pumpPack(tester, fromNew: true);
-      await tapInSheet(tester, 'Prepara la valigia');
+      await prepareInSheet(tester);
 
       when(() => tripRepo.updateTrip(any())).thenThrow(Exception('offline'));
       await tapText(tester, 'Risultato');
@@ -1014,7 +1034,7 @@ void main() {
       );
       arrange(trip: _viaggio(), items: _houseItems);
       await pumpPack(tester, fromNew: true);
-      await tapInSheet(tester, 'Prepara la valigia');
+      await prepareInSheet(tester);
       await tapText(tester, 'Risultato');
 
       expect(find.text('Dettaglio viaggio'), findsNothing);

@@ -228,6 +228,37 @@ void main() {
       expect(plan.stops.last.lat, 45.8);
     });
 
+    test('la casa della tappa: meta e tratte, e non entra nella firma', () {
+      final trip = _trip(
+        departure: DateTime(2026, 10, 25),
+        returnAt: DateTime(2026, 10, 28),
+        destination: _place('Lisbona'),
+        destinationHouseId: 'h1',
+        legs: [
+          _leg(
+            'Baita',
+            DateTime(2026, 10, 27),
+            DateTime(2026, 10, 28),
+            houseId: 'h2',
+          ),
+          _leg('Hotel', DateTime(2026, 10, 26), DateTime(2026, 10, 27)),
+        ],
+      );
+      final plan = _request(
+        planTripWeather(
+          trip,
+          houses: [_house('h1', 'Casa'), _house('h2', 'Baita')],
+          today: _today,
+        ),
+      );
+
+      expect(plan.stops.map((s) => s.houseId), ['h1', null, 'h2']);
+
+      expect(plan.signature, isNot(contains('h1')));
+      expect(plan.signature, isNot(contains('h2')));
+      expect(plan.stops.first.toJson().containsKey('houseId'), isFalse);
+    });
+
     test('motivi per cui non si chiede', () {
       WeatherUnavailable reasonFor(TripModel trip) =>
           _reason(planTripWeather(trip, houses: const [], today: _today));

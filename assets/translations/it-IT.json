@@ -181,6 +181,8 @@
   "trips": {
 "ai": {
   "title": "Valigia con AI",
+  "house_name_label": "Casa di partenza",
+  "house_name_default": "Casa",
   "house_title": "Da quale casa prendi i vestiti",
   "luggage_title": "Con che bagaglio parti",
   "new_luggage": "Nuovo bagaglio",

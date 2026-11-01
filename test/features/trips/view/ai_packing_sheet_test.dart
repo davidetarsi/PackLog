@@ -15,16 +15,26 @@ import 'package:pack_log/shared/widgets/ds_choice_pill.dart';
 import 'package:pack_log/features/trips/view/widgets/ai/ai_packing_sheet.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
+import 'package:pack_log/shared/widgets/ds_field.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 import '../../../helpers/catalogo_di_prova.dart';
 
 class _Houses extends HouseNotifier {
-  _Houses(this.houses);
+  _Houses(this.houses, this.added);
   final List<HouseModel> houses;
+
+  /// Le case create dal foglio.
+  final List<HouseModel> added;
 
   @override
   Future<List<HouseModel>> build() async => houses;
+
+  @override
+  Future<void> addHouse(HouseModel model) async {
+    added.add(model);
+    state = AsyncData([...houses, model]);
+  }
 }
 
 class _Luggages extends LuggageNotifier {
@@ -66,7 +76,10 @@ TripModel _trip({List<LuggageModel> luggages = const []}) => TripModel(
 );
 
 /// Un piano con le tappe [stops] (chiave, nome, giorni) in fila dal 3 nov.
-TripWeatherRequest _plan(List<(String, String, int)> stops) {
+TripWeatherRequest _plan(
+  List<(String, String, int)> stops, {
+  Map<String, String> houseIds = const {},
+}) {
   var from = DateTime(2026, 11, 3);
   return TripWeatherRequest([
     for (final (key, name, days) in stops)
@@ -79,6 +92,7 @@ TripWeatherRequest _plan(List<(String, String, int)> stops) {
           lon: -21,
           from: from,
           days: days,
+          houseId: houseIds[key],
         );
         from = from.add(Duration(days: days));
         return stop;
@@ -92,6 +106,9 @@ final _twoStops = _plan([('main', 'Islanda', 4), ('olanda', 'Olanda', 4)]);
 class _Result {
   bool called = false;
   AiPackingSetup? setup;
+
+  /// Le case che il foglio ha creato.
+  final List<HouseModel> added = [];
 }
 
 Future<void> _pump(
@@ -109,7 +126,7 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        houseNotifierProvider.overrideWith(() => _Houses(houses)),
+        houseNotifierProvider.overrideWith(() => _Houses(houses, result.added)),
         luggageNotifierProvider.overrideWith(() => _Luggages(luggages)),
         tripWeatherNotifierProvider('trip-1').overrideWith(_Weather.new),
       ],
@@ -160,6 +177,12 @@ Future<void> _tap(WidgetTester tester, String label) async {
   await tester.ensureVisible(finder);
   await tester.tap(finder);
   await tester.pump();
+}
+
+/// Attività e alloggio della tappa mostrata, perché "Prepara" non avvisi.
+Future<void> _fill(WidgetTester tester) async {
+  await _tap(tester, 'Città e musei');
+  await _tap(tester, 'Hotel');
 }
 
 /// I DsButton primary del foglio. La regola "un solo arancio" si misura su
@@ -250,6 +273,7 @@ void main() {
       );
 
       await _tap(tester, 'Immersioni e snorkeling');
+      await _tap(tester, 'Hotel');
       await _tap(tester, 'Prepara la valigia');
       await tester.pumpAndSettle();
 
@@ -280,6 +304,7 @@ void main() {
           tripLuggages: [trolley, _zaino],
         );
 
+        await _fill(tester);
         await _tap(tester, 'Prepara la valigia');
         await tester.pumpAndSettle();
 
@@ -299,6 +324,7 @@ void main() {
         luggages: [_zaino],
       );
 
+      await _fill(tester);
       await _tap(tester, 'Prepara la valigia');
       await tester.pumpAndSettle();
 
@@ -349,33 +375,180 @@ void main() {
       expect(result.setup!.stops['olanda']!.stay, 'hotel');
     });
 
-    testWidgets('primo tocco con tappa vuota avvisa, il secondo chiude', (
+    testWidgets(
+      'con una tappa vuota Prepara avvisa a ogni tocco e non chiude',
+      (tester) async {
+        final result = _Result();
+        await _pump(
+          tester,
+          plan: _twoStops,
+          result: result,
+          houses: [_milano],
+          luggages: [_zaino],
+        );
+
+        await _fill(tester);
+        await _tap(tester, 'Avanti: Olanda');
+        await _tap(tester, 'Prepara la valigia');
+
+        expect(result.called, isFalse);
+        expect(find.textContaining('è ancora da compilare'), findsOneWidget);
+        expect(find.text('Compila la tappa'), findsOneWidget);
+
+        // Il secondo tocco non salta l'avviso.
+        await _tap(tester, 'Prepara la valigia');
+        await tester.pumpAndSettle();
+
+        expect(result.called, isFalse);
+        expect(find.textContaining('è ancora da compilare'), findsOneWidget);
+
+        // Completata la tappa, il foglio si chiude.
+        await _tap(tester, 'Uguale a Islanda');
+        await _tap(tester, 'Prepara la valigia');
+        await tester.pumpAndSettle();
+
+        expect(result.called, isTrue);
+        expect(result.setup!.stops['main']!.activities, ['city']);
+        expect(result.setup!.stops['olanda']!.activities, ['city']);
+      },
+    );
+
+    testWidgets('con una tappa sola senza attività avvisa e non chiude', (
       tester,
     ) async {
       final result = _Result();
       await _pump(
         tester,
-        plan: _twoStops,
+        plan: _oneStop,
+        result: result,
+        houses: [_milano],
+        luggages: [_zaino],
+      );
+
+      await _tap(tester, 'Hotel');
+      await _tap(tester, 'Prepara la valigia');
+      await _tap(tester, 'Prepara la valigia');
+      await tester.pumpAndSettle();
+
+      expect(result.called, isFalse);
+      expect(find.byKey(const Key('ai_incomplete_warning')), findsOneWidget);
+      expect(find.text('Prepara la valigia'), findsOneWidget);
+
+      await _tap(tester, 'Città e musei');
+      await _tap(tester, 'Prepara la valigia');
+      await tester.pumpAndSettle();
+
+      expect(result.called, isTrue);
+    });
+
+    testWidgets('con una tappa sola senza alloggio avvisa e non chiude', (
+      tester,
+    ) async {
+      final result = _Result();
+      await _pump(
+        tester,
+        plan: _oneStop,
         result: result,
         houses: [_milano],
         luggages: [_zaino],
       );
 
       await _tap(tester, 'Città e musei');
-      await _tap(tester, 'Hotel');
-      await _tap(tester, 'Avanti: Olanda');
-      await _tap(tester, 'Prepara la valigia');
-
-      expect(result.called, isFalse);
-      expect(find.textContaining('è ancora da compilare'), findsOneWidget);
-      expect(find.text('Compila la tappa'), findsOneWidget);
-
       await _tap(tester, 'Prepara la valigia');
       await tester.pumpAndSettle();
 
-      expect(result.called, isTrue);
-      expect(result.setup!.stops['main']!.activities, ['city']);
-      expect(result.setup!.stops['olanda']!.isUntouched, isTrue);
+      expect(result.called, isFalse);
+      expect(find.byKey(const Key('ai_incomplete_warning')), findsOneWidget);
+    });
+
+    testWidgets(
+      'una tappa che è una casa dell\'utente parte con Appartamento',
+      (tester) async {
+        final result = _Result();
+        await _pump(
+          tester,
+          plan: _plan([('main', 'Reykjavik', 5)], houseIds: {'main': 'h1'}),
+          result: result,
+          houses: [_milano],
+          luggages: [_zaino],
+        );
+
+        expect(
+          tester
+              .widget<DsChoicePill>(
+                find.widgetWithText(DsChoicePill, 'Appartamento'),
+              )
+              .selected,
+          isTrue,
+        );
+
+        await _tap(tester, 'Città e musei');
+        await _tap(tester, 'Prepara la valigia');
+        await tester.pumpAndSettle();
+
+        expect(result.called, isTrue);
+        expect(result.setup!.stops['main']!.stay, 'apartment');
+      },
+    );
+
+    testWidgets('l\'alloggio preselezionato si può cambiare', (tester) async {
+      final result = _Result();
+      await _pump(
+        tester,
+        plan: _plan([('main', 'Reykjavik', 5)], houseIds: {'main': 'h1'}),
+        result: result,
+        houses: [_milano],
+        luggages: [_zaino],
+      );
+
+      await _tap(tester, 'Hotel');
+      await _tap(tester, 'Città e musei');
+      await _tap(tester, 'Prepara la valigia');
+      await tester.pumpAndSettle();
+
+      expect(result.setup!.stops['main']!.stay, 'hotel');
+    });
+
+    testWidgets('una tappa senza casa non preseleziona l\'alloggio', (
+      tester,
+    ) async {
+      final result = _Result();
+      await _pump(
+        tester,
+        plan: _oneStop,
+        result: result,
+        houses: [_milano],
+        luggages: [_zaino],
+      );
+
+      expect(
+        tester
+            .widget<DsChoicePill>(
+              find.widgetWithText(DsChoicePill, 'Appartamento'),
+            )
+            .selected,
+        isFalse,
+      );
+    });
+
+    testWidgets('la tappa con casa conserva Uguale a anche con l\'alloggio '
+        'preselezionato', (tester) async {
+      final result = _Result();
+      await _pump(
+        tester,
+        plan: _plan(
+          [('main', 'Islanda', 4), ('olanda', 'Olanda', 4)],
+          houseIds: {'olanda': 'h1'},
+        ),
+        result: result,
+        houses: [_milano],
+        luggages: [_zaino],
+      );
+
+      await _fill(tester);
+      await _tap(tester, 'Avanti: Olanda');
+
+      expect(find.text('Uguale a Islanda'), findsOneWidget);
     });
 
     testWidgets('Compila la tappa porta alla tappa vuota', (tester) async {
@@ -454,13 +627,96 @@ void main() {
       },
     );
 
-    testWidgets('senza case niente bottone', (tester) async {
+    testWidgets('senza case c\'è il campo Casa e Prepara la crea', (
+      tester,
+    ) async {
       final result = _Result();
       await _pump(tester, plan: _oneStop, result: result, luggages: [_zaino]);
 
-      expect(find.textContaining('Aggiungi una casa'), findsOneWidget);
-      expect(find.text('Prepara la valigia'), findsNothing);
-      expect(find.byType(DsButton), findsNothing);
+      expect(find.text('Casa di partenza'), findsOneWidget);
+      expect(find.text('Da quale casa prendi i vestiti'), findsNothing);
+      expect(
+        tester
+            .widget<DsTextField>(find.byKey(const Key('ai_house_name')))
+            .controller!
+            .text,
+        'Casa',
+      );
+
+      await _fill(tester);
+      await _tap(tester, 'Prepara la valigia');
+      await tester.pumpAndSettle();
+
+      expect(result.called, isTrue);
+      expect(result.added, hasLength(1));
+      expect(result.added.single.name, 'Casa');
+      expect(result.setup!.houseId, result.added.single.id);
+      expect(result.setup!.houseId, isNotEmpty);
+    });
+
+    testWidgets('la casa creata prende il nome scritto; vuoto, Casa', (
+      tester,
+    ) async {
+      final result = _Result();
+      await _pump(tester, plan: _oneStop, result: result, luggages: [_zaino]);
+
+      await tester.enterText(
+        find.byKey(const Key('ai_house_name')),
+        'Bilocale',
+      );
+      await _fill(tester);
+      await _tap(tester, 'Prepara la valigia');
+      await tester.pumpAndSettle();
+
+      expect(result.added.single.name, 'Bilocale');
+
+      final empty = _Result();
+      await tester.pumpWidget(const SizedBox());
+      await _pump(tester, plan: _oneStop, result: empty, luggages: [_zaino]);
+      await tester.enterText(find.byKey(const Key('ai_house_name')), '  ');
+      await _fill(tester);
+      await _tap(tester, 'Prepara la valigia');
+      await tester.pumpAndSettle();
+
+      expect(empty.added.single.name, 'Casa');
+    });
+
+    testWidgets('senza case e con la tappa incompleta non crea la casa', (
+      tester,
+    ) async {
+      final result = _Result();
+      await _pump(tester, plan: _oneStop, result: result, luggages: [_zaino]);
+
+      await _tap(tester, 'Prepara la valigia');
+      await tester.pumpAndSettle();
+
+      expect(result.called, isFalse);
+      expect(result.added, isEmpty);
+      expect(find.byKey(const Key('ai_incomplete_warning')), findsOneWidget);
+    });
+
+    testWidgets('con una casa si sceglie come prima, senza il campo', (
+      tester,
+    ) async {
+      final result = _Result();
+      await _pump(
+        tester,
+        plan: _oneStop,
+        result: result,
+        houses: [_milano],
+        luggages: [_zaino],
+      );
+
+      expect(find.text('Da quale casa prendi i vestiti'), findsOneWidget);
+      expect(find.text('Casa di partenza'), findsNothing);
+      expect(find.byKey(const Key('ai_house_name')), findsNothing);
+
+      await _fill(tester);
+      await _tap(tester, 'Prepara la valigia');
+      await tester.pumpAndSettle();
+
+      expect(result.added, isEmpty);
+      expect(result.setup!.houseId, 'h1');
     });
 
     testWidgets('il solo arancio è Prepara la valigia', (tester) async {

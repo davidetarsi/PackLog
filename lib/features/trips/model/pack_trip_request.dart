@@ -9,27 +9,41 @@ const _kMaxBagText = 80;
 /// Una tappa del foglio della valigia AI: una per chiave, con i giorni di
 /// tutti i suoi periodi.
 class AiStop {
-  const AiStop({required this.key, required this.name, required this.days});
+  const AiStop({
+    required this.key,
+    required this.name,
+    required this.days,
+    this.houseId,
+  });
 
   final String key;
   final String name;
   final int days;
+
+  /// La casa dell'utente dove si dorme in questa tappa, se c'è.
+  final String? houseId;
 }
 
 /// Le tappe del foglio, una per chiave, nell'ordine della prima comparsa. Un
 /// luogo spezzato in due periodi è una tappa sola, con i giorni sommati.
 List<AiStop> aiStopsOf(TripWeatherRequest plan) {
-  final byKey = <String, ({String name, int days})>{};
+  final byKey = <String, ({String name, int days, String? houseId})>{};
   for (final stop in plan.stops) {
     final previous = byKey[stop.stopKey];
     byKey[stop.stopKey] = (
       name: previous?.name ?? stop.name,
       days: (previous?.days ?? 0) + stop.days,
+      houseId: previous?.houseId ?? stop.houseId,
     );
   }
   return [
     for (final entry in byKey.entries)
-      AiStop(key: entry.key, name: entry.value.name, days: entry.value.days),
+      AiStop(
+        key: entry.key,
+        name: entry.value.name,
+        days: entry.value.days,
+        houseId: entry.value.houseId,
+      ),
   ];
 }
 

@@ -37,6 +37,7 @@ class WeatherStopRequest {
     required this.lon,
     required this.from,
     required this.days,
+    this.houseId,
   });
 
   /// Il luogo a cui appartiene il periodo: [kMainStopKey] per la meta, per le
@@ -51,6 +52,11 @@ class WeatherStopRequest {
   /// Primo giorno della tappa (mezzanotte locale).
   final DateTime from;
   final int days;
+
+  /// La casa dell'utente dove si dorme, se la tappa è una sua casa: per la
+  /// meta [TripModel.destinationHouseId], per una tratta [TripLeg.houseId]. Non
+  /// va nel JSON né nella firma del meteo: serve al foglio della valigia AI.
+  final String? houseId;
 
   /// Ultimo giorno della tappa.
   DateTime get to => _addDays(from, days - 1);
@@ -416,6 +422,7 @@ class _Place {
     this.country,
     this.lat,
     this.lon,
+    this.houseId,
   });
 
   final String key;
@@ -424,6 +431,7 @@ class _Place {
   final String? country;
   final double? lat;
   final double? lon;
+  final String? houseId;
 }
 
 /// Prepara la richiesta del meteo di [trip] a partire da [today].
@@ -463,6 +471,7 @@ TripWeatherPlan planTripWeather(
     country: destinationHouse?.location?.country ?? destination?.country,
     lat: destinationHouse?.location?.lat ?? destination?.lat,
     lon: destinationHouse?.location?.lon ?? destination?.lon,
+    houseId: trip.destinationHouseId,
   );
   final places = <_Place>[destinationPlace];
   for (final leg in trip.legs) {
@@ -481,6 +490,7 @@ TripWeatherPlan planTripWeather(
         country: leg.country ?? housesById[leg.houseId]?.location?.country,
         lat: lat,
         lon: lon,
+        houseId: leg.houseId,
       ),
     );
   }
@@ -525,6 +535,7 @@ TripWeatherPlan planTripWeather(
         lon: run.place.lon!,
         from: run.from,
         days: run.days,
+        houseId: run.place.houseId,
       ),
   ]);
 }
