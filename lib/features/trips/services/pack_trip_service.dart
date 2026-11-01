@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/config/app_config.dart';
+import '../../items/model/item_model.dart';
 import '../model/ai_packing.dart';
 
 part 'pack_trip_service.g.dart';
@@ -156,7 +157,7 @@ class _PackTripAttempt {
 
 /// Traduce la risposta di `pack-trip` (chiavi italiane, snake_case) nel
 /// modello [AiPackingResult], campo per campo. Un avviso con livello
-/// sconosciuto si scarta; un array opzionale mancante vale come lista vuota;
+/// sconosciuto si scarta, come un posto con livello o categoria sconosciuti; un array opzionale mancante vale come lista vuota;
 /// una struttura illeggibile solleva [PackTripException].
 AiPackingResult parsePackTripResponse(
   Map<String, dynamic> json, {
@@ -177,12 +178,26 @@ AiPackingResult parsePackTripResponse(
       for (final raw in _lista(json['perche']))
         _punto(raw as Map<String, dynamic>),
     ];
+    // `posti` assente (funzione vecchia) = nessun posto, non lista vuota.
+    final rawSlots = json['posti'];
+    final slots = rawSlots == null
+        ? null
+        : [
+            for (final raw in _lista(rawSlots))
+              if (_postoNoto(raw as Map<String, dynamic>)) _posto(raw),
+          ];
+    final notes = [
+      for (final raw in _lista(json['informazioni']))
+        _informazione(raw as Map<String, dynamic>),
+    ];
     return AiPackingResult(
       generatedAt: now,
       houseId: houseId,
       proposal: proposal,
       warnings: warnings,
       reasons: reasons,
+      slots: slots,
+      notes: notes,
     );
   } on PackTripException {
     rethrow;
@@ -224,6 +239,40 @@ AiWarning _avviso(Map<String, dynamic> json) => AiWarning(
   title: json['titolo'] as String,
   why: json['perche'] as String,
   search: json['cerca'] as String?,
+);
+
+ItemCategory? _categoriaPosto(Object? raw) => switch (raw) {
+  'vestiti' => ItemCategory.vestiti,
+  'toiletries' => ItemCategory.toiletries,
+  _ => null,
+};
+
+bool _postoNoto(Map<String, dynamic> json) =>
+    _livello(json['livello']) != null &&
+    _categoriaPosto(json['categoria']) != null;
+
+AiSlot _posto(Map<String, dynamic> json) {
+  final copie = (json['copie'] as num).toInt();
+  return AiSlot(
+    id: json['id'] as String,
+    type: json['tipo'] as String,
+    category: _categoriaPosto(json['categoria'])!,
+    level: switch (_livello(json['livello'])!) {
+      AiWarningLevel.important => AiSlotLevel.important,
+      AiWarningLevel.useful => AiSlotLevel.useful,
+    },
+    name: json['nome'] as String,
+    copies: copie,
+    remaining: copie,
+    reason: json['motivo'] as String?,
+    addLabel: json['aggiungi'] as String,
+  );
+}
+
+AiTripNote _informazione(Map<String, dynamic> json) => AiTripNote(
+  code: json['codice'] as String,
+  title: json['titolo'] as String,
+  why: json['perche'] as String,
 );
 
 AiReasonPoint _punto(Map<String, dynamic> json) => AiReasonPoint(

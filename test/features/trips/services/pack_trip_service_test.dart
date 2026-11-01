@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 
@@ -294,6 +295,91 @@ void main() {
         () => parsePackTripResponse(json, houseId: _houseId, now: _now),
         throwsA(isA<PackTripException>()),
       );
+    });
+  });
+  group('parsePackTripResponse: posti e informazioni', () {
+    Map<String, dynamic> posto(
+      String id, {
+      String livello = 'importante',
+      String categoria = 'vestiti',
+      int copie = 2,
+    }) => {
+      'id': id,
+      'tipo': 'Scarf',
+      'categoria': categoria,
+      'livello': livello,
+      'nome': 'Sciarpa',
+      'copie': copie,
+      'motivo': null,
+      'aggiungi': 'Aggiungi la sciarpa',
+    };
+
+    test('posti letti: remaining == copies, campi mappati', () {
+      final json = _okResponse();
+      json['posti'] = [
+        posto('s1'),
+        {
+          ...posto('s2', livello: 'utile', categoria: 'toiletries', copie: 1),
+          'motivo': 'Fa freddo',
+        },
+      ];
+      json['informazioni'] = [
+        {'codice': 'lavanderia', 'titolo': 'Lavanderia', 'perche': 'Lavi'},
+      ];
+
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+
+      expect(result.slots, hasLength(2));
+      final first = result.slots![0];
+      expect(first.id, 's1');
+      expect(first.type, 'Scarf');
+      expect(first.category, ItemCategory.vestiti);
+      expect(first.level, AiSlotLevel.important);
+      expect(first.name, 'Sciarpa');
+      expect(first.copies, 2);
+      expect(first.remaining, 2);
+      expect(first.reason, isNull);
+      expect(first.addLabel, 'Aggiungi la sciarpa');
+      expect(first.toBuy, isFalse);
+      expect(first.checked, isFalse);
+      final second = result.slots![1];
+      expect(second.category, ItemCategory.toiletries);
+      expect(second.level, AiSlotLevel.useful);
+      expect(second.reason, 'Fa freddo');
+      expect(result.notes, [
+        const AiTripNote(code: 'lavanderia', title: 'Lavanderia', why: 'Lavi'),
+      ]);
+    });
+
+    test('posti assenti: slots null, avvisi come oggi', () {
+      final result = parsePackTripResponse(
+        _okResponse(),
+        houseId: _houseId,
+        now: _now,
+      );
+      expect(result.slots, isNull);
+      expect(result.notes, isEmpty);
+      expect(result.warnings.map((w) => w.id), ['pochi_pezzi:0']);
+    });
+
+    test('livello o categoria sconosciuti: il posto si scarta', () {
+      final json = _okResponse();
+      json['posti'] = [
+        posto('s1', livello: 'forse'),
+        posto('s2', categoria: 'elettronica'),
+        posto('s3', categoria: 'boh'),
+        posto('s4'),
+      ];
+
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+
+      expect(result.slots!.map((s) => s.id), ['s4']);
+    });
+
+    test('posti presenti ma vuoti: slots lista vuota', () {
+      final json = _okResponse()..['posti'] = <dynamic>[];
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+      expect(result.slots, isEmpty);
     });
   });
 }

@@ -2,6 +2,8 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../../items/model/item_model.dart';
+
 part 'ai_packing.freezed.dart';
 part 'ai_packing.g.dart';
 
@@ -98,6 +100,60 @@ class AiWarning with _$AiWarning {
       _$AiWarningFromJson(json);
 }
 
+/// Livello di un posto. Il JSON usa i valori italiani.
+enum AiSlotLevel {
+  @JsonValue('importante')
+  important,
+  @JsonValue('utile')
+  useful,
+}
+
+/// Posto della valigia: un oggetto che serve al viaggio e che l'utente può
+/// riempire con uno dei suoi. Vive solo dentro [AiPackingResult], mai
+/// nell'inventario.
+@freezed
+class AiSlot with _$AiSlot {
+  const AiSlot._();
+
+  const factory AiSlot({
+    required String id,
+
+    /// Tipo del catalogo: due posti dello stesso tipo sono lo stesso bisogno.
+    required String type,
+    required ItemCategory category,
+    required AiSlotLevel level,
+    required String name,
+
+    /// Copie proposte all'inizio.
+    required int copies,
+
+    /// Copie ancora da riempire; 0 = il posto è sparito.
+    required int remaining,
+    String? reason,
+    required String addLabel,
+    @Default(false) bool toBuy,
+    @Default(false) bool checked,
+  }) = _AiSlot;
+
+  bool get isOpen => remaining > 0;
+
+  factory AiSlot.fromJson(Map<String, dynamic> json) => _$AiSlotFromJson(json);
+}
+
+/// Informazione sul viaggio (lavanderia, bagaglio pieno...) con testi del
+/// server.
+@freezed
+class AiTripNote with _$AiTripNote {
+  const factory AiTripNote({
+    required String code,
+    required String title,
+    required String why,
+  }) = _AiTripNote;
+
+  factory AiTripNote.fromJson(Map<String, dynamic> json) =>
+      _$AiTripNoteFromJson(json);
+}
+
 /// Punto del riepilogo "perché": titolo, frasi e oggetti collegati.
 @freezed
 class AiReasonPoint with _$AiReasonPoint {
@@ -128,7 +184,27 @@ class AiPackingResult with _$AiPackingResult {
     List<AiWarning> warnings,
     @Default(<AiReasonPoint>[]) List<AiReasonPoint> reasons,
     @Default(<String>[]) List<String> dismissedWarnings,
+
+    /// Posti da riempire. `null` = risultato vecchio, senza posti: si
+    /// comporta come prima.
+    List<AiSlot>? slots,
+    @Default(<AiTripNote>[]) List<AiTripNote> notes,
   }) = _AiPackingResult;
+
+  /// Il risultato ha i posti (anche se la lista è vuota).
+  bool get hasSlots => slots != null;
+
+  /// Copia con il posto [slotId] cambiato da [change]. Id sconosciuto o
+  /// risultato senza posti: nessun cambiamento.
+  AiPackingResult withSlot(String slotId, AiSlot Function(AiSlot) change) {
+    final current = slots;
+    if (current == null) return this;
+    return copyWith(
+      slots: [
+        for (final slot in current) slot.id == slotId ? change(slot) : slot,
+      ],
+    );
+  }
 
   /// Avvisi non ancora chiusi dall'utente.
   List<AiWarning> get openWarnings => warnings
@@ -137,6 +213,32 @@ class AiPackingResult with _$AiPackingResult {
 
   factory AiPackingResult.fromJson(Map<String, dynamic> json) =>
       _$AiPackingResultFromJson(json);
+}
+
+/// Rigenerando, la segnatura "da comprare" passa al posto aperto dello stesso
+/// tipo: un posto aperto di [next] diventa `toBuy` se in [previous] ce n'era
+/// uno aperto, dello stesso tipo, segnato `toBuy`. Se più posti nuovi hanno
+/// quel tipo, eredita solo il primo.
+AiPackingResult carryToBuy(AiPackingResult? previous, AiPackingResult next) {
+  final before = previous?.slots;
+  final after = next.slots;
+  if (before == null || after == null) return next;
+
+  final toBuyTypes = {
+    for (final slot in before)
+      if (slot.isOpen && slot.toBuy) slot.type,
+  };
+  if (toBuyTypes.isEmpty) return next;
+
+  return next.copyWith(
+    slots: [
+      for (final slot in after)
+        if (slot.isOpen && toBuyTypes.remove(slot.type))
+          slot.copyWith(toBuy: true)
+        else
+          slot,
+    ],
+  );
 }
 
 /// Avvisi con un livello sconosciuto si scartano prima del parsing.
