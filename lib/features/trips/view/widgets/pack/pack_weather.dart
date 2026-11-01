@@ -48,10 +48,11 @@ class PackWeatherSection extends ConsumerStatefulWidget {
 }
 
 class _PackWeatherSectionState extends ConsumerState<PackWeatherSection> {
-  /// Il primo stato visto era il caricamento: la stima arriva mentre la
-  /// pagina è aperta, e il bordo fa i suoi giri. Aperta col meteo già in
-  /// cache, resta fermo. Si decide una volta, alla prima lettura.
-  bool? _openedLoading;
+  /// Quando la sezione si è aperta. Il bordo fa i suoi giri solo se il meteo
+  /// è stato preso dopo: la stima arriva mentre la pagina è aperta. Un meteo
+  /// già in cache (anche se la prima lettura passa per il caricamento) ha un
+  /// `fetchedAt` più vecchio, e il bordo resta fermo.
+  final DateTime _mountedAt = DateTime.now();
 
   TripModel get trip => widget.trip;
 
@@ -66,7 +67,6 @@ class _PackWeatherSectionState extends ConsumerState<PackWeatherSection> {
 
     final provider = tripWeatherNotifierProvider(tripId);
     final weatherAsync = ref.watch(provider);
-    _openedLoading ??= weatherAsync.isLoading && !weatherAsync.hasValue;
     final notifier = ref.read(provider.notifier);
 
     final Widget? body = weatherAsync.when(
@@ -82,7 +82,7 @@ class _PackWeatherSectionState extends ConsumerState<PackWeatherSection> {
         TripWeatherReady(:final weather) => _WeatherCard(
           tripId: tripId,
           weather: weather,
-          loops: _openedLoading! ? _kEstimateLoops : 0,
+          loops: weather.fetchedAt.isAfter(_mountedAt) ? _kEstimateLoops : 0,
           onRefresh: notifier.refresh,
         ),
         TripWeatherNotAvailable(:final reason) =>

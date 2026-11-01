@@ -44,16 +44,21 @@ class PackLogGradientBorder extends StatefulWidget {
 }
 
 class _PackLogGradientBorderState extends State<PackLogGradientBorder>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _controller;
 
-  /// `true` mentre i giri sono in corso: il bordo è a piena opacità.
+  /// 0 = piena opacità (giri in corso), 1 = a riposo. Finiti i giri passa da
+  /// 0 a 1 in [AppMotion.slow] e poi si ferma: nessun ticker resta acceso.
+  late final AnimationController _rest;
+
+  /// `true` mentre i giri sono in corso.
   bool _moving = false;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: widget.period);
+    _rest = AnimationController(vsync: this, value: 1);
   }
 
   @override
@@ -71,6 +76,7 @@ class _PackLogGradientBorderState extends State<PackLogGradientBorder>
     if (oldWidget.loops != widget.loops || oldWidget.period != widget.period) {
       _controller.stop();
       _moving = false;
+      _rest.value = 1;
       _sync();
     }
   }
@@ -85,22 +91,28 @@ class _PackLogGradientBorderState extends State<PackLogGradientBorder>
         _controller.stop();
         _moving = false;
       }
+      // Niente da animare: a riposo subito, senza dissolvenza.
+      _rest.value = 1;
       return;
     }
     if (_moving) return;
     _moving = true;
+    _rest.value = 0;
     final run = widget.loops < 0
         ? _controller.repeat()
         : _controller.repeat(count: widget.loops);
     // `orCancel` si arrabbia se il controller viene fermato: qui non serve.
     run.whenComplete(() {
-      if (mounted) setState(() => _moving = false);
+      if (!mounted || !_moving) return;
+      _moving = false;
+      _rest.animateTo(1, duration: AppMotion.slow, curve: AppMotion.standard);
     });
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _rest.dispose();
     super.dispose();
   }
 
@@ -112,7 +124,7 @@ class _PackLogGradientBorderState extends State<PackLogGradientBorder>
         phase: _controller,
         radius: widget.radius,
         width: widget.width,
-        opacity: _moving ? 1 : AppOpacity.restingGradientBorder,
+        rest: _rest,
       ),
       child: widget.child,
     );
@@ -124,13 +136,15 @@ class _GradientBorderPainter extends CustomPainter {
     required this.phase,
     required this.radius,
     required this.width,
-    required this.opacity,
-  }) : super(repaint: phase);
+    required this.rest,
+  }) : super(repaint: Listenable.merge([phase, rest]));
 
   final Animation<double> phase;
   final double radius;
   final double width;
-  final double opacity;
+
+  /// 0 = piena opacità, 1 = a riposo ([AppOpacity.restingGradientBorder]).
+  final Animation<double> rest;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -142,6 +156,7 @@ class _GradientBorderPainter extends CustomPainter {
     final dy = size.height * _kBorderSlant;
     final start = Offset(dx * t, dy * t);
     final end = Offset(dx * (t + 1), dy * (t + 1));
+    final opacity = 1 - (1 - AppOpacity.restingGradientBorder) * rest.value;
     final colors = [
       for (final c in [...kPackLogGradientColors, kPackLogGradientColors.first])
         c.withValues(alpha: opacity),
@@ -166,7 +181,7 @@ class _GradientBorderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GradientBorderPainter old) =>
-      old.radius != radius || old.width != width || old.opacity != opacity;
+      old.radius != radius || old.width != width;
 }
 
 /// La scintilla di PackLog: una stella a quattro punte piena, col gradiente.

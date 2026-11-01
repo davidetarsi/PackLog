@@ -64,9 +64,9 @@ class _FreshWeather extends TripWeatherNotifier {
   Future<bool> refresh() async => false;
 }
 
-TripWeather _meteo(WeatherSource source) => TripWeather(
+TripWeather _meteo(WeatherSource source, {DateTime? fetchedAt}) => TripWeather(
   signature: 's',
-  fetchedAt: DateTime.now(),
+  fetchedAt: fetchedAt ?? DateTime.now(),
   stops: [
     StopWeather(
       name: 'Seul',
@@ -86,8 +86,13 @@ class _ReadyWeather extends TripWeatherNotifier {
   final WeatherSource source;
 
   @override
-  Future<TripWeatherState> build(String tripId) async =>
-      TripWeatherReady(_meteo(source));
+  Future<TripWeatherState> build(String tripId) async => TripWeatherReady(
+    // Preso un'ora fa: è la copia in cache.
+    _meteo(
+      source,
+      fetchedAt: DateTime.now().subtract(const Duration(hours: 1)),
+    ),
+  );
 }
 
 /// Meteo con uno stato fisso.
@@ -320,8 +325,11 @@ void main() {
         expect(border(tester).loops, 0);
       });
 
-      testWidgets('da caricamento a pronto: 2 giri', (tester) async {
-        final reply = Completer<TripWeatherState>();
+      /// Monta la sezione con il meteo che arriva quando si completa [reply].
+      Future<void> pumpSlow(
+        WidgetTester tester,
+        Completer<TripWeatherState> reply,
+      ) async {
         await tester.binding.setSurfaceSize(const Size(400, 800));
         addTearDown(() => tester.binding.setSurfaceSize(null));
         await tester.pumpWidget(
@@ -351,11 +359,41 @@ void main() {
         );
         await tester.pump();
         expect(find.byType(PackLogGradientBorder), findsNothing);
+      }
 
+      testWidgets('da caricamento a pronto con stima nuova: 2 giri', (
+        tester,
+      ) async {
+        final reply = Completer<TripWeatherState>();
+        await pumpSlow(tester, reply);
+
+        // Presa dopo l'apertura della pagina.
         reply.complete(TripWeatherReady(_meteo(WeatherSource.climate)));
         await tester.pump();
         await tester.pump();
         expect(border(tester).loops, 2);
+        expect(find.text('Stima'), findsOneWidget);
+      });
+
+      testWidgets('da caricamento a pronto con una copia vecchia: fermo', (
+        tester,
+      ) async {
+        final reply = Completer<TripWeatherState>();
+        await pumpSlow(tester, reply);
+
+        // La prima lettura passa dal caricamento, ma il meteo è quello in
+        // cache, preso prima che la pagina si aprisse.
+        reply.complete(
+          TripWeatherReady(
+            _meteo(
+              WeatherSource.climate,
+              fetchedAt: DateTime.now().subtract(const Duration(hours: 2)),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+        expect(border(tester).loops, 0);
         expect(find.text('Stima'), findsOneWidget);
       });
     });

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/shared/theme/app_motion.dart';
 import 'package:pack_log/shared/widgets/packlog_gradient.dart';
 
 Widget _app(Widget child, {bool disableAnimations = false}) => MaterialApp(
@@ -40,6 +41,11 @@ void main() {
       expect(tester.binding.transientCallbackCount, greaterThan(0));
 
       await tester.pump(_period);
+      // Finiti i giri il bordo sfuma piano verso l'opacità di riposo...
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(tester.binding.transientCallbackCount, greaterThan(0));
+      // ...e finita la dissolvenza non resta nessun ticker.
+      await tester.pump(AppMotion.slow);
       await tester.pump(const Duration(milliseconds: 50));
       expect(tester.binding.transientCallbackCount, 0);
       // Dopo i giri il bordo resta lì, colorato e fermo.
