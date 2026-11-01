@@ -522,9 +522,10 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       }
     });
 
-    // La prima valigia è fatta: il passo "Dove vai?" è chiuso (già chiuso dal
-    // salvataggio del passo 1; qui per chi ci arriva da un'altra strada) e i
-    // tip di casa e viaggio non partono, ha già fatto ciò che spiegano.
+    // La prima valigia è fatta: il passo "Dove vai?" si chiude (già chiuso dal
+    // salvataggio del passo 1; qui per chi ci arriva da un'altra strada).
+    // `completeFirstTrip` agisce solo dal passo `firstTrip`: da `done` o da un
+    // passo del tour non scrive nulla e il tour continua.
     if (saved) {
       await ref.read(postLoginOnboardingProvider.notifier).completeFirstTrip();
       if (!mounted) return;
@@ -546,8 +547,8 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     }
   }
 
-  /// `first_suitcase_generated`: una volta sola per account, alla prima
-  /// valigia con i posti salvata. La retention a 1 e 7 giorni si legge in
+  /// `first_suitcase_generated`: una volta sola per dispositivo (flag in
+  /// SharedPreferences, non per account), alla prima valigia con i posti salvata. La retention a 1 e 7 giorni si legge in
   /// Amplitude partendo da questo evento.
   Future<void> _logFirstSuitcase(AiPackingResult result, int tripItems) async {
     final analytics = ref.read(analyticsServiceProvider);

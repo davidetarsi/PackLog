@@ -103,6 +103,9 @@ Map<String, dynamic> packTripBody({
   return {
     'house_id': houseId,
     'lang': language == 'it' ? 'it' : 'en',
+    // Questa app mostra i posti: con la casa vuota la valigia è fatta di soli
+    // posti. Senza, la funzione risponde 422 "Wardrobe is empty" (build vecchie).
+    'posti': true,
     'trip': trip,
   };
 }

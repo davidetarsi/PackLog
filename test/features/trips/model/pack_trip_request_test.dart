@@ -84,6 +84,7 @@ void main() {
       );
       expect(body['house_id'], 'h1');
       expect(body['lang'], 'it');
+      expect(body['posti'], isTrue);
       final trip = body['trip'] as Map<String, dynamic>;
       expect(trip.containsKey('tappe'), isFalse);
       expect(trip['data_inizio'], '2026-10-30');

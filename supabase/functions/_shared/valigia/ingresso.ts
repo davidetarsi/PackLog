@@ -12,6 +12,13 @@ export const GIORNI_MAX_SENZA_LAVATRICE = 5;
 
 export class IngressoNonValido extends Error {}
 
+/** L'armadio vuoto e' ammesso solo per l'app che chiede i posti (`posti: true`):
+ * le versioni vecchie ignorano i posti e ricevono ancora il 422 "Wardrobe is empty",
+ * senza consumare un credito AI. */
+export function armadioVuotoAmmesso(body: Record<string, unknown>): boolean {
+  return body.posti === true;
+}
+
 const no = (m: string): never => { throw new IngressoNonValido(m); };
 
 function testo(x: unknown, campo: string, obbligatorio = false): string | null {
