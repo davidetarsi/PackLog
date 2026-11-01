@@ -205,6 +205,42 @@ interface Grezzo {
   /** Il capo e la qualifica da cui nasce il nome. */
   capo: Capo;
   qualifica: Qualifica | null;
+  /** Da dove nasce: un mancante del generatore, un capo con meno copie, un essenziale di base. */
+  origine: "gap" | "pezzi" | "famiglia";
+  /** Solo per i mancanti: il gap chiede un capo elegante (soloElegante). */
+  elegante?: boolean;
+}
+
+/** Un posto solo per le giacche e per le scarpe del meteo (Outerwear, Shoes): "Sneakers invernali",
+ *  "Scarpe invernali" e "Stivali invernali" sono lo stesso bisogno, avere scarpe per il freddo.
+ *  Sono del meteo i mancanti importanti che non sono d'attivita' ne' eleganti; per ogni categoria
+ *  diventano uno solo (tipo = la categoria, nome qualificato dal freddo o, senno', dall'acqua),
+ *  e i mancanti utili della stessa categoria spariscono. I pezzi in meno non si toccano. */
+function unisciIlMeteo(grezzi: Grezzo[]): Grezzo[] {
+  const delMeteo = (p: Grezzo) => p.origine === "gap" && !p.elegante && !(p.capo.sub && DA_ATTIVITA.has(p.capo.sub)) &&
+    (p.capo.categoria === "Outerwear" || p.capo.categoria === "Shoes");
+  // Il posto unito di ogni categoria nasce dal primo importante; il freddo di uno qualunque lo qualifica.
+  const uno = new Map<string, Grezzo>();
+  for (const p of grezzi) {
+    if (!delMeteo(p) || p.livello !== "importante") continue;
+    const gia = uno.get(p.capo.categoria);
+    if (!gia) {
+      uno.set(p.capo.categoria, { ...p, tipo: p.capo.categoria, copie: 1, capo: { sub: null, categoria: p.capo.categoria } });
+    } else if (p.qualifica === "freddo") {
+      gia.qualifica = "freddo";
+    }
+  }
+  const messi = new Set<string>();
+  const risultato: Grezzo[] = [];
+  for (const p of grezzi) {
+    const unito = delMeteo(p) ? uno.get(p.capo.categoria) : undefined;
+    if (!unito) { risultato.push(p); continue; } // non e' del meteo, o non c'e' un posto del meteo: resta com'e'
+    if (p.livello === "importante" && !messi.has(p.capo.categoria)) {
+      messi.add(p.capo.categoria);
+      risultato.push(unito); // al posto del primo; gli altri (importanti e utili) spariscono
+    }
+  }
+  return risultato;
 }
 
 /** I posti della valigia: i mancanti, i pezzi che l'armadio non ha in numero, gli essenziali
@@ -242,7 +278,7 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
       tipo, categoria: "vestiti", livello: livelloPosto(g, capo, viaggioFreddo),
       copie: copieDelMancante(g, sub, richiesti.find((r) => r.slot === g.slot), q),
       motivo: copyMancante(g, viaggioFreddo, attivita, lingua).perche,
-      capo, qualifica: qualificaDelGap(g, capo, viaggioFreddo),
+      capo, qualifica: qualificaDelGap(g, capo, viaggioFreddo), origine: "gap", elegante: soloElegante(g),
     });
   }
 
@@ -258,7 +294,7 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     const famiglia = famigliaDi(radici.get(id));
     if (famiglia) {
       grezzi.push({ tipo: famiglia.tipo, categoria: famiglia.categoria, livello: "utile", copie: manca, motivo,
-        capo: { sub: null, categoria: famiglia.tipo }, qualifica: null });
+        capo: { sub: null, categoria: famiglia.tipo }, qualifica: null, origine: "pezzi" });
       continue;
     }
     const g = perId.get(id);
@@ -268,7 +304,7 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     const capo = { sub, categoria: g.category };
     // Un pezzo solo in meno non e' mai importante.
     grezzi.push({ tipo: sub ?? g.category, categoria: "vestiti", livello: manca > 1 ? livelloPosto({}, capo, freddo) : "utile",
-      copie: manca, motivo, capo, qualifica: null });
+      copie: manca, motivo, capo, qualifica: null, origine: "pezzi" });
   }
 
   // 3. Essenziali di base assenti: le copie che avrebbe un utente con quell'oggetto.
@@ -278,12 +314,13 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     const [e] = essenzialiPerViaggio(caricaArmadio([{ id: `posto:${f.tipo}`, name: f.nome }]), q.giorni,
       q.lavatriceEssenziali, q.tempMaxEssenziali);
     grezzi.push({ tipo: f.tipo, categoria: f.categoria, livello: "utile", copie: Math.max(1, e?.quantita ?? 1),
-      motivo: null, capo: { sub: null, categoria: f.tipo }, qualifica: null });
+      motivo: null, capo: { sub: null, categoria: f.tipo }, qualifica: null, origine: "famiglia" });
   }
 
-  // 4. Uniti per tipo: copie sommate, importante se lo e' almeno uno, motivo e nome di quello.
+  // 4. Giacche e scarpe del meteo: un posto solo per categoria.
+  // 5. Uniti per tipo: copie sommate, importante se lo e' almeno uno, motivo e nome di quello.
   const uniti = new Map<string, Grezzo>();
-  for (const p of grezzi) {
+  for (const p of unisciIlMeteo(grezzi)) {
     const gia = uniti.get(p.tipo);
     if (!gia) { uniti.set(p.tipo, { ...p }); continue; }
     gia.copie += p.copie;
@@ -292,7 +329,7 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     }
   }
 
-  // 5. Prima gli importanti; dentro, l'ordine di nascita (sort e' stabile).
+  // 6. Prima gli importanti; dentro, l'ordine di nascita (sort e' stabile).
   const posti = [...uniti.values()]
     .sort((a, b) => Number(b.livello === "importante") - Number(a.livello === "importante"))
     .map((p, i): PostoApp => {

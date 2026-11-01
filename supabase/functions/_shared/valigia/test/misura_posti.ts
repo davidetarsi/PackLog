@@ -149,4 +149,13 @@ for (const [ins, l] of [...perInsieme].sort((a, b) => a[0].localeCompare(b[0])))
   const molti = l.filter((m) => m.importanti > 8);
   console.log(`- ${ins}: ${molti.length} su ${l.length}${molti.length ? ": " + molti.map((m) => `${m.id.split("/").slice(1).join("/")} (${m.importanti})`).join(", ") : ""}`);
 }
+{
+  const tutte = [...perInsieme.values()].flat();
+  const massimo = Math.max(9, ...tutte.map((m) => m.importanti));
+  const colonne = Array.from({ length: massimo + 1 }, (_, i) => i);
+  console.log(`\n### Quanti importanti per valigia (tutte le ${tutte.length})\n`);
+  console.log(`| importanti | ${colonne.join(" | ")} |`);
+  console.log(`|---|${colonne.map(() => "---").join("|")}|`);
+  console.log(`| armadio ${modo} | ${colonne.map((n) => tutte.filter((m) => m.importanti === n).length).join(" | ")} |`);
+}
 process.exitCode = errori ? 1 : 0;
