@@ -303,6 +303,8 @@
     },
     "weather": {
       "title": "Meteo",
+      "estimate": "Stima",
+      "forecast_label": "Previsione",
       "loading": "Cerco il meteo…",
       "temps": "{}° / {}°",
       "rain_days": {"zero": "niente pioggia", "one": "{} giorno di pioggia", "other": "{} giorni di pioggia"},

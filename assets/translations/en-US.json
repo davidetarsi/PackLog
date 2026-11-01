@@ -303,6 +303,8 @@
     },
     "weather": {
       "title": "Weather",
+      "estimate": "Estimate",
+      "forecast_label": "Forecast",
       "loading": "Getting the weather…",
       "temps": "{}° / {}°",
       "rain_days": {"zero": "no rain", "one": "{} rainy day", "other": "{} rainy days"},

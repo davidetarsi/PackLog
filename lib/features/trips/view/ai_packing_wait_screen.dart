@@ -6,8 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/theme/app_spacing.dart';
+import '../../../shared/theme/surface_colors.dart';
 import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_text_button.dart';
+import '../../../shared/widgets/packlog_gradient.dart';
+import '../../../shared/constants/app_constants.dart';
 import '../../profile/providers/gpt_usage_provider.dart';
 import '../model/ai_packing.dart';
 import '../services/pack_trip_service.dart';
@@ -202,11 +205,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.auto_awesome_outlined,
-                size: context.iconSizeXl,
-                color: colorScheme.onSurfaceVariant,
-              ),
+              PackLogSparkle(size: context.iconSizeXl, breathing: true),
               SizedBox(height: context.spacingLg),
               Text(
                 'trips.ai.wait.title'.tr(),
@@ -220,17 +219,39 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
                 ),
               ),
               SizedBox(height: context.spacingLg),
-              for (var i = 0; i < steps.length; i++) ...[
-                if (i > 0) SizedBox(height: context.spacingMd),
-                _WaitStep(
-                  label: steps[i],
-                  state: i < _step
-                      ? _StepState.done
-                      : i == _step
-                      ? _StepState.current
-                      : _StepState.pending,
+              SizedBox(
+                width: double.infinity,
+                child: PackLogGradientBorder(
+                  radius: AppConstants.cardBorderRadius,
+                  loops: -1,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: context.groupSurface,
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.cardBorderRadius,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(context.spacingMd),
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < steps.length; i++) ...[
+                            if (i > 0) SizedBox(height: context.spacingMd),
+                            _WaitStep(
+                              label: steps[i],
+                              state: i < _step
+                                  ? _StepState.done
+                                  : i == _step
+                                  ? _StepState.current
+                                  : _StepState.pending,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ],
+              ),
               SizedBox(height: context.spacingLg),
               Text(
                 'trips.ai.wait.hint'.tr(),
