@@ -273,7 +273,16 @@ void main() {
 
   /// Apre la pagina valigia: dalla pagina "trips" (tocco su "apri"), oppure
   /// direttamente con `?ai=1` se [direct].
-  Future<void> pumpPack(WidgetTester tester, {bool direct = false}) async {
+  ///
+  /// Con [fromNew] la pagina è il passo 2 di "Nuovo viaggio"; con [fromDetail]
+  /// si parte dal dettaglio del viaggio, che apre la pagina con "apri". Il
+  /// dettaglio finto mostra "Dettaglio viaggio".
+  Future<void> pumpPack(
+    WidgetTester tester, {
+    bool direct = false,
+    bool fromNew = false,
+    bool fromDetail = false,
+  }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -282,10 +291,17 @@ void main() {
     PackSuitcaseScreen packPage(GoRouterState state) => PackSuitcaseScreen(
       tripId: state.pathParameters['id']!,
       startAi: state.uri.queryParameters['ai'] == '1',
+      fromNewTrip: state.uri.queryParameters['from'] == 'new',
     );
 
     final router = GoRouter(
-      initialLocation: direct ? '/trips/trip-1/edit-items?ai=1' : '/trips',
+      initialLocation: fromNew
+          ? '/trips/trip-1/edit-items?from=new&ai=1'
+          : fromDetail
+          ? '/trips/trip-1'
+          : direct
+          ? '/trips/trip-1/edit-items?ai=1'
+          : '/trips',
       routes: [
         GoRoute(
           path: '/trips',
@@ -295,6 +311,20 @@ void main() {
                 onPressed: () => context.push('/trips/trip-1/edit-items'),
                 child: const Text('apri'),
               ),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/trips/:id',
+          builder: (context, state) => Scaffold(
+            body: Column(
+              children: [
+                const Text('Dettaglio viaggio'),
+                ElevatedButton(
+                  onPressed: () => context.push('/trips/trip-1/edit-items'),
+                  child: const Text('apri'),
+                ),
+              ],
             ),
           ),
         ),
@@ -356,7 +386,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    if (!direct) {
+    if (!direct && !fromNew) {
       await tester.tap(find.text('apri'));
       await tester.pumpAndSettle();
     }
@@ -892,6 +922,126 @@ void main() {
         expect(saved['i-maglietta'], 3);
         expect(saved['i-boxer'], 4);
         expect(saved['i-calzino'], 1);
+      },
+    );
+  });
+
+  group('valigia AI: dopo la generazione si arriva alla valigia', () {
+    AiSlot slot(String id, String type, {bool toBuy = false}) => AiSlot(
+      id: id,
+      type: type,
+      category: ItemCategory.vestiti,
+      level: AiSlotLevel.important,
+      name: type,
+      copies: 1,
+      remaining: 1,
+      addLabel: 'Aggiungi',
+      toBuy: toBuy,
+    );
+
+    AiPackingResult withSlots(List<AiSlot> slots) => AiPackingResult(
+      generatedAt: DateTime(2026, 10, 24),
+      houseId: 'h1',
+      proposal: _suitcaseProposal,
+      slots: slots,
+    );
+
+    testWidgets(
+      'dal nuovo viaggio, con i posti, si arriva al dettaglio e il viaggio ha i posti',
+      (tester) async {
+        aiOutcome = withSlots([slot('s1', 'giacca')]);
+        arrange(trip: _viaggio(), items: _houseItems);
+        await pumpPack(tester, fromNew: true);
+
+        await tapInSheet(tester, 'Prepara la valigia');
+        await tapText(tester, 'Risultato');
+
+        expect(find.text('Dettaglio viaggio'), findsOneWidget);
+        expect(find.byType(PackSuitcaseScreen), findsNothing);
+        expect(find.text('Uscire senza salvare?'), findsNothing);
+        final slots = savedTrip().aiResult?.slots;
+        expect(slots, hasLength(1));
+        expect(slots?.single.type, 'giacca');
+      },
+    );
+
+    testWidgets(
+      'rigenerando da "Modifica valigia" si torna al dettaglio e il "da comprare" resta',
+      (tester) async {
+        aiOutcome = withSlots([slot('n1', 'giacca'), slot('n2', 'sciarpa')]);
+        arrange(
+          trip: _viaggio(
+            items: _suitcaseItems,
+            aiResult: withSlots([slot('s1', 'giacca', toBuy: true)]),
+          ),
+          items: _houseItems,
+        );
+        await pumpPack(tester, fromDetail: true);
+        expect(find.text('Dettaglio viaggio'), findsNothing);
+
+        await tapKey(tester, const Key('pack_ai_suitcase'));
+        await tapText(tester, 'Sostituisci');
+        await tapInSheet(tester, 'Prepara la valigia');
+        await tapText(tester, 'Risultato');
+
+        expect(find.text('Dettaglio viaggio'), findsOneWidget);
+        expect(find.byType(PackSuitcaseScreen), findsNothing);
+        final slots = savedTrip().aiResult!.slots!;
+        expect(slots.firstWhere((s) => s.type == 'giacca').toBuy, isTrue);
+        expect(slots.firstWhere((s) => s.type == 'sciarpa').toBuy, isFalse);
+      },
+    );
+
+    testWidgets('se il salvataggio fallisce la pagina resta', (tester) async {
+      aiOutcome = withSlots([slot('s1', 'giacca')]);
+      arrange(trip: _viaggio(), items: _houseItems);
+      await pumpPack(tester, fromNew: true);
+      await tapInSheet(tester, 'Prepara la valigia');
+
+      when(() => tripRepo.updateTrip(any())).thenThrow(Exception('offline'));
+      await tapText(tester, 'Risultato');
+      await tapText(tester, 'Annulla');
+
+      expect(find.text('Dettaglio viaggio'), findsNothing);
+      expect(find.byType(PackSuitcaseScreen), findsOneWidget);
+    });
+
+    testWidgets('senza posti la pagina resta, come prima', (tester) async {
+      aiOutcome = AiPackingResult(
+        generatedAt: DateTime(2026, 10, 24),
+        houseId: 'h1',
+        proposal: _suitcaseProposal,
+      );
+      arrange(trip: _viaggio(), items: _houseItems);
+      await pumpPack(tester, fromNew: true);
+      await tapInSheet(tester, 'Prepara la valigia');
+      await tapText(tester, 'Risultato');
+
+      expect(find.text('Dettaglio viaggio'), findsNothing);
+      expect(find.byType(PackSuitcaseScreen), findsOneWidget);
+      expect(find.text('Fatto · 4 oggetti'), findsOneWidget);
+    });
+
+    testWidgets(
+      'con i posti "Modifica valigia" non mostra "Cosa manca a questo viaggio"',
+      (tester) async {
+        arrange(
+          trip: _viaggio(
+            items: _suitcaseItems,
+            aiResult: withSlots([slot('s1', 'giacca')]).copyWith(
+              warnings: [_avvisoBoxer],
+              reasons: const [
+                AiReasonPoint(code: 'freddo', title: 'Fa freddo'),
+              ],
+            ),
+          ),
+          items: _houseItems,
+        );
+        await pumpPack(tester);
+
+        expect(find.text('Cosa manca a questo viaggio'), findsNothing);
+        expect(find.text('Ti servono più pezzi di boxer'), findsNothing);
+        expect(find.text('Perché queste scelte'), findsOneWidget);
       },
     );
   });

@@ -454,14 +454,18 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   /// La proposta diventa la valigia: oggetti e bagaglio, e si salva subito con
   /// le risposte. Un oggetto non più in casa viene saltato. Se gli oggetti
   /// della casa non si leggono, la proposta si salva lo stesso, con i capi e i
-  /// bagagli com'erano.
+  /// bagagli com'erano. Il "da comprare" dei posti passa ai posti dello stesso
+  /// tipo della valigia precedente. Con i posti e il salvataggio riuscito la
+  /// pagina si lascia e si vede la valigia: il dettaglio del viaggio (dal
+  /// nuovo viaggio lo sostituisce, altrimenti ci si torna indietro).
   Future<void> _adoptResult(
-    AiPackingResult result, {
+    AiPackingResult proposal, {
     required AiPackingSetup setup,
     LuggageModel? luggage,
   }) async {
     final trip = _currentTrip();
     if (trip == null) return;
+    final result = carryToBuy(trip.aiResult, proposal);
 
     Map<String, TripItem>? proposed;
     try {
@@ -506,6 +510,16 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         _initialAiResult = result;
       }
     });
+
+    // Niente snack in più: la valigia si vede già. Le modifiche sono salvate
+    // e `_initial*` è allineato, quindi l'uscita non chiede conferma.
+    if (saved && result.hasSlots) {
+      if (widget.fromNewTrip) {
+        context.pushReplacement('/trips/${trip.id}');
+      } else {
+        context.pop();
+      }
+    }
   }
 
   /// I capi della proposta, con nome e categoria dell'oggetto di casa. Un
@@ -673,7 +687,8 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
               if (_aiResult case final result?) ...[
                 SizedBox(height: context.spacingMd),
                 AiPackRows(
-                  warnings: result.warnings,
+                  // Con i posti "cosa manca" sta nel dettaglio: qui restano i motivi.
+                  warnings: result.hasSlots ? const [] : result.warnings,
                   readIds: result.dismissedWarnings.toSet(),
                   reasons: result.reasons,
                   onSearch: _searchFrom,
