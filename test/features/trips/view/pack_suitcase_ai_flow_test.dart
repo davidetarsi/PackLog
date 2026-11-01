@@ -735,12 +735,22 @@ void main() {
       );
     });
 
+    testWidgets('senza motivi la riga "Perché queste scelte" non c\'è', (
+      tester,
+    ) async {
+      arrange(trip: _viaggioAi(), items: _houseItems);
+      await pumpPack(tester);
+
+      expect(find.byKey(const Key('pack_row_missing')), findsOneWidget);
+      expect(find.byKey(const Key('pack_row_reasons')), findsNothing);
+      expect(find.text('Perché queste scelte'), findsNothing);
+    });
+
     testWidgets('senza avvisi la riga dice "Non manca niente"', (tester) async {
       arrange(trip: _viaggioAi(), items: _houseItems);
       await pumpPack(tester);
 
       expect(find.text('Non manca niente'), findsOneWidget);
-      expect(find.text('Perché queste scelte'), findsOneWidget);
     });
   });
 
