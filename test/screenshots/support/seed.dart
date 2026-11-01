@@ -25,6 +25,9 @@ const kSavedTripId = 'trip-matrimonio';
 const kPastTripId = 'trip-barcellona';
 const kEmptyTripId = 'trip-vuoto';
 
+/// Viaggio a Seoul con la valigia a posti (`seedValigiaPosti`).
+const kSeoulTripId = 'trip-seoul';
+
 /// Metadati di "Maglione di lana", nel formato salvato in `items.ai_metadata`.
 const kMaglioneAiMetadata =
     '{"name":"Maglione di lana","category":"Upper Body",'
@@ -82,6 +85,7 @@ const _coords = {
   'Sintra': (38.7980, -9.3900),
   'Firenze': (43.7696, 11.2558),
   'Barcellona': (41.3874, 2.1686),
+  'Seoul': (37.5665, 126.9780),
 };
 
 LocationSuggestionModel _place(String name, {String? country}) =>
@@ -515,6 +519,119 @@ Future<void> seedValigiaAi(ProviderContainer c) async {
       aiSetup: const AiPackingSetup(houseId: kHomeId, luggageId: 'lug-cabina'),
       aiResult: result,
       updatedAt: DateTime(2026, 10, 20, 18, 30),
+    ),
+  );
+}
+
+/// Valigia a posti di un armadio quasi vuoto, come la salva l'app dopo
+/// `pack-trip`: quattro oggetti dell'utente, quattro posti importanti da
+/// riempire, uno importante da comprare, sette proposti da PackLog e la
+/// nota sulla lavanderia. Solo lo scenario "valigia con posti" la chiede.
+Future<void> seedValigiaPosti(ProviderContainer c) async {
+  final trips = c.read(tripRepositoryProvider);
+  final stamp = DateTime(2026, 10, 20, 18, 30);
+
+  // Oggetti dell'utente: Power bank, Cuffie, Spazzolino, Dentifricio.
+  const ownIndexes = [12, 13, 7, 8];
+  final own = [
+    for (final index in ownIndexes)
+      TripItem(
+        id: 'item-$index',
+        name: _homeItemDefs[index].$1,
+        category: _homeItemDefs[index].$2,
+        quantity: _homeItemDefs[index].$3,
+        originHouseId: kHomeId,
+      ),
+  ];
+
+  AiSlot slot(
+    String type,
+    String name,
+    AiSlotLevel level, {
+    int copies = 1,
+    String? reason,
+    String addLabel = 'Aggiungi il tuo',
+    bool toBuy = false,
+  }) => AiSlot(
+    id: 'slot-$type',
+    type: type,
+    category: ItemCategory.vestiti,
+    level: level,
+    name: name,
+    copies: copies,
+    remaining: copies,
+    reason: reason,
+    addLabel: addLabel,
+    toBuy: toBuy,
+  );
+
+  const important = AiSlotLevel.important;
+  const useful = AiSlotLevel.useful;
+  final slots = [
+    slot(
+      'giacca_invernale',
+      'Giacca invernale',
+      important,
+      reason: 'Fino a -7°: nell\'armadio non c\'è una giacca adatta.',
+      addLabel: 'Aggiungi la tua',
+    ),
+    slot(
+      'scarpe_invernali',
+      'Scarpe invernali',
+      important,
+      reason: 'Con neve e ghiaccio servono scarpe che tengono caldo.',
+      addLabel: 'Aggiungi le tue',
+    ),
+    slot(
+      'cappello_caldo',
+      'Cappello caldo',
+      important,
+      reason: 'Con queste minime la testa scoperta si sente.',
+    ),
+    slot(
+      'guanti',
+      'Guanti',
+      important,
+      reason: 'Sotto zero quasi ogni mattina.',
+      addLabel: 'Aggiungi i tuoi',
+    ),
+    slot('sciarpa_calda', 'Sciarpa calda', important, toBuy: true),
+    slot('maglioni_caldi', 'Maglioni caldi', useful, copies: 3),
+    slot('strato_termico', 'Strato termico', useful, copies: 2),
+    slot('magliette', 'Magliette', useful, copies: 7),
+    slot('pantaloni_caldi', 'Pantaloni caldi', useful, copies: 3),
+    slot('calzini', 'Calzini', useful, copies: 7),
+    slot('mutande', 'Mutande', useful, copies: 7),
+    slot('pigiama', 'Pigiama', useful),
+  ];
+
+  final seoul = _place('Seoul', country: 'Corea del Sud');
+  await trips.addTrip(
+    TripModel(
+      id: kSeoulTripId,
+      name: 'Seoul',
+      departureDateTime: _day(30),
+      returnDateTime: _day(61),
+      destinationLocation: seoul,
+      items: own,
+      luggages: const [],
+      aiSetup: const AiPackingSetup(houseId: kHomeId),
+      aiResult: AiPackingResult(
+        generatedAt: stamp,
+        houseId: kHomeId,
+        slots: slots,
+        notes: const [
+          AiTripNote(
+            code: 'lavanderia',
+            title: 'Prevedi una lavanderia',
+            why:
+                'Il viaggio dura 31 notti: con una lavatrice ogni settimana '
+                'basta portare meno capi.',
+          ),
+        ],
+      ),
+      createdAt: stamp,
+      updatedAt: stamp,
     ),
   );
 }

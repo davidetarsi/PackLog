@@ -1779,6 +1779,48 @@ final flows = <Flow>[
         await app.tap(find.text('Casa al mare').last);
       },
     ),
+    Scenario(
+      19,
+      'dettaglio-viaggio',
+      'valigia-con-posti',
+      route: '/trips/:id',
+      source: _tripDetailSrc,
+      description:
+          'Valigia a posti con l\'armadio quasi vuoto (Seoul): le quattro cose '
+          'importanti da sistemare, la sciarpa da comprare, i capi proposti '
+          'da PackLog e la nota sulla lavanderia.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) => _tripDetail(app, kSeoulTripId),
+    ),
+    Scenario(
+      20,
+      'dettaglio-viaggio',
+      'valigia-con-posti-in-basso',
+      route: '/trips/:id',
+      source: _tripDetailSrc,
+      description:
+          'Stessa valigia a posti, scorsa fino ai capi proposti da PackLog: '
+          'le copie e il tocco per mettere i propri.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1500),
+        );
+        await app.settle();
+      },
+    ),
   ]),
 
   Flow('10-profilo', 'Tab Profilo: impostazioni e account', [
