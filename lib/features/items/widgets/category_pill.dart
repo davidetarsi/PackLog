@@ -31,8 +31,12 @@ class CategoryPill extends StatelessWidget {
 
     switch (pillState) {
       case CategoryPillState.inactive:
-        // In chiaro il bianco delle card, staccato dalla pagina grigia.
-        backgroundColor = Theme.of(context).brightness == Brightness.light
+        // In chiaro il bianco delle card, staccato dalla pagina grigia. In
+        // scuro sulla pagina è un fondo più scuro; in un foglio, più chiaro
+        // del foglio, come i campi accanto.
+        backgroundColor =
+            Theme.of(context).brightness == Brightness.light ||
+                context.isInSheet
             ? context.groupSurface
             : colorScheme.surfaceContainerLow;
         foregroundColor = colorScheme.onSurfaceVariant;

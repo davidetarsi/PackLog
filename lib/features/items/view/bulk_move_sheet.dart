@@ -9,7 +9,6 @@ import '../../spaces/providers/space_provider.dart';
 import '../../../shared/constants/house_icons.dart';
 import '../../../shared/constants/space_icons.dart';
 import '../../../shared/helpers/design_system.dart';
-import '../../../shared/widgets/ds_empty_state.dart';
 import '../../../shared/widgets/ds_form_sheet.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_settings.dart';

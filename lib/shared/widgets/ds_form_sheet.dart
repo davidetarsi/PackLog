@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_spacing.dart';
 import '../theme/cta_reserved_space.dart';
+import '../theme/surface_colors.dart';
 import 'ds_button.dart';
 import 'ds_glass_band.dart';
 import 'ds_sheet_header.dart';
@@ -109,27 +110,30 @@ class DsFormSheet extends StatelessWidget {
 
     final frame = Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        // Superficie 1, staccata dalla pagina: dentro, card e campi sono la 2.
+        color: context.raisedSurface,
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(AppConstants.modalBorderRadius),
         ),
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AbsorbPointer(
-              absorbing: isBusy,
-              child: DsSheetHeader(
-                title: title,
-                actions: actions,
-                onClose: () => Navigator.pop(context),
+      child: SheetSurfaceScope(
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AbsorbPointer(
+                absorbing: isBusy,
+                child: DsSheetHeader(
+                  title: title,
+                  actions: actions,
+                  onClose: () => Navigator.pop(context),
+                ),
               ),
-            ),
-            body,
-          ],
+              body,
+            ],
+          ),
         ),
       ),
     );

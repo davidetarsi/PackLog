@@ -10,6 +10,7 @@ import '../constants/house_icons.dart';
 import '../theme/app_opacity.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/surface_colors.dart';
 import 'ds_form_sheet.dart';
 import 'ds_group_header.dart';
 import 'ds_picker_sheet.dart';
@@ -222,7 +223,7 @@ class _AiCard extends StatelessWidget {
     final background = enabled
         ? Color.alphaBlend(
             colorScheme.primary.withValues(alpha: AppOpacity.selected),
-            colorScheme.surface,
+            context.groupSurface,
           )
         : colorScheme.onSurface.withValues(alpha: AppOpacity.pressed);
     // Testi neutri come nel resto del foglio; l'arancio resta all'icona.
