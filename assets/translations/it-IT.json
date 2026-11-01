@@ -91,7 +91,8 @@
       "other": "Sposta {} oggetti"
     },
     "add_to_trip_success": "{} oggetti aggiunti a {}",
-    "rapid_fire_hint": "Aggiungi oggetto...",
+    "rapid_fire_hint": "Es. 2 t-shirt nere",
+    "copies_tip": "Il numero all'inizio sono le copie. Tocca ×{} per toglierlo.",
     "already_here": "Già in casa",
     "added_now": "Aggiunti ora",
     "name_label": "Nome",
