@@ -26,6 +26,7 @@ import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_parts.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
+import 'widgets/slots/slot_rapid_fire_bar.dart';
 import 'widgets/slots/slot_widgets.dart';
 
 enum _TripMenu { edit, duplicate, save, delete }
@@ -45,7 +46,11 @@ enum _TripMenu { edit, duplicate, save, delete }
 class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
 
-  const TripDetailScreen({super.key, required this.tripId});
+  /// Il posto da riempire all'apertura (`/trips/:id?slot=<id>`). Un id
+  /// sconosciuto o di un posto già chiuso si ignora in silenzio.
+  final String? initialSlotId;
+
+  const TripDetailScreen({super.key, required this.tripId, this.initialSlotId});
 
   @override
   ConsumerState<TripDetailScreen> createState() => _TripDetailScreenState();
@@ -54,37 +59,147 @@ class TripDetailScreen extends ConsumerStatefulWidget {
 class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   String get tripId => widget.tripId;
 
+  /// Il posto che la barra Rapid Fire sta riempiendo; `null` = barra chiusa.
+  /// La barra si vede solo finché il posto è ancora aperto.
+  String? _openSlotId;
+
+  /// Il posto chiesto dal percorso, in attesa che viaggio e case siano
+  /// caricati per aprire la barra.
+  String? _pendingSlotId;
+
+  @override
+  void initState() {
+    super.initState();
+    _pendingSlotId = widget.initialSlotId;
+  }
+
+  @override
+  void didUpdateWidget(TripDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final slotId = widget.initialSlotId;
+    if (slotId != null && slotId != oldWidget.initialSlotId) {
+      _pendingSlotId = slotId;
+    }
+  }
+
+  /// Il posto con la barra aperta, se esiste ancora ed è aperto.
+  AiSlot? _barSlot(TripModel trip) {
+    final id = _openSlotId;
+    if (id == null) return null;
+    return trip.aiResult?.slots
+        ?.where((s) => s.id == id && s.isOpen)
+        .firstOrNull;
+  }
+
   /// Apre la barra per riempire [slot] con uno dei propri oggetti: la toccano
   /// la riga di un proposto, l'aggiunta sulla card di un importante e
-  /// "Presa" su un "da comprare". Per ora non fa nulla: la barra Rapid Fire
-  /// la aggiunge il Task 8, qui.
-  void _openSlot(AiSlot slot) {}
+  /// "Presa" su un "da comprare". Se la casa di partenza non c'è più la barra
+  /// non si apre e uno snack lo dice.
+  void _openSlot(AiSlot slot) {
+    final trips = ref.read(tripNotifierProvider).valueOrNull;
+    final houseId = trips
+        ?.where((t) => t.id == tripId)
+        .firstOrNull
+        ?.aiResult
+        ?.houseId;
+    final houses = ref.read(houseNotifierProvider).valueOrNull;
+    if (houseId == null ||
+        houses == null ||
+        !houses.any((h) => h.id == houseId)) {
+      AppSnackBar.showInfo(context, 'trips.slots.no_house'.tr());
+      return;
+    }
+    setState(() => _openSlotId = slot.id);
+  }
+
+  void _closeBar() {
+    if (_openSlotId != null) setState(() => _openSlotId = null);
+  }
+
+  /// Se il percorso chiedeva un posto, lo apre appena viaggio e case sono
+  /// caricati: una sola volta, dopo il frame.
+  void _resolvePendingSlot(TripModel trip) {
+    final id = _pendingSlotId;
+    if (id == null) return;
+    if (!ref.watch(houseNotifierProvider).hasValue) return;
+    _pendingSlotId = null;
+    final slot = trip.aiResult?.slots
+        ?.where((s) => s.id == id && s.isOpen)
+        .firstOrNull;
+    if (slot == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _openSlot(slot);
+    });
+  }
+
+  /// L'oggetto appena creato dalla barra entra in valigia e scala il posto.
+  /// Se il salvataggio non va lo dice (l'oggetto resta nella casa).
+  Future<void> _fillSlot(AiSlot slot, ItemModel item) async {
+    final notifier = ref.read(tripNotifierProvider.notifier);
+    try {
+      await notifier.fillAiSlot(
+        tripId,
+        slot.id,
+        TripItem(
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          quantity: item.quantity ?? 1,
+          originHouseId: item.houseId,
+        ),
+      );
+    } catch (_) {
+      if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
+    }
+  }
+
+  /// "Da comprare" sulla barra: segna il posto e chiude la barra.
+  void _barToBuy(AiSlot slot) {
+    _closeBar();
+    unawaited(_markToBuy(slot));
+  }
 
   /// "Da comprare" sulla card di un importante: la card diventa una riga
   /// "da comprare"; Annulla la riporta.
   Future<void> _markToBuy(AiSlot slot) async {
-    final saved = await _updateSlot(slot, (s) => s.copyWith(toBuy: true));
+    // Il notifier si legge ora: Annulla può arrivare quando la pagina non c'è
+    // più, e allora `ref` non si può usare.
+    final notifier = ref.read(tripNotifierProvider.notifier);
+    final saved = await _updateSlot(
+      notifier,
+      slot,
+      (s) => s.copyWith(toBuy: true),
+    );
     if (!saved || !mounted) return;
     AppSnackBar.showUndo(
       context,
       'trips.slots.marked_to_buy'.tr(),
-      onUndo: () =>
-          unawaited(_updateSlot(slot, (s) => s.copyWith(toBuy: false))),
+      onUndo: () => unawaited(
+        _updateSlot(notifier, slot, (s) => s.copyWith(toBuy: false)),
+      ),
     );
   }
 
   /// La casella di un proposto, quando non si sta più sistemando.
   void _toggleSlot(AiSlot slot) {
-    unawaited(_updateSlot(slot, (s) => s.copyWith(checked: !s.checked)));
+    unawaited(
+      _updateSlot(
+        ref.read(tripNotifierProvider.notifier),
+        slot,
+        (s) => s.copyWith(checked: !s.checked),
+      ),
+    );
   }
 
-  /// Cambia il posto e salva; se il salvataggio non va lo dice e torna
-  /// `false` (il posto è già tornato com'era).
-  Future<bool> _updateSlot(AiSlot slot, AiSlot Function(AiSlot) change) async {
+  /// Cambia il posto e salva; se il salvataggio non va lo dice (se la pagina
+  /// c'è ancora) e torna `false` (il posto è già tornato com'era).
+  Future<bool> _updateSlot(
+    TripNotifier notifier,
+    AiSlot slot,
+    AiSlot Function(AiSlot) change,
+  ) async {
     try {
-      await ref
-          .read(tripNotifierProvider.notifier)
-          .updateAiSlot(tripId, slot.id, change);
+      await notifier.updateAiSlot(tripId, slot.id, change);
       return true;
     } catch (_) {
       if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
@@ -100,8 +215,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       data: (trips) {
         final trip = trips.where((t) => t.id == tripId).firstOrNull;
         if (trip == null) return _notFound(context);
+        _resolvePendingSlot(trip);
         return _TripDetail(
           trip: trip,
+          barSlot: _barSlot(trip),
+          onFillSlot: _fillSlot,
+          onCloseBar: _closeBar,
+          onBarToBuy: _barToBuy,
           slotActions: _SlotActions(
             open: _openSlot,
             markToBuy: _markToBuy,
@@ -151,7 +271,21 @@ class _TripDetail extends ConsumerWidget {
   final TripModel trip;
   final _SlotActions slotActions;
 
-  const _TripDetail({required this.trip, required this.slotActions});
+  /// Il posto che la barra Rapid Fire sta riempiendo; `null` = barra chiusa e
+  /// al suo posto "Modifica valigia".
+  final AiSlot? barSlot;
+  final void Function(AiSlot slot, ItemModel item) onFillSlot;
+  final VoidCallback onCloseBar;
+  final ValueChanged<AiSlot> onBarToBuy;
+
+  const _TripDetail({
+    required this.trip,
+    required this.slotActions,
+    required this.barSlot,
+    required this.onFillSlot,
+    required this.onCloseBar,
+    required this.onBarToBuy,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -161,6 +295,7 @@ class _TripDetail extends ConsumerWidget {
         .firstOrNull;
     // Con i posti la valigia c'è anche senza oggetti propri.
     final hasItems = !SuitcaseProgress.of(trip).isEmpty;
+    final bar = barSlot;
 
     return StickyCtaScaffold(
       appBar: AppBar(
@@ -199,15 +334,30 @@ class _TripDetail extends ConsumerWidget {
           ),
         ],
       ),
-      bottomContent: DsButton(
-        key: const Key('trip_detail_cta'),
-        label: hasItems
-            ? 'trips.detail.edit_suitcase'.tr()
-            : 'trips.pack.title'.tr(),
-        icon: hasItems ? Icons.edit_outlined : Icons.luggage_outlined,
-        expand: true,
-        onPressed: () => context.push('/trips/${trip.id}/edit-items'),
-      ),
+      // Mentre si riempie un posto la barra Rapid Fire prende il posto del
+      // bottone.
+      bottomContent: bar != null
+          ? SlotRapidFireBar(
+              slot: bar,
+              houseId: trip.aiResult!.houseId,
+              onItemCreated: (item) => onFillSlot(bar, item),
+              onClose: onCloseBar,
+              onToBuy: bar.toBuy ? null : () => onBarToBuy(bar),
+            )
+          : DsButton(
+              key: const Key('trip_detail_cta'),
+              label: hasItems
+                  ? 'trips.detail.edit_suitcase'.tr()
+                  : 'trips.pack.title'.tr(),
+              icon: hasItems ? Icons.edit_outlined : Icons.luggage_outlined,
+              expand: true,
+              onPressed: () => context.push('/trips/${trip.id}/edit-items'),
+            ),
+      ctaHeightOverride: bar == null
+          ? null
+          : StickyCtaScaffold.standardHeight(context) +
+                kMinInteractiveDimension +
+                context.spacingXs,
       body: Builder(
         builder: (context) => ListView(
           padding: EdgeInsets.fromLTRB(

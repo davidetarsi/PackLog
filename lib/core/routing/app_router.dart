@@ -231,7 +231,11 @@ GoRouter appRouter(Ref ref) {
           if (id == null || id.isEmpty) {
             return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
-          return TripDetailScreen(tripId: id);
+          // `?slot=<id>` apre la barra per riempire quel posto della valigia.
+          return TripDetailScreen(
+            tripId: id,
+            initialSlotId: state.uri.queryParameters['slot'],
+          );
         },
       ),
       GoRoute(

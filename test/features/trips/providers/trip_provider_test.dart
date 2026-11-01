@@ -870,4 +870,144 @@ void main() {
       verifyNever(() => mockRepository.updateTrip(any()));
     });
   });
+
+  group('TripNotifier - fillAiSlot', () {
+    AiSlot slot({int remaining = 3}) => AiSlot(
+      id: 's-magliette',
+      type: 'magliette',
+      category: ItemCategory.vestiti,
+      level: AiSlotLevel.useful,
+      name: 'Magliette',
+      copies: 5,
+      remaining: remaining,
+      addLabel: 'Aggiungi le tue',
+    );
+
+    TripModel tripWith({List<TripItem> items = const [], int remaining = 3}) =>
+        TripModel(
+          id: 't1',
+          name: 'Seul',
+          items: items,
+          luggages: const [],
+          aiResult: AiPackingResult(
+            generatedAt: DateTime(2026, 11),
+            houseId: 'h1',
+            slots: [slot(remaining: remaining)],
+          ),
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        );
+
+    TripItem item(String id, int quantity) => TripItem(
+      id: id,
+      name: 'T-shirt nera',
+      category: ItemCategory.vestiti,
+      quantity: quantity,
+      originHouseId: 'h1',
+    );
+
+    Future<void> load(TripModel trip) async {
+      when(() => mockRepository.getAllTrips()).thenAnswer((_) async => [trip]);
+      await container.read(tripNotifierProvider.future);
+    }
+
+    TripModel current() => container.read(tripNotifierProvider).value!.single;
+
+    test('una sola scrittura: oggetto fra gli items e posto scalato', () async {
+      await load(tripWith());
+      final saving = Completer<void>();
+      when(
+        () => mockRepository.updateTrip(any()),
+      ).thenAnswer((_) => saving.future);
+
+      final done = container
+          .read(tripNotifierProvider.notifier)
+          .fillAiSlot('t1', 's-magliette', item('i1', 2));
+
+      // Prima che il salvataggio finisca lo stato è già cambiato.
+      expect(current().items.single.quantity, 2);
+      expect(current().aiResult!.slots!.single.remaining, 1);
+
+      saving.complete();
+      await done;
+
+      final saved =
+          verify(() => mockRepository.updateTrip(captureAny())).captured.single
+              as TripModel;
+      expect(saved.items.single.id, 'i1');
+      expect(saved.aiResult!.slots!.single.remaining, 1);
+      verify(() => mockRepository.getAllTrips()).called(1);
+    });
+
+    test('più copie di quelle rimaste: il posto si ferma a zero', () async {
+      await load(tripWith());
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await container
+          .read(tripNotifierProvider.notifier)
+          .fillAiSlot('t1', 's-magliette', item('i1', 5));
+
+      expect(current().aiResult!.slots!.single.remaining, 0);
+      expect(current().items.single.quantity, 5);
+    });
+
+    test('lo stesso id si somma alle quantità già in valigia', () async {
+      await load(tripWith(items: [item('i1', 2)]));
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await container
+          .read(tripNotifierProvider.notifier)
+          .fillAiSlot('t1', 's-magliette', item('i1', 1));
+
+      expect(current().items, hasLength(1));
+      expect(current().items.single.quantity, 3);
+      expect(current().aiResult!.slots!.single.remaining, 2);
+    });
+
+    test('se il salvataggio fallisce torna lo stato di prima', () async {
+      await load(tripWith());
+      final failure = Exception('save failed');
+      when(() => mockRepository.updateTrip(any())).thenThrow(failure);
+
+      await expectLater(
+        container
+            .read(tripNotifierProvider.notifier)
+            .fillAiSlot('t1', 's-magliette', item('i1', 2)),
+        throwsA(equals(failure)),
+      );
+
+      expect(current().items, isEmpty);
+      expect(current().aiResult!.slots!.single.remaining, 3);
+    });
+
+    test('posto, viaggio o risultato sconosciuti: nessuna scrittura', () async {
+      await load(tripWith());
+      final notifier = container.read(tripNotifierProvider.notifier);
+
+      await notifier.fillAiSlot('t1', 'non-esiste', item('i1', 2));
+      await notifier.fillAiSlot('altro-viaggio', 's-magliette', item('i1', 2));
+
+      expect(current().items, isEmpty);
+      expect(current().aiResult!.slots!.single.remaining, 3);
+      verifyNever(() => mockRepository.updateTrip(any()));
+    });
+
+    test('risultato senza posti: nessuna scrittura', () async {
+      await load(
+        tripWith().copyWith(
+          aiResult: AiPackingResult(
+            generatedAt: DateTime(2026, 11),
+            houseId: 'h1',
+          ),
+        ),
+      );
+
+      await container
+          .read(tripNotifierProvider.notifier)
+          .fillAiSlot('t1', 's-magliette', item('i1', 2));
+
+      expect(current().items, isEmpty);
+      verifyNever(() => mockRepository.updateTrip(any()));
+    });
+  });
 }

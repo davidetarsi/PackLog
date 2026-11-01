@@ -256,7 +256,10 @@
       "to_buy": "Da comprare",
       "got_it": "Presa",
       "proposed_header": "Proposti da PackLog · tocca per mettere i tuoi",
-      "marked_to_buy": "Segnato da comprare"
+      "marked_to_buy": "Segnato da comprare",
+      "context_chip": "{} · {} da personalizzare",
+      "no_house": "La casa di partenza non c'è più",
+      "rapid_fire_hint": "Es. 2 t-shirt nere"
     },
     "pack": {
       "title": "Prepara la valigia",

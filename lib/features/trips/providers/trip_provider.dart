@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -189,6 +190,62 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       await _repo.updateTrip(updatedTrip);
     } catch (_) {
       // Torna il viaggio di prima; gli altri restano come sono adesso.
+      final List<TripModel>? current = state.valueOrNull;
+      if (current != null) {
+        state = AsyncData([for (final t in current) t.id == tripId ? trip : t]);
+      }
+      rethrow;
+    }
+    ref.read(syncOrchestratorProvider).requestSync();
+  }
+
+  /// Riempie il posto [slotId] con [item]: l'oggetto entra fra gli `items`
+  /// del viaggio (se c'è già lo stesso id, le quantità si sommano) e le copie
+  /// rimaste del posto scendono di `item.quantity`, mai sotto zero.
+  ///
+  /// Una sola scrittura per tutte e due le cose, con lo stesso schema di
+  /// [updateAiSlot]: lo stato cambia subito; se il salvataggio fallisce torna
+  /// quello di prima e l'errore sale al chiamante. Viaggio, risultato senza
+  /// posti o posto sconosciuto: nessuna scrittura.
+  Future<void> fillAiSlot(String tripId, String slotId, TripItem item) async {
+    final List<TripModel>? trips = state.valueOrNull;
+    if (trips == null) return;
+
+    final int tripIndex = trips.indexWhere((t) => t.id == tripId);
+    if (tripIndex == -1) return;
+
+    final TripModel trip = trips[tripIndex];
+    final AiPackingResult? result = trip.aiResult;
+    if (result == null ||
+        !(result.slots?.any((s) => s.id == slotId) ?? false)) {
+      return;
+    }
+
+    final bool alreadyThere = trip.items.any((i) => i.id == item.id);
+    final List<TripItem> items = alreadyThere
+        ? [
+            for (final i in trip.items)
+              i.id == item.id
+                  ? i.copyWith(quantity: i.quantity + item.quantity)
+                  : i,
+          ]
+        : [...trip.items, item];
+
+    final TripModel updatedTrip = trip.copyWith(
+      items: items,
+      aiResult: result.withSlot(
+        slotId,
+        (s) => s.copyWith(remaining: max(0, s.remaining - item.quantity)),
+      ),
+      updatedAt: DateTime.now(),
+    );
+    final List<TripModel> newTrips = [...trips];
+    newTrips[tripIndex] = updatedTrip;
+    state = AsyncData(newTrips);
+
+    try {
+      await _repo.updateTrip(updatedTrip);
+    } catch (_) {
       final List<TripModel>? current = state.valueOrNull;
       if (current != null) {
         state = AsyncData([for (final t in current) t.id == tripId ? trip : t]);
