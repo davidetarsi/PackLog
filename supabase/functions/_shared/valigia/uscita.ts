@@ -29,7 +29,7 @@ export interface AvvisoApp {
 // Copy fisso (italiano, niente testo libero dal generatore): ogni frase nasce solo
 // dai campi strutturati del gap (category, subCategories, tipo, tappe, warmth_richiesto,
 // impermeabilita_richiesta, candidato_scartato, da_valutare). Mai la parola "capospalla", mai numeri.
-const NOME_SOTTOCATEGORIA: Record<string, string> = {
+export const NOME_SOTTOCATEGORIA: Record<string, string> = {
   "T-Shirt": "una maglietta", "Shirt": "una camicia", "Polo": "una polo", "Hoodie": "una felpa con cappuccio",
   "Sweatshirt": "una felpa", "Sweater": "un maglione", "Tank Top": "una canottiera", "Crop Top": "un top",
   "Thermal Top": "una maglia termica", "Fleece": "un pile", "Jeans": "un paio di jeans",
@@ -47,7 +47,7 @@ const NOME_SOTTOCATEGORIA: Record<string, string> = {
   "Jewelry": "un gioiello", "Watch": "un orologio", "Gloves": "un paio di guanti", "Tie": "una cravatta",
   "Umbrella": "un ombrello",
 };
-const NOME_CATEGORIA: Record<string, string> = {
+export const NOME_CATEGORIA: Record<string, string> = {
   "Upper Body": "una maglia", "Lower Body": "un paio di pantaloni", "Full Body": "un vestito",
   "Shoes": "un paio di scarpe", "Outerwear": "una giacca", "Accessory": "un accessorio",
 };
@@ -124,14 +124,14 @@ const ELEGANTI = ["Blazer", "Dress Shoes", "Trousers", "Shirt"];
 const COL_FREDDO = ["Sweater", "Down Jacket", "Boots"];
 
 /** Solo eleganza: Business o Formal, niente di casual. */
-function soloElegante(g: Record_): boolean {
+export function soloElegante(g: Record_): boolean {
   const f: unknown[] = Array.isArray(g.formality) ? g.formality : [];
   return f.some((x) => x === "Business" || x === "Formal") && !f.some((x) => x === "Casual" || x === "Loungewear");
 }
 
 /** Il capo del gap. Una sottocategoria: quella. Due o tre: la piu' generica. Piu' di tre: la
  *  categoria ("un paio di scarpe" e non "un paio di stivali" per cinque tipi di scarpe). */
-function capoDelGap(g: Record_, freddo = false): { nome: string; sub: string | null; categoria: string } {
+export function capoDelGap(g: Record_, freddo = false): { nome: string; sub: string | null; categoria: string } {
   const categoria = String(g.category ?? "");
   const subs = (Array.isArray(g.subCategories) ? g.subCategories : [])
     .filter((s: unknown): s is string => typeof s === "string" && NOME_SOTTOCATEGORIA[s] !== undefined);
@@ -187,7 +187,7 @@ function calore(g: Record_): [number, number] | null {
 
 /** Il gap chiede freddo o pioggia per un capo che li riguarda. viaggioFreddo: minime del
  *  viaggio (o delle sue tappe) basse, per i mancanti che non dicono il calore. */
-function meteoDelGap(g: Record_, capo: { sub: string | null; categoria: string }, viaggioFreddo = false) {
+export function meteoDelGap(g: Record_, capo: { sub: string | null; categoria: string }, viaggioFreddo = false) {
   const pioggiaSensata = capo.sub ? CONTRO_LA_PIOGGIA.has(capo.sub) : CATEGORIE_CONTRO_LA_PIOGGIA.has(capo.categoria);
   const freddoSensato = !(capo.sub && MAI_PER_IL_FREDDO.has(capo.sub));
   const acqua = capo.sub === "Umbrella" || (pioggiaSensata &&
@@ -236,7 +236,7 @@ function adattoA(g: Record_, capo: { sub: string | null; categoria: string }, vi
 }
 
 /** Le attivita' delle tappe del mancante (tutte, se non le dice), o quelle del viaggio. */
-function attivitaPer(g: Record_, viaggio: Record_ | null | undefined): string[] {
+export function attivitaPer(g: Record_, viaggio: Record_ | null | undefined): string[] {
   if (!viaggio) return [];
   const tappe: Record_[] = Array.isArray(viaggio.tappe) ? viaggio.tappe : [];
   const nomi = new Set((Array.isArray(g.tappe) ? g.tappe : []).map(String));
@@ -334,7 +334,7 @@ function copyMancanteEn(g: Record_, viaggioFreddo: boolean, attivita: string[]):
 export const MINIMA_FREDDA = 10;
 
 /** Il viaggio e' freddo nelle tappe del gap (tutte, se il gap non le dice): la minima piu' bassa. */
-function freddoPer(g: Record_, meteo: Record_ | null | undefined): boolean {
+export function freddoPer(g: Record_, meteo: Record_ | null | undefined): boolean {
   if (!meteo) return false;
   const perTappa: Record_[] = Array.isArray(meteo._per_tappa) ? meteo._per_tappa : [];
   const tappe = new Set((Array.isArray(g.tappe) ? g.tappe : []).map(String));
@@ -345,7 +345,7 @@ function freddoPer(g: Record_, meteo: Record_ | null | undefined): boolean {
 }
 
 /** Togli dal gap gonna, vestito e cravatta se l'armadio non ne ha: null se non resta niente. */
-function perQuestoArmadio(g: Record_, armadio: Set<string> | null): Record_ | null {
+export function perQuestoArmadio(g: Record_, armadio: Set<string> | null): Record_ | null {
   if (!armadio || !Array.isArray(g.subCategories) || !g.subCategories.length) return g;
   const subs = g.subCategories.filter((s: unknown) => !SOLO_SE_NELL_ARMADIO.has(String(s)) || armadio.has(String(s)));
   return subs.length ? { ...g, subCategories: subs } : null;
