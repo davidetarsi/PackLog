@@ -18,6 +18,7 @@ AiSlot _slot(
   int remaining = 1,
   bool toBuy = false,
   bool checked = false,
+  bool removed = false,
 }) => AiSlot(
   id: id,
   type: id,
@@ -29,6 +30,7 @@ AiSlot _slot(
   addLabel: 'x',
   toBuy: toBuy,
   checked: checked,
+  removed: removed,
 );
 
 TripModel _trip({
@@ -71,6 +73,30 @@ void main() {
       expect(progress.ready, 13);
       expect(progress.readyTotal, 18);
       expect(progress.isEmpty, isFalse);
+    });
+
+    test('proposte da comprare e posti tolti non entrano nei conteggi', () {
+      final progress = SuitcaseProgress.of(
+        _trip(
+          items: [for (var i = 0; i < 4; i++) _item(i)],
+          slots: [
+            for (var i = 0; i < 9; i++)
+              _slot('u$i', AiSlotLevel.useful, toBuy: i < 2),
+            _slot('ur', AiSlotLevel.useful, removed: true),
+            for (var i = 0; i < 5; i++)
+              _slot(
+                'm$i',
+                AiSlotLevel.important,
+                toBuy: i == 0,
+                removed: i == 1,
+              ),
+          ],
+        ),
+      );
+
+      expect(progress.proposed, 7);
+      expect(progress.importantOpen, 4);
+      expect(progress.readyTotal, 15);
     });
 
     test('9 oggetti (4 spuntati), 2 utili aperti (1 spuntato): in valigia', () {

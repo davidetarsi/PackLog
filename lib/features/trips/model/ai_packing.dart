@@ -133,9 +133,15 @@ class AiSlot with _$AiSlot {
     required String addLabel,
     @Default(false) bool toBuy,
     @Default(false) bool checked,
+
+    /// Tolto dall'utente: il posto non conta più, ma resta nel risultato.
+    @Default(false) bool removed,
   }) = _AiSlot;
 
-  bool get isOpen => remaining > 0;
+  bool get isOpen => remaining > 0 && !removed;
+
+  /// Posto aperto che sta in valigia: una proposta da comprare no.
+  bool get inSuitcase => isOpen && !(level == AiSlotLevel.useful && toBuy);
 
   factory AiSlot.fromJson(Map<String, dynamic> json) => _$AiSlotFromJson(json);
 }

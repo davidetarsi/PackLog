@@ -155,6 +155,7 @@ void main() {
       int? remaining,
       bool toBuy = false,
       bool checked = false,
+      bool removed = false,
     }) => AiSlot(
       id: id,
       type: type,
@@ -166,6 +167,7 @@ void main() {
       addLabel: 'Aggiungi $type',
       toBuy: toBuy,
       checked: checked,
+      removed: removed,
     );
 
     AiPackingResult result(List<AiSlot>? slots) => AiPackingResult(
@@ -177,6 +179,25 @@ void main() {
     test('isOpen vale finché resta almeno una copia', () {
       expect(slot('a', 'Scarf', copies: 2, remaining: 1).isOpen, isTrue);
       expect(slot('a', 'Scarf', copies: 2, remaining: 0).isOpen, isFalse);
+    });
+
+    test('un posto tolto non è aperto', () {
+      expect(slot('a', 'Scarf', removed: true).isOpen, isFalse);
+      expect(slot('a', 'Scarf', removed: true).inSuitcase, isFalse);
+    });
+
+    test('inSuitcase: una proposta da comprare no, un importante sì', () {
+      expect(slot('a', 'Scarf', toBuy: true).inSuitcase, isFalse);
+      expect(slot('a', 'Scarf').inSuitcase, isTrue);
+      expect(
+        slot(
+          'a',
+          'Scarf',
+          level: AiSlotLevel.important,
+          toBuy: true,
+        ).inSuitcase,
+        isTrue,
+      );
     });
 
     test('senza posti: slots null, hasSlots falso, notes vuote', () {
