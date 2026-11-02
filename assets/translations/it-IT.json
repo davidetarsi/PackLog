@@ -759,6 +759,11 @@
     "error_too_many_attempts": "Troppi codici provati: si può riprovare domani.",
     "error_generic": "Non siamo riusciti ad attivare il codice. Riprova."
   },
+  "kits": {
+    "strip_title": "Kit · cose che partono insieme",
+    "strip_add": "Kit",
+    "more_uses": "+{}"
+  },
   "clothing": {
     "details": {
       "title": "Dettagli",

@@ -388,6 +388,9 @@ class ScreenshotApp {
     _restoreErrorHandler();
     await tester.pumpWidget(const SizedBox.shrink());
     container.dispose();
+    // Gli stream di Drift (i kit) si staccano con un timer nella zona del
+    // test: senza un frame `db.close` aspetterebbe per sempre.
+    await tester.pump(const Duration(seconds: 1));
     await tester.runAsync(db.close);
     await tester.pump();
     debugDisableShadows = true;

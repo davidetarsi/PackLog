@@ -759,6 +759,11 @@
     "error_too_many_attempts": "Too many codes tried. Try again tomorrow.",
     "error_generic": "We couldn't activate the code. Please try again."
   },
+  "kits": {
+    "strip_title": "Kits · things that go together",
+    "strip_add": "Kit",
+    "more_uses": "+{}"
+  },
   "clothing": {
     "details": {
       "title": "Details",

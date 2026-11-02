@@ -27,6 +27,7 @@ import '../../trips/providers/trip_items_status_provider.dart';
 import '../../trips/model/trip_model.dart';
 import '../../trips/providers/trip_provider.dart';
 import '../../trips/view/trip_picker_sheet.dart';
+import '../../kits/view/widgets/kit_strip.dart';
 import '../../spaces/model/space_model.dart';
 import '../../spaces/providers/space_provider.dart';
 import 'house_manage_sheet.dart';
@@ -576,6 +577,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                         loading: () => const SizedBox.shrink(),
                         error: (_, _) => const SizedBox.shrink(),
                       ),
+                      // ── Riga 2: kit (non durante selezione e ricerca) ──────
+                      if (!isSelectionMode && _search == null)
+                        KitStrip(houseId: widget.houseId),
                       // ── Contenuto ───────────────────────────────────────────
                       Expanded(
                         child: ItemsScreen(
