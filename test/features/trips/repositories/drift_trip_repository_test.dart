@@ -882,8 +882,8 @@ void main() {
           luggageId: 'l1',
           stops: {
             'stop-1': const AiStopAnswers(
-              activities: [AiActivity.city, AiActivity.sea],
-              stay: AiStay.hotel,
+              activities: ['city', 'sea'],
+              stay: 'hotel',
               washer: true,
             ),
           },

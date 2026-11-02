@@ -1,8 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/core/catalog/catalog.dart';
+import 'package:pack_log/core/catalog/catalog_store.dart';
 import 'package:pack_log/features/ai_input/model/clothing_analysis_result.dart';
 import 'package:pack_log/features/items/model/clothing_details.dart';
+
+import '../../../helpers/catalogo_di_prova.dart';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -21,6 +25,9 @@ ClothingAnalysisResult _maglione() => ClothingAnalysisResult(
 );
 
 void main() {
+  setUp(() => caricaCatalogoDelRepo());
+  tearDown(() => CatalogStore.set(Catalog.vuoto));
+
   group('ClothingDetails.of', () {
     test('legge i dettagli dal risultato', () {
       final d = ClothingDetails.of(_maglione());
@@ -96,6 +103,17 @@ void main() {
       ).copyWith(clearColor: true).applyTo(before);
       expect(after.baseColor, 'N/A');
     });
+
+    test(
+      'un uso che il catalogo non conosce si conserva, dopo quelli del catalogo',
+      () {
+        final before = _maglione();
+        final after = const ClothingDetails(
+          uses: {'Party', 'Hiking', 'Ballo'},
+        ).applyTo(before);
+        expect(after.activityTags, ['Hiking', 'Party', 'Ballo']);
+      },
+    );
 
     test('activityTags in ordine canonico, solo quelli in uses', () {
       final before = _maglione();

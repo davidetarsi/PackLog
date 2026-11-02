@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/core/catalog/catalog.dart';
+import 'package:pack_log/core/catalog/catalog_store.dart';
 import 'package:pack_log/features/items/model/clothing_details.dart';
 import 'package:pack_log/features/items/model/clothing_labels.dart';
 import 'package:pack_log/features/items/providers/user_colors_provider.dart';
@@ -13,7 +15,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
+import '../../../helpers/catalogo_di_prova.dart';
+
 void main() {
+  setUp(() => caricaCatalogoDelRepo());
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
@@ -147,6 +152,36 @@ void main() {
     final salvia = labels.indexOf('Verde salvia');
     expect(salvia, greaterThan(labels.indexOf(colorLabel('Beige'))));
   });
+
+  testWidgets(
+    'un colore disattivato non compare fra quelli dell\'utente, ma il capo che ce l\'ha lo mostra',
+    (tester) async {
+      CatalogStore.set(catalogoConVoceDisattivata('color', 'Bordeaux'));
+
+      // Un capo di un altro colore: Bordeaux non si propone.
+      await pump(
+        tester,
+        value: details,
+        onChanged: (_) {},
+        userColors: const ['Bordeaux'],
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is DsChoicePill && w.label == colorLabel('Bordeaux'),
+        ),
+        findsNothing,
+      );
+
+      // Il capo che è Bordeaux lo mostra, selezionato.
+      await pump(
+        tester,
+        value: details.copyWith(color: 'Bordeaux'),
+        onChanged: (_) {},
+        userColors: const ['Bordeaux'],
+      );
+      expect(pill(tester, colorLabel('Bordeaux')).selected, isTrue);
+    },
+  );
 
   testWidgets('"+ Altro colore" aggiunge il colore scritto e lo seleziona', (
     tester,
@@ -342,4 +377,45 @@ void main() {
       },
     );
   });
+
+  testWidgets(
+    'un uso nuovo è una pillola; uno disattivato compare solo se il capo lo usa',
+    (tester) async {
+      // Il catalogo cambia: si aggiunge un uso "Festa" e si disattiva "Lounge".
+      final json = catalogoDelRepo().toJson();
+      final voci = (json['entries'] as List).cast<Map<String, dynamic>>();
+      voci.add({
+        'domain': 'use',
+        'id': 'Party',
+        'sort': 90,
+        'active': true,
+        'label': {'it': 'Festa', 'en': 'Party'},
+        'data': {'prompt': 'x', 'promptOrder': 8},
+      });
+      for (final v in voci) {
+        if (v['domain'] == 'use' && v['id'] == 'Lounge') v['active'] = false;
+      }
+      CatalogStore.set(Catalog.fromJson(json));
+      final etichettaLounge = catalogoDelRepo().find('use', 'Lounge')!.labelIt;
+      bool pillola(String etichetta) => find
+          .byWidgetPredicate((w) => w is DsChoicePill && w.label == etichetta)
+          .evaluate()
+          .isNotEmpty;
+
+      await pump(
+        tester,
+        value: const ClothingDetails(uses: {'Everyday'}),
+        onChanged: (_) {},
+      );
+      expect(pillola('Festa'), isTrue);
+      expect(pillola(etichettaLounge), isFalse);
+
+      await pump(
+        tester,
+        value: const ClothingDetails(uses: {'Lounge'}),
+        onChanged: (_) {},
+      );
+      expect(pill(tester, etichettaLounge).selected, isTrue);
+    },
+  );
 }

@@ -5,67 +5,18 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'ai_packing.freezed.dart';
 part 'ai_packing.g.dart';
 
-/// Attività di una tappa, scelte come pillole. [id] è il valore salvato nel
-/// viaggio; [generatorCodes] è la traduzione verso il generatore, che sta
-/// solo qui. L'ordine dell'enum è l'ordine delle pillole.
-enum AiActivity {
-  city('city', ['visite in citta']),
-  walks('walks', ['escursioni leggere']),
-  trekking('trekking', ['trekking']),
-  cammino('cammino', ['cammino']),
-  highMountain('high_mountain', ['escursioni in quota']),
-  sea('sea', ['mare']),
-  diving('diving', ['immersioni', 'mare']),
-  ski('ski', ['sci']),
-  camping('camping', ['campeggio']),
-  work('work', ['riunioni di lavoro']),
-  formalDinner('formal_dinner', ['cena formale']),
-  wedding('wedding', ['matrimonio']),
-  worship('worship', ['visite a siti religiosi']),
-  nightlife('nightlife', ['vita notturna']),
-  cycling('cycling', ['bicicletta']),
-  spa('spa', ['terme']);
-
-  const AiActivity(this.id, this.generatorCodes);
-
-  /// Id stabile salvato nel viaggio.
-  final String id;
-
-  /// Codici inviati al generatore per questa pillola.
-  final List<String> generatorCodes;
-
-  String get labelKey => 'trips.ai.activity.$id';
-}
-
-/// Alloggio della tappa.
-enum AiStay {
-  hotel('hotel', 'hotel'),
-  apartment('apartment', 'appartamento'),
-  hostel('hostel', 'ostello'),
-  camping('camping', 'campeggio'),
-  friends('friends', 'da amici o parenti');
-
-  const AiStay(this.id, this.generatorText);
-
-  /// Id stabile salvato nel viaggio.
-  final String id;
-
-  /// Testo inviato al generatore.
-  final String generatorText;
-
-  String get labelKey => 'trips.ai.stay.$id';
-}
-
 /// Risposte date per una singola tappa.
 @freezed
 class AiStopAnswers with _$AiStopAnswers {
   const AiStopAnswers._();
 
   const factory AiStopAnswers({
-    @JsonKey(fromJson: _activitiesFromJson, toJson: _activitiesToJson)
-    @Default(<AiActivity>[])
-    List<AiActivity> activities,
-    @JsonKey(fromJson: _stayFromJson, toJson: _stayToJson) AiStay? stay,
+    /// Id delle attività (dominio `activity` del catalogo). Si conservano anche
+    /// quelli che il catalogo non conosce più: il viaggio non perde nulla.
+    @Default(<String>[]) List<String> activities,
+
+    /// Id dell'alloggio (dominio `stay` del catalogo).
+    String? stay,
     @Default(false) bool washer,
   }) = _AiStopAnswers;
 
@@ -187,32 +138,6 @@ class AiPackingResult with _$AiPackingResult {
   factory AiPackingResult.fromJson(Map<String, dynamic> json) =>
       _$AiPackingResultFromJson(json);
 }
-
-/// Attività sconosciute si scartano: una versione futura del generatore non
-/// deve rompere i viaggi salvati.
-List<AiActivity> _activitiesFromJson(List<dynamic>? raw) {
-  if (raw == null) return const [];
-  final known = {
-    for (final activity in AiActivity.values) activity.id: activity,
-  };
-  return [
-    for (final value in raw)
-      if (known[value] != null) known[value]!,
-  ];
-}
-
-List<String> _activitiesToJson(List<AiActivity> activities) =>
-    activities.map((activity) => activity.id).toList();
-
-/// Alloggio sconosciuto diventa null.
-AiStay? _stayFromJson(String? raw) {
-  for (final stay in AiStay.values) {
-    if (stay.id == raw) return stay;
-  }
-  return null;
-}
-
-String? _stayToJson(AiStay? stay) => stay?.id;
 
 /// Avvisi con un livello sconosciuto si scartano prima del parsing.
 const _knownWarningLevels = {'importante', 'utile'};

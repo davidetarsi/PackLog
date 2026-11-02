@@ -72,8 +72,8 @@ void main() {
         setup: AiPackingSetup(
           stops: {
             kMainStopKey: const AiStopAnswers(
-              activities: [AiActivity.diving, AiActivity.sea],
-              stay: AiStay.hotel,
+              activities: ['diving', 'sea'],
+              stay: 'hotel',
               washer: true,
             ),
           },
@@ -94,7 +94,8 @@ void main() {
         'lat': 38.7,
         'lon': -9.1,
       });
-      expect(trip['attivita'], ['immersioni', 'mare']);
+      // Id del catalogo: la funzione li traduce nei testi del generatore.
+      expect(trip['attivita'], ['diving', 'sea']);
       expect(trip['alloggio'], 'hotel');
       expect(trip['lavatrice'], true);
       expect(trip['bagaglio'], 'trolley cabina');
@@ -120,13 +121,13 @@ void main() {
         setup: const AiPackingSetup(
           stops: {
             kMainStopKey: AiStopAnswers(
-              activities: [AiActivity.sea],
-              stay: AiStay.hotel,
+              activities: ['sea'],
+              stay: 'hotel',
               washer: false,
             ),
             'leg1': AiStopAnswers(
-              activities: [AiActivity.city],
-              stay: AiStay.apartment,
+              activities: ['city'],
+              stay: 'apartment',
               washer: true,
             ),
           },
@@ -149,12 +150,12 @@ void main() {
         'lat': 38.7,
         'lon': -9.1,
         'giorni': 3,
-        'attivita': ['mare'],
+        'attivita': ['sea'],
         'alloggio': 'hotel',
         'lavatrice': false,
       });
-      expect(tappe[1]['attivita'], ['visite in citta']);
-      expect(tappe[1]['alloggio'], 'appartamento');
+      expect(tappe[1]['attivita'], ['city']);
+      expect(tappe[1]['alloggio'], 'apartment');
       expect(tappe[1]['lavatrice'], true);
     });
 
@@ -164,10 +165,7 @@ void main() {
         plan: _abaPlan,
         setup: const AiPackingSetup(
           stops: {
-            kMainStopKey: AiStopAnswers(
-              activities: [AiActivity.city],
-              stay: AiStay.hotel,
-            ),
+            kMainStopKey: AiStopAnswers(activities: ['city'], stay: 'hotel'),
           },
         ),
         houseId: 'h1',
@@ -175,7 +173,7 @@ void main() {
       );
       final tappe = (body['trip'] as Map<String, dynamic>)['tappe'] as List;
       expect(tappe.map((t) => (t as Map)['giorni']), [2, 2, 2]);
-      expect(tappe[2]['attivita'], ['visite in citta']);
+      expect(tappe[2]['attivita'], ['city']);
       expect(tappe[2]['alloggio'], 'hotel');
     });
 
@@ -189,12 +187,8 @@ void main() {
         setup: const AiPackingSetup(
           stops: {
             kMainStopKey: AiStopAnswers(
-              activities: [
-                AiActivity.diving,
-                AiActivity.sea,
-                AiActivity.diving,
-              ],
-              stay: AiStay.hotel,
+              activities: ['diving', 'sea', 'diving'],
+              stay: 'hotel',
             ),
           },
         ),
@@ -202,8 +196,30 @@ void main() {
         language: 'it',
       );
       final trip = body['trip'] as Map<String, dynamic>;
-      expect(trip['attivita'], ['immersioni', 'mare']);
+      expect(trip['attivita'], ['diving', 'sea']);
     });
+
+    test(
+      'attività e alloggi come id, anche quelli disattivati nel catalogo',
+      () {
+        final body = packTripBody(
+          plan: _onePlacePlan,
+          setup: const AiPackingSetup(
+            stops: {
+              kMainStopKey: AiStopAnswers(
+                activities: ['city', 'evenings', 'formal_dinner'],
+                stay: 'friends',
+              ),
+            },
+          ),
+          houseId: 'h1',
+          language: 'it',
+        );
+        final trip = body['trip'] as Map<String, dynamic>;
+        expect(trip['attivita'], ['city', 'evenings', 'formal_dinner']);
+        expect(trip['alloggio'], 'friends');
+      },
+    );
   });
 
   group('aiStopsOf', () {

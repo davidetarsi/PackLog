@@ -8,6 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
+import '../../../helpers/catalogo_di_prova.dart';
+import 'package:pack_log/core/catalog/catalog_store.dart';
+
 const _it = Locale('it', 'IT');
 const _en = Locale('en', 'US');
 
@@ -38,6 +41,7 @@ Future<void> _pumpCard(
   VoidCallback? onAlreadyHere,
   Locale locale = _it,
 }) async {
+  CatalogStore.setLanguage(locale.languageCode);
   late BuildContext contesto;
   final controller = TextEditingController(text: item.name);
   addTearDown(controller.dispose);
@@ -80,6 +84,7 @@ Future<void> _pumpCard(
 }
 
 void main() {
+  setUp(() => caricaCatalogoDelRepo());
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();

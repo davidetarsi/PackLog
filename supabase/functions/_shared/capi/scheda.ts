@@ -7,6 +7,7 @@
 // campi che l'utente vede: un campo e' in dubbio se Jev e' sotto SOGLIA_DUBBIO
 // o non e' d'accordo con GPT. Jev non riempie mai: sbaglia piu' di GPT.
 import * as tassonomia from "../valigia/tassonomia.ts";
+import { type Catalogo, CATALOGO_BASE, voci, type VoceCatalogo } from "../catalogo/catalogo.ts";
 import type { Lingua } from "../lingua.ts";
 
 type Record_ = Record<string, any>;
@@ -17,26 +18,21 @@ export const TIPI_NON_CAPO: Record<string, string> = { Toiletries: "toiletries",
 export const PATTERN = ["Solid", "Striped", "Plaid", "Graphic", "Logo", "Floral", "Other"];
 export const COPERTURE = ["Short-sleeve", "Long-sleeve", "Sleeveless", "Shorts", "Full-length", "Cropped", "N/A"];
 export const FIT = ["Skinny", "Regular", "Oversize", "N/A"];
-export const FORMALITA = ["Loungewear", "Casual", "Smart Casual", "Business", "Formal"];
-export const TAG = ["Everyday", "Office", "Beach", "Swimming", "Hiking", "Sport", "Formal", "Lounge"];
+// Stile, usi e colori vengono dal catalogo dei tag (31 ottobre): impostaScheda.
+// Queste liste hanno TUTTI i valori, anche delle voci disattivate, perche' la
+// pulizia deve accettare cio' che e' gia' salvato; il prompt propone solo le
+// voci attive.
+export const FORMALITA: string[] = [];
+export const TAG: string[] = [];
 /** Colori di base (Davide, 28 ottobre): una tavolozza chiusa, perche' l'app li
  *  traduce; i primi sei nell'ordine concordato per le pillole dell'app. Si
  *  salva la parola italiana anche con l'app in inglese. */
-export const COLORI = ["Bianco", "Nero", "Grigio", "Blu", "Marrone", "Beige", "Blu navy", "Azzurro", "Verde", "Rosso",
-  "Bordeaux", "Rosa", "Giallo", "Arancione", "Viola", "Multicolore"];
+export const COLORI: string[] = [];
 /** Altri nomi dello stesso colore (minuscoli), anche in inglese: il modello a
  *  volte non segue la lista, e i capi salvati prima avevano il colore libero. */
-export const SINONIMI_COLORE: Record<string, string> = {
-  "celeste": "Azzurro", "blu scuro": "Blu navy", "blu notte": "Blu navy", "navy": "Blu navy",
-  "crema": "Beige", "panna": "Bianco", "avorio": "Bianco", "cammello": "Beige", "kaki": "Beige",
-  "cachi": "Beige", "tortora": "Beige", "antracite": "Grigio", "fucsia": "Rosa", "lilla": "Viola",
-  "porpora": "Viola", "bordò": "Bordeaux", "denim": "Blu", "multicolor": "Multicolore",
-  "fantasia": "Multicolore", "white": "Bianco", "black": "Nero", "grey": "Grigio", "gray": "Grigio",
-  "brown": "Marrone", "blue": "Blu", "navy blue": "Blu navy", "light blue": "Azzurro", "green": "Verde",
-  "red": "Rosso", "burgundy": "Bordeaux", "pink": "Rosa", "yellow": "Giallo", "orange": "Arancione",
-  "purple": "Viola", "multicolour": "Multicolore", "multicolored": "Multicolore",
-  "multicoloured": "Multicolore",
-};
+export const SINONIMI_COLORE: Record<string, string> = {};
+/** Gli stili da proporre (a Jev e al modello): le voci attive. */
+const FORMALITA_ATTIVE: string[] = [];
 export const NA = "N/A";
 
 export type { Lingua } from "../lingua.ts";
@@ -66,30 +62,15 @@ const RIGHE_CAMPI = `- "baseColor": string ({colore})
   3 = medium: long-sleeve t-shirts and polos, flannel or checked shirts, sweatshirts, hoodies, sweatpants, jeans, chinos, tailored trousers, blazers, cardigans, fleece, thermal tops, softshells, hardshells, trench coats, padded vests, ankle boots
   4 = warm: wool sweaters, wool coats, heavy fleece, light down jackets, leather boots, hiking boots, wool or hiking socks, wool hats, wool gloves, wool scarves, thermal bottoms, ski pants
   5 = very warm: winter down jackets, parkas, chunky mountain sweaters, ski jackets, ski gloves, snow boots)
-- "formality": string (ONE OF:
-  "Loungewear" = for home and sport, not for going out: pajamas, sweatpants, underwear, pool slides, flip-flops, technical or running t-shirts, sport shorts, sport leggings, base layers, sport swimsuits, running shoes, sport accessories
-  "Casual" = everyday: t-shirts, cotton shorts and bermuda, jeans, cargo and trekking trousers, hoodies, sweatshirts, fleece, parkas, sneakers, sandals, swimwear, caps
-  "Smart Casual" = neat but not office: polos, linen shirts, chinos, knit sweaters, cardigans, trench coats, loafers, ankle boots, leather belts, simple watches and jewelry
-  "Business" = office: cotton dress shirts, tailored trousers, blazers, wool coats, brown dress shoes, work bags
-  "Formal" = ceremonies and elegant evenings: shirts sold as elegant, suit jackets and trousers, long black coats, black dress shoes, heels, evening bags, fine jewelry)
-- "activityTags": array of 1-3 strings (ONLY from: ["Everyday", "Office", "Beach", "Swimming", "Hiking", "Sport", "Formal", "Lounge"]): ALL the uses the item is meant for, not only the main one:
-  "Everyday" = worn in town on normal days (NOT for items meant only for the office, elegant evenings, sport, the beach or home)
-  "Office" = fit for an office: polos, chinos, wool sweaters, cotton dress shirts, blazers, tailored trousers, coats and trench coats, loafers, ankle boots, dress shoes, leather belts, watches
-  "Formal" = elegant evenings and ceremonies: cotton or elegant dress shirts, suits, tailored trousers, wool coats, dress shoes, heels, fine jewelry, evening bags
-  "Beach" = seaside and hot holidays: anything in linen, light cotton summer trousers, bermuda, tank tops, short-sleeve summer shirts, summer dresses, sandals, flip-flops, swimwear
-  "Swimming" = worn in the water or at the pool: swimwear, water shoes, pool slides, wetsuits
-  "Hiking" = trekking and mountains: trekking trousers, hiking boots, trail shoes, technical fleece, base layers, windbreakers, rain jackets, light down jackets, wool or trekking socks
-  "Sport" = sport and running: technical t-shirts, running shorts and shoes, sport leggings, base layers, ski clothes
-  "Lounge" = at home: pajamas, sweatpants, hoodies, robes
+{stile}
+{usi}
 - "waterResistance": integer (0 = gets wet in the rain: cotton, linen, wool coats, fleece, normal shoes; 1 = resists light rain: windbreakers, softshells, down jackets, trench coats, padded vests, trekking trousers, trail shoes, leather boots; 2 = waterproof: rain jackets, hardshells, parkas, waterproof trousers, ski clothes, rubber boots, hiking boots, umbrellas)
 - "bulk": integer (1 = folds small: t-shirts, shirts, polos, shorts, skirts, leggings, linen or light trousers, thin packable jackets, underwear, accessories; 2 = medium: jeans, chinos, sweaters, hoodies, fleece, blazers, sneakers, loafers, dress shoes; 3 = bulky: coats, trench coats, winter down jackets, boots, hiking and snow boots, ski clothes)`;
 
-const CATEGORIE_PROMPT = tassonomia.CATEGORIE.map((c) => `"${c}"`).join(", ");
-const COLORI_PROMPT = COLORI.map((c) => `"${c}"`).join(", ");
-
 /** Aggiunta a mano: il prompt provato sulla lista di Davide il 19 ottobre, piu'
  *  il tipo di oggetto quando non e' un vestito. */
-export const PROMPT_NOME = `You are a precise fashion item parser. The user typed the NAME of one item they want to
+export let PROMPT_NOME = "";
+const promptNomeDa = (CATEGORIE_PROMPT: string, COLORI_PROMPT: string, RIGHE_CAMPI: string) => `You are a precise fashion item parser. The user typed the NAME of one item they want to
 add to their wardrobe app (no photo), in Italian: {nome}.
 It may also be something that is not clothing (electronics, toiletries, documents...).
 Bags, backpacks, belts, watches, jewelry, sunglasses and umbrellas ARE wardrobe items: category "Accessory".
@@ -103,7 +84,8 @@ Respond ONLY with a raw JSON object — no markdown, no code fences — with EXA
 Brand names are a hint: use what you know about the brand.`;
 
 /** Scan: il prompt di openai-proxy con la tassonomia nuova e i due campi. */
-export const PROMPT_SCAN = `You are a precise fashion item parser. Analyze the image and identify ALL distinct clothing items currently WORN by the PRIMARY person in the foreground.
+export let PROMPT_SCAN = "";
+const promptScanDa = (CATEGORIE_PROMPT: string, COLORI_PROMPT: string, RIGHE_CAMPI: string) => `You are a precise fashion item parser. Analyze the image and identify ALL distinct clothing items currently WORN by the PRIMARY person in the foreground.
 CRITICAL RULES:
 - IGNORE any clothing items in the background (e.g., clothes on beds, chairs, hangers).
 - Focus ONLY on the main subject's outfit.
@@ -115,6 +97,35 @@ Each object must have EXACTLY these keys:
 - "subCategory": string (ONE OF based on category):
 {sottocategorie}
 ` + RIGHE_CAMPI.replace("{colore}", `ONE OF: ${COLORI_PROMPT}; the main color, or the closest one`);
+
+/** Riempie stile, usi e colori dal catalogo e ricostruisce i due prompt: le
+ *  scelte proposte al modello sono le voci attive, nell'ordine del catalogo;
+ *  le descrizioni degli usi nell'ordine `promptOrder`. Con il catalogo di oggi
+ *  i prompt sono identici byte per byte a quelli di prima (oracolo). */
+export function impostaScheda(c: Catalogo): void {
+  const stili = voci(c, "formality", false), usi = voci(c, "use", false), colori = voci(c, "color", false);
+  FORMALITA.splice(0, FORMALITA.length, ...stili.map((v) => v.id));
+  FORMALITA_ATTIVE.splice(0, FORMALITA_ATTIVE.length, ...stili.filter((v) => v.active).map((v) => v.id));
+  TAG.splice(0, TAG.length, ...usi.map((v) => v.id));
+  COLORI.splice(0, COLORI.length, ...colori.map((v) => v.id));
+  for (const k of Object.keys(SINONIMI_COLORE)) delete SINONIMI_COLORE[k];
+  for (const v of colori) for (const s of v.data.synonyms ?? []) SINONIMI_COLORE[s] = v.id;
+
+  const riga = (v: VoceCatalogo) => `  "${v.id}" = ${v.data.prompt ?? v.label.en}`;
+  const virgolette = (l: VoceCatalogo[]) => l.map((v) => `"${v.id}"`).join(", ");
+  const usiAttivi = usi.filter((v) => v.active);
+  const ordinePrompt = (v: VoceCatalogo) => (typeof v.data.promptOrder === "number" ? v.data.promptOrder : 1000 + v.sort);
+  const stile = `- "formality": string (ONE OF:\n${stili.filter((v) => v.active).map(riga).join("\n")})`;
+  const usiTesto = `- "activityTags": array of 1-3 strings (ONLY from: [${virgolette(usiAttivi)}]): ALL the uses the item is meant for, not only the main one:\n` +
+    [...usiAttivi].sort((a, b) => ordinePrompt(a) - ordinePrompt(b)).map(riga).join("\n");
+  const righe = RIGHE_CAMPI.replace("{stile}", () => stile).replace("{usi}", () => usiTesto);
+  const categorie = tassonomia.CATEGORIE.map((x) => `"${x}"`).join(", ");
+  const coloriPrompt = virgolette(colori.filter((v) => v.active));
+  PROMPT_NOME = promptNomeDa(categorie, coloriPrompt, righe);
+  PROMPT_SCAN = promptScanDa(categorie, coloriPrompt, righe);
+}
+
+impostaScheda(CATALOGO_BASE);
 
 /** Le frasi che cambiano con la lingua dell'app (il bench e' solo in italiano). */
 const IN_INGLESE: [string, string][] = [
@@ -276,7 +287,9 @@ export function domandeJev(): Record<string, Record_> {
   };
   const tipi: Record<string, string> = {};
   for (const c of tassonomia.CATEGORIE) {
-    for (const s of tassonomia.SOTTOCATEGORIE[c]) tipi[chiaveSub(c, s)] = `${c}: ${s}${spiega(s)}`;
+    for (const s of tassonomia.SOTTOCATEGORIE[c]) {
+      if (s === tassonomia.ALTRO || tassonomia.TIPI_ATTIVI.has(s)) tipi[chiaveSub(c, s)] = `${c}: ${s}${spiega(s)}`;
+    }
   }
   tipi[NON_CAPO] = "not a clothing item: electronics, toiletries, documents, other objects";
   return {
@@ -297,7 +310,7 @@ export function domandeJev(): Record<string, Record_> {
     },
     formality: {
       type: "choice", instructions: "How formal is this item?",
-      criteria: Object.fromEntries(FORMALITA.map((x) => [x, x])),
+      criteria: Object.fromEntries(FORMALITA_ATTIVE.map((x) => [x, x])),
     },
   };
 }

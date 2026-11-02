@@ -17,6 +17,7 @@ import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
+import '../../../helpers/catalogo_di_prova.dart';
 
 class _Houses extends HouseNotifier {
   _Houses(this.houses);
@@ -210,6 +211,8 @@ void _expectNoPrimaryOutside(
 }
 
 void main() {
+  // Attività e alloggi vengono dal catalogo (come in produzione).
+  setUp(() => caricaCatalogoDelRepo());
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
@@ -253,7 +256,7 @@ void main() {
       expect(result.called, isTrue);
       expect(result.setup!.houseId, 'h1');
       expect(result.setup!.luggageId, 'l1');
-      expect(result.setup!.stops['main']!.activities, [AiActivity.diving]);
+      expect(result.setup!.stops['main']!.activities, ['diving']);
     });
 
     testWidgets(
@@ -342,8 +345,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(result.called, isTrue);
-      expect(result.setup!.stops['olanda']!.activities, [AiActivity.city]);
-      expect(result.setup!.stops['olanda']!.stay, AiStay.hotel);
+      expect(result.setup!.stops['olanda']!.activities, ['city']);
+      expect(result.setup!.stops['olanda']!.stay, 'hotel');
     });
 
     testWidgets('primo tocco con tappa vuota avvisa, il secondo chiude', (
@@ -371,7 +374,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(result.called, isTrue);
-      expect(result.setup!.stops['main']!.activities, [AiActivity.city]);
+      expect(result.setup!.stops['main']!.activities, ['city']);
       expect(result.setup!.stops['olanda']!.isUntouched, isTrue);
     });
 
