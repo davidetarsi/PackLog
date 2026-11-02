@@ -210,7 +210,20 @@
     "step_weather": "Checking the weather in {}",
     "step_wardrobe": "Choosing from your wardrobe",
     "step_check": "Checking what is missing",
-    "hint": "This usually takes about ten seconds."
+    "hint": "This usually takes about ten seconds.",
+    "fact_weather": "{}–{}°",
+    "fact_rain": {
+      "one": "{} rainy day",
+      "other": "{} rainy days"
+    },
+    "fact_wardrobe": {
+      "one": "{} piece checked",
+      "other": "{} pieces checked"
+    },
+    "fact_wardrobe_empty": "Empty wardrobe: I'll make suggestions",
+    "fact_and": "{} and {}",
+    "fact_and_more": "{} and {} and more",
+    "fact_check": "{}, {}"
   },
   "error": {
     "credits_title": "You have run out of AI credits",

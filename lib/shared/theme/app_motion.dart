@@ -20,4 +20,12 @@ abstract final class AppMotion {
   /// Andamento costante: la sfocatura del bordo in fondo, che cresce in modo
   /// uniforme verso il bordo dello schermo.
   static const Curve linear = Curves.linear;
+
+  /// Attesa della valigia: quanto resta acceso almeno ogni passo, anche se la
+  /// valigia è già arrivata.
+  static const Duration stepReadMin = Duration(seconds: 1);
+
+  /// Attesa della valigia: quanto resta visibile almeno la riga di un passo
+  /// chiuso prima che si accenda il successivo.
+  static const Duration stepResultMin = Duration(milliseconds: 800);
 }

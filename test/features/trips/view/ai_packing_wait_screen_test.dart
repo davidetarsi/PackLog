@@ -6,14 +6,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/profile/providers/gpt_usage_provider.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
+import 'package:pack_log/features/trips/model/trip_weather.dart';
+import 'package:pack_log/features/trips/providers/trip_weather_provider.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
+import 'package:pack_log/features/trips/services/pack_trip_timing.dart';
 import 'package:pack_log/features/trips/view/ai_packing_wait_screen.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
 import 'package:pack_log/shared/widgets/packlog_gradient.dart';
 
+import '../../../helpers/catalogo_di_prova.dart';
 import '../../../helpers/memory_asset_loader.dart';
 
 const _houseId = 'h1';
@@ -70,7 +77,57 @@ late _FakeService _service;
 late _Outcome _outcome;
 late int _usageBuilds;
 
-Future<void> _pump(WidgetTester tester) async {
+class _Weather extends TripWeatherNotifier {
+  _Weather(this.state0);
+  final TripWeatherState state0;
+
+  @override
+  Future<TripWeatherState> build(String tripId) async => state0;
+}
+
+class _Items extends ItemNotifier {
+  _Items(this.count);
+  final int count;
+
+  @override
+  Future<List<ItemModel>> build(String houseId) async => [
+    for (var i = 0; i < count; i++)
+      ItemModel(
+        id: 'i$i',
+        houseId: houseId,
+        name: 'Capo $i',
+        category: ItemCategory.vestiti,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      ),
+  ];
+}
+
+TripWeather _meteo({double rain = 0}) => TripWeather(
+  signature: 's',
+  fetchedAt: DateTime(2026, 11, 1),
+  stops: [
+    StopWeather(
+      name: 'Reykjavik',
+      from: DateTime(2026, 11, 10),
+      to: DateTime(2026, 11, 14),
+      source: WeatherSource.climate,
+      tempMin: 1.2,
+      tempMax: 6.4,
+      rainDays: rain,
+    ),
+  ],
+);
+
+Future<void> _pump(
+  WidgetTester tester, {
+  Map<String, Object> prefs = const {},
+  PackTripJob? job,
+  TripWeather? weather,
+  int items = 3,
+  bool disableAnimations = false,
+}) async {
+  SharedPreferences.setMockInitialValues(prefs);
   _service = _FakeService();
   _outcome = _Outcome();
   _usageBuilds = 0;
@@ -78,6 +135,14 @@ Future<void> _pump(WidgetTester tester) async {
   final container = ProviderContainer(
     overrides: [
       packTripServiceProvider.overrideWithValue(_service),
+      tripWeatherNotifierProvider('trip-1').overrideWith(
+        () => _Weather(
+          weather == null
+              ? const TripWeatherFailed()
+              : TripWeatherReady(weather),
+        ),
+      ),
+      itemNotifierProvider(_houseId).overrideWith(() => _Items(items)),
       gptUsageProvider.overrideWith((ref) {
         _usageBuilds++;
         return GptUsageModel(usageCount: 0, usageCap: 30);
@@ -106,7 +171,7 @@ Future<void> _pump(WidgetTester tester) async {
                   onPressed: () async {
                     final result = await context.push<AiPackingResult>(
                       '/trips/trip-1/ai-packing',
-                      extra: _job,
+                      extra: job ?? _job,
                     );
                     _outcome
                       ..popped = true
@@ -155,6 +220,12 @@ Future<void> _pump(WidgetTester tester) async {
         saveLocale: false,
         child: Builder(
           builder: (context) => MaterialApp.router(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(disableAnimations: disableAnimations),
+              child: child!,
+            ),
             theme: AppTheme.light,
             locale: context.locale,
             supportedLocales: context.supportedLocales,
@@ -181,7 +252,18 @@ Future<void> _settle(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 1));
 }
 
+/// Lascia passare i minimi dei passi e il passaggio alla valigia. Niente
+/// pumpAndSettle: il bordo gira per sempre.
+Future<void> _finish(WidgetTester tester) async {
+  await tester.pump();
+  for (var i = 0; i < 12; i++) {
+    await tester.pump(const Duration(seconds: 1));
+  }
+}
+
 void main() {
+  setUp(caricaCatalogoDelRepo);
+
   group('attesa', () {
     testWidgets(
       'la scintilla respira e i tre passi stanno nel bordo che gira',
@@ -230,7 +312,9 @@ void main() {
       expect(_service.houseIds, [_houseId]);
     });
 
-    testWidgets('i passi avanzano a 0, 3 e 6 secondi', (tester) async {
+    testWidgets('i passi avanzano a un terzo del tempo medio (10 s)', (
+      tester,
+    ) async {
       await _pump(tester);
 
       // Il puntino che lampeggia sta sul passo in corso; ce n'è uno solo.
@@ -249,16 +333,21 @@ void main() {
       expect(find.byKey(const Key('ai_wait_blinking_dot')), findsOneWidget);
       expect(blinkingStep(), 'Guardo il meteo di Islanda e Olanda');
 
-      await tester.pump(const Duration(seconds: 3));
+      // Il _pump ha già fatto passare mezzo secondo.
+      await tester.pump(const Duration(milliseconds: 2832));
+      expect(blinkingStep(), 'Guardo il meteo di Islanda e Olanda');
+      await tester.pump(const Duration(milliseconds: 2));
       expect(blinkingStep(), 'Scelgo dal tuo armadio');
 
-      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(milliseconds: 3331));
+      expect(blinkingStep(), 'Scelgo dal tuo armadio');
+      await tester.pump(const Duration(milliseconds: 1));
       expect(blinkingStep(), 'Controllo cosa manca');
       // Niente rotellina: l'avanzamento lo dice il puntino.
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
       _service.last.complete(_result);
-      await tester.pump();
+      await _finish(tester);
     });
 
     testWidgets(
@@ -268,7 +357,7 @@ void main() {
         expect(_usageBuilds, 1);
 
         _service.last.complete(_result);
-        await _settle(tester);
+        await _finish(tester);
 
         expect(_outcome.popped, isTrue);
         expect(_outcome.result, same(_result));
@@ -290,6 +379,155 @@ void main() {
       expect(_outcome.result, isNull);
       expect(_text('Preparo la valigia'), findsNothing);
       expect(_text('Non è stato possibile preparare la valigia'), findsNothing);
+    });
+  });
+
+  group('racconto dei passi', () {
+    Finder pop() => find.text('Preparo la valigia');
+
+    testWidgets('il tempo imparato sposta i passi (T = 30 s)', (tester) async {
+      await _pump(
+        tester,
+        prefs: {
+          'pack_trip_avg_ms': ['30000'],
+        },
+      );
+      await tester.pump(const Duration(milliseconds: 9490));
+      expect(find.byKey(const Key('ai_wait_check')), findsNothing);
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(find.byKey(const Key('ai_wait_check')), findsOneWidget);
+      _service.last.complete(_result);
+      await _finish(tester);
+    });
+
+    testWidgets('a un terzo del tempo il passo mostra la riga col dato vero', (
+      tester,
+    ) async {
+      await _pump(tester, weather: _meteo(rain: 2), items: 12);
+      expect(find.text('1–6°, 2 giorni di pioggia'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 3400));
+      expect(find.text('1–6°, 2 giorni di pioggia'), findsOneWidget);
+      expect(find.text('12 capi guardati'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 3400));
+      expect(find.text('12 capi guardati'), findsOneWidget);
+      _service.last.complete(_result);
+      await _finish(tester);
+    });
+
+    testWidgets('armadio vuoto e meteo senza pioggia', (tester) async {
+      await _pump(tester, weather: _meteo(), items: 0);
+      await tester.pump(const Duration(milliseconds: 7000));
+      expect(find.text('1–6°'), findsOneWidget);
+      expect(find.text('Armadio vuoto: preparo le proposte'), findsOneWidget);
+      _service.last.complete(_result);
+      await _finish(tester);
+    });
+
+    testWidgets('niente riga quando il dato manca', (tester) async {
+      await _pump(tester);
+      await tester.pump(const Duration(milliseconds: 3400));
+      // Meteo non disponibile: il passo è chiuso ma senza riga.
+      expect(find.byKey(const Key('ai_wait_check')), findsOneWidget);
+      expect(find.textContaining('°'), findsNothing);
+      _service.last.complete(_result);
+      await _finish(tester);
+    });
+
+    testWidgets('la riga dell\'ultimo passo arriva con la valigia', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        job: PackTripJob(
+          body: const {
+            'trip': {
+              'attivita': ['trekking'],
+            },
+          },
+          houseId: _houseId,
+          title: 'Islanda e Olanda',
+          nights: 8,
+        ),
+      );
+      await tester.pump(const Duration(seconds: 9));
+      expect(find.text('Trekking, 8 notti'), findsNothing);
+      _service.last.complete(_result);
+      await tester.pump(const Duration(milliseconds: 1000));
+      expect(find.text('Trekking, 8 notti'), findsOneWidget);
+      await _finish(tester);
+    });
+
+    testWidgets('arrivo subito: i minimi si rispettano, poi si esce', (
+      tester,
+    ) async {
+      await _pump(tester);
+      _service.last.complete(_result);
+      // 0,5 s già passati nel pump: servono 1 s + 0,8 + 1 + 0,8 + 1 + 0,8 s
+      // dall'inizio, poi i 300 ms del passaggio.
+      await tester.pump(const Duration(milliseconds: 4900));
+      expect(_outcome.popped, isFalse);
+      expect(pop(), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byKey(const Key('ai_wait_check')), findsNWidgets(3));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(_outcome.popped, isFalse);
+      await _finish(tester);
+      expect(_outcome.result, same(_result));
+    });
+
+    testWidgets('senza animazioni la valigia si apre subito', (tester) async {
+      await _pump(tester, disableAnimations: true);
+      _service.last.complete(_result);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(_outcome.popped, isTrue);
+      expect(_outcome.result, same(_result));
+    });
+
+    testWidgets('Annulla durante il racconto non fa niente', (tester) async {
+      await _pump(tester);
+      _service.last.complete(_result);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(find.text('Annulla'));
+      await tester.pump();
+      expect(_service.cancelled, isFalse);
+      await _finish(tester);
+      expect(_outcome.result, same(_result));
+    });
+  });
+
+  group('tempo medio', () {
+    testWidgets('si aggiorna solo con una generazione riuscita', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        prefs: {
+          'pack_trip_avg_ms': ['10000'],
+        },
+      );
+      _service.last.completeError(const PackTripException('rete'));
+      await _settle(tester);
+      expect(await PackTripTiming.load(), 10000);
+
+      await tester.tap(find.text('Riprova'));
+      await tester.pump();
+      _service.last.complete(_result);
+      await _finish(tester);
+      // Il tempo vero del test è quasi zero: la stima scende al minimo.
+      expect(await PackTripTiming.load(), lessThan(10000));
+    });
+
+    testWidgets('annullare non lo aggiorna', (tester) async {
+      await _pump(
+        tester,
+        prefs: {
+          'pack_trip_avg_ms': ['10000'],
+        },
+      );
+      await tester.tap(find.text('Annulla'));
+      await _settle(tester);
+      expect(await PackTripTiming.load(), 10000);
     });
   });
 
@@ -356,7 +594,7 @@ void main() {
       expect(_text('Preparo la valigia'), findsOneWidget);
 
       _service.last.complete(_result);
-      await _settle(tester);
+      await _finish(tester);
 
       expect(_outcome.result, same(_result));
     });
@@ -388,7 +626,7 @@ void main() {
           .widget<TextButton>(find.widgetWithText(TextButton, 'Annulla'))
           .onPressed!;
       annulla();
-      await _settle(tester);
+      await _finish(tester);
 
       expect(_outcome.completions, 1);
       expect(_outcome.result, same(_result));

@@ -210,7 +210,20 @@
     "step_weather": "Guardo il meteo di {}",
     "step_wardrobe": "Scelgo dal tuo armadio",
     "step_check": "Controllo cosa manca",
-    "hint": "Di solito ci vogliono una decina di secondi."
+    "hint": "Di solito ci vogliono una decina di secondi.",
+    "fact_weather": "{}–{}°",
+    "fact_rain": {
+      "one": "{} giorno di pioggia",
+      "other": "{} giorni di pioggia"
+    },
+    "fact_wardrobe": {
+      "one": "{} capo guardato",
+      "other": "{} capi guardati"
+    },
+    "fact_wardrobe_empty": "Armadio vuoto: preparo le proposte",
+    "fact_and": "{} e {}",
+    "fact_and_more": "{} e {} e altro",
+    "fact_check": "{}, {}"
   },
   "error": {
     "credits_title": "Hai finito i crediti AI",
