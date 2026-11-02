@@ -574,8 +574,8 @@ void main() {
       );
     });
 
-    test('push: con la lista vuota la chiave è omessa (backend non ancora '
-        'migrato)', () async {
+    test('push: la lista vuota si manda, così togliere i mezzi arriva al '
+        'server', () async {
       await database.tripsDao.insertTrip(
         TripsCompanion.insert(
           id: 'v',
@@ -592,8 +592,8 @@ void main() {
           v,
           items: [],
           luggageIds: [],
-        ).containsKey('transports'),
-        isFalse,
+        )['transports'],
+        <String>[],
       );
     });
   });

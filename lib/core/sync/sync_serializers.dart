@@ -536,11 +536,18 @@ abstract final class SyncSerializers {
     };
   }
 
-  /// La chiave `transports` solo se il viaggio ha almeno un mezzo.
+  /// La chiave `transports`, anche vuota: togliere tutti i mezzi deve
+  /// arrivare al server. Omessa solo se la colonna non è mai stata scritta
+  /// (viaggi di prima della v13) o il JSON locale è corrotto. Il backend deve
+  /// avere la migrazione dei kit prima di questa build.
   static Map<String, Object?> _transportsEntry(String? raw) {
-    final value = _decodeOr(raw, const <String>[]);
-    if (value is List && value.isEmpty) return const {};
-    return {'transports': value};
+    if (raw == null || raw.isEmpty) return const {};
+    try {
+      final value = jsonDecode(raw);
+      return value is List ? {'transports': value} : const {};
+    } on FormatException {
+      return const {};
+    }
   }
 
   /// Una sola chiave AI nel payload, oppure nessuna se il dato manca.
