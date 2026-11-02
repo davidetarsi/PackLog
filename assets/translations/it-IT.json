@@ -263,6 +263,10 @@
       "got_it": "Presa",
       "proposed_header": "Proposti da PackLog · tocca per mettere i tuoi",
       "marked_to_buy": "Segnato da comprare",
+      "remove_title": "Togli {}?",
+      "remove_body": "PackLog la considera importante per questo viaggio.",
+      "remove_confirm": "Togli",
+      "removed": "Tolta {}",
       "context_chip": "{} · {} da personalizzare",
       "no_house": "La casa di partenza non c'è più",
       "rapid_fire_hint": "Es. 2 t-shirt nere"

@@ -11,7 +11,6 @@ import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_button.dart';
-import '../../../shared/widgets/ds_checkbox.dart';
 import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_section_title.dart';
@@ -28,7 +27,8 @@ import 'widgets/pack/pack_parts.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
 import 'widgets/slots/slot_rapid_fire_bar.dart';
-import 'widgets/slots/slot_widgets.dart';
+import 'widgets/slots/slots_section.dart';
+import 'widgets/slots/trip_items_card.dart';
 
 enum _TripMenu { edit, duplicate, save, delete }
 
@@ -201,6 +201,41 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     );
   }
 
+  /// Toglie [slot] dalla valigia (`removed`). Con [confirm] chiede prima,
+  /// con il motivo del posto (la X di un importante); senza toglie subito e
+  /// Annulla lo rimette (lo scorrimento di una proposta).
+  Future<void> _removeSlot(AiSlot slot, {required bool confirm}) async {
+    // Il notifier si legge ora: Annulla può arrivare quando la pagina non c'è
+    // più, e allora `ref` non si può usare.
+    final notifier = ref.read(tripNotifierProvider.notifier);
+    if (confirm) {
+      final reason = slot.reason;
+      final ok = await DialogHelpers.showConfirmation(
+        context: context,
+        title: 'trips.slots.remove_title'.tr(args: [slot.name]),
+        message: [
+          'trips.slots.remove_body'.tr(),
+          if (reason != null && reason.isNotEmpty) reason,
+        ].join(' '),
+        confirmLabel: 'trips.slots.remove_confirm'.tr(),
+      );
+      if (!ok) return;
+    }
+    final saved = await _updateSlot(
+      notifier,
+      slot,
+      (s) => s.copyWith(removed: true),
+    );
+    if (!saved || confirm || !mounted) return;
+    AppSnackBar.showUndo(
+      context,
+      'trips.slots.removed'.tr(args: [slot.name]),
+      onUndo: () => unawaited(
+        _updateSlot(notifier, slot, (s) => s.copyWith(removed: false)),
+      ),
+    );
+  }
+
   /// La casella di un proposto, quando non si sta più sistemando.
   void _toggleSlot(AiSlot slot) {
     unawaited(
@@ -243,10 +278,12 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           onFillSlot: _fillSlot,
           onCloseBar: _closeBar,
           onBarToBuy: _barToBuy,
-          slotActions: _SlotActions(
+          slotActions: SlotActions(
             open: _openSlot,
             markToBuy: (slot) => _markToBuy(slot),
             toggle: _toggleSlot,
+            remove: (slot) => unawaited(_removeSlot(slot, confirm: true)),
+            dismiss: (slot) => unawaited(_removeSlot(slot, confirm: false)),
           ),
         );
       },
@@ -275,22 +312,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   }
 }
 
-/// Cosa si può fare sui posti della valigia; li gestisce lo schermo.
-class _SlotActions {
-  const _SlotActions({
-    required this.open,
-    required this.markToBuy,
-    required this.toggle,
-  });
-
-  final ValueChanged<AiSlot> open;
-  final ValueChanged<AiSlot> markToBuy;
-  final ValueChanged<AiSlot> toggle;
-}
-
 class _TripDetail extends ConsumerWidget {
   final TripModel trip;
-  final _SlotActions slotActions;
+  final SlotActions slotActions;
 
   /// Il posto che la barra Rapid Fire sta riempiendo; `null` = barra chiusa e
   /// al suo posto "Modifica valigia".
@@ -415,7 +439,7 @@ class _TripDetail extends ConsumerWidget {
               ),
             ],
             if (trip.aiResult?.hasSlots ?? false)
-              _SlotsSection(trip: trip, actions: slotActions)
+              SlotsSection(trip: trip, actions: slotActions)
             else
               _ItemsSection(trip: trip),
           ],
@@ -489,7 +513,7 @@ class _ItemsSection extends ConsumerWidget {
     final tt = Theme.of(context).textTheme;
     final items = trip.items;
 
-    if (items.isEmpty) return const _EmptySuitcase();
+    if (items.isEmpty) return const EmptySuitcase();
 
     final packed = trip.completedCount;
     return Column(
@@ -527,193 +551,12 @@ class _ItemsSection extends ConsumerWidget {
               label: category.displayName,
               count: items.where((i) => i.category == category).length,
             ),
-            _ItemsCard(
+            ItemsCard(
               tripId: trip.id,
               items: items.where((i) => i.category == category).toList(),
             ),
           ],
       ],
-    );
-  }
-}
-
-/// Valigia vuota: niente oggetti (e niente posti).
-class _EmptySuitcase extends StatelessWidget {
-  const _EmptySuitcase();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(top: context.spacingLg),
-      child: DsEmptyState(
-        icon: Icons.inventory_2_outlined,
-        title: 'trips.no_items_in_list'.tr(),
-      ),
-    );
-  }
-}
-
-/// Gli oggetti di un gruppo, uno per riga, da spuntare.
-class _ItemsCard extends ConsumerWidget {
-  final String tripId;
-  final List<TripItem> items;
-
-  const _ItemsCard({required this.tripId, required this.items});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Material(
-      color: context.groupSurface,
-      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (final item in items)
-            _PackedRow(
-              item: item,
-              onToggle: () => ref
-                  .read(tripNotifierProvider.notifier)
-                  .toggleItemCheck(tripId, item.id),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// "Cosa porti" con la valigia fatta di posti: la testata con l'avanzamento,
-/// le informazioni sul viaggio, poi per categoria gli importanti aperti, i
-/// "da comprare", la card dei proposti e gli oggetti dell'utente.
-class _SlotsSection extends StatelessWidget {
-  final TripModel trip;
-  final _SlotActions actions;
-
-  const _SlotsSection({required this.trip, required this.actions});
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = SuitcaseProgress.of(trip);
-    if (progress.isEmpty) return const _EmptySuitcase();
-
-    final result = trip.aiResult!;
-    final open = (result.slots ?? const <AiSlot>[]).where((s) => s.isOpen);
-    final gap = SizedBox(height: context.spacingSm);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DsSectionTitle('trips.pack.items'.tr()),
-        SuitcaseProgressHeader(progress: progress),
-        for (final note in result.notes) TripNoteRow(note: note),
-        for (final category in ItemCategory.values)
-          ..._group(
-            context,
-            category: category,
-            slots: open.where((s) => s.category == category).toList(),
-            items: trip.items.where((i) => i.category == category).toList(),
-            sorting: progress.sorting,
-            gap: gap,
-          ),
-      ],
-    );
-  }
-
-  List<Widget> _group(
-    BuildContext context, {
-    required ItemCategory category,
-    required List<AiSlot> slots,
-    required List<TripItem> items,
-    required bool sorting,
-    required Widget gap,
-  }) {
-    if (slots.isEmpty && items.isEmpty) return const [];
-    final important = slots.where((s) => s.level == AiSlotLevel.important);
-    final toFill = important.where((s) => !s.toBuy);
-    final toBuy = important.where((s) => s.toBuy);
-    final useful = slots.where((s) => s.level == AiSlotLevel.useful).toList();
-
-    final blocks = <Widget>[
-      for (final slot in toFill)
-        ImportantSlotCard(
-          key: Key('slot_card_${slot.id}'),
-          slot: slot,
-          onAdd: () => actions.open(slot),
-          onToBuy: () => actions.markToBuy(slot),
-        ),
-      for (final slot in toBuy)
-        ToBuySlotRow(
-          key: Key('slot_to_buy_row_${slot.id}'),
-          slot: slot,
-          onGotIt: () => actions.open(slot),
-        ),
-      if (useful.isNotEmpty)
-        ProposedSlotsCard(
-          slots: useful,
-          sorting: sorting,
-          onOpen: actions.open,
-          onToggle: actions.toggle,
-        ),
-      if (items.isNotEmpty) _ItemsCard(tripId: trip.id, items: items),
-    ];
-
-    return [
-      DsGroupHeader(
-        label: category.displayName,
-        count: slots.length + items.length,
-      ),
-      for (var i = 0; i < blocks.length; i++) ...[if (i > 0) gap, blocks[i]],
-    ];
-  }
-}
-
-/// Riga di un oggetto da mettere in valigia: casella, nome e quantità. Una
-/// volta dentro il nome si spegne e si barra; tutta la riga spunta.
-class _PackedRow extends StatelessWidget {
-  final TripItem item;
-  final VoidCallback onToggle;
-
-  const _PackedRow({required this.item, required this.onToggle});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final packed = item.isChecked;
-
-    return InkWell(
-      key: Key('trip_item_${item.id}'),
-      onTap: onToggle,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.spacingSm,
-          vertical: context.spacingXs,
-        ),
-        child: Row(
-          children: [
-            DsCheckbox(value: packed, onChanged: (_) => onToggle()),
-            SizedBox(width: context.spacingXs),
-            Expanded(
-              child: Text(
-                item.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: tt.bodyLarge?.copyWith(
-                  color: packed ? context.textTertiary : cs.onSurface,
-                  decoration: packed ? TextDecoration.lineThrough : null,
-                ),
-              ),
-            ),
-            if (item.quantity > 1)
-              Padding(
-                padding: EdgeInsets.only(right: context.spacingSm),
-                child: Text(
-                  '×${item.quantity}',
-                  style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }

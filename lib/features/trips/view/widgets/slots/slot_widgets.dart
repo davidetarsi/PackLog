@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_checkbox.dart';
+import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/ds_text_button.dart';
 import '../../../../../shared/widgets/packlog_gradient.dart';
 import '../../../model/ai_packing.dart';
@@ -255,18 +256,22 @@ class _ImportantLabel extends StatelessWidget {
 
 /// Card di un posto importante aperto: "Importante", nome (×N), motivo in
 /// una riga e due azioni testuali, l'aggiunta ([AiSlot.addLabel]) e "Da
-/// comprare". Niente bottoni pieni.
+/// comprare", più la X per toglierla. Niente bottoni pieni.
 class ImportantSlotCard extends StatelessWidget {
   const ImportantSlotCard({
     super.key,
     required this.slot,
     required this.onAdd,
     required this.onToBuy,
+    this.onRemove,
   });
 
   final AiSlot slot;
   final VoidCallback onAdd;
   final VoidCallback onToBuy;
+
+  /// La X in alto a destra; `null` la nasconde.
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -279,77 +284,98 @@ class ImportantSlotCard extends StatelessWidget {
       color: context.groupSurface,
       borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: context.spacingMd,
-          bottom: context.spacingXs,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ImportantLabel(color: cs.onPrimaryContainer),
-                  SizedBox(height: context.spacingXs),
-                  Row(
+      child: Stack(
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              top: context.spacingMd,
+              bottom: context.spacingXs,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  // Con la X il testo lascia il posto al bottone.
+                  padding: EdgeInsets.only(
+                    left: context.spacingMd,
+                    right: onRemove == null
+                        ? context.spacingMd
+                        : kMinInteractiveDimension,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          slot.name,
+                      _ImportantLabel(color: cs.onPrimaryContainer),
+                      SizedBox(height: context.spacingXs),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              slot.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.titleMedium,
+                            ),
+                          ),
+                          if (copies != null) ...[
+                            SizedBox(width: context.spacingXs),
+                            Text(
+                              copies,
+                              style: tt.titleMedium?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (reason != null && reason.isNotEmpty) ...[
+                        SizedBox(height: context.spacingXxs),
+                        Text(
+                          reason,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: tt.titleMedium,
-                        ),
-                      ),
-                      if (copies != null) ...[
-                        SizedBox(width: context.spacingXs),
-                        Text(
-                          copies,
-                          style: tt.titleMedium?.copyWith(
+                          style: tt.bodyMedium?.copyWith(
                             color: cs.onSurfaceVariant,
                           ),
                         ),
                       ],
                     ],
                   ),
-                  if (reason != null && reason.isNotEmpty) ...[
-                    SizedBox(height: context.spacingXxs),
-                    Text(
-                      reason,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tt.bodyMedium?.copyWith(
-                        color: cs.onSurfaceVariant,
+                ),
+                // Il testo dei bottoni ha già il suo margine: la riga parte poco
+                // più a sinistra, così le parole si allineano al nome.
+                Padding(
+                  padding: EdgeInsets.only(left: context.spacingXs),
+                  child: Wrap(
+                    children: [
+                      DsTextButton(
+                        key: Key('slot_add_${slot.id}'),
+                        label: slot.addLabel,
+                        onPressed: onAdd,
                       ),
-                    ),
-                  ],
-                ],
+                      DsTextButton(
+                        key: Key('slot_to_buy_${slot.id}'),
+                        label: 'trips.slots.to_buy'.tr(),
+                        onPressed: onToBuy,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onRemove != null)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: DsIconButton(
+                key: Key('slot_remove_${slot.id}'),
+                icon: Icons.close,
+                tooltip: 'trips.slots.remove_confirm'.tr(),
+                onPressed: onRemove,
               ),
             ),
-            // Il testo dei bottoni ha già il suo margine: la riga parte poco
-            // più a sinistra, così le parole si allineano al nome.
-            Padding(
-              padding: EdgeInsets.only(left: context.spacingXs),
-              child: Wrap(
-                children: [
-                  DsTextButton(
-                    key: Key('slot_add_${slot.id}'),
-                    label: slot.addLabel,
-                    onPressed: onAdd,
-                  ),
-                  DsTextButton(
-                    key: Key('slot_to_buy_${slot.id}'),
-                    label: 'trips.slots.to_buy'.tr(),
-                    onPressed: onToBuy,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -435,8 +461,8 @@ class ToBuySlotRow extends StatelessWidget {
 ///
 /// Ogni riga ha la scintilla, il nome, ×N e la freccina; quando non si sta
 /// più sistemando ([sorting] falso) al posto della scintilla c'è la casella,
-/// che cambia `checked`. Il tocco sulla riga chiama [onOpen]. I posti
-/// "da comprare" vanno in fondo.
+/// che cambia `checked`. Il tocco sulla riga chiama [onOpen]; scorrerla
+/// verso sinistra la toglie ([onRemove]).
 class ProposedSlotsCard extends StatelessWidget {
   const ProposedSlotsCard({
     super.key,
@@ -444,6 +470,7 @@ class ProposedSlotsCard extends StatelessWidget {
     required this.sorting,
     required this.onOpen,
     required this.onToggle,
+    this.onRemove,
   });
 
   final List<AiSlot> slots;
@@ -451,14 +478,15 @@ class ProposedSlotsCard extends StatelessWidget {
   final ValueChanged<AiSlot> onOpen;
   final ValueChanged<AiSlot> onToggle;
 
+  /// Chiamata quando una riga viene scorsa verso sinistra; `null` non le
+  /// rende scorrevoli.
+  final ValueChanged<AiSlot>? onRemove;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final ordered = [
-      ...slots.where((s) => !s.toBuy),
-      ...slots.where((s) => s.toBuy),
-    ];
+    final remove = onRemove;
 
     return PackLogGradientBorder(
       radius: AppConstants.cardBorderRadius,
@@ -491,17 +519,58 @@ class ProposedSlotsCard extends StatelessWidget {
                 ],
               ),
             ),
-            for (final slot in ordered)
-              _ProposedRow(
+            for (final slot in slots)
+              _Swipeable(
                 slot: slot,
-                sorting: sorting,
-                onTap: () => onOpen(slot),
-                onToggle: () => onToggle(slot),
+                onRemove: remove == null ? null : () => remove(slot),
+                child: _ProposedRow(
+                  slot: slot,
+                  sorting: sorting,
+                  onTap: () => onOpen(slot),
+                  onToggle: () => onToggle(slot),
+                ),
               ),
             SizedBox(height: context.spacingXs),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Rende la riga di un proposto scorrevole verso sinistra: lo scorrimento
+/// la toglie ([onRemove]). Con [onRemove] nullo la riga resta ferma.
+class _Swipeable extends StatelessWidget {
+  const _Swipeable({
+    required this.slot,
+    required this.onRemove,
+    required this.child,
+  });
+
+  final AiSlot slot;
+  final VoidCallback? onRemove;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final remove = onRemove;
+    if (remove == null) return child;
+    return Dismissible(
+      key: Key('slot_dismiss_${slot.id}'),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => remove(),
+      background: ColoredBox(
+        color: cs.surfaceContainerHighest,
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: EdgeInsets.only(right: context.spacingMd),
+            child: Icon(Icons.close, color: cs.onSurfaceVariant),
+          ),
+        ),
+      ),
+      child: child,
     );
   }
 }
