@@ -17,6 +17,8 @@ import '../../features/auth/view/login_screen.dart';
 import '../../features/houses/view/houses_screen.dart';
 import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
+import '../../features/kits/view/kit_detail_screen.dart';
+import '../../features/kits/view/kit_editor_screen.dart';
 import '../../features/profile/view/profile_screen.dart';
 import '../../features/trips/view/ai_packing_wait_screen.dart';
 import '../../features/trips/view/to_buy_screen.dart';
@@ -229,6 +231,55 @@ GoRouter appRouter(Ref ref) {
               // `?add=manual` arriva da Crea → "scrivili a mano".
               openRapidFire: state.uri.queryParameters['add'] == 'manual',
             ),
+          );
+        },
+      ),
+      // `kits/new` prima di `kits/:kitId`, che altrimenti la prenderebbe per
+      // un id. Gli oggetti già dentro il kit nuovo arrivano in `extra`.
+      GoRoute(
+        path: '/houses/:id/kits/new',
+        name: 'kit-new',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id == null || id.isEmpty) {
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
+          }
+          final extra = state.extra;
+          return KitEditorScreen(
+            houseId: id,
+            initialItemIds: extra is List<String> ? extra : const [],
+          );
+        },
+      ),
+      GoRoute(
+        path: '/houses/:id/kits/:kitId',
+        name: 'kit-detail',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          final kitId = state.pathParameters['kitId'];
+          if (id == null || id.isEmpty || kitId == null || kitId.isEmpty) {
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
+          }
+          return KitDetailScreen(houseId: id, kitId: kitId);
+        },
+      ),
+      GoRoute(
+        path: '/houses/:id/kits/:kitId/edit',
+        name: 'kit-edit',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          final kitId = state.pathParameters['kitId'];
+          if (id == null || id.isEmpty || kitId == null || kitId.isEmpty) {
+            return _ErrorScreen(message: 'common.content_unavailable'.tr());
+          }
+          return KitEditorScreen(
+            houseId: id,
+            kitId: kitId,
+            // `?add=1` arriva da "Aggiungi oggetti": tastiera già su.
+            focusAdd: state.uri.queryParameters['add'] == '1',
           );
         },
       ),

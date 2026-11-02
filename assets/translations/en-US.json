@@ -762,7 +762,26 @@
   "kits": {
     "strip_title": "Kits · things that go together",
     "strip_add": "Kit",
-    "more_uses": "+{}"
+    "more_uses": "+{}",
+    "new_title": "New kit",
+    "edit_title": "Edit kit",
+    "name_label": "Name",
+    "name_hint": "E.g. Flight kit",
+    "uses_title": "I add it myself to trips with…",
+    "more_pills": "More",
+    "optional": "(optional)",
+    "uses_guessed": "I picked «{}» from the name: tap it to remove it.",
+    "in_kit": "In the kit · {}",
+    "remove_item": "Remove from kit",
+    "auto_title": "Goes in on its own on trips with",
+    "learned_from": "You added «{}» after 2 yeses in the suitcase.",
+    "add_items": "Add items",
+    "to_trip": "Put in a suitcase…",
+    "delete": "Delete kit",
+    "delete_warning": "The items stay at home.",
+    "not_found": "Kit not found",
+    "limit_kits": "A house can have at most {} kits.",
+    "limit_items": "A kit can hold at most {} items."
   },
   "clothing": {
     "details": {
