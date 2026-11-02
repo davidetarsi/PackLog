@@ -60,6 +60,7 @@
     "this_item": "this item",
     "no_houses_available": "No houses available. Create a house first.",
     "no_items": "No items",
+    "details_pending": "Filling in the details. You can already edit them.",
     "no_items_in_space": "No items in this space",
     "no_search_results": "No items found",
     "category": "Category",

@@ -60,6 +60,7 @@
     "this_item": "questo oggetto",
     "no_houses_available": "Nessuna casa disponibile. Crea prima una casa.",
     "no_items": "Nessun oggetto",
+    "details_pending": "Sto completando i dettagli. Puoi già modificarli.",
     "no_items_in_space": "Nessun oggetto in questo spazio",
     "no_search_results": "Nessun oggetto trovato",
     "category": "Categoria",

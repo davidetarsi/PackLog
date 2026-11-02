@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/database/exceptions/database_exceptions.dart';
+import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/core/database/services/database_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/drift_item_repository.dart';
@@ -1201,5 +1202,142 @@ void main() {
 
       expect(await repository.getUsedColors(), ['blu', 'Rosa chiaro']);
     });
+  });
+
+  group('DriftItemRepository - updateAiMetadata', () {
+    const houseId = 'casa-ai';
+    final t0 = DateTime(2026, 10, 31, 9);
+
+    ItemModel item({String? aiMetadata}) => ItemModel(
+      id: 'item-ai',
+      houseId: houseId,
+      name: 'pile blu',
+      category: ItemCategory.varie,
+      description: 'nota',
+      quantity: 2,
+      createdAt: t0,
+      updatedAt: t0,
+      aiMetadata: aiMetadata,
+    );
+
+    Future<void> seed({String? aiMetadata}) async {
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: houseId,
+          name: 'Casa',
+          createdAt: t0,
+          updatedAt: t0,
+        ),
+      );
+      await repository.addItem(item(aiMetadata: aiMetadata));
+      // Come dopo un sync riuscito: la riga non è più da inviare.
+      await (database.update(database.items)
+            ..where((i) => i.id.equals('item-ai')))
+          .write(const ItemsCompanion(syncStatus: Value(SyncStatus.synced)));
+    }
+
+    Future<Item> row() async =>
+        (await database.itemsDao.getItemById('item-ai'))!;
+
+    test(
+      'scrive metadati, categoria e data; segna la riga da inviare',
+      () async {
+        await seed();
+        final at = DateTime(2026, 10, 31, 12);
+
+        final written = await repository.updateAiMetadata(
+          'item-ai',
+          (current) =>
+              (aiMetadata: '{"warmth":3}', category: ItemCategory.vestiti),
+          updatedAt: at,
+        );
+
+        expect(written!.aiMetadata, '{"warmth":3}');
+        final r = await row();
+        expect(r.aiMetadata, '{"warmth":3}');
+        expect(r.category, ItemCategory.vestiti);
+        expect(r.updatedAt, at);
+        expect(r.syncStatus, SyncStatus.pendingUpdate);
+        // Le altre colonne non si toccano.
+        expect(r.name, 'pile blu');
+        expect(r.description, 'nota');
+        expect(r.quantity, 2);
+      },
+    );
+
+    test('senza categoria nel risultato la categoria resta', () async {
+      await seed();
+
+      await repository.updateAiMetadata(
+        'item-ai',
+        (current) => (aiMetadata: '{}', category: null),
+      );
+
+      expect((await row()).category, ItemCategory.varie);
+    });
+
+    test(
+      'la funzione riceve la riga com\'è adesso, non quella di prima',
+      () async {
+        await seed();
+        await database.itemsDao.updateItem(
+          const ItemsCompanion(
+            id: Value('item-ai'),
+            name: Value('pile rosso'),
+            description: Value('altra nota'),
+          ),
+        );
+
+        ItemModel? seen;
+        await repository.updateAiMetadata('item-ai', (current) {
+          seen = current;
+          return (aiMetadata: '{}', category: null);
+        });
+
+        expect(seen!.name, 'pile rosso');
+        expect(seen!.description, 'altra nota');
+        expect((await row()).name, 'pile rosso');
+        expect((await row()).description, 'altra nota');
+      },
+    );
+
+    test('se la funzione risponde null non scrive niente', () async {
+      await seed(aiMetadata: '{"a":1}');
+
+      final written = await repository.updateAiMetadata(
+        'item-ai',
+        (current) => null,
+      );
+
+      expect(written, isNull);
+      final r = await row();
+      expect(r.aiMetadata, '{"a":1}');
+      expect(r.syncStatus, SyncStatus.synced);
+      expect(r.updatedAt, t0);
+    });
+
+    test(
+      'un oggetto eliminato o inesistente non si scrive né si ricrea',
+      () async {
+        await seed();
+        await repository.deleteItem('item-ai');
+
+        var called = false;
+        final written = await repository.updateAiMetadata('item-ai', (current) {
+          called = true;
+          return (aiMetadata: '{}', category: null);
+        });
+        final missing = await repository.updateAiMetadata(
+          'non-esiste',
+          (current) => (aiMetadata: '{}', category: null),
+        );
+
+        expect(written, isNull);
+        expect(missing, isNull);
+        expect(called, isFalse);
+        expect(await database.itemsDao.getItemById('item-ai'), isNull);
+        expect(await database.itemsDao.getItemById('non-esiste'), isNull);
+      },
+    );
   });
 }

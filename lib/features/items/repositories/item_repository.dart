@@ -19,6 +19,10 @@ ItemRepository itemRepository(Ref ref) {
   );
 }
 
+/// Cosa scrivere con [ItemRepository.updateAiMetadata]: i nuovi metadati AI e,
+/// se serve, la nuova categoria.
+typedef AiMetadataChange = ({String aiMetadata, ItemCategory? category});
+
 abstract class ItemRepository {
   Future<bool> init();
   Future<void> addItem(ItemModel model);
@@ -31,6 +35,22 @@ abstract class ItemRepository {
   Future<List<ItemModel>> getItemsByHouseId(String houseId);
   Future<bool> deleteItem(String id);
   Future<void> updateItem(ItemModel model);
+
+  /// Aggiorna solo `ai_metadata` (e la categoria, se [compute] la dà) di un
+  /// oggetto, dentro una transazione: la riga si rilegge lì e [compute] decide
+  /// su quella. Le altre colonne non si toccano, quindi un salvataggio della
+  /// scheda concorrente non viene annullato. Segna la riga da sincronizzare
+  /// come [updateItem].
+  ///
+  /// [compute] risponde `null` quando non c'è niente da scrivere. Restituisce
+  /// l'oggetto scritto, o `null` se non c'è più o non c'era niente da scrivere.
+  /// [compute] può essere chiamata più volte (nuovi tentativi): deve essere
+  /// pura.
+  Future<ItemModel?> updateAiMetadata(
+    String id,
+    AiMetadataChange? Function(ItemModel current) compute, {
+    DateTime? updatedAt,
+  });
 
   /// Inserisce multipli oggetti in una singola transazione atomica
   Future<void> insertMultipleItems(List<ItemModel> models);

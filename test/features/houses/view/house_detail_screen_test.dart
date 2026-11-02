@@ -5,9 +5,11 @@ import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/features/items/view/bulk_move_sheet.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/items/view/item_card.dart';
 import 'package:pack_log/shared/constants/app_constants.dart';
 import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_appear.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
 import 'package:pack_log/shared/widgets/universal_item_tile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -515,6 +517,37 @@ void main() {
     expect(find.text('Aggiunti ora · 1'), findsOneWidget);
     expect(find.text('Felpa verde'), findsOneWidget);
     expect(find.textContaining('Già in casa'), findsNothing);
+    await app.finish();
+  });
+
+  testWidgets('solo le righe Aggiunti ora compaiono con DsAppear', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(rapidFire());
+    await app.enterText(rapidFire(), 'Felpa verde');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await app.settle();
+    await app.enterText(rapidFire(), 'calz');
+    // Nuova riga degli Aggiunti ora: dentro DsAppear con la chiave dell'id.
+    final added = tester.widget<ItemCard>(
+      find.ancestor(
+        of: find.text('Felpa verde'),
+        matching: find.byType(ItemCard),
+      ),
+    );
+    final addedAppear = find.ancestor(
+      of: find.text('Felpa verde'),
+      matching: find.byType(DsAppear),
+    );
+    expect(addedAppear, findsOneWidget);
+    expect(tester.widget<DsAppear>(addedAppear).key, ValueKey(added.item.id));
+    // Già in casa: stessa pagina, nessuna animazione di comparsa.
+    expect(find.text('Calzini'), findsOneWidget);
+    expect(
+      find.ancestor(of: find.text('Calzini'), matching: find.byType(DsAppear)),
+      findsNothing,
+    );
     await app.finish();
   });
 
