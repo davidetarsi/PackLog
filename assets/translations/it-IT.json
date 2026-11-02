@@ -798,6 +798,7 @@
     "trip_progress": "{} su {} già in valigia",
     "trip_missing": "Mancano {}",
     "trip_and": "e",
+    "all_in_trip": "Già tutto in valigia",
     "trip_add": "Aggiungili in valigia",
     "trip_dismiss": "No, grazie",
     "learn_question": "La prossima volta lo aggiungo da solo per {}?",

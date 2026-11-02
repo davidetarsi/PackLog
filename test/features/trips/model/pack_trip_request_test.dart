@@ -125,6 +125,39 @@ void main() {
       ]);
     });
 
+    test('kit: al massimo 50 kit e 50 oggetti per kit, i primi', () {
+      final kits = [
+        for (var k = 0; k < 55; k++)
+          KitModel(
+            id: 'k$k',
+            houseId: 'h1',
+            name: 'Kit $k',
+            items: [
+              for (var i = 0; i < 60; i++)
+                KitItem(id: 'r$k-$i', kitId: 'k$k', itemId: 'i$i'),
+            ],
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+      ];
+
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        kits: kits,
+      );
+
+      final sent = body['kit'] as List;
+      expect(sent, hasLength(50));
+      expect((sent.first as Map)['id'], 'k0');
+      expect((sent.last as Map)['id'], 'k49');
+      final items = (sent.first as Map)['oggetti'] as List;
+      expect(items, hasLength(50));
+      expect((items.last as Map)['item_id'], 'i49');
+    });
+
     test('senza kit niente campo kit', () {
       final body = packTripBody(
         plan: _onePlacePlan,

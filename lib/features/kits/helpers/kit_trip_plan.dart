@@ -16,7 +16,7 @@ class KitTripPlan {
   int get changes => toAdd.length + raised.length;
 }
 
-/// Le copie sono quelle del kit, ma mai più di quante ne ha la casa; un
+/// Le copie sono quelle del kit, da 1 a quante ne ha la casa (almeno 1); un
 /// oggetto già nel viaggio prende il massimo fra le sue copie e quelle del
 /// kit, mai la somma. Gli oggetti del kit che la casa non ha più si saltano.
 KitTripPlan planKitForTrip({
@@ -31,8 +31,9 @@ KitTripPlan planKitForTrip({
   for (final line in kit.items) {
     final item = byId[line.itemId];
     if (item == null) continue;
-    final inHouse = item.quantity ?? 1;
-    final wanted = line.copies < inHouse ? line.copies : inHouse;
+    final available = item.quantity ?? 1;
+    final inHouse = available < 1 ? 1 : available;
+    final wanted = line.copies.clamp(1, inHouse);
     final existing = onTrip[item.id];
     if (existing == null) {
       toAdd.add(

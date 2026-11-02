@@ -257,6 +257,50 @@ void main() {
 
   final dismiss = find.byKey(const Key('kit_row_dismiss'));
 
+  testWidgets('la X è sul bordo destro e "Aggiungili" sotto "Mancano"', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 320,
+              child: KitSuggestionRow(
+                kitName: 'Montagna',
+                taken: 1,
+                total: 3,
+                missing: const [(name: 'K-way', copies: 1)],
+                onAdd: () {},
+                onDismiss: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final row = tester.getRect(find.byType(KitSuggestionRow));
+    final x = tester.getRect(
+      find.descendant(
+        of: find.byKey(const Key('kit_row_dismiss')),
+        matching: find.byType(Icon),
+      ),
+    );
+    expect(x.right, row.right);
+    final missingLeft = tester.getTopLeft(
+      find.byKey(const Key('kit_row_missing')),
+    );
+    final addLeft = tester.getTopLeft(
+      find.descendant(
+        of: find.byKey(const Key('kit_row_add')),
+        matching: find.byType(Text),
+      ),
+    );
+    expect(addLeft.dx, missingLeft.dx);
+  });
+
   group('la riga del kit', () {
     testWidgets('mostra nomi e copie dei mancanti', (tester) async {
       await pumpDetail(

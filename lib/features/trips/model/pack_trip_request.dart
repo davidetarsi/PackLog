@@ -10,6 +10,10 @@ const _kMaxBagText = 80;
 /// Copie massime di un oggetto del kit: il massimo che la funzione accetta.
 const _kMaxCopie = 99;
 
+/// Kit e oggetti per kit che la funzione accetta: oltre, si mandano i primi.
+const _kMaxKit = 50;
+const _kMaxOggettiPerKit = 50;
+
 /// Una tappa del foglio della valigia AI: una per chiave, con i giorni di
 /// tutti i suoi periodi.
 class AiStop {
@@ -116,7 +120,8 @@ Map<String, dynamic> packTripBody({
     'posti': true,
     'trip': trip,
     // I kit della casa: la funzione decide quali entrano e risponde con `kit`.
-    if (kits.isNotEmpty) 'kit': [for (final kit in kits) _kit(kit)],
+    if (kits.isNotEmpty)
+      'kit': [for (final kit in kits.take(_kMaxKit)) _kit(kit)],
   };
 }
 
@@ -125,11 +130,8 @@ Map<String, dynamic> _kit(KitModel kit) => {
   'attivita': kit.activities,
   'mezzi': kit.transports,
   'oggetti': [
-    for (final row in kit.items)
-      {
-        'item_id': row.itemId,
-        'copie': row.copies > _kMaxCopie ? _kMaxCopie : row.copies,
-      },
+    for (final row in kit.items.take(_kMaxOggettiPerKit))
+      {'item_id': row.itemId, 'copie': row.copies.clamp(1, _kMaxCopie)},
   ],
 };
 

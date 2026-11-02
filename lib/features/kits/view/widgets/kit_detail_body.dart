@@ -40,7 +40,8 @@ class KitDetailBody extends ConsumerWidget {
     ];
     final learned = [
       for (final (domain, id) in uses)
-        if ((kit.learned.yes[id] ?? 0) >= kKitLearnedAfterYes)
+        if ((kit.learned.yes[id] ?? 0) >= kKitLearnedAfterYes &&
+            !kit.learned.no.contains(id))
           etichettaDi(domain, id),
     ];
     final rows = [

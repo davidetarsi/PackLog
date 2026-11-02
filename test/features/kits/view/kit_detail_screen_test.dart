@@ -91,6 +91,68 @@ void main() {
     await app.finish();
   });
 
+  testWidgets('una pillola rifiutata non dice di essere stata imparata', (
+    tester,
+  ) async {
+    final app = await openKit(
+      tester,
+      prepare: (app, kit) => app.tester.runAsync(() async {
+        final repo = app.container.read(kitRepositoryProvider);
+        await repo.recordYes(kit.id, ['trekking']);
+        await repo.recordYes(kit.id, ['trekking']);
+        await repo.learnUse(kit.id, 'trekking');
+        await repo.refuseUse(kit.id, 'trekking');
+      }),
+    );
+
+    expect(find.text('Trekking'), findsOneWidget);
+    expect(
+      find.text('«Trekking» l\'hai aggiunto dopo 2 sì in valigia.'),
+      findsNothing,
+    );
+    await app.finish();
+  });
+
+  testWidgets('Metti in valigia senza novità dice che è già tutto dentro', (
+    tester,
+  ) async {
+    final app = await openKit(
+      tester,
+      copies: const {'item-0': 1},
+      prepare: (app, _) => app.tester.runAsync(() async {
+        final now = DateTime(2026, 11, 3);
+        await app.container
+            .read(tripNotifierProvider.notifier)
+            .addTrip(
+              TripModel(
+                id: 'trip-kit',
+                name: 'Prova kit',
+                items: [
+                  TripItem(
+                    id: 'item-0',
+                    name: 'T-shirt bianca',
+                    category: ItemCategory.vestiti,
+                    quantity: 2,
+                    originHouseId: kHomeId,
+                  ),
+                ],
+                createdAt: now,
+                updatedAt: now,
+              ),
+            );
+      }),
+    );
+
+    await app.tap(find.text('Metti in valigia…'));
+    final row = find.byKey(const Key('trip_picker_trip-kit'));
+    await tester.ensureVisible(row);
+    await app.tap(row);
+
+    expect(find.text('Già tutto in valigia'), findsOneWidget);
+    expect(find.textContaining('oggetti aggiunti'), findsNothing);
+    await app.finish();
+  });
+
   testWidgets(
     'Metti in valigia aggiunge gli oggetti al viaggio scelto con le copie del kit (massimo)',
     (tester) async {

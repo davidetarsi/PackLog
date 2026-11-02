@@ -31,6 +31,11 @@ Future<void> putKitInTrip(
       ref.read(itemNotifierProvider(kit.houseId)).valueOrNull ?? const [];
   final plan = planKitForTrip(kit: kit, houseItems: houseItems, trip: trip);
 
+  if (plan.changes == 0) {
+    AppSnackBar.showSuccess(context, 'kits.all_in_trip'.tr());
+    return;
+  }
+
   try {
     if (plan.raised.isEmpty) {
       await notifier.addItemsToTrip(trip.id, plan.toAdd);

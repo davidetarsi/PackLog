@@ -798,6 +798,7 @@
     "trip_progress": "{} of {} already in the suitcase",
     "trip_missing": "Missing: {}",
     "trip_and": "and",
+    "all_in_trip": "Everything is already in the suitcase",
     "trip_add": "Add them to the suitcase",
     "trip_dismiss": "No, thanks",
     "learn_question": "Next time I'll add it on my own for {}?",
