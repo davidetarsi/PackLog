@@ -553,6 +553,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       await _logFirstSuitcase(result, items.length);
       if (!mounted) return;
     }
+    if (saved) _logKitAutoAdded(result);
 
     // Niente snack in più: la valigia si vede già. Le modifiche sono salvate
     // e `_initial*` è allineato, quindi l'uscita non chiede conferma.
@@ -590,6 +591,23 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
           'from_first_run': widget.firstRun,
         },
       ),
+    );
+  }
+
+  /// `kit_auto_added`: i kit entrati da soli nella valigia salvata (quanti
+  /// kit e quanti oggetti), solo se ce n'è stato qualcuno.
+  void _logKitAutoAdded(AiPackingResult result) {
+    if (result.kitAdded.isEmpty) return;
+    unawaited(
+      ref
+          .read(analyticsServiceProvider)
+          .logEvent(
+            'kit_auto_added',
+            properties: {
+              'kits': {for (final a in result.kitAdded) a.kitId}.length,
+              'items': result.kitAdded.length,
+            },
+          ),
     );
   }
 

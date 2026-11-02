@@ -1,6 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/kits/model/kit_model.dart';
 import 'package:pack_log/features/kits/repositories/kit_repository.dart';
@@ -20,8 +22,15 @@ void main() {
 
   setUp(caricaCatalogoDelRepo);
 
-  Future<ScreenshotApp> openNewKit(WidgetTester tester) async {
-    final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+  Future<ScreenshotApp> openNewKit(
+    WidgetTester tester, {
+    AppSetup setup = const AppSetup(),
+  }) async {
+    final app = await ScreenshotApp.start(
+      tester,
+      theme: ShotTheme.light,
+      setup: setup,
+    );
     await app.go('/');
     await app.push('/houses/$kHomeId/kits/new');
     return app;
@@ -232,4 +241,61 @@ void main() {
     expect(saved.activities, ['ski']);
     await app.finish();
   });
+
+  group('analytics', () {
+    late _MockAnalytics analytics;
+
+    setUp(() {
+      analytics = _MockAnalytics();
+      when(
+        () => analytics.logEvent(any(), properties: any(named: 'properties')),
+      ).thenAnswer((_) async {});
+    });
+
+    AppSetup withAnalytics() => AppSetup(
+      extraOverrides: [analyticsServiceProvider.overrideWithValue(analytics)],
+    );
+
+    testWidgets('kit_created al salvataggio del kit nuovo', (tester) async {
+      final app = await openNewKit(tester, setup: withAnalytics());
+      await app.enterText(nameField(), 'Sci');
+      await submitRapidFire(app, 'Casco');
+      await save(app);
+
+      verify(
+        () => analytics.logEvent(
+          'kit_created',
+          properties: {'items': 1, 'uses': 1},
+        ),
+      ).called(1);
+      await app.finish();
+    });
+
+    testWidgets('modificare un kit non è kit_created', (tester) async {
+      final app = await ScreenshotApp.start(
+        tester,
+        theme: ShotTheme.light,
+        setup: withAnalytics(),
+      );
+      final kit = (await app.tester.runAsync(
+        () => app.container
+            .read(kitRepositoryProvider)
+            .createKit(houseId: kHomeId, name: 'Sci'),
+      ))!;
+      await app.go('/');
+      await app.push('/houses/$kHomeId/kits/${kit.id}/edit');
+      await app.enterText(nameField(), 'Sci e snowboard');
+      await save(app);
+
+      verifyNever(
+        () => analytics.logEvent(
+          'kit_created',
+          properties: any(named: 'properties'),
+        ),
+      );
+      await app.finish();
+    });
+  });
 }
+
+class _MockAnalytics extends Mock implements AppAnalyticsService {}

@@ -140,6 +140,7 @@ void main() {
   late _MockTripRepo tripRepo;
   late _MockKitRepo kitRepo;
   late _MockSync sync;
+  late _MockRaw raw;
   late TripModel current;
   late List<KitModel> kits;
   late List<ItemModel> houseItems;
@@ -154,6 +155,10 @@ void main() {
     tripRepo = _MockTripRepo();
     kitRepo = _MockKitRepo();
     sync = _MockSync();
+    raw = _MockRaw();
+    when(
+      () => raw.logEvent(any(), properties: any(named: 'properties')),
+    ).thenAnswer((_) async {});
     kits = [_kit('k1', 'Montagna')];
     houseItems = [
       _item('kway', 'K-way'),
@@ -188,10 +193,6 @@ void main() {
     when(() => lifecycle.computeNextStatusChange(any())).thenReturn(null);
     final houseRepo = _MockHouseRepo();
     when(() => houseRepo.getAllHouses()).thenAnswer((_) async => [_casa]);
-    final raw = _MockRaw();
-    when(
-      () => raw.logEvent(any(), properties: any(named: 'properties')),
-    ).thenAnswer((_) async {});
     tester.view.physicalSize = const Size(390, 4000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -323,6 +324,29 @@ void main() {
       expect(find.text('K-way'), findsOneWidget);
     });
 
+    testWidgets('eventi: accettata e scartata', (tester) async {
+      kits = [_kit('k1', 'Montagna'), _kit('k2', 'Aereo')];
+      houseItems = [...houseItems, _item('cuffia', 'Cuffia')];
+      await pumpDetail(
+        tester,
+        _trip(
+          suggestions: [
+            _suggestion('k1', {'kway': 1, 'calzetti': 2}),
+            _suggestion('k2', {'cuffia': 1}),
+          ],
+        ),
+      );
+      await addAll(tester);
+      verify(
+        () =>
+            raw.logEvent('kit_suggestion_accepted', properties: {'missing': 2}),
+      ).called(1);
+
+      await tester.tap(dismiss);
+      await tester.pumpAndSettle();
+      verify(() => raw.logEvent('kit_suggestion_dismissed')).called(1);
+    });
+
     testWidgets('copie: il massimo, mai la somma né più della casa', (
       tester,
     ) async {
@@ -444,6 +468,9 @@ void main() {
       await tester.tap(find.byKey(const Key('kit_learn_yes')));
       await tester.pumpAndSettle();
       verify(() => kitRepo.learnUse('k1', 'trekking')).called(1);
+      verify(
+        () => raw.logEvent('kit_use_learned', properties: {'kind': 'activity'}),
+      ).called(1);
       expect(find.byType(KitLearnRow), findsNothing);
     });
 
@@ -464,6 +491,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verify(() => kitRepo.refuseUse('k1', 'trekking')).called(1);
+      verifyNever(() => raw.logEvent('kit_use_learned'));
       verifyNever(() => kitRepo.learnUse(any(), any()));
       expect(find.byType(KitLearnRow), findsNothing);
     });

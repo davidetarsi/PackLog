@@ -1396,6 +1396,42 @@ void main() {
       expect(items.keys, containsAll(['i-maglietta', 'i-boxer']));
     });
 
+    testWidgets('kit_auto_added: kit e oggetti entrati da soli', (
+      tester,
+    ) async {
+      aiOutcome = outcome(
+        added: const [
+          AiKitAdded(kitId: 'k1', itemId: 'i-felpa'),
+          AiKitAdded(kitId: 'k1', itemId: 'i-spazzolino'),
+          AiKitAdded(kitId: 'k2', itemId: 'i-boxer'),
+        ],
+      );
+      arrange(trip: _viaggio(), items: _houseItems);
+
+      await generate(tester);
+
+      verify(
+        () => appAnalytics.logEvent(
+          'kit_auto_added',
+          properties: {'kits': 2, 'items': 3},
+        ),
+      ).called(1);
+    });
+
+    testWidgets('kit_auto_added non parte senza kit entrati', (tester) async {
+      aiOutcome = outcome();
+      arrange(trip: _viaggio(), items: _houseItems);
+
+      await generate(tester);
+
+      verifyNever(
+        () => appAnalytics.logEvent(
+          'kit_auto_added',
+          properties: any(named: 'properties'),
+        ),
+      );
+    });
+
     testWidgets('copie: massimo, mai somma', (tester) async {
       aiOutcome = outcome(
         added: const [

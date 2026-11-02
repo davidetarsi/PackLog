@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/analytics/analytics_service.dart';
 import '../../../../../core/catalog/catalog_choices.dart';
 import '../../../../../core/catalog/catalog_provider.dart';
 import '../../../../../shared/helpers/snack_bar_helper.dart';
@@ -47,6 +48,7 @@ class _TripKitRowState extends ConsumerState<TripKitRow> {
     final from = box is RenderBox && box.hasSize
         ? box.localToGlobal(Offset.zero) & box.size
         : Rect.zero;
+    final analytics = ref.read(analyticsServiceProvider);
     final updated = applyKitAdded(trip, row, counted: counted);
     final landing = [
       for (final item in updated.items)
@@ -64,6 +66,12 @@ class _TripKitRowState extends ConsumerState<TripKitRow> {
       if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
       return;
     }
+    unawaited(
+      analytics.logEvent(
+        'kit_suggestion_accepted',
+        properties: {'missing': row.missing.length},
+      ),
+    );
     // Il sì si conta una volta sola per kit e viaggio, anche se la valigia si
     // rigenera.
     var kit = row.kit;
@@ -81,10 +89,12 @@ class _TripKitRowState extends ConsumerState<TripKitRow> {
   }
 
   Future<void> _dismiss(KitRowState row) async {
+    final analytics = ref.read(analyticsServiceProvider);
     try {
       await ref
           .read(tripNotifierProvider.notifier)
           .updateTrip(applyKitDismissed(widget.trip, row.kit.id));
+      unawaited(analytics.logEvent('kit_suggestion_dismissed'));
     } catch (_) {
       if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
     }
@@ -95,9 +105,16 @@ class _TripKitRowState extends ConsumerState<TripKitRow> {
     if (learn == null) return;
     setState(() => _learn = null);
     final kits = ref.read(kitNotifierProvider(_houseId!).notifier);
+    final analytics = ref.read(analyticsServiceProvider);
     try {
       if (yes) {
         await kits.learnUse(learn.kitId, learn.use);
+        unawaited(
+          analytics.logEvent(
+            'kit_use_learned',
+            properties: {'kind': useDomain(learn.use)},
+          ),
+        );
       } else {
         await kits.refuseUse(learn.kitId, learn.use);
       }

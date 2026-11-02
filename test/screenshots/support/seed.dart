@@ -3,6 +3,7 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/repositories/house_repository.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/kits/repositories/kit_repository.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
 import 'package:pack_log/features/spaces/model/space_model.dart';
@@ -632,6 +633,47 @@ Future<void> seedValigiaPosti(ProviderContainer c) async {
       ),
       createdAt: stamp,
       updatedAt: stamp,
+    ),
+  );
+}
+
+/// Il kit "Montagna" nella casa e la sua riga nella valigia di Seoul: tre
+/// oggetti su cinque sono già dentro, mancano la giacca impermeabile e due
+/// paia di calzini. Va dopo [seedValigiaPosti].
+Future<void> seedKitInValigia(ProviderContainer c) async {
+  final kits = c.read(kitRepositoryProvider);
+  final kit = await kits.createKit(
+    houseId: kHomeId,
+    name: 'Montagna',
+    activities: const ['trekking'],
+  );
+  // Power bank, Cuffie, Spazzolino (già in valigia), Giacca impermeabile,
+  // Calzini.
+  await kits.addItems(kit.id, const {
+    'item-12': 1,
+    'item-13': 1,
+    'item-7': 1,
+    'item-3': 1,
+    'item-4': 2,
+  });
+
+  final trips = c.read(tripRepositoryProvider);
+  final trip = await trips.getTripById(kSeoulTripId);
+  await trips.updateTrip(
+    trip.copyWith(
+      aiResult: trip.aiResult!.copyWith(
+        kitSuggestions: [
+          AiKitSuggestion(
+            kitId: kit.id,
+            taken: 3,
+            total: 5,
+            missing: const [
+              KitItemRef(itemId: 'item-3'),
+              KitItemRef(itemId: 'item-4', copies: 2),
+            ],
+          ),
+        ],
+      ),
     ),
   );
 }
