@@ -1,8 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/core/catalog/catalog.dart';
+import 'package:pack_log/core/catalog/catalog_store.dart';
 import 'package:pack_log/features/items/model/clothing_colors.dart';
 import 'package:pack_log/features/items/model/clothing_taxonomy.dart';
+
+import '../../../helpers/catalogo_di_prova.dart';
 
 String _capo(String baseColor) => jsonEncode({
   'name': 'Capo',
@@ -60,8 +64,11 @@ void main() {
   });
 
   group('colorChoices', () {
+    setUp(() => caricaCatalogoDelRepo());
+    tearDown(() => CatalogStore.set(Catalog.vuoto));
+
     test('senza colori dell\'utente restituisce i colori di base', () {
-      expect(colorChoices(const []), kBaseColors);
+      expect(colorChoices(const []), baseColors());
     });
 
     test('non ripete i colori di base, senza maiuscole né sfumature', () {
@@ -71,7 +78,24 @@ void main() {
         'Rosa chiaro',
         'BEIGE ',
       ]);
-      expect(choices, [...kBaseColors, 'Verde salvia']);
+      expect(choices, [...baseColors(), 'Verde salvia']);
     });
+
+    test(
+      'un colore disattivato non si propone per i capi che non lo usano',
+      () {
+        CatalogStore.set(catalogoConVoceDisattivata('color', 'Bordeaux'));
+
+        final choices = colorChoices(const [
+          'Bordeaux',
+          'bordò',
+          'Verde salvia',
+        ]);
+
+        expect(choices, [...baseColors(), 'Verde salvia']);
+        expect(choices, isNot(contains('Bordeaux')));
+        expect(baseColors(), isNot(contains('Bordeaux')));
+      },
+    );
   });
 }

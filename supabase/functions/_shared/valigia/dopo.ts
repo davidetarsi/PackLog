@@ -5,7 +5,7 @@
 import * as K from "./costanti.ts";
 import * as rc from "./regole_capi.ts";
 import type { Capo } from "./capo.ts";
-import { massimo, ordina, senzaAccenti, vero } from "./py.ts";
+import { massimo, minimo, ordina, senzaAccenti, vero } from "./py.ts";
 import type { Record_ } from "./inject.ts";
 
 const q = (x: Record_) => x.quantita ?? 1;
@@ -380,7 +380,9 @@ export function segnalaVolume(capi: Record_[], capienza: number | null | undefin
   };
 }
 
-export function applicaTettoVolume(capi: Record_[], capienza: number | null | undefined): number {
+/** Con le copie possedute (interi) la potatura toglie anche un capo intero dello stesso slot,
+ *  mai l'ultimo (31 ottobre): il bisogno che prima stava in copie sta in capi diversi. */
+export function applicaTettoVolume(capi: Record_[], capienza: number | null | undefined, interi = false): number {
   if (!capienza) return 0;
   const bulk = (x: Record_) => x.bulk || 1;
   const imposto = (x: Record_) => (x.assegnazioni ?? []).some((a: Record_) => vero(a.imposto));
@@ -395,7 +397,84 @@ export function applicaTettoVolume(capi: Record_[], capienza: number | null | un
     volume -= bulk(scelto);
     tagliati += 1;
   }
+  while (interi && volume > capienza) {
+    const vivi = capi.filter((x) => q(x) >= 1);
+    const perSlot = new Map<string, number>();
+    for (const x of vivi) for (const s of slotDi(x)) perSlot.set(s, (perSlot.get(s) ?? 0) + 1);
+    const candidati = vivi.filter((x) => !imposto(x) && !intoccabile(x) && slotDi(x).size > 0 &&
+      [...slotDi(x)].every((s) => (perSlot.get(s) ?? 0) >= 2));
+    if (!candidati.length) break;
+    const fuori = massimo([...candidati].reverse(), (x) => bulk(x))!;
+    volume -= bulk(fuori) * q(fuori);
+    tagliati += q(fuori);
+    fuori.quantita = 0;
+  }
   return tagliati;
+}
+
+/** Nessun capo oltre le copie possedute (Davide, 31 ottobre). Le copie in piu' passano a capi
+ *  della stessa sottocategoria non ancora in valigia, con calore vicino, fino alle loro copie;
+ *  quello che non trova posto diventa un avviso di quantita'. Capi senza copie (null) non
+ *  cambiano. Ritorna le copie passate o tolte. Porting di rispetta_copie del bench. */
+export function rispettaCopie(liste: Record_[][], items: Capo[], mancanti: Record_[]): number {
+  const perId = new Map(items.map((g) => [g.id, g]));
+  const capi = liste.flat();
+  const inValigia = new Set(capi.map((x) => x.item_id));
+  const formale = (f: string | null | undefined) => f === "Business" || f === "Formal";
+  let toccate = 0;
+  const visti = new Set<string>();
+  for (const r of [...capi]) {
+    const g = perId.get(r.item_id);
+    if (g == null || g.copie == null || visti.has(g.id)) continue;
+    visti.add(g.id);
+    const stesso = capi.filter((x) => x.item_id === g.id);
+    let troppo = stesso.reduce((t, x) => t + q(x), 0) - g.copie;
+    if (troppo <= 0) continue;
+    // Prima dai record piu' grossi senza lasciarne uno a zero, poi a zero se serve.
+    let daSpostare = troppo;
+    for (const x of ordina(stesso, (x) => -q(x))) {
+      const via = Math.min(troppo, q(x) - 1);
+      x.quantita = q(x) - via;
+      troppo -= via;
+    }
+    for (const x of ordina(stesso, (x) => q(x))) {
+      if (troppo <= 0) break;
+      const via = Math.min(troppo, q(x));
+      x.quantita = q(x) - via;
+      troppo -= via;
+    }
+    toccate += daSpostare;
+    const wg = g.warmth || 2;
+    while (daSpostare > 0) {
+      const cands = items.filter((c) => c.has_metadata && !c.sempre_in_valigia && !inValigia.has(c.id) &&
+        c.sub_category === g.sub_category && Math.abs((c.warmth || 2) - wg) <= 1 &&
+        formale(c.formality) === formale(g.formality));
+      if (!cands.length) break;
+      const c = minimo(cands, (c) => Math.abs((c.warmth || 2) - wg))!;
+      const quanti = Math.min(daSpostare, c.copie != null ? c.copie : daSpostare);
+      const nuovo: Record_ = { ...r, item_id: c.id, item: c.name, subCategory: c.sub_category,
+        formality: c.formality, coverage: c.coverage, warmth: c.warmth, waterResistance: c.water_resistance,
+        bulk: c.bulk, quantita: quanti };
+      if ("tappe" in r) nuovo.tappe = [...(r.tappe || [])];
+      delete nuovo.in_partenza;
+      delete nuovo.nota_partenza;
+      liste.find((l) => l.some((y) => y === r))!.push(nuovo);
+      capi.push(nuovo);
+      inValigia.add(c.id);
+      daSpostare -= quanti;
+    }
+    if (daSpostare > 0) {
+      mancanti.push({
+        slot: (vero(r.slot) ? r.slot : (vero(r.assegnazioni) ? r.assegnazioni : [{}])[0].slot) ?? null,
+        tipo: "quantita_insufficiente", imposto: vero(r.imposto),
+        category: "category" in r ? r.category : "", essential: vero(r.essential), subCategories: [g.sub_category],
+        usi_richiesti: g.copie + daSpostare, usi_coperti: g.copie,
+        ...(vero(r.tappe) ? { tappe: [...r.tappe] } : {}),
+        reason: `${g.name}: ne servirebbero ${g.copie + daSpostare}, ne hai ${g.copie} e nessun capo uguale`,
+      });
+    }
+  }
+  return toccate;
 }
 
 // ── Unione delle righe dello stesso capo ────────────────────────────────────

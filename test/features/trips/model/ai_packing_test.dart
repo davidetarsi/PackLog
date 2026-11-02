@@ -5,59 +5,14 @@ AiReason _reason() =>
     const AiReason(code: 'meteo', label: 'Meteo', sentence: 'Fa freddo.');
 
 void main() {
-  group('AiActivity', () {
-    test('ha sedici attività nell\'ordine delle pillole', () {
-      expect(AiActivity.values.length, 16);
-      expect(AiActivity.values.first, AiActivity.city);
-      expect(AiActivity.values.last, AiActivity.spa);
-    });
-
-    test('id stabili salvati nel viaggio', () {
-      expect(AiActivity.city.id, 'city');
-      expect(AiActivity.highMountain.id, 'high_mountain');
-      expect(AiActivity.formalDinner.id, 'formal_dinner');
-      expect(AiActivity.worship.id, 'worship');
-    });
-
-    test('diving manda immersioni e mare', () {
-      expect(AiActivity.diving.generatorCodes, ['immersioni', 'mare']);
-    });
-
-    test('codici del generatore secondo la tabella della spec', () {
-      expect(AiActivity.city.generatorCodes, ['visite in citta']);
-      expect(AiActivity.walks.generatorCodes, ['escursioni leggere']);
-      expect(AiActivity.trekking.generatorCodes, ['trekking']);
-      expect(AiActivity.cammino.generatorCodes, ['cammino']);
-      expect(AiActivity.highMountain.generatorCodes, ['escursioni in quota']);
-      expect(AiActivity.sea.generatorCodes, ['mare']);
-      expect(AiActivity.ski.generatorCodes, ['sci']);
-      expect(AiActivity.camping.generatorCodes, ['campeggio']);
-      expect(AiActivity.work.generatorCodes, ['riunioni di lavoro']);
-      expect(AiActivity.formalDinner.generatorCodes, ['cena formale']);
-      expect(AiActivity.wedding.generatorCodes, ['matrimonio']);
-      expect(AiActivity.worship.generatorCodes, ['visite a siti religiosi']);
-      expect(AiActivity.nightlife.generatorCodes, ['vita notturna']);
-      expect(AiActivity.cycling.generatorCodes, ['bicicletta']);
-      expect(AiActivity.spa.generatorCodes, ['terme']);
-    });
-
-    test('chiave di etichetta', () {
-      expect(
-        AiActivity.highMountain.labelKey,
-        'trips.ai.activity.high_mountain',
+  group('attività e alloggi come id del catalogo', () {
+    test('AiStopAnswers tiene gli id così come sono', () {
+      const answers = AiStopAnswers(
+        activities: ['diving', 'sea'],
+        stay: 'hotel',
       );
-    });
-  });
-
-  group('AiStay', () {
-    test('id, testo per il generatore e chiave di etichetta', () {
-      expect(AiStay.hotel.id, 'hotel');
-      expect(AiStay.hotel.generatorText, 'hotel');
-      expect(AiStay.apartment.generatorText, 'appartamento');
-      expect(AiStay.hostel.generatorText, 'ostello');
-      expect(AiStay.camping.generatorText, 'campeggio');
-      expect(AiStay.friends.generatorText, 'da amici o parenti');
-      expect(AiStay.friends.labelKey, 'trips.ai.stay.friends');
+      expect(answers.activities, ['diving', 'sea']);
+      expect(answers.stay, 'hotel');
     });
   });
 
@@ -72,16 +27,13 @@ void main() {
     });
 
     test('attività senza alloggio è incompleta', () {
-      const answers = AiStopAnswers(activities: [AiActivity.sea]);
+      const answers = AiStopAnswers(activities: ['sea']);
       expect(answers.isUntouched, isFalse);
       expect(answers.isIncomplete, isTrue);
     });
 
     test('attività e alloggio: completa', () {
-      const answers = AiStopAnswers(
-        activities: [AiActivity.sea],
-        stay: AiStay.hotel,
-      );
+      const answers = AiStopAnswers(activities: ['sea'], stay: 'hotel');
       expect(answers.isIncomplete, isFalse);
     });
   });
@@ -93,11 +45,11 @@ void main() {
         luggageId: 'bag-1',
         stops: {
           'stop-a': AiStopAnswers(
-            activities: [AiActivity.city, AiActivity.diving],
-            stay: AiStay.apartment,
+            activities: ['city', 'diving'],
+            stay: 'apartment',
             washer: true,
           ),
-          'stop-b': AiStopAnswers(activities: [AiActivity.ski]),
+          'stop-b': AiStopAnswers(activities: ['ski']),
         },
       );
 
@@ -109,21 +61,23 @@ void main() {
       ]);
     });
 
-    test('attività sconosciute si scartano', () {
+    test('attività e alloggio sconosciuti al catalogo si conservano', () {
       final answers = AiStopAnswers.fromJson({
         'activities': ['city', 'paracadute'],
-        'stay': 'hotel',
+        'stay': 'yurta',
         'washer': false,
       });
-      expect(answers.activities, [AiActivity.city]);
+      expect(answers.activities, ['city', 'paracadute']);
+      expect(answers.stay, 'yurta');
     });
 
-    test('alloggio sconosciuto diventa null', () {
+    test('un viaggio salvato con la forma vecchia si legge com\'era', () {
       final answers = AiStopAnswers.fromJson({
-        'activities': <String>[],
-        'stay': 'yurta',
+        'activities': ['formal_dinner', 'cycling'],
+        'stay': 'friends',
       });
-      expect(answers.stay, isNull);
+      expect(answers.activities, ['formal_dinner', 'cycling']);
+      expect(answers.stay, 'friends');
     });
 
     test('avviso con livello sconosciuto non compare nei warnings', () {

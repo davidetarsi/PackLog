@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:pack_log/core/catalog/catalog_choices.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/promo/view/promo_code_sheet.dart';
 import 'package:pack_log/features/ai_input/model/ai_failure_reason.dart';
@@ -38,12 +39,14 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/profile/providers/gpt_usage_provider.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/houses/view/add_edit_house_screen.dart';
+import 'package:pack_log/features/items/providers/item_enrichment_provider.dart';
 import 'package:pack_log/features/items/view/item_sheet.dart';
 import 'package:pack_log/features/luggages/view/add_edit_luggage_screen.dart';
 import 'package:pack_log/features/spaces/view/add_edit_space_screen.dart';
 import 'package:pack_log/shared/services/location_search_service.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 
+import '../helpers/catalogo_di_prova.dart';
 import 'support/fakes.dart';
 import 'support/fonts.dart';
 import 'support/harness.dart';
@@ -154,6 +157,13 @@ Future<void> _emitAi(ScreenshotApp app, AiImportState state) async {
 class _SyncingForever extends Syncing {
   @override
   bool build() => true;
+}
+
+/// "T-shirt bianca" (`item-0`, capo senza metadati) con la richiesta della
+/// scheda ancora in corso.
+class _PendingItemDetails extends ItemEnrichment {
+  @override
+  Set<String> build() => const {'item-0'};
 }
 
 class _UnavailableHouses extends HouseNotifier {
@@ -937,6 +947,26 @@ final flows = <Flow>[
         await app.tap(find.text('Maglione di lana'));
         await app.tap(find.byKey(const Key('item_sheet_menu')));
         await app.tap(_text('items.move_to_house'));
+      },
+    ),
+    Scenario(
+      9,
+      'oggetto-scheda',
+      'dettagli-in-attesa',
+      source: 'lib/features/items/view/item_sheet.dart',
+      description:
+          'Capo senza metadati mentre la scheda dell\'AI arriva: sopra i '
+          'Dettagli, la riga "Sto completando i dettagli. Puoi già '
+          'modificarli." e i dettagli ancora vuoti; il campo Nome resta '
+          'modificabile.',
+      setup: AppSetup(
+        extraOverrides: [
+          itemEnrichmentProvider.overrideWith(_PendingItemDetails.new),
+        ],
+      ),
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.text('T-shirt bianca'));
       },
     ),
   ]),
@@ -2011,8 +2041,8 @@ final flows = <Flow>[
           'dice quale, e chiede se la compili ora.',
       steps: (app) async {
         await _openAiSheet(app, kUpcomingTripId);
-        await _tapShown(app, _text('trips.ai.activity.city'));
-        await _tapShown(app, _text('trips.ai.stay.hotel'));
+        await _tapShown(app, find.text(etichettaDi('activity', 'city')));
+        await _tapShown(app, find.text(etichettaDi('stay', 'hotel')));
         await _tapShown(app, find.text('trips.ai.next'.tr(args: ['Sintra'])));
         await _tapShown(
           app,
@@ -2302,6 +2332,8 @@ void main() {
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
+    // Tipi, usi, attività e alloggi si leggono dal catalogo, come in produzione.
+    caricaCatalogoDelRepo();
     useSystemSqlite();
     await loadRealFonts();
     await createPhotoFixtures();

@@ -159,8 +159,15 @@ export function capospallaInTracolla(capi: Record_[], capienza: number | null | 
   return capi.filter((x) => x.category !== "Outerwear" || x === caldo);
 }
 
-export function riverbero(attNorm: Set<string>, classi: any = null): boolean {
+/** quotaM: quota della meta (o della tappa). Sopra K.SOGLIA_QUOTA_RIVERBERO il
+ *  trekking (o le escursioni) chiede gli occhiali: l'alta montagna e' unita al
+ *  trekking (Davide, 31 ottobre). */
+export function riverbero(attNorm: Set<string>, classi: any = null, quotaM: number | null = null): boolean {
   if (interseca(attNorm, K.ATTIVITA_RIVERBERO)) return true;
+  if (K.SOGLIA_QUOTA_RIVERBERO != null && quotaM != null && quotaM >= K.SOGLIA_QUOTA_RIVERBERO &&
+    eTrekking([...attNorm])) {
+    return true;
+  }
   const p = (classi || {}).riverbero;
   return p != null && K.SOGLIA_JEV_RIVERBERO != null && p >= K.SOGLIA_JEV_RIVERBERO;
 }
@@ -258,7 +265,7 @@ export function slotCapiNuovi(items: Capo[], tempMin: number | null | undefined,
 export function injectFabbisogno(slots: Slot[], tempMin: number | null | undefined, tempMax: number | null | undefined,
   giorniPioggia: number | null | undefined, giorni: number | null = null, capienza: number | null = null,
   attivita: string[] | null = null, classi: any = null, tempMinAssoluta: number | null = null,
-  attivitaViaggio: string[] | null = null): Slot[] {
+  attivitaViaggio: string[] | null = null, quotaM: number | null = null): Slot[] {
   const nuovo = (nome: string, cat: string, subs: string[], kw: Record<string, any> = {}): Slot => ({
     slot: nome, category: cat, subCategories: subs, minWarmth: 1, maxWarmth: 5, formality: [],
     activityTags: [], frequency: "daily", essential: true, _fabbisogno: true,
@@ -445,7 +452,7 @@ export function injectFabbisogno(slots: Slot[], tempMin: number | null | undefin
     slots.push(nuovo(K.SLOT_CIABATTE, "Shoes", [...K.SOTTOCAT_CIABATTE], { frequency: "once", reason: "attivita' in acqua: ciabatte o sandali" }));
   }
 
-  if (riverbero(attNorm, classi) && !slots.some((s) => s.category === "Accessory" &&
+  if (riverbero(attNorm, classi, quotaM) && !slots.some((s) => s.category === "Accessory" &&
     JSON.stringify(s.subCategories || []) === JSON.stringify(["Sunglasses"]))) {
     slots.push(nuovo("occhiali da sole", "Accessory", ["Sunglasses"], { reason: "neve, ghiacciaio o quota: riverbero" }));
   }

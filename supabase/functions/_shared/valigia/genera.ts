@@ -90,7 +90,7 @@ export function valigiaDa(testo: string, sc: Record_, geo: Record_, meteo: Recor
     giorni: sc.giorni, lavatrice: sc.lavatrice, attivita: attivitaScenario(sc),
     temp_min: meteo.temp_min_media ?? null, temp_max: meteo.temp_max_media ?? null,
     bagaglio: sc.bagaglio ?? "", giorni_pioggia: meteo.giorni_di_pioggia ?? null,
-    intensita: sc.intensita ?? null, ...extra,
+    intensita: sc.intensita ?? null, quota_m: geo.altitudine_m ?? null, ...extra,
   });
 }
 

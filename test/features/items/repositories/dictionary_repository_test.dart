@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -40,7 +41,7 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     mockSupabase = MockSupabaseClient();
-    repository = DictionaryRepository(mockSupabase);
+    repository = DictionaryRepository(mockSupabase, hasSession: () => true);
   });
 
   group('loadDictionary', () {
@@ -109,6 +110,65 @@ void main() {
       expect(enDict.locale, 'en');
       expect(enDict.version, 5);
     });
+
+    test(
+      'il controllo della versione va al massimo una volta al giorno',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'dictionary_json_cache_it': jsonEncode(_sampleDictionaryJson),
+          'dictionary_version_cache_it': 3,
+        });
+        when(
+          () => mockSupabase.from('app_config'),
+        ).thenThrow(StateError('senza rete'));
+
+        await repository.loadDictionary('it');
+        await repository.loadDictionary('it');
+        await Future<void>.delayed(Duration.zero);
+
+        verify(() => mockSupabase.from('app_config')).called(1);
+      },
+    );
+
+    test('un\'eccezione di rete non consuma il giorno', () async {
+      SharedPreferences.setMockInitialValues({
+        'dictionary_json_cache_it': jsonEncode(_sampleDictionaryJson),
+        'dictionary_version_cache_it': 3,
+      });
+      when(
+        () => mockSupabase.from('app_config'),
+      ).thenThrow(const SocketException('senza rete'));
+
+      await repository.loadDictionary('it');
+      await Future<void>.delayed(Duration.zero);
+      await repository.loadDictionary('it');
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => mockSupabase.from('app_config')).called(2);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('dictionary_checked_on_it'), isNull);
+    });
+
+    test(
+      'senza sessione il server non si interroga e il giorno resta libero',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'dictionary_json_cache_it': jsonEncode(_sampleDictionaryJson),
+          'dictionary_version_cache_it': 3,
+        });
+        final senzaSessione = DictionaryRepository(
+          mockSupabase,
+          hasSession: () => false,
+        );
+
+        await senzaSessione.loadDictionary('it');
+        await Future<void>.delayed(Duration.zero);
+
+        verifyNever(() => mockSupabase.from('app_config'));
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getString('dictionary_checked_on_it'), isNull);
+      },
+    );
 
     test('throws when cache is empty and Supabase download fails', () async {
       SharedPreferences.setMockInitialValues({});

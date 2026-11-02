@@ -4,6 +4,7 @@
 // (ORACOLO_SCHEDA=file per l'oracolo intero: esporta_oracolo.py scheda FILE)
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { domandeJev, dubbi, leggiJson, normalizza, promptNome, promptScan, pulisciNome, statoJev } from "../scheda.ts";
 
@@ -11,6 +12,12 @@ const file = process.env.ORACOLO_SCHEDA ?? new URL("./oracolo_scheda_campione.js
 const o = JSON.parse(readFileSync(file, "utf8"));
 // JSON di Python e di JavaScript scrivono 1.0 e 1 in modo diverso: si confronta il valore.
 const json = (x: unknown) => JSON.parse(JSON.stringify(x));
+
+test("l'oracolo e' stato generato con la stessa copia del catalogo dell'app", () => {
+  // esporta_oracolo.py scheda scrive il sha256 del catalogo.json del bench (copia identica).
+  const copia = readFileSync(new URL("../../catalogo/catalogo.json", import.meta.url));
+  assert.equal(o.catalogo_sha256, createHash("sha256").update(copia).digest("hex"));
+});
 
 test("prompt e domande di Jev", () => {
   assert.equal(promptScan(), o.prompt_scan);

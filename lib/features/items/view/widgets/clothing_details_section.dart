@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/catalog/catalog_choices.dart';
+import '../../../../core/catalog/catalog_provider.dart';
 import '../../../../shared/constants/app_constants.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/ds_choice_group.dart';
@@ -24,11 +26,17 @@ import '../../providers/user_colors_provider.dart';
 ///
 /// [fields] dice quali dettagli mostrare, secondo la categoria dell'oggetto
 /// ([clothingFieldsFor]); di default tutti.
+///
+/// [onFieldTouched] avvisa di ogni interazione su un campo, anche quando il
+/// valore non cambia (la pillola già scelta, il tipo uguale nel picker, il
+/// colore): la scheda ricorda i campi scelti dall'utente. Negli usi conta solo
+/// un cambiamento: toccare l'ultimo uso, che non si toglie, non sceglie niente.
 class ClothingDetailsSection extends ConsumerWidget {
   final ClothingDetails details;
   final ValueChanged<ClothingDetails> onChanged;
   final Set<String> doubts;
   final ValueChanged<String>? onDoubtResolved;
+  final ValueChanged<ClothingField>? onFieldTouched;
   final Set<ClothingField> fields;
 
   const ClothingDetailsSection({
@@ -37,6 +45,7 @@ class ClothingDetailsSection extends ConsumerWidget {
     required this.onChanged,
     this.doubts = const {},
     this.onDoubtResolved,
+    this.onFieldTouched,
     this.fields = const {...ClothingField.values},
   });
 
@@ -44,10 +53,13 @@ class ClothingDetailsSection extends ConsumerWidget {
   /// mostrano solo quelli di base: nessuno spinner.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Il catalogo può cambiare in background: le pillole si ricostruiscono.
+    ref.watch(catalogRevisionProvider);
     final userColors =
         ref.watch(userColorsProvider).valueOrNull ?? const <String>[];
 
     void resolved(String field) => onDoubtResolved?.call(field);
+    void touched(ClothingField field) => onFieldTouched?.call(field);
     String? toCheck(String field) =>
         doubts.contains(field) ? 'clothing.details.to_check'.tr() : null;
 
@@ -59,6 +71,7 @@ class ClothingDetailsSection extends ConsumerWidget {
             value: details.subCategory,
             doubtNote: toCheck('subCategory'),
             onPicked: (type) {
+              touched(ClothingField.type);
               onChanged(details.copyWith(subCategory: type));
               resolved('subCategory');
             },
@@ -67,55 +80,78 @@ class ClothingDetailsSection extends ConsumerWidget {
           _ColorChoice(
             color: details.color,
             userColors: userColors,
-            onChanged: (color) => onChanged(
-              color == null
-                  ? details.copyWith(clearColor: true)
-                  : details.copyWith(color: color),
-            ),
+            onChanged: (color) {
+              touched(ClothingField.color);
+              onChanged(
+                color == null
+                    ? details.copyWith(clearColor: true)
+                    : details.copyWith(color: color),
+              );
+            },
           ),
         if (fields.contains(ClothingField.warmth))
           DsChoiceGroup<int>(
             title: 'clothing.details.warmth'.tr(),
             options: kWarmthLevels,
             labelOf: warmthLabel,
-            selected: {details.warmth},
+            selected: {?details.warmth},
             onChanged: (s) => onChanged(details.copyWith(warmth: s.single)),
             doubt: doubts.contains('warmth'),
             note: toCheck('warmth'),
-            onTouched: () => resolved('warmth'),
+            onTouched: () {
+              touched(ClothingField.warmth);
+              resolved('warmth');
+            },
           ),
         if (fields.contains(ClothingField.waterResistance))
           DsChoiceGroup<int>(
             title: 'clothing.details.water'.tr(),
             options: kWaterResistanceLevels,
             labelOf: waterResistanceLabel,
-            selected: {details.waterResistance},
+            selected: {?details.waterResistance},
             onChanged: (s) =>
                 onChanged(details.copyWith(waterResistance: s.single)),
             doubt: doubts.contains('waterResistance'),
             note: toCheck('waterResistance'),
-            onTouched: () => resolved('waterResistance'),
+            onTouched: () {
+              touched(ClothingField.waterResistance);
+              resolved('waterResistance');
+            },
           ),
         if (fields.contains(ClothingField.formality))
           DsChoiceGroup<String>(
             title: 'clothing.details.formality'.tr(),
-            options: kFormalities,
+            options: daProporre(
+              formalities(activeOnly: false),
+              giaUsate: {?details.formality},
+              dominio: 'formality',
+            ),
             labelOf: formalityLabel,
-            selected: {details.formality},
+            selected: {?details.formality},
             onChanged: (s) => onChanged(details.copyWith(formality: s.single)),
             doubt: doubts.contains('formality'),
             note: toCheck('formality'),
-            onTouched: () => resolved('formality'),
+            onTouched: () {
+              touched(ClothingField.formality);
+              resolved('formality');
+            },
           ),
         if (fields.contains(ClothingField.uses))
           DsChoiceGroup<String>(
             title: 'clothing.details.uses'.tr(),
-            options: kActivityTags,
+            options: daProporre(
+              activityTags(activeOnly: false),
+              giaUsate: details.uses,
+              dominio: 'use',
+            ),
             labelOf: activityLabel,
             selected: details.uses,
             multiple: true,
             note: 'clothing.details.uses_hint'.tr(),
-            onChanged: (s) => onChanged(details.copyWith(uses: s)),
+            onChanged: (s) {
+              touched(ClothingField.uses);
+              onChanged(details.copyWith(uses: s));
+            },
           ),
       ],
     );
@@ -125,7 +161,8 @@ class ClothingDetailsSection extends ConsumerWidget {
 /// Riga "Tipo": il valore a destra, tocco per scegliere dal picker raggruppato
 /// per categoria.
 class _TypeRow extends StatelessWidget {
-  final String value;
+  /// null se il tipo non è ancora scelto: la riga lo dice.
+  final String? value;
   final String? doubtNote;
   final ValueChanged<String> onPicked;
 
@@ -136,12 +173,17 @@ class _TypeRow extends StatelessWidget {
   });
 
   Future<void> _pick(BuildContext context) async {
+    final chosen = value;
+    // Le sottocategorie da proporre: quelle attive, più la scelta corrente se è
+    // disattivata (il capo la usa già, la mostra con la sua etichetta).
+    final tipi = clothingTypes(activeOnly: false);
     final options = [
-      for (final category in kClothingCategories)
-        for (final type in kClothingTypes[category] ?? const <String>[])
-          (category: category, type: type),
+      for (final category in clothingCategories())
+        for (final type in tipi[category] ?? const <String>[])
+          if (type == chosen || voceAttiva('clothing_type', type))
+            (category: category, type: type),
     ];
-    final current = clothingCategoryOf(value);
+    final current = chosen == null ? null : clothingCategoryOf(chosen);
     final picked = await DsPickerSheet.show<({String category, String type})>(
       context: context,
       title: 'clothing.details.choose_type'.tr(),
@@ -150,7 +192,7 @@ class _TypeRow extends StatelessWidget {
       groupOf: (o) => clothingGroupLabel(o.category),
       selected: options
           .where(
-            (o) => o.type == value && (current ?? o.category) == o.category,
+            (o) => o.type == chosen && (current ?? o.category) == o.category,
           )
           .firstOrNull,
     );
@@ -202,7 +244,9 @@ class _TypeRow extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        clothingTypeLabel(value),
+                        value == null
+                            ? 'clothing.details.choose_type'.tr()
+                            : clothingTypeLabel(value!),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: textTheme.bodyLarge,

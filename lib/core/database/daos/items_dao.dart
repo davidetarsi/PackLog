@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import '../../../features/items/model/item_model.dart';
 import '../database.dart';
 import '../tables/items_table.dart';
 import '../tables/mixins/syncable_table.dart';
@@ -89,6 +90,48 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
       items,
     )..where((i) => i.id.equals(item.id.value))).write(companion);
     return count > 0;
+  }
+
+  /// Aggiorna solo i metadati AI (e la categoria, se [compute] la dà) di un
+  /// oggetto, dentro una transazione.
+  ///
+  /// La riga si rilegge nella transazione e [compute] decide su quella: così
+  /// un salvataggio della scheda concorrente non viene annullato, perché le
+  /// altre colonne (nome, quantità, spazio, nota) non si toccano mai. Scrive
+  /// `ai_metadata`, `category` (se data), `updated_at` e
+  /// `syncStatus = pendingUpdate`, come [updateItem], per far partire il sync.
+  ///
+  /// Restituisce la riga scritta; `null` se l'oggetto non c'è più (o è
+  /// eliminato) o se [compute] risponde `null` (niente da scrivere).
+  Future<Item?> updateAiMetadata(
+    String id,
+    ({String aiMetadata, ItemCategory? category})? Function(Item current)
+    compute, {
+    DateTime? updatedAt,
+  }) {
+    return transaction(() async {
+      final current = await getItemById(id);
+      if (current == null) return null;
+      final change = compute(current);
+      if (change == null) return null;
+      final now = updatedAt ?? DateTime.now();
+      await (update(items)..where((i) => i.id.equals(id))).write(
+        ItemsCompanion(
+          aiMetadata: Value(change.aiMetadata),
+          category: change.category == null
+              ? const Value.absent()
+              : Value(change.category!),
+          updatedAt: Value(now),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+        ),
+      );
+      return current.copyWith(
+        aiMetadata: Value(change.aiMetadata),
+        category: change.category ?? current.category,
+        updatedAt: now,
+        syncStatus: SyncStatus.pendingUpdate,
+      );
+    });
   }
 
   /// Soft-delete di un singolo oggetto
