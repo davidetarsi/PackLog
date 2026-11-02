@@ -586,6 +586,8 @@
     "sync_status_retry": "Retry now",
     "sync_details_dialog_title": "Sync details",
     "sync_entity_items": "Items",
+    "sync_entity_kits": "Kits",
+    "sync_entity_kit_items": "Kit items",
     "sync_reason_network": "Connection problem",
     "sync_reason_server": "The server is temporarily unavailable",
     "sync_reason_unknown": "Syncing in progress, we'll retry automatically",

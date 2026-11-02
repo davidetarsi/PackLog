@@ -586,6 +586,8 @@
     "sync_status_retry": "Riprova ora",
     "sync_details_dialog_title": "Dettagli sincronizzazione",
     "sync_entity_items": "Oggetti",
+    "sync_entity_kits": "Kit",
+    "sync_entity_kit_items": "Oggetti dei kit",
     "sync_reason_network": "Problema di connessione",
     "sync_reason_server": "Il server non risponde momentaneamente",
     "sync_reason_unknown": "Sincronizzazione in corso, riproveremo automaticamente",

@@ -166,6 +166,83 @@ class SupabaseRepository {
     return _parseServerUpdatedAt(result, entity: 'space');
   }
 
+  // === KITS ===
+
+  /// Restituisce TUTTE le righe dell'utente (incluse `is_deleted = true`):
+  /// vedi [fetchAllHousesByUserId]. Paginato.
+  Future<List<Map<String, dynamic>>> fetchAllKitsByUserId(String userId) {
+    return _withTrace(
+      null,
+      () => paginatedFetch(
+        fetchPage: (from, to) async => List<Map<String, dynamic>>.from(
+          await _client
+              .from('kits')
+              .select()
+              .eq('user_id', userId)
+              .range(from, to),
+        ),
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>?> fetchKitById(String id, {String? sentryTrace}) {
+    return _withTrace(
+      sentryTrace,
+      () => _client.from('kits').select().eq('id', id).maybeSingle(),
+    );
+  }
+
+  Future<DateTime> upsertKit(
+    Map<String, dynamic> data, {
+    String? sentryTrace,
+  }) async {
+    final result = await _withTrace(
+      sentryTrace,
+      () => _client.from('kits').upsert(data).select('updated_at'),
+    );
+    return _parseServerUpdatedAt(result, entity: 'kit');
+  }
+
+  // === KIT ITEMS ===
+
+  /// Restituisce TUTTE le righe dell'utente (incluse `is_deleted = true`):
+  /// vedi [fetchAllHousesByUserId]. Paginato.
+  Future<List<Map<String, dynamic>>> fetchAllKitItemsByUserId(String userId) {
+    return _withTrace(
+      null,
+      () => paginatedFetch(
+        fetchPage: (from, to) async => List<Map<String, dynamic>>.from(
+          await _client
+              .from('kit_items')
+              .select()
+              .eq('user_id', userId)
+              .range(from, to),
+        ),
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>?> fetchKitItemById(
+    String id, {
+    String? sentryTrace,
+  }) {
+    return _withTrace(
+      sentryTrace,
+      () => _client.from('kit_items').select().eq('id', id).maybeSingle(),
+    );
+  }
+
+  Future<DateTime> upsertKitItem(
+    Map<String, dynamic> data, {
+    String? sentryTrace,
+  }) async {
+    final result = await _withTrace(
+      sentryTrace,
+      () => _client.from('kit_items').upsert(data).select('updated_at'),
+    );
+    return _parseServerUpdatedAt(result, entity: 'kit_item');
+  }
+
   // === LUGGAGES ===
 
   /// Restituisce TUTTE le righe dell'utente (incluse `is_deleted = true`):

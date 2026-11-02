@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/core/sync/sync_serializers.dart';
 import '../../helpers/test_database_setup.dart';
 
@@ -361,6 +363,215 @@ void main() {
 
       expect(companion.aiPackingSetup.present, isTrue);
       expect(companion.aiPackingSetup.value, contains('"houseId":"h2"'));
+    });
+  });
+
+  group('SyncSerializers - kit', () {
+    final t = DateTime.utc(2026, 11, 3, 9);
+
+    Future<void> seedHouseAndItem() async {
+      await database.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'h1',
+          name: 'Casa',
+          createdAt: t,
+          updatedAt: t,
+        ),
+      );
+      await database.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'i1',
+          houseId: 'h1',
+          name: 'Giacca',
+          category: ItemCategory.vestiti,
+          createdAt: t,
+          updatedAt: t,
+        ),
+      );
+    }
+
+    test(
+      'un kit va e torna con liste e learned come JSON, non stringhe',
+      () async {
+        await seedHouseAndItem();
+        await database.kitsDao.upsertKit(
+          KitsCompanion.insert(
+            id: 'k1',
+            houseId: 'h1',
+            name: 'Sci',
+            activities: const Value('["ski"]'),
+            transports: const Value('["car","bus"]'),
+            learned: const Value('{"yes":{"trekking":2},"no":["mare"]}'),
+            createdAt: t,
+            updatedAt: t,
+          ),
+        );
+        final kit = (await database.kitsDao.findKitById('k1'))!;
+
+        final json = SyncSerializers.kitToJson(kit);
+
+        expect(json['activities'], ['ski']);
+        expect(json['transports'], ['car', 'bus']);
+        expect(json['learned'], {
+          'yes': {'trekking': 2},
+          'no': ['mare'],
+        });
+        expect(json['house_id'], 'h1');
+        expect(json['is_deleted'], false);
+
+        final back = SyncSerializers.buildKitCompanion(
+          json,
+          syncedAt: DateTime.utc(2026, 11, 4),
+        );
+        expect(back.name.value, 'Sci');
+        expect(back.activities.value, '["ski"]');
+        expect(back.transports.value, '["car","bus"]');
+        expect(back.learned.value, '{"yes":{"trekking":2},"no":["mare"]}');
+        expect(back.syncStatus.value, SyncStatus.synced);
+      },
+    );
+
+    test('un kit remoto senza liste importa liste vuote', () {
+      final companion = SyncSerializers.buildKitCompanion({
+        'id': 'k1',
+        'user_id': 'u1',
+        'house_id': 'h1',
+        'name': 'Sci',
+        'created_at': '2026-11-03T09:00:00Z',
+        'updated_at': '2026-11-03T09:00:00Z',
+      }, syncedAt: DateTime.utc(2026, 11, 4));
+      expect(companion.activities.value, '[]');
+      expect(companion.transports.value, '[]');
+      expect(companion.learned.value, '{}');
+    });
+
+    test('un JSON locale corrotto non blocca il push: campo vuoto', () async {
+      await seedHouseAndItem();
+      await database.kitsDao.upsertKit(
+        KitsCompanion.insert(
+          id: 'k1',
+          houseId: 'h1',
+          name: 'Sci',
+          activities: const Value('non json'),
+          learned: const Value('[1,2]'),
+          createdAt: t,
+          updatedAt: t,
+        ),
+      );
+      final json = SyncSerializers.kitToJson(
+        (await database.kitsDao.findKitById('k1'))!,
+      );
+      expect(json['activities'], isEmpty);
+      expect(json['learned'], isEmpty);
+    });
+
+    test('una riga di kit va e torna con le copie', () async {
+      await seedHouseAndItem();
+      await database.kitsDao.upsertKit(
+        KitsCompanion.insert(
+          id: 'k1',
+          houseId: 'h1',
+          name: 'Sci',
+          createdAt: t,
+          updatedAt: t,
+        ),
+      );
+      await database.kitsDao.upsertKitItem(
+        KitItemsCompanion.insert(
+          id: 'r1',
+          kitId: 'k1',
+          itemId: 'i1',
+          copies: const Value(2),
+          createdAt: t,
+          updatedAt: t,
+        ),
+      );
+      final row = (await database.kitItemsDao.findKitItemById('r1'))!;
+
+      final json = SyncSerializers.kitItemToJson(row);
+      expect(json['kit_id'], 'k1');
+      expect(json['item_id'], 'i1');
+      expect(json['copies'], 2);
+
+      final back = SyncSerializers.buildKitItemCompanion(
+        json,
+        syncedAt: DateTime.utc(2026, 11, 4),
+      );
+      expect(back.copies.value, 2);
+      expect(back.kitId.value, 'k1');
+      expect(back.itemId.value, 'i1');
+    });
+  });
+
+  group('SyncSerializers - mezzi del viaggio', () {
+    Map<String, dynamic> remote({Object? transports = _unset}) => {
+      'id': 'trip-1',
+      'name': 'Toscana',
+      'created_at': '2026-09-01T00:00:00.000Z',
+      'updated_at': '2026-09-01T00:00:00.000Z',
+      if (!identical(transports, _unset)) 'transports': transports,
+    };
+
+    test('mezzi remoti: salvati come JSON in testo', () {
+      final c = SyncSerializers.buildTripCompanion(
+        remote(transports: ['plane', 'train']),
+        syncedAt: DateTime(2026),
+      );
+      expect(c.transports.value, '["plane","train"]');
+    });
+
+    test('lista vuota remota: azzera i mezzi locali', () {
+      final c = SyncSerializers.buildTripCompanion(
+        remote(transports: <String>[]),
+        syncedAt: DateTime(2026),
+      );
+      expect(c.transports.present, isTrue);
+      expect(c.transports.value, '[]');
+    });
+
+    test('chiave assente o null: non tocca i mezzi locali', () {
+      for (final r in [remote(), remote(transports: null)]) {
+        final c = SyncSerializers.buildTripCompanion(
+          r,
+          syncedAt: DateTime(2026),
+        );
+        expect(c.transports.present, isFalse);
+      }
+    });
+
+    test('push: lista di stringhe; senza mezzi la chiave è omessa', () async {
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 'a',
+          name: 'Con mezzi',
+          transports: const Value('["car"]'),
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 'b',
+          name: 'Senza',
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
+      final a = (await database.tripsDao.findTripById('a'))!;
+      final b = (await database.tripsDao.findTripById('b'))!;
+
+      expect(
+        SyncSerializers.tripToJson(a, items: [], luggageIds: [])['transports'],
+        ['car'],
+      );
+      expect(
+        SyncSerializers.tripToJson(
+          b,
+          items: [],
+          luggageIds: [],
+        ).containsKey('transports'),
+        isFalse,
+      );
     });
   });
 }

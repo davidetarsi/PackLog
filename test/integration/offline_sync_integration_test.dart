@@ -66,6 +66,8 @@ void main() {
       itemsDao: database.itemsDao,
       spacesDao: database.spacesDao,
       luggagesDao: database.luggagesDao,
+      kitsDao: database.kitsDao,
+      kitItemsDao: database.kitItemsDao,
       tripsDao: database.tripsDao,
       remote: mockRemote,
       monitoring: mockMonitoring,
