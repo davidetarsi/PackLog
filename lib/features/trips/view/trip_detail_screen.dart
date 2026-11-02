@@ -25,6 +25,8 @@ import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_parts.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
+import 'widgets/slots/slot_actions.dart';
+import 'widgets/slots/slot_flights.dart';
 import 'widgets/slots/slot_edits.dart';
 import 'widgets/slots/slot_focus.dart';
 import 'widgets/slots/slot_rapid_fire_bar.dart';
@@ -59,7 +61,7 @@ class TripDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
-    with TripSlotEdits {
+    with TripSlotEdits, TripSlotFlights {
   /// Il posto che la barra Rapid Fire sta riempiendo; `null` = barra chiusa.
   /// La barra si vede solo finché il posto è ancora aperto.
   String? _openSlotId;
@@ -67,6 +69,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
   /// Gli oggetti scritti in questa apertura: stanno nel riquadro, non fra
   /// quelli dell'utente, finché il posto resta aperto.
   List<TripItem> _written = const [];
+
+  /// Il riquadro del posto sta scoppiando (copie finite o "Da comprare"):
+  /// finita la bolla il posto si chiude.
+  bool _popping = false;
 
   /// La card del gruppo con il posto aperto, da portare in cima.
   final _openCardKey = GlobalKey();
@@ -97,7 +103,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
   /// Il posto con la barra aperta, se esiste ancora ed è aperto.
   AiSlot? _barSlot(TripModel trip) {
     final id = _openSlotId;
-    if (id == null) return null;
+    if (id == null || _popping) return null;
     return trip.aiResult?.slots
         ?.where((s) => s.id == id && s.isOpen)
         .firstOrNull;
@@ -148,14 +154,36 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     );
   }
 
-  /// Richiude il posto: gli oggetti scritti tornano fra quelli dell'utente.
+  /// Il posto aperto, anche finito finché la bolla scoppia.
+  AiSlot? _listSlot(TripModel trip) {
+    final id = _openSlotId;
+    if (id == null) return null;
+    return trip.aiResult?.slots
+        ?.where((s) => s.id == id && (s.isOpen || _popping))
+        .firstOrNull;
+  }
+
+  /// Richiude il posto: gli oggetti scritti tornano fra quelli dell'utente,
+  /// e volano alla loro riga.
   void _closeBar() {
     if (_openSlotId == null) return;
+    final flights = captureFlights(_written);
     setState(() {
       _openSlotId = null;
       _written = const [];
       _boughtSlotId = null;
+      _popping = false;
     });
+    flyAfterFrame(flights);
+  }
+
+  /// Fa scoppiare il riquadro; a bolla finita [_popDone] chiude.
+  void _startPop() {
+    if (_openSlotId != null) setState(() => _popping = true);
+  }
+
+  void _popDone() {
+    if (mounted && _popping) _closeBar();
   }
 
   /// Se il percorso chiedeva un posto, lo apre appena viaggio e case sono
@@ -190,7 +218,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
       originHouseId: item.houseId,
     );
     if (_openSlotId == slot.id) {
-      setState(() => _written = [..._written, packed]);
+      setState(() {
+        _written = [..._written, packed];
+        _popping = slot.remaining <= packed.quantity;
+      });
     }
     try {
       await notifier.fillAiSlot(tripId, slot.id, packed);
@@ -209,7 +240,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
 
   /// "Da comprare" sulla barra: segna il posto e chiude la barra.
   void _barToBuy(AiSlot slot) {
-    _closeBar();
+    _startPop();
     unawaited(markSlotToBuy(slot, from: 'bar'));
   }
 
@@ -222,16 +253,17 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
         final trip = trips.where((t) => t.id == tripId).firstOrNull;
         if (trip == null) return _notFound(context);
         _resolvePendingSlot(trip);
-        final barSlot = _barSlot(trip);
+        final listSlot = _listSlot(trip);
         return _TripDetail(
           trip: trip,
-          barSlot: barSlot,
-          openSlot: barSlot == null
+          barSlot: _barSlot(trip),
+          openSlot: listSlot == null
               ? null
               : OpenSlotState(
-                  slot: barSlot,
+                  slot: listSlot,
                   written: _written,
                   cardKey: _openCardKey,
+                  popping: _popping,
                 ),
           onFillSlot: _fillSlot,
           onCloseBar: _closeBar,
@@ -246,6 +278,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                 .toggleItemCheck(tripId, item.id),
             remove: (slot) => unawaited(removeSlot(slot, confirm: true)),
             dismiss: (slot) => unawaited(removeSlot(slot, confirm: false)),
+            popDone: _popDone,
+            rowKey: rowKey,
           ),
         );
       },

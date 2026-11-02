@@ -20,6 +20,7 @@ class OpenSlotBody extends StatelessWidget {
     required this.slot,
     required this.written,
     this.onToggleItem,
+    this.rowKey,
   });
 
   final AiSlot slot;
@@ -27,6 +28,9 @@ class OpenSlotBody extends StatelessWidget {
 
   /// La casella di un oggetto scritto; `null` la lascia ferma.
   final ValueChanged<TripItem>? onToggleItem;
+
+  /// La chiave della riga di un oggetto scritto (per farlo volare via).
+  final GlobalKey Function(String itemId)? rowKey;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +68,7 @@ class OpenSlotBody extends StatelessWidget {
           const DsDivider(),
           for (final item in written)
             PackedRow(
+              key: rowKey?.call(item.id),
               item: item,
               onToggle: toggle == null ? () {} : () => toggle(item),
             ),

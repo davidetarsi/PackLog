@@ -33,7 +33,15 @@ class ItemsCard extends ConsumerWidget {
   final String tripId;
   final List<TripItem> items;
 
-  const ItemsCard({super.key, required this.tripId, required this.items});
+  /// La chiave della riga di un oggetto (per farlo volare fin qui).
+  final GlobalKey Function(String itemId)? rowKey;
+
+  const ItemsCard({
+    super.key,
+    required this.tripId,
+    required this.items,
+    this.rowKey,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -45,6 +53,7 @@ class ItemsCard extends ConsumerWidget {
         children: [
           for (final item in items)
             PackedRow(
+              key: rowKey?.call(item.id),
               item: item,
               onToggle: () => ref
                   .read(tripNotifierProvider.notifier)

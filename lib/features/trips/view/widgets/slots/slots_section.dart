@@ -9,52 +9,11 @@ import '../../../model/ai_packing.dart';
 import '../../../model/suitcase_progress.dart';
 import '../../../model/trip_model.dart';
 import 'open_slot_body.dart';
+import 'slot_actions.dart';
 import 'slot_focus.dart';
+import 'slot_pop.dart';
 import 'slot_widgets.dart';
 import 'trip_items_card.dart';
-
-/// Cosa si può fare sui posti della valigia; li gestisce lo schermo.
-class SlotActions {
-  const SlotActions({
-    required this.open,
-    required this.close,
-    required this.markToBuy,
-    required this.toggle,
-    required this.toggleItem,
-    required this.remove,
-    required this.dismiss,
-  });
-
-  final ValueChanged<AiSlot> open;
-
-  /// Richiude il posto aperto (un tocco sul resto spento).
-  final VoidCallback close;
-  final ValueChanged<AiSlot> markToBuy;
-  final ValueChanged<AiSlot> toggle;
-
-  /// La casella di un oggetto scritto nel posto aperto.
-  final ValueChanged<TripItem> toggleItem;
-
-  /// La X di un importante: chiede conferma prima di togliere.
-  final ValueChanged<AiSlot> remove;
-
-  /// Lo scorrimento di una proposta: toglie subito, con Annulla.
-  final ValueChanged<AiSlot> dismiss;
-}
-
-/// Il posto aperto nel dettaglio: quale, gli oggetti scritti in questa
-/// apertura e la chiave della card che lo contiene (per portarla in cima).
-class OpenSlotState {
-  const OpenSlotState({
-    required this.slot,
-    required this.written,
-    required this.cardKey,
-  });
-
-  final AiSlot slot;
-  final List<TripItem> written;
-  final GlobalKey cardKey;
-}
 
 /// "Cosa porti" con la valigia fatta di posti: la testata con l'avanzamento,
 /// le informazioni sul viaggio, poi per categoria gli importanti aperti, i
@@ -80,7 +39,10 @@ class SlotsSection extends StatelessWidget {
     if (progress.isEmpty) return const EmptySuitcase();
 
     final result = trip.aiResult!;
-    final slots = (result.slots ?? const <AiSlot>[]).where((s) => s.inSuitcase);
+    // Il posto che sta scoppiando c'è ancora, anche se ormai è finito.
+    final slots = (result.slots ?? const <AiSlot>[]).where(
+      (s) => s.inSuitcase || s.id == open?.slot.id,
+    );
     final writtenIds = {for (final w in open?.written ?? const []) w.id};
     final mine = trip.items.where((i) => !writtenIds.contains(i.id));
     final gap = SizedBox(height: context.spacingSm);
@@ -126,10 +88,15 @@ class SlotsSection extends StatelessWidget {
     final state = open;
     if (state == null || state.slot.id != slot.id) return null;
     final ids = {for (final w in state.written) w.id};
-    return OpenSlotBody(
-      slot: state.slot,
-      written: trip.items.where((i) => ids.contains(i.id)).toList(),
-      onToggleItem: actions.toggleItem,
+    return SlotPop(
+      popping: state.popping,
+      onDone: actions.popDone,
+      child: OpenSlotBody(
+        slot: state.slot,
+        written: trip.items.where((i) => ids.contains(i.id)).toList(),
+        onToggleItem: actions.toggleItem,
+        rowKey: actions.rowKey,
+      ),
     );
   }
 
@@ -196,7 +163,8 @@ class SlotsSection extends StatelessWidget {
           ),
           holdsOpen: openBody != null,
         ),
-      if (items.isNotEmpty) _dim(ItemsCard(tripId: trip.id, items: items)),
+      if (items.isNotEmpty)
+        _dim(ItemsCard(tripId: trip.id, items: items, rowKey: actions.rowKey)),
     ];
     if (blocks.isEmpty) return const [];
 
