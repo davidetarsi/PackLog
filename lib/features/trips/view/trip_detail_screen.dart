@@ -12,7 +12,6 @@ import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_not_found_state.dart';
-import '../../../shared/widgets/ds_section_title.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
@@ -22,12 +21,13 @@ import '../model/ai_packing.dart';
 import '../model/suitcase_progress.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
-import 'widgets/pack/pack_parts.dart';
+import 'widgets/pack/pack_luggages.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
 import 'widgets/slots/slot_actions.dart';
 import 'widgets/slots/slot_flights.dart';
 import 'widgets/slots/slot_edits.dart';
+import 'widgets/slots/slot_end_spacer.dart';
 import 'widgets/slots/slot_focus.dart';
 import 'widgets/slots/slot_rapid_fire_bar.dart';
 import 'widgets/slots/slots_section.dart';
@@ -345,6 +345,7 @@ class _TripDetail extends ConsumerWidget {
               onItemCreated: (item) => onFillSlot(bar, item),
               onClose: onCloseBar,
               onToBuy: bar.toBuy ? null : () => onBarToBuy(bar),
+              popping: openSlot?.popping ?? false,
             )
           : DsButton(
               key: const Key('trip_detail_cta'),
@@ -399,20 +400,7 @@ class _TripDetail extends ConsumerWidget {
                       ),
                     ),
                     PackWeatherSection(trip: trip),
-                    if (trip.luggages.isNotEmpty) ...[
-                      DsSectionTitle('trips.pack.luggages'.tr()),
-                      Wrap(
-                        spacing: context.spacingSm,
-                        runSpacing: context.spacingSm,
-                        children: [
-                          for (final luggage in trip.luggages)
-                            PackPill(
-                              label: luggage.name,
-                              icon: Icons.luggage_outlined,
-                            ),
-                        ],
-                      ),
-                    ],
+                    PackLuggages(trip.luggages),
                   ],
                 ),
               ),
@@ -420,7 +408,7 @@ class _TripDetail extends ConsumerWidget {
                 SlotsSection(trip: trip, actions: slotActions, open: open)
               else
                 PlainItemsSection(trip: trip),
-              if (open != null) dim(SizedBox(height: viewport.maxHeight)),
+              dim(SlotEndSpacer(open != null, viewport.maxHeight)),
             ],
           );
         },

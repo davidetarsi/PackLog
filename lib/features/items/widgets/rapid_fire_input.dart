@@ -50,6 +50,9 @@ class RapidFireInput extends ConsumerStatefulWidget {
   /// Segnaposto del campo, al posto di `items.rapid_fire_hint`.
   final String? hintText;
 
+  /// Falso: il campo non si scrive e non invia (stile disabilitato del tema).
+  final bool enabled;
+
   const RapidFireInput({
     super.key,
     required this.houseId,
@@ -60,6 +63,7 @@ class RapidFireInput extends ConsumerStatefulWidget {
     this.focusNode,
     this.onItemCreated,
     this.hintText,
+    this.enabled = true,
     this.height = 50.0,
   });
 
@@ -217,7 +221,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
 
   Future<void> _handleSubmit() async {
     final text = _textController.text.trim();
-    if (text.isEmpty || _isSubmitting) return;
+    if (!widget.enabled || text.isEmpty || _isSubmitting) return;
 
     final copies = _copies;
     final String name;
@@ -376,6 +380,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                     Expanded(
                       child: TextField(
                         controller: _textController,
+                        enabled: widget.enabled,
                         textCapitalization: TextCapitalization.sentences,
                         // Il campo resta a fuoco dopo ogni invio e la tastiera
                         // non rimette la maiuscola: la mette il formatter.
@@ -417,7 +422,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
 
                     // Bottone Invia
                     _SubmitButton(
-                      enabled: hasText && !_isSubmitting,
+                      enabled: widget.enabled && hasText && !_isSubmitting,
                       onPressed: _handleSubmit,
                       isSubmitting: _isSubmitting,
                     ),

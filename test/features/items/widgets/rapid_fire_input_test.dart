@@ -83,6 +83,7 @@ void main() {
     ValueChanged<String>? onTextChanged,
     ValueChanged<bool>? onExpandedChanged,
     FocusNode? focusNode,
+    bool enabled = true,
   }) async {
     tester.view.physicalSize = const Size(412, 915);
     tester.view.devicePixelRatio = 1.0;
@@ -101,6 +102,7 @@ void main() {
                   onTextChanged: onTextChanged,
                   onExpandedChanged: onExpandedChanged,
                   focusNode: focusNode,
+                  enabled: enabled,
                 ),
               ),
             ),
@@ -109,6 +111,19 @@ void main() {
       ),
     );
   }
+
+  testWidgets('enabled false: il campo non si scrive', (tester) async {
+    String? last;
+    await pumpInput(tester, enabled: false, onTextChanged: (v) => last = v);
+    expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
+
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'Felpa');
+    await tester.pump();
+    expect(last, isNull);
+    expect(find.text('Felpa'), findsNothing);
+  });
 
   testWidgets('pillole col nome intero, tutte larghe uguali', (tester) async {
     await pumpInput(tester);

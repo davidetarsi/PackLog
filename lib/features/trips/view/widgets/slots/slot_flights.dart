@@ -9,6 +9,7 @@ import '../../../model/trip_model.dart';
 import '../../../providers/trip_provider.dart';
 import '../../trip_detail_screen.dart';
 import 'item_flight.dart';
+import 'slot_end_spacer.dart';
 import 'trip_items_card.dart';
 
 /// Il volo degli oggetti scritti in un posto fino alla loro riga fra quelli
@@ -99,10 +100,14 @@ mixin TripSlotFlights on ConsumerState<TripDetailScreen> {
     return flights;
   }
 
-  /// Vola al frame dopo la chiusura, quando le righe nuove sono sul foglio.
+  /// Vola quando le righe nuove sono sul foglio e lo spazio in fondo ha finito
+  /// di restringersi ([SlotEndSpacer]): prima la pagina si sposta e il
+  /// bersaglio sarebbe sbagliato.
   void flyAfterFrame(List<ItemFlight> flights) {
     if (flights.isEmpty) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final wait = SlotEndSpacer.settle(context);
+      if (wait > Duration.zero) await Future<void>.delayed(wait);
       if (!mounted) return;
       unawaited(
         flyItems(context, flights: flights).whenComplete(() {

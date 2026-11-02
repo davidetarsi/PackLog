@@ -381,6 +381,8 @@ void main() {
     await tester.pump();
     expect(popping(), isFalse);
     await tester.pump();
+    // Prima lo spazio in fondo si restringe, poi gli oggetti partono.
+    await tester.pump(AppMotion.medium);
     await tester.pump(AppMotion.slow ~/ 2);
 
     // La riga vera (ancora invisibile) e la sua copia in volo.
@@ -431,5 +433,107 @@ void main() {
     expect(openBody, findsNothing);
     expect(inUserItems(find.text('T-shirt')), findsOneWidget);
     expect(find.text('T-shirt'), findsOneWidget);
+  });
+
+  testWidgets('la barra mostra il contesto come testo, non come chip', (
+    tester,
+  ) async {
+    await pumpDetail(tester, _trip());
+    await openMagliette(tester);
+
+    final label = find.descendant(
+      of: bar,
+      matching: find.text('Magliette · 5 da personalizzare'),
+    );
+    expect(label, findsOneWidget);
+    expect(
+      find.ancestor(of: label, matching: find.byType(DecoratedBox)),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('slot_bar_close')), findsOneWidget);
+    expect(find.byKey(const Key('slot_bar_to_buy')), findsOneWidget);
+  });
+
+  testWidgets('il campo è fermo mentre la bolla scoppia e torna libero col '
+      'posto successivo', (tester) async {
+    await pumpDetail(tester, _trip());
+    await openMagliette(tester);
+    bool enabled() => tester.widget<TextField>(find.byType(TextField)).enabled!;
+    expect(enabled(), isTrue);
+
+    await tester.enterText(find.byType(TextField), '5 t-shirt');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward));
+    await tester.pump();
+    await tester.pump();
+    expect(popping(), isTrue);
+    expect(bar, findsOneWidget);
+    expect(enabled(), isFalse);
+
+    await tester.pumpAndSettle();
+    expect(bar, findsNothing);
+    await tester.tap(find.byKey(const Key('slot_row_u-maglioni')));
+    await tester.pumpAndSettle();
+    expect(enabled(), isTrue);
+  });
+
+  group('chiudere l\'ultimo gruppo', () {
+    ScrollPosition position(WidgetTester tester) =>
+        tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+
+    /// Apre l'ombrello (ultimo gruppo), lo porta in cima e chiude: gli
+    /// scostamenti visti a ogni frame dopo la chiusura.
+    Future<List<double>> closeLast(
+      WidgetTester tester, {
+      required bool noAnimations,
+    }) async {
+      await pumpDetail(
+        tester,
+        _trip(),
+        height: 800,
+        noAnimations: noAnimations,
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('slot_row_v-ombrello')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('slot_row_v-ombrello')));
+      await tester.pumpAndSettle();
+      final before = position(tester).pixels;
+      await tester.tap(find.byKey(const Key('slot_bar_close')));
+      final offsets = <double>[before];
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        offsets.add(position(tester).pixels);
+      }
+      return offsets;
+    }
+
+    testWidgets('con le animazioni la pagina scorre piano, senza salti', (
+      tester,
+    ) async {
+      final offsets = await closeLast(tester, noAnimations: false);
+      var biggest = 0.0;
+      for (var i = 1; i < offsets.length; i++) {
+        biggest = [
+          biggest,
+          (offsets[i] - offsets[i - 1]).abs(),
+        ].reduce((a, b) => a > b ? a : b);
+      }
+      expect(offsets.first, greaterThan(offsets.last));
+      // Mai più di metà dello scorrimento totale in un solo frame.
+      expect(biggest, lessThan((offsets.first - offsets.last) / 2));
+    });
+
+    testWidgets('senza animazioni lo spazio sparisce subito', (tester) async {
+      final offsets = await closeLast(tester, noAnimations: true);
+      expect(offsets[2], offsets.last);
+      expect(
+        tester.getSize(find.byKey(const Key('slot_end_spacer'))).height,
+        0,
+      );
+    });
   });
 }
