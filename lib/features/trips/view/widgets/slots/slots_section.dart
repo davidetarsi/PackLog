@@ -65,7 +65,9 @@ class SlotsSection extends StatelessWidget {
             slots: slots.where((s) => s.category == category).toList(),
             items: mine.where((i) => i.category == category).toList(),
             count:
-                slots.where((s) => s.category == category).length +
+                slots
+                    .where((s) => s.category == category && s.inSuitcase)
+                    .length +
                 trip.items.where((i) => i.category == category).length,
             header: category.displayName,
             sorting: progress.sorting,
@@ -163,7 +165,14 @@ class SlotsSection extends StatelessWidget {
           holdsOpen: openBody != null,
         ),
       if (items.isNotEmpty)
-        _dim(ItemsCard(tripId: trip.id, items: items, rowKey: actions.rowKey)),
+        _dim(
+          ItemsCard(
+            tripId: trip.id,
+            items: items,
+            rowKey: actions.rowKey,
+            flying: actions.flying,
+          ),
+        ),
     ];
     if (blocks.isEmpty) return const [];
 

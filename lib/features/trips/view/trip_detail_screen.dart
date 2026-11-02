@@ -93,15 +93,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     }
   }
 
-  /// Il posto con la barra aperta, se esiste ancora ed è aperto.
-  AiSlot? _barSlot(TripModel trip) {
-    final id = _openSlotId;
-    if (id == null || popping) return null;
-    return trip.aiResult?.slots
-        ?.where((s) => s.id == id && s.isOpen)
-        .firstOrNull;
-  }
-
   /// Apre la barra per riempire [slot] con uno dei propri oggetti: la toccano
   /// la riga di un proposto, l'aggiunta sulla card di un importante e
   /// "Presa" su un "da comprare". Se la casa di partenza non c'è più la barra
@@ -220,7 +211,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
         final listSlot = this.listSlot(trip, _openSlotId);
         return _TripDetail(
           trip: trip,
-          barSlot: _barSlot(trip),
+          barSlot: listSlot,
           openSlot: listSlot == null
               ? null
               : OpenSlotState(
@@ -244,6 +235,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
             dismiss: (slot) => unawaited(removeSlot(slot, confirm: false)),
             popDone: () => popDone(_closeBar),
             rowKey: rowKey,
+            flying: flying,
           ),
         );
       },

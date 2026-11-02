@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../model/ai_packing.dart';
@@ -15,6 +16,7 @@ class SlotActions {
     required this.dismiss,
     required this.popDone,
     required this.rowKey,
+    required this.flying,
   });
 
   final ValueChanged<AiSlot> open;
@@ -38,6 +40,10 @@ class SlotActions {
 
   /// La chiave della riga di un oggetto, per farlo volare fino a lì.
   final GlobalKey Function(String itemId) rowKey;
+
+  /// Gli oggetti che stanno volando verso la loro riga: la riga resta
+  /// invisibile finché non atterrano.
+  final ValueListenable<Set<String>> flying;
 }
 
 /// Il posto aperto nel dettaglio: quale, gli oggetti scritti in questa

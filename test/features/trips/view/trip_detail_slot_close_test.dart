@@ -245,6 +245,16 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// La riga di [name] fra gli oggetti dell'utente si vede (non sta
+  /// aspettando che il volo atterri)?
+  bool targetVisible(String name) {
+    final row = find.ancestor(
+      of: inUserItems(find.text(name)),
+      matching: find.byType(Visibility),
+    );
+    return (row.evaluate().first.widget as Visibility).visible;
+  }
+
   TripModel lastSaved() =>
       verify(() => tripRepo.updateTrip(captureAny())).captured.last
           as TripModel;
@@ -297,6 +307,47 @@ void main() {
     );
   });
 
+  testWidgets('il numero del gruppo non conta il posto che sta scoppiando '
+      '(l\'oggetto scritto c\'è già)', (tester) async {
+    await pumpDetail(tester, _trip());
+    expect(find.text('Vestiti · 5'), findsOneWidget);
+    await openMagliette(tester);
+
+    await tester.enterText(find.byType(TextField), '5 t-shirt');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward));
+    await tester.pump();
+    await tester.pump();
+
+    expect(popping(), isTrue);
+    expect(find.text('Vestiti · 5'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Vestiti · 5'), findsOneWidget);
+  });
+
+  testWidgets('indietro mentre la bolla scoppia chiude il riquadro, non la '
+      'pagina', (tester) async {
+    await pumpDetail(tester, _trip(), fromHome: true);
+    await openMagliette(tester);
+
+    await tester.enterText(find.byType(TextField), '5 t-shirt');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.arrow_upward));
+    await tester.pump();
+    await tester.pump();
+    expect(popping(), isTrue);
+    // La barra resta finché la bolla scoppia, con il suo tasto indietro.
+    expect(bar, findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TripDetailScreen), findsOneWidget);
+    expect(openBody, findsNothing);
+    expect(bar, findsNothing);
+    expect(inUserItems(find.text('T-shirt')), findsOneWidget);
+  });
+
   testWidgets('"Da comprare" nella barra: bolla, proposta fuori dal '
       'dettaglio e fra i da comprare', (tester) async {
     await pumpDetail(tester, _trip());
@@ -330,11 +381,13 @@ void main() {
     await tester.pump();
     await tester.pump(AppMotion.slow ~/ 2);
 
-    // La riga vera e la sua copia in volo.
+    // La riga vera (ancora invisibile) e la sua copia in volo.
     expect(find.text('T-shirt nere'), findsNWidgets(2));
+    expect(targetVisible('T-shirt nere'), isFalse);
     await tester.pumpAndSettle();
     expect(find.text('T-shirt nere'), findsOneWidget);
     expect(inUserItems(find.text('T-shirt nere')), findsOneWidget);
+    expect(targetVisible('T-shirt nere'), isTrue);
   });
 
   testWidgets('"Cappello di lana" scritto da Magliette finisce nel gruppo '

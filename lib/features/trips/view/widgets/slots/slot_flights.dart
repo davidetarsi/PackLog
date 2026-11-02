@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,6 +18,16 @@ import 'trip_items_card.dart';
 /// posto, poi si vola ([flyAfterFrame]) quando le righe nuove sono sul foglio.
 mixin TripSlotFlights on ConsumerState<TripDetailScreen> {
   final _rowKeys = <String, GlobalKey>{};
+
+  /// Gli oggetti in volo: la loro riga nel gruppo c'è già ma resta invisibile
+  /// finché il volo non è finito, così non si vede il doppione.
+  final flying = ValueNotifier<Set<String>>(const {});
+
+  @override
+  void dispose() {
+    flying.dispose();
+    super.dispose();
+  }
 
   /// La card del gruppo con il posto aperto, da portare in cima.
   final openCardKey = GlobalKey();
@@ -65,11 +77,13 @@ mixin TripSlotFlights on ConsumerState<TripDetailScreen> {
     final trips = ref.read(tripNotifierProvider).valueOrNull;
     final items = trips?.where((t) => t.id == widget.tripId).firstOrNull?.items;
     final flights = <ItemFlight>[];
+    final ids = <String>{};
     for (final id in {for (final w in written) w.id}) {
       final key = rowKey(id);
       final box = key.currentContext?.findRenderObject();
       final item = items?.where((i) => i.id == id).firstOrNull;
       if (box is! RenderBox || !box.hasSize || item == null) continue;
+      ids.add(id);
       flights.add(
         ItemFlight(
           from: box.localToGlobal(Offset.zero) & box.size,
@@ -81,6 +95,7 @@ mixin TripSlotFlights on ConsumerState<TripDetailScreen> {
         ),
       );
     }
+    flying.value = ids;
     return flights;
   }
 
@@ -88,7 +103,12 @@ mixin TripSlotFlights on ConsumerState<TripDetailScreen> {
   void flyAfterFrame(List<ItemFlight> flights) {
     if (flights.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) flyItems(context, flights: flights);
+      if (!mounted) return;
+      unawaited(
+        flyItems(context, flights: flights).whenComplete(() {
+          if (mounted) flying.value = const {};
+        }),
+      );
     });
   }
 }

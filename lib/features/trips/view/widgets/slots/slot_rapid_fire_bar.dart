@@ -52,41 +52,46 @@ class SlotRapidFireBar extends StatelessWidget {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) onClose();
       },
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomInset),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Flexible(
-                  child: _ContextChip(
-                    label: 'trips.slots.context_chip'.tr(
-                      args: [slot.name, '${slot.remaining}'],
+      // Opaca: la fascia di vetro lascia intravedere la lista, e le righe non
+      // devono passare sotto il chip e i bottoni.
+      child: ColoredBox(
+        color: context.groundSurface,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: _ContextChip(
+                      label: 'trips.slots.context_chip'.tr(
+                        args: [slot.name, '${slot.remaining}'],
+                      ),
+                      onClose: onClose,
                     ),
-                    onClose: onClose,
                   ),
-                ),
-                const Spacer(),
-                if (onToBuy != null)
-                  DsTextButton(
-                    key: const Key('slot_bar_to_buy'),
-                    label: 'trips.slots.to_buy'.tr(),
-                    onPressed: onToBuy,
-                  ),
-              ],
-            ),
-            SizedBox(height: context.spacingXs),
-            RapidFireInput(
-              // Un altro posto, un campo nuovo.
-              key: ValueKey('slot_bar_input_${slot.id}'),
-              houseId: houseId,
-              autofocus: true,
-              hintText: 'trips.slots.rapid_fire_hint'.tr(),
-              onItemCreated: onItemCreated,
-            ),
-          ],
+                  if (onToBuy != null)
+                    DsTextButton(
+                      key: const Key('slot_bar_to_buy'),
+                      label: 'trips.slots.to_buy'.tr(),
+                      onPressed: onToBuy,
+                    ),
+                ],
+              ),
+              SizedBox(height: context.spacingXs),
+              RapidFireInput(
+                // Un altro posto, un campo nuovo.
+                key: ValueKey('slot_bar_input_${slot.id}'),
+                houseId: houseId,
+                autofocus: true,
+                hintText: 'trips.slots.rapid_fire_hint'.tr(),
+                onItemCreated: onItemCreated,
+              ),
+            ],
+          ),
         ),
       ),
     );

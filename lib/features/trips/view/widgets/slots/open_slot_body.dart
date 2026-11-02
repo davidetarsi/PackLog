@@ -6,6 +6,7 @@ import '../../../../../shared/widgets/ds_divider.dart';
 import '../../../../../shared/widgets/packlog_gradient.dart';
 import '../../../model/ai_packing.dart';
 import '../../../model/trip_model.dart';
+import 'slot_copies_label.dart';
 import 'trip_items_card.dart';
 
 /// Il contenuto del posto aperto, lo stesso nella card dei proposti e in
@@ -55,7 +56,7 @@ class OpenSlotBody extends StatelessWidget {
               ),
             ),
             SizedBox(width: context.spacingSm),
-            Text('×${slot.remaining}', style: tt.titleMedium),
+            Text(slotCopiesLabel(slot, always: true)!, style: tt.titleMedium),
           ],
         ),
         SizedBox(height: context.spacingSm),

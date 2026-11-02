@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -36,11 +37,16 @@ class ItemsCard extends ConsumerWidget {
   /// La chiave della riga di un oggetto (per farlo volare fin qui).
   final GlobalKey Function(String itemId)? rowKey;
 
+  /// Gli oggetti in volo verso questo gruppo: la loro riga si vede quando
+  /// atterrano.
+  final ValueListenable<Set<String>>? flying;
+
   const ItemsCard({
     super.key,
     required this.tripId,
     required this.items,
     this.rowKey,
+    this.flying,
   });
 
   @override
@@ -52,14 +58,50 @@ class ItemsCard extends ConsumerWidget {
       child: Column(
         children: [
           for (final item in items)
-            PackedRow(
+            _FlightTarget(
               key: rowKey?.call(item.id),
-              item: item,
-              onToggle: () => ref
-                  .read(tripNotifierProvider.notifier)
-                  .toggleItemCheck(tripId, item.id),
+              hidden: flying,
+              itemId: item.id,
+              child: PackedRow(
+                item: item,
+                onToggle: () => ref
+                    .read(tripNotifierProvider.notifier)
+                    .toggleItemCheck(tripId, item.id),
+              ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// La riga di un oggetto che sta per atterrare: occupa il suo posto ma non si
+/// vede finché [itemId] è fra gli oggetti in volo ([hidden]).
+class _FlightTarget extends StatelessWidget {
+  const _FlightTarget({
+    super.key,
+    required this.hidden,
+    required this.itemId,
+    required this.child,
+  });
+
+  final ValueListenable<Set<String>>? hidden;
+  final String itemId;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final flying = hidden;
+    if (flying == null) return child;
+    return ValueListenableBuilder<Set<String>>(
+      valueListenable: flying,
+      child: child,
+      builder: (_, ids, row) => Visibility(
+        visible: !ids.contains(itemId),
+        maintainSize: true,
+        maintainAnimation: true,
+        maintainState: true,
+        child: row!,
       ),
     );
   }
