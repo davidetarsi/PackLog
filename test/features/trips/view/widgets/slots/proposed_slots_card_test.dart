@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/view/widgets/slots/slot_widgets.dart';
+import 'package:pack_log/shared/constants/app_constants.dart';
+import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/packlog_gradient.dart';
 
 const _magliette = AiSlot(
   id: 'u-magliette',
@@ -52,5 +55,15 @@ void main() {
   ) async {
     await pump(tester, noAnimations: true);
     expect(resize(tester), isNull);
+  });
+
+  testWidgets('bordo a gradiente sottile e tenue', (tester) async {
+    await pump(tester, noAnimations: false);
+
+    final border = tester.widget<PackLogGradientBorder>(
+      find.byType(PackLogGradientBorder),
+    );
+    expect(border.width, AppConstants.hairlineBorderWidth);
+    expect(border.restingOpacity, AppOpacity.subtleGradientBorder);
   });
 }

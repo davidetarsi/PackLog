@@ -63,6 +63,8 @@ class ProposedSlotsCard extends StatelessWidget {
 
     return PackLogGradientBorder(
       radius: AppConstants.cardBorderRadius,
+      width: AppConstants.hairlineBorderWidth,
+      restingOpacity: AppOpacity.subtleGradientBorder,
       child: Material(
         color: context.groupSurface,
         borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
