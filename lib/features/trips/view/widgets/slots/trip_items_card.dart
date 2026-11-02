@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/helpers/design_system.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_group_header.dart';
+import '../../../../../shared/widgets/ds_section_title.dart';
+import '../../../../items/model/item_model.dart';
 import '../../../../../shared/widgets/ds_checkbox.dart';
 import '../../../model/trip_model.dart';
 import '../../../providers/trip_provider.dart';
@@ -101,6 +104,67 @@ class PackedRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Cosa porti" senza posti: quanti sono già in valigia, poi gli oggetti per categoria
+/// in ordine canonico, come nella pagina valigia e nella casa.
+class PlainItemsSection extends ConsumerWidget {
+  final TripModel trip;
+
+  const PlainItemsSection({super.key, required this.trip});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final items = trip.items;
+
+    if (items.isEmpty) return const EmptySuitcase();
+
+    final packed = trip.completedCount;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DsSectionTitle('trips.pack.items'.tr()),
+        Row(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(
+                  AppConstants.pillBorderRadius,
+                ),
+                child: LinearProgressIndicator(
+                  key: const Key('trip_detail_progress'),
+                  value: packed / items.length,
+                  minHeight: context.spacingXs,
+                  backgroundColor: cs.surfaceContainerHighest,
+                  color: cs.onSurface,
+                ),
+              ),
+            ),
+            SizedBox(width: context.spacingSm),
+            Text(
+              'trips.detail.packed_count'.tr(
+                args: [packed.toString(), items.length.toString()],
+              ),
+              style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
+        for (final category in ItemCategory.values)
+          if (items.any((item) => item.category == category)) ...[
+            DsGroupHeader(
+              label: category.displayName,
+              count: items.where((i) => i.category == category).length,
+            ),
+            ItemsCard(
+              tripId: trip.id,
+              items: items.where((i) => i.category == category).toList(),
+            ),
+          ],
+      ],
     );
   }
 }

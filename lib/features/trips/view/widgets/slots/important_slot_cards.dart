@@ -51,6 +51,7 @@ class ImportantSlotCard extends StatelessWidget {
     required this.onAdd,
     required this.onToBuy,
     this.onRemove,
+    this.openBody,
   });
 
   final AiSlot slot;
@@ -60,8 +61,14 @@ class ImportantSlotCard extends StatelessWidget {
   /// La X in alto a destra; `null` la nasconde.
   final VoidCallback? onRemove;
 
+  /// Il contenuto del posto aperto: con questo la card si apre al suo posto,
+  /// senza azioni né X.
+  final Widget? openBody;
+
   @override
   Widget build(BuildContext context) {
+    final open = openBody;
+    if (open != null) return _OpenImportantCard(body: open);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final copies = slotCopiesLabel(slot);
@@ -263,6 +270,35 @@ class _RemoveSlotButton extends StatelessWidget {
       icon: Icons.close,
       tooltip: 'trips.slots.remove_confirm'.tr(),
       onPressed: onPressed,
+    );
+  }
+}
+
+/// Un importante aperto: "Importante" e sotto il contenuto del posto.
+class _OpenImportantCard extends StatelessWidget {
+  const _OpenImportantCard({required this.body});
+
+  final Widget body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.groupSurface,
+      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: EdgeInsets.all(context.spacingMd),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _ImportantLabel(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
+            SizedBox(height: context.spacingSm),
+            body,
+          ],
+        ),
+      ),
     );
   }
 }

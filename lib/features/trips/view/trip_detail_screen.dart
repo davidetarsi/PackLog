@@ -12,7 +12,6 @@ import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_not_found_state.dart';
-import '../../../shared/widgets/ds_group_header.dart';
 import '../../../shared/widgets/ds_section_title.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
@@ -26,6 +25,8 @@ import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_parts.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
+import 'widgets/slots/slot_edits.dart';
+import 'widgets/slots/slot_focus.dart';
 import 'widgets/slots/slot_rapid_fire_bar.dart';
 import 'widgets/slots/slots_section.dart';
 import 'widgets/slots/trip_items_card.dart';
@@ -57,12 +58,22 @@ class TripDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<TripDetailScreen> createState() => _TripDetailScreenState();
 }
 
-class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
-  String get tripId => widget.tripId;
-
+class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
+    with TripSlotEdits {
   /// Il posto che la barra Rapid Fire sta riempiendo; `null` = barra chiusa.
   /// La barra si vede solo finché il posto è ancora aperto.
   String? _openSlotId;
+
+  /// Gli oggetti scritti in questa apertura: stanno nel riquadro, non fra
+  /// quelli dell'utente, finché il posto resta aperto.
+  List<TripItem> _written = const [];
+
+  /// La card del gruppo con il posto aperto, da portare in cima.
+  final _openCardKey = GlobalKey();
+
+  /// Il posto riaperto con "Presa" da "da comprare": riempirlo vuol dire che
+  /// l'hai comprato.
+  String? _boughtSlotId;
 
   /// Il posto chiesto dal percorso, in attesa che viaggio e case siano
   /// caricati per aprire la barra.
@@ -97,6 +108,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   /// "Presa" su un "da comprare". Se la casa di partenza non c'è più la barra
   /// non si apre e uno snack lo dice.
   void _openSlot(AiSlot slot) {
+    final notifier = ref.read(tripNotifierProvider.notifier);
     final trips = ref.read(tripNotifierProvider).valueOrNull;
     final houseId = trips
         ?.where((t) => t.id == tripId)
@@ -110,11 +122,40 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       AppSnackBar.showInfo(context, 'trips.slots.no_house'.tr());
       return;
     }
-    setState(() => _openSlotId = slot.id);
+    // "Presa" su una proposta da comprare: torna nella valigia, in cima ai
+    // proposti.
+    if (slot.toBuy && slot.level == AiSlotLevel.useful) {
+      unawaited(updateSlot(notifier, slot, (s) => s.copyWith(toBuy: false)));
+    }
+    setState(() {
+      _openSlotId = slot.id;
+      _written = const [];
+      _boughtSlotId = slot.toBuy ? slot.id : null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bringOpenCardUp());
   }
 
+  /// Porta in cima alla vista la card con il posto aperto.
+  void _bringOpenCardUp() {
+    final card = _openCardKey.currentContext;
+    if (!mounted || card == null) return;
+    Scrollable.ensureVisible(
+      card,
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : AppMotion.slow,
+      curve: AppMotion.standard,
+    );
+  }
+
+  /// Richiude il posto: gli oggetti scritti tornano fra quelli dell'utente.
   void _closeBar() {
-    if (_openSlotId != null) setState(() => _openSlotId = null);
+    if (_openSlotId == null) return;
+    setState(() {
+      _openSlotId = null;
+      _written = const [];
+      _boughtSlotId = null;
+    });
   }
 
   /// Se il percorso chiedeva un posto, lo apre appena viaggio e case sono
@@ -140,19 +181,19 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     final analytics = ref.read(analyticsServiceProvider);
     // Un posto "da comprare" si apre solo con "Presa" (la riga, o `?slot=`
     // dalla vista Da comprare): riempirlo vuol dire che l'hai comprato.
-    final bought = slot.toBuy;
+    final bought = slot.toBuy || slot.id == _boughtSlotId;
+    final packed = TripItem(
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      quantity: item.quantity ?? 1,
+      originHouseId: item.houseId,
+    );
+    if (_openSlotId == slot.id) {
+      setState(() => _written = [..._written, packed]);
+    }
     try {
-      await notifier.fillAiSlot(
-        tripId,
-        slot.id,
-        TripItem(
-          id: item.id,
-          name: item.name,
-          category: item.category,
-          quantity: item.quantity ?? 1,
-          originHouseId: item.houseId,
-        ),
-      );
+      await notifier.fillAiSlot(tripId, slot.id, packed);
       if (bought) {
         unawaited(
           analytics.logEvent(
@@ -169,98 +210,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   /// "Da comprare" sulla barra: segna il posto e chiude la barra.
   void _barToBuy(AiSlot slot) {
     _closeBar();
-    unawaited(_markToBuy(slot, from: 'bar'));
-  }
-
-  /// "Da comprare" sulla card di un importante: la card diventa una riga
-  /// "da comprare"; Annulla la riporta.
-  Future<void> _markToBuy(AiSlot slot, {String from = 'card'}) async {
-    // Il notifier si legge ora: Annulla può arrivare quando la pagina non c'è
-    // più, e allora `ref` non si può usare.
-    final notifier = ref.read(tripNotifierProvider.notifier);
-    final analytics = ref.read(analyticsServiceProvider);
-    final saved = await _updateSlot(
-      notifier,
-      slot,
-      (s) => s.copyWith(toBuy: true),
-    );
-    if (!saved) return;
-    unawaited(
-      analytics.logEvent(
-        'slot_marked_to_buy',
-        properties: {'level': slot.level.name, 'from': from},
-      ),
-    );
-    if (!mounted) return;
-    AppSnackBar.showUndo(
-      context,
-      'trips.slots.marked_to_buy'.tr(),
-      onUndo: () => unawaited(
-        _updateSlot(notifier, slot, (s) => s.copyWith(toBuy: false)),
-      ),
-    );
-  }
-
-  /// Toglie [slot] dalla valigia (`removed`). Con [confirm] chiede prima,
-  /// con il motivo del posto (la X di un importante); senza toglie subito e
-  /// Annulla lo rimette (lo scorrimento di una proposta).
-  Future<void> _removeSlot(AiSlot slot, {required bool confirm}) async {
-    // Il notifier si legge ora: Annulla può arrivare quando la pagina non c'è
-    // più, e allora `ref` non si può usare.
-    final notifier = ref.read(tripNotifierProvider.notifier);
-    if (confirm) {
-      final reason = slot.reason;
-      final ok = await DialogHelpers.showConfirmation(
-        context: context,
-        title: 'trips.slots.remove_title'.tr(args: [slot.name]),
-        message: [
-          'trips.slots.remove_body'.tr(),
-          if (reason != null && reason.isNotEmpty) reason,
-        ].join(' '),
-        confirmLabel: 'trips.slots.remove_confirm'.tr(),
-      );
-      if (!ok) return;
-    }
-    final saved = await _updateSlot(
-      notifier,
-      slot,
-      (s) => s.copyWith(removed: true),
-    );
-    if (!saved || confirm || !mounted) return;
-    AppSnackBar.showUndo(
-      context,
-      'trips.slots.removed'.tr(args: [slot.name]),
-      onUndo: () => unawaited(
-        _updateSlot(notifier, slot, (s) => s.copyWith(removed: false)),
-      ),
-    );
-  }
-
-  /// La casella di un proposto, quando non si sta più sistemando.
-  void _toggleSlot(AiSlot slot) {
-    unawaited(
-      _updateSlot(
-        ref.read(tripNotifierProvider.notifier),
-        slot,
-        (s) => s.copyWith(checked: !s.checked),
-      ),
-    );
-  }
-
-  /// Cambia il posto e salva; se il salvataggio non va lo dice (se la pagina
-  /// c'è ancora) e torna `false` (il posto è già tornato com'era).
-  Future<bool> _updateSlot(
-    TripNotifier notifier,
-    AiSlot slot,
-    AiSlot Function(AiSlot) change,
-  ) async {
-    try {
-      await notifier.updateAiSlot(tripId, slot.id, change);
-      return true;
-    } catch (_) {
-      if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
-      return false;
-    }
+    unawaited(markSlotToBuy(slot, from: 'bar'));
   }
 
   @override
@@ -272,18 +222,30 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         final trip = trips.where((t) => t.id == tripId).firstOrNull;
         if (trip == null) return _notFound(context);
         _resolvePendingSlot(trip);
+        final barSlot = _barSlot(trip);
         return _TripDetail(
           trip: trip,
-          barSlot: _barSlot(trip),
+          barSlot: barSlot,
+          openSlot: barSlot == null
+              ? null
+              : OpenSlotState(
+                  slot: barSlot,
+                  written: _written,
+                  cardKey: _openCardKey,
+                ),
           onFillSlot: _fillSlot,
           onCloseBar: _closeBar,
           onBarToBuy: _barToBuy,
           slotActions: SlotActions(
             open: _openSlot,
-            markToBuy: (slot) => _markToBuy(slot),
-            toggle: _toggleSlot,
-            remove: (slot) => unawaited(_removeSlot(slot, confirm: true)),
-            dismiss: (slot) => unawaited(_removeSlot(slot, confirm: false)),
+            close: _closeBar,
+            markToBuy: (slot) => markSlotToBuy(slot),
+            toggle: toggleSlot,
+            toggleItem: (item) => ref
+                .read(tripNotifierProvider.notifier)
+                .toggleItemCheck(tripId, item.id),
+            remove: (slot) => unawaited(removeSlot(slot, confirm: true)),
+            dismiss: (slot) => unawaited(removeSlot(slot, confirm: false)),
           ),
         );
       },
@@ -319,6 +281,10 @@ class _TripDetail extends ConsumerWidget {
   /// Il posto che la barra Rapid Fire sta riempiendo; `null` = barra chiusa e
   /// al suo posto "Modifica valigia".
   final AiSlot? barSlot;
+
+  /// Il posto aperto nella lista, con gli oggetti scritti; `null` se la
+  /// barra è chiusa.
+  final OpenSlotState? openSlot;
   final void Function(AiSlot slot, ItemModel item) onFillSlot;
   final VoidCallback onCloseBar;
   final ValueChanged<AiSlot> onBarToBuy;
@@ -327,6 +293,7 @@ class _TripDetail extends ConsumerWidget {
     required this.trip,
     required this.slotActions,
     required this.barSlot,
+    required this.openSlot,
     required this.onFillSlot,
     required this.onCloseBar,
     required this.onBarToBuy,
@@ -403,47 +370,70 @@ class _TripDetail extends ConsumerWidget {
           : StickyCtaScaffold.standardHeight(context) +
                 kMinInteractiveDimension +
                 context.spacingXs,
-      body: Builder(
-        builder: (context) => ListView(
-          padding: EdgeInsets.fromLTRB(
-            context.spacingMd,
-            context.spacingSm,
-            context.spacingMd,
-            context.spacingLg + context.ctaReservedHeight,
-          ),
-          children: [
-            // Il riepilogo è la cartolina del viaggio: toccarlo apre la
-            // modifica di date e tappe.
-            InkWell(
-              key: const Key('trip_detail_summary'),
-              borderRadius: BorderRadius.circular(
-                AppConstants.cardBorderRadius,
-              ),
-              onTap: () => context.push('/trips/${trip.id}/edit-info'),
-              child: PackSummaryLine(
-                trip: trip,
-                destinationHouseName: destinationHouse?.displayName,
-                houseNames: {for (final h in houses) h.id: h.displayName},
-              ),
+      // Con un posto aperto il resto si spenge, e in fondo c'è spazio per
+      // portare in cima anche l'ultimo gruppo.
+      body: LayoutBuilder(
+        builder: (context, viewport) {
+          final open = openSlot;
+          Widget dim(Widget child) => SlotFocus(
+            active: open != null,
+            onTapOutside: onCloseBar,
+            child: child,
+          );
+          return ListView(
+            padding: EdgeInsets.fromLTRB(
+              context.spacingMd,
+              context.spacingSm,
+              context.spacingMd,
+              context.spacingLg + context.ctaReservedHeight,
             ),
-            PackWeatherSection(trip: trip),
-            if (trip.luggages.isNotEmpty) ...[
-              DsSectionTitle('trips.pack.luggages'.tr()),
-              Wrap(
-                spacing: context.spacingSm,
-                runSpacing: context.spacingSm,
-                children: [
-                  for (final luggage in trip.luggages)
-                    PackPill(label: luggage.name, icon: Icons.luggage_outlined),
-                ],
+            children: [
+              dim(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Il riepilogo è la cartolina del viaggio: toccarlo apre
+                    // la modifica di date e tappe.
+                    InkWell(
+                      key: const Key('trip_detail_summary'),
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.cardBorderRadius,
+                      ),
+                      onTap: () => context.push('/trips/${trip.id}/edit-info'),
+                      child: PackSummaryLine(
+                        trip: trip,
+                        destinationHouseName: destinationHouse?.displayName,
+                        houseNames: {
+                          for (final h in houses) h.id: h.displayName,
+                        },
+                      ),
+                    ),
+                    PackWeatherSection(trip: trip),
+                    if (trip.luggages.isNotEmpty) ...[
+                      DsSectionTitle('trips.pack.luggages'.tr()),
+                      Wrap(
+                        spacing: context.spacingSm,
+                        runSpacing: context.spacingSm,
+                        children: [
+                          for (final luggage in trip.luggages)
+                            PackPill(
+                              label: luggage.name,
+                              icon: Icons.luggage_outlined,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
+              if (trip.aiResult?.hasSlots ?? false)
+                SlotsSection(trip: trip, actions: slotActions, open: open)
+              else
+                PlainItemsSection(trip: trip),
+              if (open != null) dim(SizedBox(height: viewport.maxHeight)),
             ],
-            if (trip.aiResult?.hasSlots ?? false)
-              SlotsSection(trip: trip, actions: slotActions)
-            else
-              _ItemsSection(trip: trip),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -497,66 +487,5 @@ class _TripDetail extends ConsumerWidget {
       errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
     );
     if (success && context.mounted) context.pop();
-  }
-}
-
-/// "Cosa porti": quanti sono già in valigia, poi gli oggetti per categoria
-/// in ordine canonico, come nella pagina valigia e nella casa.
-class _ItemsSection extends ConsumerWidget {
-  final TripModel trip;
-
-  const _ItemsSection({required this.trip});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final items = trip.items;
-
-    if (items.isEmpty) return const EmptySuitcase();
-
-    final packed = trip.completedCount;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DsSectionTitle('trips.pack.items'.tr()),
-        Row(
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(
-                  AppConstants.pillBorderRadius,
-                ),
-                child: LinearProgressIndicator(
-                  key: const Key('trip_detail_progress'),
-                  value: packed / items.length,
-                  minHeight: context.spacingXs,
-                  backgroundColor: cs.surfaceContainerHighest,
-                  color: cs.onSurface,
-                ),
-              ),
-            ),
-            SizedBox(width: context.spacingSm),
-            Text(
-              'trips.detail.packed_count'.tr(
-                args: [packed.toString(), items.length.toString()],
-              ),
-              style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ],
-        ),
-        for (final category in ItemCategory.values)
-          if (items.any((item) => item.category == category)) ...[
-            DsGroupHeader(
-              label: category.displayName,
-              count: items.where((i) => i.category == category).length,
-            ),
-            ItemsCard(
-              tripId: trip.id,
-              items: items.where((i) => i.category == category).toList(),
-            ),
-          ],
-      ],
-    );
   }
 }

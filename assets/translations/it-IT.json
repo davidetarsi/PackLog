@@ -269,7 +269,8 @@
       "removed": "Tolta {}",
       "context_chip": "{} · {} da personalizzare",
       "no_house": "La casa di partenza non c'è più",
-      "rapid_fire_hint": "Es. 2 t-shirt nere"
+      "rapid_fire_hint": "Es. 2 t-shirt nere",
+      "open_hint": "PackLog ne propone {}. Scrivi qui sotto quelle che hai davvero, anche più di una insieme («2 t-shirt nere»): prendono il loro posto."
     },
     "pack": {
       "title": "Prepara la valigia",
