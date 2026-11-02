@@ -11,7 +11,6 @@ import '../../../model/trip_model.dart';
 import 'open_slot_body.dart';
 import 'slot_actions.dart';
 import 'slot_focus.dart';
-import 'slot_pop.dart';
 import 'slot_widgets.dart';
 import 'trip_items_card.dart';
 
@@ -88,15 +87,11 @@ class SlotsSection extends StatelessWidget {
     final state = open;
     if (state == null || state.slot.id != slot.id) return null;
     final ids = {for (final w in state.written) w.id};
-    return SlotPop(
-      popping: state.popping,
-      onDone: actions.popDone,
-      child: OpenSlotBody(
-        slot: state.slot,
-        written: trip.items.where((i) => ids.contains(i.id)).toList(),
-        onToggleItem: actions.toggleItem,
-        rowKey: actions.rowKey,
-      ),
+    return OpenSlotBody(
+      slot: state.slot,
+      written: trip.items.where((i) => ids.contains(i.id)).toList(),
+      onToggleItem: actions.toggleItem,
+      rowKey: actions.rowKey,
     );
   }
 
@@ -127,6 +122,8 @@ class SlotsSection extends StatelessWidget {
         onToBuy: () => actions.markToBuy(slot),
         onRemove: () => actions.remove(slot),
         openBody: body,
+        popping: open?.popping ?? false,
+        onPopDone: actions.popDone,
       ),
       holdsOpen: body != null,
     );
@@ -160,6 +157,8 @@ class SlotsSection extends StatelessWidget {
             openSlotId: openUseful?.id,
             openBody: openBody,
             onTapOutside: actions.close,
+            popping: open?.popping ?? false,
+            onPopDone: actions.popDone,
           ),
           holdsOpen: openBody != null,
         ),

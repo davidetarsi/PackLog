@@ -7,6 +7,7 @@ import '../../../../../shared/widgets/packlog_gradient.dart';
 import '../../../model/ai_packing.dart';
 import 'proposed_slot_row.dart';
 import 'slot_focus.dart';
+import 'slot_pop.dart';
 
 /// Card dei proposti di PackLog in un gruppo: bordo col gradiente, fermo;
 /// in cima la scintilla e "Proposti da PackLog · tocca per mettere i tuoi".
@@ -30,6 +31,8 @@ class ProposedSlotsCard extends StatelessWidget {
     this.openSlotId,
     this.openBody,
     this.onTapOutside,
+    this.popping = false,
+    this.onPopDone,
   });
 
   final List<AiSlot> slots;
@@ -45,6 +48,11 @@ class ProposedSlotsCard extends StatelessWidget {
   final String? openSlotId;
   final Widget? openBody;
   final VoidCallback? onTapOutside;
+
+  /// Il posto aperto sta scoppiando: tutto il riquadro, sfondo compreso,
+  /// si dissolve e poi chiama [onPopDone].
+  final bool popping;
+  final VoidCallback? onPopDone;
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +92,12 @@ class ProposedSlotsCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (open != null) _OpenRow(child: open),
+            if (open != null)
+              SlotPop(
+                popping: popping,
+                onDone: onPopDone,
+                child: _OpenRow(child: open),
+              ),
             SlotFocus(
               active: open != null,
               onTapOutside: onTapOutside ?? () {},

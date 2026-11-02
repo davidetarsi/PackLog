@@ -7,6 +7,7 @@ import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/ds_text_button.dart';
 import '../../../model/ai_packing.dart';
 import 'slot_copies_label.dart';
+import 'slot_pop.dart';
 
 // Gli importanti nel dettaglio del viaggio: la card di un importante aperto
 // e la riga di uno segnato "da comprare".
@@ -52,6 +53,8 @@ class ImportantSlotCard extends StatelessWidget {
     required this.onToBuy,
     this.onRemove,
     this.openBody,
+    this.popping = false,
+    this.onPopDone,
   });
 
   final AiSlot slot;
@@ -65,10 +68,21 @@ class ImportantSlotCard extends StatelessWidget {
   /// senza azioni né X.
   final Widget? openBody;
 
+  /// Il posto aperto sta scoppiando: tutta la card si dissolve e poi chiama
+  /// [onPopDone].
+  final bool popping;
+  final VoidCallback? onPopDone;
+
   @override
   Widget build(BuildContext context) {
     final open = openBody;
-    if (open != null) return _OpenImportantCard(body: open);
+    if (open != null) {
+      return SlotPop(
+        popping: popping,
+        onDone: onPopDone,
+        child: _OpenImportantCard(body: open),
+      );
+    }
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final copies = slotCopiesLabel(slot);

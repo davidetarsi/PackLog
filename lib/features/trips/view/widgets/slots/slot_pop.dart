@@ -45,7 +45,11 @@ class _SlotPopState extends State<SlotPop> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    if (widget.popping) _pop();
+    if (widget.popping) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _pop();
+      });
+    }
   }
 
   @override

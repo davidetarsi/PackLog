@@ -276,6 +276,27 @@ void main() {
     expect(inUserItems(find.text('×5')), findsOneWidget);
   });
 
+  testWidgets('la bolla avvolge tutto il riquadro, sfondo compreso, anche '
+      'per un importante', (tester) async {
+    await pumpDetail(tester, _trip());
+    await openMagliette(tester);
+    final panel = find.ancestor(of: openBody, matching: find.byType(SlotPop));
+    expect(panel, findsOneWidget);
+    expect(
+      find.descendant(of: panel, matching: find.byType(DecoratedBox)),
+      findsWidgets,
+    );
+
+    await tester.tap(find.byKey(const Key('slot_bar_close')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('slot_add_imp-giacca')));
+    await tester.pumpAndSettle();
+    expect(
+      find.ancestor(of: openBody, matching: find.byType(SlotPop)),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('"Da comprare" nella barra: bolla, proposta fuori dal '
       'dettaglio e fra i da comprare', (tester) async {
     await pumpDetail(tester, _trip());
