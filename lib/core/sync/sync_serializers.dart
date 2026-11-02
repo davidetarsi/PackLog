@@ -528,12 +528,19 @@ abstract final class SyncSerializers {
       // Chiavi omesse quando il dato manca: upsertTrip è un upsert di una
       // riga sola, quindi una colonna omessa conserva il valore sul server.
       // Mandare `null` lo sovrascriverebbe.
-      // Stessa regola per i mezzi: `null` locale = chiave omessa.
-      if (trip.transports != null)
-        'transports': _decodeOr(trip.transports, const <String>[]),
+      // Stessa regola per i mezzi: `null` o lista vuota = chiave omessa (così
+      // il push funziona anche prima che il backend abbia la colonna).
+      ..._transportsEntry(trip.transports),
       ..._aiJsonEntry('ai_packing_setup', trip.aiPackingSetup),
       ..._aiJsonEntry('ai_packing_result', trip.aiPackingResult),
     };
+  }
+
+  /// La chiave `transports` solo se il viaggio ha almeno un mezzo.
+  static Map<String, Object?> _transportsEntry(String? raw) {
+    final value = _decodeOr(raw, const <String>[]);
+    if (value is List && value.isEmpty) return const {};
+    return {'transports': value};
   }
 
   /// Una sola chiave AI nel payload, oppure nessuna se il dato manca.

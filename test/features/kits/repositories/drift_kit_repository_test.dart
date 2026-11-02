@@ -37,7 +37,6 @@ void main() {
       db.itemsDao,
       DatabaseService(db),
       () => 'u1',
-      kitsDao: db.kitsDao,
     );
     await db.housesDao.insertHouse(
       HousesCompanion.insert(
@@ -143,21 +142,23 @@ void main() {
     ),
   );
 
-  test('moveItemsToHouse toglie gli oggetti spostati dal kit della casa '
-      'vecchia, non quelli che restano', () async {
+  test('moveItemsToHouse nasconde l\'oggetto spostato dal kit della casa '
+      'vecchia senza toccarne la riga, e lo rivede quando torna', () async {
     await addHouse2();
     final kit = await repo.createKit(houseId: 'h1', name: 'Sci');
     await repo.addItems(kit.id, {'i1': 1, 'i2': 1});
     await itemRepo.moveItemsToHouse(['i1'], 'h1', 'h2');
-    // i2 non è in h2: lo spostamento non lo tocca, quindi resta nel kit.
-    await itemRepo.moveItemsToHouse(['i2'], 'h2', 'h1');
-    final k = (await repo.watchKits('h1').first).single;
+    var k = (await repo.watchKits('h1').first).single;
     expect(k.items.map((i) => i.itemId), ['i2']);
     final row = await (db.select(
       db.kitItems,
     )..where((r) => r.itemId.equals('i1'))).getSingle();
-    expect(row.isDeleted, isTrue);
-    expect(row.syncStatus, SyncStatus.pendingUpdate);
+    expect(row.isDeleted, isFalse);
+    expect(row.syncStatus, SyncStatus.pendingCreate);
+
+    await itemRepo.moveItemsToHouse(['i1'], 'h2', 'h1');
+    k = (await repo.watchKits('h1').first).single;
+    expect(k.items.map((i) => i.itemId).toSet(), {'i1', 'i2'});
   });
 
   test('restoreItem riporta l\'oggetto nei kit anche dopo un sync, non '

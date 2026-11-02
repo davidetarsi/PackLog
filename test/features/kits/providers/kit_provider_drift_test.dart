@@ -29,7 +29,6 @@ void main() {
       db.itemsDao,
       DatabaseService(db),
       () => 'u1',
-      kitsDao: db.kitsDao,
     );
     final sync = MockSyncOrchestrator();
     when(() => sync.requestSync()).thenReturn(null);

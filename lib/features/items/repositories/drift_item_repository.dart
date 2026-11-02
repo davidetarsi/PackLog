@@ -5,7 +5,6 @@ import '../model/item_model.dart';
 import 'item_repository.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/items_dao.dart';
-import '../../../core/database/daos/kits_dao.dart';
 import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../core/database/services/database_service.dart';
 
@@ -20,15 +19,7 @@ class DriftItemRepository implements ItemRepository {
   final DatabaseService _dbService;
   final String? Function() _getCurrentUserId;
 
-  /// Per i kit: se manca, `deleteItems` non toglie gli oggetti dai kit.
-  final KitsDao? _kitsDao;
-
-  DriftItemRepository(
-    this._dao,
-    this._dbService,
-    this._getCurrentUserId, {
-    KitsDao? kitsDao,
-  }) : _kitsDao = kitsDao;
+  DriftItemRepository(this._dao, this._dbService, this._getCurrentUserId);
 
   @override
   Future<bool> init() async {
@@ -360,18 +351,14 @@ class DriftItemRepository implements ItemRepository {
     if (itemIds.isEmpty) return;
 
     final result = await _dbService.executeWithRetry(
-      () => _dao.attachedDatabase.transaction(() async {
-        // I kit sono della casa: gli oggetti che cambiano casa ne escono.
-        // Solo quelli davvero in `fromHouseId` e non cancellati si spostano.
-        final moving = await _dao.idsInHouse(itemIds, fromHouseId);
-        await _kitsDao?.softDeleteItemsEverywhere(moving);
-        await _dao.moveItemsToHouse(
-          itemIds,
-          fromHouseId,
-          toHouseId,
-          spaceId: spaceId,
-        );
-      }),
+      // Le righe dei kit non si toccano: un oggetto spostato in un'altra casa
+      // sparisce dal kit (il join dei kit guarda la casa) e ricompare se torna.
+      () => _dao.moveItemsToHouse(
+        itemIds,
+        fromHouseId,
+        toHouseId,
+        spaceId: spaceId,
+      ),
       operationName:
           'moveItemsToHouse(${itemIds.length} items: $fromHouseId -> $toHouseId)',
       config: RetryConfig.criticalConfig,

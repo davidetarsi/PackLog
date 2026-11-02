@@ -463,14 +463,23 @@ class SyncService {
               skipped++;
               continue;
             }
+            // Oggetto o kit assente in locale (cancellato e purgato): la riga
+            // non ha dove stare, ed è un caso normale, non un errore.
+            final itemId = r['item_id'] as String;
+            final kitId = r['kit_id'] as String;
+            if (await _itemsDao.findItemById(itemId) == null ||
+                await _kitsDao.findKitById(kitId) == null) {
+              skipped++;
+              continue;
+            }
             // Una sola riga per coppia (kit, oggetto): se questo dispositivo
             // ha la stessa coppia con un altro id, l'insert violerebbe
             // l'unicità. Una riga già sincronizzata cede al remoto; una con
             // modifiche non spedite resta se è più recente (il push poi la
             // allinea al server con l'upsert sulla coppia), altrimenti cede.
             final samePair = await _kitItemsDao.findKitItemByPair(
-              r['kit_id'] as String,
-              r['item_id'] as String,
+              kitId,
+              itemId,
             );
             if (samePair != null && samePair.id != id) {
               final keepLocal =
@@ -497,7 +506,7 @@ class SyncService {
             skipped++;
           }
         } catch (e, st) {
-          // Tipicamente l'oggetto del kit non esiste localmente (FK).
+          // Resta un errore vero (non l'oggetto o il kit assenti, già saltati).
           debugPrint(
             '[SyncService] fullPull: skip kit item $id — ${e.runtimeType}',
           );

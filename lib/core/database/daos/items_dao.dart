@@ -278,19 +278,6 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  /// Gli id tra [itemIds] che stanno ancora in [houseId] e non sono cancellati.
-  Future<List<String>> idsInHouse(List<String> itemIds, String houseId) async {
-    final rows =
-        await (select(items)..where(
-              (t) =>
-                  t.id.isIn(itemIds) &
-                  t.houseId.equals(houseId) &
-                  t.isDeleted.equals(false),
-            ))
-            .get();
-    return [for (final r in rows) r.id];
-  }
-
   // === SYNC OPERATIONS (delegated to SyncDaoMixin) ===
   // purgeRecord, wipeAll, markDeletedAsPendingSync, getPendingSyncRecords,
   // countUnsynced, markAsSynced, resetSyncRetries, incrementSyncRetry

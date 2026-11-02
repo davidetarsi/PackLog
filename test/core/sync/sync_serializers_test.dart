@@ -573,5 +573,28 @@ void main() {
         isFalse,
       );
     });
+
+    test('push: con la lista vuota la chiave è omessa (backend non ancora '
+        'migrato)', () async {
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 'v',
+          name: 'Vuota',
+          transports: const Value('[]'),
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
+      final v = (await database.tripsDao.findTripById('v'))!;
+
+      expect(
+        SyncSerializers.tripToJson(
+          v,
+          items: [],
+          luggageIds: [],
+        ).containsKey('transports'),
+        isFalse,
+      );
+    });
   });
 }

@@ -9,7 +9,7 @@ import 'sync_dao_mixin.dart';
 part 'kits_dao.g.dart';
 
 /// Un kit con le sue righe vive (kit e righe non cancellati, oggetto non
-/// cancellato).
+/// cancellato e ancora nella casa del kit).
 class KitWithItems {
   const KitWithItems(this.kit, this.items);
 
@@ -51,7 +51,8 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
   /// I kit di una casa con le righe vive, dal più vecchio al più recente.
   ///
   /// Esclude i kit cancellati, le righe cancellate e le righe il cui oggetto è
-  /// stato cancellato dalla casa.
+  /// stato cancellato o spostato in un'altra casa (la riga resta: se
+  /// l'oggetto torna nella casa del kit, ricompare).
   Stream<List<KitWithItems>> watchKitsOfHouse(String houseId) {
     return customSelect(
       'SELECT 1',
@@ -76,7 +77,8 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
               ..where(
                 kitItems.kitId.isIn(kitRows.map((k) => k.id)) &
                     kitItems.isDeleted.equals(false) &
-                    items.isDeleted.equals(false),
+                    items.isDeleted.equals(false) &
+                    items.houseId.equals(houseId),
               )
               ..orderBy([OrderingTerm.asc(kitItems.createdAt)]))
             .map((row) => row.readTable(kitItems))
@@ -100,15 +102,18 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
     return KitWithItems(kit, rows);
   }
 
-  /// Le righe vive di un kit (riga non cancellata, oggetto non cancellato).
+  /// Le righe vive di un kit (riga non cancellata, oggetto non cancellato e
+  /// nella casa del kit).
   Future<List<KitItemRow>> liveRowsOfKit(String kitId) {
-    return (select(
-            kitItems,
-          ).join([innerJoin(items, items.id.equalsExp(kitItems.itemId))])
+    return (select(kitItems).join([
+            innerJoin(items, items.id.equalsExp(kitItems.itemId)),
+            innerJoin(kits, kits.id.equalsExp(kitItems.kitId)),
+          ])
           ..where(
             kitItems.kitId.equals(kitId) &
                 kitItems.isDeleted.equals(false) &
-                items.isDeleted.equals(false),
+                items.isDeleted.equals(false) &
+                items.houseId.equalsExp(kits.houseId),
           )
           ..orderBy([OrderingTerm.asc(kitItems.createdAt)]))
         .map((row) => row.readTable(kitItems))
@@ -288,35 +293,6 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
             updatedAt: Value(DateTime.now()),
           ),
         );
-  }
-
-  /// Toglie gli oggetti da tutti i kit (soft-delete delle righe): serve
-  /// quando gli oggetti cambiano casa.
-  ///
-  /// Non si usa per la cancellazione degli oggetti: le loro righe restano
-  /// vive e [watchKitsOfHouse] le nasconde con il join, così ripristinare
-  /// un oggetto lo riporta nei suoi kit senza altro lavoro.
-  Future<void> softDeleteItemsEverywhere(List<String> itemIds) async {
-    if (itemIds.isEmpty) return;
-    final now = DateTime.now();
-    await transaction(() async {
-      // A blocchi, per restare sotto il limite di variabili di SQLite.
-      for (var i = 0; i < itemIds.length; i += 500) {
-        final chunk = itemIds.sublist(
-          i,
-          i + 500 > itemIds.length ? itemIds.length : i + 500,
-        );
-        await (update(kitItems)
-              ..where((r) => r.itemId.isIn(chunk) & r.isDeleted.equals(false)))
-            .write(
-              KitItemsCompanion(
-                isDeleted: const Value(true),
-                syncStatus: const Value(SyncStatus.pendingUpdate),
-                updatedAt: Value(now),
-              ),
-            );
-      }
-    });
   }
 
   // === SYNC OPERATIONS ===
