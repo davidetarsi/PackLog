@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/database/exceptions/database_exceptions.dart';
@@ -118,18 +119,20 @@ void main() {
     expect(k.items, hasLength(1));
   });
 
-  test('deleteItems toglie l\'oggetto dai kit', () async {
-    final kit = await repo.createKit(houseId: 'h1', name: 'Sci');
-    await repo.addItems(kit.id, {'i1': 1, 'i2': 1});
-    await itemRepo.deleteItems(['i1']);
-    final k = (await repo.watchKits('h1').first).single;
-    expect(k.items.map((i) => i.itemId), ['i2']);
-    final row = await (db.select(
-      db.kitItems,
-    )..where((r) => r.itemId.equals('i1'))).getSingle();
-    expect(row.isDeleted, isTrue);
-    expect(row.syncStatus, SyncStatus.pendingUpdate);
-  });
+  test(
+    'deleteItems nasconde l\'oggetto dai kit senza toccare le righe',
+    () async {
+      final kit = await repo.createKit(houseId: 'h1', name: 'Sci');
+      await repo.addItems(kit.id, {'i1': 1, 'i2': 1});
+      await itemRepo.deleteItems(['i1']);
+      final k = (await repo.watchKits('h1').first).single;
+      expect(k.items.map((i) => i.itemId), ['i2']);
+      final row = await (db.select(
+        db.kitItems,
+      )..where((r) => r.itemId.equals('i1'))).getSingle();
+      expect(row.isDeleted, isFalse);
+    },
+  );
 
   Future<void> addHouse2() => db.housesDao.insertHouse(
     HousesCompanion.insert(
@@ -157,26 +160,41 @@ void main() {
     expect(row.syncStatus, SyncStatus.pendingUpdate);
   });
 
-  test('restoreItem rimette nel kit le righe tolte con l\'oggetto, non '
-      'quelle tolte prima a mano', () async {
+  test('restoreItem riporta l\'oggetto nei kit anche dopo un sync, non '
+      'quello tolto a mano', () async {
     final kit = await repo.createKit(houseId: 'h1', name: 'Sci');
     await repo.addItems(kit.id, {'i1': 2, 'i2': 1});
     await repo.removeItem(kit.id, 'i2');
-    // Il database conserva i secondi: la cancellazione deve stare in un
-    // secondo diverso da quello della rimozione a mano.
-    await Future<void>.delayed(const Duration(milliseconds: 1100));
     await itemRepo.deleteItems(['i1', 'i2']);
     expect((await repo.watchKits('h1').first).single.items, isEmpty);
+
+    // Simula un sync nel mezzo: righe sincronizzate, updatedAt cambiato.
+    await (db.update(db.kitItems)).write(
+      KitItemsCompanion(
+        syncStatus: const Value(SyncStatus.synced),
+        updatedAt: Value(DateTime.now().add(const Duration(minutes: 5))),
+      ),
+    );
 
     expect(await itemRepo.restoreItem('i1'), isTrue);
     expect(await itemRepo.restoreItem('i2'), isTrue);
 
     final k = (await repo.watchKits('h1').first).single;
     expect({for (final i in k.items) i.itemId: i.copies}, {'i1': 2});
-    final row = await (db.select(
-      db.kitItems,
-    )..where((r) => r.itemId.equals('i1'))).getSingle();
-    expect(row.syncStatus, SyncStatus.pendingUpdate);
+  });
+
+  test('moveItemsToHouse salta gli oggetti già cancellati', () async {
+    await addHouse2();
+    await itemRepo.deleteItems(['i1']);
+    final deleted = await (db.select(
+      db.items,
+    )..where((t) => t.id.equals('i1'))).getSingle();
+    await itemRepo.moveItemsToHouse(['i1'], 'h1', 'h2');
+    final after = await (db.select(
+      db.items,
+    )..where((t) => t.id.equals('i1'))).getSingle();
+    expect(after.houseId, 'h1');
+    expect(after.updatedAt, deleted.updatedAt);
   });
 
   test(

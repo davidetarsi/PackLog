@@ -291,17 +291,14 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Toglie gli oggetti da tutti i kit (soft-delete delle righe): serve
-  /// quando gli oggetti vengono cancellati o spostati di casa.
+  /// quando gli oggetti cambiano casa.
   ///
-  /// [at] è l'istante scritto in `updatedAt` delle righe: chi cancella gli
-  /// oggetti passa lo stesso istante a `ItemsDao.deleteItems`, così
-  /// [restoreItemRows] riconosce le righe tolte insieme all'oggetto.
-  Future<void> softDeleteItemsEverywhere(
-    List<String> itemIds, {
-    DateTime? at,
-  }) async {
+  /// Non si usa per la cancellazione degli oggetti: le loro righe restano
+  /// vive e [watchKitsOfHouse] le nasconde con il join, così ripristinare
+  /// un oggetto lo riporta nei suoi kit senza altro lavoro.
+  Future<void> softDeleteItemsEverywhere(List<String> itemIds) async {
     if (itemIds.isEmpty) return;
-    final now = at ?? DateTime.now();
+    final now = DateTime.now();
     await transaction(() async {
       // A blocchi, per restare sotto il limite di variabili di SQLite.
       for (var i = 0; i < itemIds.length; i += 500) {
@@ -320,28 +317,6 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
             );
       }
     });
-  }
-
-  /// Annulla [softDeleteItemsEverywhere] per [itemId]: riattiva le righe
-  /// cancellate esattamente all'istante [deletedAt] (quello della
-  /// cancellazione dell'oggetto, cioè il suo `updatedAt` da cancellato).
-  /// Le righe tolte a mano prima hanno un altro `updatedAt` e restano tolte.
-  /// Il database conserva i secondi: una riga tolta a mano nello stesso
-  /// secondo della cancellazione dell'oggetto tornerebbe, caso trascurabile.
-  Future<void> restoreItemRows(String itemId, DateTime deletedAt) {
-    return (update(kitItems)..where(
-          (r) =>
-              r.itemId.equals(itemId) &
-              r.isDeleted.equals(true) &
-              r.updatedAt.equals(deletedAt),
-        ))
-        .write(
-          KitItemsCompanion(
-            isDeleted: const Value(false),
-            syncStatus: const Value(SyncStatus.pendingUpdate),
-            updatedAt: Value(DateTime.now()),
-          ),
-        );
   }
 
   // === SYNC OPERATIONS ===

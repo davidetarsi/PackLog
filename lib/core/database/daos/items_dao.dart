@@ -267,33 +267,28 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
   /// `UPDATE items SET is_deleted = 1 WHERE id IN (?)`
   ///
   /// Idempotente: se la lista è vuota non esegue alcuna query.
-  ///
-  /// [at] è l'istante scritto in `updatedAt` (default: ora).
-  Future<void> deleteItems(List<String> itemIds, {DateTime? at}) async {
+  Future<void> deleteItems(List<String> itemIds) async {
     if (itemIds.isEmpty) return;
     await (update(items)..where((t) => t.id.isIn(itemIds))).write(
       ItemsCompanion(
         isDeleted: const Value(true),
         syncStatus: const Value(SyncStatus.pendingUpdate),
-        updatedAt: Value(at ?? DateTime.now()),
+        updatedAt: Value(DateTime.now()),
       ),
     );
   }
 
-  /// Gli id tra [itemIds] che stanno ancora in [houseId].
+  /// Gli id tra [itemIds] che stanno ancora in [houseId] e non sono cancellati.
   Future<List<String>> idsInHouse(List<String> itemIds, String houseId) async {
-    final rows = await (select(
-      items,
-    )..where((t) => t.id.isIn(itemIds) & t.houseId.equals(houseId))).get();
+    final rows =
+        await (select(items)..where(
+              (t) =>
+                  t.id.isIn(itemIds) &
+                  t.houseId.equals(houseId) &
+                  t.isDeleted.equals(false),
+            ))
+            .get();
     return [for (final r in rows) r.id];
-  }
-
-  /// `updatedAt` di un oggetto (anche cancellato), o `null` se non esiste.
-  Future<DateTime?> updatedAtOf(String id) async {
-    final row = await (select(
-      items,
-    )..where((t) => t.id.equals(id))).getSingleOrNull();
-    return row?.updatedAt;
   }
 
   // === SYNC OPERATIONS (delegated to SyncDaoMixin) ===
@@ -322,15 +317,19 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
     String? spaceId,
   }) async {
     if (itemIds.isEmpty) return;
-    await (update(
-      items,
-    )..where((t) => t.id.isIn(itemIds) & t.houseId.equals(fromHouseId))).write(
-      ItemsCompanion(
-        houseId: Value(toHouseId),
-        spaceId: Value(spaceId),
-        syncStatus: const Value(SyncStatus.pendingUpdate),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+    await (update(items)..where(
+          (t) =>
+              t.id.isIn(itemIds) &
+              t.houseId.equals(fromHouseId) &
+              t.isDeleted.equals(false),
+        ))
+        .write(
+          ItemsCompanion(
+            houseId: Value(toHouseId),
+            spaceId: Value(spaceId),
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
   }
 }

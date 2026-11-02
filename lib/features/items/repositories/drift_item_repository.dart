@@ -122,16 +122,9 @@ class DriftItemRepository implements ItemRepository {
   @override
   Future<bool> restoreItem(String id) async {
     final result = await _dbService.executeWithRetry(
-      () => _dao.attachedDatabase.transaction(() async {
-        // `updatedAt` dell'oggetto cancellato = istante in cui sono state
-        // tolte dai kit le sue righe (vedi deleteItems).
-        final deletedAt = await _dao.updatedAtOf(id);
-        final restored = await _dao.restoreItem(id);
-        if (restored > 0 && deletedAt != null) {
-          await _kitsDao?.restoreItemRows(id, deletedAt);
-        }
-        return restored;
-      }),
+      // Le righe dei kit non sono mai state toccate dalla cancellazione:
+      // l'oggetto torna nei suoi kit appena torna visibile.
+      () => _dao.restoreItem(id),
       operationName: 'restoreItem($id)',
       config: RetryConfig.criticalConfig,
     );
@@ -328,20 +321,16 @@ class DriftItemRepository implements ItemRepository {
         .map((items) => items.map(_toModel).toList());
   }
 
-  /// Elimina [itemIds] con una singola query SQL `DELETE … WHERE id IN (?)` e
-  /// li toglie da tutti i kit.
+  /// Elimina [itemIds] con una singola query SQL `DELETE … WHERE id IN (?)`.
+  ///
+  /// Le righe dei kit restano vive: i kit nascondono gli oggetti cancellati
+  /// con il join (come in [deleteItem]), e [restoreItem] li ritrova.
   @override
   Future<void> deleteItems(List<String> itemIds) async {
     if (itemIds.isEmpty) return;
 
     final result = await _dbService.executeWithRetry(
-      () => _dao.attachedDatabase.transaction(() async {
-        // Stesso istante per oggetti e righe: restoreItem lo usa per
-        // riportare nel kit solo le righe tolte insieme all'oggetto.
-        final at = DateTime.now();
-        await _kitsDao?.softDeleteItemsEverywhere(itemIds, at: at);
-        await _dao.deleteItems(itemIds, at: at);
-      }),
+      () => _dao.deleteItems(itemIds),
       operationName: 'deleteItems(${itemIds.length} items)',
       config: RetryConfig.criticalConfig,
     );
@@ -359,7 +348,8 @@ class DriftItemRepository implements ItemRepository {
   /// Sposta [itemIds] da [fromHouseId] a [toHouseId] con una singola query SQL.
   ///
   /// Delega al DAO la query bulk; il filtro `AND house_id = fromHouseId`
-  /// garantisce che solo gli item ancora nella casa di partenza vengano mossi.
+  /// garantisce che solo gli item ancora nella casa di partenza vengano mossi;
+  /// gli item già cancellati si saltano (il loro `updatedAt` non cambia).
   @override
   Future<void> moveItemsToHouse(
     List<String> itemIds,
@@ -372,7 +362,7 @@ class DriftItemRepository implements ItemRepository {
     final result = await _dbService.executeWithRetry(
       () => _dao.attachedDatabase.transaction(() async {
         // I kit sono della casa: gli oggetti che cambiano casa ne escono.
-        // Solo quelli davvero in `fromHouseId` si spostano (e escono).
+        // Solo quelli davvero in `fromHouseId` e non cancellati si spostano.
         final moving = await _dao.idsInHouse(itemIds, fromHouseId);
         await _kitsDao?.softDeleteItemsEverywhere(moving);
         await _dao.moveItemsToHouse(
