@@ -307,8 +307,9 @@ void main() {
     );
   });
 
-  testWidgets('il numero del gruppo non conta il posto che sta scoppiando '
-      '(l\'oggetto scritto c\'è già)', (tester) async {
+  testWidgets('il numero del gruppo non conta il posto che sta scoppiando', (
+    tester,
+  ) async {
     await pumpDetail(tester, _trip());
     expect(find.text('Vestiti · 5'), findsOneWidget);
     await openMagliette(tester);
@@ -320,9 +321,10 @@ void main() {
     await tester.pump();
 
     expect(popping(), isTrue);
-    expect(find.text('Vestiti · 5'), findsOneWidget);
+    // Il posto che scoppia non si conta (la T-shirt finisce in Varie).
+    expect(find.text('Vestiti · 5'), findsNothing);
     await tester.pumpAndSettle();
-    expect(find.text('Vestiti · 5'), findsOneWidget);
+    expect(find.text('Vestiti · 4'), findsOneWidget);
   });
 
   testWidgets('indietro mentre la bolla scoppia chiude il riquadro, non la '
