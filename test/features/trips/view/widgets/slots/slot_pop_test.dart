@@ -33,6 +33,46 @@ void main() {
     expect(done, 1);
   });
 
+  testWidgets('SlotPop: popping torna falso a meta\': il figlio e\' intero e '
+      'onDone non parte', (tester) async {
+    var done = 0;
+    Widget pop(bool popping) => _app(
+      SlotPop(popping: popping, onDone: () => done++, child: const Text('x')),
+    );
+    await tester.pumpWidget(pop(false));
+    await tester.pumpWidget(pop(true));
+    await tester.pump(AppMotion.medium ~/ 2);
+
+    await tester.pumpWidget(pop(false));
+    await tester.pump(AppMotion.medium * 2);
+
+    expect(done, 0);
+    expect(
+      tester
+          .widget<FadeTransition>(
+            find.descendant(
+              of: find.byType(SlotPop),
+              matching: find.byType(FadeTransition),
+            ),
+          )
+          .opacity
+          .value,
+      1,
+    );
+    expect(
+      tester
+          .widget<ScaleTransition>(
+            find.descendant(
+              of: find.byType(SlotPop),
+              matching: find.byType(ScaleTransition),
+            ),
+          )
+          .scale
+          .value,
+      1,
+    );
+  });
+
   testWidgets('SlotPop senza animazioni: onDone subito', (tester) async {
     var done = 0;
     Widget pop(bool popping) => _app(

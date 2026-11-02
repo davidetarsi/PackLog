@@ -47,7 +47,7 @@ class _SlotPopState extends State<SlotPop> with SingleTickerProviderStateMixin {
     super.initState();
     if (widget.popping) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _pop();
+        if (mounted && widget.popping) _pop();
       });
     }
   }
@@ -56,6 +56,7 @@ class _SlotPopState extends State<SlotPop> with SingleTickerProviderStateMixin {
   void didUpdateWidget(SlotPop oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.popping && !oldWidget.popping) _pop();
+    if (!widget.popping && oldWidget.popping) _controller.reset();
   }
 
   void _pop() {
