@@ -4,6 +4,16 @@ import 'package:flutter/material.dart';
 import '../../../model/ai_packing.dart';
 import '../../../model/trip_model.dart';
 
+/// Fa entrare in valigia gli oggetti di un kit: [save] li scrive e, a
+/// scrittura fatta, volano dalla riga del kit ([from], coordinate dello
+/// schermo) alla loro riga. Se [save] fallisce non vola nulla e l'errore sale.
+typedef FlyKitItems =
+    Future<void> Function({
+      required Rect from,
+      required List<TripItem> items,
+      required Future<void> Function() save,
+    });
+
 /// Cosa si può fare sui posti della valigia; li gestisce lo schermo.
 class SlotActions {
   const SlotActions({
@@ -17,6 +27,7 @@ class SlotActions {
     required this.popDone,
     required this.rowKey,
     required this.flying,
+    required this.flyKitItems,
   });
 
   final ValueChanged<AiSlot> open;
@@ -44,6 +55,9 @@ class SlotActions {
   /// Gli oggetti che stanno volando verso la loro riga: la riga resta
   /// invisibile finché non atterrano.
   final ValueListenable<Set<String>> flying;
+
+  /// Il volo degli oggetti di un kit verso i loro gruppi.
+  final FlyKitItems flyKitItems;
 }
 
 /// Il posto aperto nel dettaglio: quale, gli oggetti scritti in questa

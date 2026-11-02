@@ -793,7 +793,16 @@
     "delete_warning": "Gli oggetti restano in casa.",
     "not_found": "Kit non trovato",
     "limit_kits": "Una casa può avere al massimo {} kit.",
-    "limit_items": "Un kit può contenere al massimo {} oggetti."
+    "limit_items": "Un kit può contenere al massimo {} oggetti.",
+    "trip_pill": "Kit {}",
+    "trip_progress": "{} su {} già in valigia",
+    "trip_missing": "Mancano {}",
+    "trip_and": "e",
+    "trip_add": "Aggiungili in valigia",
+    "trip_dismiss": "No, grazie",
+    "learn_question": "La prossima volta lo aggiungo da solo per {}?",
+    "learn_yes": "Sì",
+    "learn_no": "No"
   },
   "clothing": {
     "details": {

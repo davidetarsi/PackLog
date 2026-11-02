@@ -6,12 +6,20 @@ import '../../../../shared/theme/app_spacing.dart';
 /// Pillola neutra con un'attività o un mezzo del kit: solo lettura, bordo
 /// sottile e testo secondario. I kit non hanno colore proprio.
 class KitUsePill extends StatelessWidget {
-  const KitUsePill({super.key, required this.label, this.semanticsLabel});
+  const KitUsePill({
+    super.key,
+    required this.label,
+    this.semanticsLabel,
+    this.icon,
+  });
 
   final String label;
 
   /// Cosa legge il lettore di schermo, se il testo da solo non basta ("+2").
   final String? semanticsLabel;
+
+  /// Un'icona prima del testo (la scatola del kit in valigia).
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -31,13 +39,28 @@ class KitUsePill extends StatelessWidget {
             width: AppConstants.hairlineBorderWidth,
           ),
         ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: context.iconSizeSm,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              SizedBox(width: context.spacingXs),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

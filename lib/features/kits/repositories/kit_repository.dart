@@ -16,6 +16,10 @@ const int kMaxItemsPerKit = 50;
 /// Copie massime di un oggetto dentro un kit (stepper dell'editor).
 const int kMaxCopiesPerItem = 99;
 
+/// Dopo quanti sì in valigia un uso conta come imparato (la pillola nasce
+/// dall'uso, o la valigia propone di impararlo).
+const int kKitLearnedAfterYes = 2;
+
 /// Lunghezza massima del nome di un kit (dopo il trim).
 const int kMaxKitNameLength = 60;
 

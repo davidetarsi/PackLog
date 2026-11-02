@@ -11,11 +11,9 @@ import '../../../../shared/widgets/ds_settings.dart';
 import '../../../items/providers/item_provider.dart';
 import '../../../spaces/providers/space_provider.dart';
 import '../../model/kit_model.dart';
+import '../../repositories/kit_repository.dart';
 import 'kit_item_row.dart';
 import 'kit_use_pill.dart';
-
-/// Dopo quanti sì in valigia una pillola nasce dall'uso.
-const int _kLearnedAfterYes = 2;
 
 /// Il kit aperto: le pillole d'uso con la provenienza di quelle imparate e gli
 /// oggetti con le copie e lo spazio dove stanno. Gli oggetti che la casa non
@@ -42,7 +40,7 @@ class KitDetailBody extends ConsumerWidget {
     ];
     final learned = [
       for (final (domain, id) in uses)
-        if ((kit.learned.yes[id] ?? 0) >= _kLearnedAfterYes)
+        if ((kit.learned.yes[id] ?? 0) >= kKitLearnedAfterYes)
           etichettaDi(domain, id),
     ];
     final rows = [

@@ -793,7 +793,16 @@
     "delete_warning": "The items stay at home.",
     "not_found": "Kit not found",
     "limit_kits": "A house can have at most {} kits.",
-    "limit_items": "A kit can hold at most {} items."
+    "limit_items": "A kit can hold at most {} items.",
+    "trip_pill": "Kit {}",
+    "trip_progress": "{} of {} already in the suitcase",
+    "trip_missing": "Missing: {}",
+    "trip_and": "and",
+    "trip_add": "Add them to the suitcase",
+    "trip_dismiss": "No, thanks",
+    "learn_question": "Next time I'll add it on my own for {}?",
+    "learn_yes": "Yes",
+    "learn_no": "No"
   },
   "clothing": {
     "details": {
