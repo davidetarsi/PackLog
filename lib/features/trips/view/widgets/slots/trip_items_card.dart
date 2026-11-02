@@ -12,6 +12,7 @@ import '../../../../items/model/item_model.dart';
 import '../../../../../shared/widgets/ds_checkbox.dart';
 import '../../../model/trip_model.dart';
 import '../../../providers/trip_provider.dart';
+import 'flight_target.dart';
 
 /// Valigia vuota: niente oggetti (e niente posti).
 class EmptySuitcase extends StatelessWidget {
@@ -58,7 +59,7 @@ class ItemsCard extends ConsumerWidget {
       child: Column(
         children: [
           for (final item in items)
-            _FlightTarget(
+            FlightTarget(
               key: rowKey?.call(item.id),
               hidden: flying,
               itemId: item.id,
@@ -70,38 +71,6 @@ class ItemsCard extends ConsumerWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// La riga di un oggetto che sta per atterrare: occupa il suo posto ma non si
-/// vede finché [itemId] è fra gli oggetti in volo ([hidden]).
-class _FlightTarget extends StatelessWidget {
-  const _FlightTarget({
-    super.key,
-    required this.hidden,
-    required this.itemId,
-    required this.child,
-  });
-
-  final ValueListenable<Set<String>>? hidden;
-  final String itemId;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final flying = hidden;
-    if (flying == null) return child;
-    return ValueListenableBuilder<Set<String>>(
-      valueListenable: flying,
-      child: child,
-      builder: (_, ids, row) => Visibility(
-        visible: !ids.contains(itemId),
-        maintainSize: true,
-        maintainAnimation: true,
-        maintainState: true,
-        child: row!,
       ),
     );
   }
