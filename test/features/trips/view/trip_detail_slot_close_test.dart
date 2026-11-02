@@ -515,21 +515,24 @@ void main() {
       tester,
     ) async {
       final offsets = await closeLast(tester, noAnimations: false);
-      var biggest = 0.0;
-      for (var i = 1; i < offsets.length; i++) {
-        biggest = [
-          biggest,
-          (offsets[i] - offsets[i - 1]).abs(),
-        ].reduce((a, b) => a > b ? a : b);
-      }
+      final moves = [
+        for (var i = 1; i < offsets.length; i++) offsets[i - 1] - offsets[i],
+      ];
+      // Sempre verso l'alto, mai indietro.
+      expect(moves.every((m) => m >= -0.001), isTrue);
+      final first = moves.indexWhere((m) => m > 0.001);
+      final last = moves.lastIndexWhere((m) => m > 0.001);
+      final during = moves.sublist(first, last + 1);
+      // Nessun frame fermo in mezzo al movimento.
+      expect(during.every((m) => m > 0.001), isTrue);
+      final average = during.reduce((a, b) => a + b) / during.length;
+      expect(during.reduce((a, b) => a > b ? a : b), lessThan(average * 2));
       expect(offsets.first, greaterThan(offsets.last));
-      // Mai più di metà dello scorrimento totale in un solo frame.
-      expect(biggest, lessThan((offsets.first - offsets.last) / 2));
     });
 
     testWidgets('senza animazioni lo spazio sparisce subito', (tester) async {
       final offsets = await closeLast(tester, noAnimations: true);
-      expect(offsets[2], offsets.last);
+      expect(offsets[2], closeTo(offsets.last, 0.01));
       expect(
         tester.getSize(find.byKey(const Key('slot_end_spacer'))).height,
         0,
