@@ -34,11 +34,22 @@ export function essenzialiPerViaggio(items: Capo[], giorni: number, lavatrice: b
   tempMax: number | null = null): Essenziale[] {
   const out: Essenziale[] = [];
   const visti = new Set<string>();
+  // Tipi non ancora coperti dalle copie dei capi gia' presi: {radice: pezzi che mancano}
+  // (copie possedute, 31 ottobre). Vuoto negli armadi senza copie.
+  const scoperti = new Map<string, number>();
   for (const g of items) {
     if (!g.sempre_in_valigia) continue;
     const r = radiceSempre(g.name) || RADICE_DA_SOTTOCAT[g.sub_fine] || null;
     if (r === "collant" && (tempMax == null || tempMax > SOGLIA_COLLANT)) continue;
-    if (r != null && visti.has(r)) continue;   // una sola voce per tipo
+    // una sola voce per tipo; con le copie possedute il tipo continua sul capo dopo finche' serve
+    if (r != null && visti.has(r) && !scoperti.has(r)) continue;
+    if (r != null && scoperti.has(r)) {
+      let qta = scoperti.get(r)!;
+      scoperti.delete(r);
+      if (g.copie != null && qta > g.copie) { scoperti.set(r, qta - g.copie); qta = g.copie; }
+      out.push({ item: g.name, item_id: g.id, radice: r || "categoria", quantita: qta, bulk: g.bulk || 1 });
+      continue;
+    }
     if (r != null && RADICI_NOTTE.has(r)) {      // una sola cosa per la notte
       if (visti.has("notte")) continue;
       visti.add("notte");
@@ -56,7 +67,13 @@ export function essenzialiPerViaggio(items: Capo[], giorni: number, lavatrice: b
       qta = Math.min(qta, giorni + TETTO_ESSENZIALI_EXTRA);
       if (r === "collant") qta = Math.min(ceilDiv(giorni, usi), MAX_COLLANT);
     }
+    if (r && g.copie != null && qta > g.copie) { scoperti.set(r, qta - g.copie); qta = g.copie; }
     out.push({ item: g.name, item_id: g.id, radice: r || "categoria", quantita: qta, bulk: g.bulk || 1 });
+  }
+  // Se i capi di quel tipo finiscono prima del bisogno, il resto torna sull'ultimo: l'uscita per
+  // l'app lo riporta alle copie e avvisa che ne servono di piu'.
+  for (const [r, manca] of scoperti) {
+    [...out].reverse().find((x) => x.radice === r)!.quantita += manca;
   }
   return out;
 }

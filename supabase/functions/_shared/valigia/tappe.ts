@@ -12,8 +12,8 @@ import {
 } from "./inject.ts";
 import {
   applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps, capienzaBagaglio,
-  capienzaPotabile, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri, score, segnaInPartenza,
-  segnalaScarpeCammino, segnalaVolume, togliDoppioni,
+  capienzaPotabile, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri, rispettaCopie, score,
+  segnaInPartenza, segnalaScarpeCammino, segnalaVolume, togliDoppioni,
 } from "./dopo.ts";
 import {
   get, ordinaTappe, pavimentoDi, pilaDiTappa, ripartisciCopie, round2, strategySlots, tettoCopie, tettoCopieMorbido,
@@ -226,12 +226,14 @@ export function diversificaCopie(liste: Record_[][], items: Capo[], capienza: nu
   vietato: ((g: Capo, tappe: string[]) => boolean) | null = null): number {
   if (!K.DIVERSIFICA_COPIE_TAPPE) return 0;
   const inValigia = new Set(liste.flatMap((l) => l.map((x) => get(x, "item_id"))));
+  const copie = new Map(items.map((g) => [g.id, g.copie]));
   let spostate = 0;
   for (const lista of liste) {
     for (const r of [...lista]) {
       const sub = get(r, "subCategory"), form = get(r, "formality");
       const elegante = vero(r._slot_elegante) || form === "Business" || form === "Formal";
-      const morbido = sub === "Swimwear" || (elegante && K.CAPI_DIVERSI_ELEGANTI) ? 1 : tettoMorbidoPer(q(r), form, sub, capienza);
+      const morbido = sub === "Swimwear" || (elegante && K.CAPI_DIVERSI_ELEGANTI) ? 1
+        : tettoMorbidoPer(q(r), form, sub, capienza, copie.get(r.item_id) ?? null);
       while (q(r) > morbido) {
         const simili = elegante && (sub === "Trousers" || sub === "Skirt") ? new Set(["Trousers", "Skirt"]) : new Set([sub]);
         const wr = r.warmth || 2;
@@ -258,7 +260,8 @@ export function diversificaCopie(liste: Record_[][], items: Capo[], capienza: nu
 
 export function contaPezzi(capi: Record_[], giorniPerTappa: Record<string, number>, lavatrice: boolean,
   intensita: string | null = null, tempMaxPerTappa: Record<string, number | null> | null = null,
-  giorniMare: number | null = null, minimoEleganti: number | null = null): void {
+  giorniMare: number | null = null, minimoEleganti: number | null = null,
+  copie: Map<string, number | null> | null = null): void {
   const gruppi = new Map<unknown, Record_[]>();
   for (const x of capi) {
     const k = x._gruppo_capo != null ? x._gruppo_capo : x;
@@ -288,9 +291,11 @@ export function contaPezzi(capi: Record_[], giorniPerTappa: Record<string, numbe
     if (membri.some((x) => (vero(x.assegnazioni) ? x.assegnazioni : [x]).some((a: Record_) => a.slot === K.SLOT_SERA_PRESENTABILE))) {
       serve = Math.max(serve, membri.length);
     }
+    // Oltre le copie possedute di un capo solo ci pensa rispettaCopie, alla fine.
     if (membri.length === 1) { primo.quantita = serve; continue; }
+    const cp = (x: Record_) => copie?.get(x.item_id) ?? null;
     const [qq] = ripartisciCopie(serve, membri.map((x) =>
-      [tettoCopieMorbido(x.formality, x.subCategory), tettoCopie(x.formality, x.subCategory)] as [number, number]));
+      [tettoCopieMorbido(x.formality, x.subCategory, cp(x)), tettoCopie(x.formality, x.subCategory, cp(x))] as [number, number]));
     membri.forEach((x, i) => { x.quantita = Math.max(qq[i], 0); });
   }
 }
@@ -421,7 +426,8 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     Object.fromEntries(perTappa.map((t) => [t.destinazione, t.meteo.temp_max_media ?? null])),
     perTappa.reduce((s, t) => s + giorniDiMare(t.giorni || 0, t.attivita), 0),
     (giorniTot >= 2 && capienza > 8 && viaggioDiLavoro(perTappa.flatMap((t) => t.attivita || []), a.classi_viaggio ?? null))
-      ? K.MINIMO_FORMALI_LAVORO : null);
+      ? K.MINIMO_FORMALI_LAVORO : null,
+    new Map(items.map((g) => [g.id, g.copie])));
   const climaTappe = new Map<string, [number | null, boolean]>(perTappa.map((t) =>
     [t.destinazione, [t.meteo.temp_max_media ?? null, eAttivitaAcqua(t.attivita || [])]]));
   diversificaCopie([r.ideali, r.ripieghi], items, capienza, (g, tappe) =>
@@ -446,7 +452,14 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     attContesto, tappeV.map((t) => t.destinazione), capienzaBagaglio(get(sc, "bagaglio", ""))));
   r.ideali = r.ideali.filter((x: Record_) => q(x) >= 1);
   r.ripieghi = r.ripieghi.filter((x: Record_) => q(x) >= 1);
-  applicaTettoVolume([...r.ideali, ...r.ripieghi], capienzaPotabile(get(sc, "bagaglio", "")));
+  if (rispettaCopie([r.ideali, r.ripieghi], items, r.mancanti)) {
+    r.ideali = r.ideali.filter((x: Record_) => q(x) >= 1);
+    r.ripieghi = r.ripieghi.filter((x: Record_) => q(x) >= 1);
+  }
+  applicaTettoVolume([...r.ideali, ...r.ripieghi], capienzaPotabile(get(sc, "bagaglio", "")),
+    items.some((g) => g.copie != null));
+  r.ideali = r.ideali.filter((x: Record_) => q(x) >= 1);
+  r.ripieghi = r.ripieghi.filter((x: Record_) => q(x) >= 1);
   r.mancanti = r.mancanti.filter((g: Record_) => g.tipo !== "volume_eccedente");
   const avvisoVolume = segnalaVolume([...r.ideali, ...r.ripieghi], capienzaPotabile(get(sc, "bagaglio", "")));
   if (avvisoVolume) r.mancanti.push(avvisoVolume);

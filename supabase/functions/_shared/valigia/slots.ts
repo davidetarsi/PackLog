@@ -16,7 +16,8 @@ import {
 import {
   applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps,
   capienzaBagaglio, capienzaPotabile, lavanderiaPresunta, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri,
-  penalitaVetoCapo, penalitaVoto, score, segnaInPartenza, segnalaScarpeCammino, segnalaVolume, togliDoppioni,
+  penalitaVetoCapo, penalitaVoto, rispettaCopie, score, segnaInPartenza, segnalaScarpeCammino, segnalaVolume,
+  togliDoppioni,
 } from "./dopo.ts";
 import { floorDiv, massimo, minimo, ordina, pf, ps, vero } from "./py.ts";
 
@@ -51,20 +52,31 @@ export function parseJsonBlock(text: string): any {
 }
 
 // ── Tetti di copie ──────────────────────────────────────────────────────────
-export function tettoCopie(formalita: string | null | undefined, sotto: string | null | undefined = null): number {
-  if (formalita === "Business" || formalita === "Formal" || K.SOTTOCAT_GAMBE_LUNGHE.has(sotto)) return K.TETTO_COPIE_FORMALE;
-  return K.TETTO_COPIE_STESSO_CAPO;
+// Con le copie possedute (null = non si sa) nessun tetto va oltre le copie.
+const entroLeCopie = (tetto: number, copie: number | null | undefined) => (copie == null ? tetto : Math.min(tetto, copie));
+
+export function tettoCopie(formalita: string | null | undefined, sotto: string | null | undefined = null,
+  copie: number | null = null): number {
+  if (formalita === "Business" || formalita === "Formal" || K.SOTTOCAT_GAMBE_LUNGHE.has(sotto)) {
+    return entroLeCopie(K.TETTO_COPIE_FORMALE, copie);
+  }
+  return entroLeCopie(K.TETTO_COPIE_STESSO_CAPO, copie);
 }
 
-export function tettoCopieMorbido(formalita: string | null | undefined, sotto: string | null | undefined = null): number {
+export function tettoCopieMorbido(formalita: string | null | undefined, sotto: string | null | undefined = null,
+  copie: number | null = null): number {
+  return entroLeCopie(tettoCopieMorbidoSenzaCopie(formalita, sotto), copie);
+}
+
+function tettoCopieMorbidoSenzaCopie(formalita: string | null | undefined, sotto: string | null | undefined): number {
   if (formalita === "Business" || formalita === "Formal" || sotto === "Swimwear") return 1;
   if (K.SOTTOCAT_MEDIO.includes(sotto)) return 1;
   return Math.min(K.TETTO_COPIE_MORBIDO, tettoCopie(formalita, sotto));
 }
 
 export function tettoMorbidoPer(serve: number, formalita: string | null | undefined, sotto: string | null | undefined,
-  capienza: number | null = null): number {
-  let morbido = tettoCopieMorbido(formalita, sotto);
+  capienza: number | null = null, copie: number | null = null): number {
+  let morbido = tettoCopieMorbido(formalita, sotto, copie);
   if (K.COPIE_META_DEI_PEZZI && serve && !(capienza != null && capienza <= 8)) {
     morbido = Math.min(morbido, Math.max(1, ceilDiv(serve, 2)));
   }
@@ -489,7 +501,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     while (true) {
       used.add(capo!.id);
       const quanti = Math.min(resto, diversiEleganti ? 1
-        : tettoMorbidoPer(serve, capo!.formality, capo!.sub_category, capienza));
+        : tettoMorbidoPer(serve, capo!.formality, capo!.sub_category, capienza, capo!.copie));
       const nI = ideali.length, nR = ripieghi.length;
       costruisciRec(capo!, tipoMatch, quanti);
       const nuovo = ideali.length > nI ? ideali[ideali.length - 1] : ripieghi.length > nR ? ripieghi[ripieghi.length - 1] : null;
@@ -504,7 +516,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
       if (capo != null && giornoCasual && capoRiservato(capo, profiliCapi)) capo = null;
       if (capo == null && recsSlot.length) {
         const [qq, r2] = ripartisciCopie(resto + recsSlot.reduce((t, [r]) => t + r.quantita, 0),
-          recsSlot.map(([r, c]) => [r.quantita, tettoCopie(c.formality, c.sub_category)] as [number, number]));
+          recsSlot.map(([r, c]) => [r.quantita, tettoCopie(c.formality, c.sub_category, c.copie)] as [number, number]));
         resto = r2;
         recsSlot.forEach(([r], i) => { r.quantita = qq[i]; });
         if (resto <= 0) break;
@@ -681,7 +693,14 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     ideali = ideali.filter((x) => q(x) >= 1);
     ripieghi = ripieghi.filter((x) => q(x) >= 1);
   }
-  const nVolume = applicaTettoVolume([...ideali, ...ripieghi], capienzaPotabile(bagaglio));
+  if (rispettaCopie([ideali, ripieghi], items, gaps)) {
+    ideali = ideali.filter((x) => q(x) >= 1);
+    ripieghi = ripieghi.filter((x) => q(x) >= 1);
+  }
+  const nVolume = applicaTettoVolume([...ideali, ...ripieghi], capienzaPotabile(bagaglio),
+    items.some((g) => g.copie != null));
+  ideali = ideali.filter((x) => q(x) >= 1);
+  ripieghi = ripieghi.filter((x) => q(x) >= 1);
   const avvisoVolume = segnalaVolume([...ideali, ...ripieghi], capienzaPotabile(bagaglio));
   if (avvisoVolume) gaps.push(avvisoVolume);
   const avvisoScarpe = segnalaScarpeCammino([...ideali, ...ripieghi], items, attivita);
