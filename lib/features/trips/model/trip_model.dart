@@ -72,6 +72,10 @@ class TripModel with _$TripModel {
     /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
     @Default([]) List<TripLeg> legs,
 
+    /// Mezzi del viaggio (id del dominio `transport` del catalogo). Vuota =
+    /// nessun mezzo scelto.
+    @Default(<String>[]) List<String> transports,
+
     /// Risposte del foglio della valigia AI. `null` = nessuna informazione.
     AiPackingSetup? aiSetup,
 

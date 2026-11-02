@@ -79,12 +79,14 @@ Map<String, dynamic> packTripBody({
   required String houseId,
   required String language,
   LuggageModel? luggage,
+  List<String> transports = const [],
 }) {
   final stops = aiStopsOf(plan);
   final bagaglio = luggageDescription(luggage);
   final trip = <String, dynamic>{
     'data_inizio': isoDay(plan.start),
     if (bagaglio != null) 'bagaglio': bagaglio,
+    if (transports.isNotEmpty) 'mezzi': transports,
   };
   if (stops.length == 1) {
     trip['destinazione'] = _place(plan.stops.first);

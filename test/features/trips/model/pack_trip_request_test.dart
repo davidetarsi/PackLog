@@ -54,6 +54,27 @@ void main() {
   final cabin = _luggage();
 
   group('packTripBody', () {
+    test('packTripBody mette mezzi', () {
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        transports: const ['plane', 'train'],
+      );
+      expect((body['trip'] as Map)['mezzi'], ['plane', 'train']);
+    });
+
+    test('senza mezzi niente campo', () {
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+      );
+      expect((body['trip'] as Map).containsKey('mezzi'), isFalse);
+    });
+
     test('la lingua: italiano o inglese, le altre diventano inglese', () {
       String? lang(String language) => packTripBody(
         plan: _onePlacePlan,

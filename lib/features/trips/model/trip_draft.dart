@@ -58,6 +58,7 @@ class TripDraft {
     this.name = '',
     this.nameEdited = false,
     this.pendingEnd,
+    this.transports = const [],
   });
 
   const TripDraft.empty() : this._();
@@ -130,6 +131,7 @@ class TripDraft {
           trip.name.trim().isNotEmpty &&
           trip.name.trim() != destination?.shortName,
       pendingEnd: pendingEnd,
+      transports: List.unmodifiable(trip.transports),
     );
   }
 
@@ -150,6 +152,9 @@ class TripDraft {
 
   /// Fine delle date scelte prima della meta. Vale solo finché [stops] è vuoto.
   final DateTime? pendingEnd;
+
+  /// Mezzi scelti (id del dominio `transport`), nell'ordine dei tocchi.
+  final List<String> transports;
 
   /// Fine dell'ultima tappa, o null senza meta con date.
   DateTime? get lastEnd => stops.isEmpty ? null : stops.last.end;
@@ -242,6 +247,10 @@ class TripDraft {
   TripDraft withName(String text) =>
       _copy(name: text, nameEdited: text.trim().isNotEmpty);
 
+  /// Sceglie i mezzi del viaggio. Non conta come modulo compilato.
+  TripDraft withTransports(List<String> ids) =>
+      _copy(transports: List.unmodifiable(ids));
+
   /// Aggiunge una tappa in coda. Richiede la meta con le date.
   TripDraft addStop(DraftPlace place, DateTime end) {
     assert(
@@ -313,6 +322,7 @@ class TripDraft {
           ? LocationSuggestionModel(placeId: '', displayName: dest.name)
           : dest.location,
       legs: legs,
+      transports: transports,
       createdAt: now,
       updatedAt: now,
     );
@@ -325,6 +335,7 @@ class TripDraft {
     String? name,
     bool? nameEdited,
     DateTime? pendingEnd,
+    List<String>? transports,
     bool clearPendingEnd = false,
     bool clearDestinationPlace = false,
   }) {
@@ -337,6 +348,7 @@ class TripDraft {
       name: name ?? this.name,
       nameEdited: nameEdited ?? this.nameEdited,
       pendingEnd: clearPendingEnd ? null : (pendingEnd ?? this.pendingEnd),
+      transports: transports ?? this.transports,
     );
   }
 }

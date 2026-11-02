@@ -411,6 +411,7 @@
     "new": {
       "step_trip": "Trip",
       "step_suitcase": "Suitcase",
+      "transport": "How are you getting there?",
       "when": "When?",
       "where_hint": "One of your homes or a city",
       "your_homes": "Your homes",

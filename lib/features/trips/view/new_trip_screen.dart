@@ -28,6 +28,7 @@ import '../providers/trip_weather_provider.dart';
 import 'widgets/place_search.dart';
 import 'widgets/postcard/trip_itinerary_view.dart';
 import 'widgets/stop_sheet.dart';
+import 'widgets/trip_transport_choice.dart';
 import 'widgets/trip_dates_sheet.dart';
 import 'widgets/trip_edit_placeholder.dart';
 import '../../../shared/widgets/ds_field.dart';
@@ -295,6 +296,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       destinationHouseId: draftTrip.destinationHouseId,
       destinationLocation: draftTrip.destinationLocation,
       legs: draftTrip.legs,
+      transports: draftTrip.transports,
       updatedAt: draftTrip.updatedAt,
     );
     final saved = await ErrorRetryDialog.executeWithRetry(
@@ -474,6 +476,10 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
                 _buildWhere(context),
                 _buildWhen(context),
                 _buildItinerary(context, houseNames),
+                TripTransportChoice(
+                  selected: _draft.transports,
+                  onChanged: (ids) => _update(_draft.withTransports(ids)),
+                ),
                 _buildName(context),
               ],
             ),
