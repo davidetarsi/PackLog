@@ -55,4 +55,40 @@ void main() {
       findsNWidgets(ItemCategory.values.length),
     );
   });
+
+  for (final (nome, tema) in [
+    ('chiaro', AppTheme.light),
+    ('scuro', AppTheme.dark),
+  ]) {
+    testWidgets(
+      'tema $nome: ogni stato ha un fondo pieno, la lista non si vede '
+      'attraverso',
+      (tester) async {
+        for (final stato in CategoryPillState.values) {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: tema,
+              home: Scaffold(
+                body: SizedBox(
+                  width: 80,
+                  height: AppConstants.categoryRowHeight,
+                  child: CategoryPill(
+                    category: ItemCategory.vestiti,
+                    pillState: stato,
+                    onTap: () {},
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final box = tester.widget<AnimatedContainer>(
+            find.byType(AnimatedContainer),
+          );
+          final fondo = (box.decoration! as BoxDecoration).color!;
+          expect(fondo.a, 1.0, reason: '$stato in tema $nome');
+        }
+      },
+    );
+  }
 }
