@@ -97,6 +97,7 @@ class SlotsSection extends StatelessWidget {
           key: Key('slot_to_buy_row_${slot.id}'),
           slot: slot,
           onGotIt: () => actions.open(slot),
+          onRemove: () => actions.remove(slot),
         ),
       if (useful.isNotEmpty)
         ProposedSlotsCard(

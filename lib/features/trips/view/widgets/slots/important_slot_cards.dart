@@ -28,9 +28,13 @@ class _ImportantLabel extends StatelessWidget {
       children: [
         Icon(Icons.flag_outlined, size: context.iconSizeXs, color: color),
         SizedBox(width: context.spacingXs),
-        Text(
-          'trips.slots.important'.tr(),
-          style: tt.labelLarge?.strong.copyWith(color: color),
+        Flexible(
+          child: Text(
+            'trips.slots.important'.tr(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: tt.labelLarge?.strong.copyWith(color: color),
+          ),
         ),
       ],
     );
@@ -151,12 +155,7 @@ class ImportantSlotCard extends StatelessWidget {
             Positioned(
               top: 0,
               right: 0,
-              child: DsIconButton(
-                key: Key('slot_remove_${slot.id}'),
-                icon: Icons.close,
-                tooltip: 'trips.slots.remove_confirm'.tr(),
-                onPressed: onRemove,
-              ),
+              child: _RemoveSlotButton(slot: slot, onPressed: onRemove!),
             ),
         ],
       ),
@@ -166,12 +165,20 @@ class ImportantSlotCard extends StatelessWidget {
 
 /// Riga di un importante segnato "da comprare": più spenta della card,
 /// "Importante · Da comprare", il nome e "Presa", che apre la barra per
-/// riempirlo.
+/// riempirlo, più la X per toglierlo.
 class ToBuySlotRow extends StatelessWidget {
-  const ToBuySlotRow({super.key, required this.slot, required this.onGotIt});
+  const ToBuySlotRow({
+    super.key,
+    required this.slot,
+    required this.onGotIt,
+    this.onRemove,
+  });
 
   final AiSlot slot;
   final VoidCallback onGotIt;
+
+  /// La X dopo "Presa"; `null` la nasconde.
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -199,7 +206,8 @@ class ToBuySlotRow extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      _ImportantLabel(color: muted),
+                      // Con la X la riga è stretta: le parole si accorciano.
+                      Flexible(child: _ImportantLabel(color: muted)),
                       Text(' · ', style: tt.labelLarge?.copyWith(color: muted)),
                       Icon(
                         Icons.shopping_cart_outlined,
@@ -232,9 +240,29 @@ class ToBuySlotRow extends StatelessWidget {
               label: 'trips.slots.got_it'.tr(),
               onPressed: onGotIt,
             ),
+            if (onRemove != null)
+              _RemoveSlotButton(slot: slot, onPressed: onRemove!),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// La X che toglie un importante (chi la usa chiede conferma).
+class _RemoveSlotButton extends StatelessWidget {
+  const _RemoveSlotButton({required this.slot, required this.onPressed});
+
+  final AiSlot slot;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return DsIconButton(
+      key: Key('slot_remove_${slot.id}'),
+      icon: Icons.close,
+      tooltip: 'trips.slots.remove_confirm'.tr(),
+      onPressed: onPressed,
     );
   }
 }

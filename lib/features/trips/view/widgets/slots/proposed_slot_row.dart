@@ -29,6 +29,11 @@ class SwipeableSlotRow extends StatelessWidget {
     return Dismissible(
       key: Key('slot_dismiss_${slot.id}'),
       direction: DismissDirection.endToStart,
+      // Senza animazioni la riga scorre col dito, ma lo spazio si chiude
+      // subito.
+      resizeDuration: MediaQuery.disableAnimationsOf(context)
+          ? null
+          : AppMotion.slow,
       onDismissed: (_) => remove(),
       background: ColoredBox(
         color: cs.surfaceContainerHighest,

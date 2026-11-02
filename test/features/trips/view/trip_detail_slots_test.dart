@@ -451,6 +451,24 @@ void main() {
       expect(savedSlot(tester, 'imp-giacca').removed, isTrue);
     });
 
+    testWidgets('X su un importante da comprare: dialog, "Togli", la riga '
+        'sparisce', (tester) async {
+      await pumpDetail(tester, _trip());
+
+      await tester.tap(find.byKey(const Key('slot_remove_imp-sciarpa')));
+      await tester.pumpAndSettle();
+      expect(find.text('Togli Sciarpa?'), findsOneWidget);
+
+      await tester.tap(find.text('Togli'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('slot_to_buy_row_imp-sciarpa')),
+        findsNothing,
+      );
+      expect(savedSlot(tester, 'imp-sciarpa').removed, isTrue);
+    });
+
     testWidgets('X poi "Annulla": la card resta', (tester) async {
       await pumpDetail(tester, _trip());
 
