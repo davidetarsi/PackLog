@@ -3,44 +3,17 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
-import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/ds_text_button.dart';
 import '../../../model/ai_packing.dart';
+import 'slot_card_parts.dart';
 import 'slot_copies_label.dart';
 import 'slot_pop.dart';
 
 // Gli importanti nel dettaglio del viaggio: la card di un importante aperto
-// e la riga di uno segnato "da comprare".
+// (la riga "da comprare" sta in `to_buy_slot_row.dart`).
 //
 // Colori provvisori: l'accento di "Importante" è `onPrimaryContainer`, lo
 // stesso degli avvisi della valigia AI.
-
-/// Etichetta "Importante" con la bandierina, nel colore [color].
-class _ImportantLabel extends StatelessWidget {
-  const _ImportantLabel({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.flag_outlined, size: context.iconSizeXs, color: color),
-        SizedBox(width: context.spacingXs),
-        Flexible(
-          child: Text(
-            'trips.slots.important'.tr(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: tt.labelLarge?.strong.copyWith(color: color),
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 /// Card di un posto importante aperto: "Importante", nome (×N), motivo in
 /// una riga e due azioni testuali, l'aggiunta ([AiSlot.addLabel]) e "Da
@@ -113,7 +86,7 @@ class ImportantSlotCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _ImportantLabel(color: cs.onPrimaryContainer),
+                      ImportantLabel(color: cs.onPrimaryContainer),
                       SizedBox(height: context.spacingXs),
                       Row(
                         children: [
@@ -176,114 +149,10 @@ class ImportantSlotCard extends StatelessWidget {
             Positioned(
               top: 0,
               right: 0,
-              child: _RemoveSlotButton(slot: slot, onPressed: onRemove!),
+              child: RemoveSlotButton(slot: slot, onPressed: onRemove!),
             ),
         ],
       ),
-    );
-  }
-}
-
-/// Riga di un importante segnato "da comprare": più spenta della card,
-/// "Importante · Da comprare", il nome e "Presa", che apre la barra per
-/// riempirlo, più la X per toglierlo.
-class ToBuySlotRow extends StatelessWidget {
-  const ToBuySlotRow({
-    super.key,
-    required this.slot,
-    required this.onGotIt,
-    this.onRemove,
-  });
-
-  final AiSlot slot;
-  final VoidCallback onGotIt;
-
-  /// La X dopo "Presa"; `null` la nasconde.
-  final VoidCallback? onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final muted = cs.onSurfaceVariant;
-    final copies = slotCopiesLabel(slot);
-
-    return Material(
-      color: context.groupSurface,
-      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: context.spacingMd,
-          right: context.spacingXs,
-          top: context.spacingSm,
-          bottom: context.spacingSm,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      // Con la X la riga è stretta: le parole si accorciano.
-                      Flexible(child: _ImportantLabel(color: muted)),
-                      Text(' · ', style: tt.labelLarge?.copyWith(color: muted)),
-                      Icon(
-                        Icons.shopping_cart_outlined,
-                        size: context.iconSizeXs,
-                        color: muted,
-                      ),
-                      SizedBox(width: context.spacingXs),
-                      Flexible(
-                        child: Text(
-                          'trips.slots.to_buy'.tr(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: tt.labelLarge?.copyWith(color: muted),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: context.spacingXxs),
-                  Text(
-                    copies == null ? slot.name : '${slot.name} $copies',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: tt.bodyLarge?.copyWith(color: muted),
-                  ),
-                ],
-              ),
-            ),
-            DsTextButton(
-              key: Key('slot_got_it_${slot.id}'),
-              label: 'trips.slots.got_it'.tr(),
-              onPressed: onGotIt,
-            ),
-            if (onRemove != null)
-              _RemoveSlotButton(slot: slot, onPressed: onRemove!),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// La X che toglie un importante (chi la usa chiede conferma).
-class _RemoveSlotButton extends StatelessWidget {
-  const _RemoveSlotButton({required this.slot, required this.onPressed});
-
-  final AiSlot slot;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return DsIconButton(
-      key: Key('slot_remove_${slot.id}'),
-      icon: Icons.close,
-      tooltip: 'trips.slots.remove_confirm'.tr(),
-      onPressed: onPressed,
     );
   }
 }
@@ -305,7 +174,7 @@ class _OpenImportantCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _ImportantLabel(
+            ImportantLabel(
               color: Theme.of(context).colorScheme.onPrimaryContainer,
             ),
             SizedBox(height: context.spacingSm),
