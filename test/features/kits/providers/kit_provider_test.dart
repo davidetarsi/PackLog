@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -39,12 +41,18 @@ void main() {
   tearDown(() => container.dispose());
 
   test(
-    'carica i kit della casa e createKit ricarica e chiede il sync',
+    'carica i kit della casa e createKit chiede il sync; la lista segue lo stream',
     () async {
-      var created = false;
-      when(
-        () => repo.watchKits('h1'),
-      ).thenAnswer((_) => Stream.value(created ? [kit] : const []));
+      final stream = StreamController<List<KitModel>>.broadcast(sync: true);
+      addTearDown(stream.close);
+      when(() => repo.watchKits('h1')).thenAnswer((_) {
+        // Il primo valore arriva alla sottoscrizione, come in Drift.
+        return Stream<List<KitModel>>.multi((c) {
+          c.add(const []);
+          final sub = stream.stream.listen(c.add);
+          c.onCancel = sub.cancel;
+        });
+      });
       when(
         () => repo.createKit(
           houseId: 'h1',
@@ -53,7 +61,7 @@ void main() {
           transports: any(named: 'transports'),
         ),
       ).thenAnswer((_) async {
-        created = true;
+        stream.add([kit]);
         return kit;
       });
 
@@ -82,5 +90,36 @@ void main() {
       throwsA(isA<KitLimitException>()),
     );
     expect(container.read(kitNotifierProvider('h1')).value, [kit]);
+  });
+
+  test(
+    'un valore nuovo dello stream aggiorna lo stato senza mutazioni',
+    () async {
+      final stream = StreamController<List<KitModel>>();
+      addTearDown(stream.close);
+      when(() => repo.watchKits('h1')).thenAnswer((_) => stream.stream);
+      stream.add(const []);
+      expect(await container.read(kitNotifierProvider('h1').future), isEmpty);
+
+      stream.add([kit]);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(container.read(kitNotifierProvider('h1')).value, [kit]);
+    },
+  );
+
+  test('chiude la sottoscrizione quando il provider è eliminato', () async {
+    var cancelled = false;
+    final stream = StreamController<List<KitModel>>(
+      onCancel: () => cancelled = true,
+    );
+    when(() => repo.watchKits('h1')).thenAnswer((_) => stream.stream);
+    stream.add(const []);
+    await container.read(kitNotifierProvider('h1').future);
+
+    container.dispose();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(cancelled, isTrue);
   });
 }

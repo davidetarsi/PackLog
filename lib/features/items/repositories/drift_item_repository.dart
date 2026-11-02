@@ -122,7 +122,16 @@ class DriftItemRepository implements ItemRepository {
   @override
   Future<bool> restoreItem(String id) async {
     final result = await _dbService.executeWithRetry(
-      () => _dao.restoreItem(id),
+      () => _dao.attachedDatabase.transaction(() async {
+        // `updatedAt` dell'oggetto cancellato = istante in cui sono state
+        // tolte dai kit le sue righe (vedi deleteItems).
+        final deletedAt = await _dao.updatedAtOf(id);
+        final restored = await _dao.restoreItem(id);
+        if (restored > 0 && deletedAt != null) {
+          await _kitsDao?.restoreItemRows(id, deletedAt);
+        }
+        return restored;
+      }),
       operationName: 'restoreItem($id)',
       config: RetryConfig.criticalConfig,
     );
@@ -327,8 +336,11 @@ class DriftItemRepository implements ItemRepository {
 
     final result = await _dbService.executeWithRetry(
       () => _dao.attachedDatabase.transaction(() async {
-        await _kitsDao?.softDeleteItemsEverywhere(itemIds);
-        await _dao.deleteItems(itemIds);
+        // Stesso istante per oggetti e righe: restoreItem lo usa per
+        // riportare nel kit solo le righe tolte insieme all'oggetto.
+        final at = DateTime.now();
+        await _kitsDao?.softDeleteItemsEverywhere(itemIds, at: at);
+        await _dao.deleteItems(itemIds, at: at);
       }),
       operationName: 'deleteItems(${itemIds.length} items)',
       config: RetryConfig.criticalConfig,
@@ -358,12 +370,18 @@ class DriftItemRepository implements ItemRepository {
     if (itemIds.isEmpty) return;
 
     final result = await _dbService.executeWithRetry(
-      () => _dao.moveItemsToHouse(
-        itemIds,
-        fromHouseId,
-        toHouseId,
-        spaceId: spaceId,
-      ),
+      () => _dao.attachedDatabase.transaction(() async {
+        // I kit sono della casa: gli oggetti che cambiano casa ne escono.
+        // Solo quelli davvero in `fromHouseId` si spostano (e escono).
+        final moving = await _dao.idsInHouse(itemIds, fromHouseId);
+        await _kitsDao?.softDeleteItemsEverywhere(moving);
+        await _dao.moveItemsToHouse(
+          itemIds,
+          fromHouseId,
+          toHouseId,
+          spaceId: spaceId,
+        );
+      }),
       operationName:
           'moveItemsToHouse(${itemIds.length} items: $fromHouseId -> $toHouseId)',
       config: RetryConfig.criticalConfig,

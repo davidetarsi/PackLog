@@ -14,6 +14,13 @@ void main() {
     expect(usesFromName('Settimana bianca', catalog).activities, ['ski']);
   });
 
+  test('Settimana bianchissima non dà ski', () {
+    expect(
+      usesFromName('Settimana bianchissima', catalog).activities,
+      isNot(contains('ski')),
+    );
+  });
+
   test('Aereo -> plane tra i mezzi', () {
     final uses = usesFromName('Aereo', catalog);
     expect(uses.transports, ['plane']);

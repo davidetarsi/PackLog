@@ -1,94 +1,82 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/sync/sync_provider.dart';
-import '../../../shared/notifier/synced_crud_notifier.dart';
 import '../model/kit_model.dart';
 import '../repositories/kit_repository.dart';
 
 part 'kit_provider.g.dart';
 
-/// I kit di una casa. Le mutazioni scrivono e ricaricano la lista; i limiti
-/// (`KitLimitException`) arrivano al chiamante, la lista resta intatta.
+/// I kit di una casa. Lo stato segue lo stream di `watchKits`: ogni modifica
+/// ai kit, agli oggetti o alla casa (anche fatta altrove) lo aggiorna da sola.
+/// Le mutazioni scrivono soltanto e chiedono il sync; i limiti
+/// (`KitLimitException`) arrivano al chiamante e la lista resta intatta.
 @Riverpod(keepAlive: true)
-class KitNotifier extends _$KitNotifier with SyncedCrudNotifier<KitModel> {
+class KitNotifier extends _$KitNotifier {
   KitRepository get _repo => ref.read(kitRepositoryProvider);
 
-  Future<List<KitModel>> _load() => _repo.watchKits(houseId).first;
-
   @override
-  Future<List<KitModel>> build(String houseId) async {
+  Future<List<KitModel>> build(String houseId) {
     ref.watch(syncTriggerProvider);
-    return _load();
+    final first = Completer<List<KitModel>>();
+    final sub = _repo
+        .watchKits(houseId)
+        .listen(
+          (kits) {
+            if (!first.isCompleted) {
+              first.complete(kits);
+            } else {
+              state = AsyncData(kits);
+            }
+          },
+          onError: (Object error, StackTrace stack) {
+            if (!first.isCompleted) {
+              first.completeError(error, stack);
+            } else {
+              state = AsyncError(error, stack);
+            }
+          },
+        );
+    ref.onDispose(sub.cancel);
+    return first.future;
   }
 
-  @override
-  void onMutationSuccess(List<KitModel> updated) {
+  Future<T> _write<T>(Future<T> Function() operation) async {
+    final result = await operation();
     ref.read(syncOrchestratorProvider).requestSync();
+    return result;
   }
 
   Future<KitModel> createKit({
     required String name,
     List<String> activities = const [],
     List<String> transports = const [],
-  }) async {
-    late KitModel created;
-    await mutate(
-      operation: () async => created = await _repo.createKit(
-        houseId: houseId,
-        name: name,
-        activities: activities,
-        transports: transports,
-      ),
-      reload: _load,
-      rethrowOnly: true,
-    );
-    return created;
-  }
-
-  Future<void> updateKit(KitModel kit) => mutate(
-    operation: () => _repo.updateKit(kit),
-    reload: _load,
-    rethrowOnly: true,
+  }) => _write(
+    () => _repo.createKit(
+      houseId: houseId,
+      name: name,
+      activities: activities,
+      transports: transports,
+    ),
   );
 
-  Future<void> deleteKit(String id) => mutate(
-    operation: () => _repo.deleteKit(id),
-    reload: _load,
-    rethrowOnly: true,
-  );
+  Future<void> updateKit(KitModel kit) => _write(() => _repo.updateKit(kit));
+
+  Future<void> deleteKit(String id) => _write(() => _repo.deleteKit(id));
 
   Future<void> addItems(String kitId, Map<String, int> copiesByItemId) =>
-      mutate(
-        operation: () => _repo.addItems(kitId, copiesByItemId),
-        reload: _load,
-        rethrowOnly: true,
-      );
+      _write(() => _repo.addItems(kitId, copiesByItemId));
 
-  Future<void> removeItem(String kitId, String itemId) => mutate(
-    operation: () => _repo.removeItem(kitId, itemId),
-    reload: _load,
-    rethrowOnly: true,
-  );
+  Future<void> removeItem(String kitId, String itemId) =>
+      _write(() => _repo.removeItem(kitId, itemId));
 
-  Future<KitModel> recordYes(String kitId, List<String> uses) async {
-    late KitModel updated;
-    await mutate(
-      operation: () async => updated = await _repo.recordYes(kitId, uses),
-      reload: _load,
-      rethrowOnly: true,
-    );
-    return updated;
-  }
+  Future<KitModel> recordYes(String kitId, List<String> uses) =>
+      _write(() => _repo.recordYes(kitId, uses));
 
-  Future<void> learnUse(String kitId, String use) => mutate(
-    operation: () => _repo.learnUse(kitId, use),
-    reload: _load,
-    rethrowOnly: true,
-  );
+  Future<void> learnUse(String kitId, String use) =>
+      _write(() => _repo.learnUse(kitId, use));
 
-  Future<void> refuseUse(String kitId, String use) => mutate(
-    operation: () => _repo.refuseUse(kitId, use),
-    reload: _load,
-    rethrowOnly: true,
-  );
+  Future<void> refuseUse(String kitId, String use) =>
+      _write(() => _repo.refuseUse(kitId, use));
 }

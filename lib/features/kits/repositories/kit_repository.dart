@@ -13,6 +13,9 @@ part 'kit_repository.g.dart';
 const int kMaxKitsPerHouse = 50;
 const int kMaxItemsPerKit = 50;
 
+/// Lunghezza massima del nome di un kit (dopo il trim).
+const int kMaxKitNameLength = 60;
+
 /// Superato il limite di kit per casa o di oggetti per kit.
 class KitLimitException extends AppException {
   const KitLimitException(this.limit);
@@ -36,7 +39,8 @@ KitRepository kitRepository(Ref ref) {
 abstract class KitRepository {
   Stream<List<KitModel>> watchKits(String houseId);
 
-  /// Lancia [KitLimitException] se la casa ha già 50 kit.
+  /// Lancia [KitLimitException] se la casa ha già 50 kit e [ArgumentError] se
+  /// il nome (tagliato) non ha da 1 a 60 caratteri.
   Future<KitModel> createKit({
     required String houseId,
     required String name,
@@ -44,12 +48,15 @@ abstract class KitRepository {
     List<String> transports = const [],
   });
 
-  /// Aggiorna nome, attività, mezzi e appreso; le righe non cambiano.
+  /// Aggiorna nome, attività, mezzi e appreso; le righe non cambiano. Lancia
+  /// `EntityNotFoundException` se il kit non esiste o è cancellato e
+  /// [ArgumentError] se il nome non è valido.
   Future<void> updateKit(KitModel kit);
   Future<void> deleteKit(String id);
 
   /// Mette oggetti nel kit (id oggetto → copie); un oggetto già presente
-  /// cambia solo le copie. Lancia [KitLimitException] oltre 50 oggetti.
+  /// cambia solo le copie. Ignora gli oggetti non vivi o di un'altra casa.
+  /// Lancia [KitLimitException] oltre 50 oggetti.
   Future<void> addItems(String kitId, Map<String, int> copiesByItemId);
   Future<void> removeItem(String kitId, String itemId);
 

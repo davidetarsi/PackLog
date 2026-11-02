@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/database/database.dart';
+import 'package:pack_log/core/database/exceptions/database_exceptions.dart';
+import 'package:pack_log/core/database/tables/mixins/syncable_table.dart';
 import 'package:pack_log/core/database/services/database_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/drift_item_repository.dart';
@@ -126,7 +128,137 @@ void main() {
       db.kitItems,
     )..where((r) => r.itemId.equals('i1'))).getSingle();
     expect(row.isDeleted, isTrue);
+    expect(row.syncStatus, SyncStatus.pendingUpdate);
   });
+
+  Future<void> addHouse2() => db.housesDao.insertHouse(
+    HousesCompanion.insert(
+      id: 'h2',
+      name: 'Altra casa',
+      createdAt: now,
+      updatedAt: now,
+    ),
+  );
+
+  test('moveItemsToHouse toglie gli oggetti spostati dal kit della casa '
+      'vecchia, non quelli che restano', () async {
+    await addHouse2();
+    final kit = await repo.createKit(houseId: 'h1', name: 'Sci');
+    await repo.addItems(kit.id, {'i1': 1, 'i2': 1});
+    await itemRepo.moveItemsToHouse(['i1'], 'h1', 'h2');
+    // i2 non è in h2: lo spostamento non lo tocca, quindi resta nel kit.
+    await itemRepo.moveItemsToHouse(['i2'], 'h2', 'h1');
+    final k = (await repo.watchKits('h1').first).single;
+    expect(k.items.map((i) => i.itemId), ['i2']);
+    final row = await (db.select(
+      db.kitItems,
+    )..where((r) => r.itemId.equals('i1'))).getSingle();
+    expect(row.isDeleted, isTrue);
+    expect(row.syncStatus, SyncStatus.pendingUpdate);
+  });
+
+  test('restoreItem rimette nel kit le righe tolte con l\'oggetto, non '
+      'quelle tolte prima a mano', () async {
+    final kit = await repo.createKit(houseId: 'h1', name: 'Sci');
+    await repo.addItems(kit.id, {'i1': 2, 'i2': 1});
+    await repo.removeItem(kit.id, 'i2');
+    // Il database conserva i secondi: la cancellazione deve stare in un
+    // secondo diverso da quello della rimozione a mano.
+    await Future<void>.delayed(const Duration(milliseconds: 1100));
+    await itemRepo.deleteItems(['i1', 'i2']);
+    expect((await repo.watchKits('h1').first).single.items, isEmpty);
+
+    expect(await itemRepo.restoreItem('i1'), isTrue);
+    expect(await itemRepo.restoreItem('i2'), isTrue);
+
+    final k = (await repo.watchKits('h1').first).single;
+    expect({for (final i in k.items) i.itemId: i.copies}, {'i1': 2});
+    final row = await (db.select(
+      db.kitItems,
+    )..where((r) => r.itemId.equals('i1'))).getSingle();
+    expect(row.syncStatus, SyncStatus.pendingUpdate);
+  });
+
+  test(
+    'restoreItem dopo una cancellazione singola lascia il kit com\'era',
+    () async {
+      final kit = await repo.createKit(houseId: 'h1', name: 'Sci');
+      await repo.addItems(kit.id, {'i1': 1});
+      await itemRepo.deleteItem('i1');
+      await itemRepo.restoreItem('i1');
+      final k = (await repo.watchKits('h1').first).single;
+      expect(k.items.map((i) => i.itemId), ['i1']);
+    },
+  );
+
+  test(
+    'updateKit su kit inesistente o cancellato lancia EntityNotFound',
+    () async {
+      final kit = await repo.createKit(houseId: 'h1', name: 'Sci');
+      await expectLater(
+        repo.updateKit(kit.copyWith(id: 'nope')),
+        throwsA(isA<EntityNotFoundException>()),
+      );
+      await repo.deleteKit(kit.id);
+      await expectLater(
+        repo.updateKit(kit.copyWith(name: 'Neve')),
+        throwsA(isA<EntityNotFoundException>()),
+      );
+    },
+  );
+
+  test('il nome è tagliato e deve avere da 1 a 60 caratteri', () async {
+    final kit = await repo.createKit(houseId: 'h1', name: '  Sci  ');
+    expect(kit.name, 'Sci');
+    await expectLater(
+      repo.createKit(houseId: 'h1', name: '   '),
+      throwsArgumentError,
+    );
+    await expectLater(
+      repo.createKit(houseId: 'h1', name: 'x' * 61),
+      throwsArgumentError,
+    );
+    expect(
+      (await repo.createKit(houseId: 'h1', name: 'x' * 60)).name,
+      hasLength(60),
+    );
+    await expectLater(
+      repo.updateKit(kit.copyWith(name: '')),
+      throwsArgumentError,
+    );
+    await repo.updateKit(kit.copyWith(name: '  Neve '));
+    expect((await repo.watchKits('h1').first).first.name, 'Neve');
+  });
+
+  test(
+    'addItems ignora oggetti cancellati, di altre case o inesistenti',
+    () async {
+      await addHouse2();
+      await db.itemsDao.insertItem(
+        ItemsCompanion.insert(
+          id: 'altrove',
+          houseId: 'h2',
+          name: 'Altrove',
+          category: ItemCategory.varie,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await addItem('morto');
+      await itemRepo.deleteItems(['morto']);
+      final kit = await repo.createKit(houseId: 'h1', name: 'Sci');
+      await repo.addItems(kit.id, {
+        'i1': 1,
+        'altrove': 1,
+        'morto': 1,
+        'fantasma': 1,
+      });
+      final k = (await repo.watchKits('h1').first).single;
+      expect(k.items.map((i) => i.itemId), ['i1']);
+      final rows = await db.select(db.kitItems).get();
+      expect(rows.map((r) => r.itemId), ['i1']);
+    },
+  );
 
   test('KitLimitException al 51° kit', () async {
     for (var i = 0; i < 50; i++) {

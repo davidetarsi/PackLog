@@ -115,6 +115,30 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// Degli [itemIds], quelli di oggetti vivi appartenenti a [houseId].
+  Future<Set<String>> liveItemIdsOfHouse(
+    String houseId,
+    List<String> itemIds,
+  ) async {
+    final result = <String>{};
+    for (var i = 0; i < itemIds.length; i += 500) {
+      final chunk = itemIds.sublist(
+        i,
+        i + 500 > itemIds.length ? itemIds.length : i + 500,
+      );
+      final rows =
+          await (select(items)..where(
+                (t) =>
+                    t.id.isIn(chunk) &
+                    t.houseId.equals(houseId) &
+                    t.isDeleted.equals(false),
+              ))
+              .get();
+      result.addAll(rows.map((r) => r.id));
+    }
+    return result;
+  }
+
   /// Quanti kit vivi ha una casa.
   Future<int> countLiveKitsOfHouse(String houseId) async {
     final count = kits.id.count();
@@ -267,10 +291,17 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Toglie gli oggetti da tutti i kit (soft-delete delle righe): serve
-  /// quando gli oggetti vengono cancellati dalla casa.
-  Future<void> softDeleteItemsEverywhere(List<String> itemIds) async {
+  /// quando gli oggetti vengono cancellati o spostati di casa.
+  ///
+  /// [at] è l'istante scritto in `updatedAt` delle righe: chi cancella gli
+  /// oggetti passa lo stesso istante a `ItemsDao.deleteItems`, così
+  /// [restoreItemRows] riconosce le righe tolte insieme all'oggetto.
+  Future<void> softDeleteItemsEverywhere(
+    List<String> itemIds, {
+    DateTime? at,
+  }) async {
     if (itemIds.isEmpty) return;
-    final now = DateTime.now();
+    final now = at ?? DateTime.now();
     await transaction(() async {
       // A blocchi, per restare sotto il limite di variabili di SQLite.
       for (var i = 0; i < itemIds.length; i += 500) {
@@ -289,6 +320,28 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
             );
       }
     });
+  }
+
+  /// Annulla [softDeleteItemsEverywhere] per [itemId]: riattiva le righe
+  /// cancellate esattamente all'istante [deletedAt] (quello della
+  /// cancellazione dell'oggetto, cioè il suo `updatedAt` da cancellato).
+  /// Le righe tolte a mano prima hanno un altro `updatedAt` e restano tolte.
+  /// Il database conserva i secondi: una riga tolta a mano nello stesso
+  /// secondo della cancellazione dell'oggetto tornerebbe, caso trascurabile.
+  Future<void> restoreItemRows(String itemId, DateTime deletedAt) {
+    return (update(kitItems)..where(
+          (r) =>
+              r.itemId.equals(itemId) &
+              r.isDeleted.equals(true) &
+              r.updatedAt.equals(deletedAt),
+        ))
+        .write(
+          KitItemsCompanion(
+            isDeleted: const Value(false),
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
   }
 
   // === SYNC OPERATIONS ===

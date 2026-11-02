@@ -29,7 +29,8 @@ class DriftKitRepository implements KitRepository {
     required String name,
     List<String> activities = const [],
     List<String> transports = const [],
-  }) {
+  }) async {
+    final cleanName = _validName(name);
     return _dao.attachedDatabase.transaction(() async {
       if (await _dao.countLiveKitsOfHouse(houseId) >= kMaxKitsPerHouse) {
         throw const KitLimitException(kMaxKitsPerHouse);
@@ -40,7 +41,7 @@ class DriftKitRepository implements KitRepository {
         KitsCompanion.insert(
           id: id,
           houseId: houseId,
-          name: name,
+          name: cleanName,
           activities: Value(jsonEncode(activities)),
           transports: Value(jsonEncode(transports)),
           createdAt: now,
@@ -53,16 +54,36 @@ class DriftKitRepository implements KitRepository {
   }
 
   @override
-  Future<void> updateKit(KitModel kit) => _dao.upsertKit(
-    KitsCompanion(
-      id: Value(kit.id),
-      name: Value(kit.name),
-      activities: Value(jsonEncode(kit.activities)),
-      transports: Value(jsonEncode(kit.transports)),
-      learned: Value(kit.learned.toJsonString()),
-      updatedAt: Value(DateTime.now()),
-    ),
-  );
+  Future<void> updateKit(KitModel kit) async {
+    final cleanName = _validName(kit.name);
+    await _dao.attachedDatabase.transaction(() async {
+      // Un kit inesistente o cancellato non si resuscita con un update.
+      await _load(kit.id);
+      await _dao.upsertKit(
+        KitsCompanion(
+          id: Value(kit.id),
+          name: Value(cleanName),
+          activities: Value(jsonEncode(kit.activities)),
+          transports: Value(jsonEncode(kit.transports)),
+          learned: Value(kit.learned.toJsonString()),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    });
+  }
+
+  /// Il nome tagliato, da 1 a [kMaxKitNameLength] caratteri.
+  String _validName(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty || trimmed.length > kMaxKitNameLength) {
+      throw ArgumentError.value(
+        name,
+        'name',
+        'il nome del kit deve avere da 1 a $kMaxKitNameLength caratteri',
+      );
+    }
+    return trimmed;
+  }
 
   @override
   Future<void> deleteKit(String id) => _dao.softDeleteKit(id);
@@ -70,15 +91,23 @@ class DriftKitRepository implements KitRepository {
   @override
   Future<void> addItems(String kitId, Map<String, int> copiesByItemId) {
     return _dao.attachedDatabase.transaction(() async {
-      final existing = {
-        for (final r in await _dao.liveRowsOfKit(kitId)) r.itemId,
+      final kit = await _load(kitId);
+      // Solo oggetti vivi della casa del kit: gli altri sono ignorati.
+      final valid = await _dao.liveItemIdsOfHouse(
+        kit.houseId,
+        copiesByItemId.keys.toList(),
+      );
+      final wanted = {
+        for (final e in copiesByItemId.entries)
+          if (valid.contains(e.key)) e.key: e.value,
       };
-      final added = copiesByItemId.keys.where((i) => !existing.contains(i));
+      final existing = {for (final r in kit.items) r.itemId};
+      final added = wanted.keys.where((i) => !existing.contains(i));
       if (existing.length + added.length > kMaxItemsPerKit) {
         throw const KitLimitException(kMaxItemsPerKit);
       }
       final now = DateTime.now();
-      for (final entry in copiesByItemId.entries) {
+      for (final entry in wanted.entries) {
         await _dao.upsertKitItem(
           KitItemsCompanion.insert(
             id: _uuid.v4(),
@@ -106,6 +135,8 @@ class DriftKitRepository implements KitRepository {
       if (kit.activities.contains(use) || kit.transports.contains(use)) {
         continue;
       }
+      // Gli usi in learned.no si contano lo stesso: la domanda non viene mai
+      // riproposta per quelli, e se riproporla o no lo decide il Task 11.
       yes[use] = (yes[use] ?? 0) + 1;
     }
     final updated = kit.copyWith(
