@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/shared/theme/app_motion.dart';
+import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/widgets/packlog_gradient.dart';
 
 Widget _app(Widget child, {bool disableAnimations = false}) => MaterialApp(
@@ -22,6 +23,54 @@ void main() {
   });
 
   group('PackLogGradientBorder', () {
+    testWidgets('a riposo il painter usa restingOpacity', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          const PackLogGradientBorder(
+            radius: 16,
+            restingOpacity: AppOpacity.subtleGradientBorder,
+            child: SizedBox(width: 100, height: 60),
+          ),
+        ),
+      );
+
+      final paint = tester.widget<CustomPaint>(
+        find.descendant(
+          of: find.byType(PackLogGradientBorder),
+          matching: find.byType(CustomPaint),
+        ),
+      );
+      // ignore: avoid_dynamic_calls
+      expect(
+        (paint.foregroundPainter! as dynamic).restingOpacity,
+        AppOpacity.subtleGradientBorder,
+      );
+    });
+
+    testWidgets('senza restingOpacity vale quella di riposo di default', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          const PackLogGradientBorder(
+            radius: 16,
+            child: SizedBox(width: 100, height: 60),
+          ),
+        ),
+      );
+
+      final paint = tester.widget<CustomPaint>(
+        find.descendant(
+          of: find.byType(PackLogGradientBorder),
+          matching: find.byType(CustomPaint),
+        ),
+      );
+      expect(
+        (paint.foregroundPainter! as dynamic).restingOpacity,
+        AppOpacity.restingGradientBorder,
+      );
+    });
+
     testWidgets('loops 2: si muove e dopo 2 x period non ha più ticker', (
       tester,
     ) async {

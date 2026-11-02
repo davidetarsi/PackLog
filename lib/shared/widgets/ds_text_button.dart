@@ -23,6 +23,9 @@ class DsTextButton extends StatelessWidget {
   /// Testo e icona in `error`, per le azioni distruttive.
   final bool destructive;
 
+  /// Testo e icona in `primary`, per le azioni da fare. [destructive] vince.
+  final bool accent;
+
   const DsTextButton({
     super.key,
     required this.label,
@@ -30,6 +33,7 @@ class DsTextButton extends StatelessWidget {
     this.icon,
     this.iconAtEnd = false,
     this.destructive = false,
+    this.accent = false,
   });
 
   @override
@@ -41,6 +45,8 @@ class DsTextButton extends StatelessWidget {
         ? colorScheme.onSurface.withValues(alpha: AppOpacity.disabled)
         : destructive
         ? colorScheme.error
+        : accent
+        ? colorScheme.primary
         : colorScheme.onSurface;
 
     final textStyle = Theme.of(

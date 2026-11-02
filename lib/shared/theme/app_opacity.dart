@@ -31,6 +31,9 @@ abstract final class AppOpacity {
   /// giri sono finiti): più morbido di quello che si muove.
   static const double restingGradientBorder = 0.6;
 
+  /// Bordo a gradiente dei proposti: sotto l'arancione degli importanti.
+  static const double subtleGradientBorder = 0.35;
+
   /// Scintilla PackLog nel punto più spento del respiro.
   static const double sparkleDim = 0.75;
 }
