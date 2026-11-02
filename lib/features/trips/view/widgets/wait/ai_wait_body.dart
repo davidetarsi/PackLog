@@ -21,6 +21,7 @@ class AiWaitBody extends ConsumerWidget {
     required this.steps,
     required this.cardKey,
     required this.onCancel,
+    this.canCancel = true,
   });
 
   final PackTripJob job;
@@ -28,6 +29,9 @@ class AiWaitBody extends ConsumerWidget {
   final WaitStepSequence? steps;
   final GlobalKey cardKey;
   final VoidCallback onCancel;
+
+  /// Falso quando la valigia è arrivata: "Annulla" non serve più e sfuma.
+  final bool canCancel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -108,7 +112,22 @@ class AiWaitBody extends ConsumerWidget {
           ),
         ),
         Center(
-          child: DsTextButton(onPressed: onCancel, label: 'common.cancel'.tr()),
+          child: IgnorePointer(
+            ignoring: !canCancel,
+            child: ExcludeSemantics(
+              excluding: !canCancel,
+              child: AnimatedOpacity(
+                key: const Key('ai_wait_cancel'),
+                duration: AppMotion.medium,
+                curve: AppMotion.standard,
+                opacity: canCancel ? 1 : 0,
+                child: DsTextButton(
+                  onPressed: onCancel,
+                  label: 'common.cancel'.tr(),
+                ),
+              ),
+            ),
+          ),
         ),
         SizedBox(height: context.spacingXl),
       ],

@@ -30,7 +30,10 @@ abstract final class PackTripTiming {
   static Future<void> record(Duration elapsed) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final all = [..._read(prefs), elapsed.inMilliseconds];
+      // Ogni campione sta fra i limiti: una richiesta rimasta appesa non deve
+      // spostare la stima per le cinque generazioni successive.
+      final sample = elapsed.inMilliseconds.clamp(_minMs, _maxMs);
+      final all = [..._read(prefs), sample];
       final recent = all.sublist(all.length > _keep ? all.length - _keep : 0);
       await prefs.setStringList(_key, [for (final ms in recent) '$ms']);
     } catch (e) {

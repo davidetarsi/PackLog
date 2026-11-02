@@ -484,6 +484,24 @@ void main() {
       expect(_outcome.result, same(_result));
     });
 
+    testWidgets('a valigia arrivata Annulla sfuma e non si tocca', (
+      tester,
+    ) async {
+      await _pump(tester);
+      double opacity() => tester
+          .widget<AnimatedOpacity>(find.byKey(const Key('ai_wait_cancel')))
+          .opacity;
+      expect(opacity(), 1);
+      _service.last.complete(_result);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(opacity(), 0);
+      await tester.tap(find.text('Annulla'), warnIfMissed: false);
+      await tester.pump();
+      expect(_service.cancelled, isFalse);
+      await _finish(tester);
+      expect(_outcome.result, same(_result));
+    });
+
     testWidgets('Annulla durante il racconto non fa niente', (tester) async {
       await _pump(tester);
       _service.last.complete(_result);

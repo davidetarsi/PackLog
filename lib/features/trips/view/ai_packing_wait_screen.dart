@@ -44,9 +44,8 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
   /// Errore da mostrare; null mentre la richiesta è in corso.
   Object? _failure;
 
-  /// La valigia è arrivata: "Annulla" non c'è più.
+  /// La valigia è arrivata.
   AiPackingResult? _result;
-
   /// Un'uscita è già partita: nessun'altra può fare pop (chiuderebbe il chiamante).
   bool _leaving = false;
 
@@ -179,6 +178,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
                         steps: _steps,
                         cardKey: _cardKey,
                         onCancel: _cancel,
+                        canCancel: _result == null,
                       )
                     : AiWaitFailure(
                         failure: failure,
