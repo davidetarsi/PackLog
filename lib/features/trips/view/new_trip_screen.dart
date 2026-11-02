@@ -28,9 +28,9 @@ import '../providers/trip_weather_provider.dart';
 import 'widgets/place_search.dart';
 import 'widgets/postcard/trip_itinerary_view.dart';
 import 'widgets/stop_sheet.dart';
-import 'widgets/trip_transport_choice.dart';
 import 'widgets/trip_dates_sheet.dart';
 import 'widgets/trip_edit_placeholder.dart';
+import 'widgets/trip_transport_choice.dart';
 import '../../../shared/widgets/ds_field.dart';
 import '../../../shared/widgets/ds_section_title.dart';
 

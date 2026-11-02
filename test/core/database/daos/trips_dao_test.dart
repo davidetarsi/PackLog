@@ -1154,6 +1154,26 @@ void main() {
       expect(dup!.name, equals('Summer (copy)'));
     });
 
+    test('duplicateTrip copies the transports of the trip', () async {
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 'dup-transports',
+          name: 'Con mezzi',
+          transports: const Value('["auto"]'),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      await database.tripsDao.duplicateTrip(
+        'dup-transports',
+        'dup-transports-copy',
+      );
+
+      final copy = await database.tripsDao.getTripById('dup-transports-copy');
+      expect(copy!.transports, '["auto"]');
+    });
+
     test('should throw exception when duplicating non-existent trip', () async {
       // === ACT & ASSERT ===
       expect(
@@ -1385,6 +1405,28 @@ void main() {
         expect(originalLuggages.map((l) => l.id).toList(), ['reuse-lug-1']);
       },
     );
+
+    test('reuseTrip copies the transports of the trip', () async {
+      await database.tripsDao.insertTrip(
+        TripsCompanion.insert(
+          id: 'reuse-transports',
+          name: 'Con mezzi',
+          transports: const Value('["aereo","treno"]'),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      await database.tripsDao.reuseTrip(
+        'reuse-transports',
+        'reuse-transports-copy',
+      );
+
+      final copy = await database.tripsDao.getTripById(
+        'reuse-transports-copy',
+      );
+      expect(copy!.transports, '["aereo","treno"]');
+    });
 
     test('reuseTrip keeps null legs as null', () async {
       await database.tripsDao.insertTrip(

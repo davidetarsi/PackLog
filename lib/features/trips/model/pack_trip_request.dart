@@ -7,6 +7,9 @@ import 'trip_weather.dart';
 /// funzione).
 const _kMaxBagText = 80;
 
+/// Copie massime di un oggetto del kit: il massimo che la funzione accetta.
+const _kMaxCopie = 99;
+
 /// Una tappa del foglio della valigia AI: una per chiave, con i giorni di
 /// tutti i suoi periodi.
 class AiStop {
@@ -122,7 +125,11 @@ Map<String, dynamic> _kit(KitModel kit) => {
   'attivita': kit.activities,
   'mezzi': kit.transports,
   'oggetti': [
-    for (final row in kit.items) {'item_id': row.itemId, 'copie': row.copies},
+    for (final row in kit.items)
+      {
+        'item_id': row.itemId,
+        'copie': row.copies > _kMaxCopie ? _kMaxCopie : row.copies,
+      },
   ],
 };
 

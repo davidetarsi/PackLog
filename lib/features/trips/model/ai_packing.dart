@@ -307,7 +307,9 @@ AiPackingResult carryKitCounted(
   AiPackingResult next,
 ) {
   final counted = previous?.kitLearnCounted;
-  if (counted == null || counted.isEmpty) return next;
+  if (counted == null || counted.isEmpty) {
+    return next.copyWith(kitAnswers: const {});
+  }
   return next.copyWith(
     kitLearnCounted: {...counted, ...next.kitLearnCounted}.toList(),
     kitAnswers: const {},

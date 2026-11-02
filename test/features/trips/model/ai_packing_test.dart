@@ -384,6 +384,7 @@ void main() {
       );
       final next = base(
         suggestions: const [AiKitSuggestion(kitId: 'k1', taken: 0, total: 2)],
+        answers: const {'k1': 'added'},
       );
 
       final carried = carryKitCounted(previous, next);
@@ -391,6 +392,22 @@ void main() {
       expect(carried.kitAnswers, isEmpty);
       expect(carried.kitLearnCounted, ['k1']);
       expect(carried.kitSuggestions, next.kitSuggestions);
+    });
+
+    test('senza kit contati prima azzera comunque le risposte nuove', () {
+      final previous = base(
+        suggestions: const [AiKitSuggestion(kitId: 'k1', taken: 1, total: 2)],
+      );
+      final next = base(
+        suggestions: const [AiKitSuggestion(kitId: 'k1', taken: 0, total: 2)],
+        answers: const {'k1': 'added'},
+        counted: const ['k2'],
+      );
+
+      final carried = carryKitCounted(previous, next);
+
+      expect(carried.kitAnswers, isEmpty);
+      expect(carried.kitLearnCounted, ['k2']);
     });
 
     test('senza risultato precedente non cambia nulla', () {

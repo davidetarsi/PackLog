@@ -91,6 +91,40 @@ void main() {
       ]);
     });
 
+    test('kit: le copie oltre 99 si portano a 99', () {
+      final kit = KitModel(
+        id: 'k1',
+        houseId: 'h1',
+        name: 'Scorte',
+        items: const [
+          KitItem(id: 'r1', kitId: 'k1', itemId: 'i1', copies: 150),
+          KitItem(id: 'r2', kitId: 'k1', itemId: 'i2', copies: 99),
+        ],
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        kits: [kit],
+      );
+
+      expect(body['kit'], [
+        {
+          'id': 'k1',
+          'attivita': <String>[],
+          'mezzi': <String>[],
+          'oggetti': [
+            {'item_id': 'i1', 'copie': 99},
+            {'item_id': 'i2', 'copie': 99},
+          ],
+        },
+      ]);
+    });
+
     test('senza kit niente campo kit', () {
       final body = packTripBody(
         plan: _onePlacePlan,

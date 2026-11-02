@@ -1313,6 +1313,7 @@ void main() {
     AiPackingResult outcome({
       List<AiKitAdded> added = const [],
       List<AiKitSuggestion> suggestions = const [],
+      Map<String, String> answers = const {},
       List<AiPackedItem>? proposal,
     }) => AiPackingResult(
       generatedAt: DateTime(2026, 11, 2),
@@ -1320,6 +1321,7 @@ void main() {
       proposal: proposal ?? _suitcaseProposal,
       kitAdded: added,
       kitSuggestions: suggestions,
+      kitAnswers: answers,
     );
 
     Future<void> generate(WidgetTester tester) async {
@@ -1479,6 +1481,7 @@ void main() {
       );
       aiOutcome = outcome(
         suggestions: const [AiKitSuggestion(kitId: 'k1', taken: 0, total: 2)],
+        answers: const {'k1': 'added'},
       );
       arrange(
         trip: _viaggio(aiResult: previous),
