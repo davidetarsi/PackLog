@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/features/kits/model/kit_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/pack_trip_request.dart';
@@ -54,6 +55,52 @@ void main() {
   final cabin = _luggage();
 
   group('packTripBody', () {
+    test('kit nel corpo: id, attivita, mezzi e oggetti con le copie', () {
+      final kit = KitModel(
+        id: 'k1',
+        houseId: 'h1',
+        name: 'Sci',
+        activities: const ['ski'],
+        transports: const ['car'],
+        items: const [
+          KitItem(id: 'r1', kitId: 'k1', itemId: 'i1', copies: 2),
+          KitItem(id: 'r2', kitId: 'k1', itemId: 'i2'),
+        ],
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        kits: [kit],
+      );
+
+      expect(body['kit'], [
+        {
+          'id': 'k1',
+          'attivita': ['ski'],
+          'mezzi': ['car'],
+          'oggetti': [
+            {'item_id': 'i1', 'copie': 2},
+            {'item_id': 'i2', 'copie': 1},
+          ],
+        },
+      ]);
+    });
+
+    test('senza kit niente campo kit', () {
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+      );
+      expect(body.containsKey('kit'), isFalse);
+    });
+
     test('packTripBody mette mezzi', () {
       final body = packTripBody(
         plan: _onePlacePlan,

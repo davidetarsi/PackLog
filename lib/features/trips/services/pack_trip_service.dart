@@ -190,6 +190,16 @@ AiPackingResult parsePackTripResponse(
       for (final raw in _lista(json['informazioni']))
         _informazione(raw as Map<String, dynamic>),
     ];
+    // `kit` c'è solo se il corpo aveva i kit: assente = campi vuoti.
+    final kit = json['kit'] as Map<String, dynamic>?;
+    final kitAdded = [
+      for (final raw in _lista(kit?['aggiunti']))
+        _kitAggiunto(raw as Map<String, dynamic>),
+    ];
+    final kitSuggestions = [
+      for (final raw in _lista(kit?['suggeriti']))
+        _kitSuggerito(raw as Map<String, dynamic>),
+    ];
     return AiPackingResult(
       generatedAt: now,
       houseId: houseId,
@@ -198,6 +208,8 @@ AiPackingResult parsePackTripResponse(
       reasons: reasons,
       slots: slots,
       notes: notes,
+      kitAdded: kitAdded,
+      kitSuggestions: kitSuggestions,
     );
   } on PackTripException {
     rethrow;
@@ -268,6 +280,25 @@ AiSlot _posto(Map<String, dynamic> json) {
     addLabel: json['aggiungi'] as String,
   );
 }
+
+AiKitAdded _kitAggiunto(Map<String, dynamic> json) => AiKitAdded(
+  kitId: json['kit_id'] as String,
+  itemId: json['item_id'] as String,
+  copies: (json['copie'] as num).toInt(),
+);
+
+AiKitSuggestion _kitSuggerito(Map<String, dynamic> json) => AiKitSuggestion(
+  kitId: json['kit_id'] as String,
+  taken: (json['presi'] as num).toInt(),
+  total: (json['totale'] as num).toInt(),
+  missing: [
+    for (final raw in _lista(json['mancanti']))
+      KitItemRef(
+        itemId: (raw as Map<String, dynamic>)['item_id'] as String,
+        copies: (raw['copie'] as num).toInt(),
+      ),
+  ],
+);
 
 AiTripNote _informazione(Map<String, dynamic> json) => AiTripNote(
   code: json['codice'] as String,

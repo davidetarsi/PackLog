@@ -27,6 +27,8 @@ import '../../items/model/item_model.dart';
 import '../../items/view/item_sheet.dart';
 import '../../items/providers/item_provider.dart';
 import '../../items/repositories/item_repository.dart';
+import '../../kits/model/kit_model.dart';
+import '../../kits/providers/kit_provider.dart';
 import '../../luggages/model/luggage_model.dart';
 import '../../luggages/providers/luggage_provider.dart';
 import '../../luggages/view/add_edit_luggage_screen.dart';
@@ -442,6 +444,8 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     if (!saved || !mounted) return;
 
     final luggage = _luggageById(setup.luggageId);
+    final kits = await _kitsOf(houseId);
+    if (!mounted) return;
     final names = [for (final stop in aiStopsOf(plan)) stop.name];
     final result = await context.push<AiPackingResult>(
       '/trips/${trip.id}/ai-packing',
@@ -453,6 +457,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
           language: context.locale.languageCode,
           luggage: luggage,
           transports: trip.transports,
+          kits: kits,
         ),
         houseId: houseId,
         title: _joinStops(names),
@@ -461,6 +466,15 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     );
     if (result == null || !mounted) return;
     await _adoptResult(result, setup: setup, luggage: luggage);
+  }
+
+  /// I kit della casa. Se non si leggono la valigia si fa lo stesso, senza.
+  Future<List<KitModel>> _kitsOf(String houseId) async {
+    try {
+      return await ref.read(kitNotifierProvider(houseId).future);
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// La proposta diventa la valigia: oggetti e bagaglio, e si salva subito con
@@ -477,7 +491,10 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   }) async {
     final trip = _currentTrip();
     if (trip == null) return;
-    final result = carryToBuy(trip.aiResult, proposal);
+    final result = carryKitCounted(
+      trip.aiResult,
+      carryToBuy(trip.aiResult, proposal),
+    );
 
     Map<String, TripItem>? proposed;
     try {
@@ -593,6 +610,25 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       final quantity = proposed.quantity < 1
           ? 1
           : (proposed.quantity > cap ? cap : proposed.quantity);
+      items[item.id] = TripItem(
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        quantity: quantity,
+        originHouseId: result.houseId,
+      );
+    }
+    // Gli oggetti dei kit entrati da soli: se l'oggetto c'è già vale il
+    // massimo delle copie (mai la somma), sempre entro i pezzi in casa. Un
+    // oggetto non più in casa si salta.
+    for (final added in result.kitAdded) {
+      final item = byId[added.itemId];
+      if (item == null) continue;
+      final available = item.quantity ?? 1;
+      final cap = available < 1 ? 1 : available;
+      final wanted = added.copies < 1 ? 1 : added.copies;
+      final current = items[item.id]?.quantity ?? 0;
+      final quantity = (wanted > current ? wanted : current).clamp(1, cap);
       items[item.id] = TripItem(
         id: item.id,
         name: item.name,

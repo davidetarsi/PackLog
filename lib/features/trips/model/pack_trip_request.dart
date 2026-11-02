@@ -1,3 +1,4 @@
+import '../../kits/model/kit_model.dart';
 import '../../luggages/model/luggage_model.dart';
 import 'ai_packing.dart';
 import 'trip_weather.dart';
@@ -71,6 +72,7 @@ String? luggageDescription(LuggageModel? luggage) {
 ///
 /// Un solo luogo nel piano: `destinazione` e i campi di viaggio. Più luoghi:
 /// `tappe`, una voce per ogni periodo, con le risposte del suo luogo.
+/// [kits] sono i kit della casa scelta (campo `kit` solo se ce ne sono).
 /// [language] è la lingua dell'app: motivi e avvisi tornano in quella (le
 /// lingue diverse dall'italiano diventano inglese, come l'app).
 Map<String, dynamic> packTripBody({
@@ -80,6 +82,7 @@ Map<String, dynamic> packTripBody({
   required String language,
   LuggageModel? luggage,
   List<String> transports = const [],
+  List<KitModel> kits = const [],
 }) {
   final stops = aiStopsOf(plan);
   final bagaglio = luggageDescription(luggage);
@@ -109,8 +112,19 @@ Map<String, dynamic> packTripBody({
     // posti. Senza, la funzione risponde 422 "Wardrobe is empty" (build vecchie).
     'posti': true,
     'trip': trip,
+    // I kit della casa: la funzione decide quali entrano e risponde con `kit`.
+    if (kits.isNotEmpty) 'kit': [for (final kit in kits) _kit(kit)],
   };
 }
+
+Map<String, dynamic> _kit(KitModel kit) => {
+  'id': kit.id,
+  'attivita': kit.activities,
+  'mezzi': kit.transports,
+  'oggetti': [
+    for (final row in kit.items) {'item_id': row.itemId, 'copie': row.copies},
+  ],
+};
 
 Map<String, dynamic> _place(WeatherStopRequest stop) => {
   'nome': stop.name,
