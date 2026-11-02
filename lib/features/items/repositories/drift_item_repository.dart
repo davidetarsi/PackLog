@@ -5,6 +5,7 @@ import '../model/item_model.dart';
 import 'item_repository.dart';
 import '../../../core/database/database.dart';
 import '../../../core/database/daos/items_dao.dart';
+import '../../../core/database/daos/kits_dao.dart';
 import '../../../core/database/exceptions/database_exceptions.dart';
 import '../../../core/database/services/database_service.dart';
 
@@ -19,7 +20,15 @@ class DriftItemRepository implements ItemRepository {
   final DatabaseService _dbService;
   final String? Function() _getCurrentUserId;
 
-  DriftItemRepository(this._dao, this._dbService, this._getCurrentUserId);
+  /// Per i kit: se manca, `deleteItems` non toglie gli oggetti dai kit.
+  final KitsDao? _kitsDao;
+
+  DriftItemRepository(
+    this._dao,
+    this._dbService,
+    this._getCurrentUserId, {
+    KitsDao? kitsDao,
+  }) : _kitsDao = kitsDao;
 
   @override
   Future<bool> init() async {
@@ -310,13 +319,17 @@ class DriftItemRepository implements ItemRepository {
         .map((items) => items.map(_toModel).toList());
   }
 
-  /// Elimina [itemIds] con una singola query SQL `DELETE … WHERE id IN (?)`.
+  /// Elimina [itemIds] con una singola query SQL `DELETE … WHERE id IN (?)` e
+  /// li toglie da tutti i kit.
   @override
   Future<void> deleteItems(List<String> itemIds) async {
     if (itemIds.isEmpty) return;
 
     final result = await _dbService.executeWithRetry(
-      () => _dao.deleteItems(itemIds),
+      () => _dao.attachedDatabase.transaction(() async {
+        await _kitsDao?.softDeleteItemsEverywhere(itemIds);
+        await _dao.deleteItems(itemIds);
+      }),
       operationName: 'deleteItems(${itemIds.length} items)',
       config: RetryConfig.criticalConfig,
     );

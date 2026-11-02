@@ -16,6 +16,7 @@ ItemRepository itemRepository(Ref ref) {
     database.itemsDao,
     dbService,
     () => ref.read(currentUserIdProvider),
+    kitsDao: database.kitsDao,
   );
 }
 

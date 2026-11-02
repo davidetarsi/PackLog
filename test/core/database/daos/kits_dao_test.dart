@@ -226,4 +226,40 @@ void main() {
     expect(kit.transports, '[]');
     expect(kit.learned, '{}');
   });
+
+  test(
+    'deleteHouse cancella anche i kit e le loro righe (non quelli di altre case)',
+    () async {
+      await db.housesDao.insertHouse(
+        HousesCompanion.insert(
+          id: 'h2',
+          name: 'Altra',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await db.kitsDao.upsertKit(
+        KitsCompanion.insert(
+          id: 'k2',
+          houseId: 'h2',
+          name: 'Altro',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await addRow('k1', 'i1');
+
+      await db.housesDao.deleteHouse('h1');
+
+      final k1 = await db.kitsDao.findKitById('k1');
+      expect(k1!.isDeleted, isTrue);
+      expect(k1.syncStatus, SyncStatus.pendingUpdate);
+      final rows = await db.select(db.kitItems).get();
+      expect(rows.single.isDeleted, isTrue);
+      expect(rows.single.syncStatus, SyncStatus.pendingUpdate);
+      expect((await db.kitsDao.findKitById('k2'))!.isDeleted, isFalse);
+      expect(await db.kitsDao.watchKitsOfHouse('h1').first, isEmpty);
+      expect(await db.kitsDao.watchKitsOfHouse('h2').first, hasLength(1));
+    },
+  );
 }

@@ -89,6 +89,41 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
     return [for (final k in kitRows) KitWithItems(k, byKit[k.id] ?? const [])];
   }
 
+  /// Un kit con le righe vive, o `null` se non esiste o è cancellato.
+  Future<KitWithItems?> getKitWithItems(String id) async {
+    final kit =
+        await (select(kits)
+              ..where((k) => k.id.equals(id) & k.isDeleted.equals(false)))
+            .getSingleOrNull();
+    if (kit == null) return null;
+    final rows = await liveRowsOfKit(id);
+    return KitWithItems(kit, rows);
+  }
+
+  /// Le righe vive di un kit (riga non cancellata, oggetto non cancellato).
+  Future<List<KitItemRow>> liveRowsOfKit(String kitId) {
+    return (select(
+            kitItems,
+          ).join([innerJoin(items, items.id.equalsExp(kitItems.itemId))])
+          ..where(
+            kitItems.kitId.equals(kitId) &
+                kitItems.isDeleted.equals(false) &
+                items.isDeleted.equals(false),
+          )
+          ..orderBy([OrderingTerm.asc(kitItems.createdAt)]))
+        .map((row) => row.readTable(kitItems))
+        .get();
+  }
+
+  /// Quanti kit vivi ha una casa.
+  Future<int> countLiveKitsOfHouse(String houseId) async {
+    final count = kits.id.count();
+    final query = selectOnly(kits)
+      ..addColumns([count])
+      ..where(kits.houseId.equals(houseId) & kits.isDeleted.equals(false));
+    return (await query.getSingle()).read(count) ?? 0;
+  }
+
   // ─── Scrittura ──────────────────────────────────────────────────────────────
 
   /// Crea il kit, o lo aggiorna se esiste già (stesso `id`).
@@ -137,6 +172,39 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
       await (update(kits)..where((k) => k.id.equals(id))).write(
+        KitsCompanion(
+          isDeleted: const Value(true),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+          updatedAt: Value(now),
+        ),
+      );
+    });
+  }
+
+  /// Soft-delete di tutti i kit di una casa e delle loro righe: serve quando
+  /// la casa viene cancellata (cascade applicativo, come per gli spazi).
+  Future<void> softDeleteKitsOfHouse(String houseId) {
+    return transaction(() async {
+      final now = DateTime.now();
+      final ids =
+          await (selectOnly(kits)
+                ..addColumns([kits.id])
+                ..where(
+                  kits.houseId.equals(houseId) & kits.isDeleted.equals(false),
+                ))
+              .map((r) => r.read(kits.id)!)
+              .get();
+      if (ids.isEmpty) return;
+      await (update(
+        kitItems,
+      )..where((r) => r.kitId.isIn(ids) & r.isDeleted.equals(false))).write(
+        KitItemsCompanion(
+          isDeleted: const Value(true),
+          syncStatus: const Value(SyncStatus.pendingUpdate),
+          updatedAt: Value(now),
+        ),
+      );
+      await (update(kits)..where((k) => k.id.isIn(ids))).write(
         KitsCompanion(
           isDeleted: const Value(true),
           syncStatus: const Value(SyncStatus.pendingUpdate),
