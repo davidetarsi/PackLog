@@ -768,6 +768,16 @@
     "name_label": "Name",
     "name_hint": "E.g. Flight kit",
     "uses_title": "I add it myself to trips with…",
+    "to_kit": "To a kit",
+    "sheet_title": {
+      "one": "Put {} item in a kit",
+      "other": "Put {} items in a kit"
+    },
+    "sheet_hint": "They stay where they are: the kit keeps them together.",
+    "added_to_kit": {
+      "one": "{} item put in {}",
+      "other": "{} items put in {}"
+    },
     "more_pills": "More",
     "optional": "(optional)",
     "uses_guessed": "I picked «{}» from the name: tap it to remove it.",

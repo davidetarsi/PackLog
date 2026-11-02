@@ -768,6 +768,16 @@
     "name_label": "Nome",
     "name_hint": "Es. Kit aereo",
     "uses_title": "Lo aggiungo da solo ai viaggi con…",
+    "to_kit": "In un kit",
+    "sheet_title": {
+      "one": "Metti {} oggetto in un kit",
+      "other": "Metti {} oggetti in un kit"
+    },
+    "sheet_hint": "Restano dove sono: il kit li tiene insieme.",
+    "added_to_kit": {
+      "one": "{} oggetto messo in {}",
+      "other": "{} oggetti messi in {}"
+    },
     "more_pills": "Altre",
     "optional": "(facoltativo)",
     "uses_guessed": "«{}» l'ho scelto io dal nome: toccalo per toglierlo.",
