@@ -112,6 +112,7 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
         activities: _uses.activities,
         transports: _uses.transports,
         items: _items,
+        onCreated: (kit) => _existing = kit,
       );
       if (mounted) context.pop(true);
     } on KitLimitException catch (e) {
@@ -226,8 +227,11 @@ class _KitEditorScreenState extends ConsumerState<KitEditorScreen> {
                 children: [
                   for (final (item, copies) in inKit)
                     KitItemRow(
+                      key: Key('kit_item_row_${item.id}'),
                       name: item.name,
                       copies: copies,
+                      onCopiesChanged: (n) =>
+                          setState(() => _items[item.id] = n),
                       removeKey: Key('kit_item_remove_${item.id}'),
                       onRemove: () => setState(() => _items.remove(item.id)),
                     ),

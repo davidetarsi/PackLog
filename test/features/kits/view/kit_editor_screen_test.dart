@@ -112,7 +112,7 @@ void main() {
 
       expect(find.text('Nel kit · 1'), findsOneWidget);
       expect(find.text('Zaino da trekking'), findsOneWidget);
-      expect(find.text('x2'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
 
       await save(app);
       final kit = (await kitsOf(app)).single;
@@ -179,6 +179,32 @@ void main() {
           app.container.read(itemRepositoryProvider).getItemsByHouseId(kHomeId),
     ))!;
     expect(houseItems.any((i) => i.id == 'item-0'), isTrue);
+    await app.finish();
+  });
+
+  testWidgets('lo stepper cambia le copie e il salvataggio le tiene', (
+    tester,
+  ) async {
+    final app = await ScreenshotApp.start(tester, theme: ShotTheme.light);
+    final repo = app.container.read(kitRepositoryProvider);
+    final kit = (await app.tester.runAsync(() async {
+      final k = await repo.createKit(houseId: kHomeId, name: 'Sci');
+      await repo.addItems(k.id, {'item-0': 2});
+      return k;
+    }))!;
+    await app.go('/');
+    await app.push('/houses/$kHomeId/kits/${kit.id}/edit');
+
+    Finder inRow(IconData icon) => find.descendant(
+      of: find.byKey(const Key('kit_item_row_item-0')),
+      matching: find.byIcon(icon),
+    );
+    await tapScrolled(app, inRow(Icons.add_circle_outline));
+    await tapScrolled(app, inRow(Icons.add_circle_outline));
+    await tapScrolled(app, inRow(Icons.remove_circle_outline));
+    await save(app);
+
+    expect((await kitsOf(app)).single.items.single.copies, 3);
     await app.finish();
   });
 

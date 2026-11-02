@@ -4,6 +4,10 @@ import '../providers/kit_provider.dart';
 /// Salva la bozza dell'editor: un kit nuovo con i suoi oggetti, oppure le
 /// differenze su un kit esistente (nome, pillole, oggetti tolti, aggiunti o
 /// con le copie cambiate). Lancia `KitLimitException` oltre i limiti.
+///
+/// Appena il kit nuovo esiste, [onCreated] lo consegna: se poi il salvataggio
+/// degli oggetti fallisce, il chiamante riprova con quel kit come [existing]
+/// e il riprova aggiorna invece di crearne un secondo.
 Future<void> saveKitDraft(
   KitNotifier notifier, {
   required KitModel? existing,
@@ -11,6 +15,7 @@ Future<void> saveKitDraft(
   required List<String> activities,
   required List<String> transports,
   required Map<String, int> items,
+  void Function(KitModel kit)? onCreated,
 }) async {
   if (existing == null) {
     final kit = await notifier.createKit(
@@ -18,6 +23,7 @@ Future<void> saveKitDraft(
       activities: activities,
       transports: transports,
     );
+    onCreated?.call(kit);
     if (items.isNotEmpty) await notifier.addItems(kit.id, items);
     return;
   }

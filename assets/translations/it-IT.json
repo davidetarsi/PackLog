@@ -763,6 +763,8 @@
     "strip_title": "Kit · cose che partono insieme",
     "strip_add": "Kit",
     "more_uses": "+{}",
+    "name_count": "{} · {}",
+    "more_uses_semantics": "Altri {} usi",
     "new_title": "Nuovo kit",
     "edit_title": "Modifica kit",
     "name_label": "Nome",

@@ -71,9 +71,13 @@ class _KitUsesPickerState extends ConsumerState<KitUsesPicker> {
           multiple: true,
           required: false,
           // L'insieme nuovo differisce da quello vecchio per la pillola toccata.
-          onChanged: (next) => widget.onToggle(
-            {...next.difference(selected), ...selected.difference(next)}.first,
-          ),
+          onChanged: (next) {
+            final toggled = {
+              ...next.difference(selected),
+              ...selected.difference(next),
+            };
+            if (toggled.isNotEmpty) widget.onToggle(toggled.first);
+          },
           trailing: _expanded
               ? null
               : DsChoicePill(

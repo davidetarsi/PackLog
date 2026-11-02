@@ -59,6 +59,7 @@ class KitStrip extends ConsumerWidget {
                 key: const Key('kit_strip_add'),
                 icon: Icons.add,
                 label: 'kits.strip_add'.tr(),
+                accent: true,
                 onPressed: () => context.push('/houses/$houseId/kits/new'),
               ),
             ],

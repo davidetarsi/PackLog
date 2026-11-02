@@ -13,6 +13,9 @@ part 'kit_repository.g.dart';
 const int kMaxKitsPerHouse = 50;
 const int kMaxItemsPerKit = 50;
 
+/// Copie massime di un oggetto dentro un kit (stepper dell'editor).
+const int kMaxCopiesPerItem = 99;
+
 /// Lunghezza massima del nome di un kit (dopo il trim).
 const int kMaxKitNameLength = 60;
 
