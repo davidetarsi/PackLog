@@ -79,8 +79,18 @@ export function riempiPostiConKit(
   const rimaste = new Map(posti.map((p) => [p.id, p.copie]));
   for (const [id, n] of copie) {
     const g = perId.get(id)!;
-    const p = posti.find((x) => x.tipo === g.sub_category) ?? posti.find((x) => x.tipo === g.category);
-    if (p) rimaste.set(p.id, (rimaste.get(p.id) ?? 0) - n);
+    // Prima i posti della sottocategoria, poi quelli della categoria: lo stesso
+    // tipo puo' avere piu' posti (quello del meteo e' a parte), e le copie che
+    // avanzano dal primo passano al successivo.
+    let resto = n;
+    for (const p of [...posti.filter((x) => x.tipo === g.sub_category), ...posti.filter((x) => x.tipo === g.category)]) {
+      if (resto <= 0) break;
+      const ha = rimaste.get(p.id)!;
+      if (ha <= 0) continue;
+      const tolte = Math.min(ha, resto);
+      rimaste.set(p.id, ha - tolte);
+      resto -= tolte;
+    }
   }
   return posti.map((p) => ({ ...p, copie: rimaste.get(p.id)! })).filter((p) => p.copie > 0);
 }

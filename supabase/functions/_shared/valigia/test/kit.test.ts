@@ -64,7 +64,7 @@ test("nessuna domanda con 2 su 5 (meno della meta')", () => {
 test("oggetto fuori armadio ignorato, anche nel totale", () => {
   const k = kit("k1", ["ski"], [], [["a", 1], ["fantasma", 1]]);
   assert.deepEqual(kitDelViaggio([k], [], viaggio(["ski"]), armadio("a")).aggiunti, [{ kit_id: "k1", item_id: "a", copie: 1 }]);
-  // 2 su 3 validi: con il fantasma nel totale sarebbe 2 su 4 (domanda lo stesso), con 3 su 4 invece no
+  // 3 su 3 validi: kit completo, nessuna domanda. Con il fantasma nel totale sarebbe 3 su 4 e la domanda partirebbe.
   const k2 = kit("k2", [], [], [["a", 1], ["b", 1], ["c", 1], ["fantasma", 1]]);
   const r = kitDelViaggio([k2], [capo("a"), capo("b"), capo("c")], viaggio([]), armadio("a", "b", "c"));
   assert.deepEqual(r.suggeriti, []);
@@ -95,6 +95,13 @@ test("riempiPostiConKit scala le copie, ripiega sulla categoria e lascia gli id"
   // m compare in due kit: massimo (2), non somma; x ripiega sulla categoria e azzera Outerwear
   assert.deepEqual(r.map((p) => [p.id, p.copie]), [["T-Shirt:1", 1]]);
   assert.equal(posti[1].copie, 3);
+});
+
+test("riempiPostiConKit passa le copie avanzate al posto successivo dello stesso tipo", () => {
+  // Due posti T-Shirt (uno e' quello del meteo): 3 copie dal kit ne chiudono uno e scalano l'altro.
+  const posti = [posto("T-Shirt", 2, 0), posto("T-Shirt", 2, 1)];
+  const r = riempiPostiConKit(posti, [{ kit_id: "k1", item_id: "m", copie: 3 }], [g("m", "Upper Body", "T-Shirt")]);
+  assert.deepEqual(r.map((p) => [p.id, p.copie]), [["T-Shirt:1", 1]]);
 });
 
 test("riempiPostiConKit ignora gli oggetti gia' in capi e quelli senza posto", () => {
