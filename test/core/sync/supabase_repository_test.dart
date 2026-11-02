@@ -2,6 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/core/sync/supabase_repository.dart';
 
 void main() {
+  test('le righe dei kit si risolvono sul conflitto della coppia', () {
+    // Il server ha UNIQUE (kit_id, item_id) anche per le righe cancellate:
+    // l'upsert deve aggiornare quella riga, non fallire con 23505.
+    expect(SupabaseRepository.kitItemsConflictTarget, 'kit_id,item_id');
+  });
+
   group('SupabaseRepository.paginatedFetch', () {
     test('stops when a page returns fewer rows than pageSize', () async {
       final pageCalls = <(int, int)>[];

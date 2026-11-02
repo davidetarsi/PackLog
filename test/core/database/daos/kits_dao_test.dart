@@ -152,6 +152,30 @@ void main() {
       isTrue,
     );
     expect(await db.kitsDao.watchKitsOfHouse('h1').first, isEmpty);
+    final kit = await db.kitsDao.findKitById('k1');
+    expect(kit!.isDeleted, isTrue);
+    expect(kit.syncStatus, SyncStatus.pendingUpdate);
+  });
+
+  test('upsertKit su un kit esistente imposta updatedAt se assente', () async {
+    final old = DateTime(2020);
+    await db.kitsDao.upsertKit(
+      KitsCompanion.insert(
+        id: 'k9',
+        houseId: 'h1',
+        name: 'Vecchio',
+        createdAt: old,
+        updatedAt: old,
+      ),
+    );
+
+    await db.kitsDao.upsertKit(
+      const KitsCompanion(id: Value('k9'), name: Value('Nuovo')),
+    );
+
+    final kit = await db.kitsDao.findKitById('k9');
+    expect(kit!.name, 'Nuovo');
+    expect(kit.updatedAt.isAfter(old), isTrue);
   });
 
   test('softDeleteItemsEverywhere toglie gli oggetti da tutti i kit', () async {

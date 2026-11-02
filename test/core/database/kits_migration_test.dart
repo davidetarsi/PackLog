@@ -73,7 +73,11 @@ void main() {
           .get();
       expect(
         indexes.map((r) => r.data['name']),
-        containsAll(['idx_kits_house_id', 'idx_kit_items_kit_id']),
+        containsAll([
+          'idx_kits_house_id',
+          'idx_kit_items_kit_id',
+          'idx_kit_items_item_id',
+        ]),
       );
       expect(
         await migrated.customSelect('PRAGMA foreign_key_check').get(),

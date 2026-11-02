@@ -464,14 +464,22 @@ class SyncService {
               continue;
             }
             // Una sola riga per coppia (kit, oggetto): se questo dispositivo
-            // ha messo lo stesso oggetto nel kit con un altro id, vince il
-            // remoto e la riga locale sparisce, altrimenti l'insert
-            // violerebbe l'unicità.
+            // ha la stessa coppia con un altro id, l'insert violerebbe
+            // l'unicità. Una riga già sincronizzata cede al remoto; una con
+            // modifiche non spedite resta se è più recente (il push poi la
+            // allinea al server con l'upsert sulla coppia), altrimenti cede.
             final samePair = await _kitItemsDao.findKitItemByPair(
               r['kit_id'] as String,
               r['item_id'] as String,
             );
             if (samePair != null && samePair.id != id) {
+              final keepLocal =
+                  samePair.syncStatus != SyncStatus.synced &&
+                  samePair.updatedAt.toUtc().isAfter(remoteTs);
+              if (keepLocal) {
+                skipped++;
+                continue;
+              }
               await _kitItemsDao.purgeRecord(samePair.id);
             }
             await _kitItemsDao.insertKitItem(

@@ -232,13 +232,25 @@ class SupabaseRepository {
     );
   }
 
+  /// `kit_items` ha `UNIQUE (kit_id, item_id)` anche per le righe cancellate.
+  /// Se un altro dispositivo ha cancellato la coppia e questo la ricrea con un
+  /// altro id, l'upsert sulla chiave primaria darebbe 23505 per sempre.
+  /// Risolvendo il conflitto sulla coppia, la riga del server viene
+  /// riattivata e prende l'id di questo dispositivo (l'upsert scrive anche
+  /// `id`): niente riallineamento locale, gli altri dispositivi lo
+  /// recuperano dal pull (ramo "stessa coppia").
+  static const kitItemsConflictTarget = 'kit_id,item_id';
+
   Future<DateTime> upsertKitItem(
     Map<String, dynamic> data, {
     String? sentryTrace,
   }) async {
     final result = await _withTrace(
       sentryTrace,
-      () => _client.from('kit_items').upsert(data).select('updated_at'),
+      () => _client
+          .from('kit_items')
+          .upsert(data, onConflict: kitItemsConflictTarget)
+          .select('updated_at'),
     );
     return _parseServerUpdatedAt(result, entity: 'kit_item');
   }

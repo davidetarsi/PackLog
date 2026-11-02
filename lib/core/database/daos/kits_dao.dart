@@ -113,7 +113,12 @@ class KitsDao extends DatabaseAccessor<AppDatabase>
                   : SyncStatus.pendingUpdate,
             );
       await (update(kits)..where((k) => k.id.equals(kit.id.value))).write(
-        kit.copyWith(syncStatus: status),
+        kit.copyWith(
+          syncStatus: status,
+          updatedAt: kit.updatedAt.present
+              ? kit.updatedAt
+              : Value(DateTime.now()),
+        ),
       );
     });
   }

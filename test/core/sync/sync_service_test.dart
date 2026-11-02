@@ -2119,6 +2119,134 @@ void main() {
       expect((await database.kitItemsDao.findKitItemById('remota'))!.copies, 3);
     });
 
+    test(
+      'fullPull: la coppia con un altro id non cancella modifiche non spedite',
+      () async {
+        await seedHouseAndItem();
+        await database.kitsDao.upsertKit(
+          KitsCompanion.insert(
+            id: 'k-1',
+            houseId: 'h-parent',
+            name: 'Sci',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        final later = t1.add(const Duration(hours: 2));
+        await database.kitsDao.upsertKitItem(
+          KitItemsCompanion.insert(
+            id: 'locale',
+            kitId: 'k-1',
+            itemId: 'i-1',
+            copies: const Value(5),
+            createdAt: t1,
+            updatedAt: later,
+          ),
+        );
+        stubFetchAll(
+          kits: [kitJson('k-1')],
+          kitItems: [rowJson('remota', 'k-1', 'i-1', copies: 3)],
+        );
+
+        await syncService.fullPull('user-1');
+
+        // La riga locale è più recente e non ancora spedita: resta, e la
+        // riga remota non viene inserita (violerebbe l'unicità).
+        final local = await database.kitItemsDao.findKitItemById('locale');
+        expect(local, isNotNull);
+        expect(local!.copies, 5);
+        expect(local.syncStatus, SyncStatus.pendingCreate);
+        expect(await database.kitItemsDao.findKitItemById('remota'), isNull);
+      },
+    );
+
+    test(
+      'fullPull: la coppia locale non spedita ma più vecchia cede al remoto',
+      () async {
+        await seedHouseAndItem();
+        await database.kitsDao.upsertKit(
+          KitsCompanion.insert(
+            id: 'k-1',
+            houseId: 'h-parent',
+            name: 'Sci',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.kitsDao.upsertKitItem(
+          KitItemsCompanion.insert(
+            id: 'locale',
+            kitId: 'k-1',
+            itemId: 'i-1',
+            createdAt: t1.subtract(const Duration(hours: 2)),
+            updatedAt: t1.subtract(const Duration(hours: 1)),
+          ),
+        );
+        stubFetchAll(
+          kits: [kitJson('k-1')],
+          kitItems: [rowJson('remota', 'k-1', 'i-1', copies: 3)],
+        );
+
+        await syncService.fullPull('user-1');
+
+        expect(await database.kitItemsDao.findKitItemById('locale'), isNull);
+        expect(
+          (await database.kitItemsDao.findKitItemById('remota'))!.copies,
+          3,
+        );
+      },
+    );
+
+    test(
+      'fullPull: coppia cancellata qui e ricreata altrove con un altro id',
+      () async {
+        await seedHouseAndItem();
+        await database.kitsDao.upsertKit(
+          KitsCompanion.insert(
+            id: 'k-1',
+            houseId: 'h-parent',
+            name: 'Sci',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.kitsDao.upsertKitItem(
+          KitItemsCompanion.insert(
+            id: 'id1',
+            kitId: 'k-1',
+            itemId: 'i-1',
+            createdAt: t1,
+            updatedAt: t1,
+            syncStatus: const Value(SyncStatus.synced),
+          ),
+        );
+        await database.kitsDao.softDeleteKitItem('k-1', 'i-1');
+        await database.kitItemsDao.markAsSynced(
+          'id1',
+          t1,
+          localUpdatedAt: (await database.kitItemsDao.findKitItemById(
+            'id1',
+          ))!.updatedAt,
+        );
+        // Dopo il push dell'altro dispositivo (upsert su kit_id,item_id) la
+        // riga del server ha l'id nuovo ed è viva.
+        stubFetchAll(
+          kits: [kitJson('k-1')],
+          kitItems: [rowJson('id2', 'k-1', 'i-1', copies: 2)],
+        );
+
+        await syncService.fullPull('user-1');
+
+        final rows = await database
+            .customSelect('SELECT id FROM kit_items WHERE is_deleted = 0')
+            .get();
+        expect(rows.map((r) => r.read<String>('id')), ['id2']);
+      },
+    );
+
     test('fullPull: un tombstone remoto cancella il kit locale', () async {
       await seedHouseAndItem();
       await database.kitsDao.upsertKit(
