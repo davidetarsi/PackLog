@@ -8,7 +8,8 @@ import '../../../model/suitcase_progress.dart';
 // La testata di "Cosa porti" con la valigia fatta di posti e le
 // informazioni sul viaggio.
 //
-// Colori provvisori: i proposti usano `tertiary` (ambra).
+// Regola dei colori: arancione (`primary`) = da fare, gli importanti;
+// giallo (`tertiary`) = proposto; neutro = tuo.
 
 /// Testata di "Cosa porti".
 ///
@@ -87,7 +88,7 @@ class SuitcaseProgressHeader extends StatelessWidget {
               ),
             ),
             _LegendEntry(
-              dot: _LegendDot(outline: cs.onSurfaceVariant),
+              dot: _LegendDot(color: cs.primary),
               label: 'trips.detail.legend_important'.tr(
                 args: ['${progress.importantOpen}'],
               ),
@@ -99,8 +100,8 @@ class SuitcaseProgressHeader extends StatelessWidget {
   }
 }
 
-/// La barra di "N di M pronti": prima le tue, poi le proposte, il resto
-/// (gli importanti da sistemare) è il fondo vuoto.
+/// La barra di "N di M pronti": prima le tue, poi le proposte, in fondo gli
+/// importanti da sistemare in arancione.
 class _ReadyBar extends StatelessWidget {
   const _ReadyBar({required this.progress});
 
@@ -112,7 +113,7 @@ class _ReadyBar extends StatelessWidget {
     final segments = [
       (progress.mine, cs.onSurface),
       (progress.proposed, cs.tertiary),
-      (progress.importantOpen, cs.surfaceContainerHighest),
+      (progress.importantOpen, cs.primary),
     ];
     return ClipRRect(
       key: const Key('trip_detail_ready_progress'),
@@ -157,24 +158,18 @@ class _LegendEntry extends StatelessWidget {
   }
 }
 
-/// Pallino della legenda: pieno con [color], vuoto con il bordo [outline].
+/// Pallino pieno della legenda.
 class _LegendDot extends StatelessWidget {
-  const _LegendDot({this.color, this.outline});
+  const _LegendDot({required this.color});
 
-  final Color? color;
-  final Color? outline;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final border = outline;
     return Container(
       width: context.spacingSm,
       height: context.spacingSm,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-        border: border == null ? null : Border.all(color: border, width: 1.5),
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
   }
 }
