@@ -137,6 +137,7 @@ export const SOGLIA_ELEGANTE: any = 0.7;
 export const SOGLIA_ESTREMITA: any = 5.0;
 export const SOGLIA_GIORNO_FRESCO: any = 18.0;
 export const SOGLIA_JEV_RIVERBERO: any = 0.8;
+export const SOGLIA_QUOTA_RIVERBERO: any = 2500;
 export const SOGLIA_RETE_TERMICA: any = 5.0;
 export const SOGLIA_SCARPE_CALDE: any = 0.0;
 export const SOGLIA_SOLE: any = 25.0;
