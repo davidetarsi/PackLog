@@ -46,6 +46,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
 
   /// La valigia è arrivata.
   AiPackingResult? _result;
+
   /// Un'uscita è già partita: nessun'altra può fare pop (chiuderebbe il chiamante).
   bool _leaving = false;
 

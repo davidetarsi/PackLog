@@ -1422,9 +1422,7 @@ void main() {
         'reuse-transports-copy',
       );
 
-      final copy = await database.tripsDao.getTripById(
-        'reuse-transports-copy',
-      );
+      final copy = await database.tripsDao.getTripById('reuse-transports-copy');
       expect(copy!.transports, '["aereo","treno"]');
     });
 

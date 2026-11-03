@@ -2064,33 +2064,30 @@ void main() {
       expect(row.itemId, 'i-1');
     });
 
-    test(
-      'fullPull salta una riga il cui oggetto o kit non esiste, senza '
-      'errori in Sentry',
-      () async {
-        await seedHouseAndItem();
-        stubFetchAll(
-          kits: [kitJson('k-1')],
-          kitItems: [
-            rowJson('r-1', 'k-1', 'oggetto-assente'),
-            rowJson('r-2', 'kit-assente', 'i-1'),
-          ],
-        );
+    test('fullPull salta una riga il cui oggetto o kit non esiste, senza '
+        'errori in Sentry', () async {
+      await seedHouseAndItem();
+      stubFetchAll(
+        kits: [kitJson('k-1')],
+        kitItems: [
+          rowJson('r-1', 'k-1', 'oggetto-assente'),
+          rowJson('r-2', 'kit-assente', 'i-1'),
+        ],
+      );
 
-        await syncService.fullPull('user-1');
+      await syncService.fullPull('user-1');
 
-        expect(await database.kitsDao.findKitById('k-1'), isNotNull);
-        expect(await database.kitItemsDao.findKitItemById('r-1'), isNull);
-        expect(await database.kitItemsDao.findKitItemById('r-2'), isNull);
-        verifyNever(
-          () => mockMonitoring.captureException(
-            any<Object>(),
-            stackTrace: any(named: 'stackTrace'),
-            tags: any(named: 'tags'),
-          ),
-        );
-      },
-    );
+      expect(await database.kitsDao.findKitById('k-1'), isNotNull);
+      expect(await database.kitItemsDao.findKitItemById('r-1'), isNull);
+      expect(await database.kitItemsDao.findKitItemById('r-2'), isNull);
+      verifyNever(
+        () => mockMonitoring.captureException(
+          any<Object>(),
+          stackTrace: any(named: 'stackTrace'),
+          tags: any(named: 'tags'),
+        ),
+      );
+    });
 
     test('fullPull: stessa coppia con un altro id, vince il remoto', () async {
       await seedHouseAndItem();
