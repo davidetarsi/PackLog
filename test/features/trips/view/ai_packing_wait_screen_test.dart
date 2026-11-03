@@ -100,6 +100,15 @@ class _Weather extends TripWeatherNotifier {
   Future<TripWeatherState> build(String tripId) async => state0;
 }
 
+/// Meteo che arriva quando lo decide il test.
+class _LateWeather extends TripWeatherNotifier {
+  _LateWeather(this.arrival);
+  final Completer<TripWeatherState> arrival;
+
+  @override
+  Future<TripWeatherState> build(String tripId) => arrival.future;
+}
+
 class _Items extends ItemNotifier {
   _Items(this.count);
   final int count;
@@ -139,6 +148,7 @@ Future<void> _pump(
   Map<String, Object> prefs = const {},
   PackTripJob? job,
   TripWeather? weather,
+  Completer<TripWeatherState>? lateWeather,
   int items = 3,
   bool disableAnimations = false,
 }) async {
@@ -153,11 +163,13 @@ Future<void> _pump(
       packTripServiceProvider.overrideWithValue(_service),
       monitoringServiceProvider.overrideWithValue(_monitoring),
       tripWeatherNotifierProvider('trip-1').overrideWith(
-        () => _Weather(
-          weather == null
-              ? const TripWeatherFailed()
-              : TripWeatherReady(weather),
-        ),
+        () => lateWeather != null
+            ? _LateWeather(lateWeather)
+            : _Weather(
+                weather == null
+                    ? const TripWeatherFailed()
+                    : TripWeatherReady(weather),
+              ),
       ),
       itemNotifierProvider(_houseId).overrideWith(() => _Items(items)),
       gptUsageProvider.overrideWith((ref) {
@@ -427,6 +439,31 @@ void main() {
       expect(find.text('12 capi guardati'), findsNothing);
       await tester.pump(const Duration(milliseconds: 3400));
       expect(find.text('12 capi guardati'), findsOneWidget);
+      _service.last.complete(_result);
+      await _finish(tester);
+    });
+
+    testWidgets('il meteo che arriva in ritardo compare con la dissolvenza', (
+      tester,
+    ) async {
+      final arrival = Completer<TripWeatherState>();
+      await _pump(tester, lateWeather: arrival);
+      // Il passo meteo è già chiuso (spunta) e il meteo non c'è: nessuna riga.
+      await tester.pump(const Duration(milliseconds: 3400));
+      expect(find.byKey(const Key('ai_wait_check')), findsOneWidget);
+      expect(find.text('1–6°, 2 giorni di pioggia'), findsNothing);
+      final result = find.byKey(const Key('ai_wait_result')).first;
+      expect(tester.widget<AnimatedOpacity>(result).opacity, 0);
+
+      // Arriva mentre l'attesa prosegue: la riga si dissolve, i passi non si fermano.
+      arrival.complete(TripWeatherReady(_meteo(rain: 2)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(find.text('1–6°, 2 giorni di pioggia'), findsOneWidget);
+      expect(tester.widget<AnimatedOpacity>(result).opacity, 1);
+      await tester.pump(const Duration(milliseconds: 3400));
+      expect(find.text('12 capi guardati'), findsNothing);
+      expect(find.text('3 capi guardati'), findsOneWidget);
       _service.last.complete(_result);
       await _finish(tester);
     });
