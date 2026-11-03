@@ -52,15 +52,20 @@ export const SOTTOCAT_MANICA_LUNGA_MEDIA = new Set(["T-Shirt", "Polo"]);
 /** Essenziali e oggetti non vestiti: niente etichette, quindi niente dubbi. */
 export const CATEGORIE_SENZA_ETICHETTE = new Set(["Essentials", NON_CAPO]);
 
+const REGOLE_TIPO = `Choose the most specific listed subCategory FIRST, matching the item's meaning to its Italian/English names and description. Then copy the category from that entry, even when its grouping is unexpected.
+Sports and protective garments ARE clothing.
+Use "Other" only when no listed subCategory fits; do not use it just because an item is technical clothing.
+An unlisted garment is still clothing: use "Other" with the relevant clothing category, never "Not Clothing". Reserve "Not Clothing" for objects that are not wardrobe items.`;
+
 const RIGHE_CAMPI = `- "baseColor": string ({colore})
 - "pattern": string (ONE OF: "Solid", "Striped", "Plaid", "Graphic", "Logo", "Floral", "Other")
 - "coverage": string (ONE OF: "Short-sleeve", "Long-sleeve", "Sleeveless", "Shorts", "Full-length", "Cropped", "N/A"; tops, dresses and jackets use the sleeve length, a coat is "Long-sleeve"; "Shorts", "Full-length", "Cropped" only for trousers, shorts and skirts; shoes, accessories and essentials "N/A")
 - "fit": string (ONE OF: "Skinny", "Regular", "Oversize", "N/A")
 - "warmth": integer (1 to 5, how warm it keeps you:
-  1 = only for hot weather: anything in linen, shorts and bermuda, short-sleeve or sun shirts, silk blouses, tank tops, summer dresses, swimwear, sandals, flip-flops, espadrilles, short socks, underwear, bags, belts, jewelry, watches, sunglasses, caps, light scarves
+  1 = only for hot weather: anything in linen, shorts and bermuda, short-sleeve or sun shirts, silk blouses, tank tops, summer dresses, swimwear, sandals, flip-flops, espadrilles, ordinary socks (default also when length or material is unspecified), underwear, bags, belts, jewelry, watches, sunglasses, caps, light scarves
   2 = light, any season: t-shirts, polos, cotton shirts (also elegant ones), light summer jeans, cargo and trekking trousers, leggings, sneakers, loafers, dress shoes, windbreakers, light rain jackets, denim jackets, cotton pajamas
   3 = medium: long-sleeve t-shirts and polos, flannel or checked shirts, sweatshirts, hoodies, sweatpants, jeans, chinos, tailored trousers, blazers, cardigans, fleece, thermal tops, softshells, hardshells, trench coats, padded vests, ankle boots
-  4 = warm: wool sweaters, wool coats, heavy fleece, light down jackets, leather boots, hiking boots, wool or hiking socks, wool hats, wool gloves, wool scarves, thermal bottoms, ski pants
+  4 = warm: wool sweaters, wool coats, heavy fleece, light down jackets, leather boots, hiking boots, explicitly wool, thermal or hiking socks, wool hats, wool gloves, wool scarves, thermal bottoms, ski pants
   5 = very warm: winter down jackets, parkas, chunky mountain sweaters, ski jackets, ski gloves, snow boots)
 {stile}
 {usi}
@@ -70,22 +75,23 @@ const RIGHE_CAMPI = `- "baseColor": string ({colore})
 /** Aggiunta a mano: il prompt provato sulla lista di Davide il 19 ottobre, piu'
  *  il tipo di oggetto quando non e' un vestito. */
 export let PROMPT_NOME = "";
-const promptNomeDa = (CATEGORIE_PROMPT: string, COLORI_PROMPT: string, RIGHE_CAMPI: string) => `You are a precise fashion item parser. The user typed the NAME of one item they want to
+const promptNomeDa = (CATEGORIE_PROMPT: string, COLORI_PROMPT: string, RIGHE_CAMPI: string) => `You are a precise wardrobe item parser. The user typed the NAME of one item they want to
 add to their wardrobe app (no photo), in Italian: {nome}.
 It may also be something that is not clothing (electronics, toiletries, documents...).
 Bags, backpacks, belts, watches, jewelry, sunglasses and umbrellas ARE wardrobe items: category "Accessory".
 Respond ONLY with a raw JSON object — no markdown, no code fences — with EXACTLY these keys:
 - "name": string (the name as typed)
-- "category": string (ONE OF: ${CATEGORIE_PROMPT}, "Not Clothing")
-- "subCategory": string (ONE OF based on category, "N/A" if "Not Clothing"):
+- "subCategory": string (choose a subCategory from this catalog, "Other" if none fits, "N/A" if "Not Clothing"):
 {sottocategorie}
+- "category": string (ONE OF: ${CATEGORIE_PROMPT}, "Not Clothing"; use the chosen subCategory's category)
+${REGOLE_TIPO}
 - "notClothingKind": string (ONLY if "Not Clothing", ONE OF: "Toiletries", "Electronics", "Other"; else "N/A")
 ` + RIGHE_CAMPI.replace("{colore}", `ONE OF: ${COLORI_PROMPT}; only if the name says the color, else "N/A"`) + `
 Brand names are a hint: use what you know about the brand.`;
 
 /** Scan: il prompt di openai-proxy con la tassonomia nuova e i due campi. */
 export let PROMPT_SCAN = "";
-const promptScanDa = (CATEGORIE_PROMPT: string, COLORI_PROMPT: string, RIGHE_CAMPI: string) => `You are a precise fashion item parser. Analyze the image and identify ALL distinct clothing items currently WORN by the PRIMARY person in the foreground.
+const promptScanDa = (CATEGORIE_PROMPT: string, COLORI_PROMPT: string, RIGHE_CAMPI: string) => `You are a precise wardrobe item parser. Analyze the image and identify ALL distinct clothing items currently WORN by the PRIMARY person in the foreground.
 CRITICAL RULES:
 - IGNORE any clothing items in the background (e.g., clothes on beds, chairs, hangers).
 - Focus ONLY on the main subject's outfit.
@@ -93,15 +99,16 @@ CRITICAL RULES:
 Respond ONLY with a raw JSON array of objects — no markdown, no code fences.
 Each object must have EXACTLY these keys:
 - "name": string (Short descriptive name in Italian, e.g. "Giacca in pelle", "Jeans slim")
-- "category": string (ONE OF: ${CATEGORIE_PROMPT})
-- "subCategory": string (ONE OF based on category):
+- "subCategory": string (choose a subCategory from this catalog, "Other" if none fits):
 {sottocategorie}
+- "category": string (ONE OF: ${CATEGORIE_PROMPT}; use the chosen subCategory's category)
+${REGOLE_TIPO}
 ` + RIGHE_CAMPI.replace("{colore}", `ONE OF: ${COLORI_PROMPT}; the main color, or the closest one`);
 
 /** Riempie stile, usi e colori dal catalogo e ricostruisce i due prompt: le
  *  scelte proposte al modello sono le voci attive, nell'ordine del catalogo;
- *  le descrizioni degli usi nell'ordine `promptOrder`. Con il catalogo di oggi
- *  i prompt sono identici byte per byte a quelli di prima (oracolo). */
+ *  le descrizioni degli usi nell'ordine `promptOrder`. Ogni tipo mostra anche
+ *  i nomi italiani/inglesi, senza cambiare la tassonomia del generatore. */
 export function impostaScheda(c: Catalogo): void {
   const stili = voci(c, "formality", false), usi = voci(c, "use", false), colori = voci(c, "color", false);
   FORMALITA.splice(0, FORMALITA.length, ...stili.map((v) => v.id));
@@ -121,8 +128,12 @@ export function impostaScheda(c: Catalogo): void {
   const righe = RIGHE_CAMPI.replace("{stile}", () => stile).replace("{usi}", () => usiTesto);
   const categorie = tassonomia.CATEGORIE.map((x) => `"${x}"`).join(", ");
   const coloriPrompt = virgolette(colori.filter((v) => v.active));
-  PROMPT_NOME = promptNomeDa(categorie, coloriPrompt, righe);
-  PROMPT_SCAN = promptScanDa(categorie, coloriPrompt, righe);
+  const tipi = voci(c, "clothing_type")
+    .filter((v) => v.id !== tassonomia.ALTRO && tassonomia.CATEGORIE.includes(v.data.group))
+    .map((v) => JSON.stringify({ subCategory: v.id, category: v.data.group,
+      names: [v.label.it, v.label.en], description: v.data.hint ?? "" })).join("\n");
+  PROMPT_NOME = promptNomeDa(categorie, coloriPrompt, righe).replace("{sottocategorie}", () => tipi);
+  PROMPT_SCAN = promptScanDa(categorie, coloriPrompt, righe).replace("{sottocategorie}", () => tipi);
 }
 
 impostaScheda(CATALOGO_BASE);
@@ -147,13 +158,11 @@ function stringaJson(t: string): string {
 }
 
 export function promptNome(nome: string, lingua: Lingua = "it"): string {
-  // Prima la tassonomia: un nome che contiene "{sottocategorie}" resta com'e'.
-  return inLingua(PROMPT_NOME, lingua).replace("{sottocategorie}", () => tassonomia.testoPerPrompt())
-    .replace("{nome}", () => stringaJson(nome));
+  return inLingua(PROMPT_NOME, lingua).replace("{nome}", () => stringaJson(nome));
 }
 
 export function promptScan(lingua: Lingua = "it"): string {
-  return inLingua(PROMPT_SCAN, lingua).replace("{sottocategorie}", () => tassonomia.testoPerPrompt());
+  return inLingua(PROMPT_SCAN, lingua);
 }
 
 // Gli spazi di str.split() di Python.
