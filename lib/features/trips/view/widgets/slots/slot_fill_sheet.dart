@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_appear.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../../../shared/widgets/ds_text_button.dart';
 import '../../../../items/model/item_model.dart';
@@ -17,7 +18,8 @@ import 'slot_written_row.dart';
 ///
 /// Ogni oggetto scritto nasce nella casa [houseId] e passa a [onFill], che lo
 /// mette in valigia e scala il posto (anche se nel frattempo il foglio è stato
-/// chiuso). "Da comprare" chiude il foglio e chiama [onToBuy].
+/// chiuso); se fallisce, [onFill] lancia dopo aver avvisato e il foglio non
+/// conta l'oggetto. "Da comprare" chiude il foglio e chiama [onToBuy].
 Future<void> showSlotFillSheet(
   BuildContext context, {
   required AiSlot slot,
@@ -63,8 +65,17 @@ class _SlotFillSheetState extends State<SlotFillSheet> {
   final _written = <TripItem>[];
   late int _remaining = widget.slot.remaining;
   bool get _done => _remaining == 0;
+  Timer? _closeTimer;
 
-  void _onCreated(ItemModel item) {
+  @override
+  void dispose() {
+    _closeTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Un oggetto salvato dal Rapid Fire: entra in valigia anche a foglio
+  /// chiuso; la riga compare e le copie scendono solo se il salvataggio va.
+  Future<void> _onSaved(ItemModel item) async {
     final packed = TripItem(
       id: item.id,
       name: item.name,
@@ -72,24 +83,38 @@ class _SlotFillSheetState extends State<SlotFillSheet> {
       quantity: item.quantity ?? 1,
       originHouseId: item.houseId,
     );
-    // Prima si salva: il foglio può essere già chiuso, l'oggetto no.
-    unawaited(widget.onFill(packed));
+    try {
+      await widget.onFill(packed);
+    } catch (_) {
+      // Chi ha chiamato ha già avvisato: la riga non resta e il campo è libero.
+      return;
+    }
     if (!mounted) return;
     setState(() {
       _written.add(packed);
       _remaining = (_remaining - packed.quantity).clamp(0, _remaining);
     });
-    if (_done) unawaited(_closeSoon());
+    if (_done) _closeSoon();
   }
 
-  /// Aspetta che la riga sia entrata e un attimo ancora, poi chiude.
-  Future<void> _closeSoon() async {
-    if (!MediaQuery.disableAnimationsOf(context)) {
-      await Future<void>.delayed(
-        AppMotion.slow + AppMotion.slotSheetCloseDelay,
-      );
+  /// Aspetta che la riga sia entrata e un attimo ancora, poi chiude. Il timer
+  /// si annulla con il foglio, e il pop parte solo se il foglio è ancora la
+  /// route in primo piano (chiuso a mano, nessun secondo pop).
+  void _closeSoon() {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _close();
+      return;
     }
-    if (mounted) Navigator.of(context).pop();
+    _closeTimer?.cancel();
+    _closeTimer = Timer(
+      DsAppear.duration + AppMotion.slotSheetCloseDelay,
+      _close,
+    );
+  }
+
+  void _close() {
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
+    Navigator.of(context).pop();
   }
 
   void _toBuy() {
@@ -130,7 +155,7 @@ class _SlotFillSheetState extends State<SlotFillSheet> {
           autofocus: true,
           hintText: 'trips.slots.rapid_fire_hint'.tr(),
           enabled: !_done,
-          onItemCreated: _onCreated,
+          onItemSaved: _onSaved,
         ),
       ),
       child: Column(

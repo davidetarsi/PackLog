@@ -501,6 +501,30 @@ void main() {
       expectEvent('slot_bought', {'level': 'important'}, 1);
     });
 
+    testWidgets('?slot= su un proposto da comprare: il foglio riceve il '
+        'posto già tornato in valigia, e il riempimento è slot_bought', (
+      tester,
+    ) async {
+      final trip = _trip();
+      final slots = [
+        for (final s in trip.aiResult!.slots!)
+          s.id == 'u-magliette' ? s.copyWith(toBuy: true) : s,
+      ];
+      await pumpDetail(
+        tester,
+        trip.copyWith(aiResult: trip.aiResult!.copyWith(slots: slots)),
+        slot: 'u-magliette',
+      );
+
+      expect(sheet, findsOneWidget);
+      expect(tester.widget<SlotFillSheet>(sheet).slot.toBuy, isFalse);
+      expect(find.byKey(const Key('slot_sheet_to_buy')), findsOneWidget);
+
+      await send(tester, 'Camicia blu');
+
+      expectEvent('slot_bought', {'level': 'useful'}, 1);
+    });
+
     testWidgets('?slot= (dalla vista Da comprare) e un riempimento: '
         'slot_bought', (tester) async {
       await pumpDetail(tester, withGiaccaToBuy(), slot: 'imp-giacca');

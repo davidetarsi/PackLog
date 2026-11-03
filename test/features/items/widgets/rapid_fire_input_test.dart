@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -294,6 +296,7 @@ void main() {
       WidgetTester tester,
       _RecordingItemNotifier fake, {
       ValueChanged<ItemModel>? onItemCreated,
+      ValueChanged<ItemModel>? onItemSaved,
       String? hintText,
       FocusNode? focusNode,
     }) async {
@@ -313,6 +316,7 @@ void main() {
                   child: RapidFireInput(
                     houseId: 'h1',
                     onItemCreated: onItemCreated,
+                    onItemSaved: onItemSaved,
                     hintText: hintText,
                     focusNode: focusNode,
                   ),
@@ -504,6 +508,41 @@ void main() {
       expect(created, isEmpty);
     });
 
+    testWidgets('campo smontato durante il salvataggio: onItemCreated non '
+        'parte, onItemSaved sì', (tester) async {
+      final fake = _RecordingItemNotifier()..gate = Completer<void>();
+      final created = <ItemModel>[];
+      final detached = <ItemModel>[];
+      await pumpWithFake(
+        tester,
+        fake,
+        onItemCreated: created.add,
+        onItemSaved: detached.add,
+      );
+      await tester.enterText(find.byType(TextField), 'Felpa');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.arrow_upward));
+      await tester.pump();
+
+      await tester.pumpWidget(const SizedBox());
+      fake.gate!.complete();
+      await tester.pumpAndSettle();
+
+      expect(created, isEmpty);
+      expect(detached.single.name, 'Felpa');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('campo montato: parte anche onItemSaved', (tester) async {
+      final fake = _RecordingItemNotifier();
+      final detached = <ItemModel>[];
+      await pumpWithFake(tester, fake, onItemSaved: detached.add);
+      await tester.enterText(find.byType(TextField), 'Felpa');
+      await tester.pump();
+      await submit(tester);
+      expect(detached.single.name, 'Felpa');
+    });
+
     testWidgets('hintText sostituisce il segnaposto di default', (
       tester,
     ) async {
@@ -519,6 +558,7 @@ class _RecordingItemNotifier extends ItemNotifier {
   _RecordingItemNotifier({this.fail = false});
 
   final bool fail;
+  Completer<void>? gate;
   final added = <ItemModel>[];
 
   @override
@@ -526,6 +566,7 @@ class _RecordingItemNotifier extends ItemNotifier {
 
   @override
   Future<void> addItem(ItemModel model, {bool categoryChosen = false}) async {
+    await gate?.future;
     if (fail) throw StateError('boom');
     added.add(model);
   }

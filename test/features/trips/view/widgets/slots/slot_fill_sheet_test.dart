@@ -19,6 +19,9 @@ import '../../../../../helpers/memory_asset_loader.dart';
 /// Se [gate] c'è, il salvataggio resta in attesa finché non si completa.
 Completer<void>? gate;
 
+/// Se vero, `onFill` del foglio fallisce.
+bool fillFails = false;
+
 class _RecordingItemNotifier extends ItemNotifier {
   @override
   Future<List<ItemModel>> build(String houseId) async => const [];
@@ -60,6 +63,7 @@ void main() {
     toBuyCalls = 0;
     disableAnimations = false;
     gate = null;
+    fillFails = false;
   });
 
   Future<void> pumpSheet(WidgetTester tester, AiSlot slot) async {
@@ -99,7 +103,10 @@ void main() {
                         context,
                         slot: slot,
                         houseId: 'h1',
-                        onFill: (item) async => filled.add(item),
+                        onFill: (item) async {
+                          if (fillFails) throw StateError('boom');
+                          filled.add(item);
+                        },
                         onToBuy: () => toBuyCalls++,
                       ),
                     ),
@@ -247,5 +254,38 @@ void main() {
     await pumpSheet(tester, _slot(toBuy: true));
 
     expect(find.text('Da comprare'), findsNothing);
+  });
+
+  testWidgets('chiuso a mano durante l\'attesa: nessun secondo pop e nessun '
+      'timer pendente', (tester) async {
+    await pumpSheet(tester, _slot(copies: 1));
+    await send(tester, 'Sneakers bianche');
+    await tester.pump(AppMotion.slow ~/ 2);
+
+    await tester.tap(find.byKey(const Key('sheet_close')));
+    await tester.pumpAndSettle();
+    expect(sheet, findsNothing);
+    // La pagina sotto resta: un secondo pop la toglierebbe.
+    expect(find.text('apri'), findsOneWidget);
+
+    await tester.pump(AppMotion.slow + AppMotion.slotSheetCloseDelay);
+    expect(find.text('apri'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    // Il test finisce senza timer in sospeso.
+  });
+
+  testWidgets('onFill che fallisce: la riga non resta e il campo è attivo', (
+    tester,
+  ) async {
+    fillFails = true;
+    await pumpSheet(tester, _slot(copies: 1));
+
+    await send(tester, 'Sneakers bianche');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sneakers bianche'), findsNothing);
+    expect(find.text('Sneakers ×1'), findsOneWidget);
+    expect(tester.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+    expect(sheet, findsOneWidget);
   });
 }

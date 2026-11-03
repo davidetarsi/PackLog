@@ -11,6 +11,10 @@ import '../theme/app_motion.dart';
 class DsAppear extends StatefulWidget {
   final Widget child;
 
+  /// Quanto dura l'entrata: chi deve aspettarla (un foglio che si chiude dopo
+  /// la riga nuova) usa questa, non un valore proprio.
+  static const Duration duration = AppMotion.slow;
+
   const DsAppear({super.key, required this.child});
 
   @override
@@ -25,7 +29,7 @@ class _DsAppearState extends State<DsAppear>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: AppMotion.slow);
+    _controller = AnimationController(vsync: this, duration: DsAppear.duration);
     _curved = CurvedAnimation(parent: _controller, curve: AppMotion.emphasized);
     _controller.forward();
   }
