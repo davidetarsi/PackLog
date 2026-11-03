@@ -2180,6 +2180,41 @@ final flows = <Flow>[
     ),
     Scenario(
       5,
+      'attesa',
+      'due-passi-chiusi',
+      source: _aiWaitSrc,
+      description:
+          'L\'attesa dopo circa sette secondi: meteo e armadio sono chiusi, '
+          'ognuno con la sua riga col dato vero; il terzo passo lampeggia.',
+      setup: AppSetup(
+        extraOverrides: [
+          packTripServiceProvider.overrideWith(
+            (ref) => HangingPackTripService(),
+          ),
+        ],
+      ),
+      steps: (app) async {
+        await app.go('/trips');
+        unawaited(
+          app.router.push(
+            '/trips/$kUpcomingTripId/ai-packing',
+            extra: const PackTripJob(
+              body: <String, dynamic>{
+                'trip': {
+                  'attivita': ['city', 'walks'],
+                },
+              },
+              houseId: kHomeId,
+              title: 'Lisbona e Sintra',
+              nights: 5,
+            ),
+          ),
+        );
+        await app.settle(frames: 75);
+      },
+    ),
+    Scenario(
+      6,
       'valigia',
       'generata-con-avvisi',
       source: _packSrc,
@@ -2190,7 +2225,7 @@ final flows = <Flow>[
       steps: (app) => _pack(app, kUpcomingTripId),
     ),
     Scenario(
-      6,
+      7,
       'valigia',
       'dalla-casa-aperta',
       source: _aiHomeSrc,
@@ -2219,7 +2254,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      7,
+      8,
       'scheda-oggetto',
       'capo-in-partenza',
       source: _aiItemSrc,
@@ -2236,7 +2271,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      8,
+      9,
       'avvisi',
       'elenco',
       source: _aiRowsSrc,
@@ -2250,7 +2285,7 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      9,
+      10,
       'motivi',
       'elenco',
       source: _aiRowsSrc,
