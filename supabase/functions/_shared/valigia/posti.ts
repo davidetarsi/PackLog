@@ -211,6 +211,8 @@ interface Grezzo {
   origine: "gap" | "pezzi" | "famiglia";
   /** Solo per i mancanti: il gap chiede un capo elegante (soloElegante). */
   elegante?: boolean;
+  /** Solo per i mancanti: le tappe del gap (viaggi a piu' tappe), se il generatore le indica. */
+  tappe?: string[];
   /** Il posto unico del meteo (unisciIlMeteo): non si somma ad altri posti dello stesso tipo. */
   delMeteo?: boolean;
 }
@@ -283,6 +285,7 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
       copie: copieDelMancante(g, sub, richiesti.find((r) => r.slot === g.slot), q),
       motivo: copyMancante(g, viaggioFreddo, attivita, lingua).perche,
       capo, qualifica: qualificaDelGap(g, capo, viaggioFreddo), origine: "gap", elegante: soloElegante(g),
+      tappe: Array.isArray(g.tappe) ? g.tappe.map(String) : undefined,
     });
   }
 
@@ -323,28 +326,41 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
 
   // 4. Giacche e scarpe del meteo: un posto solo per categoria.
   // 5. Uniti per tipo: importante se lo e' almeno uno, motivo e nome di quello. Le copie: i mancanti
-  // del generatore di Upper e Lower Body (slot giornaliero e occasionale coprono gli stessi giorni)
-  // si uniscono col massimo; tutto il resto (pezzi in meno, famiglie, altre categorie) si somma.
+  // del generatore di Upper Body, Lower Body e Shoes nella stessa tappa (slot giornaliero e occasionale coprono
+  // gli stessi giorni) si uniscono col massimo; tappe diverse coprono giorni diversi e si sommano,
+  // come ogni mancante di un viaggio a piu' tappe senza tappa indicata, i pezzi in meno, le famiglie
+  // e le altre categorie.
+  const aTappe = [viaggio?.tappe, viaggio?.legs].some((t) => Array.isArray(t) && t.length > 1);
   const uniti = new Map<string, Grezzo>();
-  const copieGap = new Map<string, number>();
+  const copieGap = new Map<string, Map<string, number>>(); // chiave del posto -> tappa -> massimo
   const copieAltre = new Map<string, number>();
+  let senzaTappa = 0;
   for (const p of unisciIlMeteo(grezzi)) {
     // Il posto unico del meteo ha una chiave sua: i pezzi in meno dello stesso tipo (sottocategoria sconosciuta) restano a parte.
     const chiave = p.delMeteo ? `meteo:${p.tipo}` : p.tipo;
-    const aMassimo = p.origine === "gap" && !p.delMeteo && (p.capo.categoria === "Upper Body" || p.capo.categoria === "Lower Body");
-    if (aMassimo) copieGap.set(chiave, Math.max(copieGap.get(chiave) ?? 0, p.copie));
-    else copieAltre.set(chiave, (copieAltre.get(chiave) ?? 0) + p.copie);
+    const aMassimo = p.origine === "gap" && !p.delMeteo && ["Upper Body", "Lower Body", "Shoes"].includes(p.capo.categoria);
+    if (aMassimo) {
+      // Senza tappa nota in un viaggio a piu' tappe la chiave e' unica: si somma.
+      const tappa = p.tappe?.length ? [...p.tappe].sort().join("|") : aTappe ? `?${senzaTappa++}` : "";
+      const perTappa = copieGap.get(chiave) ?? new Map<string, number>();
+      perTappa.set(tappa, Math.max(perTappa.get(tappa) ?? 0, p.copie));
+      copieGap.set(chiave, perTappa);
+    } else copieAltre.set(chiave, (copieAltre.get(chiave) ?? 0) + p.copie);
     const gia = uniti.get(chiave);
     if (!gia) { uniti.set(chiave, { ...p }); continue; }
     if (p.livello === "importante" && gia.livello !== "importante") {
       Object.assign(gia, { livello: p.livello, motivo: p.motivo, capo: p.capo, qualifica: p.qualifica });
     }
   }
-  for (const [chiave, p] of uniti) p.copie = (copieGap.get(chiave) ?? 0) + (copieAltre.get(chiave) ?? 0);
+  for (const [chiave, p] of uniti) {
+    const dei = [...(copieGap.get(chiave)?.values() ?? [])].reduce((a, b) => a + b, 0);
+    p.copie = dei + (copieAltre.get(chiave) ?? 0);
+  }
 
-  // Col caldo (la soglia del generatore, un capo sopra leggero al giorno) i pantaloni lunghi sono da sera,
-  // come le camicie: senza sapere se sono leggeri non superano le copie delle camicie (una se non ci sono).
-  if (caldoUnCapoAlGiorno(q.tempMax)) {
+  // Col caldo in tutte le tappe (la massima piu' bassa sopra la soglia del generatore, un capo sopra
+  // leggero al giorno) i pantaloni lunghi sono da sera, come le camicie: senza sapere se sono leggeri
+  // non superano le copie delle camicie (una se non ci sono). Con una tappa fresca restano da giorno.
+  if (caldoUnCapoAlGiorno(q.tempMaxEssenziali)) {
     const camicie = uniti.get("Shirt")?.copie ?? 1;
     for (const tipo of ["Trousers", "Jeans"]) {
       const lunghi = uniti.get(tipo);
