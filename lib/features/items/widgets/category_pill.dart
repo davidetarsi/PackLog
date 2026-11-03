@@ -31,8 +31,10 @@ class CategoryPill extends StatelessWidget {
 
     // Tutti gli stati hanno un fondo pieno: la lista degli oggetti scorre sotto
     // le pillole e non deve vedersi attraverso. In chiaro il bianco delle
-    // card, staccato dalla pagina grigia.
-    final base = Theme.of(context).brightness == Brightness.light
+    // card, staccato dalla pagina grigia. In scuro sulla pagina è un fondo più
+    // scuro; in un foglio, più chiaro del foglio, come i campi accanto.
+    final base =
+        Theme.of(context).brightness == Brightness.light || context.isInSheet
         ? context.groupSurface
         : colorScheme.surfaceContainerLow;
 

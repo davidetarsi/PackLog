@@ -67,19 +67,22 @@ class AiPackRows extends StatelessWidget {
             trailing: unread > 0 ? _CountBadge(count: unread) : null,
             onTap: () => _openWarnings(context),
           ),
-          DsDivider(
-            // Allineato al titolo: margine, icona e spazio dopo l'icona.
-            indent: context.spacingMd * 2 + context.iconSizeMd,
-          ),
-          _Row(
-            key: const Key('pack_row_reasons'),
-            icon: Icons.lightbulb_outline,
-            iconColor: cs.onSurfaceVariant,
-            title: 'trips.pack.ai.reasons_row'.tr(),
-            titleColor: cs.onSurface,
-            subtitle: reasonTitles.isEmpty ? null : reasonTitles.join(', '),
-            onTap: () => _openReasons(context),
-          ),
+          // Senza motivi non c'è niente da aprire: la riga non si mostra.
+          if (reasons.isNotEmpty) ...[
+            DsDivider(
+              // Allineato al titolo: margine, icona e spazio dopo l'icona.
+              indent: context.spacingMd * 2 + context.iconSizeMd,
+            ),
+            _Row(
+              key: const Key('pack_row_reasons'),
+              icon: Icons.lightbulb_outline,
+              iconColor: cs.onSurfaceVariant,
+              title: 'trips.pack.ai.reasons_row'.tr(),
+              titleColor: cs.onSurface,
+              subtitle: reasonTitles.join(', '),
+              onTap: () => _openReasons(context),
+            ),
+          ],
         ],
       ),
     );
@@ -365,7 +368,8 @@ class _WarningCard extends StatelessWidget {
 }
 
 /// Bottone a contorno, neutro: mai arancio.
-/// Il foglio dei motivi: un punto per motivo, nell'ordine ricevuto.
+/// Il foglio dei motivi: un punto per motivo, nell'ordine ricevuto. Si apre
+/// solo con almeno un motivo (la riga che lo apre sta nascosta altrimenti).
 class _ReasonsSheet extends StatelessWidget {
   const _ReasonsSheet({required this.reasons});
 
@@ -377,38 +381,31 @@ class _ReasonsSheet extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     return DsFormSheet(
       title: 'trips.pack.ai.reasons_row'.tr(),
-      child: reasons.isEmpty
-          ? Text(
-              'trips.pack.ai.reasons_none'.tr(),
-              style: tt.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final point in reasons)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: context.spacingMd),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(point.title, style: tt.titleMedium?.title),
-                        SizedBox(height: context.spacingXs),
-                        for (final sentence in point.sentences)
-                          Text(sentence, style: tt.bodyMedium),
-                        if (point.items.isNotEmpty) ...[
-                          SizedBox(height: context.spacingXs),
-                          Text(
-                            point.items.join(' · '),
-                            style: tt.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final point in reasons)
+            Padding(
+              padding: EdgeInsets.only(bottom: context.spacingMd),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(point.title, style: tt.titleMedium?.title),
+                  SizedBox(height: context.spacingXs),
+                  for (final sentence in point.sentences)
+                    Text(sentence, style: tt.bodyMedium),
+                  if (point.items.isNotEmpty) ...[
+                    SizedBox(height: context.spacingXs),
+                    Text(
+                      point.items.join(' · '),
+                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
-                  ),
-              ],
+                  ],
+                ],
+              ),
             ),
+        ],
+      ),
     );
   }
 }

@@ -50,7 +50,7 @@ class AppTheme {
       onSurfaceVariant: Color(0xFF52525B),
       surfaceContainerLowest: Colors.white,
       surfaceContainerLow: Color(0xFFF5F5F6),
-      surfaceContainer: Color(0xFFF4F4F5),
+      surfaceContainer: Color(0xFFF0F0F2),
       surfaceContainerHigh: Color(0xFFE4E4E7),
       surfaceContainerHighest: Color(0xFFD4D4D8),
       // ── Bordi ─────────────────────────────────────────────────────────────

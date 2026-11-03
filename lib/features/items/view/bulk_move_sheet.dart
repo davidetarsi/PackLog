@@ -111,7 +111,16 @@ class _BulkMoveSheetState extends ConsumerState<BulkMoveSheet> {
               final otherHouses = allHouses
                   .where((h) => h.id != widget.sourceHouseId)
                   .toList();
-              if (otherHouses.isEmpty) return const SizedBox.shrink();
+              // Con una sola casa non c'è dove spostare: senza dirlo il foglio
+              // restava solo la testata, una carta vuota sopra la lista.
+              if (otherHouses.isEmpty) {
+                return DsEmptyState(
+                  key: const Key('bulk_move_no_houses'),
+                  icon: Icons.home_outlined,
+                  title: 'items.bulk_move_no_houses'.tr(),
+                  subtitle: 'items.bulk_move_no_houses_hint'.tr(),
+                );
+              }
               return DsSettingsGroup(
                 children: [
                   for (final house in otherHouses)

@@ -111,6 +111,23 @@ class DriftItemRepository implements ItemRepository {
   }
 
   @override
+  Future<bool> restoreItem(String id) async {
+    final result = await _dbService.executeWithRetry(
+      () => _dao.restoreItem(id),
+      operationName: 'restoreItem($id)',
+      config: RetryConfig.criticalConfig,
+    );
+
+    if (!result.success) {
+      debugPrint('[ItemRepo] Errore ripristinando oggetto: ${result.error}');
+      return false;
+    }
+
+    debugPrint('[ItemRepo] Oggetto ripristinato: $id');
+    return result.data! > 0;
+  }
+
+  @override
   Future<void> updateItem(ItemModel model) async {
     final result = await _dbService.executeWithRetry(
       () => _dao.updateItem(_toCompanion(model)),

@@ -96,6 +96,18 @@ void main() {
     await app.finish();
   });
 
+  testWidgets('il foglio spiega cosa sono gli spazi, anche a casa vuota', (
+    tester,
+  ) async {
+    var app = await openStorage(tester);
+    expect(find.text('spaces.explainer'.tr()), findsOneWidget);
+    await app.finish();
+
+    app = await openStorage(tester, houseId: kEmptyHouseId);
+    expect(find.text('spaces.explainer'.tr()), findsOneWidget);
+    await app.finish();
+  });
+
   testWidgets(
     'creazione, rinomina e annullamento dello spazio persistono correttamente',
     (tester) async {
@@ -278,6 +290,9 @@ void main() {
       bottom: 300 * tester.view.devicePixelRatio,
     );
     await app.settle();
+    // Con testo grande e tastiera il foglio scorre: la riga si raggiunge
+    // scorrendo, non è più per forza visibile subito.
+    await tester.ensureVisible(find.byKey(const Key('storage_add_space')));
     await app.tap(find.byKey(const Key('storage_add_space')));
     await app.enterText(find.byKey(const Key('space_sheet_name')), 'Garage');
     expect(

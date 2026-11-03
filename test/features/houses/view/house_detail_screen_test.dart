@@ -9,6 +9,7 @@ import 'package:pack_log/features/items/view/item_card.dart';
 import 'package:pack_log/shared/constants/app_constants.dart';
 import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/ds_appear.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
 import 'package:pack_log/shared/widgets/universal_item_tile.dart';
@@ -656,5 +657,68 @@ void main() {
     final field = tester.widget<TextField>(rapidFire());
     expect(field.focusNode?.hasFocus, isTrue);
     await app.finish();
+  });
+
+  testWidgets('filtri spazio: Tutti, gli spazi, poi Senza spazio in fondo', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    final pills = tester.widget<AppPillTab<String?>>(
+      find.byType(AppPillTab<String?>),
+    );
+    expect(pills.items.first, isNull);
+    expect(pills.items.last, 'default');
+    expect(pills.items.length, greaterThan(2));
+    await app.finish();
+  });
+
+  group('swipe per eliminare', () {
+    Future<void> swipe(ScreenshotApp app, String name) async {
+      await app.tester.drag(find.text(name), const Offset(-500, 0));
+      await app.settle();
+    }
+
+    testWidgets('elimina la riga e lo dice con "Annulla"', (tester) async {
+      final app = await openHome(tester);
+      expect(find.text('Calzini'), findsOneWidget);
+
+      await swipe(app, 'Calzini');
+
+      expect(find.text('Calzini'), findsNothing);
+      expect(
+        find.text('items.item_deleted'.tr(args: ['Calzini'])),
+        findsOneWidget,
+      );
+      expect(find.text('common.undo'.tr()), findsOneWidget);
+      await app.finish();
+    });
+
+    testWidgets('"Annulla" rimette la riga', (tester) async {
+      final app = await openHome(tester);
+      await swipe(app, 'Calzini');
+
+      await app.tap(find.text('common.undo'.tr()));
+
+      expect(find.text('Calzini'), findsOneWidget);
+      expect(
+        find.text('items.item_deleted'.tr(args: ['Calzini'])),
+        findsNothing,
+      );
+      await app.finish();
+    });
+
+    testWidgets('in selezione multipla non si attiva', (tester) async {
+      final app = await openHome(tester);
+      await app.longPress(find.text('Maglione di lana'));
+
+      await swipe(app, 'Calzini');
+
+      expect(find.text('Calzini'), findsOneWidget);
+      expect(
+        find.text('items.item_deleted'.tr(args: ['Calzini'])),
+        findsNothing,
+      );
+      await app.finish();
+    });
   });
 }

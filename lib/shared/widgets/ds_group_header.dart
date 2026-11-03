@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_spacing.dart';
+import '../theme/surface_colors.dart';
 
 /// Etichetta di un gruppo di righe: "Vestiti · 7".
 ///
@@ -66,7 +67,8 @@ class DsGroupHeader extends StatelessWidget {
       button: onTap != null,
       expanded: expanded,
       child: Material(
-        color: theme.scaffoldBackgroundColor,
+        // Il fondo su cui sta: la pagina, o il foglio dentro un foglio.
+        color: context.groundSurface,
         child: InkWell(
           onTap: onTap,
           child: Padding(

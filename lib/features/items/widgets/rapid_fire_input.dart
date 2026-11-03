@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../model/item_model.dart';
 import '../providers/item_provider.dart';
 import '../services/category_infer_service.dart';
+import '../../../shared/helpers/first_letter_formatter.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/app_motion.dart';
@@ -264,6 +265,9 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                       child: TextField(
                         controller: _textController,
                         textCapitalization: TextCapitalization.sentences,
+                        // Il campo resta a fuoco dopo ogni invio e la tastiera
+                        // non rimette la maiuscola: la mette il formatter.
+                        inputFormatters: const [FirstLetterFormatter()],
                         focusNode: _focusNode,
                         autofocus: false,
                         textAlignVertical: TextAlignVertical.center,
