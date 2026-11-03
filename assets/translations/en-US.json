@@ -280,7 +280,6 @@
       "remove_body": "PackLog considers it important for this trip.",
       "remove_confirm": "Remove",
       "removed": "Removed {}",
-      "context_chip": "{} · {} to personalise",
       "no_house": "The departure home no longer exists",
       "rapid_fire_hint": "e.g. 2 black t-shirts",
       "open_hint": "PackLog suggests {}. Write below the ones you actually have, several at once too («2 black t-shirts»): they take their place."
