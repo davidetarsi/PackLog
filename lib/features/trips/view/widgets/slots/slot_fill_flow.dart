@@ -35,8 +35,11 @@ mixin TripSlotFill on TripSlotEdits {
       return;
     }
     // "Presa" su una proposta da comprare: torna nella valigia, in cima ai
-    // proposti.
-    if (slot.toBuy && slot.level == AiSlotLevel.useful) {
+    // proposti, e il foglio si apre già con il posto aggiornato.
+    final wasToBuy = slot.toBuy;
+    var shown = slot;
+    if (wasToBuy && slot.level == AiSlotLevel.useful) {
+      shown = slot.copyWith(toBuy: false);
       unawaited(
         updateSlot(
           ref.read(tripNotifierProvider.notifier),
@@ -48,24 +51,30 @@ mixin TripSlotFill on TripSlotEdits {
     unawaited(
       showSlotFillSheet(
         context,
-        slot: slot,
+        slot: shown,
         houseId: houseId,
-        onFill: (item) => _fillSlot(slot, item),
+        onFill: (item) => _fillSlot(shown, item, bought: wasToBuy),
         onToBuy: () => unawaited(markSlotToBuy(slot, from: 'sheet')),
       ),
     );
   }
 
   /// L'oggetto appena creato entra in valigia e scala il posto. Se il
-  /// salvataggio non va lo dice (l'oggetto resta nella casa).
-  Future<void> _fillSlot(AiSlot slot, TripItem item) async {
+  /// salvataggio non va lo dice e rilancia (l'oggetto resta nella casa).
+  Future<void> _fillSlot(
+    AiSlot slot,
+    TripItem item, {
+    required bool bought,
+  }) async {
+    // Pagina già chiusa: niente ref. Il foglio non conta l'oggetto.
+    if (!mounted) throw StateError('trip detail closed');
     final notifier = ref.read(tripNotifierProvider.notifier);
     final analytics = ref.read(analyticsServiceProvider);
     try {
       await notifier.fillAiSlot(tripId, slot.id, item);
       // Un posto "da comprare" si apre solo con "Presa": riempirlo vuol dire
       // che l'hai comprato.
-      if (slot.toBuy) {
+      if (bought) {
         unawaited(
           analytics.logEvent(
             'slot_bought',
@@ -75,6 +84,8 @@ mixin TripSlotFill on TripSlotEdits {
       }
     } catch (_) {
       if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
+      // Il foglio non deve contare l'oggetto.
+      rethrow;
     }
   }
 }
