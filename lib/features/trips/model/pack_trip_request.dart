@@ -1,3 +1,4 @@
+import '../../kits/model/kit_model.dart';
 import '../../luggages/model/luggage_model.dart';
 import 'ai_packing.dart';
 import 'trip_weather.dart';
@@ -5,6 +6,13 @@ import 'trip_weather.dart';
 /// Lunghezza massima della descrizione del bagaglio (vedi `_kMaxText` lato
 /// funzione).
 const _kMaxBagText = 80;
+
+/// Copie massime di un oggetto del kit: il massimo che la funzione accetta.
+const _kMaxCopie = 99;
+
+/// Kit e oggetti per kit che la funzione accetta: oltre, si mandano i primi.
+const _kMaxKit = 50;
+const _kMaxOggettiPerKit = 50;
 
 /// Una tappa del foglio della valigia AI: una per chiave, con i giorni di
 /// tutti i suoi periodi.
@@ -71,6 +79,7 @@ String? luggageDescription(LuggageModel? luggage) {
 ///
 /// Un solo luogo nel piano: `destinazione` e i campi di viaggio. Più luoghi:
 /// `tappe`, una voce per ogni periodo, con le risposte del suo luogo.
+/// [kits] sono i kit della casa scelta (campo `kit` solo se ce ne sono).
 /// [language] è la lingua dell'app: motivi e avvisi tornano in quella (le
 /// lingue diverse dall'italiano diventano inglese, come l'app).
 Map<String, dynamic> packTripBody({
@@ -79,12 +88,15 @@ Map<String, dynamic> packTripBody({
   required String houseId,
   required String language,
   LuggageModel? luggage,
+  List<String> transports = const [],
+  List<KitModel> kits = const [],
 }) {
   final stops = aiStopsOf(plan);
   final bagaglio = luggageDescription(luggage);
   final trip = <String, dynamic>{
     'data_inizio': isoDay(plan.start),
     if (bagaglio != null) 'bagaglio': bagaglio,
+    if (transports.isNotEmpty) 'mezzi': transports,
   };
   if (stops.length == 1) {
     trip['destinazione'] = _place(plan.stops.first);
@@ -107,8 +119,21 @@ Map<String, dynamic> packTripBody({
     // posti. Senza, la funzione risponde 422 "Wardrobe is empty" (build vecchie).
     'posti': true,
     'trip': trip,
+    // I kit della casa: la funzione decide quali entrano e risponde con `kit`.
+    if (kits.isNotEmpty)
+      'kit': [for (final kit in kits.take(_kMaxKit)) _kit(kit)],
   };
 }
+
+Map<String, dynamic> _kit(KitModel kit) => {
+  'id': kit.id,
+  'attivita': kit.activities,
+  'mezzi': kit.transports,
+  'oggetti': [
+    for (final row in kit.items.take(_kMaxOggettiPerKit))
+      {'item_id': row.itemId, 'copie': row.copies.clamp(1, _kMaxCopie)},
+  ],
+};
 
 Map<String, dynamic> _place(WeatherStopRequest stop) => {
   'nome': stop.name,

@@ -12,7 +12,11 @@
 // posti: true = l'app sa mostrare i posti (valigia fatta di soli posti anche con
 // l'armadio vuoto). Senza, un armadio vuoto e' 422 "Wardrobe is empty" prima del
 // credito AI, come per le versioni vecchie, che ignorano i posti.
-//   -> { valigia, motivi, perche, geo, meteo, note_tecniche, capi, avvisi, posti, informazioni }
+//   -> { valigia, motivi, perche, geo, meteo, note_tecniche, capi, avvisi, posti, informazioni, kit? }
+// kit (facoltativo, app nuova): corpo `kit: [{ id, attivita, mezzi, oggetti: [{ item_id, copie }] }]` e
+// `trip.mezzi` (id del dominio transport); la risposta ha `kit: { aggiunti: [{ kit_id, item_id, copie }],
+// suggeriti: [{ kit_id, presi, totale, mancanti: [{ item_id, copie }] }] }` e i posti gia' ridotti (kit.ts).
+// Senza `kit` nel corpo la risposta e' quella di sempre, senza il campo.
 // Alloggio e lavatrice stanno per tappa (alloggio, lavatrice booleano); il
 // viaggio li ricava dalle tappe, o usa i propri se mandati (formato vecchio).
 // Attivita' e alloggio arrivano come id del catalogo (app nuova: "city",
@@ -31,8 +35,9 @@ import { createClient } from "@supabase/supabase-js";
 import { climaViaggio } from "../_shared/clima/meteo.ts";
 import { claudeHttp } from "../_shared/claude.ts";
 import { conRiprova, generaValigia, MAX_TOKENS_VALIGIA, scenarioDaApp } from "../_shared/valigia/genera.ts";
-import { armadioVuotoAmmesso, IngressoNonValido, validaViaggio } from "../_shared/valigia/ingresso.ts";
+import { armadioVuotoAmmesso, attivitaGrezze, IngressoNonValido, validaKit, validaMezzi, validaViaggio } from "../_shared/valigia/ingresso.ts";
 import { jevHttp, MODELLO as MODELLO_JEV, type ProfiloNoto } from "../_shared/valigia/jev.ts";
+import { kitDelViaggio, riempiPostiConKit } from "../_shared/valigia/kit.ts";
 import { postiApp } from "../_shared/valigia/posti.ts";
 import { uscitaApp } from "../_shared/valigia/uscita.ts";
 import { caricaArmadio, type RigaArmadio } from "../_shared/valigia/capo.ts";
@@ -75,9 +80,12 @@ Deno.serve(async (req) => {
   // di attivita' e alloggi vengono da lui (spec del 31 ottobre, § 6.4).
   const catalogo = await leggiCatalogo(db);
   applicaCatalogo(catalogo);
-  let viaggio;
+  let viaggio, kit, mezzi: string[];
   try {
     viaggio = validaViaggio(traduciViaggio(b.trip, catalogo), new Date().toISOString().slice(0, 10));
+    // I kit (app nuova): solo se il corpo li ha. Mezzi e attivita' restano id del catalogo.
+    kit = validaKit(b.kit);
+    mezzi = validaMezzi((b.trip as Record<string, unknown> | null)?.mezzi);
   } catch (e) {
     if (e instanceof IngressoNonValido) return errore(400, e.message);
     throw e;
@@ -141,18 +149,34 @@ Deno.serve(async (req) => {
     for (const e of r.jev.errori) console.warn("[pack-trip] jev:", e);
 
     const { raw: _raw, ...valigia } = r.valigia;
+    const motiviApp = r.motivi as { capi: Record<string, any>[]; essenziali: Record<string, any>[] };
+    const armadioApp = caricaArmadio(righe as RigaArmadio[]);
+    const uscita = uscitaApp(r.valigia, motiviApp, salvate, {
+      meteo: r.meteo as Record<string, any> | null, viaggio: viaggio as Record<string, any>,
+      armadio: armadioApp.flatMap((g) => [g.sub_fine, g.sub_category]),
+      lingua,
+    });
+    const postiGen = postiApp(r.valigia, motiviApp, salvate, {
+      meteo: r.meteo as Record<string, any> | null, viaggio: viaggio as Record<string, any>,
+      armadio: armadioApp, lingua,
+    });
+    // Passo dei kit (dopo il generatore, prima dei posti): senza `kit` nel corpo non cambia nulla.
+    let soloKit: Record<string, unknown> = {};
+    let posti = postiGen.posti;
+    if (kit) {
+      const esito = kitDelViaggio(kit, uscita.capi, {
+        attivita: attivitaGrezze(b.trip), mezzi,
+      }, new Set(righe.map((x: Record<string, any>) => String(x.id))));
+      posti = riempiPostiConKit(postiGen.posti, esito.aggiunti, armadioApp, uscita.capi);
+      soloKit = { kit: esito };
+    }
     risposta = json(200, {
       valigia, motivi: r.motivi, perche: r.perche, geo: r.geo, meteo: r.meteo,
       note_tecniche: r.jev.errori,
-      ...uscitaApp(r.valigia, r.motivi as { capi: Record<string, any>[]; essenziali: Record<string, any>[] }, salvate, {
-        meteo: r.meteo as Record<string, any> | null, viaggio: viaggio as Record<string, any>,
-        armadio: caricaArmadio(righe as RigaArmadio[]).flatMap((g) => [g.sub_fine, g.sub_category]),
-        lingua,
-      }),
-      ...postiApp(r.valigia, r.motivi as { capi: Record<string, any>[]; essenziali: Record<string, any>[] }, salvate, {
-        meteo: r.meteo as Record<string, any> | null, viaggio: viaggio as Record<string, any>,
-        armadio: caricaArmadio(righe as RigaArmadio[]), lingua,
-      }),
+      ...uscita,
+      ...postiGen,
+      posti,
+      ...soloKit,
     });
   } catch (e) {
     console.error("[pack-trip]", (e as Error).message);

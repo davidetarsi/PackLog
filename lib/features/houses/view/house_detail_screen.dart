@@ -27,6 +27,8 @@ import '../../trips/providers/trip_items_status_provider.dart';
 import '../../trips/model/trip_model.dart';
 import '../../trips/providers/trip_provider.dart';
 import '../../trips/view/trip_picker_sheet.dart';
+import '../../kits/view/add_selection_to_kit.dart';
+import '../../kits/view/widgets/kit_strip.dart';
 import '../../spaces/model/space_model.dart';
 import '../../spaces/providers/space_provider.dart';
 import 'house_manage_sheet.dart';
@@ -576,6 +578,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                         loading: () => const SizedBox.shrink(),
                         error: (_, _) => const SizedBox.shrink(),
                       ),
+                      // ── Riga 2: kit (non durante selezione e ricerca) ──────
+                      if (!isSelectionMode && _search == null)
+                        KitStrip(houseId: widget.houseId),
                       // ── Contenuto ───────────────────────────────────────────
                       Expanded(
                         child: ItemsScreen(
@@ -616,6 +621,18 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                                 icon: Icons.drive_file_move_outline,
                                 label: 'common.move'.tr(),
                                 onTap: hasSelection ? _handleBulkMove : null,
+                              ),
+                              DsBarItem(
+                                key: const Key('selection_kit'),
+                                icon: Icons.inventory_2_outlined,
+                                label: 'kits.to_kit'.tr(),
+                                onTap: hasSelection
+                                    ? () => addSelectionToKit(
+                                        context,
+                                        ref,
+                                        houseId: widget.houseId,
+                                      )
+                                    : null,
                               ),
                               DsBarItem(
                                 key: const Key('selection_trip'),

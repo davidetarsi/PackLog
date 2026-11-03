@@ -1464,6 +1464,15 @@
       "data": {
         "generator": [
           "visite in citta"
+        ],
+        "alias": [
+          "citta",
+          "città",
+          "musei",
+          "museo",
+          "city",
+          "museums",
+          "sightseeing"
         ]
       }
     },
@@ -1479,6 +1488,14 @@
       "data": {
         "generator": [
           "escursioni leggere"
+        ],
+        "alias": [
+          "passeggiata",
+          "passeggiate",
+          "natura",
+          "walk",
+          "walks",
+          "nature"
         ]
       }
     },
@@ -1494,6 +1511,13 @@
       "data": {
         "generator": [
           "trekking"
+        ],
+        "alias": [
+          "trekking",
+          "montagna",
+          "hiking",
+          "escursion",
+          "mountain"
         ]
       }
     },
@@ -1509,6 +1533,12 @@
       "data": {
         "generator": [
           "cammino"
+        ],
+        "alias": [
+          "cammino",
+          "camino",
+          "pellegrinaggio",
+          "pilgrimage"
         ]
       }
     },
@@ -1524,6 +1554,12 @@
       "data": {
         "generator": [
           "mare"
+        ],
+        "alias": [
+          "mare",
+          "spiaggia",
+          "beach",
+          "sea"
         ]
       }
     },
@@ -1540,6 +1576,13 @@
         "generator": [
           "immersioni",
           "mare"
+        ],
+        "alias": [
+          "immersioni",
+          "immersione",
+          "snorkeling",
+          "sub",
+          "diving"
         ]
       }
     },
@@ -1555,6 +1598,13 @@
       "data": {
         "generator": [
           "sci"
+        ],
+        "alias": [
+          "sci",
+          "ski",
+          "neve",
+          "snow",
+          "settimana bianca"
         ]
       }
     },
@@ -1570,6 +1620,12 @@
       "data": {
         "generator": [
           "campeggio"
+        ],
+        "alias": [
+          "campeggio",
+          "tenda",
+          "camping",
+          "tent"
         ]
       }
     },
@@ -1585,6 +1641,12 @@
       "data": {
         "generator": [
           "riunioni di lavoro"
+        ],
+        "alias": [
+          "lavoro",
+          "riunioni",
+          "work",
+          "business"
         ]
       }
     },
@@ -1601,6 +1663,14 @@
         "generator": [
           "cene al ristorante",
           "vita notturna"
+        ],
+        "alias": [
+          "cene",
+          "cena",
+          "serate",
+          "serata",
+          "dinner",
+          "evening"
         ]
       }
     },
@@ -1616,6 +1686,14 @@
       "data": {
         "generator": [
           "matrimonio"
+        ],
+        "alias": [
+          "matrimonio",
+          "matrimoni",
+          "cerimonia",
+          "cerimonie",
+          "wedding",
+          "ceremony"
         ]
       }
     },
@@ -1631,6 +1709,13 @@
       "data": {
         "generator": [
           "visite a siti religiosi"
+        ],
+        "alias": [
+          "culto",
+          "chiesa",
+          "chiese",
+          "worship",
+          "church"
         ]
       }
     },
@@ -1646,6 +1731,12 @@
       "data": {
         "generator": [
           "terme"
+        ],
+        "alias": [
+          "terme",
+          "spa",
+          "benessere",
+          "wellness"
         ]
       }
     },
@@ -1772,6 +1863,99 @@
       },
       "data": {
         "generator": "da amici o parenti"
+      }
+    },
+    {
+      "domain": "transport",
+      "id": "plane",
+      "sort": 10,
+      "active": true,
+      "label": {
+        "it": "Aereo",
+        "en": "Plane"
+      },
+      "data": {
+        "alias": [
+          "aereo",
+          "volo",
+          "flight",
+          "plane",
+          "airplane"
+        ]
+      }
+    },
+    {
+      "domain": "transport",
+      "id": "train",
+      "sort": 20,
+      "active": true,
+      "label": {
+        "it": "Treno",
+        "en": "Train"
+      },
+      "data": {
+        "alias": [
+          "treno",
+          "train",
+          "rail"
+        ]
+      }
+    },
+    {
+      "domain": "transport",
+      "id": "car",
+      "sort": 30,
+      "active": true,
+      "label": {
+        "it": "Auto",
+        "en": "Car"
+      },
+      "data": {
+        "alias": [
+          "auto",
+          "macchina",
+          "automobile",
+          "car",
+          "road trip"
+        ]
+      }
+    },
+    {
+      "domain": "transport",
+      "id": "ship",
+      "sort": 40,
+      "active": true,
+      "label": {
+        "it": "Nave",
+        "en": "Ship"
+      },
+      "data": {
+        "alias": [
+          "nave",
+          "traghetto",
+          "crociera",
+          "ship",
+          "ferry",
+          "cruise"
+        ]
+      }
+    },
+    {
+      "domain": "transport",
+      "id": "bus",
+      "sort": 50,
+      "active": true,
+      "label": {
+        "it": "Bus",
+        "en": "Bus"
+      },
+      "data": {
+        "alias": [
+          "bus",
+          "pullman",
+          "autobus",
+          "coach"
+        ]
       }
     }
   ]

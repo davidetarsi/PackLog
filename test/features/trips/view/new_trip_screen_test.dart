@@ -33,6 +33,7 @@ import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
 import 'package:pack_log/shared/widgets/ds_link_button.dart';
 
+import '../../../helpers/catalogo_di_prova.dart';
 import '../../../helpers/memory_asset_loader.dart';
 
 class MockTripRepository extends Mock implements TripRepository {}
@@ -773,6 +774,73 @@ void main() {
       expect(trip.returnDateTime, _return);
       expect(trip.name, 'Casa Milano');
       expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
+    });
+
+    testWidgets('scegliere Aereo e Treno salva ["plane","train"]', (
+      tester,
+    ) async {
+      caricaCatalogoDelRepo();
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      expect(find.text('Come ci vai?'), findsOneWidget);
+      for (final label in ['Aereo', 'Treno']) {
+        await tester.ensureVisible(find.text(label));
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.pumpAndSettle();
+
+      expect(savedTrip().transports, ['plane', 'train']);
+    });
+
+    testWidgets('senza scegliere il mezzo il viaggio si salva lo stesso', (
+      tester,
+    ) async {
+      caricaCatalogoDelRepo();
+      await pumpScreen(tester);
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_next')));
+      await tester.pumpAndSettle();
+
+      expect(savedTrip().transports, isEmpty);
+    });
+
+    testWidgets('modificare il viaggio conserva i mezzi', (tester) async {
+      caricaCatalogoDelRepo();
+      final trip = TripModel(
+        id: 'trip-1',
+        name: 'Toscana',
+        departureDateTime: DateTime(2026, 9, 12),
+        returnDateTime: DateTime(2026, 9, 20),
+        destinationLocation: LocationSuggestionModel(
+          placeId: 'p',
+          displayName: 'Siena, Italia',
+          city: 'Siena',
+        ),
+        transports: const ['car'],
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [trip]);
+      when(() => tripRepo.updateTrip(any())).thenAnswer((_) async {});
+
+      await pumpScreen(tester, open: '/trips/trip-1/edit-info');
+      // Auto è già scelto; si aggiunge il Treno e si salva.
+      await tester.ensureVisible(find.text('Treno'));
+      await tester.tap(find.text('Treno'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('edit_trip_save')));
+      await tester.pumpAndSettle();
+
+      final updated =
+          verify(() => tripRepo.updateTrip(captureAny())).captured.single
+              as TripModel;
+      expect(updated.transports, ['car', 'train']);
     });
 
     testWidgets('Prepara la valigia più tardi porta a trips?focus=<id>', (

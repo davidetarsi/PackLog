@@ -1873,6 +1873,25 @@ final flows = <Flow>[
         );
       },
     ),
+    Scenario(
+      23,
+      'dettaglio-viaggio',
+      'valigia-con-kit',
+      route: '/trips/:id',
+      source: _tripDetailSrc,
+      description:
+          'Valigia a posti con la riga del kit Montagna fra la barra e i '
+          'gruppi: 3 su 5 già in valigia, i nomi dei mancanti e '
+          '"Aggiungili in valigia".',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+          await seedKitInValigia(c);
+        },
+      ),
+      steps: (app) => _tripDetail(app, kSeoulTripId),
+    ),
   ]),
 
   Flow('10-profilo', 'Tab Profilo: impostazioni e account', [

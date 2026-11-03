@@ -341,6 +341,51 @@ void main() {
     });
   });
 
+  group('TripDraft mezzi', () {
+    test('i mezzi scelti arrivano al viaggio salvato', () {
+      final draft = TripDraft.empty()
+          .withDestination(lisbona())
+          .withFirstDates(d(1), d(5))
+          .withTransports(const ['plane', 'train']);
+
+      final trip = draft.toTripModel(id: 't', now: DateTime(2026));
+
+      expect(trip.transports, ['plane', 'train']);
+    });
+
+    test('senza scelte il viaggio non ha mezzi', () {
+      final trip = TripDraft.empty()
+          .withDestination(lisbona())
+          .toTripModel(id: 't', now: DateTime(2026));
+
+      expect(trip.transports, isEmpty);
+    });
+
+    test('la bozza di un viaggio esistente conserva i mezzi', () {
+      final original = TripModel(
+        id: 't',
+        name: 'Lisbona',
+        transports: const ['car'],
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      final draft = TripDraft.fromTrip(original);
+
+      expect(draft.transports, ['car']);
+      expect(draft.toTripModel(id: 't', now: DateTime(2026)).transports, [
+        'car',
+      ]);
+    });
+
+    test('scegliere solo i mezzi non conta come modulo compilato', () {
+      expect(
+        TripDraft.empty().withTransports(const ['plane']).hasUserInput,
+        isFalse,
+      );
+    });
+  });
+
   group('TripDraft.fromTrip', () {
     final milano = LocationSuggestionModel(
       placeId: 'm',

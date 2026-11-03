@@ -92,6 +92,8 @@ SyncService syncService(Ref ref) {
     itemsDao: db.itemsDao,
     spacesDao: db.spacesDao,
     luggagesDao: db.luggagesDao,
+    kitsDao: db.kitsDao,
+    kitItemsDao: db.kitItemsDao,
     tripsDao: db.tripsDao,
     remote: ref.read(supabaseRepositoryProvider),
     monitoring: ref.read(monitoringServiceProvider),

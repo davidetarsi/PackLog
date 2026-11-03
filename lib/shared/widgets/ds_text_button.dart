@@ -26,6 +26,10 @@ class DsTextButton extends StatelessWidget {
   /// Testo e icona in `primary`, per le azioni da fare. [destructive] vince.
   final bool accent;
 
+  /// Il testo parte dal bordo sinistro dell'area di tocco (che resta alta
+  /// 48), per allinearlo al testo sopra.
+  final bool flushStart;
+
   const DsTextButton({
     super.key,
     required this.label,
@@ -34,6 +38,7 @@ class DsTextButton extends StatelessWidget {
     this.iconAtEnd = false,
     this.destructive = false,
     this.accent = false,
+    this.flushStart = false,
   });
 
   @override
@@ -80,6 +85,8 @@ class DsTextButton extends StatelessWidget {
           kMinInteractiveDimension,
           kMinInteractiveDimension,
         ),
+        padding: flushStart ? EdgeInsets.zero : null,
+        alignment: flushStart ? AlignmentDirectional.centerStart : null,
       ),
       onPressed: onPressed,
       child: content,

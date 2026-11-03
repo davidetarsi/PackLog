@@ -113,6 +113,8 @@ class DriftItemRepository implements ItemRepository {
   @override
   Future<bool> restoreItem(String id) async {
     final result = await _dbService.executeWithRetry(
+      // Le righe dei kit non sono mai state toccate dalla cancellazione:
+      // l'oggetto torna nei suoi kit appena torna visibile.
       () => _dao.restoreItem(id),
       operationName: 'restoreItem($id)',
       config: RetryConfig.criticalConfig,
@@ -311,6 +313,9 @@ class DriftItemRepository implements ItemRepository {
   }
 
   /// Elimina [itemIds] con una singola query SQL `DELETE … WHERE id IN (?)`.
+  ///
+  /// Le righe dei kit restano vive: i kit nascondono gli oggetti cancellati
+  /// con il join (come in [deleteItem]), e [restoreItem] li ritrova.
   @override
   Future<void> deleteItems(List<String> itemIds) async {
     if (itemIds.isEmpty) return;
@@ -334,7 +339,8 @@ class DriftItemRepository implements ItemRepository {
   /// Sposta [itemIds] da [fromHouseId] a [toHouseId] con una singola query SQL.
   ///
   /// Delega al DAO la query bulk; il filtro `AND house_id = fromHouseId`
-  /// garantisce che solo gli item ancora nella casa di partenza vengano mossi.
+  /// garantisce che solo gli item ancora nella casa di partenza vengano mossi;
+  /// gli item già cancellati si saltano (il loro `updatedAt` non cambia).
   @override
   Future<void> moveItemsToHouse(
     List<String> itemIds,
@@ -345,6 +351,8 @@ class DriftItemRepository implements ItemRepository {
     if (itemIds.isEmpty) return;
 
     final result = await _dbService.executeWithRetry(
+      // Le righe dei kit non si toccano: un oggetto spostato in un'altra casa
+      // sparisce dal kit (il join dei kit guarda la casa) e ricompare se torna.
       () => _dao.moveItemsToHouse(
         itemIds,
         fromHouseId,

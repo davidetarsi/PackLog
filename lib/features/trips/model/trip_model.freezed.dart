@@ -328,6 +328,10 @@ mixin _$TripModel {
   /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
   List<TripLeg> get legs => throw _privateConstructorUsedError;
 
+  /// Mezzi del viaggio (id del dominio `transport` del catalogo). Vuota =
+  /// nessun mezzo scelto.
+  List<String> get transports => throw _privateConstructorUsedError;
+
   /// Risposte del foglio della valigia AI. `null` = nessuna informazione.
   AiPackingSetup? get aiSetup => throw _privateConstructorUsedError;
 
@@ -365,6 +369,7 @@ abstract class $TripModelCopyWith<$Res> {
     LocationSuggestionModel? destinationLocation,
     List<LuggageModel> luggages,
     List<TripLeg> legs,
+    List<String> transports,
     AiPackingSetup? aiSetup,
     AiPackingResult? aiResult,
     bool isSaved,
@@ -402,6 +407,7 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
     Object? destinationLocation = freezed,
     Object? luggages = null,
     Object? legs = null,
+    Object? transports = null,
     Object? aiSetup = freezed,
     Object? aiResult = freezed,
     Object? isSaved = null,
@@ -450,6 +456,10 @@ class _$TripModelCopyWithImpl<$Res, $Val extends TripModel>
                 ? _value.legs
                 : legs // ignore: cast_nullable_to_non_nullable
                       as List<TripLeg>,
+            transports: null == transports
+                ? _value.transports
+                : transports // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
             aiSetup: freezed == aiSetup
                 ? _value.aiSetup
                 : aiSetup // ignore: cast_nullable_to_non_nullable
@@ -540,6 +550,7 @@ abstract class _$$TripModelImplCopyWith<$Res>
     LocationSuggestionModel? destinationLocation,
     List<LuggageModel> luggages,
     List<TripLeg> legs,
+    List<String> transports,
     AiPackingSetup? aiSetup,
     AiPackingResult? aiResult,
     bool isSaved,
@@ -579,6 +590,7 @@ class __$$TripModelImplCopyWithImpl<$Res>
     Object? destinationLocation = freezed,
     Object? luggages = null,
     Object? legs = null,
+    Object? transports = null,
     Object? aiSetup = freezed,
     Object? aiResult = freezed,
     Object? isSaved = null,
@@ -627,6 +639,10 @@ class __$$TripModelImplCopyWithImpl<$Res>
             ? _value._legs
             : legs // ignore: cast_nullable_to_non_nullable
                   as List<TripLeg>,
+        transports: null == transports
+            ? _value._transports
+            : transports // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
         aiSetup: freezed == aiSetup
             ? _value.aiSetup
             : aiSetup // ignore: cast_nullable_to_non_nullable
@@ -666,6 +682,7 @@ class _$TripModelImpl extends _TripModel {
     this.destinationLocation,
     final List<LuggageModel> luggages = const [],
     final List<TripLeg> legs = const [],
+    final List<String> transports = const <String>[],
     this.aiSetup,
     this.aiResult,
     this.isSaved = false,
@@ -674,6 +691,7 @@ class _$TripModelImpl extends _TripModel {
   }) : _items = items,
        _luggages = luggages,
        _legs = legs,
+       _transports = transports,
        super._();
 
   factory _$TripModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -735,6 +753,20 @@ class _$TripModelImpl extends _TripModel {
     return EqualUnmodifiableListView(_legs);
   }
 
+  /// Mezzi del viaggio (id del dominio `transport` del catalogo). Vuota =
+  /// nessun mezzo scelto.
+  final List<String> _transports;
+
+  /// Mezzi del viaggio (id del dominio `transport` del catalogo). Vuota =
+  /// nessun mezzo scelto.
+  @override
+  @JsonKey()
+  List<String> get transports {
+    if (_transports is EqualUnmodifiableListView) return _transports;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_transports);
+  }
+
   /// Risposte del foglio della valigia AI. `null` = nessuna informazione.
   @override
   final AiPackingSetup? aiSetup;
@@ -754,7 +786,7 @@ class _$TripModelImpl extends _TripModel {
 
   @override
   String toString() {
-    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocation: $destinationLocation, luggages: $luggages, legs: $legs, aiSetup: $aiSetup, aiResult: $aiResult, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'TripModel(id: $id, name: $name, description: $description, items: $items, departureDateTime: $departureDateTime, returnDateTime: $returnDateTime, destinationHouseId: $destinationHouseId, destinationLocation: $destinationLocation, luggages: $luggages, legs: $legs, transports: $transports, aiSetup: $aiSetup, aiResult: $aiResult, isSaved: $isSaved, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -777,6 +809,10 @@ class _$TripModelImpl extends _TripModel {
                 other.destinationLocation == destinationLocation) &&
             const DeepCollectionEquality().equals(other._luggages, _luggages) &&
             const DeepCollectionEquality().equals(other._legs, _legs) &&
+            const DeepCollectionEquality().equals(
+              other._transports,
+              _transports,
+            ) &&
             (identical(other.aiSetup, aiSetup) || other.aiSetup == aiSetup) &&
             (identical(other.aiResult, aiResult) ||
                 other.aiResult == aiResult) &&
@@ -801,6 +837,7 @@ class _$TripModelImpl extends _TripModel {
     destinationLocation,
     const DeepCollectionEquality().hash(_luggages),
     const DeepCollectionEquality().hash(_legs),
+    const DeepCollectionEquality().hash(_transports),
     aiSetup,
     aiResult,
     isSaved,
@@ -834,6 +871,7 @@ abstract class _TripModel extends TripModel {
     final LocationSuggestionModel? destinationLocation,
     final List<LuggageModel> luggages,
     final List<TripLeg> legs,
+    final List<String> transports,
     final AiPackingSetup? aiSetup,
     final AiPackingResult? aiResult,
     final bool isSaved,
@@ -878,6 +916,11 @@ abstract class _TripModel extends TripModel {
   /// Tappe intermedie. Ordine di inserimento, nessun riordino automatico.
   @override
   List<TripLeg> get legs;
+
+  /// Mezzi del viaggio (id del dominio `transport` del catalogo). Vuota =
+  /// nessun mezzo scelto.
+  @override
+  List<String> get transports;
 
   /// Risposte del foglio della valigia AI. `null` = nessuna informazione.
   @override

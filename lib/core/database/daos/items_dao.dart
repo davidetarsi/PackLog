@@ -304,15 +304,19 @@ class ItemsDao extends DatabaseAccessor<AppDatabase>
     String? spaceId,
   }) async {
     if (itemIds.isEmpty) return;
-    await (update(
-      items,
-    )..where((t) => t.id.isIn(itemIds) & t.houseId.equals(fromHouseId))).write(
-      ItemsCompanion(
-        houseId: Value(toHouseId),
-        spaceId: Value(spaceId),
-        syncStatus: const Value(SyncStatus.pendingUpdate),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+    await (update(items)..where(
+          (t) =>
+              t.id.isIn(itemIds) &
+              t.houseId.equals(fromHouseId) &
+              t.isDeleted.equals(false),
+        ))
+        .write(
+          ItemsCompanion(
+            houseId: Value(toHouseId),
+            spaceId: Value(spaceId),
+            syncStatus: const Value(SyncStatus.pendingUpdate),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
   }
 }

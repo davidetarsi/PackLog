@@ -20,6 +20,8 @@ import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/services/category_infer_service.dart';
+import 'package:pack_log/features/kits/model/kit_model.dart';
+import 'package:pack_log/features/kits/providers/kit_provider.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
 import 'package:pack_log/features/spaces/repositories/space_repository.dart';
@@ -79,6 +81,16 @@ class _MemoryOnboardingRepository implements IOnboardingRepository {
   Future<String?> loadDefaultHouseId() async => null;
   @override
   Future<void> saveDefaultHouseId(String? id) async {}
+}
+
+/// I kit della casa h1, senza database.
+class _Kits extends KitNotifier {
+  _Kits(this.kits);
+
+  final List<KitModel> kits;
+
+  @override
+  Future<List<KitModel>> build(String houseId) async => kits;
 }
 
 class _Weather extends TripWeatherNotifier {
@@ -255,6 +267,9 @@ void main() {
   /// Lavori passati alla pagina finta del pack-trip.
   late List<PackTripJob> jobs;
 
+  /// I kit della casa h1 che il foglio legge prima di chiamare la funzione.
+  late List<KitModel> houseKits;
+
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     await EasyLocalization.ensureInitialized();
@@ -281,6 +296,7 @@ void main() {
     ).thenAnswer((_) async {});
     aiOutcome = null;
     jobs = [];
+    houseKits = [];
 
     when(
       () => lifecycle.transferItemsForCompletedTrips(any()),
@@ -409,6 +425,7 @@ void main() {
           onboardingRepositoryProvider.overrideWithValue(onboardingRepo),
           syncOrchestratorProvider.overrideWithValue(sync),
           tripWeatherNotifierProvider('trip-1').overrideWith(_Weather.new),
+          kitNotifierProvider('h1').overrideWith(() => _Kits(houseKits)),
         ],
         child: EasyLocalization(
           supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
@@ -1273,5 +1290,246 @@ void main() {
         expect(find.text('Perché queste scelte'), findsOneWidget);
       },
     );
+  });
+
+  group('valigia AI: kit', () {
+    KitModel kit(String id, List<KitItem> items) => KitModel(
+      id: id,
+      houseId: 'h1',
+      name: 'Kit $id',
+      activities: const ['ski'],
+      items: items,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    KitItem row(String kitId, String itemId, [int copies = 1]) => KitItem(
+      id: '$kitId-$itemId',
+      kitId: kitId,
+      itemId: itemId,
+      copies: copies,
+    );
+
+    AiPackingResult outcome({
+      List<AiKitAdded> added = const [],
+      List<AiKitSuggestion> suggestions = const [],
+      Map<String, String> answers = const {},
+      List<AiPackedItem>? proposal,
+    }) => AiPackingResult(
+      generatedAt: DateTime(2026, 11, 2),
+      houseId: 'h1',
+      proposal: proposal ?? _suitcaseProposal,
+      kitAdded: added,
+      kitSuggestions: suggestions,
+      kitAnswers: answers,
+    );
+
+    Future<void> generate(WidgetTester tester) async {
+      await pumpPack(tester, direct: true);
+      await prepareInSheet(tester);
+      await tapText(tester, 'Risultato');
+    }
+
+    testWidgets('risposta senza kit: valigia identica', (tester) async {
+      houseKits = [
+        kit('k1', [row('k1', 'i-felpa')]),
+      ];
+      aiOutcome = outcome();
+      arrange(trip: _viaggio(), items: _houseItems);
+
+      await generate(tester);
+
+      // La funzione non ha risposto con `kit` (build vecchia): niente cambia.
+      final saved = savedTrip();
+      expect(saved.items.map((i) => (i.id, i.quantity)).toSet(), {
+        for (final p in _suitcaseProposal) (p.itemId, p.quantity),
+      });
+      expect(saved.aiResult?.kitSuggestions, isEmpty);
+    });
+
+    testWidgets('la richiesta porta i kit della casa; senza kit niente campo', (
+      tester,
+    ) async {
+      houseKits = [
+        kit('k1', [row('k1', 'i-felpa', 2)]),
+      ];
+      aiOutcome = outcome();
+      arrange(trip: _viaggio(), items: _houseItems);
+      await generate(tester);
+
+      final sent = jobs.single.body['kit'] as List;
+      expect(sent, hasLength(1));
+      expect((sent.single as Map)['id'], 'k1');
+      expect((sent.single as Map)['oggetti'], [
+        {'item_id': 'i-felpa', 'copie': 2},
+      ]);
+    });
+
+    testWidgets('casa senza kit: nessun campo kit nel corpo', (tester) async {
+      aiOutcome = outcome();
+      arrange(trip: _viaggio(), items: _houseItems);
+      await generate(tester);
+
+      expect(jobs.single.body.containsKey('kit'), isFalse);
+    });
+
+    testWidgets('aggiunti diventano oggetti del viaggio', (tester) async {
+      houseKits = [
+        kit('k1', [row('k1', 'i-felpa'), row('k1', 'i-spazzolino')]),
+      ];
+      aiOutcome = outcome(
+        added: const [
+          AiKitAdded(kitId: 'k1', itemId: 'i-felpa'),
+          AiKitAdded(kitId: 'k1', itemId: 'i-spazzolino'),
+        ],
+      );
+      arrange(trip: _viaggio(), items: _houseItems);
+
+      await generate(tester);
+
+      final items = {for (final i in savedTrip().items) i.id: i};
+      expect(items['i-felpa']?.name, 'Felpa');
+      expect(items['i-felpa']?.quantity, 1);
+      expect(items['i-felpa']?.originHouseId, 'h1');
+      expect(items['i-spazzolino']?.category, ItemCategory.toiletries);
+      // Gli altri oggetti della proposta restano.
+      expect(items.keys, containsAll(['i-maglietta', 'i-boxer']));
+    });
+
+    testWidgets('kit_auto_added: kit e oggetti entrati da soli', (
+      tester,
+    ) async {
+      aiOutcome = outcome(
+        added: const [
+          AiKitAdded(kitId: 'k1', itemId: 'i-felpa'),
+          AiKitAdded(kitId: 'k1', itemId: 'i-spazzolino'),
+          AiKitAdded(kitId: 'k2', itemId: 'i-boxer'),
+        ],
+      );
+      arrange(trip: _viaggio(), items: _houseItems);
+
+      await generate(tester);
+
+      verify(
+        () => appAnalytics.logEvent(
+          'kit_auto_added',
+          properties: {'kits': 2, 'items': 3},
+        ),
+      ).called(1);
+    });
+
+    testWidgets('kit_auto_added non parte senza kit entrati', (tester) async {
+      aiOutcome = outcome();
+      arrange(trip: _viaggio(), items: _houseItems);
+
+      await generate(tester);
+
+      verifyNever(
+        () => appAnalytics.logEvent(
+          'kit_auto_added',
+          properties: any(named: 'properties'),
+        ),
+      );
+    });
+
+    testWidgets('copie: massimo, mai somma', (tester) async {
+      aiOutcome = outcome(
+        added: const [
+          // Già proposto con 4: il kit ne porta 2, restano 4.
+          AiKitAdded(kitId: 'k1', itemId: 'i-boxer', copies: 2),
+          // Proposto con 1: due kit ne portano 2 e 3, vale 3 (non 5, non 1).
+          AiKitAdded(kitId: 'k1', itemId: 'i-maglietta', copies: 2),
+          AiKitAdded(kitId: 'k2', itemId: 'i-maglietta', copies: 3),
+        ],
+      );
+      arrange(trip: _viaggio(), items: _houseItems);
+
+      await generate(tester);
+
+      final items = {for (final i in savedTrip().items) i.id: i.quantity};
+      expect(items['i-boxer'], 4);
+      expect(items['i-maglietta'], 3);
+    });
+
+    testWidgets('le copie non superano i pezzi in casa', (tester) async {
+      aiOutcome = outcome(
+        added: const [AiKitAdded(kitId: 'k1', itemId: 'i-felpa', copies: 5)],
+      );
+      arrange(trip: _viaggio(), items: _houseItems);
+
+      await generate(tester);
+
+      // La felpa ha quantità non salvata: vale 1 pezzo.
+      final items = {for (final i in savedTrip().items) i.id: i.quantity};
+      expect(items['i-felpa'], 1);
+    });
+
+    testWidgets('un oggetto non più in casa si salta', (tester) async {
+      aiOutcome = outcome(
+        added: const [
+          AiKitAdded(kitId: 'k1', itemId: 'i-sparito'),
+          AiKitAdded(kitId: 'k1', itemId: 'i-felpa'),
+        ],
+      );
+      arrange(trip: _viaggio(), items: _houseItems);
+
+      await generate(tester);
+
+      final ids = savedTrip().items.map((i) => i.id);
+      expect(ids, contains('i-felpa'));
+      expect(ids, isNot(contains('i-sparito')));
+    });
+
+    testWidgets('suggeriti letti nell ordine e salvati col viaggio', (
+      tester,
+    ) async {
+      aiOutcome = outcome(
+        suggestions: const [
+          AiKitSuggestion(
+            kitId: 'k-b',
+            taken: 1,
+            total: 3,
+            missing: [KitItemRef(itemId: 'i-felpa', copies: 1)],
+          ),
+          AiKitSuggestion(kitId: 'k-a', taken: 0, total: 2),
+        ],
+      );
+      arrange(trip: _viaggio(), items: _houseItems);
+
+      await generate(tester);
+
+      final saved = savedTrip().aiResult!;
+      expect(saved.kitSuggestions.map((s) => s.kitId), ['k-b', 'k-a']);
+      expect(saved.kitSuggestions.first.missing.single.itemId, 'i-felpa');
+    });
+
+    testWidgets('rigenerazione azzera kitAnswers ma non i kit contati', (
+      tester,
+    ) async {
+      final previous = AiPackingResult(
+        generatedAt: DateTime(2026, 11, 1),
+        houseId: 'h1',
+        kitSuggestions: const [
+          AiKitSuggestion(kitId: 'k1', taken: 1, total: 2),
+        ],
+        kitAnswers: const {'k1': 'added'},
+        kitLearnCounted: const ['k1'],
+      );
+      aiOutcome = outcome(
+        suggestions: const [AiKitSuggestion(kitId: 'k1', taken: 0, total: 2)],
+        answers: const {'k1': 'added'},
+      );
+      arrange(
+        trip: _viaggio(aiResult: previous),
+        items: _houseItems,
+      );
+
+      await generate(tester);
+
+      final saved = savedTrip().aiResult!;
+      expect(saved.kitAnswers, isEmpty);
+      expect(saved.kitLearnCounted, ['k1']);
+      expect(saved.kitSuggestions.single.taken, 0);
+    });
   });
 }

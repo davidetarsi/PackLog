@@ -100,6 +100,40 @@ mixin TripSlotFlights on ConsumerState<TripDetailScreen> {
     return flights;
   }
 
+  /// Gli oggetti di un kit entrano in valigia: [save] li scrive, poi ognuno
+  /// vola da [from] (la riga del kit) alla sua riga nel gruppo. Mentre
+  /// volano le loro righe restano invisibili. Se [save] fallisce niente vola.
+  Future<void> flyKitItems({
+    required Rect from,
+    required List<TripItem> items,
+    required Future<void> Function() save,
+  }) async {
+    final start = Rect.fromCenter(
+      center: from.center,
+      width: from.width,
+      height: kMinInteractiveDimension,
+    );
+    final flights = [
+      for (final item in items)
+        ItemFlight(
+          from: start,
+          to: rowKey(item.id),
+          child: Material(
+            color: context.groupSurface,
+            child: PackedRow(item: item, onToggle: () {}),
+          ),
+        ),
+    ];
+    flying.value = {for (final item in items) item.id};
+    try {
+      await save();
+    } catch (_) {
+      if (mounted) flying.value = const {};
+      rethrow;
+    }
+    flyAfterFrame(flights);
+  }
+
   /// Vola quando le righe nuove sono sul foglio e lo spazio in fondo ha finito
   /// di restringersi ([SlotEndSpacer]): prima la pagina si sposta e il
   /// bersaglio sarebbe sbagliato.

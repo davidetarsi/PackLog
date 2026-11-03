@@ -12,6 +12,7 @@ import 'open_slot_body.dart';
 import 'slot_actions.dart';
 import 'slot_focus.dart';
 import 'slot_widgets.dart';
+import 'trip_kit_row.dart';
 import 'trip_items_card.dart';
 
 /// "Cosa porti" con la valigia fatta di posti: la testata con l'avanzamento,
@@ -59,6 +60,7 @@ class SlotsSection extends StatelessWidget {
             ],
           ),
         ),
+        _dim(TripKitRow(trip: trip, flyKitItems: actions.flyKitItems)),
         for (final category in ItemCategory.values)
           ..._group(
             context,

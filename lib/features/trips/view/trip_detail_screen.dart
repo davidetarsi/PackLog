@@ -236,6 +236,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
             popDone: () => popDone(_closeBar),
             rowKey: rowKey,
             flying: flying,
+            flyKitItems: flyKitItems,
           ),
         );
       },

@@ -354,6 +354,7 @@ class DriftTripRepository implements TripRepository {
       destinationLocation: destinationLocation,
       luggages: luggages.map(_luggageToModel).toList(),
       legs: _decodeLegs(trip.legs),
+      transports: _decodeStrings(trip.transports),
       aiSetup: _decodeAiJson(trip.aiPackingSetup, AiPackingSetup.fromJson),
       aiResult: _decodeAiJson(trip.aiPackingResult, AiPackingResult.fromJson),
       isSaved: trip.isSaved,
@@ -397,6 +398,18 @@ class DriftTripRepository implements TripRepository {
         .toList();
   }
 
+  /// Una lista di stringhe JSON; `null`, vuoto o corrotto valgono lista vuota.
+  List<String> _decodeStrings(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const [];
+      return [for (final e in decoded) e.toString()];
+    } on FormatException {
+      return const [];
+    }
+  }
+
   /// Un JSON corrotto non deve far fallire la lettura del viaggio: il dato
   /// AI si perde (si legge come `null`), il resto del viaggio resta
   /// disponibile.
@@ -435,6 +448,8 @@ class DriftTripRepository implements TripRepository {
       // Sempre una lista, mai null: vedi il commento sulla colonna in
       // trips_table.dart.
       legs: Value(jsonEncode(trip.legs.map((l) => l.toJson()).toList())),
+      // Sempre una lista: `[]` = nessun mezzo scelto (vedi trips_table.dart).
+      transports: Value(jsonEncode(trip.transports)),
       // `null` resta `null`: nessuna informazione, vedi trips_table.dart.
       aiPackingSetup: Value(
         trip.aiSetup == null ? null : jsonEncode(trip.aiSetup!.toJson()),

@@ -126,6 +126,9 @@ class HousesDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
+      // Cascade soft-delete: kit della casa e le loro righe.
+      await attachedDatabase.kitsDao.softDeleteKitsOfHouse(id);
+
       // I bagagli appartengono all'utente: si staccano dalla casa rimossa,
       // conservando ID, dati e associazioni ai viaggi. Una sola query bulk.
       await (update(

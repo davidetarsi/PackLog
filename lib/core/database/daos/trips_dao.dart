@@ -304,6 +304,7 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
         legs: reuse
             ? Value(_legsWithoutDates(originalTrip.legs))
             : const Value.absent(),
+        transports: Value(originalTrip.transports),
         destinationHouseId: Value(originalTrip.destinationHouseId),
         locationPlaceId: Value(originalTrip.locationPlaceId),
         locationDisplayName: Value(originalTrip.locationDisplayName),

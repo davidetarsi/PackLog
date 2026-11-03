@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pack_log/features/kits/model/kit_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/pack_trip_request.dart';
@@ -54,6 +55,140 @@ void main() {
   final cabin = _luggage();
 
   group('packTripBody', () {
+    test('kit nel corpo: id, attivita, mezzi e oggetti con le copie', () {
+      final kit = KitModel(
+        id: 'k1',
+        houseId: 'h1',
+        name: 'Sci',
+        activities: const ['ski'],
+        transports: const ['car'],
+        items: const [
+          KitItem(id: 'r1', kitId: 'k1', itemId: 'i1', copies: 2),
+          KitItem(id: 'r2', kitId: 'k1', itemId: 'i2'),
+        ],
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        kits: [kit],
+      );
+
+      expect(body['kit'], [
+        {
+          'id': 'k1',
+          'attivita': ['ski'],
+          'mezzi': ['car'],
+          'oggetti': [
+            {'item_id': 'i1', 'copie': 2},
+            {'item_id': 'i2', 'copie': 1},
+          ],
+        },
+      ]);
+    });
+
+    test('kit: le copie oltre 99 si portano a 99', () {
+      final kit = KitModel(
+        id: 'k1',
+        houseId: 'h1',
+        name: 'Scorte',
+        items: const [
+          KitItem(id: 'r1', kitId: 'k1', itemId: 'i1', copies: 150),
+          KitItem(id: 'r2', kitId: 'k1', itemId: 'i2', copies: 99),
+        ],
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        kits: [kit],
+      );
+
+      expect(body['kit'], [
+        {
+          'id': 'k1',
+          'attivita': <String>[],
+          'mezzi': <String>[],
+          'oggetti': [
+            {'item_id': 'i1', 'copie': 99},
+            {'item_id': 'i2', 'copie': 99},
+          ],
+        },
+      ]);
+    });
+
+    test('kit: al massimo 50 kit e 50 oggetti per kit, i primi', () {
+      final kits = [
+        for (var k = 0; k < 55; k++)
+          KitModel(
+            id: 'k$k',
+            houseId: 'h1',
+            name: 'Kit $k',
+            items: [
+              for (var i = 0; i < 60; i++)
+                KitItem(id: 'r$k-$i', kitId: 'k$k', itemId: 'i$i'),
+            ],
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+      ];
+
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        kits: kits,
+      );
+
+      final sent = body['kit'] as List;
+      expect(sent, hasLength(50));
+      expect((sent.first as Map)['id'], 'k0');
+      expect((sent.last as Map)['id'], 'k49');
+      final items = (sent.first as Map)['oggetti'] as List;
+      expect(items, hasLength(50));
+      expect((items.last as Map)['item_id'], 'i49');
+    });
+
+    test('senza kit niente campo kit', () {
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+      );
+      expect(body.containsKey('kit'), isFalse);
+    });
+
+    test('packTripBody mette mezzi', () {
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+        transports: const ['plane', 'train'],
+      );
+      expect((body['trip'] as Map)['mezzi'], ['plane', 'train']);
+    });
+
+    test('senza mezzi niente campo', () {
+      final body = packTripBody(
+        plan: _onePlacePlan,
+        setup: const AiPackingSetup(),
+        houseId: 'h1',
+        language: 'it',
+      );
+      expect((body['trip'] as Map).containsKey('mezzi'), isFalse);
+    });
+
     test('la lingua: italiano o inglese, le altre diventano inglese', () {
       String? lang(String language) => packTripBody(
         plan: _onePlacePlan,

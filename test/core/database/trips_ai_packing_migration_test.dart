@@ -7,7 +7,7 @@ import 'package:sqlite3/sqlite3.dart';
 
 void main() {
   test(
-    'v11 → v12 conserva viaggi con tappe, oggetti e bagagli, con le colonne AI a null',
+    'v11 → v13 conserva viaggi con tappe, oggetti e bagagli, con le colonne AI a null',
     () async {
       final directory = await Directory.systemTemp.createTemp(
         'packlog-migration-',
@@ -48,7 +48,7 @@ void main() {
         'luggages',
         'trip_luggage_entries',
       ];
-      const aiColumns = {'ai_packing_setup', 'ai_packing_result'};
+      const aiColumns = {'ai_packing_setup', 'ai_packing_result', 'transports'};
       final before = <String, List<Map<String, Object?>>>{};
       for (final table in tables) {
         before[table] =
@@ -67,6 +67,9 @@ void main() {
       final raw = sqlite3.open(file.path);
       try {
         raw.execute('''
+          DROP TABLE kit_items;
+          DROP TABLE kits;
+          ALTER TABLE trips DROP COLUMN transports;
           ALTER TABLE trips DROP COLUMN ai_packing_setup;
           ALTER TABLE trips DROP COLUMN ai_packing_result;
           PRAGMA user_version = 11;
@@ -77,7 +80,7 @@ void main() {
 
       final migrated = AppDatabase.forTesting(NativeDatabase(file));
       addTearDown(migrated.close);
-      expect(migrated.schemaVersion, 12);
+      expect(migrated.schemaVersion, 13);
       for (final table in tables) {
         final after =
             (await migrated
@@ -110,7 +113,7 @@ void main() {
       expect(
         (await migrated.customSelect('PRAGMA user_version').getSingle())
             .data['user_version'],
-        12,
+        13,
       );
     },
   );

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
@@ -325,6 +327,92 @@ void main() {
     test('next senza posti: invariato', () {
       final next = result(null);
       expect(carryToBuy(result([slot('p', 'Scarf', toBuy: true)]), next), next);
+    });
+  });
+
+  group('kit nel risultato', () {
+    AiPackingResult base({
+      List<AiKitSuggestion> suggestions = const [],
+      Map<String, String> answers = const {},
+      List<String> counted = const [],
+    }) => AiPackingResult(
+      generatedAt: DateTime(2026, 11, 2),
+      houseId: 'casa-1',
+      kitSuggestions: suggestions,
+      kitAnswers: answers,
+      kitLearnCounted: counted,
+    );
+
+    test('un risultato vecchio, senza campi kit, li legge vuoti', () {
+      final result = AiPackingResult.fromJson(_resultJson());
+
+      expect(result.kitSuggestions, isEmpty);
+      expect(result.kitAnswers, isEmpty);
+      expect(result.kitLearnCounted, isEmpty);
+      expect(result.kitAdded, isEmpty);
+    });
+
+    test('i campi kit sopravvivono a toJson e fromJson', () {
+      final result =
+          base(
+            suggestions: const [
+              AiKitSuggestion(
+                kitId: 'k1',
+                taken: 2,
+                total: 3,
+                missing: [KitItemRef(itemId: 'i1', copies: 2)],
+              ),
+            ],
+            answers: const {'k1': 'dismissed'},
+            counted: const ['k1'],
+          ).copyWith(
+            kitAdded: const [AiKitAdded(kitId: 'k2', itemId: 'i9')],
+          );
+
+      final again = AiPackingResult.fromJson(
+        jsonDecode(jsonEncode(result.toJson())) as Map<String, dynamic>,
+      );
+
+      expect(again, result);
+    });
+
+    test('rigenerazione azzera kitAnswers ma non i kit contati', () {
+      final previous = base(
+        suggestions: const [AiKitSuggestion(kitId: 'k1', taken: 1, total: 2)],
+        answers: const {'k1': 'added'},
+        counted: const ['k1'],
+      );
+      final next = base(
+        suggestions: const [AiKitSuggestion(kitId: 'k1', taken: 0, total: 2)],
+        answers: const {'k1': 'added'},
+      );
+
+      final carried = carryKitCounted(previous, next);
+
+      expect(carried.kitAnswers, isEmpty);
+      expect(carried.kitLearnCounted, ['k1']);
+      expect(carried.kitSuggestions, next.kitSuggestions);
+    });
+
+    test('senza kit contati prima azzera comunque le risposte nuove', () {
+      final previous = base(
+        suggestions: const [AiKitSuggestion(kitId: 'k1', taken: 1, total: 2)],
+      );
+      final next = base(
+        suggestions: const [AiKitSuggestion(kitId: 'k1', taken: 0, total: 2)],
+        answers: const {'k1': 'added'},
+        counted: const ['k2'],
+      );
+
+      final carried = carryKitCounted(previous, next);
+
+      expect(carried.kitAnswers, isEmpty);
+      expect(carried.kitLearnCounted, ['k2']);
+    });
+
+    test('senza risultato precedente non cambia nulla', () {
+      final next = base(counted: const ['k2']);
+      expect(carryKitCounted(null, next), next);
     });
   });
 }

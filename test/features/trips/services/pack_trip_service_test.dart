@@ -297,6 +297,67 @@ void main() {
       );
     });
   });
+  group('parsePackTripResponse: kit', () {
+    test('risposta senza kit: campi vuoti', () {
+      final result = parsePackTripResponse(
+        _okResponse(),
+        houseId: _houseId,
+        now: _now,
+      );
+
+      expect(result.kitSuggestions, isEmpty);
+      expect(result.kitAdded, isEmpty);
+      expect(result.kitAnswers, isEmpty);
+      expect(result.kitLearnCounted, isEmpty);
+    });
+
+    test('suggeriti letti nell ordine, aggiunti con le copie', () {
+      final json = _okResponse()
+        ..['kit'] = {
+          'aggiunti': [
+            {'kit_id': 'k1', 'item_id': 'i1', 'copie': 2},
+            {'kit_id': 'k1', 'item_id': 'i2', 'copie': 1},
+          ],
+          'suggeriti': [
+            {
+              'kit_id': 'k-b',
+              'presi': 1,
+              'totale': 3,
+              'mancanti': [
+                {'item_id': 'i3', 'copie': 2},
+                {'item_id': 'i4', 'copie': 1},
+              ],
+            },
+            {'kit_id': 'k-a', 'presi': 0, 'totale': 2, 'mancanti': <dynamic>[]},
+          ],
+        };
+
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+
+      expect(result.kitAdded.map((a) => (a.kitId, a.itemId, a.copies)), [
+        ('k1', 'i1', 2),
+        ('k1', 'i2', 1),
+      ]);
+      expect(result.kitSuggestions.map((s) => s.kitId), ['k-b', 'k-a']);
+      final first = result.kitSuggestions.first;
+      expect((first.taken, first.total), (1, 3));
+      expect(first.missing.map((m) => (m.itemId, m.copies)), [
+        ('i3', 2),
+        ('i4', 1),
+      ]);
+    });
+
+    test('kit presente ma vuoto: nessun campo', () {
+      final json = _okResponse()
+        ..['kit'] = {'aggiunti': <dynamic>[], 'suggeriti': <dynamic>[]};
+
+      final result = parsePackTripResponse(json, houseId: _houseId, now: _now);
+
+      expect(result.kitAdded, isEmpty);
+      expect(result.kitSuggestions, isEmpty);
+    });
+  });
+
   group('parsePackTripResponse: posti e informazioni', () {
     Map<String, dynamic> posto(
       String id, {

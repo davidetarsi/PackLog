@@ -174,6 +174,46 @@ class AiReasonPoint with _$AiReasonPoint {
       _$AiReasonPointFromJson(json);
 }
 
+/// Un oggetto della casa con le copie, come lo chiedono i kit (`mancanti`).
+@freezed
+class KitItemRef with _$KitItemRef {
+  const factory KitItemRef({required String itemId, @Default(1) int copies}) =
+      _KitItemRef;
+
+  factory KitItemRef.fromJson(Map<String, dynamic> json) =>
+      _$KitItemRefFromJson(json);
+}
+
+/// Un kit sotto soglia: [taken] oggetti su [total] sono già in valigia, e
+/// [missing] sono quelli da aggiungere.
+@freezed
+class AiKitSuggestion with _$AiKitSuggestion {
+  @JsonSerializable(explicitToJson: true)
+  const factory AiKitSuggestion({
+    required String kitId,
+    required int taken,
+    required int total,
+    @Default(<KitItemRef>[]) List<KitItemRef> missing,
+  }) = _AiKitSuggestion;
+
+  factory AiKitSuggestion.fromJson(Map<String, dynamic> json) =>
+      _$AiKitSuggestionFromJson(json);
+}
+
+/// Un oggetto che la funzione ha messo in valigia perché il kit [kitId] entra
+/// da solo nel viaggio.
+@freezed
+class AiKitAdded with _$AiKitAdded {
+  const factory AiKitAdded({
+    required String kitId,
+    required String itemId,
+    @Default(1) int copies,
+  }) = _AiKitAdded;
+
+  factory AiKitAdded.fromJson(Map<String, dynamic> json) =>
+      _$AiKitAddedFromJson(json);
+}
+
 /// Risultato della generazione, salvato con il viaggio.
 @freezed
 class AiPackingResult with _$AiPackingResult {
@@ -195,6 +235,18 @@ class AiPackingResult with _$AiPackingResult {
     /// comporta come prima.
     List<AiSlot>? slots,
     @Default(<AiTripNote>[]) List<AiTripNote> notes,
+
+    /// Kit sotto soglia da proporre, nell'ordine della funzione.
+    @Default(<AiKitSuggestion>[]) List<AiKitSuggestion> kitSuggestions,
+
+    /// Oggetti dei kit entrati da soli: la valigia li unisce ai capi proposti.
+    @Default(<AiKitAdded>[]) List<AiKitAdded> kitAdded,
+
+    /// Risposta alla riga di ogni kit: kitId → "added" | "dismissed".
+    @Default(<String, String>{}) Map<String, String> kitAnswers,
+
+    /// Kit già contati per imparare in questo viaggio: un sì non conta due volte.
+    @Default(<String>[]) List<String> kitLearnCounted,
   }) = _AiPackingResult;
 
   /// Il risultato ha i posti (anche se la lista è vuota).
@@ -244,6 +296,23 @@ AiPackingResult carryToBuy(AiPackingResult? previous, AiPackingResult next) {
         else
           slot,
     ],
+  );
+}
+
+/// Rigenerando, le risposte alla riga dei kit si azzerano ([next] ne ha
+/// già di nuove) ma i kit già contati per imparare restano: un sì dato in
+/// questo viaggio non si conta due volte.
+AiPackingResult carryKitCounted(
+  AiPackingResult? previous,
+  AiPackingResult next,
+) {
+  final counted = previous?.kitLearnCounted;
+  if (counted == null || counted.isEmpty) {
+    return next.copyWith(kitAnswers: const {});
+  }
+  return next.copyWith(
+    kitLearnCounted: {...counted, ...next.kitLearnCounted}.toList(),
+    kitAnswers: const {},
   );
 }
 
