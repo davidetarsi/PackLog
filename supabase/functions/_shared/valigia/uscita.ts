@@ -106,7 +106,7 @@ const CONTRO_LA_PIOGGIA = new Set(["Coat", "Rain Jacket", "Down Jacket", "Windbr
   "Casual Jacket", "Boots", "Hiking Boots", "Snow Boots", "Sneakers", "Dress Shoes", "Loafers", "Ski Pants",
   "Cap/Hat", "Umbrella"]);
 const CATEGORIE_CONTRO_LA_PIOGGIA = new Set(["Outerwear", "Shoes"]);
-export const MAI_PER_IL_FREDDO = new Set(["T-Shirt", "Polo", "Tank Top", "Crop Top", "Shorts", "Swimwear", "Sandals",
+const MAI_PER_IL_FREDDO = new Set(["T-Shirt", "Polo", "Tank Top", "Crop Top", "Shorts", "Swimwear", "Sandals",
   "Flip-Flops", "Water Shoes", "Sunglasses", "Umbrella", "Wetsuit", "Belt", "Tie", "Jewelry", "Watch", "Bag"]);
 
 /** Capi che non tutti usano: fra i mancanti solo se l'armadio ne ha gia' uno (Davide, 25 ottobre;

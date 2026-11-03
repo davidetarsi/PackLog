@@ -12,7 +12,6 @@ import { caldoUnCapoAlGiorno, camminoAPiedi } from "./regole_capi.ts";
 import { ordinaTappe } from "./slots.ts";
 import { attivitaPer, calore, capiUniti, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
   meteoDelGap, perQuestoArmadio, SOLO_SE_NELL_ARMADIO, soloElegante, tettoSalvate } from "./uscita.ts";
-import { sottocategoriaDalModello } from "./posti_capo.ts";
 import { NOMI_CATEGORIA, NOMI_FAMIGLIA, NOMI_SOTTOCATEGORIA, type NomePosto } from "./posti_nomi.ts";
 
 export type Livello = "importante" | "utile";
@@ -276,14 +275,16 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
       continue;
     }
     if (!TIPI_DI_POSTO.has(g.tipo)) continue;
-    // Lo stesso capo che nomina l'avviso (copyMancante): col freddo, il maglione e non la felpa.
-    // Il capo del posto: il primo che va dell'elenco del modello; senza elenco (bisogni imposti), o se
-    // nessuno va, quello di capoDelGap.
+    // Il capo del posto lo sceglie il generatore: il suo abbinamento (slots.ts) rifatto su un armadio tipico
+    // (armadio_tipico.ts), col calore, la formalita', le attivita' e l'impermeabilita' del bisogno. Lo porta
+    // richiesti (capoTipico). Se nessun capo tipico va, o e' un capo che si nomina solo se l'armadio lo ha
+    // e l'armadio no, resta quello di capoDelGap (lo stesso che nomina l'avviso: col freddo, il maglione).
     const richiesto = richiesti.find((r) => r.slot === g.slot);
-    const delModello = sottocategoriaDalModello(g, richiesto, viaggioFreddo, attivita, (s) =>
-      !SOLO_SE_NELL_ARMADIO.has(s) || sottocategorie.has(s));
-    const { sub, categoria } = delModello
-      ? { sub: delModello, categoria: String(g.category ?? "") }
+    const tipico = richiesto?.capoTipico as { sub?: string; categoria?: string } | undefined;
+    const usaTipico = Boolean(tipico?.sub && tipico.categoria && NOMI_SOTTOCATEGORIA[tipico.sub] &&
+      (!SOLO_SE_NELL_ARMADIO.has(tipico.sub) || sottocategorie.has(tipico.sub)));
+    const { sub, categoria } = usaTipico
+      ? { sub: tipico!.sub!, categoria: tipico!.categoria! }
       : capoDelGap(g, viaggioFreddo || (calore(g)?.[0] ?? 0) >= 3);
     const tipo = sub ?? categoria;
     if (!tipo) continue;

@@ -1,0 +1,1559 @@
+[
+ {
+  "id": "tipico:01",
+  "name": "Tshirt di cotone",
+  "ai_metadata": {
+   "name": "Tshirt di cotone",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:02",
+  "name": "Tshirt tecnica",
+  "ai_metadata": {
+   "name": "Tshirt tecnica",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport",
+    "Hiking"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:03",
+  "name": "Camicia cotone",
+  "ai_metadata": {
+   "name": "Camicia cotone",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:04",
+  "name": "Camicia elegante",
+  "ai_metadata": {
+   "name": "Camicia elegante",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Formal",
+   "activityTags": [
+    "Formal",
+    "Office"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:05",
+  "name": "Camicia lino",
+  "ai_metadata": {
+   "name": "Camicia lino",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:06",
+  "name": "Camicia flanella",
+  "ai_metadata": {
+   "name": "Camicia flanella",
+   "category": "Upper Body",
+   "subCategory": "Shirt",
+   "baseColor": "N/A",
+   "pattern": "Plaid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:07",
+  "name": "Polo",
+  "ai_metadata": {
+   "name": "Polo",
+   "category": "Upper Body",
+   "subCategory": "Polo",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:08",
+  "name": "Maglia a maniche lunghe",
+  "ai_metadata": {
+   "name": "Maglia a maniche lunghe",
+   "category": "Upper Body",
+   "subCategory": "T-Shirt",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:09",
+  "name": "Felpa con cappuccio",
+  "ai_metadata": {
+   "name": "Felpa con cappuccio",
+   "category": "Upper Body",
+   "subCategory": "Hoodie",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Lounge"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:10",
+  "name": "Felpa girocollo",
+  "ai_metadata": {
+   "name": "Felpa girocollo",
+   "category": "Upper Body",
+   "subCategory": "Sweatshirt",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Lounge"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:11",
+  "name": "Maglione di lana",
+  "ai_metadata": {
+   "name": "Maglione di lana",
+   "category": "Upper Body",
+   "subCategory": "Sweater",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:12",
+  "name": "Maglione leggero di cotone",
+  "ai_metadata": {
+   "name": "Maglione leggero di cotone",
+   "category": "Upper Body",
+   "subCategory": "Sweater",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:13",
+  "name": "Cardigan",
+  "ai_metadata": {
+   "name": "Cardigan",
+   "category": "Upper Body",
+   "subCategory": "Sweater",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:14",
+  "name": "Canottiera",
+  "ai_metadata": {
+   "name": "Canottiera",
+   "category": "Upper Body",
+   "subCategory": "Tank Top",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Sleeveless",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:15",
+  "name": "Top corto",
+  "ai_metadata": {
+   "name": "Top corto",
+   "category": "Upper Body",
+   "subCategory": "Crop Top",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Short-sleeve",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:16",
+  "name": "Maglia termica",
+  "ai_metadata": {
+   "name": "Maglia termica",
+   "category": "Upper Body",
+   "subCategory": "Thermal Top",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Hiking",
+    "Sport"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:17",
+  "name": "Pile leggero",
+  "ai_metadata": {
+   "name": "Pile leggero",
+   "category": "Upper Body",
+   "subCategory": "Fleece",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  },
+  "correzione": "scan: Outerwear/Casual Jacket; e un pile"
+ },
+ {
+  "id": "tipico:18",
+  "name": "Pile pesante",
+  "ai_metadata": {
+   "name": "Pile pesante",
+   "category": "Upper Body",
+   "subCategory": "Fleece",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:19",
+  "name": "Jeans",
+  "ai_metadata": {
+   "name": "Jeans",
+   "category": "Lower Body",
+   "subCategory": "Jeans",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:20",
+  "name": "Pantaloni chino",
+  "ai_metadata": {
+   "name": "Pantaloni chino",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:21",
+  "name": "Pantaloni eleganti",
+  "ai_metadata": {
+   "name": "Pantaloni eleganti",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:22",
+  "name": "Pantaloni di lino",
+  "ai_metadata": {
+   "name": "Pantaloni di lino",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:23",
+  "name": "Pantaloni trekking",
+  "ai_metadata": {
+   "name": "Pantaloni trekking",
+   "category": "Lower Body",
+   "subCategory": "Trousers",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Everyday"
+   ],
+   "waterResistance": 1,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:24",
+  "name": "Pantaloncini",
+  "ai_metadata": {
+   "name": "Pantaloncini",
+   "category": "Lower Body",
+   "subCategory": "Shorts",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:25",
+  "name": "Bermuda",
+  "ai_metadata": {
+   "name": "Bermuda",
+   "category": "Lower Body",
+   "subCategory": "Shorts",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Shorts",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:26",
+  "name": "Leggins",
+  "ai_metadata": {
+   "name": "Leggins",
+   "category": "Lower Body",
+   "subCategory": "Leggings",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Skinny",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:27",
+  "name": "Gonna",
+  "ai_metadata": {
+   "name": "Gonna",
+   "category": "Lower Body",
+   "subCategory": "Skirt",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:28",
+  "name": "Costume",
+  "ai_metadata": {
+   "name": "Costume",
+   "category": "Lower Body",
+   "subCategory": "Swimwear",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Swimming"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  },
+  "correzione": "scan: Essentials/Other; e un costume"
+ },
+ {
+  "id": "tipico:29",
+  "name": "Pantaloni tuta",
+  "ai_metadata": {
+   "name": "Pantaloni tuta",
+   "category": "Lower Body",
+   "subCategory": "Sweatpants",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Lounge"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:30",
+  "name": "Calzamaglia",
+  "ai_metadata": {
+   "name": "Calzamaglia",
+   "category": "Lower Body",
+   "subCategory": "Thermal Bottoms",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Skinny",
+   "warmth": 4,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Hiking",
+    "Sport"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:31",
+  "name": "Pantaloni sci",
+  "ai_metadata": {
+   "name": "Pantaloni sci",
+   "category": "Lower Body",
+   "subCategory": "Ski Pants",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Sport"
+   ],
+   "waterResistance": 2,
+   "bulk": 3
+  }
+ },
+ {
+  "id": "tipico:32",
+  "name": "Muta sub",
+  "ai_metadata": {
+   "name": "Muta sub",
+   "category": "Lower Body",
+   "subCategory": "Wetsuit",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Full-length",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Swimming",
+    "Sport"
+   ],
+   "waterResistance": 2,
+   "bulk": 2
+  },
+  "correzione": "scan: Not Classified senza metadati; e una muta"
+ },
+ {
+  "id": "tipico:33",
+  "name": "Vestito estivo",
+  "ai_metadata": {
+   "name": "Vestito estivo",
+   "category": "Full Body",
+   "subCategory": "Dress",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Sleeveless",
+   "fit": "Regular",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:34",
+  "name": "Vestito elegante",
+  "ai_metadata": {
+   "name": "Vestito elegante",
+   "category": "Full Body",
+   "subCategory": "Dress",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Formal",
+   "activityTags": [
+    "Formal"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:35",
+  "name": "Sneakers",
+  "ai_metadata": {
+   "name": "Sneakers",
+   "category": "Shoes",
+   "subCategory": "Sneakers",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:36",
+  "name": "Sandali",
+  "ai_metadata": {
+   "name": "Sandali",
+   "category": "Shoes",
+   "subCategory": "Sandals",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Beach",
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:37",
+  "name": "Infradito",
+  "ai_metadata": {
+   "name": "Infradito",
+   "category": "Shoes",
+   "subCategory": "Flip-Flops",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Beach",
+    "Swimming"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:38",
+  "name": "Stivaletti",
+  "ai_metadata": {
+   "name": "Stivaletti",
+   "category": "Shoes",
+   "subCategory": "Boots",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 1,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:39",
+  "name": "Stivali di pelle",
+  "ai_metadata": {
+   "name": "Stivali di pelle",
+   "category": "Shoes",
+   "subCategory": "Boots",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 1,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:40",
+  "name": "Mocassini",
+  "ai_metadata": {
+   "name": "Mocassini",
+   "category": "Shoes",
+   "subCategory": "Loafers",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 2,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:41",
+  "name": "Scarpe eleganti",
+  "ai_metadata": {
+   "name": "Scarpe eleganti",
+   "category": "Shoes",
+   "subCategory": "Dress Shoes",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 2,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:42",
+  "name": "Scarpe nike",
+  "ai_metadata": {
+   "name": "Scarpe nike",
+   "category": "Shoes",
+   "subCategory": "Sneakers",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Sport"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:43",
+  "name": "Scarponi trekking",
+  "ai_metadata": {
+   "name": "Scarponi trekking",
+   "category": "Shoes",
+   "subCategory": "Hiking Boots",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 2,
+   "bulk": 3
+  }
+ },
+ {
+  "id": "tipico:44",
+  "name": "Scarpe trail",
+  "ai_metadata": {
+   "name": "Scarpe trail",
+   "category": "Shoes",
+   "subCategory": "Hiking Boots",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 2,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Hiking",
+    "Sport"
+   ],
+   "waterResistance": 1,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:45",
+  "name": "Scarpe da scoglio",
+  "ai_metadata": {
+   "name": "Scarpe da scoglio",
+   "category": "Shoes",
+   "subCategory": "Water Shoes",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Beach",
+    "Swimming"
+   ],
+   "waterResistance": 2,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:46",
+  "name": "Doposci",
+  "ai_metadata": {
+   "name": "Doposci",
+   "category": "Shoes",
+   "subCategory": "Snow Boots",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 5,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking"
+   ],
+   "waterResistance": 2,
+   "bulk": 3
+  }
+ },
+ {
+  "id": "tipico:47",
+  "name": "Cappotto di lana",
+  "ai_metadata": {
+   "name": "Cappotto di lana",
+   "category": "Outerwear",
+   "subCategory": "Coat",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 4,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0,
+   "bulk": 3
+  }
+ },
+ {
+  "id": "tipico:48",
+  "name": "Trench",
+  "ai_metadata": {
+   "name": "Trench",
+   "category": "Outerwear",
+   "subCategory": "Coat",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 1,
+   "bulk": 3
+  }
+ },
+ {
+  "id": "tipico:49",
+  "name": "Piumino leggero",
+  "ai_metadata": {
+   "name": "Piumino leggero",
+   "category": "Outerwear",
+   "subCategory": "Down Jacket",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 1,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:50",
+  "name": "Piumino invernale",
+  "ai_metadata": {
+   "name": "Piumino invernale",
+   "category": "Outerwear",
+   "subCategory": "Down Jacket",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 5,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 1,
+   "bulk": 3
+  }
+ },
+ {
+  "id": "tipico:51",
+  "name": "Giacca impermeabile",
+  "ai_metadata": {
+   "name": "Giacca impermeabile",
+   "category": "Outerwear",
+   "subCategory": "Rain Jacket",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "N/A",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 2,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:52",
+  "name": "Kway",
+  "ai_metadata": {
+   "name": "Kway",
+   "category": "Outerwear",
+   "subCategory": "Windbreaker",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 1,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:53",
+  "name": "Giacca a vento",
+  "ai_metadata": {
+   "name": "Giacca a vento",
+   "category": "Outerwear",
+   "subCategory": "Windbreaker",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 1,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:54",
+  "name": "Giacca sci",
+  "ai_metadata": {
+   "name": "Giacca sci",
+   "category": "Outerwear",
+   "subCategory": "Ski Jacket",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 5,
+   "formality": "Casual",
+   "activityTags": [
+    "Sport",
+    "Hiking"
+   ],
+   "waterResistance": 2,
+   "bulk": 3
+  }
+ },
+ {
+  "id": "tipico:55",
+  "name": "Blazer",
+  "ai_metadata": {
+   "name": "Blazer",
+   "category": "Outerwear",
+   "subCategory": "Blazer",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:56",
+  "name": "Tuta sci",
+  "ai_metadata": {
+   "name": "Tuta sci",
+   "category": "Outerwear",
+   "subCategory": "Ski Suit",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 5,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Sport",
+    "Hiking"
+   ],
+   "waterResistance": 2,
+   "bulk": 3
+  },
+  "correzione": "scan: Full Body/Other; nel catalogo Ski Suit e Outerwear"
+ },
+ {
+  "id": "tipico:57",
+  "name": "Giacca jeans",
+  "ai_metadata": {
+   "name": "Giacca jeans",
+   "category": "Outerwear",
+   "subCategory": "Casual Jacket",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:58",
+  "name": "Puffer",
+  "ai_metadata": {
+   "name": "Puffer",
+   "category": "Outerwear",
+   "subCategory": "Down Jacket",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 5,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 1,
+   "bulk": 3
+  }
+ },
+ {
+  "id": "tipico:59",
+  "name": "Gilet imbottito",
+  "ai_metadata": {
+   "name": "Gilet imbottito",
+   "category": "Outerwear",
+   "subCategory": "Vest",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 1,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:60",
+  "name": "Softshell",
+  "ai_metadata": {
+   "name": "Softshell",
+   "category": "Outerwear",
+   "subCategory": "Windbreaker",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "Long-sleeve",
+   "fit": "Regular",
+   "warmth": 3,
+   "formality": "Casual",
+   "activityTags": [
+    "Hiking",
+    "Everyday"
+   ],
+   "waterResistance": 1,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:61",
+  "name": "Cappello baseball",
+  "ai_metadata": {
+   "name": "Cappello baseball",
+   "category": "Accessory",
+   "subCategory": "Cap/Hat",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:62",
+  "name": "Cuffia di lana",
+  "ai_metadata": {
+   "name": "Cuffia di lana",
+   "category": "Accessory",
+   "subCategory": "Cap/Hat",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:63",
+  "name": "Cintura",
+  "ai_metadata": {
+   "name": "Cintura",
+   "category": "Accessory",
+   "subCategory": "Belt",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:64",
+  "name": "Zaino",
+  "ai_metadata": {
+   "name": "Zaino",
+   "category": "Accessory",
+   "subCategory": "Bag",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 2
+  }
+ },
+ {
+  "id": "tipico:65",
+  "name": "Sciarpa lana",
+  "ai_metadata": {
+   "name": "Sciarpa lana",
+   "category": "Accessory",
+   "subCategory": "Scarf",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 4,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:66",
+  "name": "Foulard leggero",
+  "ai_metadata": {
+   "name": "Foulard leggero",
+   "category": "Accessory",
+   "subCategory": "Scarf",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:67",
+  "name": "Occhiali da sole",
+  "ai_metadata": {
+   "name": "Occhiali da sole",
+   "category": "Accessory",
+   "subCategory": "Sunglasses",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Beach"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:68",
+  "name": "Orologio",
+  "ai_metadata": {
+   "name": "Orologio",
+   "category": "Accessory",
+   "subCategory": "Watch",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Smart Casual",
+   "activityTags": [
+    "Everyday",
+    "Office"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:69",
+  "name": "Guanti lana",
+  "ai_metadata": {
+   "name": "Guanti lana",
+   "category": "Accessory",
+   "subCategory": "Gloves",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:70",
+  "name": "Cravatta",
+  "ai_metadata": {
+   "name": "Cravatta",
+   "category": "Accessory",
+   "subCategory": "Tie",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Business",
+   "activityTags": [
+    "Office",
+    "Formal"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:71",
+  "name": "Ombrello",
+  "ai_metadata": {
+   "name": "Ombrello",
+   "category": "Accessory",
+   "subCategory": "Umbrella",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 2,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:72",
+  "name": "Mutande",
+  "ai_metadata": {
+   "name": "Mutande",
+   "category": "Essentials",
+   "subCategory": "Underwear",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:73",
+  "name": "Calzini",
+  "ai_metadata": {
+   "name": "Calzini",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 1,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  },
+  "correzione": "scan: warmth 3; sono calzini corti"
+ },
+ {
+  "id": "tipico:74",
+  "name": "Calze lana",
+  "ai_metadata": {
+   "name": "Calze lana",
+   "category": "Essentials",
+   "subCategory": "Socks",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "N/A",
+   "warmth": 4,
+   "formality": "Casual",
+   "activityTags": [
+    "Everyday",
+    "Hiking"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ },
+ {
+  "id": "tipico:75",
+  "name": "Pigiama",
+  "ai_metadata": {
+   "name": "Pigiama",
+   "category": "Essentials",
+   "subCategory": "Pajamas",
+   "baseColor": "N/A",
+   "pattern": "Solid",
+   "coverage": "N/A",
+   "fit": "Regular",
+   "warmth": 2,
+   "formality": "Loungewear",
+   "activityTags": [
+    "Lounge"
+   ],
+   "waterResistance": 0,
+   "bulk": 1
+  }
+ }
+]

@@ -19,6 +19,7 @@ import {
   penalitaVetoCapo, penalitaVoto, rispettaCopie, score, segnaInPartenza, segnalaScarpeCammino, segnalaVolume,
   togliDoppioni,
 } from "./dopo.ts";
+import { armadioTipico } from "./armadio_tipico.ts";
 import { floorDiv, massimo, minimo, ordina, pf, ps, vero } from "./py.ts";
 
 /** dict.get(k, d) di Python: il default solo se la chiave manca (non se vale null). */
@@ -253,15 +254,6 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     }
     slots = separati;
   }
-  // L'ordine con cui il modello ha elencato le sottocategorie di ogni suo bisogno: `ideal` piu' sotto
-  // le riporta al genitore e le ordina, e l'ordine si perde. Serve solo ai posti (posti_capo.ts);
-  // non entra in nessuna scelta del generatore.
-  const elencoDelModello = new Map<string, string[]>();
-  for (const x of slots) {
-    if (x === null || typeof x !== "object" || Array.isArray(x)) continue;
-    const elenco = [...normList(vero(x.subCategories) ? x.subCategories : x.idealSubCategories, SUBCATEGORIES)];
-    if (elenco.length) elencoDelModello.set(String(x.slot), elenco);
-  }
   const prima = slots.length;
   const attViaggio = a.attivita_viaggio != null ? a.attivita_viaggio : (attivita || []);
   segnaCapiDaNeve(items, [...attViaggio, ...(attivita || [])]);
@@ -310,6 +302,8 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   const lavoro = viaggioDiLavoro(attivita, classiViaggio);
   const bulkPress = capienza <= 30 ? 0.25 : (capienza <= 55 ? 0.12 : 0.0);
   const used = new Set<string>();
+  // L'armadio tipico (armadio_tipico.ts), caricato alla prima lacuna.
+  let armadioDelTipico: Capo[] | null = null;
   let ideali: Record_[] = [], ripieghi: Record_[] = [];
   const gaps: Record_[] = [];
   const richiesti: Record_[] = [];
@@ -348,15 +342,14 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     const freq = get(s, "frequency", "daily");
     const intensitaSlot = normIntensita(s.intensita) || intensita;
     const reusable = K.REUSABLE.has(s.category);
-    richiesti.push({
+    const richiesto: Record_ = {
       slot: get(s, "slot"), category: get(s, "category", ""), subCategories: [...ideal].sort(),
       formality: [...forms].sort(), activityTags: [...tags].sort(),
       minWaterResistance: Math.trunc(Number(s.minWaterResistance || 0)), minWarmth: lo,
       frequency: get(s, "frequency", "daily"), imposto: Boolean(vero(s._fabbisogno) || vero(s._imposto)),
       reason: get(s, "reason", ""),
-      // Solo i bisogni del modello, nell'ordine in cui li ha scritti (non quelli imposti dal sistema).
-      ...(!vero(s._imposto) && elencoDelModello.has(String(s.slot)) ? { subCategoriesModello: elencoDelModello.get(String(s.slot)) } : {}),
-    });
+    };
+    richiesti.push(richiesto);
     const condividi = (base: Record_) => {
       const c = { ...base, slot: get(s, "slot"), match: "ideale", imposto: true, condiviso: true,
         reason: `${ps(get(s, "reason", ""))} (condiviso con '${ps(get(base, "slot"))}')` };
@@ -425,10 +418,12 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
       (giornoCasual && capoRiservato(g, profiliCapi) ? K.PESO_ELEGANTE_DI_GIORNO : 0.0) +
       (vero(s._preferisci_calore) ? K.PESO_CALORE_TESTA * Math.max(0, 4 - (g.warmth || 1)) : 0.0);
 
-    const pick = (subs: Set<string>, compromesso = false): Capo | null => {
+    // `lista` e `conta`: lo stesso abbinamento gira anche sull'armadio tipico (per il nome dei posti),
+    // senza contare gli esclusi dal tetto, che sono una misura del viaggio vero.
+    const pick = (subs: Set<string>, compromesso = false, lista: Capo[] = items, conta = true): Capo | null => {
       const soglia = compromesso ? K.MAX_PENALTY_COMPROMESSO : K.MAX_PENALTY;
       const tettoW = compromesso ? Math.min(hi + K.MARGINE_CALORE_COMPROMESSO, ceiling) : hi;
-      const cands = items.filter((g) => g.has_metadata && !g.sempre_in_valigia && (reusable || !used.has(g.id)) &&
+      const cands = lista.filter((g) => g.has_metadata && !g.sempre_in_valigia && (reusable || !used.has(g.id)) &&
         subs.has(g.sub_category) && (!wrRigido || (g.water_resistance || 0) >= minWr) &&
         (!covReq.size || covReq.has(g.coverage)) &&
         !estivoFuoriStagione(g, tempMax, inAcquaTappa, profiliCapi) &&
@@ -439,22 +434,39 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
         (!soloGuscio || GUSCI.has(g.sub_category) || (g.warmth || 1) <= ceiling) &&
         (!compromesso || (g.warmth || 3) >= lo) &&
         sc(g) <= soglia);
-      nEsclusiTetto += items.filter((g) => g.has_metadata && !g.sempre_in_valigia && (reusable || !used.has(g.id)) &&
+      if (conta) nEsclusiTetto += items.filter((g) => g.has_metadata && !g.sempre_in_valigia && (reusable || !used.has(g.id)) &&
         subs.has(g.sub_category) && (g.warmth || 1) > hi && sc(g) <= soglia).length;
       const ord = ordina(cands, sc);
       return ord.length ? ord[0] : null;
     };
     const unione = (a1: Set<string>, b1: Set<string>) => new Set([...a1, ...b1]);
 
-    let g = pick(ideal), kind = "ideale";
-    if (g == null && K.CAPI_DIVERSI_ELEGANTI && forms.size && !forms.has("Casual") && s.category === "Lower Body") {
-      g = pick(ideal, true); kind = "compromesso";
-    }
-    if (g == null) { g = pick(fallback); kind = "ripiego"; }
-    if (g == null) { g = pick(unione(ideal, fallback), true); kind = "compromesso"; }
+    // La scala dell'abbinamento: ideale, compromesso per i pantaloni eleganti, ripiego, compromesso su tutto.
+    const scala = (lista: Capo[], conta: boolean): [Capo | null, string] => {
+      let capoScelto = pick(ideal, false, lista, conta), tipo = "ideale";
+      if (capoScelto == null && K.CAPI_DIVERSI_ELEGANTI && forms.size && !forms.has("Casual") && s.category === "Lower Body") {
+        capoScelto = pick(ideal, true, lista, conta); tipo = "compromesso";
+      }
+      if (capoScelto == null) { capoScelto = pick(fallback, false, lista, conta); tipo = "ripiego"; }
+      if (capoScelto == null) { capoScelto = pick(unione(ideal, fallback), true, lista, conta); tipo = "compromesso"; }
+      return [capoScelto, tipo];
+    };
+    // Il capo che avrebbe il bisogno in un armadio tipico, per dare il nome al posto se resta un mancante.
+    // Stesso abbinamento, stessa fascia di calore e stesso meteo; i capi tipici partono tutti liberi.
+    const tipico = (): { sub: string; categoria: string } | null => {
+      if (!armadioDelTipico) {
+        armadioDelTipico = armadioTipico();
+        segnaCapiDaNeve(armadioDelTipico, [...attViaggio, ...(attivita || [])]);
+      }
+      const [scelto] = scala(armadioDelTipico, false);
+      return scelto ? { sub: scelto.sub_fine, categoria: scelto.category } : null;
+    };
+
+    let [g, kind] = scala(items, true);
     if (g == null) {
       const tutte = unione(ideal, fallback);
       const posseduti = items.filter((x) => x.has_metadata && tutte.has(x.sub_category));
+      richiesto.capoTipico = tipico();
       if (posseduti.length) {
         const sco = (x: Capo) => score(x, lo, hi, forms, tags, minWr, bulkPress);
         const migliore = minimo(posseduti, sco)!;
@@ -536,6 +548,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
       }
       if (capo == null) {
         nLacuneQuantita += 1;
+        richiesto.capoTipico = tipico();
         const T = K.TETTO_COPIE_STESSO_CAPO;
         gaps.push({
           slot: get(s, "slot"), tipo: "quantita_insufficiente", imposto: vero(s._imposto),

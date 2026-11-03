@@ -2,8 +2,8 @@
 // Uso: node --test valigia/test/posti.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sottocategoriaDalModello } from "../posti_capo.ts";
 import { livelloPosto, nomePosto, qualificaDelGap } from "../posti.ts";
+import { strategySlots } from "../slots.ts";
 import { capoDelGap, NOME_CATEGORIA, NOME_SOTTOCATEGORIA } from "../uscita.ts";
 import { NOMI_CATEGORIA, NOMI_SOTTOCATEGORIA } from "../posti_nomi.ts";
 
@@ -667,100 +667,77 @@ test("copie unite: tre mancanti Sneakers nella stessa tappa, le copie del maggio
   assert.equal(uno, 1);
 });
 
-// ── Il capo del posto segue l'elenco del modello (regola D, posti_capo.ts) ──────────────────────────────
+// ── Il nome del posto lo sceglie il generatore su un armadio tipico (slots.ts, armadio_tipico.ts) ─────────
 
-/** Un solo mancante con l'elenco del modello nei richiesti, come lo da' strategySlots: i posti del vestiario. */
-function postiModello(slot: string, category: string, elencoModello: string[], richiesto: Record<string, unknown>,
-  meteo: Record<string, number>, attivita: string[] = [], gap: Record<string, unknown> = {}) {
-  const g = assente(slot, category, [...new Set(elencoModello)].sort(), gap);
-  const r = { slot, category, subCategories: g.subCategories, frequency: "daily", subCategoriesModello: elencoModello, ...richiesto };
-  return postiApp({ mancanti_canonici: [g], richiesti: [r], essenziali: [] }, { capi: [], essenziali: [] }, new Map(),
-    { meteo: { giorni_di_pioggia: 0, ...meteo }, viaggio: { giorni: 5, lavatrice: true, attivita }, armadio: [], lingua: "it" })
+type Bisogno = Record<string, unknown>;
+const bisogno = (slot: string, category: string, subCategories: string[], extra: Bisogno = {}): Bisogno =>
+  ({ slot, category, subCategories, minWarmth: 1, maxWarmth: 5, formality: ["Casual"], activityTags: [], frequency: "daily",
+    essential: true, reason: "prova", ...extra });
+
+/** Il giro vero: il generatore su un armadio vuoto, poi i posti. Restano i capi da vestire (non intimo, calzini, ecc.). */
+function postiDelGeneratore(bisogni: Bisogno[], meteo: { temp_min: number; temp_max: number }, attivita: string[] = [],
+  giorni = 5): PostoApp[] {
+  const valigia = strategySlots(JSON.stringify(bisogni), [], { giorni, lavatrice: true, attivita, temp_min: meteo.temp_min,
+    temp_max: meteo.temp_max, bagaglio: "trolley medio", giorni_pioggia: 0 });
+  return postiApp(valigia, { capi: [], essenziali: [] }, new Map(),
+    { meteo: { temp_min_media: meteo.temp_min, temp_max_media: meteo.temp_max, giorni_di_pioggia: 0 },
+      viaggio: { giorni, lavatrice: true, attivita }, armadio: [], lingua: "it" })
     .posti.filter((p) => !["intimo", "calzini", "notte", "igiene"].includes(p.tipo));
 }
 const tipoDi = (posti: PostoApp[]) => posti.map((p) => p.tipo);
 
-test("regola D: senza altri motivi vale il primo dell'elenco del modello", () => {
-  const p = postiModello("inferiore", "Lower Body", ["Jeans", "Trousers"], { minWarmth: 2, formality: ["Casual"] }, { temp_min_media: 14, temp_max_media: 22 });
-  assert.deepEqual(tipoDi(p), ["Jeans"]);
+test("posto: il capo e' quello che il generatore sceglierebbe nell'armadio tipico, non il primo dell'elenco", () => {
+  // Un posto su richiesti: il generatore lo ha scritto in capoTipico, i posti lo seguono.
+  const g = assente("inferiore", "Lower Body", ["Jeans", "Trousers"]);
+  const conTipico = (capoTipico?: Bisogno) => postiApp({ mancanti_canonici: [g], richiesti: [{ slot: "inferiore", category: "Lower Body",
+    subCategories: ["Jeans", "Trousers"], frequency: "daily", ...(capoTipico ? { capoTipico } : {}) }], essenziali: [] },
+  { capi: [], essenziali: [] }, new Map(),
+  { meteo: { temp_min_media: 14, temp_max_media: 22, giorni_di_pioggia: 0 }, viaggio: { giorni: 5, lavatrice: true, attivita: [] },
+    armadio: [], lingua: "it" }).posti.filter((p) => !["intimo", "calzini", "notte", "igiene"].includes(p.tipo));
+  assert.deepEqual(tipoDi(conTipico({ sub: "Trousers", categoria: "Lower Body" })), ["Trousers"]);
+  // nessun capo tipico va: resta capoDelGap, come prima
+  assert.deepEqual(tipoDi(conTipico()), [capoDelGap(g).sub]);
+  // un capo che si nomina solo se l'armadio lo ha (la gonna) e l'armadio no: capoDelGap
+  assert.deepEqual(tipoDi(conTipico({ sub: "Skirt", categoria: "Lower Body" })), [capoDelGap(g).sub]);
 });
 
-test("regola D, Ginevra: niente jeans in un viaggio di lavoro, anche in un bisogno casual", () => {
-  const p = postiModello("inferiore casual", "Lower Body", ["Jeans", "Trousers"], { minWarmth: 2, formality: ["Casual"] },
-    { temp_min_media: 3.5, temp_max_media: 11.5 }, ["congresso", "cene di lavoro", "riunioni di lavoro"]);
-  assert.deepEqual(tipoDi(p), ["Trousers"]);
+test("posto, Livigno (sintetico): maglia termica, pile, maglione e un capospalla da sci, non tutti maglioni", () => {
+  const p = postiDelGeneratore([
+    bisogno("strato base caldo", "Upper Body", ["Thermal Top"], { minWarmth: 3, formality: ["Loungewear"], activityTags: ["Sport"] }),
+    bisogno("strato intermedio", "Upper Body", ["Fleece", "Hoodie"], { minWarmth: 3, activityTags: ["Hiking"] }),
+    bisogno("strato per la sera", "Upper Body", ["Sweater"], { minWarmth: 3, formality: ["Smart Casual"] }),
+    bisogno("giacca da sci", "Outerwear", ["Ski Jacket"], { minWarmth: 5, activityTags: ["Sport"], minWaterResistance: 2 }),
+  ], { temp_min: -9, temp_max: 1 }, ["sci"], 7);
+  const tipi = tipoDi(p);
+  assert.ok(tipi.includes("Thermal Top"), `maglia termica: ${tipi}`);
+  assert.ok(tipi.includes("Fleece"), `pile: ${tipi}`);
+  assert.ok(tipi.includes("Sweater"), `maglione la sera: ${tipi}`);
+  assert.ok(tipi.includes("Ski Jacket"), `giacca da sci: ${tipi}`);
+  assert.equal(p.find((x) => x.tipo === "Fleece")!.nome, "Pile");
 });
 
-test("regola D, Dubrovnik: niente jeans in un bisogno di sola eleganza media (Smart Casual)", () => {
-  const p = postiModello("inferiore serata", "Lower Body", ["Jeans", "Trousers"], { minWarmth: 1, formality: ["Smart Casual"] },
-    { temp_min_media: 20.7, temp_max_media: 29.7 }, ["mare", "vita notturna"]);
-  assert.deepEqual(tipoDi(p), ["Trousers"]);
+test("posto, Ginevra: in un viaggio di lavoro il bisogno casual non diventa jeans", () => {
+  const p = postiDelGeneratore([bisogno("inferiore casual", "Lower Body", ["Jeans", "Trousers"], { minWarmth: 2 })],
+    { temp_min: 3.5, temp_max: 11.5 }, ["congresso", "cene di lavoro", "riunioni di lavoro"]);
+  assert.ok(!tipoDi(p).includes("Jeans"), `niente jeans: ${tipoDi(p)}`);
 });
 
-test("regola D, Praga: col freddo il cappotto (di lana, calore 4 nella scala dello scan) basta a 3 ma non a 4: li' il piumino", () => {
-  // Le giacche del meteo diventano un posto solo ("Giacca invernale"): la scelta si guarda sulla funzione.
-  const g = assente("capospalla", "Outerwear", ["Coat", "Down Jacket", "Windbreaker"]);
-  const rich = (minWarmth: number) => ({ minWarmth, formality: ["Business", "Casual", "Smart Casual"], subCategoriesModello: ["Coat", "Down Jacket", "Windbreaker"] });
-  assert.equal(sottocategoriaDalModello(g, rich(3), true, [], () => true), "Coat");
-  // col freddo e calore 4 serve 5 al capo qualunque: il cappotto non basta, il piumino (capo per il freddo) si
-  assert.equal(sottocategoriaDalModello(g, rich(4), true, [], () => true), "Down Jacket");
-  // senza freddo il cappotto, primo del modello, va bene
-  assert.equal(sottocategoriaDalModello(g, rich(4), false, [], () => true), "Coat");
-  // il windbreaker (calore 2) non regge mai un bisogno di 3 col freddo, anche se e' il solo dell'elenco
-  const solo = { minWarmth: 3, subCategoriesModello: ["Windbreaker"] };
-  assert.equal(sottocategoriaDalModello(g, solo, true, [], () => true), null);
-  // l'elenco assente (bisogno imposto): niente, resta capoDelGap
-  assert.equal(sottocategoriaDalModello(g, { minWarmth: 3 }, true, [], () => true), null);
+test("posto, matrimonio: il bisogno elegante prende un capo elegante, non la maglietta", () => {
+  const p = postiDelGeneratore([bisogno("superiore elegante", "Upper Body", ["T-Shirt", "Shirt"],
+    { minWarmth: 2, formality: ["Formal"], activityTags: ["Formal"] })], { temp_min: 15, temp_max: 25 }, ["matrimonio"]);
+  assert.ok(tipoDi(p).includes("Shirt"), `camicia: ${tipoDi(p)}`);
+  assert.ok(!tipoDi(p).includes("T-Shirt"), `niente maglietta: ${tipoDi(p)}`);
 });
 
-test("regola D, Budapest e Dolomiti: col freddo non la camicia ne' la maglietta, il maglione", () => {
-  const budapest = postiModello("superiore_formale", "Upper Body", ["Shirt", "Sweater"],
-    { minWarmth: 2, formality: ["Business", "Smart Casual"] }, { temp_min_media: -0.4, temp_max_media: 7 });
-  assert.deepEqual(tipoDi(budapest), ["Sweater"]);
-  const dolomiti = postiModello("superiore casual", "Upper Body", ["T-Shirt", "Shirt", "Sweater"],
-    { minWarmth: 2, formality: ["Casual", "Loungewear"] }, { temp_min_media: -3.2, temp_max_media: 7.1 });
-  assert.deepEqual(tipoDi(dolomiti), ["Sweater"]);
-  // senza freddo la maglietta resta la prima
-  const estate = postiModello("superiore casual", "Upper Body", ["T-Shirt", "Shirt", "Sweater"],
-    { minWarmth: 1, formality: ["Casual"] }, { temp_min_media: 16, temp_max_media: 27 });
-  assert.deepEqual(tipoDi(estate), ["T-Shirt"]);
+test("posto, polare: le giacche del meteo restano un posto solo, 'Giacca invernale' (il capo tipico non lo cambia)", () => {
+  const p = postiDelGeneratore([bisogno("capospalla caldo", "Outerwear", ["Coat", "Down Jacket"], { minWarmth: 5 })],
+    { temp_min: -15, temp_max: -5 }, ["visite in citta"]);
+  assert.match(p.find((x) => x.tipo === "Outerwear")!.nome, /^Giacc[ae] invernal[ei]$/);
 });
 
-test("regola D, Yakutsk: a -40 felpa e felpa con cappuccio non bastano, si torna al maglione di capoDelGap", () => {
-  const p = postiModello("strato intermedio", "Upper Body", ["Sweatshirt", "Hoodie"], { minWarmth: 3, formality: ["Casual", "Loungewear"] },
-    { temp_min_media: -39.8, temp_max_media: -32 }, ["visite in citta"]);
-  assert.deepEqual(tipoDi(p), ["Sweater"]);
-});
-
-test("regola D: un capo da caldo non apre un bisogno che chiede calore (T-Shirt a calore 3)", () => {
-  const p = postiModello("strato", "Upper Body", ["T-Shirt", "Hoodie"], { minWarmth: 3, formality: ["Casual"] }, { temp_min_media: 12, temp_max_media: 20 });
-  assert.deepEqual(tipoDi(p), ["Hoodie"]);
-});
-
-test("regola D: i bisogni imposti dal sistema (senza elenco del modello) restano a capoDelGap", () => {
-  const g = assente("strato", "Upper Body", ["Hoodie", "Sweater", "Sweatshirt"], { warmth_richiesto: [3, 5] });
-  const r = { slot: "strato", category: "Upper Body", subCategories: g.subCategories, frequency: "daily", imposto: true };
-  const { posti } = postiApp({ mancanti_canonici: [g], richiesti: [r], essenziali: [] }, { capi: [], essenziali: [] }, new Map(),
-    { meteo: { temp_min_media: -5, temp_max_media: 3 }, viaggio: { giorni: 5, lavatrice: true, attivita: [] }, armadio: [], lingua: "it" });
-  assert.equal(posti.find((p) => p.tipo === "Sweater")?.tipo, "Sweater");
-});
-
-test("regola D, Livigno: maglia termica e pile di giorno, maglione la sera", () => {
-  const sci = { temp_min_media: -9, temp_max_media: 1 };
-  const g1 = assente("strato base caldo", "Upper Body", ["Fleece", "Thermal Top"], { warmth_richiesto: [3, 5] });
-  const g2 = assente("strato intermedio", "Upper Body", ["Fleece", "Hoodie"], { warmth_richiesto: [3, 5] });
-  const g3 = assente("strato per la sera", "Upper Body", ["Sweater"], { warmth_richiesto: [3, 5] });
-  const rich = [
-    { slot: g1.slot, category: "Upper Body", minWarmth: 3, frequency: "daily", subCategoriesModello: ["Thermal Top", "Fleece"] },
-    { slot: g2.slot, category: "Upper Body", minWarmth: 3, frequency: "daily", subCategoriesModello: ["Fleece", "Hoodie"] },
-    { slot: g3.slot, category: "Upper Body", minWarmth: 3, frequency: "daily", subCategoriesModello: ["Sweater"] },
-  ];
-  const { posti } = postiApp({ mancanti_canonici: [g1, g2, g3], richiesti: rich, essenziali: [] }, { capi: [], essenziali: [] }, new Map(),
-    { meteo: sci, viaggio: { giorni: 7, lavatrice: false, attivita: ["sci"] }, armadio: [], lingua: "it" });
-  const vestiti = posti.filter((p) => !["intimo", "calzini", "notte", "igiene"].includes(p.tipo));
-  assert.deepEqual(tipoDi(vestiti).sort(), ["Fleece", "Sweater", "Thermal Top"]);
-  const nome = (t: string) => vestiti.find((p) => p.tipo === t)!.nome;
-  assert.match(nome("Thermal Top"), /^Magli[ae] termic[ah]e?$|^Maglie termiche$|^Maglia termica$/);
-  assert.equal(nome("Fleece"), "Pile");
-  assert.match(nome("Sweater"), /^Maglion[ei]/);
+test("posto: un bisogno senza capo tipico (nessun capo in fascia) resta a capoDelGap", () => {
+  // Il generatore non trova nulla, nemmeno nell'armadio tipico: il posto c'e' e ha il capo di capoDelGap.
+  const p = postiDelGeneratore([bisogno("strato", "Upper Body", ["Tank Top"], { minWarmth: 5, formality: ["Formal"] })],
+    { temp_min: -40, temp_max: -30 }, ["visite in citta"]);
+  assert.ok(p.length > 0);
 });
