@@ -38,9 +38,11 @@ class AppTheme {
       secondaryContainer: Color(0xFFE5E7EB),
       onSecondaryContainer: Color(0xFF1F2937),
       // ── Tertiary: stati transienti ("in viaggio") ──────────────────────────
-      // Ambra brunita. Distinta da primary (arancione) e da itemTemporary (blu).
-      tertiary: Color(0xFFD97706),
-      onTertiary: Colors.white,
+      // Il giallo del gradiente, come nel tema scuro: l'ambra brunita di prima
+      // nella barra della valigia si confondeva con l'arancione degli
+      // importanti. Sul giallo il testo è quasi nero (il bianco non legge).
+      tertiary: Color(0xFFFBBF24),
+      onTertiary: Color(0xFF18181B),
       tertiaryContainer: Color(0xFFFEF3C7),
       onTertiaryContainer: Color(0xFF451A03),
       // ── Superfici (grigio neutro, appena freddo) ──────────────────────────

@@ -28,6 +28,7 @@ class PackLogGradientBorder extends StatefulWidget {
     required this.radius,
     this.width = 1.5,
     this.loops = 0,
+    this.restingOpacity = AppOpacity.restingGradientBorder,
     this.period = const Duration(seconds: 6),
   });
 
@@ -38,6 +39,10 @@ class PackLogGradientBorder extends StatefulWidget {
   /// 0 = fermo, -1 = finché è montato, n > 0 = n giri.
   final int loops;
   final Duration period;
+
+  /// Opacità del bordo quando sta fermo (non è mai partito, o i giri sono
+  /// finiti).
+  final double restingOpacity;
 
   @override
   State<PackLogGradientBorder> createState() => _PackLogGradientBorderState();
@@ -125,6 +130,7 @@ class _PackLogGradientBorderState extends State<PackLogGradientBorder>
         radius: widget.radius,
         width: widget.width,
         rest: _rest,
+        restingOpacity: widget.restingOpacity,
       ),
       child: widget.child,
     );
@@ -137,14 +143,18 @@ class _GradientBorderPainter extends CustomPainter {
     required this.radius,
     required this.width,
     required this.rest,
+    required this.restingOpacity,
   }) : super(repaint: Listenable.merge([phase, rest]));
 
   final Animation<double> phase;
   final double radius;
   final double width;
 
-  /// 0 = piena opacità, 1 = a riposo ([AppOpacity.restingGradientBorder]).
+  /// 0 = piena opacità, 1 = a riposo ([restingOpacity]).
   final Animation<double> rest;
+
+  @visibleForTesting
+  final double restingOpacity;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -156,7 +166,7 @@ class _GradientBorderPainter extends CustomPainter {
     final dy = size.height * _kBorderSlant;
     final start = Offset(dx * t, dy * t);
     final end = Offset(dx * (t + 1), dy * (t + 1));
-    final opacity = 1 - (1 - AppOpacity.restingGradientBorder) * rest.value;
+    final opacity = 1 - (1 - restingOpacity) * rest.value;
     final colors = [
       for (final c in [...kPackLogGradientColors, kPackLogGradientColors.first])
         c.withValues(alpha: opacity),
@@ -181,7 +191,9 @@ class _GradientBorderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GradientBorderPainter old) =>
-      old.radius != radius || old.width != width;
+      old.radius != radius ||
+      old.width != width ||
+      old.restingOpacity != restingOpacity;
 }
 
 /// La scintilla di PackLog: una stella a quattro punte piena, col gradiente.

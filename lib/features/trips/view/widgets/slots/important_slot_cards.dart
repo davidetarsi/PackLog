@@ -12,8 +12,15 @@ import 'slot_pop.dart';
 // Gli importanti nel dettaglio del viaggio: la card di un importante aperto
 // (la riga "da comprare" sta in `to_buy_slot_row.dart`).
 //
-// Colori provvisori: l'accento di "Importante" è `onPrimaryContainer`, lo
-// stesso degli avvisi della valigia AI.
+// Regola dei colori: l'arancione (`primary`) è "da fare", quindi bordo ed
+// etichetta degli importanti, aperti o chiusi, e l'azione di aggiunta.
+
+/// Il contorno arancione di un importante: lo stesso da chiuso e da aperto,
+/// così aprire il posto non fa "saltare" la card.
+ShapeBorder _importantShape(ColorScheme cs) => RoundedRectangleBorder(
+  side: BorderSide(color: cs.primary, width: AppConstants.selectedBorderWidth),
+  borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+);
 
 /// Card di un posto importante aperto: "Importante", nome (×N), motivo in
 /// una riga e due azioni testuali, l'aggiunta ([AiSlot.addLabel]) e "Da
@@ -63,7 +70,7 @@ class ImportantSlotCard extends StatelessWidget {
 
     return Material(
       color: context.groupSurface,
-      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+      shape: _importantShape(cs),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
@@ -86,7 +93,7 @@ class ImportantSlotCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ImportantLabel(color: cs.onPrimaryContainer),
+                      ImportantLabel(color: cs.primary),
                       SizedBox(height: context.spacingXs),
                       Row(
                         children: [
@@ -133,6 +140,7 @@ class ImportantSlotCard extends StatelessWidget {
                         key: Key('slot_add_${slot.id}'),
                         label: slot.addLabel,
                         onPressed: onAdd,
+                        accent: true,
                       ),
                       DsTextButton(
                         key: Key('slot_to_buy_${slot.id}'),
@@ -165,18 +173,17 @@ class _OpenImportantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Material(
       color: context.groupSurface,
-      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+      shape: _importantShape(cs),
       clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: EdgeInsets.all(context.spacingMd),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ImportantLabel(
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
-            ),
+            ImportantLabel(color: cs.primary),
             SizedBox(height: context.spacingSm),
             body,
           ],
