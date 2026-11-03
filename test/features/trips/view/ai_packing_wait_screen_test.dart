@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/profile/providers/gpt_usage_provider.dart';
@@ -16,6 +17,7 @@ import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:pack_log/features/trips/services/pack_trip_timing.dart';
 import 'package:pack_log/features/trips/view/ai_packing_wait_screen.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:sentry_flutter/sentry_flutter.dart' show SentryLevel;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
 import 'package:pack_log/shared/widgets/packlog_gradient.dart';
@@ -73,6 +75,19 @@ class _Outcome {
   AiPackingResult? result;
 }
 
+class _Monitoring extends AppMonitoringService {
+  final captured = <Object>[];
+
+  @override
+  void captureException(
+    Object exception, {
+    StackTrace? stackTrace,
+    SentryLevel level = SentryLevel.error,
+    Map<String, String>? tags,
+  }) => captured.add(exception);
+}
+
+late _Monitoring _monitoring;
 late _FakeService _service;
 late _Outcome _outcome;
 late int _usageBuilds;
@@ -83,6 +98,15 @@ class _Weather extends TripWeatherNotifier {
 
   @override
   Future<TripWeatherState> build(String tripId) async => state0;
+}
+
+/// Meteo che arriva quando lo decide il test.
+class _LateWeather extends TripWeatherNotifier {
+  _LateWeather(this.arrival);
+  final Completer<TripWeatherState> arrival;
+
+  @override
+  Future<TripWeatherState> build(String tripId) => arrival.future;
 }
 
 class _Items extends ItemNotifier {
@@ -124,23 +148,28 @@ Future<void> _pump(
   Map<String, Object> prefs = const {},
   PackTripJob? job,
   TripWeather? weather,
+  Completer<TripWeatherState>? lateWeather,
   int items = 3,
   bool disableAnimations = false,
 }) async {
   SharedPreferences.setMockInitialValues(prefs);
   _service = _FakeService();
+  _monitoring = _Monitoring();
   _outcome = _Outcome();
   _usageBuilds = 0;
 
   final container = ProviderContainer(
     overrides: [
       packTripServiceProvider.overrideWithValue(_service),
+      monitoringServiceProvider.overrideWithValue(_monitoring),
       tripWeatherNotifierProvider('trip-1').overrideWith(
-        () => _Weather(
-          weather == null
-              ? const TripWeatherFailed()
-              : TripWeatherReady(weather),
-        ),
+        () => lateWeather != null
+            ? _LateWeather(lateWeather)
+            : _Weather(
+                weather == null
+                    ? const TripWeatherFailed()
+                    : TripWeatherReady(weather),
+              ),
       ),
       itemNotifierProvider(_houseId).overrideWith(() => _Items(items)),
       gptUsageProvider.overrideWith((ref) {
@@ -414,6 +443,31 @@ void main() {
       await _finish(tester);
     });
 
+    testWidgets('il meteo che arriva in ritardo compare con la dissolvenza', (
+      tester,
+    ) async {
+      final arrival = Completer<TripWeatherState>();
+      await _pump(tester, lateWeather: arrival);
+      // Il passo meteo è già chiuso (spunta) e il meteo non c'è: nessuna riga.
+      await tester.pump(const Duration(milliseconds: 3400));
+      expect(find.byKey(const Key('ai_wait_check')), findsOneWidget);
+      expect(find.text('1–6°, 2 giorni di pioggia'), findsNothing);
+      final result = find.byKey(const Key('ai_wait_result')).first;
+      expect(tester.widget<AnimatedOpacity>(result).opacity, 0);
+
+      // Arriva mentre l'attesa prosegue: la riga si dissolve, i passi non si fermano.
+      arrival.complete(TripWeatherReady(_meteo(rain: 2)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(find.text('1–6°, 2 giorni di pioggia'), findsOneWidget);
+      expect(tester.widget<AnimatedOpacity>(result).opacity, 1);
+      await tester.pump(const Duration(milliseconds: 3400));
+      expect(find.text('12 capi guardati'), findsNothing);
+      expect(find.text('3 capi guardati'), findsOneWidget);
+      _service.last.complete(_result);
+      await _finish(tester);
+    });
+
     testWidgets('armadio vuoto e meteo senza pioggia', (tester) async {
       await _pump(tester, weather: _meteo(), items: 0);
       await tester.pump(const Duration(milliseconds: 7000));
@@ -592,6 +646,52 @@ void main() {
 
       expect(_outcome.popped, isTrue);
       expect(_outcome.result, isNull);
+    });
+
+    testWidgets('senza rete: dice che sei offline e non segnala', (
+      tester,
+    ) async {
+      await _pump(tester);
+      _service.last.completeError(const PackTripNetworkException('rete'));
+      await _settle(tester);
+
+      expect(
+        _text('Non è stato possibile preparare la valigia'),
+        findsOneWidget,
+      );
+      expect(
+        _text('Sei offline. Riprova quando torni in rete.'),
+        findsOneWidget,
+      );
+      expect(find.text('Riprova'), findsOneWidget);
+      expect(find.text('Chiudi'), findsOneWidget);
+      expect(_monitoring.captured, isEmpty);
+    });
+
+    testWidgets('problema del server: testo dedicato e lo segnala', (
+      tester,
+    ) async {
+      await _pump(tester);
+      _service.last.completeError(const PackTripException('HTTP 502'));
+      await _settle(tester);
+
+      expect(
+        _text('Non sono riuscito a preparare la valigia. Riprova tra poco.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('connessione'), findsNothing);
+      expect(find.textContaining('offline'), findsNothing);
+      expect(find.textContaining('502'), findsNothing);
+      expect(_monitoring.captured, hasLength(1));
+    });
+
+    testWidgets('crediti finiti: nessuna segnalazione', (tester) async {
+      await _pump(tester);
+      _service.last.completeError(const PackTripCreditsException());
+      await _settle(tester);
+
+      expect(_text('Hai finito i crediti AI'), findsOneWidget);
+      expect(_monitoring.captured, isEmpty);
     });
 
     testWidgets('errore generico: Riprova richiama generate', (tester) async {

@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,8 +29,8 @@ class PackTripWardrobeTooLargeException implements Exception {
   const PackTripWardrobeTooLargeException();
 }
 
-/// Valigia non arrivata: rete, sessione, errore della funzione o risposta
-/// illeggibile.
+/// Valigia non arrivata: sessione, errore della funzione o risposta
+/// illeggibile (la mancanza di rete è la sottoclasse [PackTripNetworkException]).
 class PackTripException implements Exception {
   const PackTripException(this.message);
 
@@ -36,6 +38,12 @@ class PackTripException implements Exception {
 
   @override
   String toString() => 'PackTripException: $message';
+}
+
+/// Nessuna risposta dal server: l'utente è offline (o la rete è caduta).
+/// Non è un errore da segnalare al monitoraggio.
+class PackTripNetworkException extends PackTripException {
+  const PackTripNetworkException(super.message);
 }
 
 /// La valigia AI dalla funzione `pack-trip`.
@@ -81,7 +89,12 @@ class PackTripService {
       );
     } catch (e) {
       if (attempt.cancelled) throw const PackTripException('annullata');
-      throw PackTripException('rete: $e');
+      if (e is SocketException ||
+          e is http.ClientException ||
+          e is TimeoutException) {
+        throw PackTripNetworkException('rete: $e');
+      }
+      throw PackTripException('richiesta fallita: $e');
     } finally {
       if (identical(_attempt, attempt)) _attempt = null;
       client.close();

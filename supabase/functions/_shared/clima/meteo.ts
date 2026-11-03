@@ -143,6 +143,7 @@ export async function meteo(lat: number, lon: number, inizio: string, fine: stri
   const annoInizio = Number(inizio.slice(0, 4)), annoFine = Number(fine.slice(0, 4));
   const anni: number[] = [];
   for (let a = ultimoAnno - ANNI_STORICI + 1; a <= ultimoAnno; a++) anni.push(a);
+  const esiti: string[] = [];
   const risposte = await Promise.all(anni.map(async (anno) => {
     const delta = anno - annoInizio;
     const sAnno = conAnno(inizio, annoInizio + delta), eAnno = conAnno(fine, annoFine + delta);
@@ -157,7 +158,12 @@ export async function meteo(lat: number, lon: number, inizio: string, fine: stri
       if (resp.status !== 429) break;
       await s.attendi(t);
     }
-    return resp && resp.status === 200 ? await resp.json() : null;
+    if (resp && resp.status === 200) return await resp.json();
+    // Perche' l'anno manca: lo stato e il motivo di Open-Meteo ({"error":true,"reason":...}).
+    let motivo = "";
+    try { motivo = String((await resp?.json())?.reason ?? ""); } catch { /* corpo non JSON */ }
+    esiti.push(`${anno}: HTTP ${resp?.status ?? "-"}${motivo ? ` ${motivo.slice(0, 120)}` : ""}`);
+    return null;
   }));
 
   const accumulato: Record<string, number[]> = Object.fromEntries(CAMPI_STORICO.map((k) => [k, []]));
@@ -165,12 +171,14 @@ export async function meteo(lat: number, lon: number, inizio: string, fine: stri
   for (const j of risposte) {
     if (!j) continue;
     const daily = j.daily ?? {};
-    if (!daily.time?.length) continue;
+    if (!daily.time?.length) { esiti.push("risposta senza giorni"); continue; }
     if (quotaGriglia == null) quotaGriglia = j.elevation ?? null;
     n++;
     for (const k of CAMPI_STORICO) accumulato[k].push(...pieni(daily[k]));
   }
-  if (n === 0) throw new Error("archivio storico non disponibile per questa localita");
+  if (n === 0) {
+    throw new Error(`archivio storico non disponibile per questa localita (${lat},${lon} ${inizio}..${fine}; ${esiti.join("; ")})`);
+  }
 
   const out = correggiQuota(deriva(accumulato, `storico ${n} anni`), quotaReale, quotaGriglia);
   // I conteggi sono sommati su piu' anni: riportati alla scala del viaggio.
