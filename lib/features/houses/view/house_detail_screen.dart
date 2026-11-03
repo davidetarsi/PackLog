@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pack_log/shared/theme/app_spacing.dart';
 import 'package:pack_log/shared/theme/app_motion.dart';
+import 'package:pack_log/shared/theme/cta_reserved_space.dart';
 import 'package:pack_log/shared/widgets/app_pill_tab.dart';
 import 'package:pack_log/shared/widgets/ds_appear.dart';
 import 'package:pack_log/shared/widgets/sticky_cta_scaffold.dart';
@@ -84,6 +85,9 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   /// Focus del rapid fire, condiviso con lo stato vuoto: "scrivili a mano"
   /// apre la pagina "aggiungi" mettendo il focus qui.
   final _rapidFireFocus = FocusNode();
+  final _normalActionBarKey = GlobalKey();
+  double? _normalActionBarHeight;
+  bool _normalActionBarMeasureScheduled = false;
 
   /// Pagina "aggiungi" aperta: il campo rapid fire ha il focus. Il
   /// [_addBaseline] sono gli id degli oggetti presenti quando si è aperta
@@ -104,6 +108,18 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
   }
 
   CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
+
+  void _scheduleNormalActionBarMeasurement() {
+    if (!_isAdding || _normalActionBarMeasureScheduled) return;
+    _normalActionBarMeasureScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _normalActionBarMeasureScheduled = false;
+      if (!mounted || !_isAdding) return;
+      final height = _normalActionBarKey.currentContext?.size?.height;
+      if (height == null || height == _normalActionBarHeight) return;
+      setState(() => _normalActionBarHeight = height);
+    });
+  }
 
   void _openSearch() {
     _analytics.trackSearchOpened(context: 'house');
@@ -183,6 +199,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
       _isAdding = false;
       _addBaseline = null;
       _isRapidFireExpanded = false;
+      _normalActionBarHeight = null;
     });
   }
 
@@ -471,6 +488,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
       _addBaseline = {for (final item in loadedItems) item.id};
     }
     final addBaseline = _addBaseline;
+    _scheduleNormalActionBarMeasurement();
     final allItemIds = visibleHouseItems(
       allItems,
       spaceId: _spaceFilter,
@@ -507,6 +525,13 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
           final house = matchingHouses.first;
 
           return StickyCtaScaffold(
+            ctaHeightOverride: _isAdding
+                ? StickyCtaScaffold.standardHeight(context) -
+                      context.responsive(AppConstants.ctaHeight) +
+                      (_normalActionBarHeight ??
+                          context.responsive(_kBottomBarElementsHeight) +
+                              MediaQuery.viewInsetsOf(context).bottom)
+                : null,
             appBar: DsContextualAppBar(
               isInSelectionMode: isSelectionMode,
               switchDuration: _kModeSwitchDuration,
@@ -650,22 +675,37 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                           )
                         : KeyedSubtree(
                             key: const ValueKey('normal_bar'),
-                            child: _HouseNormalActionBar(
-                              houseId: widget.houseId,
-                              onAiScan: () =>
-                                  startAiScan(context, ref, widget.houseId),
-                              autofocusRapidFire: widget.openRapidFire,
-                              isExpanded: _isRapidFireExpanded,
-                              currentSpaceId:
-                                  (_spaceFilter != null &&
-                                      _spaceFilter != 'default')
-                                  ? _spaceFilter
-                                  : null,
-                              focusNode: _rapidFireFocus,
-                              onTextChanged: (q) =>
-                                  setState(() => _addQuery = q),
-                              onExpandedChanged: _onRapidFireExpanded,
-                            ),
+                            child:
+                                NotificationListener<
+                                  SizeChangedLayoutNotification
+                                >(
+                                  onNotification: (_) {
+                                    _scheduleNormalActionBarMeasurement();
+                                    return false;
+                                  },
+                                  child: SizeChangedLayoutNotifier(
+                                    child: _HouseNormalActionBar(
+                                      key: _normalActionBarKey,
+                                      houseId: widget.houseId,
+                                      onAiScan: () => startAiScan(
+                                        context,
+                                        ref,
+                                        widget.houseId,
+                                      ),
+                                      autofocusRapidFire: widget.openRapidFire,
+                                      isExpanded: _isRapidFireExpanded,
+                                      currentSpaceId:
+                                          (_spaceFilter != null &&
+                                              _spaceFilter != 'default')
+                                          ? _spaceFilter
+                                          : null,
+                                      focusNode: _rapidFireFocus,
+                                      onTextChanged: (q) =>
+                                          setState(() => _addQuery = q),
+                                      onExpandedChanged: _onRapidFireExpanded,
+                                    ),
+                                  ),
+                                ),
                           ),
                   ),
           );
@@ -906,7 +946,13 @@ class _AddPage extends ConsumerWidget {
 
     return SingleChildScrollView(
       key: const Key('house_add_page'),
-      padding: EdgeInsets.symmetric(horizontal: context.spacingMd),
+      // CtaReservedSpaceScope riflette la barra reale, la riga di pillole e
+      // la tastiera, così l'ultima riga può scrollare sopra tutta la CTA.
+      padding: EdgeInsets.only(
+        left: context.spacingMd,
+        right: context.spacingMd,
+        bottom: context.ctaReservedHeight,
+      ),
       // Solo il contenuto è "dentro" il campo: toccare lo spazio vuoto sotto
       // chiude la pagina, toccare una riga apre l'oggetto.
       child: TapRegion(
@@ -949,6 +995,7 @@ class _HouseNormalActionBar extends StatelessWidget {
   final ValueChanged<String> onTextChanged;
 
   const _HouseNormalActionBar({
+    super.key,
     required this.houseId,
     required this.onAiScan,
     required this.autofocusRapidFire,
@@ -962,7 +1009,7 @@ class _HouseNormalActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final elementHeight = context.responsive(_kBottomBarElementsHeight);
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
@@ -112,6 +113,98 @@ void main() {
     );
   }
 
+  testWidgets('incolla dal menu del testo: il campo resta aperto e incolla', (
+    tester,
+  ) async {
+    var clipboard = 'Costume da bagno';
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        switch (call.method) {
+          case 'Clipboard.getData':
+            return <String, dynamic>{'text': clipboard};
+          case 'Clipboard.hasStrings':
+            return <String, dynamic>{'value': clipboard.isNotEmpty};
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    String? last;
+    final expandedChanges = <bool>[];
+    await pumpInput(
+      tester,
+      focusNode: node,
+      onTextChanged: (v) => last = v,
+      onExpandedChanged: expandedChanges.add,
+    );
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    expect(node.hasFocus, isTrue);
+    expect(expandedChanges, [true]);
+
+    await tester.longPress(find.byType(TextField));
+    await tester.pumpAndSettle();
+    expect(find.text('Paste'), findsOneWidget);
+
+    await tester.tap(find.text('Paste'));
+    await tester.pumpAndSettle();
+
+    // Mai chiuso, nemmeno per un attimo: la casa chiuderebbe la pagina.
+    expect(expandedChanges, [true]);
+    expect(node.hasFocus, isTrue);
+    expect(find.byType(CategoryPill), findsWidgets);
+    expect(last, 'Costume da bagno');
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller?.text,
+      'Costume da bagno',
+    );
+  });
+
+  testWidgets('le pillole compaiono e spariscono col focus, senza animazione', (
+    tester,
+  ) async {
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    await pumpInput(tester, focusNode: node);
+    expect(find.byType(CategoryPill), findsNothing);
+    final fieldState = tester.state(find.byType(EditableText));
+    final closedHeight = tester.getSize(find.byType(RapidFireInput)).height;
+
+    node.requestFocus();
+    await tester.pump();
+    // Già alla loro altezza piena nel frame del focus: a muovere la barra è
+    // solo la tastiera, non una corsa delle pillole.
+    final openHeight = tester.getSize(find.byType(RapidFireInput)).height;
+    expect(openHeight, greaterThan(closedHeight));
+    // Il campo non viene ricreato dall'arrivo delle pillole.
+    expect(tester.state(find.byType(EditableText)), same(fieldState));
+    expect(
+      find.ancestor(
+        of: find.byType(CategoryPill),
+        matching: find.byWidgetPredicate(
+          (w) => w is AnimatedSize || w is AnimatedOpacity,
+        ),
+      ),
+      findsNothing,
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(tester.getSize(find.byType(RapidFireInput)).height, openHeight);
+
+    node.unfocus();
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(CategoryPill), findsNothing);
+    expect(tester.getSize(find.byType(RapidFireInput)).height, closedHeight);
+  });
+
   testWidgets('enabled false: il campo non si scrive', (tester) async {
     String? last;
     await pumpInput(tester, enabled: false, onTextChanged: (v) => last = v);
@@ -202,6 +295,7 @@ void main() {
       _RecordingItemNotifier fake, {
       ValueChanged<ItemModel>? onItemCreated,
       String? hintText,
+      FocusNode? focusNode,
     }) async {
       tester.view.physicalSize = const Size(412, 915);
       tester.view.devicePixelRatio = 1.0;
@@ -220,6 +314,7 @@ void main() {
                     houseId: 'h1',
                     onItemCreated: onItemCreated,
                     hintText: hintText,
+                    focusNode: focusNode,
                   ),
                 ),
               ),
@@ -357,6 +452,45 @@ void main() {
       expect(created.single.name, 'T-shirt nere');
       expect(created.single.quantity, 2);
     });
+
+    testWidgets(
+      'focus e suggerimento copie insieme mantengono il campo e inviano',
+      (tester) async {
+        final fake = _RecordingItemNotifier();
+        final focusNode = FocusNode();
+        addTearDown(focusNode.dispose);
+        final created = <ItemModel>[];
+        await pumpWithFake(
+          tester,
+          fake,
+          focusNode: focusNode,
+          onItemCreated: created.add,
+        );
+        final editableState = tester.state<EditableTextState>(
+          find.byType(EditableText),
+        );
+
+        focusNode.requestFocus();
+        await tester.enterText(find.byType(TextField), '2 t-shirt nere');
+        await tester.pumpAndSettle();
+
+        expect(find.text('items.copies_tip'), findsOneWidget);
+        expect(focusNode.hasFocus, isTrue);
+        expect(
+          tester.state<EditableTextState>(find.byType(EditableText)),
+          same(editableState),
+        );
+
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
+
+        expect(fake.added, hasLength(1));
+        expect(created, hasLength(1));
+        expect(created.single.name, 'T-shirt nere');
+        expect(created.single.quantity, 2);
+        expect(focusNode.hasFocus, isTrue);
+      },
+    );
 
     testWidgets('onItemCreated non parte se il salvataggio fallisce', (
       tester,
