@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/monitoring/monitoring_service.dart';
 import '../../../shared/theme/app_spacing.dart';
 import '../../profile/providers/gpt_usage_provider.dart';
 import '../model/ai_packing.dart';
@@ -46,6 +47,7 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
 
   /// La valigia è arrivata.
   AiPackingResult? _result;
+
   /// Un'uscita è già partita: nessun'altra può fare pop (chiuderebbe il chiamante).
   bool _leaving = false;
 
@@ -71,13 +73,15 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
 
     AiPackingResult? result;
     Object? failure;
+    StackTrace? failureStack;
     try {
       result = await _service.generate(
         widget.job.body,
         houseId: widget.job.houseId,
       );
-    } catch (error) {
+    } catch (error, stack) {
       failure = error;
+      failureStack = stack;
     }
     await started;
 
@@ -86,6 +90,13 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
     ref.invalidate(gptUsageProvider);
 
     if (result == null) {
+      // Offline e casi previsti (crediti, armadio) non sono guasti da segnalare.
+      if (failure is PackTripException &&
+          failure is! PackTripNetworkException) {
+        ref
+            .read(monitoringServiceProvider)
+            .captureException(failure, stackTrace: failureStack);
+      }
       _steps?.dispose();
       _steps = null;
       setState(() => _failure = failure);
