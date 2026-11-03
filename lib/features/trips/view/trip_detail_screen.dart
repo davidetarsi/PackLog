@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/analytics/analytics_service.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
@@ -16,8 +15,6 @@ import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../houses/providers/house_provider.dart';
-import '../../items/model/item_model.dart';
-import '../model/ai_packing.dart';
 import '../model/suitcase_progress.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
@@ -27,9 +24,7 @@ import 'widgets/pack/pack_weather.dart';
 import 'widgets/slots/slot_actions.dart';
 import 'widgets/slots/slot_flights.dart';
 import 'widgets/slots/slot_edits.dart';
-import 'widgets/slots/slot_end_spacer.dart';
-import 'widgets/slots/slot_focus.dart';
-import 'widgets/slots/slot_rapid_fire_bar.dart';
+import 'widgets/slots/slot_fill_flow.dart';
 import 'widgets/slots/slots_section.dart';
 import 'widgets/slots/trip_items_card.dart';
 
@@ -61,21 +56,9 @@ class TripDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
-    with TripSlotEdits, TripSlotFlights {
-  /// Il posto che la barra Rapid Fire sta riempiendo; `null` = barra chiusa.
-  /// La barra si vede solo finché il posto è ancora aperto.
-  String? _openSlotId;
-
-  /// Gli oggetti scritti in questa apertura: stanno nel riquadro, non fra
-  /// quelli dell'utente, finché il posto resta aperto.
-  List<TripItem> _written = const [];
-
-  /// Il posto riaperto con "Presa" da "da comprare": riempirlo vuol dire che
-  /// l'hai comprato.
-  String? _boughtSlotId;
-
+    with TripSlotEdits, TripSlotFlights, TripSlotFill {
   /// Il posto chiesto dal percorso, in attesa che viaggio e case siano
-  /// caricati per aprire la barra.
+  /// caricati per aprire il foglio.
   String? _pendingSlotId;
 
   @override
@@ -93,52 +76,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     }
   }
 
-  /// Apre la barra per riempire [slot] con uno dei propri oggetti: la toccano
-  /// la riga di un proposto, l'aggiunta sulla card di un importante e
-  /// "Presa" su un "da comprare". Se la casa di partenza non c'è più la barra
-  /// non si apre e uno snack lo dice.
-  void _openSlot(AiSlot slot) {
-    final notifier = ref.read(tripNotifierProvider.notifier);
-    final trips = ref.read(tripNotifierProvider).valueOrNull;
-    final houseId = trips
-        ?.where((t) => t.id == tripId)
-        .firstOrNull
-        ?.aiResult
-        ?.houseId;
-    final houses = ref.read(houseNotifierProvider).valueOrNull;
-    if (houseId == null ||
-        houses == null ||
-        !houses.any((h) => h.id == houseId)) {
-      AppSnackBar.showInfo(context, 'trips.slots.no_house'.tr());
-      return;
-    }
-    // "Presa" su una proposta da comprare: torna nella valigia, in cima ai
-    // proposti.
-    if (slot.toBuy && slot.level == AiSlotLevel.useful) {
-      unawaited(updateSlot(notifier, slot, (s) => s.copyWith(toBuy: false)));
-    }
-    setState(() {
-      _openSlotId = slot.id;
-      _written = const [];
-      _boughtSlotId = slot.toBuy ? slot.id : null;
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) => bringOpenCardUp());
-  }
-
-  /// Richiude il posto: gli oggetti scritti tornano fra quelli dell'utente,
-  /// e volano alla loro riga.
-  void _closeBar() {
-    if (_openSlotId == null) return;
-    final flights = captureFlights(_written);
-    setState(() {
-      _openSlotId = null;
-      _written = const [];
-      _boughtSlotId = null;
-      popping = false;
-    });
-    flyAfterFrame(flights);
-  }
-
   /// Se il percorso chiedeva un posto, lo apre appena viaggio e case sono
   /// caricati: una sola volta, dopo il frame.
   void _resolvePendingSlot(TripModel trip) {
@@ -151,52 +88,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
         .firstOrNull;
     if (slot == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _openSlot(slot);
+      if (mounted) openSlot(slot);
     });
-  }
-
-  /// L'oggetto appena creato dalla barra entra in valigia e scala il posto.
-  /// Se il salvataggio non va lo dice (l'oggetto resta nella casa).
-  Future<void> _fillSlot(AiSlot slot, ItemModel item) async {
-    final notifier = ref.read(tripNotifierProvider.notifier);
-    final analytics = ref.read(analyticsServiceProvider);
-    // Un posto "da comprare" si apre solo con "Presa" (la riga, o `?slot=`
-    // dalla vista Da comprare): riempirlo vuol dire che l'hai comprato.
-    final bought = slot.toBuy || slot.id == _boughtSlotId;
-    final packed = TripItem(
-      id: item.id,
-      name: item.name,
-      category: item.category,
-      quantity: item.quantity ?? 1,
-      originHouseId: item.houseId,
-    );
-    if (_openSlotId == slot.id) {
-      setState(() {
-        _written = [..._written, packed];
-        popping = slot.remaining <= packed.quantity;
-      });
-    }
-    try {
-      await notifier.fillAiSlot(tripId, slot.id, packed);
-      if (bought) {
-        unawaited(
-          analytics.logEvent(
-            'slot_bought',
-            properties: {'level': slot.level.name},
-          ),
-        );
-      }
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => popping = false);
-      AppSnackBar.showError(context, 'errors.save_error'.tr());
-    }
-  }
-
-  /// "Da comprare" sulla barra: segna il posto e chiude la barra.
-  void _barToBuy(AiSlot slot) {
-    startPop(isOpen: _openSlotId != null);
-    unawaited(markSlotToBuy(slot, from: 'bar'));
   }
 
   @override
@@ -208,32 +101,14 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
         final trip = trips.where((t) => t.id == tripId).firstOrNull;
         if (trip == null) return _notFound(context);
         _resolvePendingSlot(trip);
-        final listSlot = this.listSlot(trip, _openSlotId);
         return _TripDetail(
           trip: trip,
-          barSlot: listSlot,
-          openSlot: listSlot == null
-              ? null
-              : OpenSlotState(
-                  slot: listSlot,
-                  written: _written,
-                  cardKey: openCardKey,
-                  popping: popping,
-                ),
-          onFillSlot: _fillSlot,
-          onCloseBar: _closeBar,
-          onBarToBuy: _barToBuy,
           slotActions: SlotActions(
-            open: _openSlot,
-            close: _closeBar,
+            open: openSlot,
             markToBuy: (slot) => markSlotToBuy(slot),
             toggle: toggleSlot,
-            toggleItem: (item) => ref
-                .read(tripNotifierProvider.notifier)
-                .toggleItemCheck(tripId, item.id),
             remove: (slot) => unawaited(removeSlot(slot, confirm: true)),
             dismiss: (slot) => unawaited(removeSlot(slot, confirm: false)),
-            popDone: () => popDone(_closeBar),
             rowKey: rowKey,
             flying: flying,
             flyKitItems: flyKitItems,
@@ -269,26 +144,7 @@ class _TripDetail extends ConsumerWidget {
   final TripModel trip;
   final SlotActions slotActions;
 
-  /// Il posto che la barra Rapid Fire sta riempiendo; `null` = barra chiusa e
-  /// al suo posto "Modifica valigia".
-  final AiSlot? barSlot;
-
-  /// Il posto aperto nella lista, con gli oggetti scritti; `null` se la
-  /// barra è chiusa.
-  final OpenSlotState? openSlot;
-  final void Function(AiSlot slot, ItemModel item) onFillSlot;
-  final VoidCallback onCloseBar;
-  final ValueChanged<AiSlot> onBarToBuy;
-
-  const _TripDetail({
-    required this.trip,
-    required this.slotActions,
-    required this.barSlot,
-    required this.openSlot,
-    required this.onFillSlot,
-    required this.onCloseBar,
-    required this.onBarToBuy,
-  });
+  const _TripDetail({required this.trip, required this.slotActions});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -298,7 +154,6 @@ class _TripDetail extends ConsumerWidget {
         .firstOrNull;
     // Con i posti la valigia c'è anche senza oggetti propri.
     final hasItems = !SuitcaseProgress.of(trip).isEmpty;
-    final bar = barSlot;
 
     return StickyCtaScaffold(
       appBar: AppBar(
@@ -337,82 +192,42 @@ class _TripDetail extends ConsumerWidget {
           ),
         ],
       ),
-      // Mentre si riempie un posto la barra Rapid Fire prende il posto del
-      // bottone.
-      bottomContent: bar != null
-          ? SlotRapidFireBar(
-              slot: bar,
-              houseId: trip.aiResult!.houseId,
-              onItemCreated: (item) => onFillSlot(bar, item),
-              onClose: onCloseBar,
-              onToBuy: bar.toBuy ? null : () => onBarToBuy(bar),
-              popping: openSlot?.popping ?? false,
-            )
-          : DsButton(
-              key: const Key('trip_detail_cta'),
-              label: hasItems
-                  ? 'trips.detail.edit_suitcase'.tr()
-                  : 'trips.pack.title'.tr(),
-              icon: hasItems ? Icons.edit_outlined : Icons.luggage_outlined,
-              expand: true,
-              onPressed: () => context.push('/trips/${trip.id}/edit-items'),
+      bottomContent: DsButton(
+        key: const Key('trip_detail_cta'),
+        label: hasItems
+            ? 'trips.detail.edit_suitcase'.tr()
+            : 'trips.pack.title'.tr(),
+        icon: hasItems ? Icons.edit_outlined : Icons.luggage_outlined,
+        expand: true,
+        onPressed: () => context.push('/trips/${trip.id}/edit-items'),
+      ),
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(
+          context.spacingMd,
+          context.spacingSm,
+          context.spacingMd,
+          context.spacingLg + context.ctaReservedHeight,
+        ),
+        children: [
+          // Il riepilogo è la cartolina del viaggio: toccarlo apre la modifica
+          // di date e tappe.
+          InkWell(
+            key: const Key('trip_detail_summary'),
+            borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+            onTap: () => context.push('/trips/${trip.id}/edit-info'),
+            child: PackSummaryLine(
+              trip: trip,
+              destinationHouseName: destinationHouse?.displayName,
+              houseNames: {for (final h in houses) h.id: h.displayName},
             ),
-      ctaHeightOverride: bar == null
-          ? null
-          : StickyCtaScaffold.standardHeight(context) +
-                kMinInteractiveDimension +
-                context.spacingXs,
-      // Con un posto aperto il resto si spenge, e in fondo c'è spazio per
-      // portare in cima anche l'ultimo gruppo.
-      body: LayoutBuilder(
-        builder: (context, viewport) {
-          final open = openSlot;
-          Widget dim(Widget child) => SlotFocus(
-            active: open != null,
-            onTapOutside: onCloseBar,
-            child: child,
-          );
-          return ListView(
-            padding: EdgeInsets.fromLTRB(
-              context.spacingMd,
-              context.spacingSm,
-              context.spacingMd,
-              context.spacingLg + context.ctaReservedHeight,
-            ),
-            children: [
-              dim(
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Il riepilogo è la cartolina del viaggio: toccarlo apre
-                    // la modifica di date e tappe.
-                    InkWell(
-                      key: const Key('trip_detail_summary'),
-                      borderRadius: BorderRadius.circular(
-                        AppConstants.cardBorderRadius,
-                      ),
-                      onTap: () => context.push('/trips/${trip.id}/edit-info'),
-                      child: PackSummaryLine(
-                        trip: trip,
-                        destinationHouseName: destinationHouse?.displayName,
-                        houseNames: {
-                          for (final h in houses) h.id: h.displayName,
-                        },
-                      ),
-                    ),
-                    PackWeatherSection(trip: trip),
-                    PackLuggages(trip.luggages),
-                  ],
-                ),
-              ),
-              if (trip.aiResult?.hasSlots ?? false)
-                SlotsSection(trip: trip, actions: slotActions, open: open)
-              else
-                PlainItemsSection(trip: trip),
-              dim(SlotEndSpacer(open != null, viewport.maxHeight)),
-            ],
-          );
-        },
+          ),
+          PackWeatherSection(trip: trip),
+          PackLuggages(trip.luggages),
+          if (trip.aiResult?.hasSlots ?? false)
+            SlotsSection(trip: trip, actions: slotActions)
+          else
+            PlainItemsSection(trip: trip),
+        ],
       ),
     );
   }

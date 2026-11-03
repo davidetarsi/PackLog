@@ -20,24 +20,14 @@ const _giacca = AiSlot(
   addLabel: 'Aggiungi la tua',
 );
 
-/// Gli importanti sono "da fare": bordo ed etichetta in `primary`, la
-/// stessa cosa da chiusi e da aperti.
+/// Gli importanti sono "da fare": bordo ed etichetta in `primary`.
 void main() {
-  Future<void> pump(
-    WidgetTester tester, {
-    required ThemeData theme,
-    Widget? openBody,
-  }) {
+  Future<void> pump(WidgetTester tester, {required ThemeData theme}) {
     return tester.pumpWidget(
       MaterialApp(
         theme: theme,
         home: Scaffold(
-          body: ImportantSlotCard(
-            slot: _giacca,
-            onAdd: () {},
-            onToBuy: () {},
-            openBody: openBody,
-          ),
+          body: ImportantSlotCard(slot: _giacca, onAdd: () {}, onToBuy: () {}),
         ),
       ),
     );
@@ -46,8 +36,7 @@ void main() {
   ColorScheme colors(WidgetTester tester) =>
       Theme.of(tester.element(find.byType(ImportantSlotCard))).colorScheme;
 
-  /// La forma della card: `Material` direttamente sotto `ImportantSlotCard`
-  /// (o sotto il `SlotPop` della card aperta).
+  /// La forma della card: `Material` direttamente sotto `ImportantSlotCard`.
   ShapeBorder? cardShape(WidgetTester tester) => tester
       .widget<Material>(
         find
@@ -87,15 +76,6 @@ void main() {
       tester,
     ) async {
       await pump(tester, theme: theme);
-
-      expectOrangeBorder(tester);
-      expect(labelColor(tester), colors(tester).primary);
-    });
-
-    testWidgets('importante aperto ($name): stesso bordo ed etichetta', (
-      tester,
-    ) async {
-      await pump(tester, theme: theme, openBody: const Text('Contenuto'));
 
       expectOrangeBorder(tester);
       expect(labelColor(tester), colors(tester).primary);

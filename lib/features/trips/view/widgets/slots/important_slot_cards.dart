@@ -7,22 +7,20 @@ import '../../../../../shared/widgets/ds_text_button.dart';
 import '../../../model/ai_packing.dart';
 import 'slot_card_parts.dart';
 import 'slot_copies_label.dart';
-import 'slot_pop.dart';
 
-// Gli importanti nel dettaglio del viaggio: la card di un importante aperto
+// Gli importanti nel dettaglio del viaggio: la card di un importante
 // (la riga "da comprare" sta in `to_buy_slot_row.dart`).
 //
 // Regola dei colori: l'arancione (`primary`) è "da fare", quindi bordo ed
-// etichetta degli importanti, aperti o chiusi, e l'azione di aggiunta.
+// etichetta degli importanti e l'azione di aggiunta.
 
-/// Il contorno arancione di un importante: lo stesso da chiuso e da aperto,
-/// così aprire il posto non fa "saltare" la card.
+/// Il contorno arancione di un importante.
 ShapeBorder _importantShape(ColorScheme cs) => RoundedRectangleBorder(
   side: BorderSide(color: cs.primary, width: AppConstants.selectedBorderWidth),
   borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
 );
 
-/// Card di un posto importante aperto: "Importante", nome (×N), motivo in
+/// Card di un posto importante da riempire: "Importante", nome (×N), motivo in
 /// una riga e due azioni testuali, l'aggiunta ([AiSlot.addLabel]) e "Da
 /// comprare", più la X per toglierla. Niente bottoni pieni.
 class ImportantSlotCard extends StatelessWidget {
@@ -32,9 +30,6 @@ class ImportantSlotCard extends StatelessWidget {
     required this.onAdd,
     required this.onToBuy,
     this.onRemove,
-    this.openBody,
-    this.popping = false,
-    this.onPopDone,
   });
 
   final AiSlot slot;
@@ -44,25 +39,8 @@ class ImportantSlotCard extends StatelessWidget {
   /// La X in alto a destra; `null` la nasconde.
   final VoidCallback? onRemove;
 
-  /// Il contenuto del posto aperto: con questo la card si apre al suo posto,
-  /// senza azioni né X.
-  final Widget? openBody;
-
-  /// Il posto aperto sta scoppiando: tutta la card si dissolve e poi chiama
-  /// [onPopDone].
-  final bool popping;
-  final VoidCallback? onPopDone;
-
   @override
   Widget build(BuildContext context) {
-    final open = openBody;
-    if (open != null) {
-      return SlotPop(
-        popping: popping,
-        onDone: onPopDone,
-        child: _OpenImportantCard(body: open),
-      );
-    }
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final copies = slotCopiesLabel(slot);
@@ -160,34 +138,6 @@ class ImportantSlotCard extends StatelessWidget {
               child: RemoveSlotButton(slot: slot, onPressed: onRemove!),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// Un importante aperto: "Importante" e sotto il contenuto del posto.
-class _OpenImportantCard extends StatelessWidget {
-  const _OpenImportantCard({required this.body});
-
-  final Widget body;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: context.groupSurface,
-      shape: _importantShape(cs),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: EdgeInsets.all(context.spacingMd),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ImportantLabel(color: cs.primary),
-            SizedBox(height: context.spacingSm),
-            body,
-          ],
-        ),
       ),
     );
   }

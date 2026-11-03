@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/trips/view/widgets/slots/item_flight.dart';
-import 'package:pack_log/features/trips/view/widgets/slots/slot_pop.dart';
 import 'package:pack_log/shared/theme/theme.dart';
 
 Widget _app(Widget child, {bool noAnimations = false}) => MaterialApp(
@@ -13,78 +12,6 @@ Widget _app(Widget child, {bool noAnimations = false}) => MaterialApp(
 );
 
 void main() {
-  testWidgets('SlotPop: onDone una volta, dopo AppMotion.medium', (
-    tester,
-  ) async {
-    var done = 0;
-    Widget pop(bool popping) => _app(
-      SlotPop(popping: popping, onDone: () => done++, child: const Text('x')),
-    );
-    await tester.pumpWidget(pop(false));
-    await tester.pump(AppMotion.medium * 2);
-    expect(done, 0);
-
-    await tester.pumpWidget(pop(true));
-    await tester.pump(AppMotion.medium - const Duration(milliseconds: 10));
-    expect(done, 0);
-    await tester.pump(const Duration(milliseconds: 20));
-    expect(done, 1);
-    await tester.pump(AppMotion.medium);
-    expect(done, 1);
-  });
-
-  testWidgets('SlotPop: popping torna falso a meta\': il figlio e\' intero e '
-      'onDone non parte', (tester) async {
-    var done = 0;
-    Widget pop(bool popping) => _app(
-      SlotPop(popping: popping, onDone: () => done++, child: const Text('x')),
-    );
-    await tester.pumpWidget(pop(false));
-    await tester.pumpWidget(pop(true));
-    await tester.pump(AppMotion.medium ~/ 2);
-
-    await tester.pumpWidget(pop(false));
-    await tester.pump(AppMotion.medium * 2);
-
-    expect(done, 0);
-    expect(
-      tester
-          .widget<FadeTransition>(
-            find.descendant(
-              of: find.byType(SlotPop),
-              matching: find.byType(FadeTransition),
-            ),
-          )
-          .opacity
-          .value,
-      1,
-    );
-    expect(
-      tester
-          .widget<ScaleTransition>(
-            find.descendant(
-              of: find.byType(SlotPop),
-              matching: find.byType(ScaleTransition),
-            ),
-          )
-          .scale
-          .value,
-      1,
-    );
-  });
-
-  testWidgets('SlotPop senza animazioni: onDone subito', (tester) async {
-    var done = 0;
-    Widget pop(bool popping) => _app(
-      SlotPop(popping: popping, onDone: () => done++, child: const Text('x')),
-      noAnimations: true,
-    );
-    await tester.pumpWidget(pop(false));
-    await tester.pumpWidget(pop(true));
-    await tester.pump();
-    expect(done, 1);
-  });
-
   testWidgets('flyItems senza animazioni: nessun OverlayEntry dopo pump', (
     tester,
   ) async {
