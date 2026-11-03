@@ -19,6 +19,7 @@ import '../../features/houses/view/add_edit_house_screen.dart';
 import '../../features/houses/view/house_detail_screen.dart';
 import '../../features/profile/view/profile_screen.dart';
 import '../../features/trips/view/ai_packing_wait_screen.dart';
+import '../../features/trips/view/to_buy_screen.dart';
 import '../../features/trips/view/trips_screen.dart';
 import '../../features/trips/view/trip_detail_screen.dart';
 import '../../features/trips/view/new_trip_screen.dart';
@@ -40,6 +41,21 @@ part 'app_router.g.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _housesNavigatorKey = GlobalKey<NavigatorState>();
 final _tripsNavigatorKey = GlobalKey<NavigatorState>();
+
+/// Dove portare un account al primo avvio: "Dove vai?" (`/new-trip` con l'AI
+/// come strada principale), da ogni rotta tranne quelle in cui sta già
+/// facendo il suo percorso (nuovo viaggio, i viaggi e la loro valigia, il
+/// primo onboarding) e il login. `null` se non serve nessun redirect.
+@visibleForTesting
+String? firstTripRedirect({
+  required OnboardingStep? step,
+  required String location,
+}) {
+  if (step != OnboardingStep.firstTrip) return null;
+  const exempt = ['/new-trip', '/trips', '/onboarding', '/login'];
+  if (exempt.any(location.startsWith)) return null;
+  return '/new-trip?ai=1&first=1';
+}
 
 class _AuthChangeNotifier extends ChangeNotifier {
   _AuthChangeNotifier(Ref ref) {
@@ -106,6 +122,12 @@ GoRouter appRouter(Ref ref) {
         final isOnAiIntro = state.matchedLocation.startsWith(
           '/onboarding-ai-intro',
         );
+
+        final firstTripTarget = firstTripRedirect(
+          step: postLoginStep,
+          location: state.matchedLocation,
+        );
+        if (firstTripTarget != null) return firstTripTarget;
 
         if (postLoginStep == OnboardingStep.aiIntro && !isOnAiIntro) {
           return '/onboarding-ai-intro';
@@ -222,6 +244,13 @@ GoRouter appRouter(Ref ref) {
           return AiResultsScreen(houseId: id, isFirstTimeOnboarding: false);
         },
       ),
+      // Prima di `/trips/:id`, che altrimenti la prenderebbe per un id.
+      GoRoute(
+        path: '/trips/to-buy',
+        name: 'trips-to-buy',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ToBuyScreen(),
+      ),
       GoRoute(
         path: '/trips/:id',
         name: 'trip-detail',
@@ -231,7 +260,11 @@ GoRouter appRouter(Ref ref) {
           if (id == null || id.isEmpty) {
             return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
-          return TripDetailScreen(tripId: id);
+          // `?slot=<id>` apre la barra per riempire quel posto della valigia.
+          return TripDetailScreen(
+            tripId: id,
+            initialSlotId: state.uri.queryParameters['slot'],
+          );
         },
       ),
       GoRoute(
@@ -245,6 +278,7 @@ GoRouter appRouter(Ref ref) {
           advancesOnOk: true,
           child: NewTripScreen(
             aiIntent: state.uri.queryParameters['ai'] == '1',
+            firstRun: state.uri.queryParameters['first'] == '1',
           ),
         ),
       ),
@@ -277,6 +311,7 @@ GoRouter appRouter(Ref ref) {
             tripId: id,
             fromNewTrip: state.uri.queryParameters['from'] == 'new',
             startAi: state.uri.queryParameters['ai'] == '1',
+            firstRun: state.uri.queryParameters['first'] == '1',
           );
         },
       ),

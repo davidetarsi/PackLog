@@ -7,6 +7,9 @@ import { readFileSync } from "node:fs";
 import type { RigaArmadio } from "../capo.ts";
 import { type ChiediJev, DOMANDA_SCARPE } from "../jev.ts";
 import { generaValigia, scenarioDaApp } from "../genera.ts";
+import { postiApp } from "../posti.ts";
+import { uscitaApp } from "../uscita.ts";
+import { caricaArmadio } from "../capo.ts";
 
 const file = process.env.ORACOLO_CELLE ?? new URL("./oracolo_celle_campione.json", import.meta.url).pathname;
 const casi: any[] = JSON.parse(readFileSync(file, "utf8"));
@@ -71,4 +74,26 @@ test("scenario dall'app nella forma del bench", () => {
     destinazione: { nome: "Cortina d'Ampezzo", paese: "Italia", lat: 46.5, lon: 12.1 } }),
   { data_inizio: "2026-09-15", giorni: 5, attivita: ["trekking"], bagaglio: "", alloggio: "", lavatrice: false,
     destinazione: "Cortina d'Ampezzo", paese: "Italia" });
+});
+
+test("armadio vuoto: la valigia si fa lo stesso, tutto manca e i posti ci sono", async () => {
+  const c = casi.find((x) => x.tipo === "singola");
+  const { scenario, geo, meteo } = structuredClone(c.viaggio);
+  const r = await generaValigia(scenario, [], {
+    clima: async () => ({ geo, meteo }),
+    modello: async () => ({ testo: c.grezzo }),
+    jev: null,
+  });
+  assert.deepEqual(r.valigia.ideali, []);
+  assert.ok(r.valigia.mancanti_canonici.length > 0);
+  const viaggio = { data_inizio: scenario.data_inizio, giorni: scenario.giorni, attivita: scenario.attivita,
+    bagaglio: scenario.bagaglio, alloggio: scenario.alloggio, lavatrice: scenario.lavatrice,
+    destinazione: { nome: scenario.destinazione, paese: scenario.paese } };
+  const { posti } = postiApp(r.valigia, r.motivi as any, new Map(), { meteo: r.meteo, viaggio, armadio: caricaArmadio([]) });
+  assert.ok(posti.length > 0);
+  assert.ok(posti.every((p) => p.copie >= 1));
+  // l'uscita per le app vecchie regge l'armadio vuoto: nessun capo, gli avvisi ci sono
+  const vecchia = uscitaApp(r.valigia, r.motivi as any, new Map(), { meteo: r.meteo, viaggio, armadio: [] });
+  assert.deepEqual(vecchia.capi, []);
+  assert.ok(vecchia.avvisi.length > 0);
 });

@@ -6,12 +6,14 @@ import '../../../core/monitoring/monitoring_service.dart';
 import '../../houses/providers/house_provider.dart';
 import '../model/trip_model.dart';
 import '../model/trip_postcard.dart';
+import '../providers/to_buy_provider.dart';
 import '../providers/trip_provider.dart';
 import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/entity_action_handler.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/app_pill_tab.dart';
+import '../../../shared/widgets/ds_text_button.dart';
 import '../../../shared/widgets/entity_context_menu.dart';
 import '../../../shared/widgets/shell_tab_scaffold.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
@@ -173,6 +175,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       body: Column(
         children: [
           TabHeader(title: 'navigation.trips'.tr()),
+          _ToBuyEntryRow(count: ref.watch(toBuyEntriesProvider).length),
           // A sinistra, allineati al titolo della tab, come nel mock. Il
           // margine sta dentro lo scorrimento: su schermi stretti le pillole
           // arrivano fino al bordo.
@@ -406,6 +409,35 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
       error: error,
       title: 'errors.load_trips'.tr(),
       onRetry: () => ref.read(tripNotifierProvider.notifier).refresh(),
+    );
+  }
+}
+
+/// Riga in cima alla tab: "Da comprare · N". Compare solo con almeno una voce
+/// e apre la vista delle cose da comprare.
+class _ToBuyEntryRow extends StatelessWidget {
+  const _ToBuyEntryRow({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count == 0) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(
+        left: context.spacingMd,
+        right: context.spacingMd,
+        bottom: context.spacingXs,
+      ),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: DsTextButton(
+          key: const Key('trips_to_buy_entry'),
+          icon: Icons.shopping_cart_outlined,
+          label: 'trips.to_buy.entry'.tr(args: ['$count']),
+          onPressed: () => context.push('/trips/to-buy'),
+        ),
+      ),
     );
   }
 }

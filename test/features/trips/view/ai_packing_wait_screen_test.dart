@@ -12,6 +12,7 @@ import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:pack_log/features/trips/view/ai_packing_wait_screen.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
+import 'package:pack_log/shared/widgets/packlog_gradient.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
@@ -182,6 +183,36 @@ Future<void> _settle(WidgetTester tester) async {
 
 void main() {
   group('attesa', () {
+    testWidgets(
+      'la scintilla respira e i tre passi stanno nel bordo che gira',
+      (tester) async {
+        await _pump(tester);
+
+        final sparkle = tester.widget<PackLogSparkle>(
+          find.byType(PackLogSparkle),
+        );
+        expect(sparkle.breathing, isTrue);
+        final border = tester.widget<PackLogGradientBorder>(
+          find.byType(PackLogGradientBorder),
+        );
+        expect(border.loops, -1);
+        expect(
+          find.descendant(
+            of: find.byType(PackLogGradientBorder),
+            matching: find.text('Scelgo dal tuo armadio'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byType(PackLogGradientBorder),
+            matching: find.text('Preparo la valigia'),
+          ),
+          findsNothing,
+        );
+      },
+    );
+
     testWidgets('mostra titolo, tappe e durata', (tester) async {
       await _pump(tester);
 
@@ -312,7 +343,10 @@ void main() {
       _service.last.completeError(const PackTripException('HTTP 502'));
       await _settle(tester);
 
-      expect(_text('Non è stato possibile preparare la valigia'), findsOneWidget);
+      expect(
+        _text('Non è stato possibile preparare la valigia'),
+        findsOneWidget,
+      );
       expect(_service.generateCalls, 1);
 
       await tester.tap(find.text('Riprova'));

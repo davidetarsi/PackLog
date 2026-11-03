@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  alloggioDaTappe, GIORNI_MAX_SENZA_LAVATRICE, IngressoNonValido, lavatriceDaTappe, validaViaggio,
+  alloggioDaTappe, armadioVuotoAmmesso, GIORNI_MAX_SENZA_LAVATRICE, IngressoNonValido, lavatriceDaTappe, validaViaggio,
 } from "../ingresso.ts";
 import { conRiprova } from "../genera.ts";
 
@@ -83,4 +83,12 @@ test("tappe con alloggio e lavatrice", () => {
   // il formato vecchio vince
   assert.equal(validaViaggio({ data_inizio: "2026-11-02", lavatrice: false, tappe: [{ ...luogo, giorni: 3, lavatrice: true }] }, OGGI).lavatrice, false);
   rifiuta({ data_inizio: "2026-11-02", tappe: [{ ...luogo, giorni: 3, lavatrice: "si" }] }, /lavatrice/);
+});
+
+test("armadio vuoto ammesso solo con posti: true", () => {
+  assert.equal(armadioVuotoAmmesso({ house_id: "x", posti: true }), true);
+  assert.equal(armadioVuotoAmmesso({ house_id: "x" }), false);
+  assert.equal(armadioVuotoAmmesso({ house_id: "x", posti: "true" }), false);
+  assert.equal(armadioVuotoAmmesso({ house_id: "x", posti: 1 }), false);
+  assert.equal(armadioVuotoAmmesso({ house_id: "x", posti: false }), false);
 });

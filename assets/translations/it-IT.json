@@ -91,7 +91,8 @@
       "other": "Sposta {} oggetti"
     },
     "add_to_trip_success": "{} oggetti aggiunti a {}",
-    "rapid_fire_hint": "Aggiungi oggetto...",
+    "rapid_fire_hint": "Es. 2 t-shirt nere",
+    "copies_tip": "Il numero all'inizio sono le copie. Tocca ×{} per toglierlo.",
     "already_here": "Già in casa",
     "added_now": "Aggiunti ora",
     "name_label": "Nome",
@@ -180,10 +181,11 @@
   "trips": {
 "ai": {
   "title": "Valigia con AI",
+  "house_name_label": "Casa di partenza",
+  "house_name_default": "Casa",
   "house_title": "Da quale casa prendi i vestiti",
   "luggage_title": "Con che bagaglio parti",
   "new_luggage": "Nuovo bagaglio",
-  "no_houses": "Aggiungi una casa per preparare la valigia con AI.",
   "stop_progress": "Tappa {} di {} · {}",
   "activities_title": "Cosa farai in {}?",
   "activities_title_single": "Cosa farai?",
@@ -244,7 +246,26 @@
       "unsave": "Togli dai salvati",
       "edit_suitcase": "Modifica valigia",
       "packed_count": "{} di {} in valigia",
+      "ready_count": "{} di {} pronti",
+      "legend_mine": "{} tue",
+      "legend_proposed": "{} proposte da PackLog",
+      "legend_important": "{} importanti da sistemare",
       "duplicated": "Viaggio duplicato"
+    },
+    "to_buy": {
+      "entry": "Da comprare · {}",
+      "title": "Da comprare",
+      "empty": "Niente da comprare"
+    },
+    "slots": {
+      "important": "Importante",
+      "to_buy": "Da comprare",
+      "got_it": "Presa",
+      "proposed_header": "Proposti da PackLog · tocca per mettere i tuoi",
+      "marked_to_buy": "Segnato da comprare",
+      "context_chip": "{} · {} da personalizzare",
+      "no_house": "La casa di partenza non c'è più",
+      "rapid_fire_hint": "Es. 2 t-shirt nere"
     },
     "pack": {
       "title": "Prepara la valigia",
@@ -302,6 +323,8 @@
     },
     "weather": {
       "title": "Meteo",
+      "estimate": "Stima",
+      "forecast_label": "Previsione",
       "loading": "Cerco il meteo…",
       "temps": "{}° / {}°",
       "rain_days": {"zero": "niente pioggia", "one": "{} giorno di pioggia", "other": "{} giorni di pioggia"},
@@ -382,6 +405,7 @@
       "stop_save": "Salva tappa",
       "stop_remove": "Elimina tappa",
       "title": "Nuovo viaggio",
+      "first_title": "Dove vai?",
       "where": "Dove vai?",
       "itinerary": "Itinerario",
       "itinerary_empty": "Scegli meta e date: qui compare il tuo itinerario.",

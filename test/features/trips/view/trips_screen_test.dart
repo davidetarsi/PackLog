@@ -17,6 +17,8 @@ import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
 import 'package:pack_log/features/houses/repositories/house_repository.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
@@ -120,6 +122,27 @@ final _past = _trip(
   returnAt: DateTime(2025, 6, 5),
 );
 
+/// Viaggio in corso con un posto aperto segnato da comprare.
+TripModel _withToBuy(TripModel base, {required bool toBuy}) => base.copyWith(
+  aiResult: AiPackingResult(
+    generatedAt: DateTime(2026, 11),
+    houseId: 'h1',
+    slots: [
+      AiSlot(
+        id: 's1',
+        type: 'giacca',
+        category: ItemCategory.vestiti,
+        level: AiSlotLevel.important,
+        name: 'Giacca invernale',
+        copies: 1,
+        remaining: 1,
+        addLabel: 'Aggiungi la tua',
+        toBuy: toBuy,
+      ),
+    ],
+  ),
+);
+
 void main() {
   late MockTripRepository tripRepo;
   late MockHouseRepository houseRepo;
@@ -196,6 +219,10 @@ void main() {
       routes: [
         GoRoute(path: '/trips', builder: (_, _) => const TripsScreen()),
         GoRoute(
+          path: '/trips/to-buy',
+          builder: (_, _) => const Scaffold(body: Text('to-buy-screen')),
+        ),
+        GoRoute(
           path: '/trips/:id',
           builder: (_, state) =>
               Scaffold(body: Text('trip-detail ${state.pathParameters['id']}')),
@@ -269,6 +296,25 @@ void main() {
   }
 
   group('TripsScreen', () {
+    testWidgets('la riga Da comprare compare con una voce e apre la vista', (
+      tester,
+    ) async {
+      await pumpScreen(tester, trips: [_withToBuy(_soon, toBuy: true)]);
+
+      expect(find.text('Da comprare · 1'), findsOneWidget);
+
+      await tester.tap(find.text('Da comprare · 1'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('to-buy-screen'), findsOneWidget);
+    });
+
+    testWidgets('senza voci da comprare la riga non c\'è', (tester) async {
+      await pumpScreen(tester, trips: [_withToBuy(_soon, toBuy: false)]);
+
+      expect(find.textContaining('Da comprare'), findsNothing);
+    });
+
     testWidgets('mostra tre filtri neutri e nessun filtro Tutto', (
       tester,
     ) async {

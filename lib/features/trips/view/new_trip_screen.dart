@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
@@ -17,6 +18,8 @@ import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../../core/monitoring/monitoring_service.dart';
+import '../../../core/analytics/analytics_service.dart';
+import '../../tour/providers/post_login_onboarding_provider.dart';
 import '../model/trip_draft.dart';
 import '../model/trip_model.dart';
 import '../model/trip_postcard.dart';
@@ -49,6 +52,7 @@ class NewTripScreen extends ConsumerStatefulWidget {
     this.tripId,
     this.discardOnExit = false,
     this.aiIntent = false,
+    this.firstRun = false,
   });
 
   /// Viaggio da modificare; null per un viaggio nuovo.
@@ -62,6 +66,11 @@ class NewTripScreen extends ConsumerStatefulWidget {
   /// Viene da "Valigia con AI" (`/new-trip?ai=1`): il primario del passo 1 è
   /// "Prepara con AI" e la strada manuale diventa un link.
   final bool aiIntent;
+
+  /// Primo avvio dell'account (`/new-trip?ai=1&first=1`): il titolo è "Dove
+  /// vai?" e una X chiude il passo e porta alla home. Il resto è il passo 1
+  /// con [aiIntent].
+  final bool firstRun;
 
   @override
   ConsumerState<NewTripScreen> createState() => _NewTripScreenState();
@@ -232,13 +241,26 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       return;
     }
 
+    // Il viaggio c'è: chi abbandona dopo questo passo non torna più a "Dove
+    // vai?".
+    if (widget.firstRun) {
+      unawaited(
+        ref
+            .read(analyticsServiceProvider)
+            .logEvent('first_trip_started', properties: const {}),
+      );
+      await ref.read(postLoginOnboardingProvider.notifier).completeFirstTrip();
+      if (!mounted) return;
+    }
+
     if (goToPacking) {
       // Il meteo parte con "Avanti": la pagina valigia trova la richiesta già
       // in corso, o la cache se il viaggio ce l'ha già.
       ref.read(tripWeatherNotifierProvider(trip.id));
       router.go('/trips');
       router.push(
-        '/trips/${trip.id}/edit-items?from=new${withAi ? '&ai=1' : ''}',
+        '/trips/${trip.id}/edit-items?from=new${withAi ? '&ai=1' : ''}'
+        '${widget.firstRun ? '&first=1' : ''}',
       );
     } else {
       router.go('/trips?focus=${trip.id}');
@@ -338,7 +360,19 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
           : 'trips.new.discard_message'.tr(),
       isDestructive: true,
     );
-    if (leave && mounted) context.pop();
+    if (!leave || !mounted) return;
+    if (widget.firstRun) {
+      await _closeFirstRun();
+    } else {
+      context.pop();
+    }
+  }
+
+  /// La X del primo avvio: il passo si chiude e si va alla home.
+  Future<void> _closeFirstRun() async {
+    final router = GoRouter.of(context);
+    await ref.read(postLoginOnboardingProvider.notifier).completeFirstTrip();
+    router.go('/');
   }
 
   @override
@@ -391,8 +425,18 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       // fascia di vetro: il testo dietro è sfocato, il link si legge.
       child: StickyCtaScaffold(
         appBar: AppBar(
+          leading: widget.firstRun
+              ? DsIconButton(
+                  key: const Key('new_trip_first_close'),
+                  tooltip: 'common.close'.tr(),
+                  icon: Icons.close,
+                  onPressed: _closeFirstRun,
+                )
+              : null,
           title: Text(
-            _isReuse
+            widget.firstRun
+                ? 'trips.new.first_title'.tr()
+                : _isReuse
                 ? 'trips.detail.reuse_trip'.tr()
                 : _isEdit
                 ? 'trips.detail.edit_trip'.tr()

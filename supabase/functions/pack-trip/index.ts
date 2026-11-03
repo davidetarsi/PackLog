@@ -4,12 +4,15 @@
 // (profilo dei capi, voti, classificazione del viaggio), il meteo del viaggio,
 // poi il codice sceglie i capi e spiega perche'.
 //
-// POST { house_id, lang?, trip: { data_inizio, giorni, destinazione: {nome, paese, lat,
+// POST { house_id, lang?, posti?, trip: { data_inizio, giorni, destinazione: {nome, paese, lat,
 //   lon} | tappe: [{nome, paese, lat, lon, giorni, attivita, alloggio, lavatrice}],
 //   attivita, bagaglio, alloggio, lavatrice } }
 // lang: "it" | "en", la lingua dei testi per l'utente (motivi, perche, avvisi);
 // senza, italiano come le versioni vecchie dell'app. Il prompt resta in italiano.
-//   -> { valigia, motivi, perche, geo, meteo, note_tecniche, capi, avvisi }
+// posti: true = l'app sa mostrare i posti (valigia fatta di soli posti anche con
+// l'armadio vuoto). Senza, un armadio vuoto e' 422 "Wardrobe is empty" prima del
+// credito AI, come per le versioni vecchie, che ignorano i posti.
+//   -> { valigia, motivi, perche, geo, meteo, note_tecniche, capi, avvisi, posti, informazioni }
 // Alloggio e lavatrice stanno per tappa (alloggio, lavatrice booleano); il
 // viaggio li ricava dalle tappe, o usa i propri se mandati (formato vecchio).
 // Attivita' e alloggio arrivano come id del catalogo (app nuova: "city",
@@ -20,13 +23,17 @@
 // capo; perche: la scheda "Perche' queste scelte"; note_tecniche: cio' che non ha
 // risposto (Jev e' un aiuto, la valigia si fa lo stesso); capi e avvisi: l'uscita
 // per l'app (uscita.ts), con il tetto sulle copie che l'utente ha in armadio.
+// posti: cio' che alla valigia manca (posti.ts): importanti (dipendono dal viaggio) e utili,
+// con nome, copie e motivo; con `posti: true` l'armadio puo' essere anche vuoto, allora la valigia e' tutta posti.
+// informazioni: cio' che l'utente deve sapere ma non e' un oggetto (bagaglio pieno, lavanderia).
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
 import { climaViaggio } from "../_shared/clima/meteo.ts";
 import { claudeHttp } from "../_shared/claude.ts";
 import { conRiprova, generaValigia, MAX_TOKENS_VALIGIA, scenarioDaApp } from "../_shared/valigia/genera.ts";
-import { IngressoNonValido, validaViaggio } from "../_shared/valigia/ingresso.ts";
+import { armadioVuotoAmmesso, IngressoNonValido, validaViaggio } from "../_shared/valigia/ingresso.ts";
 import { jevHttp, MODELLO as MODELLO_JEV, type ProfiloNoto } from "../_shared/valigia/jev.ts";
+import { postiApp } from "../_shared/valigia/posti.ts";
 import { uscitaApp } from "../_shared/valigia/uscita.ts";
 import { caricaArmadio, type RigaArmadio } from "../_shared/valigia/capo.ts";
 import { applicaCatalogo } from "../_shared/catalogo/applica.ts";
@@ -78,7 +85,7 @@ Deno.serve(async (req) => {
 
   // L'armadio: i capi della casa scelta, dell'utente, non cancellati. L'ordine
   // conta (a parita' di punteggio vince il primo, come nel bench): fisso.
-  const { data: righe, error: errCapi } = await db.from("items")
+  const { data: righeDb, error: errCapi } = await db.from("items")
     .select("id, name, category, house_id, ai_metadata, quantity")
     .eq("user_id", u.id).eq("house_id", b.house_id).eq("is_deleted", false)
     .order("created_at").order("id").limit(MAX_CAPI + 1);
@@ -86,7 +93,10 @@ Deno.serve(async (req) => {
     console.error("[pack-trip] items:", errCapi.message);
     return errore(500, "Wardrobe read failed");
   }
-  if (!righe?.length) return errore(422, "Wardrobe is empty");
+  const righe = righeDb ?? [];
+  // Armadio vuoto: ammesso solo per l'app che chiede i posti (la valigia e' fatta
+  // di soli posti, posti.ts); le versioni vecchie li ignorano, quindi 422 prima del credito.
+  if (!righe.length && !armadioVuotoAmmesso(b)) return errore(422, "Wardrobe is empty");
   if (righe.length > MAX_CAPI) return errore(422, `Wardrobe too large (max ${MAX_CAPI} items)`);
   // Quante copie ha l'utente di ogni capo: il tetto dell'uscita per l'app.
   const salvate = new Map<string, number | null>(
@@ -99,7 +109,7 @@ Deno.serve(async (req) => {
 
   // I profili Jev gia' calcolati: valgono finche' la scheda del capo non cambia.
   const profiliNoti: Record<string, ProfiloNoto> = {};
-  if (chiaveJev) {
+  if (chiaveJev && righe.length) {
     const { data, error } = await db.from("item_jev_profiles").select("item_id, card, answers")
       .eq("user_id", u.id).in("item_id", righe.map((r: RigaArmadio) => r.id));
     if (error) console.error("[pack-trip] profiles read:", error.message);
@@ -138,6 +148,10 @@ Deno.serve(async (req) => {
         meteo: r.meteo as Record<string, any> | null, viaggio: viaggio as Record<string, any>,
         armadio: caricaArmadio(righe as RigaArmadio[]).flatMap((g) => [g.sub_fine, g.sub_category]),
         lingua,
+      }),
+      ...postiApp(r.valigia, r.motivi as { capi: Record<string, any>[]; essenziali: Record<string, any>[] }, salvate, {
+        meteo: r.meteo as Record<string, any> | null, viaggio: viaggio as Record<string, any>,
+        armadio: caricaArmadio(righe as RigaArmadio[]), lingua,
       }),
     });
   } catch (e) {

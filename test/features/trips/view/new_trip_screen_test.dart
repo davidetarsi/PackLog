@@ -7,8 +7,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
+import 'package:pack_log/features/tour/model/onboarding_state.dart';
+import 'package:pack_log/features/tour/providers/post_login_onboarding_provider.dart';
+import 'package:pack_log/features/tour/repositories/i_onboarding_repository.dart';
+import 'package:pack_log/features/tour/repositories/shared_prefs_onboarding_repository.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/providers/house_provider.dart';
@@ -40,9 +45,33 @@ class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
+class MockRawAnalytics extends Mock implements AppAnalyticsService {}
+
 class MockTripLifecycleService extends Mock implements TripLifecycleService {}
 
 class MockLocationSearchService extends Mock implements LocationSearchService {}
+
+/// Onboarding in memoria: il passo salvato si legge dopo il test.
+class _MemoryOnboardingRepository implements IOnboardingRepository {
+  OnboardingStep step = OnboardingStep.firstTrip;
+
+  @override
+  Future<OnboardingStep> loadStep() async => step;
+  @override
+  Future<void> saveStep(OnboardingStep value) async => step = value;
+  @override
+  Future<bool> loadSkippedAi() async => false;
+  @override
+  Future<void> saveSkippedAi(bool value) async {}
+  @override
+  Future<bool> loadHasExistingHouses() async => false;
+  @override
+  Future<void> saveHasExistingHouses(bool value) async {}
+  @override
+  Future<String?> loadDefaultHouseId() async => null;
+  @override
+  Future<void> saveDefaultHouseId(String? id) async {}
+}
 
 final _houses = [
   HouseModel(
@@ -190,6 +219,8 @@ void main() {
   late MockLocationSearchService locationService;
   late MockTripLifecycleService lifecycle;
   late ProviderContainer container;
+  late _MemoryOnboardingRepository onboardingRepo;
+  late MockRawAnalytics rawAnalytics;
 
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
@@ -209,6 +240,11 @@ void main() {
     houseRepo = MockHouseRepository();
     locationService = MockLocationSearchService();
     lifecycle = MockTripLifecycleService();
+    onboardingRepo = _MemoryOnboardingRepository();
+    rawAnalytics = MockRawAnalytics();
+    when(
+      () => rawAnalytics.logEvent(any(), properties: any(named: 'properties')),
+    ).thenAnswer((_) async {});
 
     when(() => tripRepo.getAllTrips()).thenAnswer((_) async => []);
     when(() => tripRepo.addTrip(any())).thenAnswer((_) async {});
@@ -235,6 +271,8 @@ void main() {
         syncOrchestratorProvider.overrideWithValue(sync),
         tripLifecycleServiceProvider.overrideWithValue(lifecycle),
         locationSearchServiceProvider.overrideWithValue(locationService),
+        onboardingRepositoryProvider.overrideWithValue(onboardingRepo),
+        analyticsServiceProvider.overrideWithValue(rawAnalytics),
       ],
     );
     addTearDown(container.dispose);
@@ -253,10 +291,12 @@ void main() {
 
     await container.read(tripNotifierProvider.future);
     await container.read(houseNotifierProvider.future);
+    await container.read(postLoginOnboardingProvider.future);
 
     final router = GoRouter(
       initialLocation: '/trips',
       routes: [
+        GoRoute(path: '/', builder: (_, _) => const Text('home')),
         GoRoute(
           path: '/trips',
           builder: (context, state) => Scaffold(
@@ -282,14 +322,17 @@ void main() {
                   'from=${state.uri.queryParameters['from']}',
                 ),
                 Text('ai=${state.uri.queryParameters['ai'] ?? 'none'}'),
+                Text('first=${state.uri.queryParameters['first'] ?? 'none'}'),
               ],
             ),
           ),
         ),
         GoRoute(
           path: '/new-trip',
-          builder: (_, state) =>
-              NewTripScreen(aiIntent: state.uri.queryParameters['ai'] == '1'),
+          builder: (_, state) => NewTripScreen(
+            aiIntent: state.uri.queryParameters['ai'] == '1',
+            firstRun: state.uri.queryParameters['first'] == '1',
+          ),
         ),
         GoRoute(
           path: '/trips/:id/edit-info',
@@ -560,6 +603,115 @@ void main() {
       final trip = savedTrip();
       expect(find.text('edit-items ${trip.id} from=new'), findsOneWidget);
       expect(find.text('ai=none'), findsOneWidget);
+    });
+
+    testWidgets('firstRun: titolo "Dove vai?" e il resto è il passo 1 con AI', (
+      tester,
+    ) async {
+      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
+
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Dove vai?'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('new_trip_first_close')), findsOneWidget);
+      expect(find.byKey(const Key('new_trip_prepare_ai')), findsOneWidget);
+      expect(find.byKey(const Key('new_trip_manual')), findsOneWidget);
+    });
+
+    testWidgets('senza firstRun non c\'è la X e il titolo è "Nuovo viaggio"', (
+      tester,
+    ) async {
+      await pumpScreen(tester, open: '/new-trip?ai=1');
+
+      expect(find.byKey(const Key('new_trip_first_close')), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Nuovo viaggio'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('firstRun: la X salva done e porta a /', (tester) async {
+      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
+      expect(onboardingRepo.step, OnboardingStep.firstTrip);
+
+      await tester.tap(find.byKey(const Key('new_trip_first_close')));
+      await tester.pumpAndSettle();
+
+      expect(onboardingRepo.step, OnboardingStep.done);
+      expect(find.text('home'), findsOneWidget);
+    });
+
+    testWidgets('firstRun: salvare il passo 1 chiude "Dove vai?" (done)', (
+      tester,
+    ) async {
+      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+
+      expect(onboardingRepo.step, OnboardingStep.done);
+      expect(find.textContaining('edit-items'), findsOneWidget);
+    });
+
+    testWidgets('firstRun: first_trip_started parte una volta al salvataggio '
+        'e porta first=1 alla valigia', (tester) async {
+      await pumpScreen(tester, open: '/new-trip?ai=1&first=1');
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+      verifyNever(
+        () => rawAnalytics.logEvent(
+          'first_trip_started',
+          properties: any(named: 'properties'),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => rawAnalytics.logEvent('first_trip_started', properties: {}),
+      ).called(1);
+      expect(find.textContaining('from=new'), findsOneWidget);
+      expect(find.text('first=1'), findsOneWidget);
+    });
+
+    testWidgets('senza firstRun first_trip_started non parte', (tester) async {
+      await pumpScreen(tester, open: '/new-trip?ai=1');
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+
+      verifyNever(
+        () => rawAnalytics.logEvent(
+          'first_trip_started',
+          properties: any(named: 'properties'),
+        ),
+      );
+      expect(find.text('first=none'), findsOneWidget);
+    });
+
+    testWidgets('senza firstRun il salvataggio non tocca il passo', (
+      tester,
+    ) async {
+      await pumpScreen(tester, open: '/new-trip?ai=1');
+      await _pickHouse(tester, 'h1');
+      await _pickDates(tester);
+
+      await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+      await tester.pumpAndSettle();
+
+      expect(onboardingRepo.step, OnboardingStep.firstTrip);
     });
 
     testWidgets('in modifica di un viaggio non compaiono i bottoni AI', (

@@ -91,7 +91,8 @@
       "other": "Move {} items"
     },
     "add_to_trip_success": "{} items added to {}",
-    "rapid_fire_hint": "Add item...",
+    "rapid_fire_hint": "E.g. 2 black t-shirts",
+    "copies_tip": "A number at the start sets the copies. Tap ×{} to remove it.",
     "already_here": "Already at home",
     "added_now": "Added now",
     "name_label": "Name",
@@ -180,10 +181,11 @@
   "trips": {
 "ai": {
   "title": "AI packing list",
+  "house_name_label": "Leaving from",
+  "house_name_default": "Home",
   "house_title": "Which home do you take clothes from",
   "luggage_title": "Which luggage are you taking",
   "new_luggage": "New luggage",
-  "no_houses": "Add a home to pack with AI.",
   "stop_progress": "Stop {} of {} · {}",
   "activities_title": "What will you do in {}?",
   "activities_title_single": "What will you do?",
@@ -244,7 +246,26 @@
       "unsave": "Remove from saved",
       "edit_suitcase": "Edit suitcase",
       "packed_count": "{} of {} packed",
+      "ready_count": "{} of {} ready",
+      "legend_mine": "{} yours",
+      "legend_proposed": "{} suggested by PackLog",
+      "legend_important": "{} important to sort out",
       "duplicated": "Trip duplicated"
+    },
+    "to_buy": {
+      "entry": "To buy · {}",
+      "title": "To buy",
+      "empty": "Nothing to buy"
+    },
+    "slots": {
+      "important": "Important",
+      "to_buy": "To buy",
+      "got_it": "Got it",
+      "proposed_header": "Suggested by PackLog · tap to add yours",
+      "marked_to_buy": "Marked to buy",
+      "context_chip": "{} · {} to personalise",
+      "no_house": "The departure home no longer exists",
+      "rapid_fire_hint": "e.g. 2 black t-shirts"
     },
     "pack": {
       "title": "Pack your suitcase",
@@ -302,6 +323,8 @@
     },
     "weather": {
       "title": "Weather",
+      "estimate": "Estimate",
+      "forecast_label": "Forecast",
       "loading": "Getting the weather…",
       "temps": "{}° / {}°",
       "rain_days": {"zero": "no rain", "one": "{} rainy day", "other": "{} rainy days"},
@@ -382,6 +405,7 @@
       "stop_save": "Save stop",
       "stop_remove": "Remove stop",
       "title": "New trip",
+      "first_title": "Where are you going?",
       "where": "Where are you going?",
       "itinerary": "Itinerary",
       "itinerary_empty": "Pick where and when: your itinerary shows up here.",

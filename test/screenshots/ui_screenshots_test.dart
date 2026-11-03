@@ -937,21 +937,6 @@ final flows = <Flow>[
     Scenario(
       8,
       'oggetto-scheda',
-      'sposta',
-      source: 'lib/features/items/view/bulk_move_sheet.dart',
-      description:
-          'Dal menu ⋮ della scheda, "Sposta in un\'altra casa": il foglio '
-          '"Sposta" si apre sopra la scheda.',
-      steps: (app) async {
-        await _houseDetail(app);
-        await app.tap(find.text('Maglione di lana'));
-        await app.tap(find.byKey(const Key('item_sheet_menu')));
-        await app.tap(_text('items.move_to_house'));
-      },
-    ),
-    Scenario(
-      9,
-      'oggetto-scheda',
       'dettagli-in-attesa',
       source: 'lib/features/items/view/item_sheet.dart',
       description:
@@ -967,6 +952,21 @@ final flows = <Flow>[
       steps: (app) async {
         await _houseDetail(app);
         await app.tap(find.text('T-shirt bianca'));
+      },
+    ),
+    Scenario(
+      9,
+      'oggetto-scheda',
+      'sposta',
+      source: 'lib/features/items/view/bulk_move_sheet.dart',
+      description:
+          'Dal menu ⋮ della scheda, "Sposta in un\'altra casa": il foglio '
+          '"Sposta" si apre sopra la scheda.',
+      steps: (app) async {
+        await _houseDetail(app);
+        await app.tap(find.text('Maglione di lana'));
+        await app.tap(find.byKey(const Key('item_sheet_menu')));
+        await app.tap(_text('items.move_to_house'));
       },
     ),
   ]),
@@ -1777,6 +1777,48 @@ final flows = <Flow>[
       steps: (app) async {
         await _pack(app, kActiveTripId);
         await app.tap(find.text('Casa al mare').last);
+      },
+    ),
+    Scenario(
+      19,
+      'dettaglio-viaggio',
+      'valigia-con-posti',
+      route: '/trips/:id',
+      source: _tripDetailSrc,
+      description:
+          'Valigia a posti con l\'armadio quasi vuoto (Seoul): le quattro cose '
+          'importanti da sistemare, la sciarpa da comprare, i capi proposti '
+          'da PackLog e la nota sulla lavanderia.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) => _tripDetail(app, kSeoulTripId),
+    ),
+    Scenario(
+      20,
+      'dettaglio-viaggio',
+      'valigia-con-posti-in-basso',
+      route: '/trips/:id',
+      source: _tripDetailSrc,
+      description:
+          'Stessa valigia a posti, scorsa fino ai capi proposti da PackLog: '
+          'le copie e il tocco per mettere i propri.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1500),
+        );
+        await app.settle();
       },
     ),
   ]),
