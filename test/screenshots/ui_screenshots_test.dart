@@ -1821,6 +1821,58 @@ final flows = <Flow>[
         await app.settle();
       },
     ),
+    Scenario(
+      21,
+      'dettaglio-viaggio',
+      'posto-aperto',
+      route: '/trips/:id',
+      source: _tripDetailSrc,
+      description:
+          'Toccando le Magliette il posto si apre: la barra al posto di '
+          '"Modifica valigia", con Magliette \u00d73 e T-shirt nere \u00d72 '
+          'gi\u00e0 scritte.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1500),
+        );
+        await app.settle();
+        await app.tap(find.byKey(const Key('slot_row_slot-magliette')));
+        for (final line in const ['3 magliette', '2 t-shirt nere']) {
+          await app.enterText(find.byType(TextField), line);
+          await app.tap(find.byIcon(Icons.arrow_upward));
+        }
+      },
+    ),
+    Scenario(
+      22,
+      'dettaglio-viaggio',
+      'importante-da-togliere',
+      route: '/trips/:id',
+      source: _tripDetailSrc,
+      description:
+          'La X su un importante (Giacca invernale): il dialog che chiede '
+          'conferma prima di toglierlo.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        await app.tap(
+          find.byKey(const Key('slot_remove_slot-giacca_invernale')),
+        );
+      },
+    ),
   ]),
 
   Flow('10-profilo', 'Tab Profilo: impostazioni e account', [

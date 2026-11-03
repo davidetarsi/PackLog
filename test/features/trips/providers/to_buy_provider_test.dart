@@ -25,6 +25,7 @@ AiSlot _slot(
   AiSlotLevel level = AiSlotLevel.useful,
   bool toBuy = true,
   int remaining = 1,
+  bool removed = false,
 }) => AiSlot(
   id: id,
   type: 'type-$id',
@@ -35,6 +36,7 @@ AiSlot _slot(
   remaining: remaining,
   addLabel: 'Aggiungi',
   toBuy: toBuy,
+  removed: removed,
 );
 
 TripModel _trip(String id, {DateTime? departure, List<AiSlot>? slots}) =>
@@ -97,6 +99,14 @@ void main() {
 
     expect(entries.map((e) => e.slot.id), ['open']);
     expect(entries.single.trip.id, 't1');
+  });
+
+  test('un posto da comprare ma tolto non compare', () async {
+    final entries = await entriesFor([
+      _trip('t1', slots: [_slot('tolto', removed: true), _slot('resta')]),
+    ]);
+
+    expect(entries.map((e) => e.slot.id), ['resta']);
   });
 
   test('ignora i viaggi senza posti e quelli senza risultato', () async {

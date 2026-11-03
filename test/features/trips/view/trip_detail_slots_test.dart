@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -195,7 +197,13 @@ void main() {
     when(() => houseRepo.getAllHouses()).thenAnswer((_) async => [_casa]);
   });
 
-  Future<void> pumpDetail(WidgetTester tester, TripModel trip) async {
+  /// Con [fromHome] il dettaglio sta sopra una pagina di partenza: si può
+  /// lasciarlo con `pop`. Torna il router.
+  Future<GoRouter> pumpDetail(
+    WidgetTester tester,
+    TripModel trip, {
+    bool fromHome = false,
+  }) async {
     when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [trip]);
     // Alta abbastanza da costruire tutta la lista.
     tester.view.physicalSize = const Size(390, 4000);
@@ -204,8 +212,10 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final router = GoRouter(
-      initialLocation: '/trips/trip-1',
+      initialLocation: fromHome ? '/home' : '/trips/trip-1',
       routes: [
+        if (fromHome)
+          GoRoute(path: '/home', builder: (_, _) => const Scaffold()),
         GoRoute(
           path: '/trips/:id',
           builder: (context, state) =>
@@ -243,6 +253,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (fromHome) {
+      unawaited(router.push('/trips/trip-1'));
+      await tester.pumpAndSettle();
+    }
+    return router;
   }
 
   Finder inProposed(Finder finder) =>
@@ -399,6 +414,136 @@ void main() {
       expect(find.byType(DsEmptyState), findsOneWidget);
       expect(find.byType(SuitcaseProgressHeader), findsNothing);
       expect(find.textContaining('pronti'), findsNothing);
+    });
+  });
+
+  group('togliere un posto', () {
+    AiSlot savedSlot(WidgetTester tester, String id) =>
+        verify(() => tripRepo.updateTrip(captureAny())).captured
+            .cast<TripModel>()
+            .last
+            .aiResult!
+            .slots!
+            .firstWhere((s) => s.id == id);
+
+    testWidgets('X su un importante: dialog, "Togli", la card sparisce', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _trip());
+
+      await tester.tap(find.byKey(const Key('slot_remove_imp-giacca')));
+      await tester.pumpAndSettle();
+      expect(find.text('Togli Giacca invernale?'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'PackLog la considera importante per questo viaggio.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('nell’armadio non c’è'), findsNWidgets(2));
+
+      await tester.tap(find.text('Togli'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('slot_card_imp-giacca')), findsNothing);
+      expect(find.byType(ImportantSlotCard), findsNWidgets(3));
+      expect(find.text('4 importanti da sistemare'), findsOneWidget);
+      expect(savedSlot(tester, 'imp-giacca').removed, isTrue);
+    });
+
+    testWidgets('X su un importante da comprare: dialog, "Togli", la riga '
+        'sparisce', (tester) async {
+      await pumpDetail(tester, _trip());
+
+      await tester.tap(find.byKey(const Key('slot_remove_imp-sciarpa')));
+      await tester.pumpAndSettle();
+      expect(find.text('Togli Sciarpa?'), findsOneWidget);
+
+      await tester.tap(find.text('Togli'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('slot_to_buy_row_imp-sciarpa')),
+        findsNothing,
+      );
+      expect(savedSlot(tester, 'imp-sciarpa').removed, isTrue);
+    });
+
+    testWidgets('X poi "Annulla": la card resta', (tester) async {
+      await pumpDetail(tester, _trip());
+
+      await tester.tap(find.byKey(const Key('slot_remove_imp-giacca')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Annulla'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('slot_card_imp-giacca')), findsOneWidget);
+      verifyNever(() => tripRepo.updateTrip(any()));
+    });
+
+    testWidgets('scorrere una proposta: riga sparita, snack e Annulla', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _trip());
+
+      await tester.drag(
+        find.byKey(const Key('slot_dismiss_u-magliette')),
+        const Offset(-500, 0),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('slot_row_u-magliette')), findsNothing);
+      expect(find.text('Tolta Magliette'), findsOneWidget);
+      expect(find.text('Vestiti · 13'), findsOneWidget);
+      expect(savedSlot(tester, 'u-magliette').removed, isTrue);
+
+      await tester.tap(find.text('Annulla'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('slot_row_u-magliette')), findsOneWidget);
+      expect(savedSlot(tester, 'u-magliette').removed, isFalse);
+    });
+
+    testWidgets('"Annulla" dopo aver lasciato la pagina ripristina il posto', (
+      tester,
+    ) async {
+      final router = await pumpDetail(tester, _trip(), fromHome: true);
+
+      await tester.drag(
+        find.byKey(const Key('slot_dismiss_u-magliette')),
+        const Offset(-500, 0),
+      );
+      await tester.pumpAndSettle();
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(TripDetailScreen), findsNothing);
+      clearInteractions(tripRepo);
+
+      await tester.tap(find.text('Annulla'));
+      await tester.pumpAndSettle();
+
+      expect(savedSlot(tester, 'u-magliette').removed, isFalse);
+    });
+
+    testWidgets('una proposta da comprare non è nel dettaglio', (tester) async {
+      await pumpDetail(
+        tester,
+        _trip(
+          aiResult: AiPackingResult(
+            generatedAt: DateTime(2026, 11),
+            houseId: 'h1',
+            slots: [
+              ..._important(),
+              ..._useful,
+              _slot('u-sciarpa', 'Sciarpa leggera', toBuy: true),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.text('Sciarpa leggera'), findsNothing);
+      expect(find.byKey(const Key('slot_row_u-sciarpa')), findsNothing);
+      expect(find.text('Vestiti · 14'), findsOneWidget);
     });
   });
 

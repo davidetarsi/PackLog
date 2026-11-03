@@ -1,0 +1,187 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+
+import '../../../../../shared/constants/app_constants.dart';
+import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_text_button.dart';
+import '../../../model/ai_packing.dart';
+import 'slot_card_parts.dart';
+import 'slot_copies_label.dart';
+import 'slot_pop.dart';
+
+// Gli importanti nel dettaglio del viaggio: la card di un importante aperto
+// (la riga "da comprare" sta in `to_buy_slot_row.dart`).
+//
+// Colori provvisori: l'accento di "Importante" è `onPrimaryContainer`, lo
+// stesso degli avvisi della valigia AI.
+
+/// Card di un posto importante aperto: "Importante", nome (×N), motivo in
+/// una riga e due azioni testuali, l'aggiunta ([AiSlot.addLabel]) e "Da
+/// comprare", più la X per toglierla. Niente bottoni pieni.
+class ImportantSlotCard extends StatelessWidget {
+  const ImportantSlotCard({
+    super.key,
+    required this.slot,
+    required this.onAdd,
+    required this.onToBuy,
+    this.onRemove,
+    this.openBody,
+    this.popping = false,
+    this.onPopDone,
+  });
+
+  final AiSlot slot;
+  final VoidCallback onAdd;
+  final VoidCallback onToBuy;
+
+  /// La X in alto a destra; `null` la nasconde.
+  final VoidCallback? onRemove;
+
+  /// Il contenuto del posto aperto: con questo la card si apre al suo posto,
+  /// senza azioni né X.
+  final Widget? openBody;
+
+  /// Il posto aperto sta scoppiando: tutta la card si dissolve e poi chiama
+  /// [onPopDone].
+  final bool popping;
+  final VoidCallback? onPopDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final open = openBody;
+    if (open != null) {
+      return SlotPop(
+        popping: popping,
+        onDone: onPopDone,
+        child: _OpenImportantCard(body: open),
+      );
+    }
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final copies = slotCopiesLabel(slot);
+    final reason = slot.reason;
+
+    return Material(
+      color: context.groupSurface,
+      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              top: context.spacingMd,
+              bottom: context.spacingXs,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  // Con la X il testo lascia il posto al bottone.
+                  padding: EdgeInsets.only(
+                    left: context.spacingMd,
+                    right: onRemove == null
+                        ? context.spacingMd
+                        : kMinInteractiveDimension,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ImportantLabel(color: cs.onPrimaryContainer),
+                      SizedBox(height: context.spacingXs),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              slot.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.titleMedium,
+                            ),
+                          ),
+                          if (copies != null) ...[
+                            SizedBox(width: context.spacingXs),
+                            Text(
+                              copies,
+                              style: tt.titleMedium?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (reason != null && reason.isNotEmpty) ...[
+                        SizedBox(height: context.spacingXxs),
+                        Text(
+                          reason,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: tt.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Il testo dei bottoni ha già il suo margine: la riga parte poco
+                // più a sinistra, così le parole si allineano al nome.
+                Padding(
+                  padding: EdgeInsets.only(left: context.spacingXs),
+                  child: Wrap(
+                    children: [
+                      DsTextButton(
+                        key: Key('slot_add_${slot.id}'),
+                        label: slot.addLabel,
+                        onPressed: onAdd,
+                      ),
+                      DsTextButton(
+                        key: Key('slot_to_buy_${slot.id}'),
+                        label: 'trips.slots.to_buy'.tr(),
+                        onPressed: onToBuy,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onRemove != null)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: RemoveSlotButton(slot: slot, onPressed: onRemove!),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Un importante aperto: "Importante" e sotto il contenuto del posto.
+class _OpenImportantCard extends StatelessWidget {
+  const _OpenImportantCard({required this.body});
+
+  final Widget body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.groupSurface,
+      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: EdgeInsets.all(context.spacingMd),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ImportantLabel(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
+            SizedBox(height: context.spacingSm),
+            body,
+          ],
+        ),
+      ),
+    );
+  }
+}

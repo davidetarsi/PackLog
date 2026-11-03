@@ -16,7 +16,7 @@ class SuitcaseProgress {
 
   factory SuitcaseProgress.of(TripModel trip) {
     final slots = trip.aiResult?.slots ?? const <AiSlot>[];
-    final open = slots.where((slot) => slot.isOpen);
+    final open = slots.where((slot) => slot.inSuitcase);
     final usefulOpen = open.where((slot) => slot.level == AiSlotLevel.useful);
     return SuitcaseProgress(
       mine: trip.items.length,
@@ -33,7 +33,7 @@ class SuitcaseProgress {
   /// Oggetti del viaggio.
   final int mine;
 
-  /// Posti utili aperti.
+  /// Proposte aperte che stanno in valigia.
   final int proposed;
 
   /// Posti importanti aperti, "da comprare" compresi.
