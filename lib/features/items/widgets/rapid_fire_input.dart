@@ -267,6 +267,12 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
           .read(itemNotifierProvider(widget.houseId).notifier)
           .addItem(item, categoryChosen: _forcedCategory != null);
 
+      // Il campo è sparito mentre si salvava (un foglio chiuso a metà): se
+      // ne perde solo l'aspetto, l'oggetto esiste e chi ascolta lo deve sapere.
+      if (!mounted) {
+        widget.onItemCreated?.call(item);
+        return;
+      }
       _textController.clear();
       widget.onTextChanged?.call('');
       _forcedCategory = null;
