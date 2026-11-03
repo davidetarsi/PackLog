@@ -28,4 +28,8 @@ abstract final class AppMotion {
   /// Attesa della valigia: quanto resta visibile almeno la riga di un passo
   /// chiuso prima che si accenda il successivo.
   static const Duration stepResultMin = Duration(milliseconds: 800);
+
+  /// Foglio per riempire un posto: l'attesa fra l'ultima riga entrata (a
+  /// copie finite) e la chiusura, per vedere l'oggetto appena scritto.
+  static const Duration slotSheetCloseDelay = Duration(milliseconds: 200);
 }
