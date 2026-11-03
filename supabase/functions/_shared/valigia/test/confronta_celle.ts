@@ -48,6 +48,8 @@ for (const c of casi) {
     const r = c.tipo === "singola" ? strategySlots(c.grezzo, items, c.args)
       : strategySlotsMultitappa(c.grezzo, items, structuredClone(c.args));
     out = JSON.parse(JSON.stringify(r));
+    // subCategoriesModello (richiesti) e' un campo in piu' per i posti: il Python non lo ha.
+    for (const rich of (out as any).richiesti ?? []) delete rich.subCategoriesModello;
   } catch (e) {
     ko++; perCampo["(errore)"] = (perCampo["(errore)"] ?? 0) + 1;
     if (esempi.length < 8) esempi.push(`${c.insieme}/${c.armadio}/${c.id}: ERRORE ${(e as Error).stack?.split("\n").slice(0, 3).join(" | ")}`);

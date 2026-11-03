@@ -253,6 +253,15 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     }
     slots = separati;
   }
+  // L'ordine con cui il modello ha elencato le sottocategorie di ogni suo bisogno: `ideal` piu' sotto
+  // le riporta al genitore e le ordina, e l'ordine si perde. Serve solo ai posti (posti_capo.ts);
+  // non entra in nessuna scelta del generatore.
+  const elencoDelModello = new Map<string, string[]>();
+  for (const x of slots) {
+    if (x === null || typeof x !== "object" || Array.isArray(x)) continue;
+    const elenco = [...normList(vero(x.subCategories) ? x.subCategories : x.idealSubCategories, SUBCATEGORIES)];
+    if (elenco.length) elencoDelModello.set(String(x.slot), elenco);
+  }
   const prima = slots.length;
   const attViaggio = a.attivita_viaggio != null ? a.attivita_viaggio : (attivita || []);
   segnaCapiDaNeve(items, [...attViaggio, ...(attivita || [])]);
@@ -345,6 +354,8 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
       minWaterResistance: Math.trunc(Number(s.minWaterResistance || 0)), minWarmth: lo,
       frequency: get(s, "frequency", "daily"), imposto: Boolean(vero(s._fabbisogno) || vero(s._imposto)),
       reason: get(s, "reason", ""),
+      // Solo i bisogni del modello, nell'ordine in cui li ha scritti (non quelli imposti dal sistema).
+      ...(!vero(s._imposto) && elencoDelModello.has(String(s.slot)) ? { subCategoriesModello: elencoDelModello.get(String(s.slot)) } : {}),
     });
     const condividi = (base: Record_) => {
       const c = { ...base, slot: get(s, "slot"), match: "ideale", imposto: true, condiviso: true,

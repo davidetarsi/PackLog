@@ -53,7 +53,10 @@ test("stesso prompt, stessa valigia, stessi motivi del bench", async () => {
       jev: jevCome(c.args),
       profiliNoti,
     });
-    assert.deepEqual(numeri(r.valigia), numeri(c.atteso), nome);
+    // subCategoriesModello (richiesti) e' un campo in piu' per i posti: il Python non lo ha.
+    const valigia = structuredClone(r.valigia) as any;
+    for (const rich of valigia.richiesti ?? []) delete rich.subCategoriesModello;
+    assert.deepEqual(numeri(valigia), numeri(c.atteso), nome);
     // nei testi interni (reason) "2.0" e "2" valgono uguale, come in confronta_celle
     assert.deepEqual(numeri(r.motivi), numeri(c.motivi), nome);
     assert.deepEqual(JSON.parse(JSON.stringify(r.perche)), c.perche, nome);

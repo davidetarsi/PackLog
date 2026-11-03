@@ -11,7 +11,8 @@ import { essenzialiPerViaggio, giorniDiMare, normIntensita, quantityFor, RADICI_
 import { caldoUnCapoAlGiorno, camminoAPiedi } from "./regole_capi.ts";
 import { ordinaTappe } from "./slots.ts";
 import { attivitaPer, calore, capiUniti, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
-  meteoDelGap, perQuestoArmadio, soloElegante, tettoSalvate } from "./uscita.ts";
+  meteoDelGap, perQuestoArmadio, SOLO_SE_NELL_ARMADIO, soloElegante, tettoSalvate } from "./uscita.ts";
+import { sottocategoriaDalModello } from "./posti_capo.ts";
 import { NOMI_CATEGORIA, NOMI_FAMIGLIA, NOMI_SOTTOCATEGORIA, type NomePosto } from "./posti_nomi.ts";
 
 export type Livello = "importante" | "utile";
@@ -276,13 +277,20 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     }
     if (!TIPI_DI_POSTO.has(g.tipo)) continue;
     // Lo stesso capo che nomina l'avviso (copyMancante): col freddo, il maglione e non la felpa.
-    const { sub, categoria } = capoDelGap(g, viaggioFreddo || (calore(g)?.[0] ?? 0) >= 3);
+    // Il capo del posto: il primo che va dell'elenco del modello; senza elenco (bisogni imposti), o se
+    // nessuno va, quello di capoDelGap.
+    const richiesto = richiesti.find((r) => r.slot === g.slot);
+    const delModello = sottocategoriaDalModello(g, richiesto, viaggioFreddo, attivita, (s) =>
+      !SOLO_SE_NELL_ARMADIO.has(s) || sottocategorie.has(s));
+    const { sub, categoria } = delModello
+      ? { sub: delModello, categoria: String(g.category ?? "") }
+      : capoDelGap(g, viaggioFreddo || (calore(g)?.[0] ?? 0) >= 3);
     const tipo = sub ?? categoria;
     if (!tipo) continue;
     const capo = { sub, categoria };
     grezzi.push({
       tipo, categoria: "vestiti", livello: livelloPosto(g, capo, viaggioFreddo),
-      copie: copieDelMancante(g, sub, richiesti.find((r) => r.slot === g.slot), q),
+      copie: copieDelMancante(g, sub, richiesto, q),
       motivo: copyMancante(g, viaggioFreddo, attivita, lingua).perche,
       capo, qualifica: qualificaDelGap(g, capo, viaggioFreddo), origine: "gap", elegante: soloElegante(g),
       tappe: Array.isArray(g.tappe) ? g.tappe.map(String) : undefined,
