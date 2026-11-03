@@ -89,3 +89,23 @@ Parti dell'app ancora con il disegno vecchio (arancio fuori posto, snackbar, den
 ## Tema
 
 - Cursore dei campi di testo arancio (anche nella ricerca della casa): decidere se renderlo neutro, ma nel tema per tutta l'app, non come eccezione.
+
+## Scansione e proposte — verifica del 3 novembre 2026
+
+Decisione esplicita di Davide: per il nome generico «Calzini» usare calore 1 come default. Lana, termici e trekking mantengono il proprio calore specifico. Regola applicata alle istruzioni di classificazione; nessuna riscrittura retroattiva delle correzioni degli utenti.
+
+Review diretta Codex del ramo proposte eb0422d: parità offline 888/888 confermata e 144 test valigia verdi; restano aperti perdita dei requisiti formali con armadio vuoto, copertura incompleta delle tappe successive e importanza automatica degli scarponi senza distinguere il bisogno dell’attività. Non approvare ancora il risultato sulla sola parità.
+
+La misura «838 viaggi mai visti» conta celle viaggio-armadio: contiene 122 viaggi distinti, di cui 44 già nel campione; solo 78 viaggi sono interamente assenti dal campione. Nessun set v4 utilizzato.
+
+La prova reale sul modello dell’app ha riprodotto tutti e cinque gli errori: Costume → Essentials/Other, Muta sub → Not Clothing, Tuta sci → Full Body/Other, Pile leggero → Outerwear/Casual Jacket, Calzini → calore 3. In questa prova «Muta sub» è un errore di classificazione, con risposta ricevuta; il vecchio caso senza metadati resta un’evidenza diversa. I tipi corretti sono già attivi nel catalogo.
+
+Primo intervento in `codex/scansione-capi`: la verifica reale corregge Costume e Calzini, con cinque controlli vicini corretti; restano errati Muta sub, Tuta sci e Pile leggero. Le sole istruzioni generali non bastano: non dichiarare la scansione risolta.
+
+Correzione attuale: istruzioni condivise per nome e foto con catalogo per tipo (nomi italiani/inglesi, gruppo e descrizione), scelta del tipo prima del gruppo e default dei calzini generici. Un indumento fuori catalogo resta un vestito di tipo Other: questo risolve il controllo Costume da carnevale. Test aggiunto per il catalogo aggiornato e i tipi disattivati. Nessuna riclassificazione storica, nessuna modifica al generatore o alla normalizzazione. 170 test offline di scheda/catalogo/generatore/meteo verdi; confronto Python locale invariato su pulizia e dubbi di 110 casi, prompt riallineati alla copia Python corrispondente. La patch del benchmark è in `build/recovery/scan-python-parity.patch`, non ancora applicata al banco remoto.
+
+Le prove reali della correzione confermano i cinque casi iniziali corretti, lana e trekking a calore 4. Con l'ultimo prompt: una replica passa 9/10 casi, quella successiva 10/10 senza cambiare codice. Variabilità residua aperta: Tuta da ginnastica è Sweatpants nella seconda replica, mentre nella prima il modello inventa Sweatsuit, ripulito a N/A. Il server segnala il dubbio sul tipo; il percorso foto gestisce i dubbi, ma `ItemMetadataService.parse` del percorso dal nome legge solo metadati e categoria. Non presentare queste prove come garanzia di assenza di errori o di conferma esplicita dei dubbi nel Rapid Fire. Nessuna foto reale verificata e nessuna distribuzione eseguita.
+
+Su richiesta di Davide, `tool/scan_keychain.py` salva e riusa le due chiavi tramite voci dedicate nel Portachiavi macOS, senza valori negli argomenti o nei file. Strumento committato in ffb767c; configurazione reale completata e verificata, successive prove avviate direttamente dal Portachiavi senza nuovi inserimenti. `tool/scan_probe.py` esegue i dieci casi di sviluppo congelati in `capi/test/regressioni_nome.json`, senza sovrascrivere risultati precedenti e con esito non zero se non rispettati. Sei test Python verdi, compreso il controllo nativo con voce fittizia temporanea; nessuna delle due chiavi trovata nei dieci artefatti delle cinque prove reali. Le due prove AI iniziali non conservavano le credenziali.
+
+Evidenze dettagliate locali: build/recovery/proposte-review.txt e proposte-casi-riprodotti.json. Metodo confermato: Luna implementa Rapid Fire con review Codex; scansione e review del generatore seguite direttamente da Codex.
