@@ -1,0 +1,298 @@
+{
+  "note": "Campione di validazione sui nomi, etichette e alternative fissate prima delle chiamate. Nessuna immagine e nessun holdout v4. Nessuna modifica dei prompt dopo gli esiti.",
+  "cases": [
+    {
+      "nome": "Bikini a triangolo",
+      "lang": "it",
+      "expected": {
+        "category": "Lower Body",
+        "subCategory": "Swimwear",
+        "warmth": 1
+      }
+    },
+    {
+      "nome": "Mutino da surf in neoprene",
+      "lang": "it",
+      "expected": {
+        "category": "Lower Body",
+        "subCategory": "Wetsuit"
+      }
+    },
+    {
+      "nome": "Salopette da snowboard",
+      "lang": "it",
+      "expected": {
+        "category": "Lower Body",
+        "subCategory": "Ski Pants",
+        "warmth": 4,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Giacca tecnica da sci",
+      "lang": "it",
+      "expected": {
+        "category": "Outerwear",
+        "subCategory": "Ski Jacket",
+        "warmth": 5,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Pile pesante con zip",
+      "lang": "it",
+      "expected": {
+        "category": "Upper Body",
+        "subCategory": "Fleece",
+        "warmth": 4
+      }
+    },
+    {
+      "nome": "Calze di cotone",
+      "lang": "it",
+      "expected": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 1
+      }
+    },
+    {
+      "nome": "Calzettoni termici per escursioni",
+      "lang": "it",
+      "expected": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 4
+      }
+    },
+    {
+      "nome": "Maglia intima termica",
+      "lang": "it",
+      "expected": {
+        "category": "Upper Body",
+        "subCategory": "Thermal Top",
+        "warmth": 3
+      }
+    },
+    {
+      "nome": "Camicia in lino bianca",
+      "lang": "it",
+      "expected": {
+        "category": "Upper Body",
+        "subCategory": "Shirt",
+        "warmth": 1
+      }
+    },
+    {
+      "nome": "Abito lungo da cerimonia",
+      "lang": "it",
+      "expected": {
+        "category": "Full Body",
+        "subCategory": "Dress"
+      }
+    },
+    {
+      "nome": "Scarpe da scoglio",
+      "lang": "it",
+      "expected": {
+        "category": "Shoes",
+        "subCategory": "Water Shoes"
+      }
+    },
+    {
+      "nome": "Zaino da escursione",
+      "lang": "it",
+      "expected": {
+        "category": "Accessory",
+        "subCategory": "Bag",
+        "warmth": 1
+      }
+    },
+    {
+      "nome": "Ombrello pieghevole",
+      "lang": "it",
+      "expected": {
+        "category": "Accessory",
+        "subCategory": "Umbrella",
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Grembiule da cucina",
+      "lang": "it",
+      "expected": {
+        "subCategory": "Other"
+      },
+      "forbidden": {
+        "category": [
+          "Not Clothing"
+        ]
+      }
+    },
+    {
+      "nome": "Caricabatterie USB-C",
+      "lang": "it",
+      "expected": {
+        "category": "Not Clothing",
+        "subCategory": "N/A"
+      }
+    },
+    {
+      "nome": "Spazzolino da denti",
+      "lang": "it",
+      "expected": {
+        "category": "Not Clothing",
+        "subCategory": "N/A"
+      }
+    },
+    {
+      "nome": "Men's swimming trunks",
+      "lang": "en",
+      "expected": {
+        "category": "Lower Body",
+        "subCategory": "Swimwear",
+        "warmth": 1
+      }
+    },
+    {
+      "nome": "Full-length diving wetsuit",
+      "lang": "en",
+      "expected": {
+        "category": "Lower Body",
+        "subCategory": "Wetsuit"
+      }
+    },
+    {
+      "nome": "One-piece snowsuit for skiing",
+      "lang": "en",
+      "expected": {
+        "category": "Outerwear",
+        "subCategory": "Ski Suit",
+        "warmth": 5,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Lightweight fleece pullover",
+      "lang": "en",
+      "expected": {
+        "category": "Upper Body",
+        "subCategory": "Fleece",
+        "warmth": 3
+      }
+    },
+    {
+      "nome": "Ankle socks",
+      "lang": "en",
+      "expected": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 1
+      }
+    },
+    {
+      "nome": "Merino wool socks",
+      "lang": "en",
+      "expected": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 4
+      }
+    },
+    {
+      "nome": "Long-sleeved polo shirt",
+      "lang": "en",
+      "expected": {
+        "category": "Upper Body",
+        "subCategory": "Polo",
+        "warmth": 3
+      }
+    },
+    {
+      "nome": "Black leather belt",
+      "lang": "en",
+      "expected": {
+        "category": "Accessory",
+        "subCategory": "Belt",
+        "warmth": 1
+      }
+    },
+    {
+      "nome": "Hooded sweatshirt",
+      "lang": "en",
+      "expected": {
+        "category": "Upper Body",
+        "subCategory": "Hoodie",
+        "warmth": 3
+      }
+    },
+    {
+      "nome": "Thermal base-layer bottoms",
+      "lang": "en",
+      "expected": {
+        "category": "Lower Body",
+        "subCategory": "Thermal Bottoms",
+        "warmth": 4
+      }
+    },
+    {
+      "nome": "Waterproof hiking boots",
+      "lang": "en",
+      "expected": {
+        "category": "Shoes",
+        "subCategory": "Hiking Boots",
+        "warmth": 4,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Silk evening dress",
+      "lang": "en",
+      "expected": {
+        "category": "Full Body",
+        "subCategory": "Dress",
+        "warmth": 1
+      }
+    },
+    {
+      "nome": "Windproof softshell jacket",
+      "lang": "en",
+      "expected": {
+        "category": "Outerwear",
+        "subCategory": "Windbreaker",
+        "warmth": 3,
+        "waterResistance": 1
+      }
+    },
+    {
+      "nome": "Long laboratory coat",
+      "lang": "en",
+      "expected": {
+        "category": [
+          "Outerwear",
+          "Full Body"
+        ],
+        "subCategory": [
+          "Coat",
+          "Other"
+        ]
+      }
+    },
+    {
+      "nome": "Laptop computer",
+      "lang": "en",
+      "expected": {
+        "category": "Not Clothing",
+        "subCategory": "N/A"
+      }
+    },
+    {
+      "nome": "Passport",
+      "lang": "en",
+      "expected": {
+        "category": "Not Clothing",
+        "subCategory": "N/A"
+      }
+    }
+  ]
+}
