@@ -1824,13 +1824,13 @@ final flows = <Flow>[
     Scenario(
       21,
       'dettaglio-viaggio',
-      'posto-aperto',
+      'foglio-posto',
       route: '/trips/:id',
       source: _tripDetailSrc,
       description:
-          'Toccando le Magliette il posto si apre: la barra al posto di '
-          '"Modifica valigia", con Magliette \u00d73 e T-shirt nere \u00d72 '
-          'gi\u00e0 scritte.',
+          'Toccando le Magliette si apre il foglio dal basso: Magliette '
+          '\u00d75 con "Da comprare", la frase, T-shirt nere \u00d72 '
+          'gi\u00e0 scritte e il campo in fondo.',
       setup: AppSetup(
         seedWith: (c) async {
           await seed(c, SeedLevel.full);
@@ -1845,7 +1845,7 @@ final flows = <Flow>[
         );
         await app.settle();
         await app.tap(find.byKey(const Key('slot_row_slot-magliette')));
-        for (final line in const ['3 magliette', '2 t-shirt nere']) {
+        for (final line in const ['2 t-shirt nere']) {
           await app.enterText(find.byType(TextField), line);
           await app.tap(find.byIcon(Icons.arrow_upward));
         }

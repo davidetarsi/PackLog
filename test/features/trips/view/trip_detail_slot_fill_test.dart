@@ -21,8 +21,11 @@ import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
 import 'package:pack_log/features/trips/view/trip_detail_screen.dart';
-import 'package:pack_log/features/trips/view/widgets/slots/slot_rapid_fire_bar.dart';
+import 'package:pack_log/features/trips/view/widgets/slots/slot_fill_sheet.dart';
 import 'package:pack_log/features/trips/view/widgets/slots/slot_widgets.dart';
+import 'package:pack_log/features/trips/view/widgets/slots/slots_section.dart';
+import 'package:pack_log/features/trips/view/widgets/slots/trip_items_card.dart';
+import 'package:pack_log/shared/theme/app_motion.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
@@ -207,7 +210,7 @@ void main() {
   Finder inProposed(Finder finder) =>
       find.descendant(of: find.byType(ProposedSlotsCard), matching: finder);
 
-  final bar = find.byType(SlotRapidFireBar);
+  final sheet = find.byType(SlotFillSheet);
   final cta = find.byKey(const Key('trip_detail_cta'));
 
   Future<void> openMagliette(WidgetTester tester) async {
@@ -222,29 +225,55 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Fa passare l'entrata della riga e l'attesa prima della chiusura
+  /// automatica.
+  Future<void> waitAutoClose(WidgetTester tester) async {
+    await tester.pump(AppMotion.slow + AppMotion.slotSheetCloseDelay);
+    await tester.pumpAndSettle();
+  }
+
   TripModel lastSaved() =>
       verify(() => tripRepo.updateTrip(captureAny())).captured.last
           as TripModel;
 
-  group('aprire la barra', () {
-    testWidgets('toccare un proposto la mette al posto di "Modifica valigia"', (
+  group('aprire il foglio', () {
+    testWidgets('toccare un proposto apre il foglio con nome, copie e frase', (
       tester,
     ) async {
       await pumpDetail(tester, _trip());
-      expect(cta, findsOneWidget);
-      expect(bar, findsNothing);
+      expect(sheet, findsNothing);
 
       await openMagliette(tester);
 
-      expect(bar, findsOneWidget);
-      expect(cta, findsNothing);
-      expect(find.text('Magliette · 5 da personalizzare'), findsOneWidget);
+      expect(sheet, findsOneWidget);
+      expect(find.text('Magliette ×5'), findsOneWidget);
+      expect(find.textContaining('PackLog ne propone 5'), findsOneWidget);
       expect(find.text('Es. 2 t-shirt nere'), findsOneWidget);
       expect(find.byType(RapidFireInput), findsOneWidget);
-      expect(find.text('Da comprare'), findsWidgets);
+      expect(find.byKey(const Key('slot_sheet_to_buy')), findsOneWidget);
+      // "Modifica valigia" resta dov'è: il foglio non sostituisce il bottone.
+      expect(cta, findsOneWidget);
     });
 
-    testWidgets('"Aggiungi la tua" su un importante apre la barra', (
+    testWidgets('con il foglio aperto nessuna riga della pagina è spenta', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _trip());
+      await openMagliette(tester);
+
+      final page = find.byType(SlotsSection);
+      expect(
+        find.descendant(of: page, matching: find.byType(Opacity)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: page, matching: find.byType(AnimatedOpacity)),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('slot_open_u-magliette')), findsNothing);
+    });
+
+    testWidgets('"Aggiungi la tua" su un importante apre il foglio', (
       tester,
     ) async {
       await pumpDetail(tester, _trip());
@@ -252,33 +281,34 @@ void main() {
       await tester.tap(find.byKey(const Key('slot_add_imp-giacca')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Giacca invernale · 1 da personalizzare'), findsOne);
+      expect(sheet, findsOneWidget);
+      expect(find.text('Giacca invernale ×1'), findsOneWidget);
     });
 
-    testWidgets('la X chiude la barra e torna "Modifica valigia"', (
-      tester,
-    ) async {
+    testWidgets('la X chiude il foglio', (tester) async {
       await pumpDetail(tester, _trip());
       await openMagliette(tester);
 
-      await tester.tap(find.byKey(const Key('slot_bar_close')));
+      await tester.tap(find.byKey(const Key('sheet_close')));
       await tester.pumpAndSettle();
 
-      expect(bar, findsNothing);
-      expect(cta, findsOneWidget);
+      expect(sheet, findsNothing);
+      expect(find.byType(TripDetailScreen), findsOneWidget);
     });
 
-    testWidgets('il tasto indietro chiude prima la barra, poi la pagina', (
+    testWidgets('il tasto indietro chiude il foglio, poi la pagina', (
       tester,
     ) async {
       await pumpDetail(tester, _trip(), fromHome: true);
       await openMagliette(tester);
 
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
+      // Il primo indietro può togliere la tastiera dal campo.
+      for (var i = 0; i < 2 && sheet.evaluate().isNotEmpty; i++) {
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+      }
 
-      expect(bar, findsNothing);
-      expect(cta, findsOneWidget);
+      expect(sheet, findsNothing);
       expect(find.byType(TripDetailScreen), findsOneWidget);
 
       await tester.binding.handlePopRoute();
@@ -286,19 +316,18 @@ void main() {
       expect(find.byType(TripDetailScreen), findsNothing);
     });
 
-    testWidgets('?slot= la apre all\'avvio', (tester) async {
+    testWidgets('?slot= lo apre all\'avvio', (tester) async {
       await pumpDetail(tester, _trip(), slot: 'u-magliette');
 
-      expect(bar, findsOneWidget);
-      expect(find.text('Magliette · 5 da personalizzare'), findsOneWidget);
+      expect(sheet, findsOneWidget);
+      expect(find.text('Magliette ×5'), findsOneWidget);
     });
 
     testWidgets('?slot= sconosciuto o già chiuso: ignorato in silenzio', (
       tester,
     ) async {
       await pumpDetail(tester, _trip(), slot: 'non-esiste');
-      expect(bar, findsNothing);
-      expect(cta, findsOneWidget);
+      expect(sheet, findsNothing);
       expect(find.byType(SnackBar), findsNothing);
     });
 
@@ -306,12 +335,11 @@ void main() {
       tester,
     ) async {
       await pumpDetail(tester, _trip(), slot: 'u-chiuso');
-      expect(bar, findsNothing);
-      expect(cta, findsOneWidget);
+      expect(sheet, findsNothing);
       expect(find.byType(SnackBar), findsNothing);
     });
 
-    testWidgets('casa di partenza sparita: niente barra e lo snack lo dice', (
+    testWidgets('casa di partenza sparita: niente foglio e lo snack lo dice', (
       tester,
     ) async {
       when(() => houseRepo.getAllHouses()).thenAnswer((_) async => []);
@@ -319,18 +347,17 @@ void main() {
 
       await openMagliette(tester);
 
-      expect(bar, findsNothing);
-      expect(cta, findsOneWidget);
+      expect(sheet, findsNothing);
       expect(find.text('La casa di partenza non c\'è più'), findsOneWidget);
     });
 
-    testWidgets('?slot= con la casa sparita: niente barra e lo snack', (
+    testWidgets('?slot= con la casa sparita: niente foglio e lo snack', (
       tester,
     ) async {
       when(() => houseRepo.getAllHouses()).thenAnswer((_) async => []);
       await pumpDetail(tester, _trip(), slot: 'u-magliette');
 
-      expect(bar, findsNothing);
+      expect(sheet, findsNothing);
       expect(find.text('La casa di partenza non c\'è più'), findsOneWidget);
     });
   });
@@ -361,11 +388,13 @@ void main() {
         3,
       );
 
-      // La riga del posto si aggiorna sotto gli occhi, la barra resta.
+      // Il foglio resta, con l'oggetto e le copie che mancano; la pagina dietro
+      // ha già l'oggetto nel suo gruppo.
+      expect(sheet, findsOneWidget);
+      expect(find.text('Magliette ×3'), findsOneWidget);
+      expect(find.text('T-shirt nere'), findsWidgets);
       expect(inProposed(find.text('×3')), findsNWidgets(2));
       expect(find.byKey(Key('trip_item_${packed.id}')), findsOneWidget);
-      expect(find.text('Magliette · 3 da personalizzare'), findsOneWidget);
-      expect(bar, findsOneWidget);
     });
 
     testWidgets('senza numero l\'oggetto entra con una copia', (tester) async {
@@ -375,15 +404,42 @@ void main() {
       await send(tester, 'Camicia blu');
 
       expect(lastSaved().items.single.quantity, 1);
-      expect(find.text('Magliette · 4 da personalizzare'), findsOneWidget);
+      expect(find.text('Magliette ×4'), findsOneWidget);
     });
 
-    testWidgets('"5 t-shirt" su ×3: il posto sparisce, la barra si chiude, '
-        'l\'oggetto ha 5 copie', (tester) async {
+    testWidgets('chiuso a mano: gli oggetti restano nei loro gruppi e il '
+        'posto tiene le copie che mancano', (tester) async {
+      await pumpDetail(tester, _trip());
+      await openMagliette(tester);
+      await send(tester, '2 t-shirt nere');
+
+      await tester.tap(find.byKey(const Key('sheet_close')));
+      await tester.pumpAndSettle();
+
+      expect(sheet, findsNothing);
+      final packed = lastSaved().items.single;
+      expect(
+        find.descendant(
+          of: find.byType(ItemsCard),
+          matching: find.byKey(Key('trip_item_${packed.id}')),
+        ),
+        findsOneWidget,
+      );
+      expect(inProposed(find.text('Magliette')), findsOneWidget);
+      expect(inProposed(find.text('×3')), findsNWidgets(2));
+    });
+
+    testWidgets('"5 t-shirt" su ×3: il foglio si chiude da solo, il posto '
+        'sparisce, l\'oggetto ha 5 copie', (tester) async {
       await pumpDetail(tester, _trip(magliette: 3));
       await openMagliette(tester);
 
-      await send(tester, '5 t-shirt');
+      await tester.enterText(find.byType(TextField), '5 t-shirt');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.arrow_upward));
+      await tester.pump();
+      expect(sheet, findsOneWidget);
+      await waitAutoClose(tester);
 
       final saved = lastSaved();
       expect(saved.items.single.quantity, 5);
@@ -393,9 +449,8 @@ void main() {
             .remaining,
         0,
       );
+      expect(sheet, findsNothing);
       expect(inProposed(find.text('Magliette')), findsNothing);
-      expect(bar, findsNothing);
-      expect(cta, findsOneWidget);
     });
   });
 
@@ -433,11 +488,12 @@ void main() {
       expectNoEvent('slot_bought');
     });
 
-    testWidgets('"Presa" dalla riga e poi un riempimento: slot_bought una '
-        'volta', (tester) async {
+    testWidgets('"Presa" dalla riga apre il foglio e un riempimento è '
+        'slot_bought, una volta', (tester) async {
       await pumpDetail(tester, withGiaccaToBuy());
       await tester.tap(find.byKey(const Key('slot_got_it_imp-giacca')));
       await tester.pumpAndSettle();
+      expect(sheet, findsOneWidget);
 
       await send(tester, 'Piumino nero');
 
@@ -478,37 +534,37 @@ void main() {
       }, 1);
     });
 
-    testWidgets('slot_marked_to_buy dalla barra, e Annulla non ne emette '
+    testWidgets('slot_marked_to_buy dal foglio, e Annulla non ne emette '
         'altri', (tester) async {
       await pumpDetail(tester, _trip());
       await tester.tap(find.byKey(const Key('slot_add_imp-giacca')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('slot_bar_to_buy')));
+      await tester.tap(find.byKey(const Key('slot_sheet_to_buy')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Annulla'));
       await tester.pumpAndSettle();
 
       expectEvent('slot_marked_to_buy', {
         'level': 'important',
-        'from': 'bar',
+        'from': 'sheet',
       }, 1);
       expectNoEvent('slot_bought');
     });
   });
 
   group('"Da comprare"', () {
-    testWidgets('nella barra marca il posto, chiude la barra e propone '
-        'Annulla', (tester) async {
+    testWidgets('nel foglio marca il posto, lo chiude e propone Annulla', (
+      tester,
+    ) async {
       await pumpDetail(tester, _trip());
       await tester.tap(find.byKey(const Key('slot_add_imp-giacca')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('slot_bar_to_buy')));
+      await tester.tap(find.byKey(const Key('slot_sheet_to_buy')));
       await tester.pumpAndSettle();
 
-      expect(bar, findsNothing);
-      expect(cta, findsOneWidget);
+      expect(sheet, findsNothing);
       expect(find.text('Segnato da comprare'), findsOneWidget);
       expect(find.byType(ToBuySlotRow), findsOneWidget);
       expect(
@@ -549,12 +605,12 @@ void main() {
       );
     });
 
-    testWidgets('"Annulla" della barra funziona dopo aver lasciato la '
+    testWidgets('"Annulla" del foglio funziona dopo aver lasciato la '
         'pagina', (tester) async {
       await pumpDetail(tester, _trip(), fromHome: true);
       await tester.tap(find.byKey(const Key('slot_add_imp-giacca')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('slot_bar_to_buy')));
+      await tester.tap(find.byKey(const Key('slot_sheet_to_buy')));
       await tester.pumpAndSettle();
 
       router.pop();
@@ -572,7 +628,7 @@ void main() {
       );
     });
 
-    testWidgets('su un posto già "da comprare" la barra non lo ripropone', (
+    testWidgets('su un posto già "da comprare" il foglio non lo ripropone', (
       tester,
     ) async {
       final trip = _trip();
@@ -588,8 +644,8 @@ void main() {
       await tester.tap(find.byKey(const Key('slot_got_it_imp-giacca')));
       await tester.pumpAndSettle();
 
-      expect(bar, findsOneWidget);
-      expect(find.byKey(const Key('slot_bar_to_buy')), findsNothing);
+      expect(sheet, findsOneWidget);
+      expect(find.byKey(const Key('slot_sheet_to_buy')), findsNothing);
     });
   });
 }
