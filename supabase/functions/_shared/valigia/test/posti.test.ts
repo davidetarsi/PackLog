@@ -697,13 +697,18 @@ test("regola D, Dubrovnik: niente jeans in un bisogno di sola eleganza media (Sm
   assert.deepEqual(tipoDi(p), ["Trousers"]);
 });
 
-test("regola D, Praga: col freddo il piumino prima del cappotto che puo' essere un trench", () => {
+test("regola D, Praga: col freddo il cappotto (di lana, calore 4 nella scala dello scan) basta a 3 ma non a 4: li' il piumino", () => {
   // Le giacche del meteo diventano un posto solo ("Giacca invernale"): la scelta si guarda sulla funzione.
   const g = assente("capospalla", "Outerwear", ["Coat", "Down Jacket", "Windbreaker"]);
-  const rich = { minWarmth: 3, formality: ["Business", "Casual", "Smart Casual"], subCategoriesModello: ["Coat", "Down Jacket", "Windbreaker"] };
-  assert.equal(sottocategoriaDalModello(g, rich, true, [], () => true), "Down Jacket");
+  const rich = (minWarmth: number) => ({ minWarmth, formality: ["Business", "Casual", "Smart Casual"], subCategoriesModello: ["Coat", "Down Jacket", "Windbreaker"] });
+  assert.equal(sottocategoriaDalModello(g, rich(3), true, [], () => true), "Coat");
+  // col freddo e calore 4 serve 5 al capo qualunque: il cappotto non basta, il piumino (capo per il freddo) si
+  assert.equal(sottocategoriaDalModello(g, rich(4), true, [], () => true), "Down Jacket");
   // senza freddo il cappotto, primo del modello, va bene
-  assert.equal(sottocategoriaDalModello(g, rich, false, [], () => true), "Coat");
+  assert.equal(sottocategoriaDalModello(g, rich(4), false, [], () => true), "Coat");
+  // il windbreaker (calore 2) non regge mai un bisogno di 3 col freddo, anche se e' il solo dell'elenco
+  const solo = { minWarmth: 3, subCategoriesModello: ["Windbreaker"] };
+  assert.equal(sottocategoriaDalModello(g, solo, true, [], () => true), null);
   // l'elenco assente (bisogno imposto): niente, resta capoDelGap
   assert.equal(sottocategoriaDalModello(g, { minWarmth: 3 }, true, [], () => true), null);
 });

@@ -9,9 +9,19 @@ import { viaggioDiLavoro } from "./inject.ts";
 import { occasioneFormale } from "./regole_capi.ts";
 import { calore, MAI_PER_IL_FREDDO, NOME_SOTTOCATEGORIA, soloElegante } from "./uscita.ts";
 
-/** Categoria e calore che la sottocategoria garantisce (1-5): il piu' basso che un capo di quel tipo
- *  ha di solito, dalle definizioni del prompt dello scan. Il cappotto garantisce 3 (il trench), il
- *  piumino 4 (quello leggero): il cappotto di lana o il piumino da inverno stanno sopra. */
+/** Categoria e calore (1-5) che la sottocategoria garantisce. Il calore e' quello della scala del prompt
+ *  dello scan (scheda.ts, RIGHE_CAMPI "warmth"), la stessa che etichetta i capi degli utenti: per ogni
+ *  sottocategoria il livello del suo capo tipico. Dove la scala la mette a due livelli si e' preso il
+ *  capo di default:
+ *   - Shirt 2 (camicia di cotone; la flanella e' 3), Jeans 3 (i jeans estivi leggeri sono 2),
+ *     Trousers 3 (chinos e sartoriali; i cargo e da trekking sono 2), Fleece 3 (il pile pesante e' 4),
+ *     Sweater 4 (maglione di lana; quello da montagna e' 5), Boots 3 (stivaletti; quelli di pelle sono 4),
+ *     Rain Jacket 2 (la giacca antipioggia leggera; l'hardshell e' 3), Casual Jacket 2 (giacca di jeans;
+ *     il softshell e' 3), Cap/Hat 1 (il cappellino; quello di lana e' 4);
+ *   - Coat 4 (cappotto di lana; il trench e' 3), Down Jacket 4 (piumino leggero; da inverno e' 5),
+ *     Scarf 4 (sciarpa di lana; quella leggera e' 1), Gloves 4 (guanti di lana; da sci sono 5).
+ *  Non stanno nella scala e restano a mano: Crop Top (come Tank Top), Skirt, Wetsuit, Water Shoes (come
+ *  i sandali), Ski Suit (come la giacca da sci), Tie, Umbrella. */
 const TIPICO: Record<string, [string, number]> = {
   "T-Shirt": ["Upper Body", 2], "Shirt": ["Upper Body", 2], "Polo": ["Upper Body", 2], "Tank Top": ["Upper Body", 1],
   "Crop Top": ["Upper Body", 1], "Hoodie": ["Upper Body", 3], "Sweatshirt": ["Upper Body", 3], "Sweater": ["Upper Body", 4],
@@ -23,11 +33,11 @@ const TIPICO: Record<string, [string, number]> = {
   "Sneakers": ["Shoes", 2], "Sandals": ["Shoes", 1], "Flip-Flops": ["Shoes", 1], "Loafers": ["Shoes", 2],
   "Dress Shoes": ["Shoes", 2], "Boots": ["Shoes", 3], "Hiking Boots": ["Shoes", 4], "Snow Boots": ["Shoes", 5],
   "Water Shoes": ["Shoes", 1],
-  "Coat": ["Outerwear", 3], "Down Jacket": ["Outerwear", 4], "Windbreaker": ["Outerwear", 2], "Rain Jacket": ["Outerwear", 3],
+  "Coat": ["Outerwear", 4], "Down Jacket": ["Outerwear", 4], "Windbreaker": ["Outerwear", 2], "Rain Jacket": ["Outerwear", 2],
   "Blazer": ["Outerwear", 3], "Casual Jacket": ["Outerwear", 2], "Vest": ["Outerwear", 3], "Ski Jacket": ["Outerwear", 5],
   "Ski Suit": ["Outerwear", 5],
   "Cap/Hat": ["Accessory", 1], "Belt": ["Accessory", 1], "Bag": ["Accessory", 1], "Scarf": ["Accessory", 4],
-  "Sunglasses": ["Accessory", 1], "Watch": ["Accessory", 1], "Jewelry": ["Accessory", 1], "Gloves": ["Accessory", 5],
+  "Sunglasses": ["Accessory", 1], "Watch": ["Accessory", 1], "Jewelry": ["Accessory", 1], "Gloves": ["Accessory", 4],
   "Tie": ["Accessory", 1], "Umbrella": ["Accessory", 1],
 };
 
