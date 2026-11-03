@@ -588,11 +588,7 @@ void main() {
       final v = (await database.tripsDao.findTripById('v'))!;
 
       expect(
-        SyncSerializers.tripToJson(
-          v,
-          items: [],
-          luggageIds: [],
-        )['transports'],
+        SyncSerializers.tripToJson(v, items: [], luggageIds: [])['transports'],
         <String>[],
       );
     });
