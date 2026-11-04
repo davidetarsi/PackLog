@@ -10,7 +10,7 @@ import { motiviValigia, percheValigia, tagArmadio } from "../motivi.ts";
 import { copyMancante, uscitaApp } from "../uscita.ts";
 
 const casi: any[] = JSON.parse(readFileSync(process.env.ORACOLO_CELLE
-  ?? new URL("./oracolo_celle_campione.json", import.meta.url).pathname, "utf8"));
+  ?? new URL("./oracolo_celle_campione.json", import.meta.url), "utf8"));
 const tag: Record<string, Record<string, string[]>> = {};
 for (const c of JSON.parse(readFileSync(new URL("./oracolo_quantita.json", import.meta.url), "utf8"))) {
   if (c.f === "carica_armadio") tag[c.nome + ".json"] = tagArmadio(c.args[0] as RigaArmadio[]);

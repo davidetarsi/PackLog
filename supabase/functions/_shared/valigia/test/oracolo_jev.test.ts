@@ -9,7 +9,7 @@ import { caricaArmadio, type RigaArmadio } from "../capo.ts";
 import { CATEGORIE_CAPI, type ChiediJev, datiJev, DOMANDA_CAPI, DOMANDA_SCARPE, DOMANDE_CLASSI, DOMANDE_PROFILO,
   ENDPOINT, MODELLO, scheda, statoViaggio } from "../jev.ts";
 
-const file = process.env.ORACOLO_JEV ?? new URL("./oracolo_jev_campione.json", import.meta.url).pathname;
+const file = process.env.ORACOLO_JEV ?? new URL("./oracolo_jev_campione.json", import.meta.url);
 const o = JSON.parse(readFileSync(file, "utf8"));
 const righe: Record<string, RigaArmadio[]> = {};
 for (const c of JSON.parse(readFileSync(new URL("./oracolo_quantita.json", import.meta.url), "utf8"))) {

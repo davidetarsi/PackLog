@@ -11,7 +11,7 @@ import { postiApp } from "../posti.ts";
 import { uscitaApp } from "../uscita.ts";
 import { caricaArmadio } from "../capo.ts";
 
-const file = process.env.ORACOLO_CELLE ?? new URL("./oracolo_celle_campione.json", import.meta.url).pathname;
+const file = process.env.ORACOLO_CELLE ?? new URL("./oracolo_celle_campione.json", import.meta.url);
 const casi: any[] = JSON.parse(readFileSync(file, "utf8"));
 const righe: Record<string, RigaArmadio[]> = {};
 for (const c of JSON.parse(readFileSync(new URL("./oracolo_quantita.json", import.meta.url), "utf8"))) {

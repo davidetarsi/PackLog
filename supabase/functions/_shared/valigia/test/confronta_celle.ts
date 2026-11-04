@@ -7,7 +7,7 @@ import { strategySlots } from "../slots.ts";
 import { strategySlotsMultitappa } from "../tappe.ts";
 
 const file = process.argv[2] && !process.argv[2].startsWith("-")
-  ? process.argv[2] : new URL("./oracolo_celle_campione.json", import.meta.url).pathname;
+  ? process.argv[2] : new URL("./oracolo_celle_campione.json", import.meta.url);
 const verboso = process.argv.includes("-v");
 const casi: any[] = JSON.parse(readFileSync(file, "utf8"));
 const righe: Record<string, RigaArmadio[]> = {};
