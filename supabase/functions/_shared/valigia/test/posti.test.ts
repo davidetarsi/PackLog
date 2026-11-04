@@ -7,8 +7,8 @@ import { strategySlots } from "../slots.ts";
 import { capoDelGap, NOME_CATEGORIA, NOME_SOTTOCATEGORIA } from "../uscita.ts";
 import { NOMI_CATEGORIA, NOMI_SOTTOCATEGORIA } from "../posti_nomi.ts";
 
-const livello = (g: Record<string, any>, viaggioFreddo = false) =>
-  livelloPosto(g, capoDelGap(g, viaggioFreddo), viaggioFreddo);
+const livello = (g: Record<string, any>, viaggioFreddo = false, attivita: string[] = []) =>
+  livelloPosto(g, capoDelGap(g, viaggioFreddo), viaggioFreddo, attivita);
 
 test("livello: la giacca col freddo e' importante, il maglione col freddo no", () => {
   const giacca = { tipo: "assente", category: "Outerwear", subCategories: ["Coat", "Down Jacket", "Casual Jacket", "Windbreaker"], warmth_richiesto: [4, 5], priorita: "necessario", essential: true };
@@ -23,8 +23,8 @@ test("livello: magliette necessarie restano utili; costume e scarponi importanti
   const scarponi = { tipo: "assente", category: "Shoes", subCategories: ["Hiking Boots"], priorita: "necessario" };
   const camicia = { tipo: "assente", category: "Upper Body", subCategories: ["Shirt"], formality: ["Formal"] };
   assert.equal(livello(maglietta), "utile");
-  assert.equal(livello(costume), "importante");
-  assert.equal(livello(scarponi), "importante");
+  assert.equal(livello(costume, false, ["mare"]), "importante");
+  assert.equal(livello(scarponi, false, ["trekking"]), "importante");
   assert.equal(livello(camicia), "importante");
 });
 
@@ -409,10 +409,10 @@ test("postiApp a tappe: la massima della tappa base per i capi", () => {
 // ── Un posto solo per le giacche e per le scarpe del meteo (Task 3b) ───────────────────────
 const TUTTI_ESSENZIALI = [{ radice: "mutand" }, { radice: "calz" }, { radice: "pigiama" }, { radice: "necessaire" }];
 const postiDi = (mancanti: Record<string, any>[], opzioni: { meteo?: Record<string, any>; lingua?: "it" | "en";
-  capi?: Record<string, any>[]; armadio?: ReturnType<typeof caricaArmadio>; salvate?: Map<string, number | null> } = {}) =>
+  viaggio?: Record<string, any>; capi?: Record<string, any>[]; armadio?: ReturnType<typeof caricaArmadio>; salvate?: Map<string, number | null> } = {}) =>
   postiApp({ mancanti_canonici: mancanti, richiesti: richiestiDi(mancanti), essenziali: TUTTI_ESSENZIALI },
     { capi: opzioni.capi ?? [], essenziali: [] }, opzioni.salvate ?? new Map(),
-    { meteo: opzioni.meteo ?? SEUL_METEO, viaggio: SEUL_VIAGGIO, armadio: opzioni.armadio ?? [], lingua: opzioni.lingua }).posti;
+    { meteo: opzioni.meteo ?? SEUL_METEO, viaggio: opzioni.viaggio ?? SEUL_VIAGGIO, armadio: opzioni.armadio ?? [], lingua: opzioni.lingua }).posti;
 const MITE = { temp_min_media: 14, temp_max_media: 22, giorni_di_pioggia: 3 };
 const freddoGap = (slot: string, category: string, sub: string) =>
   assente(slot, category, [sub], { warmth_richiesto: [4, 5] });
@@ -469,7 +469,7 @@ test("posti meteo: freddo e pioggia con fasce incompatibili restano distinti anc
 
 test("un posto solo: gli scarponi da trekking (attivita') restano accanto alle Scarpe invernali", () => {
   // clima mite: gli scarponi non prendono "invernali" dal viaggio; le Boots lo chiedono col loro calore
-  const posti = postiDi([assente("Scarponi", "Shoes", ["Hiking Boots"]), freddoGap("Stivali", "Shoes", "Boots")], { meteo: MITE });
+  const posti = postiDi([assente("Scarponi", "Shoes", ["Hiking Boots"]), freddoGap("Stivali", "Shoes", "Boots")], { meteo: MITE, viaggio: { giorni: 4, attivita: ["trekking"] } });
   const importanti = posti.filter((p) => p.livello === "importante" && ["Shoes", "Hiking Boots"].includes(p.tipo));
   assert.deepEqual(importanti.map((p) => p.nome).sort(), ["Scarpe invernali", "Scarponi da trekking"]);
 });
@@ -600,7 +600,7 @@ test("muta: il Wetsuit al massimo utile, il costume resta importante", () => {
   const costume = { tipo: "assente", category: "Lower Body", subCategories: ["Swimwear"], priorita: "necessario" };
   assert.equal(livello(muta), "utile");
   assert.equal(livelloPosto(muta, { sub: "Wetsuit", categoria: "Lower Body" }, true), "utile");
-  assert.equal(livello(costume), "importante");
+  assert.equal(livello(costume, false, ["mare"]), "importante");
 });
 
 test("pantaloni lunghi al caldo: al massimo le copie delle camicie", () => {
@@ -738,7 +738,7 @@ test("requisiti: blazer e stivali formali restano distinti dai posti per il fred
     bisogno("scarpe per il freddo", "Shoes", ["Boots"], { minWarmth: 4 }),
   ], { temp_min: -4, temp_max: 5 }, ["riunioni di lavoro"]);
   // Sotto zero il generatore sostituisce le scarpe eleganti con stivali caldi compatibili con l'ufficio.
-  for (const tipo of ["Blazer", "Boots", "Outerwear", "Hiking Boots"]) {
+  for (const tipo of ["Blazer", "Boots", "Outerwear", "Shoes"]) {
     assert.equal(p.find((x) => x.tipo === tipo)?.livello, "importante", `${tipo}: ${JSON.stringify(p)}`);
   }
 });
@@ -858,4 +858,67 @@ test("destinazione singola: il controllo dei bisogni non raddoppia i costumi gia
     viaggio: { giorni: 8, attivita: ["mare"], destinazione: { nome: "Malindi" } },
     meteo: { temp_min_media: 24, temp_max_media: 31 }, armadio: [] });
   assert.equal(posti.find((p) => p.tipo === "Swimwear")?.copie, 3);
+});
+
+// La priorita' dipende dall'attivita' dichiarata, non dal nome tecnico del capo.
+const postoAttivita = (sub: string, attivita: string[], extra: Record<string, any> = {}) => {
+  const category = ["Hiking Boots", "Water Shoes", "Snow Boots"].includes(sub) ? "Shoes" :
+    ["Ski Jacket", "Ski Suit"].includes(sub) ? "Outerwear" : "Lower Body";
+  return postiApp({ mancanti_canonici: [{ slot: "test", tipo: "assente", category,
+    subCategories: [sub], warmth_richiesto: [1, 2], ...extra }], essenziali: TUTTI_ESSENZIALI },
+    { capi: [], essenziali: [] }, new Map(), { armadio: [], viaggio: { giorni: 4, attivita },
+      meteo: { temp_min_media: 18, temp_max_media: 25 } }).posti[0];
+};
+
+test("attivita': escursioni leggere non rendono gli scarponi automaticamente importanti", () => {
+  assert.equal(postoAttivita("Hiking Boots", ["escursioni leggere"]).livello, "utile");
+  assert.equal(postoAttivita("Hiking Boots", ["trekking"]).livello, "importante");
+  assert.equal(postoAttivita("Hiking Boots", ["escursioni in quota"]).livello, "importante");
+  assert.equal(postoAttivita("Hiking Boots", ["escursioni leggere e trekking"]).livello, "importante");
+});
+
+test("attivita': costume e scarpe da acqua sono importanti solo se si va in acqua", () => {
+  for (const sub of ["Swimwear", "Water Shoes"]) {
+    assert.equal(postoAttivita(sub, ["visite in citta"]).livello, "utile");
+    assert.equal(postoAttivita(sub, ["mare"]).livello, "importante");
+    assert.equal(postoAttivita(sub, ["immersioni"]).livello, "importante");
+  }
+});
+
+test("attivita': la neve rende importanti i capi da sci, la citta' temperata no", () => {
+  for (const sub of ["Ski Pants", "Ski Jacket", "Ski Suit", "Snow Boots"]) {
+    assert.equal(postoAttivita(sub, ["visite in citta"]).livello, "utile");
+    assert.equal(postoAttivita(sub, ["sci"]).livello, "importante");
+  }
+});
+
+test("attivita': la muta rimane utile anche per le immersioni", () => {
+  assert.equal(postoAttivita("Wetsuit", ["immersioni"]).livello, "utile");
+});
+
+test("attivita': la protezione dalla pioggia resta importante senza trekking", () => {
+  assert.equal(postoAttivita("Hiking Boots", ["escursioni leggere"], { impermeabilita_richiesta: 2 }).livello, "importante");
+});
+
+test("attivita': il trekking di un'altra tappa non rende importanti gli scarponi per la citta'", () => {
+  const per = (nome: string) => postiApp({ mancanti_canonici: [{ tipo: "assente", category: "Shoes",
+    subCategories: ["Hiking Boots"], warmth_richiesto: [1, 2], tappe: [nome] }], essenziali: TUTTI_ESSENZIALI },
+    { capi: [], essenziali: [] }, new Map(), { armadio: [], viaggio: { giorni: 6, tappe: [
+      { nome: "Centro", giorni: 3, attivita: ["escursioni leggere"] },
+      { nome: "Monte", giorni: 3, attivita: ["trekking"] }] } }).posti[0].livello;
+  assert.equal(per("Centro"), "utile");
+  assert.equal(per("Monte"), "importante");
+});
+
+test("attivita': le copie mancanti usano la tappa del capo, non il trekking di un'altra tappa", () => {
+  const armadio = caricaArmadio([{ id: "scarpe", name: "Scarponi", quantity: 1,
+    ai_metadata: { category: "Shoes", subCategory: "Hiking Boots", warmth: 2 } }]);
+  const per = (nome: string) => postiApp({ ideali: [{ item_id: "scarpe", tappe: [nome] }], ripieghi: [],
+    mancanti_canonici: [], essenziali: TUTTI_ESSENZIALI },
+    { capi: [{ item_id: "scarpe", quantita: 3, motivo: motivoGiorno }], essenziali: [] }, new Map([["scarpe", 1]]),
+    { armadio, viaggio: { giorni: 6, tappe: [
+      { nome: "Centro", giorni: 3, attivita: ["escursioni leggere"] },
+      { nome: "Monte", giorni: 3, attivita: ["trekking"] }] } }).posti.find((p) => p.tipo === "Hiking Boots")!;
+  assert.equal(per("Centro").livello, "utile");
+  assert.equal(per("Monte").livello, "importante");
 });

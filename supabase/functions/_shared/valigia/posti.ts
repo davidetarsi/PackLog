@@ -5,10 +5,10 @@ import * as K from "./costanti.ts";
 import { caricaArmadio, type Capo as CapoArmadio } from "./capo.ts";
 import { canonicalizeGaps, capienzaBagaglio, lavanderiaPresunta } from "./dopo.ts";
 import { scenarioDaApp, type ViaggioApp } from "./genera.ts";
-import { eTrekking } from "./inject.ts";
+import { eTrekking, interseca, parole } from "./inject.ts";
 import { attivitaScenario } from "./prompt.ts";
-import { essenzialiPerViaggio, giorniDiMare, normIntensita, quantityFor, RADICI_NOTTE } from "./quantita.ts";
-import { caldoUnCapoAlGiorno, camminoAPiedi } from "./regole_capi.ts";
+import { eAttivitaAcqua, essenzialiPerViaggio, giorniDiMare, normIntensita, quantityFor, RADICI_GIORNI_ACQUA_IN_PIU, RADICI_NOTTE } from "./quantita.ts";
+import { caldoUnCapoAlGiorno, camminoAPiedi, ha } from "./regole_capi.ts";
 import { ordinaTappe } from "./slots.ts";
 import { servePerTappa } from "./tappe.ts";
 import { attivitaPer, calore, capiUniti, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
@@ -20,18 +20,23 @@ export type Qualifica = "freddo" | "acqua" | "elegante";
 
 type Capo = { sub: string | null; categoria: string };
 
-// Sottocategorie d'attivita': senza, l'attivita' non si fa (Davide, 1 novembre).
-const DA_ATTIVITA = new Set(["Hiking Boots", "Water Shoes", "Swimwear", "Wetsuit", "Ski Jacket", "Ski Pants",
-  "Ski Suit", "Snow Boots"]);
+/** Il nome tecnico da solo non rende necessario un capo per questo viaggio. */
+function daAttivita(sub: string | null, attivita: string[]): boolean {
+  // Il matcher accetta anche escursioni leggere come ripiego; qui non sono un obbligo tecnico.
+  if (sub === "Hiking Boots") return eTrekking(attivita.map((a) => a.replace(/\bescursion\w*\s+legger\w*\b/gi, "")));
+  if (sub === "Swimwear" || sub === "Water Shoes") return eAttivitaAcqua(attivita) || ha(attivita, RADICI_GIORNI_ACQUA_IN_PIU);
+  if (["Ski Jacket", "Ski Pants", "Ski Suit", "Snow Boots"].includes(sub ?? "")) return interseca(parole(attivita), K.PAROLE_NEVE);
+  return false;
+}
 const CATEGORIE_DEL_METEO = new Set(["Outerwear", "Shoes", "Accessory"]);
 
 /** Importante solo cio' che dipende da questo viaggio: un'attivita', un'occasione elegante, il
  *  freddo o la pioggia per giacche, scarpe e accessori. Il resto (magliette, maglioni, strato
  *  termico compresi) e' utile. */
-export function livelloPosto(g: Record<string, any>, capo: Capo, viaggioFreddo: boolean): Livello {
+export function livelloPosto(g: Record<string, any>, capo: Capo, viaggioFreddo: boolean, attivita: string[] = []): Livello {
   // La muta si noleggia quasi sempre sul posto: al massimo utile (il costume resta importante).
   if (capo.sub === "Wetsuit") return "utile";
-  if (capo.sub && DA_ATTIVITA.has(capo.sub)) return "importante";
+  if (daAttivita(capo.sub, attivita)) return "importante";
   if (soloElegante(g)) return "importante";
   if (CATEGORIE_DEL_METEO.has(capo.categoria)) {
     const { freddo, acqua } = meteoDelGap(g, capo, viaggioFreddo);
@@ -279,6 +284,8 @@ interface Grezzo {
   origine: "gap" | "pezzi" | "famiglia";
   /** Solo per i mancanti: il gap chiede un capo elegante (soloElegante). */
   elegante?: boolean;
+  /** Necessario per le attivita' delle tappe di questo bisogno. */
+  daAttivita?: boolean;
   /** Solo per i mancanti: le tappe del gap (viaggi a piu' tappe), se il generatore le indica. */
   tappe?: string[];
   /** Il posto unico del meteo (unisciIlMeteo): non si somma ad altri posti dello stesso tipo. */
@@ -307,6 +314,7 @@ function unisciBisogni(a: Grezzo, b: Grezzo, lingua: Lingua): void {
     Number(a.bisogno.impermeabilita_richiesta ?? a.bisogno.requiredWaterResistance ?? 0),
     Number(b.bisogno.impermeabilita_richiesta ?? b.bisogno.requiredWaterResistance ?? 0));
   a.bisogno = bisogno;
+  a.daAttivita = a.daAttivita || b.daAttivita;
   const freddo = a.qualifica === "freddo" || b.qualifica === "freddo";
   a.qualifica = qualificaDelGap(bisogno, a.capo, freddo);
   a.motivo = copyMancante(bisogno, freddo, [], lingua).perche;
@@ -319,7 +327,7 @@ function unisciBisogni(a: Grezzo, b: Grezzo, lingua: Lingua): void {
  *  diventano uno solo (tipo = la categoria, nome qualificato dal freddo o, senno', dall'acqua),
  *  e i mancanti utili della stessa categoria spariscono. I pezzi in meno non si toccano. */
 function unisciIlMeteo(grezzi: Grezzo[], lingua: Lingua): Grezzo[] {
-  const delMeteo = (p: Grezzo) => p.origine === "gap" && !p.elegante && !(p.capo.sub && DA_ATTIVITA.has(p.capo.sub)) &&
+  const delMeteo = (p: Grezzo) => p.origine === "gap" && !p.elegante && !p.daAttivita &&
     (p.capo.categoria === "Outerwear" || p.capo.categoria === "Shoes");
   // Il posto unito di ogni categoria nasce dal primo importante; il freddo di uno qualunque lo qualifica.
   const gruppi: Grezzo[] = [];
@@ -387,7 +395,8 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     if (!tipo) continue;
     const capo = { sub, categoria };
     grezzi.push({
-      tipo, categoria: "vestiti", livello: livelloPosto(g, capo, viaggioFreddo),
+      tipo, categoria: "vestiti", livello: livelloPosto(g, capo, viaggioFreddo, attivita),
+      daAttivita: daAttivita(capo.sub, attivita),
       copie: Math.max(Number(g.copie_minime ?? 1), copieDelMancante(g, sub, richiesto, quantitaPerTappe(g, q, viaggio, meteo))),
       motivo: copyMancante(g, viaggioFreddo, attivita, lingua).perche,
       capo, qualifica: qualificaDelGap(g, capo, viaggioFreddo), origine: "gap", elegante: soloElegante(g),
@@ -399,7 +408,6 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
   // 2. Pezzi in meno: il capo serve in piu' copie di quelle salvate (pochi_pezzi di uscitaApp).
   const radici = new Map(motivi.essenziali.map((e) => [String(e.item_id), e.radice]));
   const perId = new Map(armadio.map((g) => [g.id, g]));
-  const freddo = freddoPer({}, meteo);
   for (const [id, c] of capiUniti(motivi)) {
     const tetto = tettoSalvate(salvate, id);
     if (c.quantita <= tetto) continue;
@@ -416,8 +424,11 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     const sub = NOMI_SOTTOCATEGORIA[g.sub_category] ? g.sub_category : null;
     if (!sub && !NOMI_CATEGORIA[g.category]) continue;
     const capo = { sub, categoria: g.category };
+    const tappe = [...(valigia.ideali ?? []), ...(valigia.ripieghi ?? [])]
+      .filter((r) => String(r.item_id) === id).flatMap((r) => r.tappe ?? []);
+    const bisogno = { tappe };
     // Un pezzo solo in meno non e' mai importante.
-    grezzi.push({ tipo: sub ?? g.category, categoria: "vestiti", livello: manca > 1 ? livelloPosto({}, capo, freddo) : "utile",
+    grezzi.push({ tipo: sub ?? g.category, categoria: "vestiti", livello: manca > 1 ? livelloPosto({}, capo, freddoPer(bisogno, meteo), attivitaPer(bisogno, viaggio)) : "utile",
       copie: manca, motivo, capo, qualifica: null, origine: "pezzi" });
   }
 
