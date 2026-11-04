@@ -108,6 +108,20 @@ export function parametriQuantita(v: Record<string, any> | null | undefined, met
   };
 }
 
+/** L'equivalenza nasce da una funzione assegnata dal matcher, mai dalla sola categoria. */
+function copertoDaAssegnazione(capo: Record_, bisogno: Record_, richiesti: Record_[]): boolean {
+  if (capo.category !== bisogno.category) return false;
+  const subs = new Set(bisogno.subCategories ?? []), forme = new Set(bisogno.formality ?? []);
+  const frequenza: Record<string, number> = { once: 0, occasional: 1, daily: 2 };
+  return (capo.assegnazioni ?? [capo]).some((a: Record_) =>
+    ["ideale", "ripiego", "compromesso"].includes(a.match) && richiesti.some((r) =>
+      r.slot === a.slot && r.category === bisogno.category && r.subCategories?.length &&
+      r.subCategories.every((s: string) => subs.has(s)) &&
+      (!forme.size || (r.formality?.length && r.formality.every((f: string) => forme.has(f)))) &&
+      (K.REUSABLE.has(bisogno.category) ||
+        (frequenza[r.frequency] ?? 2) >= (frequenza[bisogno.frequency] ?? 2))));
+}
+
 /** Gli stessi fabbisogni delle tappe, controllati sulla valigia finale senza modificarla.
  *  Il controllo vale anche per una destinazione singola: i capi tecnici assenti vanno proposti. */
 export function mancantiDelleTappe(valigia: Record<string, any>, armadio: CapoArmadio[],
@@ -128,7 +142,8 @@ export function mancantiDelleTappe(valigia: Record<string, any>, armadio: CapoAr
       .map((r) => ({ ...r, tappe: r.tappe ?? [t.destinazione] }));
     servePerTappa(t, capi, armadio,
       new Set(armadio.map((g) => g.id)), capienza <= 30 ? 0.25 : capienza <= 55 ? 0.12 : 0,
-      giorni <= 2 || capienza <= 8, null, false, mancanti);
+      giorni <= 2 || capienza <= 8, null, false, mancanti,
+      (capo, bisogno) => copertoDaAssegnazione(capo, bisogno, valigia.richiesti ?? []));
   }
   return mancanti;
 }

@@ -56,7 +56,7 @@ const eRecord = (x: any) => "item_id" in x || !("sub_category" in x);
 
 export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: Set<string>, bulkPress: number,
   minimoT = false, profiliCapi: Record<string, any> | null = null, soloTrekking = false,
-  mancanti?: Record_[]): Record_[] {
+  mancanti?: Record_[], copertoDalGeneratore?: (capo: Record_, bisogno: Record_) => boolean): Record_[] {
   const tipici = mancanti ? armadioTipico() : [];
   segnaCapiDaNeve(tipici, t.attivita || []);
   const nome = t.destinazione, meteo = t.meteo;
@@ -189,8 +189,12 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
     };
     const ok = (x: Record_) => {
       if (vero(req.ruolo) && x.category === "Shoes" && diRuolo(x)) return true;
-      return (x.warmth || 0) >= minW && subs.has(x.subCategory) && haTag(x) && (!cov.size || cov.has(x.coverage)) &&
-        (!fm.size || fm.has(x.formality)) && (x.waterResistance || 0) >= minWr && !(culto && capoRiservato(x, profiliCapi)) &&
+      // Nell'analisi dei posti un'assegnazione gia' accettata puo' coprire le preferenze di tipo/stile.
+      const preferenze = (subs.has(x.subCategory) && (!fm.size || fm.has(x.formality))) ||
+        (Boolean(mancanti) && (!vero(req.ruolo) || diRuolo(x)) &&
+          (x.warmth || 1) <= tettoReq && Boolean(copertoDalGeneratore?.(x, req)));
+      return (x.warmth || 0) >= minW && preferenze && haTag(x) && (!cov.size || cov.has(x.coverage)) &&
+        (x.waterResistance || 0) >= minWr && !(culto && capoRiservato(x, profiliCapi)) &&
         !(culto && K.CULTO_LEGGERO_IN_TAPPA && rc.cultoLeggero(tmaxTappa) && !capoLeggero(x, profiliCapi));
     };
     const n = Math.trunc(Number(req.n || (mancanti ? req._restano : 0) || 1));

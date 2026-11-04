@@ -17,7 +17,7 @@ test("livello: la giacca col freddo e' importante, il maglione col freddo no", (
   assert.equal(livelloPosto(maglione, capoDelGap(maglione, true), true), "utile");
 });
 
-test("livello: magliette necessarie restano utili; costume e scarponi importanti; camicia elegante importante", () => {
+test("livello: magliette utili; costume al mare, scarponi al trekking e camicia al matrimonio importanti", () => {
   const maglietta = { tipo: "assente", category: "Upper Body", subCategories: ["T-Shirt"], priorita: "necessario" };
   const costume = { tipo: "assente", category: "Lower Body", subCategories: ["Swimwear"], priorita: "consigliato" };
   const scarponi = { tipo: "assente", category: "Shoes", subCategories: ["Hiking Boots"], priorita: "necessario" };
@@ -25,7 +25,7 @@ test("livello: magliette necessarie restano utili; costume e scarponi importanti
   assert.equal(livello(maglietta), "utile");
   assert.equal(livello(costume, false, ["mare"]), "importante");
   assert.equal(livello(scarponi, false, ["trekking"]), "importante");
-  assert.equal(livello(camicia), "importante");
+  assert.equal(livello(camicia, false, ["matrimonio"]), "importante");
 });
 
 test("livello: scarpe senza freddo ne' pioggia sono utili", () => {

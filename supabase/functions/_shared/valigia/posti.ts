@@ -5,9 +5,9 @@ import { analizzaFabbisogni, copieResidue, copriConProposte, intersecaVincoli, v
 import type { Lingua } from "../lingua.ts";
 import * as K from "./costanti.ts";
 import { type Capo as CapoArmadio } from "./capo.ts";
-import { eTrekking, interseca, parole } from "./inject.ts";
+import { eTrekking, interseca, parole, viaggioDiLavoro } from "./inject.ts";
 import { eAttivitaAcqua, RADICI_GIORNI_ACQUA_IN_PIU } from "./quantita.ts";
-import { caldoUnCapoAlGiorno, ha } from "./regole_capi.ts";
+import { caldoUnCapoAlGiorno, ha, occasioneFormale } from "./regole_capi.ts";
 import { attivitaPer, calore, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
   meteoDelGap, perQuestoArmadio, SOLO_SE_NELL_ARMADIO, soloElegante } from "./uscita.ts";
 import { NOMI_CATEGORIA, NOMI_FAMIGLIA, NOMI_SOTTOCATEGORIA, type NomePosto } from "./posti_nomi.ts";
@@ -34,7 +34,7 @@ export function livelloPosto(g: Record<string, any>, capo: Capo, viaggioFreddo: 
   // La muta si noleggia quasi sempre sul posto: al massimo utile (il costume resta importante).
   if (capo.sub === "Wetsuit") return "utile";
   if (daAttivita(capo.sub, attivita)) return "importante";
-  if (soloElegante(g)) return "importante";
+  if (soloElegante(g) && (viaggioDiLavoro(attivita) || occasioneFormale(attivita))) return "importante";
   if (CATEGORIE_DEL_METEO.has(capo.categoria)) {
     const { freddo, acqua } = meteoDelGap(g, capo, viaggioFreddo);
     if (freddo || acqua) return "importante";
