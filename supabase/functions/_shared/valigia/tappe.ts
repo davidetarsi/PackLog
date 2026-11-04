@@ -5,6 +5,7 @@
 import * as K from "./costanti.ts";
 import * as rc from "./regole_capi.ts";
 import type { Capo } from "./capo.ts";
+import { armadioTipico } from "./armadio_tipico.ts";
 import { eAttivitaAcqua, giorniDiMare, normIntensita, quantityFor, usiSottoSoglia } from "./quantita.ts";
 import {
   capoLeggero, capoRiservato, eTrekking, insieme, interseca, penalitaCulto, quantiStratiMedi, type Record_, riverbero,
@@ -53,7 +54,10 @@ function contiene(xs: Record_[], x: Record_): boolean {
 const eRecord = (x: any) => "item_id" in x || !("sub_category" in x);
 
 export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: Set<string>, bulkPress: number,
-  minimoT = false, profiliCapi: Record<string, any> | null = null, soloTrekking = false): Record_[] {
+  minimoT = false, profiliCapi: Record<string, any> | null = null, soloTrekking = false,
+  mancanti?: Record_[]): Record_[] {
+  const tipici = mancanti ? armadioTipico() : [];
+  segnaCapiDaNeve(tipici, t.attivita || []);
   const nome = t.destinazione, meteo = t.meteo;
   const ceiling = tettoDi(meteo);
   const tmaxTappa = meteo.temp_max_media;
@@ -158,7 +162,7 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
       reason: `${nome}: neve, ghiacciaio o quota, riverbero` });
   }
   if (!minimoT) {
-    richieste.push(...slotCapiNuovi(items, meteo.temp_min_media, t.attivita, meteo.giorni_di_pioggia, null,
+    richieste.push(...slotCapiNuovi(mancanti ? [...items, ...tipici] : items, meteo.temp_min_media, t.attivita, meteo.giorni_di_pioggia, null,
       [...richieste, ...capi.map((c) => ({ subCategories: [get(c, "subCategory")] }))], nome));
   }
   if (soloTrekking) richieste = richieste.filter((r) => K.SLOT_DEL_TREKKING.has(r.slot));
@@ -171,7 +175,7 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
     const minWr = Math.trunc(Number(req.minWaterResistance || 0));
     const culto = K.SLOT_CULTO.includes(req.slot);
     const tettoReq = vero(req.senza_tetto) ? Math.min(5, Math.trunc(Number(req.maxWarmth || 5))) : ceiling;
-    const minW = Math.trunc(Number(req.minWarmth || 0));
+    const minW = Math.trunc(Number(req.minWarmth || (mancanti && req._preferisci_calore ? 3 : 0)));
     const tagReq = insieme(req.activityTags || []);
     const haTag = (x: any) => {
       if (!tagReq.size) return true;
@@ -188,7 +192,7 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
         (!fm.size || fm.has(x.formality)) && (x.waterResistance || 0) >= minWr && !(culto && capoRiservato(x, profiliCapi)) &&
         !(culto && K.CULTO_LEGGERO_IN_TAPPA && rc.cultoLeggero(tmaxTappa) && !capoLeggero(x, profiliCapi));
     };
-    const n = Math.trunc(Number(req.n || 1));
+    const n = Math.trunc(Number(req.n || (mancanti ? req._restano : 0) || 1));
     for (let k = 0; k < n; k++) {
       const pool = [...capi, ...aggiunti];
       const giaInTappa = pool.filter((x) => (x.tappe || []).includes(nome) && ok(x));
@@ -198,13 +202,25 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
       const larghe = new Set([...subs, ...[...subs].flatMap((s) => K.SUBSTITUTIONS[s] ?? [])]);
       const scR = (g: Capo) => score(g, 1, ceiling, new Set(), new Set(), minWr, bulkPress) +
         penalitaCulto(req.slot, g, profiliCapi, rc.cultoLeggero(tmaxTappa));
-      const candidati = (p: Set<string>) => items.filter((g) => g.has_metadata && !g.sempre_in_valigia && !used.has(g.id) &&
+      const candidati = (p: Set<string>, lista = items, virtuale = false) => lista.filter((g) => g.has_metadata && !g.sempre_in_valigia && (virtuale || !used.has(g.id)) &&
         p.has(g.sub_category) && (!cov.size || cov.has(g.coverage)) && (!fm.size || fm.has(g.formality)) &&
         (g.water_resistance || 0) >= minWr && (g.warmth || 1) >= minW && (g.warmth || 1) <= tettoReq && !estivoQui(g) &&
         haTag(g) && (!vero(req.ruolo) || diRuolo(g)) && scR(g) <= K.MAX_PENALTY_COMPROMESSO);
       let cands = candidati(subs);
       if (!cands.length) cands = candidati(larghe);
-      if (!cands.length) break;
+      if (!cands.length) {
+        if (mancanti) {
+          const virtuali = candidati(subs, tipici, true);
+          const scelto = minimo(virtuali.length ? virtuali : candidati(larghe, tipici, true), scR);
+          const richiesto = { ...req, minWarmth: Math.max(1, minW), maxWarmth: tettoReq,
+            capoTipico: scelto ? { sub: scelto.sub_fine, categoria: scelto.category } : null };
+          mancanti.push({ ...req, tipo: "assente", imposto: true, essential: true, tappe: [nome],
+            ...(minW > 1 || tettoReq < 5 ? { warmth_richiesto: [richiesto.minWarmth, tettoReq] } : {}),
+            impermeabilita_richiesta: minWr,
+            copie_minime: n - k, richiesto });
+        }
+        break;
+      }
       const g = minimo(cands, scR)!;
       used.add(g.id);
       aggiunti.push({

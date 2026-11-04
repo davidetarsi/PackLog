@@ -654,7 +654,7 @@ test("copie unite: tappe diverse si sommano, la stessa tappa si unisce col massi
   const uno = copieT([maglia("A", ["Alfa"])]);
   assert.equal(copieT([maglia("A", ["Alfa"]), maglia("B", ["Alfa"])]), uno, "stessa tappa: massimo");
   assert.equal(copieT([maglia("A", ["Alfa"]), maglia("B", ["Beta"])]), uno * 2, "tappe diverse: somma");
-  assert.equal(copieT([maglia("A"), maglia("B")]), uno * 2, "tappa ignota in un viaggio a tappe: somma");
+  assert.equal(copieT([maglia("A"), maglia("B")]), copieT([maglia("A")]) * 2, "tappa ignota: ogni bisogno usa l'intera durata");
 });
 
 test("copie unite: tre mancanti Sneakers nella stessa tappa, le copie del maggiore e non la somma", () => {
@@ -840,4 +840,22 @@ test("posto: un bisogno senza capo tipico (nessun capo in fascia) resta a capoDe
   const p = postiDelGeneratore([bisogno("strato", "Upper Body", ["Tank Top"], { minWarmth: 5, formality: ["Formal"] })],
     { temp_min: -40, temp_max: -30 }, ["visite in citta"]);
   assert.ok(p.length > 0);
+});
+
+test("destinazione singola: anche senza possederli compaiono i pantaloni da sci", () => {
+  const ps = postiDelGeneratore([], { temp_min: -8, temp_max: -1 }, ["sci"], 5);
+  assert.ok(ps.some((p) => p.tipo === "Ski Pants"));
+});
+
+test("destinazione singola: i capi da neve non compaiono per una visita estiva", () => {
+  const ps = postiDelGeneratore([], { temp_min: 19, temp_max: 27 }, ["visite in citta"], 5);
+  assert.ok(!ps.some((p) => p.tipo === "Ski Pants" || p.tipo === "Ski Jacket"));
+});
+
+test("destinazione singola: il controllo dei bisogni non raddoppia i costumi gia' proposti", () => {
+  const valigia = strategySlots("[]", [], { giorni: 8, attivita: ["mare"], temp_min: 24, temp_max: 31 });
+  const { posti } = postiApp(valigia, { capi: [], essenziali: [] }, new Map(), {
+    viaggio: { giorni: 8, attivita: ["mare"], destinazione: { nome: "Malindi" } },
+    meteo: { temp_min_media: 24, temp_max_media: 31 }, armadio: [] });
+  assert.equal(posti.find((p) => p.tipo === "Swimwear")?.copie, 3);
 });

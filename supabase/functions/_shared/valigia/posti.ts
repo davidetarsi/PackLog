@@ -3,13 +3,14 @@
 import type { Lingua } from "../lingua.ts";
 import * as K from "./costanti.ts";
 import { caricaArmadio, type Capo as CapoArmadio } from "./capo.ts";
-import { canonicalizeGaps, lavanderiaPresunta } from "./dopo.ts";
+import { canonicalizeGaps, capienzaBagaglio, lavanderiaPresunta } from "./dopo.ts";
 import { scenarioDaApp, type ViaggioApp } from "./genera.ts";
 import { eTrekking } from "./inject.ts";
 import { attivitaScenario } from "./prompt.ts";
 import { essenzialiPerViaggio, giorniDiMare, normIntensita, quantityFor, RADICI_NOTTE } from "./quantita.ts";
 import { caldoUnCapoAlGiorno, camminoAPiedi } from "./regole_capi.ts";
 import { ordinaTappe } from "./slots.ts";
+import { servePerTappa } from "./tappe.ts";
 import { attivitaPer, calore, capiUniti, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
   meteoDelGap, perQuestoArmadio, SOLO_SE_NELL_ARMADIO, soloElegante, tettoSalvate } from "./uscita.ts";
 import { NOMI_CATEGORIA, NOMI_FAMIGLIA, NOMI_SOTTOCATEGORIA, type NomePosto } from "./posti_nomi.ts";
@@ -142,7 +143,7 @@ function mancantiPerPosti(valigia: Record<string, any>, richiesti: Record<string
   const gruppi = new Map<string, Record<string, any>[]>();
   for (const originale of valigia.mancanti) {
     const g = completa(originale);
-    const chiave = JSON.stringify(Array.isArray(g.formality) ? [...g.formality].sort() : []);
+    const chiave = JSON.stringify([Array.isArray(g.formality) ? [...g.formality].sort() : [], g.tappe ?? []]);
     const gruppo = gruppi.get(chiave) ?? [];
     gruppo.push(g);
     gruppi.set(chiave, gruppo);
@@ -205,6 +206,41 @@ export function parametriQuantita(v: Record<string, any> | null | undefined, met
     giorni, lavatriceEssenziali: sc.lavatrice, attivita, intensita, tempMax, tempMaxEssenziali: tempMax,
     lavatrice: sc.lavatrice || cammino(attivita, giorni),
   };
+}
+
+/** Gli stessi fabbisogni delle tappe, controllati sulla valigia finale senza modificarla.
+ *  Il controllo vale anche per una destinazione singola: i capi tecnici assenti vanno proposti. */
+export function mancantiDelleTappe(valigia: Record<string, any>, armadio: CapoArmadio[],
+  viaggio: Record<string, any> | null | undefined, meteo: Record<string, any> | null | undefined): Record<string, any>[] {
+  if (!Array.isArray(valigia.ideali) || !Array.isArray(valigia.ripieghi) || !meteo) return [];
+  const sc = scenarioDaApp({ data_inizio: "", ...(viaggio ?? {}) } as ViaggioApp);
+  const perMeteo: Record<string, any>[] = meteo._per_tappa ?? [];
+  const tappe = sc.legs?.length ? sc.legs.flatMap((l: any) => {
+    const clima = perMeteo.find((t) => t.destinazione === l.destinazione);
+    return clima ? [{ ...l, attivita: [...(sc.attivita ?? []), ...(l.attivita ?? [])], meteo: clima }] : [];
+  }) : [{ destinazione: sc.destinazione ?? "", giorni: sc.giorni,
+    attivita: sc.attivita ?? [], meteo }];
+  const mancanti: Record<string, any>[] = [];
+  const capienza = capienzaBagaglio(sc.bagaglio ?? "");
+  const giorni = tappe.reduce((n: number, t: any) => n + Number(t.giorni || 1), 0);
+  for (const t of tappe) {
+    servePerTappa(t, structuredClone([...valigia.ideali, ...valigia.ripieghi]), armadio,
+      new Set(armadio.map((g) => g.id)), capienza <= 30 ? 0.25 : capienza <= 55 ? 0.12 : 0,
+      giorni <= 2 || capienza <= 8, null, false, mancanti);
+  }
+  return mancanti;
+}
+
+/** Un bisogno della tappa usa i suoi giorni e il suo clima, non l'intera durata. */
+function quantitaPerTappe(g: Record<string, any>, q: ParametriQuantita,
+  viaggio: Record<string, any> | null | undefined, meteo: Record<string, any> | null | undefined): ParametriQuantita {
+  const nomi = new Set(g.tappe ?? []);
+  const tappe = (viaggio?.tappe ?? viaggio?.legs ?? []).filter((t: any) => nomi.has(t.nome ?? t.destinazione));
+  if (!tappe.length) return q;
+  const massime = (meteo?._per_tappa ?? []).filter((t: any) => nomi.has(t.destinazione))
+    .map((t: any) => numeroONull(t.temp_max_media)).filter((n: number | null): n is number => n != null);
+  return { ...q, giorni: tappe.reduce((n: number, t: any) => n + Math.max(1, Number(t.giorni) || 1), 0),
+    attivita: attivitaPer(g, viaggio), tempMax: massime.length ? Math.max(...massime) : q.tempMax };
 }
 
 /** Le copie di un mancante: i capi diversi che mancano per una quantita' insufficiente, uno per
@@ -326,8 +362,8 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
   // 1. I mancanti del generatore (gonna, vestito e cravatta solo se l'armadio ne ha).
   const sottocategorie = new Set(armadio.flatMap((g) => [g.sub_fine, g.sub_category]));
   const richiesti: Record<string, any>[] = Array.isArray(valigia.richiesti) ? valigia.richiesti : [];
-  for (const originale of mancantiPerPosti(valigia, richiesti)) {
-    const richiesto = richiesti.find((r) => r.slot === originale.slot);
+  for (const originale of [...mancantiPerPosti(valigia, richiesti), ...mancantiDelleTappe(valigia, armadio, viaggio, meteo)]) {
+    const richiesto = originale.richiesto ?? richiesti.find((r) => r.slot === originale.slot);
     const g = perQuestoArmadio(conVincoli(originale, richiesto), sottocategorie);
     if (!g) continue;
     const viaggioFreddo = freddoPer(g, meteo);
@@ -352,7 +388,7 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     const capo = { sub, categoria };
     grezzi.push({
       tipo, categoria: "vestiti", livello: livelloPosto(g, capo, viaggioFreddo),
-      copie: copieDelMancante(g, sub, richiesto, q),
+      copie: Math.max(Number(g.copie_minime ?? 1), copieDelMancante(g, sub, richiesto, quantitaPerTappe(g, q, viaggio, meteo))),
       motivo: copyMancante(g, viaggioFreddo, attivita, lingua).perche,
       capo, qualifica: qualificaDelGap(g, capo, viaggioFreddo), origine: "gap", elegante: soloElegante(g),
       tappe: Array.isArray(g.tappe) ? g.tappe.map(String) : undefined,
@@ -417,7 +453,7 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
       (riusabile || ["Upper Body", "Lower Body", "Shoes"].includes(p.capo.categoria));
     if (aMassimo) {
       // Senza tappa nota in un viaggio a piu' tappe la chiave e' unica: si somma.
-      const tappa = riusabile ? "" : p.tappe?.length ? [...p.tappe].sort().join("|") : aTappe ? `?${senzaTappa++}` : "";
+      const tappa = riusabile || !aTappe ? "" : p.tappe?.length ? [...p.tappe].sort().join("|") : aTappe ? `?${senzaTappa++}` : "";
       const perTappa = copieGap.get(chiave) ?? new Map<string, number>();
       perTappa.set(tappa, Math.max(perTappa.get(tappa) ?? 0, p.copie));
       copieGap.set(chiave, perTappa);
