@@ -53,9 +53,9 @@ test("stesso prompt, stessa valigia, stessi motivi del bench", async () => {
       jev: jevCome(c.args),
       profiliNoti,
     });
-    // capoTipico (richiesti) e' un campo in piu' per i posti: il Python non lo ha.
+    // Metadati aggiuntivi per i posti: non modificano matching, capi o quantita' del bench.
     const valigia = structuredClone(r.valigia) as any;
-    for (const rich of valigia.richiesti ?? []) { delete rich.capoTipico; }
+    for (const rich of valigia.richiesti ?? []) { delete rich.capoTipico; delete rich.maxWarmth; }
     assert.deepEqual(numeri(valigia), numeri(c.atteso), nome);
     // nei testi interni (reason) "2.0" e "2" valgono uguale, come in confronta_celle
     assert.deepEqual(numeri(r.motivi), numeri(c.motivi), nome);

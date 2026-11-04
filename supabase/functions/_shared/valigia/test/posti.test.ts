@@ -198,8 +198,7 @@ test("postiApp Seul, armadio vuoto: quattro importanti, il resto proposte utili"
   // prima gli importanti, poi gli utili
   const primoUtile = posti.findIndex((p) => p.livello === "utile");
   assert.ok(posti.slice(primoUtile).every((p) => p.livello === "utile"));
-  // id dall'ordine finale
-  posti.forEach((p, i) => assert.equal(p.id, `${p.tipo}:${i}`));
+  assert.equal(new Set(posti.map((p) => p.id)).size, posti.length);
 });
 
 test("postiApp Seul: copie, tipi e categorie", () => {
@@ -264,7 +263,7 @@ test("postiApp: T-Shirt con 5 da portare e 2 nell'armadio, un posto Magliette x3
   assert.deepEqual(r.posti.map((p) => [p.nome, p.copie, p.tipo, p.livello, p.categoria]),
     [["Magliette", 3, "T-Shirt", "utile", "vestiti"]]);
   assert.equal(r.posti[0].motivo, "Ne servirebbero 5, nell'armadio ne hai 2.");
-  assert.equal(r.posti[0].id, "T-Shirt:0");
+  assert.ok(r.posti[0].id.startsWith("need:v1:"));
 });
 
 test("postiApp: mutande con 8 da portare e 3 nell'armadio, un solo posto intimo x5", () => {
@@ -432,11 +431,12 @@ test("un posto solo: due gap Shoes freddi (Sneakers e Boots) diventano Scarpe in
   assert.deepEqual(scarpe.map((p) => [p.nome, p.tipo, p.copie, p.livello]), [["Scarpe invernali", "Shoes", 1, "importante"]]);
 });
 
-test("un posto solo: Down Jacket, Coat e Rain Jacket di pioggia diventano Giacca invernale", () => {
+test("posti meteo: il guscio leggero non viene assorbito nel bisogno di un cappotto caldo", () => {
   const posti = postiDi([freddoGap("Piumino", "Outerwear", "Down Jacket"), freddoGap("Cappotto", "Outerwear", "Coat"),
     pioggiaGap("Pioggia", "Outerwear", "Rain Jacket")]);
   const giacche = posti.filter((p) => ["Outerwear", "Down Jacket", "Coat", "Rain Jacket"].includes(p.tipo));
-  assert.deepEqual(giacche.map((p) => [p.nome, p.tipo, p.copie, p.livello]), [["Giacca invernale", "Outerwear", 1, "importante"]]);
+  assert.deepEqual(giacche.map((p) => [p.nome, p.tipo, p.copie, p.livello]), [
+    ["Giacca invernale", "Outerwear", 1, "importante"], ["Giacca impermeabile", "Outerwear", 1, "importante"]]);
   assert.equal(giacche[0].motivo, posti.find((p) => p.tipo === "Outerwear")!.motivo);
   assert.ok(giacche[0].motivo, "il motivo e' quello del primo posto unito");
 });
@@ -462,9 +462,9 @@ test("un posto solo: in inglese Winter jacket, Winter shoes, Waterproof jacket, 
   assert.deepEqual(acqua.filter((p) => p.livello === "importante").map((p) => p.nome).sort(), ["Waterproof jacket", "Waterproof shoes"]);
 });
 
-test("un posto solo: se almeno uno e' freddo il nome e' invernale, anche con la pioggia", () => {
+test("posti meteo: freddo e pioggia con fasce incompatibili restano distinti anche invertiti", () => {
   const posti = postiDi([pioggiaGap("Pioggia", "Outerwear", "Rain Jacket"), freddoGap("Cappotto", "Outerwear", "Coat")]);
-  assert.deepEqual(posti.filter((p) => p.tipo === "Outerwear").map((p) => p.nome), ["Giacca invernale"]);
+  assert.deepEqual(posti.filter((p) => p.tipo === "Outerwear").map((p) => p.nome), ["Giacca impermeabile", "Giacca invernale"]);
 });
 
 test("un posto solo: gli scarponi da trekking (attivita') restano accanto alle Scarpe invernali", () => {
@@ -489,7 +489,7 @@ test("un posto solo: il Blazer elegante non entra nella Giacca invernale", () =>
 });
 
 test("un posto solo: le Sneakers utili spariscono se c'e' il posto del meteo per le scarpe", () => {
-  const utile = assente("Sneakers", "Shoes", ["Sneakers"], { warmth_richiesto: [1, 3] });
+  const utile = assente("Sneakers", "Shoes", ["Sneakers"], { warmth_richiesto: [1, 5] });
   const posti = postiDi([utile, freddoGap("Stivali", "Shoes", "Boots")]);
   assert.deepEqual(posti.filter((p) => ["Shoes", "Sneakers", "Boots"].includes(p.tipo)).map((p) => p.nome), ["Scarpe invernali"]);
   assert.ok(!posti.some((p) => p.nome === "Sneakers"));
@@ -526,10 +526,10 @@ test("un posto solo: gli accessori del meteo (Cappello, Guanti, Ombrello) restan
     new Set(["Cappello caldo", "Guanti", "Ombrello"]));
 });
 
-test("un posto solo: id dall'ordine finale e unito al posto del primo", () => {
+test("un posto solo: identita' univoca e ordine del primo bisogno unito", () => {
   const posti = postiDi([freddoGap("a", "Outerwear", "Coat"), freddoGap("b", "Shoes", "Boots"), freddoGap("c", "Outerwear", "Down Jacket")]);
-  posti.forEach((p, i) => assert.equal(p.id, `${p.tipo}:${i}`));
-  assert.deepEqual(posti.filter((p) => p.livello === "importante").map((p) => p.id), ["Outerwear:0", "Shoes:1"]);
+  assert.equal(new Set(posti.map((p) => p.id)).size, posti.length);
+  assert.deepEqual(posti.filter((p) => p.livello === "importante").map((p) => p.tipo), ["Outerwear", "Shoes"]);
 });
 
 test("un posto solo: pezzi in meno su un capo Shoes 'Other' non si sommano alle Scarpe invernali", () => {
@@ -545,7 +545,7 @@ test("un posto solo: pezzi in meno su un capo Shoes 'Other' non si sommano alle 
   assert.equal(pezzi.copie, 2);
   assert.equal(pezzi.motivo, "Ne servirebbero 3, nell'armadio ne hai 1.");
   assert.notEqual(meteo.id, pezzi.id);
-  posti.forEach((p, i) => assert.equal(p.id, `${p.tipo}:${i}`));
+  assert.equal(new Set(posti.map((p) => p.id)).size, posti.length);
 });
 
 test("un posto solo: pezzi in meno su un capo Outerwear 'Other' non si sommano alla Giacca invernale", () => {
@@ -727,6 +727,106 @@ test("posto, matrimonio: il bisogno elegante prende un capo elegante, non la mag
     { minWarmth: 2, formality: ["Formal"], activityTags: ["Formal"] })], { temp_min: 15, temp_max: 25 }, ["matrimonio"]);
   assert.ok(tipoDi(p).includes("Shirt"), `camicia: ${tipoDi(p)}`);
   assert.ok(!tipoDi(p).includes("T-Shirt"), `niente maglietta: ${tipoDi(p)}`);
+  assert.equal(p.find((x) => x.tipo === "Shirt")!.livello, "importante");
+});
+
+test("requisiti: blazer e stivali formali restano distinti dai posti per il freddo", () => {
+  const p = postiDelGeneratore([
+    bisogno("capospalla per il lavoro", "Outerwear", ["Blazer"], { minWarmth: 2, maxWarmth: 3, formality: ["Business", "Formal"] }),
+    bisogno("scarpe per il lavoro", "Shoes", ["Dress Shoes"], { minWarmth: 2, maxWarmth: 3, formality: ["Business", "Formal"] }),
+    bisogno("capospalla per il freddo", "Outerwear", ["Coat", "Down Jacket"], { minWarmth: 4 }),
+    bisogno("scarpe per il freddo", "Shoes", ["Boots"], { minWarmth: 4 }),
+  ], { temp_min: -4, temp_max: 5 }, ["riunioni di lavoro"]);
+  // Sotto zero il generatore sostituisce le scarpe eleganti con stivali caldi compatibili con l'ufficio.
+  for (const tipo of ["Blazer", "Boots", "Outerwear", "Hiking Boots"]) {
+    assert.equal(p.find((x) => x.tipo === tipo)?.livello, "importante", `${tipo}: ${JSON.stringify(p)}`);
+  }
+});
+
+test("requisiti: la protezione dalla pioggia resta importante anche senza pioggia nel riepilogo", () => {
+  const p = postiDelGeneratore([
+    bisogno("guscio impermeabile", "Outerwear", ["Rain Jacket", "Windbreaker"],
+      { minWarmth: 1, maxWarmth: 2, minWaterResistance: 2 }),
+  ], { temp_min: 16, temp_max: 23 });
+  assert.ok(p.some((x) => x.livello === "importante" && x.nome === "Giacca impermeabile"), JSON.stringify(p));
+});
+
+test("requisiti: giacca calda e guscio leggero incompatibili restano due posti", () => {
+  const p = postiDi([
+    assente("freddo", "Outerwear", ["Coat"], { warmth_richiesto: [4, 5] }),
+    assente("pioggia", "Outerwear", ["Rain Jacket"], { warmth_richiesto: [1, 2], impermeabilita_richiesta: 2 }),
+  ], { meteo: MITE }).filter((x) => x.tipo === "Outerwear");
+  assert.equal(p.length, 2);
+  assert.deepEqual(new Set(p.map((x) => x.nome)), new Set(["Giacca invernale", "Giacca impermeabile"]));
+  assert.notEqual(p[0].id, p[1].id);
+});
+
+test("requisiti: un posto meteo compatibile conserva sia freddo sia pioggia nel motivo", () => {
+  const p = postiDi([
+    assente("freddo", "Outerwear", ["Coat"], { warmth_richiesto: [3, 5] }),
+    assente("pioggia", "Outerwear", ["Rain Jacket"], { warmth_richiesto: [2, 4], impermeabilita_richiesta: 2 }),
+  ], { meteo: MITE }).filter((x) => x.tipo === "Outerwear");
+  assert.equal(p.length, 1);
+  assert.match(p[0].motivo!, /freddo e alla pioggia/);
+});
+
+test("requisiti: camicie con fasce di calore incompatibili non diventano un posto solo", () => {
+  const p = postiDi([
+    assente("giorno caldo", "Upper Body", ["Shirt"], { warmth_richiesto: [1, 1] }),
+    assente("sera fredda", "Upper Body", ["Shirt"], { warmth_richiesto: [3, 4] }),
+  ], { meteo: MITE }).filter((x) => x.tipo === "Shirt");
+  assert.equal(p.length, 2);
+  assert.notEqual(p[0].id, p[1].id);
+  assert.ok(p.some((x) => x.nome.includes("cald")));
+  assert.ok(p.some((x) => !x.nome.includes("cald")));
+});
+
+test("requisiti: l'identita' resta stabile cambiando ordine, lingua e quantita'", () => {
+  const camicia = assente("camicia", "Upper Body", ["Shirt"], { warmth_richiesto: [2, 3], formality: ["Business"] });
+  const giacca = freddoGap("giacca", "Outerwear", "Coat");
+  const prima = postiDi([camicia, giacca]);
+  const dopo = postiDi([giacca, camicia], { lingua: "en" });
+  assert.equal(prima.find((p) => p.tipo === "Shirt")!.id, dopo.find((p) => p.tipo === "Shirt")!.id);
+  assert.equal(prima.find((p) => p.tipo === "Outerwear")!.id, dopo.find((p) => p.tipo === "Outerwear")!.id);
+  const pochi = postiDi([{ ...camicia, tipo: "quantita_insufficiente", usi_richiesti: 7, usi_coperti: 2 }]);
+  const tanti = postiDi([{ ...camicia, tipo: "quantita_insufficiente", usi_richiesti: 11, usi_coperti: 2 }]);
+  assert.notEqual(pochi[0].copie, tanti[0].copie);
+  assert.equal(pochi[0].id, tanti[0].id);
+});
+
+test("requisiti: l'intersezione di piu' fasce non unisce bisogni incompatibili indirettamente", () => {
+  const p = postiDi([
+    assente("a", "Upper Body", ["Shirt"], { warmth_richiesto: [1, 3] }),
+    assente("b", "Upper Body", ["Shirt"], { warmth_richiesto: [3, 5] }),
+    assente("c", "Upper Body", ["Shirt"], { warmth_richiesto: [4, 5] }),
+  ], { meteo: MITE }).filter((x) => x.tipo === "Shirt");
+  assert.equal(p.length, 2);
+});
+
+test("requisiti: richiesti conserva il massimo effettivo del calore per i posti", () => {
+  const valigia = strategySlots(JSON.stringify([
+    bisogno("camicia", "Upper Body", ["Shirt"], { minWarmth: 2, maxWarmth: 3, formality: ["Business"] }),
+  ]), [], { giorni: 5, lavatrice: true, attivita: [], temp_min: 14, temp_max: 20, bagaglio: "trolley medio" });
+  const r = valigia.richiesti.find((r: Bisogno) => r.slot === "camicia");
+  assert.equal(r.minWarmth, 2);
+  assert.equal(r.maxWarmth, 3);
+});
+
+test("requisiti: un intervallo non vincolante non cancella il freddo del viaggio", () => {
+  const p = postiDelGeneratore([
+    bisogno("testa coperta", "Accessory", ["Cap/Hat"]),
+  ], { temp_min: -4, temp_max: 5 });
+  assert.equal(p.find((x) => x.tipo === "Cap/Hat")!.livello, "importante");
+  assert.match(p.find((x) => x.tipo === "Cap/Hat")!.nome, /cald/);
+});
+
+test("requisiti: un blazer compatibile copre piu' occasioni senza raddoppiare le copie", () => {
+  const p = postiDi([
+    assente("congresso", "Outerwear", ["Blazer"], { warmth_richiesto: [2, 3], formality: ["Business"] }),
+    assente("cena di lavoro", "Outerwear", ["Blazer"], { warmth_richiesto: [2, 4], formality: ["Business"] }),
+  ], { meteo: MITE }).filter((x) => x.tipo === "Blazer");
+  assert.equal(p.length, 1);
+  assert.equal(p[0].copie, 1);
 });
 
 test("posto, polare: le giacche del meteo restano un posto solo, 'Giacca invernale' (il capo tipico non lo cambia)", () => {

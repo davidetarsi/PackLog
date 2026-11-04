@@ -349,6 +349,8 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
       frequency: get(s, "frequency", "daily"), imposto: Boolean(vero(s._fabbisogno) || vero(s._imposto)),
       reason: get(s, "reason", ""),
     };
+    // I posti devono conoscere tutta la fascia, anche quando il capo manca del tutto.
+    richiesto.maxWarmth = hi;
     richiesti.push(richiesto);
     const condividi = (base: Record_) => {
       const c = { ...base, slot: get(s, "slot"), match: "ideale", imposto: true, condiviso: true,

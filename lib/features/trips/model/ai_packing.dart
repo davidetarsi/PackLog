@@ -118,7 +118,7 @@ class AiSlot with _$AiSlot {
   const factory AiSlot({
     required String id,
 
-    /// Tipo del catalogo: due posti dello stesso tipo sono lo stesso bisogno.
+    /// Tipo del catalogo. Bisogni distinti possono chiedere lo stesso tipo.
     required String type,
     required ItemCategory category,
     required AiSlotLevel level,
@@ -273,30 +273,36 @@ class AiPackingResult with _$AiPackingResult {
       _$AiPackingResultFromJson(json);
 }
 
-/// Rigenerando, la segnatura "da comprare" passa al posto aperto dello stesso
-/// tipo: un posto aperto di [next] diventa `toBuy` se in [previous] ce n'era
-/// uno aperto, dello stesso tipo, segnato `toBuy`. Se più posti nuovi hanno
-/// quel tipo, eredita solo il primo.
+/// I risultati nuovi trasferiscono "da comprare" per identita' del bisogno.
+/// Per i risultati precedenti resta il trasferimento al primo posto dello
+/// stesso tipo: quei dati non contengono ancora un'identita' dei requisiti.
 AiPackingResult carryToBuy(AiPackingResult? previous, AiPackingResult next) {
   final before = previous?.slots;
   final after = next.slots;
   if (before == null || after == null) return next;
 
-  final toBuyTypes = {
-    for (final slot in before)
-      if (slot.isOpen && slot.toBuy) slot.type,
-  };
-  if (toBuyTypes.isEmpty) return next;
+  final remaining = before.where((slot) => slot.isOpen && slot.toBuy).toList();
+  if (remaining.isEmpty) return next;
+  final legacyTypesUsed = <String>{};
+  bool hasNeedId(AiSlot slot) => slot.id.startsWith('need:v1:');
 
-  return next.copyWith(
-    slots: [
-      for (final slot in after)
-        if (slot.isOpen && toBuyTypes.remove(slot.type))
-          slot.copyWith(toBuy: true)
-        else
-          slot,
-    ],
-  );
+  AiSlot carry(AiSlot slot) {
+    if (!slot.isOpen) return slot;
+    var index = remaining.indexWhere(
+      (old) => hasNeedId(old) && hasNeedId(slot) && old.id == slot.id,
+    );
+    if (index < 0 && !legacyTypesUsed.contains(slot.type)) {
+      index = remaining.indexWhere(
+        (old) => old.type == slot.type && (!hasNeedId(old) || !hasNeedId(slot)),
+      );
+      if (index >= 0) legacyTypesUsed.add(slot.type);
+    }
+    if (index < 0) return slot;
+    remaining.removeAt(index);
+    return slot.copyWith(toBuy: true);
+  }
+
+  return next.copyWith(slots: [for (final slot in after) carry(slot)]);
 }
 
 /// Rigenerando, le risposte alla riga dei kit si azzerano ([next] ne ha
