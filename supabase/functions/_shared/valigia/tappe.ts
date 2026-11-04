@@ -217,7 +217,8 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
           mancanti.push({ ...req, tipo: "assente", imposto: true, essential: true, tappe: [nome],
             ...(minW > 1 || tettoReq < 5 ? { warmth_richiesto: [richiesto.minWarmth, tettoReq] } : {}),
             impermeabilita_richiesta: minWr,
-            copie_minime: n - k, richiesto });
+            copie_coperte: giaInTappa.reduce((tot, x) => tot + q(x), 0),
+            copie_minime: n - k, requiredActivityTags: [...tagReq], richiesto });
         }
         break;
       }

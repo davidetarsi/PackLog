@@ -139,3 +139,23 @@ test("il kit riconosce il tipo fine del capo virtuale, oltre al genitore del gen
   } }]);
   assert.equal(riempiPostiConKit([posto("Fleece", 1, 0)], [{ kit_id: "k", item_id: "pile", copie: 1 }], arm).length, 0);
 });
+
+test("il kit non chiude un bisogno tecnico con una maglietta quotidiana", () => {
+  const posti = [{ ...posto("T-Shirt", 1, 0), requisiti: { activityTags: ["Hiking"] } }];
+  const arm = caricaArmadio([{ id: "m", name: "Maglietta", ai_metadata: {
+    category: "Upper Body", subCategory: "T-Shirt", activityTags: ["Everyday"], warmth: 2,
+  } }]);
+  const aggiunti = [{ kit_id: "k", item_id: "m", copie: 1 }];
+  assert.equal(riempiPostiConKit(posti, aggiunti, arm).length, 1);
+  assert.equal(riempiPostiConKit(posti, aggiunti, arm.map((g) => ({ ...g, activity_tags: ["Hiking"] }))).length, 0);
+});
+
+test("il kit rispetta la copertura richiesta dal bisogno", () => {
+  const posti = [{ ...posto("Shirt", 1, 0), requisiti: { coverage: ["Long Sleeves"] } }];
+  const arm = caricaArmadio([{ id: "m", name: "Camicia", ai_metadata: {
+    category: "Upper Body", subCategory: "Shirt", coverage: "Short Sleeves", warmth: 2,
+  } }]);
+  const aggiunti = [{ kit_id: "k", item_id: "m", copie: 1 }];
+  assert.equal(riempiPostiConKit(posti, aggiunti, arm).length, 1);
+  assert.equal(riempiPostiConKit(posti, aggiunti, arm.map((g) => ({ ...g, coverage: "Long Sleeves" }))).length, 0);
+});

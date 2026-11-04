@@ -351,6 +351,9 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     };
     // I posti devono conoscere tutta la fascia, anche quando il capo manca del tutto.
     richiesto.maxWarmth = hi;
+    if (s.coverage?.length || s._tag_rigido) richiesto.vincoliPosto = {
+      coverage: s.coverage ?? [], activityTags: s._tag_rigido ? [...tags].sort() : [],
+    };
     richiesti.push(richiesto);
     const condividi = (base: Record_) => {
       const c = { ...base, slot: get(s, "slot"), match: "ideale", imposto: true, condiviso: true,

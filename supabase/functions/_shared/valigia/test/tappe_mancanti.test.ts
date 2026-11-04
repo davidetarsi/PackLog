@@ -86,3 +86,11 @@ test("tappe: controllare le proposte non modifica capi, assegnazioni o gap della
   assert.deepEqual(valigia, prima);
   assert.deepEqual(items, armadioPrima);
 });
+
+test("tappe parziali: uno strato posseduto e uno proposto bastano per il minimo di due", () => {
+  const { valigia, posti } = generaTappe(armadioTipico().filter((g) => g.sub_fine === "Hoodie"));
+  const tipi = ["Hoodie", "Sweater", "Sweatshirt", "Fleece"];
+  const propri = [...valigia.ideali, ...valigia.ripieghi].filter((g) => tipi.includes(g.subCategory)).length;
+  const proposti = posti.filter((p) => tipi.includes(p.tipo)).reduce((n, p) => n + p.copie, 0);
+  assert.equal(propri + proposti, 2);
+});

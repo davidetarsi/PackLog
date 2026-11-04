@@ -55,7 +55,7 @@ test("stesso prompt, stessa valigia, stessi motivi del bench", async () => {
     });
     // Metadati aggiuntivi per i posti: non modificano matching, capi o quantita' del bench.
     const valigia = structuredClone(r.valigia) as any;
-    for (const rich of valigia.richiesti ?? []) { delete rich.capoTipico; delete rich.maxWarmth; }
+    for (const rich of valigia.richiesti ?? []) { delete rich.capoTipico; delete rich.maxWarmth; delete rich.vincoliPosto; }
     assert.deepEqual(numeri(valigia), numeri(c.atteso), nome);
     // nei testi interni (reason) "2.0" e "2" valgono uguale, come in confronta_celle
     assert.deepEqual(numeri(r.motivi), numeri(c.motivi), nome);

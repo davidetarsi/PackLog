@@ -922,3 +922,43 @@ test("attivita': le copie mancanti usano la tappa del capo, non il trekking di u
   assert.equal(per("Centro").livello, "utile");
   assert.equal(per("Monte").livello, "importante");
 });
+
+test("requisiti: gli obblighi tecnici distinti conservano identita' e tag per i kit", () => {
+  const mancanti = ["Hiking", "Sport"].map((tag) => ({ ...assente(tag, "Upper Body", ["T-Shirt"]),
+    requiredActivityTags: [tag] }));
+  const ps = postiDi(mancanti, { meteo: MITE });
+  assert.equal(ps.length, 2);
+  assert.equal(new Set(ps.map((p) => p.id)).size, 2);
+  assert.deepEqual(ps.map((p) => p.requisiti?.activityTags).sort(), [["Hiking"], ["Sport"]]);
+});
+
+test("requisiti: la copertura di uno slot assente resta disponibile ai kit", () => {
+  const ps = postiDelGeneratore([bisogno("coperto", "Upper Body", ["Shirt"], { coverage: ["Long Sleeves"] })],
+    { temp_min: 20, temp_max: 27 });
+  assert.ok(ps.some((p) => p.tipo === "Shirt" && p.requisiti?.coverage?.includes("Long Sleeves")));
+});
+
+test("requisiti: un bisogno utile assorbito dal meteo restringe comunque i vincoli", () => {
+  const ps = postiDi([
+    assente("pioggia", "Outerwear", ["Rain Jacket"], { warmth_richiesto: [1, 5], impermeabilita_richiesta: 2 }),
+    assente("vento leggero", "Outerwear", ["Windbreaker"], { warmth_richiesto: [1, 2] }),
+  ], { meteo: MITE });
+  assert.equal(ps.length, 1);
+  assert.equal(ps[0].requisiti?.maxWarmth, 2);
+  assert.equal(ps[0].requisiti?.minWaterResistance, 2);
+});
+
+test("requisiti: gli strati gia' proposti coprono il minimo senza un terzo doppione", () => {
+  const ps = postiDelGeneratore([], { temp_min: -4, temp_max: 5 }, ["riunioni di lavoro"], 5);
+  const medi = ps.filter((p) => ["Hoodie", "Sweater", "Sweatshirt", "Fleece"].includes(p.tipo));
+  assert.equal(medi.reduce((n, p) => n + p.copie, 0), 2);
+});
+
+test("requisiti: due strati dello stesso tipo restano almeno due copie dopo la deduplicazione", () => {
+  const ps = postiDelGeneratore([
+    bisogno("primo strato", "Upper Body", ["Sweater"], { minWarmth: 3, frequency: "once" }),
+    bisogno("secondo strato", "Upper Body", ["Sweater"], { minWarmth: 3, frequency: "once" }),
+  ], { temp_min: -4, temp_max: 5 }, [], 5);
+  const medi = ps.filter((p) => ["Hoodie", "Sweater", "Sweatshirt", "Fleece"].includes(p.tipo));
+  assert.equal(medi.reduce((n, p) => n + p.copie, 0), 2);
+});

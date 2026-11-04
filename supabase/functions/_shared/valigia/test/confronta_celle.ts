@@ -49,7 +49,7 @@ for (const c of casi) {
       : strategySlotsMultitappa(c.grezzo, items, structuredClone(c.args));
     out = JSON.parse(JSON.stringify(r));
     // Metadati aggiuntivi per i posti: non modificano matching, capi o quantita' del bench.
-    for (const rich of (out as any).richiesti ?? []) { delete rich.capoTipico; delete rich.maxWarmth; }
+    for (const rich of (out as any).richiesti ?? []) { delete rich.capoTipico; delete rich.maxWarmth; delete rich.vincoliPosto; }
   } catch (e) {
     ko++; perCampo["(errore)"] = (perCampo["(errore)"] ?? 0) + 1;
     if (esempi.length < 8) esempi.push(`${c.insieme}/${c.armadio}/${c.id}: ERRORE ${(e as Error).stack?.split("\n").slice(0, 3).join(" | ")}`);

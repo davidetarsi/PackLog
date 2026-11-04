@@ -83,6 +83,8 @@ export function riempiPostiConKit(
     return (r.minWarmth == null || (g.warmth != null && g.warmth >= r.minWarmth)) &&
       (r.maxWarmth == null || (g.warmth != null && g.warmth <= r.maxWarmth)) &&
       (!r.formality?.length || r.formality.includes(g.formality ?? "")) &&
+      (!r.activityTags?.length || g.activity_tags.some((t) => r.activityTags!.includes(t))) &&
+      (!r.coverage?.length || r.coverage.includes(g.coverage)) &&
       (g.water_resistance ?? 0) >= (r.minWaterResistance ?? 0);
   };
   for (const [id, n] of copie) {
