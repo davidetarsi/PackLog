@@ -1,3 +1,4 @@
+import { normalizzaQuantitaViaggio } from "./contesto_viaggio.ts";
 // La scelta dei capi slot per slot: porting di strategy_slots e delle sue
 // funzioni di appoggio (packlog_checklist_bench_48.py). La chiamata al modello
 // e' fuori: `testoModello` e' la risposta grezza di GPT, cosi' il cuore e' puro
@@ -15,7 +16,7 @@ import {
 } from "./inject.ts";
 import {
   applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps,
-  capienzaBagaglio, capienzaPotabile, lavanderiaPresunta, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri,
+  capienzaBagaglio, capienzaPotabile, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri,
   penalitaVetoCapo, penalitaVoto, rispettaCopie, score, segnaInPartenza, segnalaScarpeCammino, segnalaVolume,
   togliDoppioni,
 } from "./dopo.ts";
@@ -99,14 +100,7 @@ export function ripartisciCopie(serve: number, tetti: [number, number][]): [numb
 }
 
 // ── Tappe e copertura termica ───────────────────────────────────────────────
-export function ordinaTappe(perTappa: Record_[]): Record_[] {
-  perTappa.forEach((t, i) => { if (!("_ordine" in t)) t._ordine = i; });
-  return ordina(perTappa, (t) => [
-    -(t.meteo.temp_max_media != null ? t.meteo.temp_max_media : -99.0),
-    -(t.giorni || 0),
-    t._ordine,
-  ]);
-}
+export { ordinaTappe } from "./contesto_viaggio.ts";
 
 export const pavimentoDi = (meteo: Record_) => warmthFloor(meteo.temp_min_media);
 export const tettoDi = (meteo: Record_) => Math.max(warmthCeiling(meteo.temp_max_media), K.TETTO_MINIMO);
@@ -222,10 +216,7 @@ function contiene(xs: Record_[], x: Record_): boolean {
 export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiSlots): Record_ {
   rejects.length = 0;
   fixes.length = 0;
-  let giorni = a.giorni;
-  let lavatrice = a.lavatrice;
-  // solo per la destinazione unica: le tappe hanno la regola dei 5 giorni dell'app
-  if (a.lavatrice_essenziali == null && lavanderiaPresunta(giorni, lavatrice)) giorni = K.GIORNI_LAVANDERIA;
+  const { giorni, lavatrice, lavatriceEssenziali: lavatriceVera } = normalizzaQuantitaViaggio(a);
   const attivita = a.attivita ?? null;
   const tempMin = a.temp_min ?? null, tempMax = a.temp_max ?? null;
   const bagaglio = a.bagaglio ?? "";
@@ -235,8 +226,6 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   const scartiCapi = a.scarti_capi ?? null, classiViaggio = a.classi_viaggio ?? null;
 
   const inAcquaTappa = eAttivitaAcqua(attivita);
-  const lavatriceVera = a.lavatrice_essenziali == null ? lavatrice : a.lavatrice_essenziali;
-  if (K.CAMMINO_LAVA_A_MANO && rc.camminoAPiedi(attivita, bagaglio, giorni)) lavatrice = true;
   const cultoCaldo = rc.cultoLeggero(tempMax);
   const tagDi = new Map(items.map((g) => [g.id, g.activity_tags]));
   let slots: Slot[] = parseJsonBlock(testoModello);

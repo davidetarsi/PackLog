@@ -1,15 +1,15 @@
+import { normalizzaQuantitaViaggio, preparaContestoTappe } from "./contesto_viaggio.ts";
 // I posti della valigia dai mancanti del generatore: quanto e' importante un posto e come
 // si chiama. Non tocca la scelta dei capi ne' gli avvisi (uscita.ts): e' un livello in piu'.
 import type { Lingua } from "../lingua.ts";
 import * as K from "./costanti.ts";
 import { caricaArmadio, type Capo as CapoArmadio } from "./capo.ts";
-import { canonicalizeGaps, capienzaBagaglio, lavanderiaPresunta } from "./dopo.ts";
+import { canonicalizeGaps, capienzaBagaglio } from "./dopo.ts";
 import { scenarioDaApp, type ViaggioApp } from "./genera.ts";
 import { eTrekking, interseca, parole } from "./inject.ts";
 import { attivitaScenario } from "./prompt.ts";
 import { eAttivitaAcqua, essenzialiPerViaggio, giorniDiMare, normIntensita, quantityFor, RADICI_GIORNI_ACQUA_IN_PIU, RADICI_NOTTE } from "./quantita.ts";
-import { caldoUnCapoAlGiorno, camminoAPiedi, ha } from "./regole_capi.ts";
-import { ordinaTappe } from "./slots.ts";
+import { caldoUnCapoAlGiorno, ha } from "./regole_capi.ts";
 import { servePerTappa } from "./tappe.ts";
 import { perIlGeneratore } from "./tassonomia.ts";
 import { attivitaPer, calore, capiUniti, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
@@ -186,7 +186,6 @@ export function parametriQuantita(v: Record<string, any> | null | undefined, met
     giorni: Math.trunc(Number(v?.giorni ?? meteo?.giorni)) || 1 } as ViaggioApp);
   const bagaglio = sc.bagaglio ?? "";
   const intensita = sc.intensita ?? null;
-  const cammino = (attivita: string[], giorni: number) => Boolean(K.CAMMINO_LAVA_A_MANO) && camminoAPiedi(attivita, bagaglio, giorni);
   const legs: Record<string, any>[] = Array.isArray(sc.legs) ? sc.legs : [];
   if (legs.length) {
     // Le tappe come le vede strategySlotsMultitappa: giorni interi, massima della tappa dal meteo.
@@ -195,26 +194,21 @@ export function parametriQuantita(v: Record<string, any> | null | undefined, met
       destinazione: l.destinazione, giorni: Math.trunc(Number(l.giorni || 1)), attivita: l.attivita || [],
       meteo: { temp_max_media: numeroONull(perMeteo.find((t) => t.destinazione === l.destinazione)?.temp_max_media) },
     }));
-    const giorni = perTappa.reduce((n, t) => n + t.giorni, 0);
-    const base = ordinaTappe(perTappa)[0];
-    let attivita: string[] = [...(sc.attivita || []), ...(base.attivita || [])];
-    if (K.SLOT_TREKKING && perTappa.length > 1 && !eTrekking(sc.attivita) && eTrekking(base.attivita)) {
-      attivita = attivita.filter((x) => !eTrekking([x]));
-    }
-    const lavatriceEssenziali = Boolean(sc.lavatrice);
+    const { giorni, base, attivitaBase: attivita, lavatriceEssenziali, lavatriceBase } =
+      preparaContestoTappe(sc, perTappa, bagaglio);
     const massime = perTappa.map((t) => t.meteo.temp_max_media).filter((x): x is number => x != null);
     return {
       giorni, lavatriceEssenziali, attivita, intensita,
-      lavatrice: lavatriceEssenziali || cammino(sc.attivita, giorni) || cammino(attivita, giorni),
+      lavatrice: lavatriceBase,
       tempMax: base.meteo.temp_max_media, tempMaxEssenziali: massime.length ? Math.min(...massime) : null,
     };
   }
-  const giorni = lavanderiaPresunta(sc.giorni, sc.lavatrice) ? K.GIORNI_LAVANDERIA : sc.giorni;
   const attivita = attivitaScenario(sc);
+  const { giorni, lavatrice, lavatriceEssenziali } = normalizzaQuantitaViaggio({ ...sc,
+    giorni: sc.giorni, lavatrice: sc.lavatrice, attivita, bagaglio });
   const tempMax = numeroONull(meteo?.temp_max_media);
   return {
-    giorni, lavatriceEssenziali: sc.lavatrice, attivita, intensita, tempMax, tempMaxEssenziali: tempMax,
-    lavatrice: sc.lavatrice || cammino(attivita, giorni),
+    giorni, lavatriceEssenziali, attivita, intensita, tempMax, tempMaxEssenziali: tempMax, lavatrice,
   };
 }
 

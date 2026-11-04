@@ -1,3 +1,4 @@
+import { preparaContestoTappe } from "./contesto_viaggio.ts";
 // Viaggi a piu' tappe: porting di serve_per_tappa, diversifica_copie,
 // conta_pezzi e strategy_slots_multitappa (packlog_checklist_bench_48.py).
 // La tappa piu' calda costruisce la valigia base con una sola chiamata al
@@ -17,7 +18,7 @@ import {
   segnaInPartenza, segnalaScarpeCammino, segnalaVolume, togliDoppioni,
 } from "./dopo.ts";
 import {
-  get, ordinaTappe, pavimentoDi, pilaDiTappa, ripartisciCopie, round2, strategySlots, tettoCopie, tettoCopieMorbido,
+  get, pavimentoDi, pilaDiTappa, ripartisciCopie, round2, strategySlots, tettoCopie, tettoCopieMorbido,
   tettoDi, tettoMorbidoPer,
 } from "./slots.ts";
 import { massimo, minimo, pf, vero } from "./py.ts";
@@ -333,12 +334,8 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
   segnaCapiDaNeve(items, [...(sc.attivita || []), ...perTappa.flatMap((t) => t.attivita || []),
     ...(sc.legs || []).flatMap((l: Record_) => l.attivita || [])]);
   const nomi: string[] = perTappa.map((t) => t.destinazione);
-  const giorniTot = perTappa.reduce((s, t) => s + Math.trunc(Number(t.giorni || 1)), 0);
-  const ordinate = ordinaTappe(perTappa);
-  const base = ordinate[0];
-  let attBase: string[] = [...(sc.attivita || []), ...(base.attivita || [])];
-  const trekkingDiTappa = K.SLOT_TREKKING && perTappa.length > 1 && !eTrekking(sc.attivita) && eTrekking(base.attivita);
-  if (trekkingDiTappa) attBase = attBase.filter((x) => !eTrekking([x]));
+  const { giorni: giorniTot, ordinate, base, attivitaBase: attBase, trekkingDiTappa,
+    lavatriceEssenziali: lavEss, lavatriceTappe: lavMt } = preparaContestoTappe(sc, perTappa, bagaglio);
   const attContesto: string[] = [];
   const visti = new Set<string>();
   for (const att of [...(sc.attivita || []), ...perTappa.flatMap((t) => t.attivita || [])]) {
@@ -348,9 +345,6 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     attContesto.push(att);
   }
   const capienza = capienzaBagaglio(bagaglio);
-  const lavEss = Boolean(get(sc, "lavatrice", false));
-  const lavMt = lavEss ||
-    (K.CAMMINO_LAVA_A_MANO && rc.camminoAPiedi(sc.attivita, bagaglio, giorniTot));
   const r = strategySlots(testoModello, items, {
     giorni: giorniTot, lavatrice: lavMt, attivita: attBase, attivita_viaggio: attContesto,
     lavatrice_essenziali: lavEss,

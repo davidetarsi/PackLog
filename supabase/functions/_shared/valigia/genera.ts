@@ -9,44 +9,10 @@ import type { Lingua } from "../lingua.ts";
 import { attivitaScenario, promptValigia } from "./prompt.ts";
 import { parseJsonBlock, strategySlots } from "./slots.ts";
 import { strategySlotsMultitappa } from "./tappe.ts";
-import type { Luogo, Tappa } from "../clima/meteo.ts";
 
 type Record_ = Record<string, any>;
 
-/** Il viaggio come lo manda l'app. */
-export interface ViaggioApp {
-  /** "AAAA-MM-GG" */
-  data_inizio: string;
-  giorni: number;
-  /** Una sola destinazione... */
-  destinazione?: Luogo | null;
-  /** ...oppure piu' tappe in fila, ognuna con i suoi giorni e le sue attivita'. */
-  tappe?: Tappa[] | null;
-  attivita?: string[] | null;
-  /** Testo libero come nel bench: "trolley medio", "zaino da 40 litri", "borsa a tracolla". */
-  bagaglio?: string | null;
-  alloggio?: string | null;
-  lavatrice?: boolean | null;
-}
-
-/** Lo scenario nella forma del bench, da cui partono prompt, Jev e matcher. */
-export function scenarioDaApp(v: ViaggioApp): Record_ {
-  const sc: Record_ = {
-    data_inizio: v.data_inizio,
-    giorni: v.giorni,
-    attivita: [...(v.attivita ?? [])],
-    bagaglio: v.bagaglio ?? "",
-    alloggio: v.alloggio ?? "",
-    lavatrice: !!v.lavatrice,
-  };
-  if (v.tappe?.length) {
-    sc.legs = v.tappe.map((t) => ({ destinazione: t.nome, giorni: t.giorni, attivita: [...(t.attivita ?? [])] }));
-  } else if (v.destinazione) {
-    sc.destinazione = v.destinazione.nome;
-    sc.paese = v.destinazione.paese ?? "";
-  }
-  return sc;
-}
+export { scenarioDaApp, type ViaggioApp } from "./contesto_viaggio.ts";
 
 export type Uso = Record<string, unknown>;
 export type ChiediModello = (prompt: string) => Promise<{ testo: string; uso?: Uso }>;
