@@ -9,6 +9,7 @@ import type { Lingua } from "../lingua.ts";
 import { attivitaScenario, promptValigia } from "./prompt.ts";
 import { parseJsonBlock, strategySlots } from "./slots.ts";
 import { strategySlotsMultitappa } from "./tappe.ts";
+import { analizzaFabbisogni, type AnalisiFabbisogni } from "./fabbisogni.ts";
 
 type Record_ = Record<string, any>;
 
@@ -30,6 +31,8 @@ export interface Servizi {
 
 export interface Risultato {
   valigia: Record_;
+  /** Analisi interna condivisa: non viene serializzata nel payload della valigia. */
+  fabbisogni: AnalisiFabbisogni;
   motivi: Record_;
   perche: Record_[];
   geo: Record_;
@@ -73,8 +76,15 @@ export async function generaValigia(sc: Record_, righe: RigaArmadio[], s: Serviz
   const v = { scenario: sc, meteo, slots: valigia };
   const tag = tagArmadio(righe);
   const motivi = motiviValigia(v, tag, s.lingua);
+  const viaggio = { ...sc, ...(sc.legs?.length ? {
+    tappe: sc.legs.map((l: Record_) => ({ nome: l.destinazione, giorni: l.giorni, attivita: l.attivita })),
+  } : { destinazione: { nome: sc.destinazione } }) };
+  const fabbisogni = analizzaFabbisogni(valigia, caricaArmadio(righe), viaggio, meteo, {
+    motivi: motivi as { capi: Record_[]; essenziali: Record_[] },
+    salvate: new Map(righe.map((g) => [String(g.id), g.quantity ?? null])),
+  });
   return {
-    valigia, motivi, perche: percheValigia(v, tag, motivi, s.lingua), geo, meteo,
+    valigia, fabbisogni, motivi, perche: percheValigia(v, tag, motivi, s.lingua), geo, meteo,
     jev: { profili_nuovi: jev.profili_nuovi, errori: jev.errori }, uso: risposta.uso,
     diagnostica: { prompt, testo: risposta.testo, jev },
   };

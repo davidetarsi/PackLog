@@ -41,6 +41,12 @@ for (const c of casi) for (const modo of ["vuoto", "parziale", "completo"] as co
     assert.deepEqual(valigia, prima);
     assert.equal(new Set(posti.map((p) => p.id)).size, posti.length, "identita' univoche");
     assert.ok(posti.every((p) => Number.isInteger(p.copie) && p.copie > 0));
+    if (c.necessario) {
+      const scelti = new Set([...valigia.ideali, ...valigia.ripieghi].map((g) => g.item_id));
+      const coperto = items.some((g) => scelti.has(g.id) && (g.sub_fine === c.sub || g.sub_category === c.sub));
+      assert.ok(coperto || posti.some((p) => p.tipo === c.sub && p.livello === "importante"),
+        `${c.sub}: il bisogno deve essere coperto da un capo posseduto o da una proposta`);
+    }
     if (modo === "vuoto") {
       const specifico = posti.find((p) => p.tipo === c.sub);
       if (c.necessario) assert.equal(specifico?.livello, "importante", c.sub);

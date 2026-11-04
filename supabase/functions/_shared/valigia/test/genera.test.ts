@@ -53,6 +53,15 @@ test("stesso prompt, stessa valigia, stessi motivi del bench", async () => {
       jev: jevCome(c.args),
       profiliNoti,
     });
+    assert.ok(r.fabbisogni, `${nome}: il motore deve restituire i fabbisogni residui`);
+    const viaggio = { ...scenario, ...(scenario.legs?.length ? {
+      tappe: scenario.legs.map((l: any) => ({ nome: l.destinazione, giorni: l.giorni, attivita: l.attivita })),
+    } : { destinazione: { nome: scenario.destinazione } }) };
+    const contesto = { viaggio, meteo, armadio: caricaArmadio(righe[c.armadio]) };
+    const salvate = new Map(righe[c.armadio].map((g) => [String(g.id), g.quantity ?? null]));
+    assert.deepEqual(
+      postiApp(r.valigia, r.motivi as any, salvate, { ...contesto, fabbisogni: r.fabbisogni }),
+      postiApp(r.valigia, r.motivi as any, salvate, contesto), `${nome}: fabbisogni del motore e adapter coerenti`);
     // Metadati aggiuntivi per i posti: non modificano matching, capi o quantita' del bench.
     const valigia = structuredClone(r.valigia) as any;
     for (const rich of valigia.richiesti ?? []) { delete rich.capoTipico; delete rich.maxWarmth; delete rich.vincoliPosto; }

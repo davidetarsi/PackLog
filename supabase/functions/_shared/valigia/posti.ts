@@ -1,19 +1,15 @@
-import { normalizzaQuantitaViaggio, preparaContestoTappe } from "./contesto_viaggio.ts";
+import { analizzaFabbisogni, copieResidue, copriConProposte, intersecaVincoli, vincoliCompatibili,
+  type AnalisiFabbisogni } from "./fabbisogni.ts";
 // I posti della valigia dai mancanti del generatore: quanto e' importante un posto e come
 // si chiama. Non tocca la scelta dei capi ne' gli avvisi (uscita.ts): e' un livello in piu'.
 import type { Lingua } from "../lingua.ts";
 import * as K from "./costanti.ts";
-import { caricaArmadio, type Capo as CapoArmadio } from "./capo.ts";
-import { canonicalizeGaps, capienzaBagaglio } from "./dopo.ts";
-import { scenarioDaApp, type ViaggioApp } from "./genera.ts";
+import { type Capo as CapoArmadio } from "./capo.ts";
 import { eTrekking, interseca, parole } from "./inject.ts";
-import { attivitaScenario } from "./prompt.ts";
-import { eAttivitaAcqua, essenzialiPerViaggio, giorniDiMare, normIntensita, quantityFor, RADICI_GIORNI_ACQUA_IN_PIU, RADICI_NOTTE } from "./quantita.ts";
+import { eAttivitaAcqua, RADICI_GIORNI_ACQUA_IN_PIU } from "./quantita.ts";
 import { caldoUnCapoAlGiorno, ha } from "./regole_capi.ts";
-import { servePerTappa } from "./tappe.ts";
-import { perIlGeneratore } from "./tassonomia.ts";
-import { attivitaPer, calore, capiUniti, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
-  meteoDelGap, perQuestoArmadio, SOLO_SE_NELL_ARMADIO, soloElegante, tettoSalvate } from "./uscita.ts";
+import { attivitaPer, calore, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
+  meteoDelGap, perQuestoArmadio, SOLO_SE_NELL_ARMADIO, soloElegante } from "./uscita.ts";
 import { NOMI_CATEGORIA, NOMI_FAMIGLIA, NOMI_SOTTOCATEGORIA, type NomePosto } from "./posti_nomi.ts";
 
 export type Livello = "importante" | "utile";
@@ -115,162 +111,9 @@ export interface PostoApp {
 /** Cio' che l'utente deve sapere ma non e' un oggetto da mettere: bagaglio troppo pieno, lavanderia. */
 export interface InfoApp { codice: string; titolo: string; perche: string }
 
-/** Le famiglie degli essenziali di base, con il nome del capo finto che ne misura le copie. */
-const FAMIGLIE: { tipo: string; radici: Set<string>; nome: string; categoria: PostoApp["categoria"] }[] = [
-  { tipo: "intimo", radici: new Set(["mutand", "slip", "boxer", "perizoma", "intim", "underwear", "brief"]),
-    nome: "Mutande", categoria: "vestiti" },
-  { tipo: "calzini", radici: new Set(["calz", "sock"]), nome: "Calzini", categoria: "vestiti" },
-  { tipo: "notte", radici: RADICI_NOTTE, nome: "Pigiama", categoria: "vestiti" },
-  { tipo: "igiene", radici: new Set(["beauty", "trousse", "necessaire", "nécessaire", "washbag", "toilette",
-    "spazzolin", "dentifric", "shampoo", "deodorant"]), nome: "Necessaire", categoria: "toiletries" },
-];
-const famigliaDi = (radice: unknown) => FAMIGLIE.find((f) => f.radici.has(String(radice)));
-
 const TIPI_DI_POSTO = new Set(["assente", "posseduto_ma_inadatto", "quantita_insufficiente"]);
 
-/** I mancanti senza candidato omettono alcuni vincoli che richiesti conserva. */
-function conVincoli(g: Record<string, any>, richiesto: Record<string, any> | undefined): Record<string, any> {
-  if (!richiesto) return g;
-  const completo = { ...g };
-  if (completo.requiredActivityTags == null && richiesto.vincoliPosto?.activityTags) completo.requiredActivityTags = richiesto.vincoliPosto.activityTags;
-  if (completo.coverage == null && richiesto.vincoliPosto?.coverage) completo.coverage = richiesto.vincoliPosto.coverage;
-  if (completo.formality == null && Array.isArray(richiesto.formality)) completo.formality = richiesto.formality;
-  if (!calore(completo) && richiesto.minWarmth != null && richiesto.maxWarmth != null &&
-    (richiesto.minWarmth > 1 || richiesto.maxWarmth < 5)) {
-    completo.warmth_richiesto = [richiesto.minWarmth, richiesto.maxWarmth];
-  }
-  if (completo.impermeabilita_richiesta == null && completo.requiredWaterResistance == null && richiesto.minWaterResistance != null) {
-    completo.impermeabilita_richiesta = richiesto.minWaterResistance;
-  }
-  return completo;
-}
-
-/** Recupera i vincoli prima che la deduplicazione dei gap perda bisogni con formalita' diverse. */
-function mancantiPerPosti(valigia: Record<string, any>, richiesti: Record<string, any>[]): Record<string, any>[] {
-  const completa = (g: Record<string, any>) => conVincoli(g, richiesti.find((r) => r.slot === g.slot));
-  if (!Array.isArray(valigia.mancanti)) return (valigia.mancanti_canonici ?? []).map(completa);
-  const gruppi = new Map<string, Record<string, any>[]>();
-  for (const originale of valigia.mancanti) {
-    const g = completa(originale);
-    const chiave = JSON.stringify([Array.isArray(g.formality) ? [...g.formality].sort() : [], g.tappe ?? [],
-      g.requiredActivityTags ?? [], g.coverage ?? []]);
-    const gruppo = gruppi.get(chiave) ?? [];
-    gruppo.push(g);
-    gruppi.set(chiave, gruppo);
-  }
-  return [...gruppi.values()].flatMap(canonicalizeGaps);
-}
-
-/** Gli argomenti con cui il generatore conta le quantita' (genera.ts valigiaDa, slots.ts
- *  strategySlots, tappe.ts strategySlotsMultitappa), ricostruiti dal viaggio e dal meteo. */
-export interface ParametriQuantita {
-  giorni: number;
-  /** Per i capi: col cammino a piedi e lo zaino piccolo si lava a mano (slots.ts). */
-  lavatrice: boolean;
-  /** Per gli essenziali: la lavatrice del viaggio, senza il cammino. */
-  lavatriceEssenziali: boolean;
-  /** Le attivita' dello slot (per i giorni di mare). */
-  attivita: string[];
-  intensita: string | null;
-  /** In un posto solo la massima del viaggio; a tappe quella della tappa base. */
-  tempMax: number | null;
-  /** I collant: a tappe la massima della tappa piu' fresca. */
-  tempMaxEssenziali: number | null;
-}
-
-const numeroONull = (x: unknown) => (x == null || !Number.isFinite(Number(x)) ? null : Number(x));
-
-export function parametriQuantita(v: Record<string, any> | null | undefined, meteo: Record<string, any> | null | undefined):
-  ParametriQuantita {
-  const sc = scenarioDaApp({ data_inizio: "", ...(v ?? {}),
-    giorni: Math.trunc(Number(v?.giorni ?? meteo?.giorni)) || 1 } as ViaggioApp);
-  const bagaglio = sc.bagaglio ?? "";
-  const intensita = sc.intensita ?? null;
-  const legs: Record<string, any>[] = Array.isArray(sc.legs) ? sc.legs : [];
-  if (legs.length) {
-    // Le tappe come le vede strategySlotsMultitappa: giorni interi, massima della tappa dal meteo.
-    const perMeteo: Record<string, any>[] = Array.isArray(meteo?._per_tappa) ? meteo!._per_tappa : [];
-    const perTappa = legs.map((l) => ({
-      destinazione: l.destinazione, giorni: Math.trunc(Number(l.giorni || 1)), attivita: l.attivita || [],
-      meteo: { temp_max_media: numeroONull(perMeteo.find((t) => t.destinazione === l.destinazione)?.temp_max_media) },
-    }));
-    const { giorni, base, attivitaBase: attivita, lavatriceEssenziali, lavatriceBase } =
-      preparaContestoTappe(sc, perTappa, bagaglio);
-    const massime = perTappa.map((t) => t.meteo.temp_max_media).filter((x): x is number => x != null);
-    return {
-      giorni, lavatriceEssenziali, attivita, intensita,
-      lavatrice: lavatriceBase,
-      tempMax: base.meteo.temp_max_media, tempMaxEssenziali: massime.length ? Math.min(...massime) : null,
-    };
-  }
-  const attivita = attivitaScenario(sc);
-  const { giorni, lavatrice, lavatriceEssenziali } = normalizzaQuantitaViaggio({ ...sc,
-    giorni: sc.giorni, lavatrice: sc.lavatrice, attivita, bagaglio });
-  const tempMax = numeroONull(meteo?.temp_max_media);
-  return {
-    giorni, lavatriceEssenziali, attivita, intensita, tempMax, tempMaxEssenziali: tempMax, lavatrice,
-  };
-}
-
-/** Gli stessi fabbisogni delle tappe, controllati sulla valigia finale senza modificarla.
- *  Il controllo vale anche per una destinazione singola: i capi tecnici assenti vanno proposti. */
-export function mancantiDelleTappe(valigia: Record<string, any>, armadio: CapoArmadio[],
-  viaggio: Record<string, any> | null | undefined, meteo: Record<string, any> | null | undefined): Record<string, any>[] {
-  if (!Array.isArray(valigia.ideali) || !Array.isArray(valigia.ripieghi) || !meteo) return [];
-  const sc = scenarioDaApp({ data_inizio: "", ...(viaggio ?? {}) } as ViaggioApp);
-  const perMeteo: Record<string, any>[] = meteo._per_tappa ?? [];
-  const tappe = sc.legs?.length ? sc.legs.flatMap((l: any) => {
-    const clima = perMeteo.find((t) => t.destinazione === l.destinazione);
-    return clima ? [{ ...l, attivita: [...(sc.attivita ?? []), ...(l.attivita ?? [])], meteo: clima }] : [];
-  }) : [{ destinazione: sc.destinazione ?? "", giorni: sc.giorni,
-    attivita: sc.attivita ?? [], meteo }];
-  const mancanti: Record<string, any>[] = [];
-  const capienza = capienzaBagaglio(sc.bagaglio ?? "");
-  const giorni = tappe.reduce((n: number, t: any) => n + Number(t.giorni || 1), 0);
-  for (const t of tappe) {
-    const capi = structuredClone([...valigia.ideali, ...valigia.ripieghi])
-      .map((r) => ({ ...r, tappe: r.tappe ?? [t.destinazione] }));
-    servePerTappa(t, capi, armadio,
-      new Set(armadio.map((g) => g.id)), capienza <= 30 ? 0.25 : capienza <= 55 ? 0.12 : 0,
-      giorni <= 2 || capienza <= 8, null, false, mancanti);
-  }
-  return mancanti;
-}
-
-/** Un bisogno della tappa usa i suoi giorni e il suo clima, non l'intera durata. */
-function quantitaPerTappe(g: Record<string, any>, q: ParametriQuantita,
-  viaggio: Record<string, any> | null | undefined, meteo: Record<string, any> | null | undefined): ParametriQuantita {
-  const nomi = new Set(g.tappe ?? []);
-  const tappe = (viaggio?.tappe ?? viaggio?.legs ?? []).filter((t: any) => nomi.has(t.nome ?? t.destinazione));
-  if (!tappe.length) return q;
-  const massime = (meteo?._per_tappa ?? []).filter((t: any) => nomi.has(t.destinazione))
-    .map((t: any) => numeroONull(t.temp_max_media)).filter((n: number | null): n is number => n != null);
-  return { ...q, giorni: tappe.reduce((n: number, t: any) => n + Math.max(1, Number(t.giorni) || 1), 0),
-    attivita: attivitaPer(g, viaggio), tempMax: massime.length ? Math.max(...massime) : q.tempMax };
-}
-
-/** Le copie di un mancante: i capi diversi che mancano per una quantita' insufficiente, uno per
- *  giacche, scarpe e accessori, altrimenti la quantita' che il generatore darebbe allo slot
- *  (slots.ts, quantityFor) con il calore minimo dello slot al posto di quello del capo. */
-function copieDelMancante(g: Record<string, any>, sub: string | null, richiesto: Record<string, any> | undefined,
-  q: ParametriQuantita): number {
-  let copie: number;
-  if (g.tipo === "quantita_insufficiente") {
-    const necessari = g.capi_diversi_necessari == null ? NaN : Number(g.capi_diversi_necessari);
-    // Senza capi_diversi_necessari (copie possedute, dopo.ts) gli usi sono pezzi: mancano i pezzi.
-    copie = Number.isFinite(necessari)
-      ? necessari - Math.ceil(Number(g.usi_coperti || 0) / K.TETTO_COPIE_STESSO_CAPO)
-      : Number(g.usi_richiesti) - Number(g.usi_coperti);
-  } else if (K.REUSABLE.has(g.category)) {
-    copie = 1;
-  } else {
-    const frequenza = String(richiesto?.frequency ?? "daily");
-    const calore = numeroONull(richiesto?.minWarmth) ?? numeroONull(Array.isArray(g.warmth_richiesto) ? g.warmth_richiesto[0] : null);
-    copie = quantityFor(sub ?? "", "", q.giorni, q.lavatrice, frequenza, normIntensita(richiesto?.intensita) || q.intensita,
-      q.tempMax, giorniDiMare(q.giorni, q.attivita), calore);
-  }
-  return Number.isFinite(copie) ? Math.max(1, copie) : 1;
-}
+export { parametriQuantita, mancantiDelleTappe, type ParametriQuantita } from "./fabbisogni.ts";
 
 interface Grezzo {
   tipo: string;
@@ -296,33 +139,12 @@ interface Grezzo {
 }
 
 function compatibili(a: Grezzo, b: Grezzo): boolean {
-  if (!a.bisogno || !b.bisogno) return true;
-  const wa = calore(a.bisogno), wb = calore(b.bisogno);
-  if (wa && wb && Math.max(wa[0], wb[0]) > Math.min(wa[1], wb[1])) return false;
-  const fa: string[] = a.bisogno.formality ?? [], fb: string[] = b.bisogno.formality ?? [];
-  if (fa.length && fb.length && !fa.some((f) => fb.includes(f))) return false;
-  for (const campo of ["requiredActivityTags", "coverage"]) {
-    const ca: string[] = a.bisogno[campo] ?? [], cb: string[] = b.bisogno[campo] ?? [];
-    if (ca.length && cb.length && !ca.some((v) => cb.includes(v))) return false;
-  }
-  return true;
+  return vincoliCompatibili(a.bisogno, b.bisogno);
 }
 
 function unisciBisogni(a: Grezzo, b: Grezzo, lingua: Lingua): void {
   if (!a.bisogno || !b.bisogno) return;
-  const wa = calore(a.bisogno), wb = calore(b.bisogno);
-  const bisogno = { ...a.bisogno };
-  if (wa && wb) bisogno.warmth_richiesto = [Math.max(wa[0], wb[0]), Math.min(wa[1], wb[1])];
-  else if (wb) bisogno.warmth_richiesto = wb;
-  const fa: string[] = bisogno.formality ?? [], fb: string[] = b.bisogno.formality ?? [];
-  bisogno.formality = fa.length && fb.length ? fa.filter((f) => fb.includes(f)) : fa.length ? fa : fb;
-  for (const campo of ["requiredActivityTags", "coverage"]) {
-    const ca: string[] = bisogno[campo] ?? [], cb: string[] = b.bisogno[campo] ?? [];
-    bisogno[campo] = ca.length && cb.length ? ca.filter((v) => cb.includes(v)) : ca.length ? ca : cb;
-  }
-  bisogno.impermeabilita_richiesta = Math.max(
-    Number(a.bisogno.impermeabilita_richiesta ?? a.bisogno.requiredWaterResistance ?? 0),
-    Number(b.bisogno.impermeabilita_richiesta ?? b.bisogno.requiredWaterResistance ?? 0));
+  const bisogno = intersecaVincoli(a.bisogno, b.bisogno);
   a.bisogno = bisogno;
   a.daAttivita = a.daAttivita || b.daAttivita;
   const freddo = a.qualifica === "freddo" || b.qualifica === "freddo";
@@ -367,20 +189,20 @@ function unisciIlMeteo(grezzi: Grezzo[], lingua: Lingua): Grezzo[] {
  *  Lavora sul risultato del generatore e non tocca uscitaApp. */
 export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<string, any>[]; essenziali: Record<string, any>[] },
   salvate: Map<string, number | null>,
-  contesto: { meteo?: Record<string, any> | null; viaggio?: Record<string, any> | null; armadio: CapoArmadio[]; lingua?: Lingua },
+  contesto: { meteo?: Record<string, any> | null; viaggio?: Record<string, any> | null; armadio: CapoArmadio[]; lingua?: Lingua; fabbisogni?: AnalisiFabbisogni },
 ): { posti: PostoApp[]; informazioni: InfoApp[] } {
   const lingua: Lingua = contesto.lingua ?? "it";
   const { meteo, viaggio, armadio } = contesto;
-  const q = parametriQuantita(viaggio, meteo);
+  const fabbisogni = contesto.fabbisogni ?? analizzaFabbisogni(valigia, armadio, viaggio, meteo, { motivi, salvate });
+  const q = fabbisogni.quantita;
   const grezzi: Grezzo[] = [];
   const informazioni: InfoApp[] = [];
 
   // 1. I mancanti del generatore (gonna, vestito e cravatta solo se l'armadio ne ha).
   const sottocategorie = new Set(armadio.flatMap((g) => [g.sub_fine, g.sub_category]));
-  const richiesti: Record<string, any>[] = Array.isArray(valigia.richiesti) ? valigia.richiesti : [];
-  for (const originale of [...mancantiPerPosti(valigia, richiesti), ...mancantiDelleTappe(valigia, armadio, viaggio, meteo)]) {
-    const richiesto = originale.richiesto ?? richiesti.find((r) => r.slot === originale.slot);
-    const g = perQuestoArmadio(conVincoli(originale, richiesto), sottocategorie);
+  for (const f of fabbisogni.mancanti) {
+    const richiesto = f.richiesto;
+    const g = perQuestoArmadio(f.vincoli, sottocategorie);
     if (!g) continue;
     const viaggioFreddo = freddoPer(g, meteo);
     const attivita = attivitaPer(g, viaggio);
@@ -405,40 +227,30 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     const proposta: Grezzo = {
       tipo, categoria: "vestiti", livello: livelloPosto(g, capo, viaggioFreddo, attivita),
       daAttivita: daAttivita(capo.sub, attivita),
-      copie: Math.max(Number(g.copie_minime ?? 1), copieDelMancante(g, sub, richiesto, quantitaPerTappe(g, q, viaggio, meteo)) - Number(g.copie_coperte ?? 0)),
+      copie: copieResidue(f, sub),
       motivo: copyMancante(g, viaggioFreddo, attivita, lingua).perche,
       capo, qualifica: qualificaDelGap(g, capo, viaggioFreddo), origine: "gap", elegante: soloElegante(g),
       tappe: Array.isArray(g.tappe) ? g.tappe.map(String) : undefined,
       bisogno: g,
     };
-    if (originale.richiesto) {
-      // I bisogni minimi usano prima i capi gia' proposti, anche se hanno un nome diverso.
-      const perTipo = new Map<string, number>();
-      for (const p of grezzi) {
-        const stessaTappa = p.tappe?.length ? p.tappe.length === 1 && p.tappe[0] === g.tappe?.[0]
-          : !(viaggio?.tappe?.length > 1 || viaggio?.legs?.length > 1);
-        if (!stessaTappa || p.capo.categoria !== categoria || !p.capo.sub ||
-          !g.subCategories?.includes(perIlGeneratore(p.capo.sub)) || !compatibili(p, proposta)) continue;
-        perTipo.set(p.tipo, Math.max(perTipo.get(p.tipo) ?? 0, p.copie));
+    if (f.supplementare) {
+      const copertura = copriConProposte(proposta, grezzi, fabbisogni.aTappe);
+      for (const indice of copertura.riusate) {
+        const p = grezzi[indice];
         unisciBisogni(p, proposta, lingua);
         if (proposta.livello === "importante") p.livello = "importante";
       }
-      const coperte = [...perTipo.values()].reduce((n, copie) => n + copie, 0);
-      if (coperte >= proposta.copie) continue;
-      proposta.copie = proposta.copie - coperte + (perTipo.get(tipo) ?? 0);
+      if (!copertura.copie) continue;
+      proposta.copie = copertura.copie;
     }
     grezzi.push(proposta);
   }
 
   // 2. Pezzi in meno: il capo serve in piu' copie di quelle salvate (pochi_pezzi di uscitaApp).
-  const radici = new Map(motivi.essenziali.map((e) => [String(e.item_id), e.radice]));
   const perId = new Map(armadio.map((g) => [g.id, g]));
-  for (const [id, c] of capiUniti(motivi)) {
-    const tetto = tettoSalvate(salvate, id);
-    if (c.quantita <= tetto) continue;
-    const manca = c.quantita - tetto;
-    const motivo = frasePochi(c.quantita, tetto, lingua);
-    const famiglia = famigliaDi(radici.get(id));
+  for (const f of fabbisogni.copieMancanti) {
+    const { id, copie: manca, famiglia } = f;
+    const motivo = frasePochi(f.richieste, f.presenti, lingua);
     if (famiglia) {
       grezzi.push({ tipo: famiglia.tipo, categoria: famiglia.categoria, livello: "utile", copie: manca, motivo,
         capo: { sub: null, categoria: famiglia.tipo }, qualifica: null, origine: "pezzi" });
@@ -449,21 +261,15 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     const sub = NOMI_SOTTOCATEGORIA[g.sub_category] ? g.sub_category : null;
     if (!sub && !NOMI_CATEGORIA[g.category]) continue;
     const capo = { sub, categoria: g.category };
-    const tappe = [...(valigia.ideali ?? []), ...(valigia.ripieghi ?? [])]
-      .filter((r) => String(r.item_id) === id).flatMap((r) => r.tappe ?? []);
-    const bisogno = { tappe };
+    const bisogno = { tappe: f.tappe };
     // Un pezzo solo in meno non e' mai importante.
     grezzi.push({ tipo: sub ?? g.category, categoria: "vestiti", livello: manca > 1 ? livelloPosto({}, capo, freddoPer(bisogno, meteo), attivitaPer(bisogno, viaggio)) : "utile",
       copie: manca, motivo, capo, qualifica: null, origine: "pezzi" });
   }
 
   // 3. Essenziali di base assenti: le copie che avrebbe un utente con quell'oggetto.
-  const coperte = new Set(((valigia.essenziali ?? []) as Record<string, any>[]).map((e) => famigliaDi(e.radice)?.tipo));
-  for (const f of FAMIGLIE) {
-    if (coperte.has(f.tipo)) continue;
-    const [e] = essenzialiPerViaggio(caricaArmadio([{ id: `posto:${f.tipo}`, name: f.nome }]), q.giorni,
-      q.lavatriceEssenziali, q.tempMaxEssenziali);
-    grezzi.push({ tipo: f.tipo, categoria: f.categoria, livello: "utile", copie: Math.max(1, e?.quantita ?? 1),
+  for (const f of fabbisogni.essenzialiMancanti) {
+    grezzi.push({ tipo: f.tipo, categoria: f.categoria, livello: "utile", copie: f.copie,
       motivo: null, capo: { sub: null, categoria: f.tipo }, qualifica: null, origine: "famiglia" });
   }
 
@@ -472,7 +278,7 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
   // del generatore di Upper Body, Lower Body e Shoes nella stessa tappa (slot giornaliero e occasionale coprono
   // gli stessi giorni) si uniscono col massimo; tappe diverse coprono giorni diversi e si sommano,
   // come ogni mancante di un viaggio a piu' tappe senza tappa indicata, i pezzi in meno, le famiglie
-  // e le famiglie. Giacche e accessori riusabili compatibili prendono il massimo anche tra tappe.
+  // Giacche e accessori riusabili compatibili prendono il massimo anche tra tappe.
   const aTappe = [viaggio?.tappe, viaggio?.legs].some((t) => Array.isArray(t) && t.length > 1);
   const uniti = new Map<string, Grezzo>();
   const copieGap = new Map<string, Map<string, number>>(); // chiave del posto -> tappa -> massimo
