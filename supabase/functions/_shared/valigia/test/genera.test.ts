@@ -1,5 +1,5 @@
 // Il giro intero (genera.ts) con modello, Jev e meteo finti che rispondono come
-// nel bench: stesso prompt, stessa valigia, stessi motivi.
+// nel bench: stesso prompt, contratto storico o delta di policy esplicito.
 // Uso: node --test test/genera.test.ts   (ORACOLO_CELLE=file per l'oracolo intero)
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -10,6 +10,10 @@ import { generaValigia, scenarioDaApp } from "../genera.ts";
 import { postiApp } from "../posti.ts";
 import { uscitaApp } from "../uscita.ts";
 import { caricaArmadio } from "../capo.ts";
+import { chiaveCaso, impronta, riproduciCaso } from "./support/replay_valigia.ts";
+
+const motore = JSON.parse(readFileSync(process.env.PACKING_ENGINE_CHANGES
+  ?? new URL("./baseline_motore_migliorato.json", import.meta.url), "utf8"));
 
 const file = process.env.ORACOLO_CELLE ?? new URL("./oracolo_celle_campione.json", import.meta.url);
 const casi: any[] = JSON.parse(readFileSync(file, "utf8"));
@@ -36,7 +40,8 @@ function jevCome(a: any): ChiediJev {
   };
 }
 
-test("stesso prompt, stessa valigia, stessi motivi del bench", async () => {
+test("flusso completo: prompt storico, risultati e delta revisionati del motore", async () => {
+  assert.equal(motore.input, impronta(casi), "Delta del motore riferiti ad altri input");
   let n = 0;
   for (const c of casi) {
     const { scenario, geo, meteo } = structuredClone(c.viaggio);
@@ -62,7 +67,20 @@ test("stesso prompt, stessa valigia, stessi motivi del bench", async () => {
     assert.deepEqual(
       postiApp(r.valigia, r.motivi as any, salvate, { ...contesto, fabbisogni: r.fabbisogni }),
       postiApp(r.valigia, r.motivi as any, salvate, contesto), `${nome}: fabbisogni del motore e adapter coerenti`);
-    // Metadati aggiuntivi per i posti: non modificano matching, capi o quantita' del bench.
+    const cambiato = motore.casi[chiaveCaso(c, "completo")];
+    if (cambiato?.campi.valigia) {
+      // Il replay diretto e' congelato dal delta; il flusso completo deve ricostruirlo senza divergenze.
+      const replay = riproduciCaso(c, "completo");
+      for (const campo of ["valigia", "motivi", "perche"] as const) {
+        if (cambiato.campi[campo]) {
+          assert.equal(impronta(replay[campo]), cambiato.campi[campo].dopo, `${nome}: replay ${campo} fuori baseline`);
+        }
+        assert.deepEqual(numeri(r[campo]), numeri(replay[campo]), `${nome}: flusso completo ${campo}`);
+      }
+      n++;
+      continue;
+    }
+    // I casi non interessati conservano il confronto esatto con il bench Python storico.
     const valigia = structuredClone(r.valigia) as any;
     for (const rich of valigia.richiesti ?? []) { delete rich.capoTipico; delete rich.maxWarmth; delete rich.vincoliPosto; }
     assert.deepEqual(numeri(valigia), numeri(c.atteso), nome);

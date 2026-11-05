@@ -12,7 +12,7 @@ import {
   capoLeggero, capoRiservato, capospallaInTracolla, fixes, injectFabbisogno, injectMandatory,
   injectParteInferioreFormale, injectStratoFormale, insieme, interseca, normList, penalitaCulto, rejects,
   type Record_, segnaCapiDaNeve, type Slot, slotCapiNuovi, sottoinsieme, viaggioDiLavoro, warmthCeiling,
-  warmthFloor, eTrekking,
+  warmthFloor, eTrekking, ePasseggiataLeggera,
 } from "./inject.ts";
 import {
   applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps,
@@ -245,6 +245,13 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   }
   const prima = slots.length;
   const attViaggio = a.attivita_viaggio != null ? a.attivita_viaggio : (attivita || []);
+  if (ePasseggiataLeggera(attivita) && !eTrekking(attViaggio)) {
+    for (const s of slots) {
+      if (Array.isArray(s.activityTags) && s.activityTags.includes("Hiking")) {
+        s.activityTags = [...new Set(s.activityTags!.map((t) => t === "Hiking" ? "Everyday" : t))];
+      }
+    }
+  }
   segnaCapiDaNeve(items, [...attViaggio, ...(attivita || [])]);
   if (K.NIENTE_FORMALE_SENZA_OCCASIONE && vero(attViaggio) && !viaggioDiLavoro(attViaggio, classiViaggio) &&
     !rc.occasioneFormale(attViaggio)) {
@@ -391,7 +398,8 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     const minWr = Math.trunc(Number(s.minWaterResistance || 0));
     const fallback = new Set<string>();
     for (const sub of ideal) for (const f of (K.SUBSTITUTIONS[sub] ?? [])) if (!ideal.has(f)) fallback.add(f);
-    const wrRigido = vero(s._fabbisogno) && minWr > 0;
+    const pioggiaQuotidiana = s.category === "Shoes" && minWr > 0 && !eTrekking(attivita);
+    const wrRigido = (vero(s._fabbisogno) && minWr > 0) || pioggiaQuotidiana;
     const covReq = insieme(s.coverage || []);
     const nonCasual = forms.size > 0 && !forms.has("Casual");
     const votoScarpe = (vero(votiScarpe) && s.category === "Shoes" && s.slot !== "calzature di ricambio" && !nonCasual)
@@ -412,6 +420,12 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
       (giornoCasual && capoRiservato(g, profiliCapi) ? K.PESO_ELEGANTE_DI_GIORNO : 0.0) +
       (vero(s._preferisci_calore) ? K.PESO_CALORE_TESTA * Math.max(0, 4 - (g.warmth || 1)) : 0.0);
 
+    const scarpaPioggiaTollerabile = (g: Capo) => pioggiaQuotidiana && !g.solo_neve &&
+      !["trekking", "neve"].includes(rc.ruoloScarpa(g.sub_category, g.activity_tags, g.warmth, g.formality)) &&
+      (g.water_resistance || 0) >= minWr && (!forms.size || forms.has(g.formality)) &&
+      (!tags.size || g.activity_tags.some((t) => tags.has(t))) &&
+      (g.warmth || 1) <= Math.min(hi + K.MARGINE_CALORE_COMPROMESSO, K.TETTO_MINIMO + K.MARGINE_CALORE_COMPROMESSO);
+
     // `lista` e `conta`: lo stesso abbinamento gira anche sull'armadio tipico (per il nome dei posti),
     // senza contare gli esclusi dal tetto, che sono una misura del viaggio vero.
     const pick = (subs: Set<string>, compromesso = false, lista: Capo[] = items, conta = true): Capo | null => {
@@ -424,7 +438,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
         !(formaleRigido && K.FORMALITA_CASUAL.has(g.formality)) &&
         !(ruoliGia.size && ruoliGia.has(rc.ruoloScarpa(g.sub_category, g.activity_tags, g.warmth, g.formality))) &&
         (!vero(s._tag_rigido) || g.activity_tags.some((t) => tags.has(t))) &&
-        (g.warmth || 1) <= tettoW &&
+        ((g.warmth || 1) <= tettoW || (compromesso && scarpaPioggiaTollerabile(g))) &&
         (!soloGuscio || GUSCI.has(g.sub_category) || (g.warmth || 1) <= ceiling) &&
         (!compromesso || (g.warmth || 3) >= lo) &&
         sc(g) <= soglia);
@@ -440,6 +454,10 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
       let capoScelto = pick(ideal, false, lista, conta), tipo = "ideale";
       if (capoScelto == null && K.CAPI_DIVERSI_ELEGANTI && forms.size && !forms.has("Casual") && s.category === "Lower Body") {
         capoScelto = pick(ideal, true, lista, conta); tipo = "compromesso";
+      }
+      // Per la pioggia un modello ordinario appena piu' caldo precede un ripiego tecnico.
+      if (capoScelto == null && pioggiaQuotidiana) {
+        capoScelto = pick(ideal, true, lista.filter(scarpaPioggiaTollerabile), conta); tipo = "compromesso";
       }
       if (capoScelto == null) { capoScelto = pick(fallback, false, lista, conta); tipo = "ripiego"; }
       if (capoScelto == null) { capoScelto = pick(unione(ideal, fallback), true, lista, conta); tipo = "compromesso"; }
@@ -497,6 +515,9 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
         r.ideale_mancante = [...ideal].sort();
         if (tipoMatch === "compromesso") {
           const manche: string[] = [];
+          if (scarpaPioggiaTollerabile(capo) && (capo.warmth || 1) > hi) {
+            manche.push(`calore ${ps(capo.warmth)} invece di massimo ${hi}`);
+          }
           if (minWr && (capo.water_resistance || 0) < minWr) {
             manche.push(`impermeabilita ${ps(capo.water_resistance)} invece di ${minWr}`);
           }
