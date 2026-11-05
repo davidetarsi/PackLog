@@ -287,15 +287,15 @@ test("postiApp: un pezzo solo in meno non e' mai importante", () => {
   assert.deepEqual(conQuantita(3).map((p) => [p.tipo, p.copie, p.livello]), [["Hiking Boots", 2, "importante"]]);
 });
 
-test("postiApp: due mancanti T-Shirt da slot diversi, un posto con le copie sommate", () => {
+test("postiApp: due mancanti T-Shirt da slot diversi, un posto con il massimo delle copie", () => {
   const a = assente("Magliette", "Upper Body", ["T-Shirt"]);
   const b = assente("Magliette per la sera", "Upper Body", ["T-Shirt"]);
   const tutte = [{ radice: "mutand" }, { radice: "calz" }, { radice: "pigiama" }, { radice: "necessaire" }];
   const r = postiApp({ mancanti_canonici: [a, b], richiesti: richiestiDi([a, b], { "Magliette per la sera": "occasional" }),
     essenziali: tutte }, { capi: [], essenziali: [] }, new Map(),
   { meteo: { temp_min_media: 15, temp_max_media: 24 }, viaggio: { giorni: 5, lavatrice: false }, armadio: [] });
-  // 5 al giorno + round(5 * 0.4) = 2 per la sera
-  assert.deepEqual(r.posti.map((p) => [p.tipo, p.nome, p.copie]), [["T-Shirt", "Magliette", 7]]);
+  // giornaliera 5 e occasionale round(5 * 0.4) = 2 coprono gli stessi giorni: vale il massimo
+  assert.deepEqual(r.posti.map((p) => [p.tipo, p.nome, p.copie]), [["T-Shirt", "Magliette", 5]]);
 });
 
 test("postiApp: gonna, vestito e cravatta senza averne nell'armadio non diventano posti", () => {
@@ -554,4 +554,114 @@ test("un posto solo: pezzi in meno su un capo Outerwear 'Other' non si sommano a
   const giacche = posti.filter((p) => p.tipo === "Outerwear");
   assert.deepEqual(giacche.map((p) => [p.nome, p.copie]).sort(), [["Giacca invernale", 1], ["Giacca", 1]].sort());
   assert.ok(giacche.some((p) => p.motivo === "Ne servirebbero 2, nell'armadio ne hai 1."));
+});
+
+
+// ── Copie unite col massimo, muta mai importante, pantaloni lunghi da sera al caldo ────────
+const TEPIDO = { temp_min_media: 14, temp_max_media: 22, giorni_di_pioggia: 0 };
+const CALDO = { temp_min_media: 22, temp_max_media: 32, giorni_di_pioggia: 0 };
+const NOVE_GIORNI = { giorni: 9, lavatrice: false, attivita: [] as string[] };
+const postiNove = (mancanti: Record<string, any>[], freq: Record<string, string>, meteo: Record<string, any>) =>
+  postiApp({ mancanti_canonici: mancanti, richiesti: richiestiDi(mancanti, freq), essenziali: TUTTI_ESSENZIALI },
+    { capi: [], essenziali: [] }, new Map(), { meteo, viaggio: NOVE_GIORNI, armadio: [] }).posti;
+const copiePer = (posti: PostoApp[]) => Object.fromEntries(posti.map((p) => [p.tipo, p.copie]));
+
+test("copie unite: T-Shirt giornaliera e occasionale di 9 giorni, 9 e non 13", () => {
+  const a = assente("Magliette", "Upper Body", ["T-Shirt"]);
+  const b = assente("Magliette per la sera", "Upper Body", ["T-Shirt"]);
+  const posti = postiNove([a, b], { "Magliette per la sera": "occasional" }, TEPIDO);
+  assert.equal(posti.find((p) => p.tipo === "T-Shirt")?.copie, 9);
+});
+
+test("copie unite: anche in Lower Body i gap dello stesso tipo si uniscono col massimo", () => {
+  const a = assente("Pantaloni", "Lower Body", ["Trousers"]);
+  const b = assente("Pantaloni per la sera", "Lower Body", ["Trousers"]);
+  const unico = postiNove([a], {}, TEPIDO).find((p) => p.tipo === "Trousers")!.copie;
+  const due = postiNove([a, b], { "Pantaloni per la sera": "occasional" }, TEPIDO).find((p) => p.tipo === "Trousers")!.copie;
+  assert.equal(due, unico);
+});
+
+test("copie unite: i pezzi in meno restano sommati al posto dei gap", () => {
+  const armadio = caricaArmadio([{ id: "t1", name: "Maglietta bianca",
+    ai_metadata: { category: "Upper Body", subCategory: "T-Shirt" } }]);
+  const motivi = { capi: [{ item_id: "t1", item: "Maglietta bianca", quantita: 5, motivo: motivoGiorno }], essenziali: [] };
+  const a = assente("Magliette", "Upper Body", ["T-Shirt"]);
+  const b = assente("Magliette per la sera", "Upper Body", ["T-Shirt"]);
+  const r = postiApp({ mancanti_canonici: [a, b], richiesti: richiestiDi([a, b], { "Magliette per la sera": "occasional" }),
+    essenziali: TUTTI_ESSENZIALI }, motivi, new Map([["t1", 2]]),
+  { meteo: { temp_min_media: 15, temp_max_media: 24 }, viaggio: { giorni: 5, lavatrice: false }, armadio });
+  // gap: max(5, 2) = 5; pezzi: 5 - 2 = 3, sommati
+  assert.equal(r.posti.find((p) => p.tipo === "T-Shirt")?.copie, 8);
+});
+
+test("muta: il Wetsuit al massimo utile, il costume resta importante", () => {
+  const muta = { tipo: "assente", category: "Lower Body", subCategories: ["Wetsuit"], priorita: "necessario" };
+  const costume = { tipo: "assente", category: "Lower Body", subCategories: ["Swimwear"], priorita: "necessario" };
+  assert.equal(livello(muta), "utile");
+  assert.equal(livelloPosto(muta, { sub: "Wetsuit", categoria: "Lower Body" }, true), "utile");
+  assert.equal(livello(costume), "importante");
+});
+
+test("pantaloni lunghi al caldo: al massimo le copie delle camicie", () => {
+  const mancanti = [assente("Camicie", "Upper Body", ["Shirt"]), assente("Pantaloni", "Lower Body", ["Trousers"]),
+    assente("Jeans", "Lower Body", ["Jeans"]), assente("Pantaloncini", "Lower Body", ["Shorts"])];
+  const camicieSera = { Camicie: "occasional" }; // meno camicie dei pantaloni
+  const caldo = copiePer(postiNove(mancanti, camicieSera, CALDO));
+  const tiepido = copiePer(postiNove(mancanti, camicieSera, TEPIDO));
+  assert.deepEqual([tiepido.Shirt, tiepido.Trousers, tiepido.Jeans], [2, 5, 3], "senza caldo i pantaloni non sono limitati");
+  assert.deepEqual([caldo.Shirt, caldo.Trousers, caldo.Jeans], [2, 2, 2]);
+  // i pantaloncini non sono pantaloni lunghi
+  assert.equal(caldo.Shorts, tiepido.Shorts);
+});
+
+test("pantaloni lunghi al caldo: senza posto Camicie, una copia sola", () => {
+  const caldo = copiePer(postiNove([assente("Pantaloni", "Lower Body", ["Trousers"])], {}, CALDO));
+  assert.equal(caldo.Trousers, 1);
+});
+
+test("armadio normale: senza gap doppi, muta o caldo i posti non cambiano", () => {
+  const mancanti = [assente("Magliette", "Upper Body", ["T-Shirt"]), assente("Pantaloni", "Lower Body", ["Trousers"]),
+    assente("Camicie", "Upper Body", ["Shirt"])];
+  const copie = copiePer(postiNove(mancanti, {}, TEPIDO));
+  assert.equal(copie["T-Shirt"], 9);
+  assert.equal(copie.Trousers, 5);
+});
+
+// ── Viaggi a piu' tappe: il caldo vale per tutte le tappe, il massimo solo nella stessa tappa ──
+const DUE_TAPPE = { giorni: 10, lavatrice: false, attivita: [] as string[], tappe: [
+  { nome: "Alfa", paese: "", giorni: 5, attivita: [] }, { nome: "Beta", paese: "", giorni: 5, attivita: [] }] };
+const meteoTappe = (a: number, b: number) => ({ temp_min_media: 15, temp_max_media: Math.max(a, b), giorni_di_pioggia: 0,
+  _per_tappa: [{ destinazione: "Alfa", giorni: 5, temp_min_media: 15, temp_max_media: a },
+    { destinazione: "Beta", giorni: 5, temp_min_media: 15, temp_max_media: b }] });
+const postiTappe = (mancanti: Record<string, any>[], freq: Record<string, string>, meteo: Record<string, any>) =>
+  postiApp({ mancanti_canonici: mancanti, richiesti: richiestiDi(mancanti, freq), essenziali: TUTTI_ESSENZIALI },
+    { capi: [], essenziali: [] }, new Map(), { meteo, viaggio: DUE_TAPPE, armadio: [] }).posti;
+
+test("pantaloni lunghi: con una tappa fresca nessun tetto, con tutte le tappe calde si", () => {
+  const mancanti = [assente("Camicie", "Upper Body", ["Shirt"]), assente("Pantaloni", "Lower Body", ["Trousers"])];
+  const freq = { Camicie: "occasional" };
+  const fresca = copiePer(postiTappe(mancanti, freq, meteoTappe(32, 12)));
+  const calde = copiePer(postiTappe(mancanti, freq, meteoTappe(32, 28)));
+  assert.ok(fresca.Trousers > fresca.Shirt, "con una tappa fresca i pantaloni restano da giorno");
+  assert.equal(calde.Trousers, calde.Shirt);
+});
+
+test("copie unite: tappe diverse si sommano, la stessa tappa si unisce col massimo", () => {
+  const maglia = (slot: string, tappe?: string[]) => ({ ...assente(slot, "Upper Body", ["T-Shirt"]), ...(tappe ? { tappe } : {}) });
+  const meteo = meteoTappe(20, 20);
+  const copieT = (m: Record<string, any>[], freq = {}) => postiTappe(m, freq, meteo).find((p) => p.tipo === "T-Shirt")!.copie;
+  const uno = copieT([maglia("A", ["Alfa"])]);
+  assert.equal(copieT([maglia("A", ["Alfa"]), maglia("B", ["Alfa"])]), uno, "stessa tappa: massimo");
+  assert.equal(copieT([maglia("A", ["Alfa"]), maglia("B", ["Beta"])]), uno * 2, "tappe diverse: somma");
+  assert.equal(copieT([maglia("A"), maglia("B")]), uno * 2, "tappa ignota in un viaggio a tappe: somma");
+});
+
+test("copie unite: tre mancanti Sneakers nella stessa tappa, le copie del maggiore e non la somma", () => {
+  const sneakers = (slot: string) => ({ ...assente(slot, "Shoes", ["Sneakers"]), tappe: ["Alfa"] });
+  const tre = [sneakers("scarpe da cammino"), sneakers("Sneakers"), sneakers("scarpe comode")];
+  const meteo = meteoTappe(30, 30);
+  const uno = postiTappe([tre[0]], {}, meteo).find((p) => p.tipo === "Sneakers")!.copie;
+  const tutte = postiTappe(tre, {}, meteo).find((p) => p.tipo === "Sneakers")!.copie;
+  assert.equal(tutte, uno);
+  assert.equal(uno, 1);
 });
