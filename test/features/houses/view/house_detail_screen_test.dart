@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,7 +8,10 @@ import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/features/items/view/bulk_move_sheet.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
 import 'package:pack_log/features/items/view/item_card.dart';
+import 'package:pack_log/features/items/widgets/category_pill.dart';
+import 'package:pack_log/features/items/widgets/rapid_fire_input.dart';
 import 'package:pack_log/shared/constants/app_constants.dart';
+import 'package:pack_log/shared/theme/cta_reserved_space.dart';
 import 'package:pack_log/shared/theme/app_opacity.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/app_pill_tab.dart';
@@ -14,11 +19,24 @@ import 'package:pack_log/shared/widgets/ds_appear.dart';
 import 'package:pack_log/shared/widgets/ds_floating_bar.dart';
 import 'package:pack_log/shared/widgets/universal_item_tile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
 import '../../../screenshots/support/harness.dart';
 import '../../../screenshots/support/seed.dart';
 
 class _MockCoreAnalytics extends Mock implements CoreAnalyticsService {}
+
+class _DelayedPreferencesStore extends InMemorySharedPreferencesStore {
+  _DelayedPreferencesStore() : super.empty();
+
+  final ready = Completer<void>();
+
+  @override
+  Future<Map<String, Object>> getAll() async {
+    await ready.future;
+    return super.getAll();
+  }
+}
 
 /// La casa con l'app vera (router, DB in memoria, dati di prova degli
 /// screenshot): Casa Milano ha 7 vestiti, tra cui Calzini e Jeans blu.
@@ -549,6 +567,176 @@ void main() {
       find.ancestor(of: find.text('Calzini'), matching: find.byType(DsAppear)),
       findsNothing,
     );
+    await app.finish();
+  });
+
+  testWidgets('la barra segue la tastiera nello stesso frame, pillole ferme', (
+    tester,
+  ) async {
+    final app = await openHome(tester);
+    await app.tap(rapidFire());
+    final ratio = tester.view.devicePixelRatio;
+    final bar = find.byType(RapidFireInput);
+    final pills = find.byType(CategoryPill);
+    final closedBottom = tester.getRect(bar).bottom;
+    final pillsSize = tester.getSize(pills.first);
+
+    // Un solo frame dopo l'altezza della tastiera: la barra è già salita.
+    tester.view.viewInsets = FakeViewPadding(bottom: 300 * ratio);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pump();
+    expect(tester.getRect(bar).bottom, closeTo(closedBottom - 300, 0.5));
+    expect(tester.getSize(pills.first), pillsSize);
+
+    // A metà corsa, idem: nessuno stato in ritardo.
+    tester.view.viewInsets = FakeViewPadding(bottom: 120 * ratio);
+    await tester.pump();
+    expect(tester.getRect(bar).bottom, closeTo(closedBottom - 120, 0.5));
+
+    // Chiusura: la barra scende subito, le pillole non si rianimano.
+    tester.view.viewInsets = FakeViewPadding.zero;
+    await tester.pump();
+    expect(tester.getRect(bar).bottom, closeTo(closedBottom, 0.5));
+    expect(tester.getSize(pills.first), pillsSize);
+    await app.finish();
+  });
+
+  testWidgets('la riserva segue la tip asincrona del solo campo', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final delayedStore = _DelayedPreferencesStore();
+    final app = await ScreenshotApp.start(
+      tester,
+      theme: ShotTheme.light,
+      setup: AppSetup(
+        extraOverrides: [
+          coreAnalyticsServiceProvider.overrideWithValue(analytics),
+        ],
+      ),
+    );
+    await app.go('/');
+    // La lettura preferenze parte al mount di RapidFireInput, quindi installo
+    // il gate prima di aprire la schermata detail.
+    SharedPreferences.setMockInitialValues({});
+    SharedPreferencesStorePlatform.instance = delayedStore;
+    addTearDown(() => SharedPreferences.setMockInitialValues({}));
+    await app.push('/houses/$kHomeId');
+    await app.tap(rapidFire());
+
+    await tester.enterText(rapidFire(), '3 Maglie');
+    await tester.pump();
+    expect(find.textContaining('sono le copie'), findsNothing);
+    final reserveBeforeTip = tester
+        .widget<CtaReservedSpaceScope>(find.byType(CtaReservedSpaceScope))
+        .height;
+
+    // Rilascia SharedPreferences: RapidFireInput si ricostruisce localmente;
+    // il parent non riceve un altro onTextChanged o cambio di metriche.
+    delayedStore.ready.complete();
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.textContaining('sono le copie'), findsOneWidget);
+    final reserveAfterTip = tester
+        .widget<CtaReservedSpaceScope>(find.byType(CtaReservedSpaceScope))
+        .height;
+    expect(reserveAfterTip, greaterThan(reserveBeforeTip));
+    await app.finish();
+  });
+
+  testWidgets('Aggiunti ora: l ultima riga scorre sopra la barra, intera', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 900);
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewPadding = const FakeViewPadding(bottom: 34);
+    addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    final app = await openHome(tester);
+    await app.tap(rapidFire());
+    tester.view.viewInsets = FakeViewPadding(
+      bottom: 300 * tester.view.devicePixelRatio,
+    );
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pump();
+    final addedNames = [
+      'Maglia',
+      'Felpa',
+      'Gonna',
+      'Cappello',
+      'Polo',
+      'Jeans',
+      'Camicia',
+      'Giacca',
+      'Pantaloni',
+      'Calze',
+      'Scarpe',
+      'Cintura',
+    ];
+    for (final name in addedNames) {
+      await app.enterText(rapidFire(), name);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await app.settle();
+    }
+    // Il suggerimento compare sul ramo reale mentre si scrive, senza inviare
+    // la riga: la sua altezza dipende da scala testo e larghezza disponibili.
+    await app.enterText(rapidFire(), '3 Maglie');
+    final copiesTip = find.textContaining('sono le copie');
+    expect(copiesTip, findsOneWidget);
+    expect(tester.getSize(copiesTip).height, greaterThan(40));
+    expect(find.text('Maglie'), findsNothing);
+
+    final addedCards = addedNames
+        .map(
+          (name) => find.ancestor(
+            of: find.text(name),
+            matching: find.byType(ItemCard),
+          ),
+        )
+        .toList();
+    final last = addedCards.reduce(
+      (a, b) => tester.getRect(a).bottom > tester.getRect(b).bottom ? a : b,
+    );
+    final list = find.descendant(
+      of: find.byKey(const Key('house_add_page')),
+      matching: find.byType(Scrollable),
+    );
+    final scroll = tester.state<ScrollableState>(list).position;
+    scroll.jumpTo(scroll.maxScrollExtent);
+    await tester.pump();
+    await app.settle();
+
+    expect(scroll.pixels, greaterThan(0));
+    expect(find.textContaining('sono le copie'), findsOneWidget);
+    final barTop = tester.getRect(find.byType(RapidFireInput)).top;
+    final lastRect = tester.getRect(last);
+    expect(
+      lastRect.top,
+      greaterThan(tester.getRect(find.byType(AppBar)).bottom),
+    );
+    expect(lastRect.bottom, lessThanOrEqualTo(barTop));
+    expect(barTop - lastRect.bottom, lessThan(40));
+
+    // A tastiera chiusa resta scrollabile sopra le pillole anche l'ultimo item.
+    tester.view.viewInsets = FakeViewPadding.zero;
+    tester.binding.handleMetricsChanged();
+    await tester.pump();
+    await app.settle();
+    scroll.jumpTo(scroll.maxScrollExtent);
+    await tester.pump();
+    await app.settle();
+    final closedBarTop = tester.getRect(find.byType(RapidFireInput)).top;
+    final closedLastRect = tester.getRect(last);
+    expect(scroll.pixels, greaterThan(0));
+    expect(
+      closedLastRect.top,
+      greaterThan(tester.getRect(find.byType(AppBar)).bottom),
+    );
+    expect(closedLastRect.bottom, lessThanOrEqualTo(closedBarTop));
+    expect(closedBarTop - closedLastRect.bottom, lessThan(40));
     await app.finish();
   });
 

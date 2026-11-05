@@ -178,45 +178,39 @@ void main() {
     expect(kit.updatedAt.isAfter(old), isTrue);
   });
 
-  test(
-    'un oggetto spostato in un\'altra casa esce dai kit ma la riga resta, '
-    'e ricompare quando torna',
-    () async {
-      await db.housesDao.insertHouse(
-        HousesCompanion.insert(
-          id: 'h2',
-          name: 'Altra',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-      await addRow('k1', 'i1');
-      await addRow('k1', 'i2');
+  test('un oggetto spostato in un\'altra casa esce dai kit ma la riga resta, '
+      'e ricompare quando torna', () async {
+    await db.housesDao.insertHouse(
+      HousesCompanion.insert(
+        id: 'h2',
+        name: 'Altra',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await addRow('k1', 'i1');
+    await addRow('k1', 'i2');
 
-      await db.itemsDao.moveItemsToHouse(['i1'], 'h1', 'h2');
+    await db.itemsDao.moveItemsToHouse(['i1'], 'h1', 'h2');
 
-      expect(await rowCount(), 2);
-      final kits = await db.kitsDao.watchKitsOfHouse('h1').first;
-      expect(kits.single.items.map((r) => r.itemId), ['i2']);
-      expect(
-        (await db.kitsDao.getKitWithItems('k1'))!.items.map((r) => r.itemId),
-        ['i2'],
-      );
-      expect(
-        (await db.kitsDao.liveRowsOfKit('k1')).map((r) => r.itemId),
-        ['i2'],
-      );
+    expect(await rowCount(), 2);
+    final kits = await db.kitsDao.watchKitsOfHouse('h1').first;
+    expect(kits.single.items.map((r) => r.itemId), ['i2']);
+    expect(
+      (await db.kitsDao.getKitWithItems('k1'))!.items.map((r) => r.itemId),
+      ['i2'],
+    );
+    expect((await db.kitsDao.liveRowsOfKit('k1')).map((r) => r.itemId), ['i2']);
 
-      await db.itemsDao.moveItemsToHouse(['i1'], 'h2', 'h1');
+    await db.itemsDao.moveItemsToHouse(['i1'], 'h2', 'h1');
 
-      final back = await db.kitsDao.watchKitsOfHouse('h1').first;
-      expect(back.single.items.map((r) => r.itemId).toSet(), {'i1', 'i2'});
-      expect(
-        (await db.kitsDao.liveRowsOfKit('k1')).map((r) => r.itemId).toSet(),
-        {'i1', 'i2'},
-      );
-    },
-  );
+    final back = await db.kitsDao.watchKitsOfHouse('h1').first;
+    expect(back.single.items.map((r) => r.itemId).toSet(), {'i1', 'i2'});
+    expect(
+      (await db.kitsDao.liveRowsOfKit('k1')).map((r) => r.itemId).toSet(),
+      {'i1', 'i2'},
+    );
+  });
 
   test(
     'upsertKit su un kit esistente lo aggiorna e lo segna da sincronizzare',

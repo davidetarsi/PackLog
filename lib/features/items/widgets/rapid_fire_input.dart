@@ -147,6 +147,18 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
     } catch (_) {}
   }
 
+  /// Il menu del testo (Incolla, Copia...) vive in un overlay fuori dal campo:
+  /// nel gruppo del rapid fire, altrimenti toccarlo conta come tocco fuori e
+  /// toglie il focus prima che l'azione parta.
+  Widget _buildContextMenu(BuildContext context, EditableTextState state) {
+    return TapRegion(
+      groupId: rapidFireTapRegionGroup,
+      child: AdaptiveTextSelectionToolbar.editableText(
+        editableTextState: state,
+      ),
+    );
+  }
+
   /// Il nome su cui ragiona la categoria: senza il numero delle copie, se la
   /// pillola è attiva.
   String _nameForInference(String value) => (_copies?.name ?? value).trim();
@@ -311,37 +323,31 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // --- BLOCCO 1: ROW DELLE CATEGORIE (Separate e fluttuanti) ---
-            AnimatedSize(
-              duration: AppMotion.medium,
-              curve: AppMotion.emphasized,
-              alignment: Alignment.bottomCenter,
+            // Nessuna animazione legata al focus: la barra sale con la
+            // tastiera, frame per frame, e le pillole ci sono o non ci sono.
+            // Il wrapper stabile evita che il cambio focus + tip copie ricrei
+            // il TextField durante l'invio.
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: _isExpanded ? context.spacingSm : 0,
+              ),
               child: _isExpanded
-                  ? AnimatedOpacity(
-                      duration: AppMotion.fast,
-                      opacity: _isExpanded ? 1.0 : 0.0,
-                      child: Padding(
-                        // Spazio visivo tra le categorie fluttuanti e l'input sottostante
-                        padding: EdgeInsets.only(bottom: context.spacingSm),
-                        // Larga quanto il campo, quattro pillole uguali.
-                        child: SizedBox(
-                          height: widget.height,
-                          child: Row(
-                            children: [
-                              for (final category in ItemCategory.values) ...[
-                                if (category != ItemCategory.values.first)
-                                  SizedBox(width: context.spacingXs),
-                                Expanded(
-                                  child: CategoryPill(
-                                    category: category,
-                                    pillState: _computePillState(category),
-                                    onTap: () =>
-                                        _toggleForcedCategory(category),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
+                  ? SizedBox(
+                      height: widget.height,
+                      child: Row(
+                        children: [
+                          for (final category in ItemCategory.values) ...[
+                            if (category != ItemCategory.values.first)
+                              SizedBox(width: context.spacingXs),
+                            Expanded(
+                              child: CategoryPill(
+                                category: category,
+                                pillState: _computePillState(category),
+                                onTap: () => _toggleForcedCategory(category),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     )
                   : const SizedBox.shrink(),
@@ -385,6 +391,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
                         // Il campo resta a fuoco dopo ogni invio e la tastiera
                         // non rimette la maiuscola: la mette il formatter.
                         inputFormatters: const [FirstLetterFormatter()],
+                        contextMenuBuilder: _buildContextMenu,
                         focusNode: _focusNode,
                         autofocus: false,
                         textAlignVertical: TextAlignVertical.center,
