@@ -235,7 +235,8 @@
     "too_large_title": "L'armadio è troppo grande",
     "too_large_body": "La valigia con AI legge al massimo 400 oggetti per casa. Togline qualcuno da questa casa per prepararla.",
     "generic_title": "Non è stato possibile preparare la valigia",
-    "generic_body": "Controlla la connessione e riprova."
+    "generic_body": "Non sono riuscito a preparare la valigia. Riprova tra poco.",
+    "network_body": "Sei offline. Riprova quando torni in rete."
   },
   "unavailable": {
     "noDates": "Il viaggio non ha ancora le date: aggiungile per preparare la valigia con AI.",

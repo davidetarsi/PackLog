@@ -54,6 +54,11 @@ class AiWaitFailure extends StatelessWidget {
         primaryLabel = 'common.close'.tr();
         primaryAction = onClose;
         showExit = false;
+      case PackTripNetworkException():
+        title = 'trips.ai.error.generic_title'.tr();
+        body = 'trips.ai.error.network_body'.tr();
+        primaryLabel = 'common.retry'.tr();
+        primaryAction = onRetry;
       default:
         title = 'trips.ai.error.generic_title'.tr();
         body = 'trips.ai.error.generic_body'.tr();

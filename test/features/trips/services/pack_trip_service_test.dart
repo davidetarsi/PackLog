@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -203,15 +204,41 @@ void main() {
       );
     });
 
-    test('errore di rete: PackTripException', () async {
-      final service = _service(
-        () => MockClient((_) async => throw http.ClientException('offline')),
+    for (final (nome, errore) in <(String, Object Function())>[
+      ('ClientException', () => http.ClientException('offline')),
+      ('SocketException', () => const SocketException('offline')),
+      ('TimeoutException', () => TimeoutException('lento')),
+    ]) {
+      test('nessuna risposta ($nome): PackTripNetworkException', () async {
+        final service = _service(() => MockClient((_) async => throw errore()));
+
+        await expectLater(
+          service.generate(_body, houseId: _houseId),
+          throwsA(isA<PackTripNetworkException>()),
+        );
+      });
+    }
+
+    test('502 e corpo non valido non sono errori di rete', () async {
+      final bad = _service(
+        () => MockClient((_) async => _json(502, {'error': 'x'})),
+      );
+      final html = _service(
+        () => MockClient((_) async => http.Response('<html/>', 200)),
       );
 
-      await expectLater(
-        service.generate(_body, houseId: _houseId),
-        throwsA(isA<PackTripException>()),
-      );
+      for (final service in [bad, html]) {
+        await expectLater(
+          service.generate(_body, houseId: _houseId),
+          throwsA(
+            isA<PackTripException>().having(
+              (e) => e is PackTripNetworkException,
+              'di rete',
+              isFalse,
+            ),
+          ),
+        );
+      }
     });
 
     test('senza sessione: PackTripException', () async {

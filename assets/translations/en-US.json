@@ -235,7 +235,8 @@
     "too_large_title": "The wardrobe is too large",
     "too_large_body": "The AI packing list reads at most 400 items per house. Remove some from this house to pack it.",
     "generic_title": "The suitcase could not be packed",
-    "generic_body": "Check your connection and try again."
+    "generic_body": "I couldn't pack the suitcase. Try again in a moment.",
+    "network_body": "You're offline. Try again when you're back online."
   },
   "unavailable": {
     "noDates": "The trip has no dates yet: add them to pack with AI.",
