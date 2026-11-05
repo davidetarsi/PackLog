@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
@@ -72,6 +73,42 @@ void main() {
     ('scuro', AppTheme.dark),
     ('chiaro', AppTheme.light),
   ]) {
+    testWidgets('motivo completo ($name): leggibile su schermo stretto', (
+      tester,
+    ) async {
+      const reason =
+          'Il più simile che hai, Pantaloni neri, è troppo caldo per questo '
+          'viaggio. Scegli un capo leggero e adatto alle attività previste.';
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: MediaQuery(
+              data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: 320,
+                  child: ImportantSlotCard(
+                    slot: _giacca.copyWith(reason: reason),
+                    onAdd: () {},
+                    onToBuy: () {},
+                    onRemove: () {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(reason));
+      expect(paragraph.didExceedMaxLines, isFalse);
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('slot_add_imp-giacca')), findsOneWidget);
+      expect(find.byKey(const Key('slot_to_buy_imp-giacca')), findsOneWidget);
+    });
+
     testWidgets('importante ($name): bordo ed etichetta arancioni', (
       tester,
     ) async {
