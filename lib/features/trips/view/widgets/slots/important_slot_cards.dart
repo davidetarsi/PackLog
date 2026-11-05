@@ -22,8 +22,8 @@ ShapeBorder _importantShape(ColorScheme cs) => RoundedRectangleBorder(
   borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
 );
 
-/// Card di un posto importante aperto: "Importante", nome (×N), motivo in
-/// una riga e due azioni testuali, l'aggiunta ([AiSlot.addLabel]) e "Da
+/// Card di un posto importante aperto: "Importante", nome (×N), motivo completo
+/// e due azioni testuali, l'aggiunta ([AiSlot.addLabel]) e "Da
 /// comprare", più la X per toglierla. Niente bottoni pieni.
 class ImportantSlotCard extends StatelessWidget {
   const ImportantSlotCard({
@@ -120,8 +120,6 @@ class ImportantSlotCard extends StatelessWidget {
                         SizedBox(height: context.spacingXxs),
                         Text(
                           reason,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: tt.bodyMedium?.copyWith(
                             color: cs.onSurfaceVariant,
                           ),
