@@ -1,3 +1,4 @@
+import { interoCammino } from "./cammino.ts";
 // L'uscita per l'app: i capi come li vede l'utente (uno per capo, con la quantita'
 // da portare), il tetto sulle quantita' che ha davvero nell'armadio, e gli avvisi
 // su cio' che manca. Non tocca la scelta dei capi: lavora sul risultato del generatore.
@@ -387,6 +388,9 @@ export function frasePochi(quantita: number, tetto: number, lingua?: Lingua): st
  *  (quantita' di due settimane), e l'utente deve saperlo (Davide, 25 ottobre). */
 export function lavanderiaDelViaggio(v: Record_ | null | undefined, lingua?: Lingua):
   { titolo: string; perche: string } | null {
+  if (interoCammino(v)) return lingua === "en"
+    ? { titolo: "Wash clothes along the way", perche: "The compact packing list assumes frequent handwashing, including underwear and socks." }
+    : { titolo: "Lava i capi lungo il cammino", perche: "La dotazione ridotta prevede bucato frequente a mano, anche per intimo e calzini." };
   if (!v || (Array.isArray(v.tappe) && v.tappe.length) || !lavanderiaPresunta(v.giorni, v.lavatrice)) return null;
   const en = lingua === "en";
   return { titolo: en ? "Plan to do laundry" : "Prevedi una lavanderia",

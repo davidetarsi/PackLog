@@ -1,3 +1,4 @@
+import { eCammino, ammessoCammino, armadioCammino, vincoliCammino, famigliaCammino, BUDGET_CAMMINO, limitaDotazioneCammino, lacuneCammino } from "./cammino.ts";
 import { normalizzaQuantitaViaggio } from "./contesto_viaggio.ts";
 // La scelta dei capi slot per slot: porting di strategy_slots e delle sue
 // funzioni di appoggio (packlog_checklist_bench_48.py). La chiamata al modello
@@ -124,7 +125,7 @@ export function coperturaTermica(capi: Record_[], meteo: Record_, tappa: string 
 }
 
 export function assicuraInvolucroTermico(capi: Record_[], gaps: Record_[], items: Capo[], meteo: Record_,
-  tappa: string | null, used: Set<string>, bulkPress: number): Record_[] {
+  tappa: string | null, used: Set<string>, bulkPress: number, cammino = false): Record_[] {
   const cop = coperturaTermica(capi, meteo, tappa);
   if (cop.coperta) return capi;
   const { floor, ceiling, isolante_minimo: isoMin } = cop;
@@ -142,7 +143,7 @@ export function assicuraInvolucroTermico(capi: Record_[], gaps: Record_[], items
       }
     }
     const scStr = (g: Capo) => score(g, 1, floor, new Set(), new Set(), 0, bulkPress);
-    let cands = items.filter((g) => g.has_metadata && !g.sempre_in_valigia && !used.has(g.id) &&
+    let cands = items.filter((g) => (!cammino || ammessoCammino(g)) && g.has_metadata && !g.sempre_in_valigia && !used.has(g.id) &&
       K.ZONE_STRATIFICABILI.has(g.category) && 2 <= (g.warmth || 0) && (g.warmth || 0) <= floor &&
       (g.warmth || 1) <= ceiling && scStr(g) <= K.MAX_PENALTY);
     const isolanti = cands.filter((g) => g.category === "Outerwear" && (g.warmth || 0) >= isoMin);
@@ -198,6 +199,7 @@ export interface ArgomentiSlots {
   temp_min_assoluta?: number | null;
   attivita_viaggio?: string[] | null;
   lavatrice_essenziali?: boolean | null;
+  cammino_essenziali?: boolean;
   /** I collant si decidono su questa massima (a tappe: la tappa piu' fresca). */
   temp_max_essenziali?: number | null;
   /** false nei viaggi a tappe: i vestiti si mettono alla fine. */
@@ -225,10 +227,14 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   const votiScarpe = a.voti_scarpe ?? null, profiliCapi = a.profili_capi ?? null;
   const scartiCapi = a.scarti_capi ?? null, classiViaggio = a.classi_viaggio ?? null;
 
+  const cammino = eCammino(attivita);
   const inAcquaTappa = eAttivitaAcqua(attivita);
+  if (cammino) items = armadioCammino(items, tempMin != null && tempMin >= 18, inAcquaTappa);
   const cultoCaldo = rc.cultoLeggero(tempMax);
   const tagDi = new Map(items.map((g) => [g.id, g.activity_tags]));
   let slots: Slot[] = parseJsonBlock(testoModello);
+  if (cammino) slots = slots.map((s) => s.category === "Upper Body" && s.frequency === "once" &&
+    Array.isArray(s.activityTags) && s.activityTags.includes("Everyday") ? { ...s, _riposo_cammino: true } : s);
   // Un bisogno di accessori con piu' sottocategorie (cappello o sciarpa) diventa
   // un bisogno per sottocategoria: due funzioni diverse, non un capo solo.
   if (K.ACCESSORI_SEPARATI) {
@@ -279,6 +285,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     }
   }
   const capienza = capienzaBagaglio(bagaglio);
+  if (cammino) slots = slots.map((s) => vincoliCammino(s, inAcquaTappa));
   slots = injectMandatory(slots, attivita || []);
   slots = injectStratoFormale(slots, attivita || [], giorni, capienza);
   slots = injectParteInferioreFormale(slots, giorni, capienza);
@@ -289,6 +296,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   let nClamp = 0;
   const floor = warmthFloor(tempMin);
   const ceilingGrezzo = warmthCeiling(tempMax);
+  if (cammino) slots = slots.map((s) => vincoliCammino(s, inAcquaTappa));
   const ceiling = Math.max(ceilingGrezzo, K.TETTO_MINIMO);
   const nTettoAlzato = ceiling !== ceilingGrezzo ? 1 : 0;
   let nGuscioEsente = 0, nBandaAllargata = 0, nTettoCopie = 0, nLacuneQuantita = 0, nEsclusiTetto = 0;
@@ -301,7 +309,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   // L'armadio tipico (armadio_tipico.ts), caricato alla prima lacuna.
   let armadioDelTipico: Capo[] | null = null;
   let ideali: Record_[] = [], ripieghi: Record_[] = [];
-  const gaps: Record_[] = [];
+  let gaps: Record_[] = [];
   const richiesti: Record_[] = [];
   const GUSCI: Set<string> = K.GUSCI;
 
@@ -399,7 +407,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     const fallback = new Set<string>();
     for (const sub of ideal) for (const f of (K.SUBSTITUTIONS[sub] ?? [])) if (!ideal.has(f)) fallback.add(f);
     const pioggiaQuotidiana = s.category === "Shoes" && minWr > 0 && !eTrekking(attivita);
-    const wrRigido = (vero(s._fabbisogno) && minWr > 0) || pioggiaQuotidiana;
+    const wrRigido = (vero(s._fabbisogno) && minWr > 0) || pioggiaQuotidiana || (cammino && minWr > 0);
     const covReq = insieme(s.coverage || []);
     const nonCasual = forms.size > 0 && !forms.has("Casual");
     const votoScarpe = (vero(votiScarpe) && s.category === "Shoes" && s.slot !== "calzature di ricambio" && !nonCasual)
@@ -434,7 +442,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
       const cands = lista.filter((g) => g.has_metadata && !g.sempre_in_valigia && (reusable || !used.has(g.id)) &&
         subs.has(g.sub_category) && (!wrRigido || (g.water_resistance || 0) >= minWr) &&
         (!covReq.size || covReq.has(g.coverage)) &&
-        !estivoFuoriStagione(g, tempMax, inAcquaTappa, profiliCapi) &&
+        ((s._riposo_cammino && g.category === "Shoes") || !estivoFuoriStagione(g, tempMax, inAcquaTappa, profiliCapi)) &&
         !(formaleRigido && K.FORMALITA_CASUAL.has(g.formality)) &&
         !(ruoliGia.size && ruoliGia.has(rc.ruoloScarpa(g.sub_category, g.activity_tags, g.warmth, g.formality))) &&
         (!vero(s._tag_rigido) || g.activity_tags.some((t) => tags.has(t))) &&
@@ -468,6 +476,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     const tipico = (): { sub: string; categoria: string } | null => {
       if (!armadioDelTipico) {
         armadioDelTipico = armadioTipico();
+        if (cammino) armadioDelTipico = armadioCammino(armadioDelTipico, tempMin != null && tempMin >= 18, inAcquaTappa);
         segnaCapiDaNeve(armadioDelTipico, [...attViaggio, ...(attivita || [])]);
       }
       const [scelto] = scala(armadioDelTipico, false);
@@ -530,6 +539,9 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     };
     let serve = quantityFor(g.sub_category, g.name, giorni, lavatrice, freq, intensitaSlot, tempMax,
       giorniDiMare(giorni, attivita), g.warmth);
+    const famiglia = famigliaCammino(g.sub_fine);
+    if (cammino && famiglia) serve = ["maglie", "pantaloni"].includes(famiglia) && !s._riposo_cammino
+      ? Math.min(giorni + 1, BUDGET_CAMMINO[famiglia]) : Math.min(serve, BUDGET_CAMMINO[famiglia]);
     if (lavoro && giorni >= 2 && capienza > 8 && K.FREQ_MINIMO_LAVORO.includes(freq) && forms.size &&
       !forms.has("Casual") && ["Upper Body", "Lower Body"].includes(s.category)) {
       serve = Math.max(serve, K.MINIMO_FORMALI_LAVORO);
@@ -598,7 +610,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     const larghe = insieme(subs);
     const sc = (g: Capo) => score(g, 1, ceiling, new Set(), new Set(), 0, bulkPress) +
       penalitaVoto(zona === "Shoes" ? votiScarpe : null, g);
-    const cands = items.filter((g) => g.has_metadata && !g.sempre_in_valigia && !used.has(g.id) &&
+    const cands = items.filter((g) => (!cammino || ammessoCammino(g)) && g.has_metadata && !g.sempre_in_valigia && !used.has(g.id) &&
       larghe.has(g.sub_category) && !estivoFuoriStagione(g, tempMax, inAcquaTappa, profiliCapi) && sc(g) <= K.MAX_PENALTY);
     if (!cands.length) continue;
     const g = minimo(cands, sc)!;
@@ -622,7 +634,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     const serveIsolante = !pila.some((x) => (x.warmth || 0) >= isoMin && x.category === "Outerwear");
     const nienteSopra = !pila.some((x) => x.category === "Outerwear");
     let soloProtezione = false;
-    let cands = items.filter((g) => g.has_metadata && !g.sempre_in_valigia && !used.has(g.id) &&
+    let cands = items.filter((g) => (!cammino || ammessoCammino(g)) && g.has_metadata && !g.sempre_in_valigia && !used.has(g.id) &&
       K.ZONE_STRATIFICABILI.has(g.category) && 2 <= (g.warmth || 0) && (g.warmth || 0) <= floor &&
       !(K.ESCLUDI_BLAZER_RETE && g.sub_category === "Blazer") && scStr(g) <= K.MAX_PENALTY);
     if (serveIsolante) {
@@ -716,7 +728,7 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   const gapsPrima = gaps.length;
   if (!gaps.some((gp) => gp.category === "Outerwear")) {
     const n0 = capiLeg.length;
-    capiLeg = assicuraInvolucroTermico(capiLeg, gaps, items, meteoTappa, null, used, bulkPress);
+    capiLeg = assicuraInvolucroTermico(capiLeg, gaps, items, meteoTappa, null, used, bulkPress, cammino);
     ripieghi.push(...capiLeg.slice(n0));
   }
   const nStratiInsufficienti = gaps.length - gapsPrima;
@@ -747,11 +759,20 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
   const avvisoScarpe = segnalaScarpeCammino([...ideali, ...ripieghi], items, attivita);
   if (avvisoScarpe) gaps.push(avvisoScarpe);
   berrettoColFreddo([...ideali, ...ripieghi], items, tempMin);
+  if (cammino) {
+    const capi = [...ideali, ...ripieghi];
+    limitaDotazioneCammino(capi, items, richiesti, (g) =>
+      !coperturaTermica(capi.filter((c) => c.quantita > 0), meteoTappa, null).coperta ||
+      coperturaTermica(capi.filter((c) => c !== g && c.quantita > 0), meteoTappa, null).coperta);
+    gaps = lacuneCammino(gaps, [...ideali, ...ripieghi], items);
+    ideali = ideali.filter((g) => g.quantita > 0);
+    ripieghi = ripieghi.filter((g) => g.quantita > 0);
+  }
   segnaInPartenza([...ideali, ...ripieghi]);
   const setFix = new Set(fixes.map(String)), setRej = new Set(rejects.map(String));
   return {
     essenziali: essenzialiPerViaggio(items, giorni, lavatriceVera,
-      a.temp_max_essenziali == null ? tempMax : a.temp_max_essenziali),
+      a.temp_max_essenziali == null ? tempMax : a.temp_max_essenziali, a.cammino_essenziali ?? cammino),
     slots_richiesti: slots.length,
     ideali, ripieghi, mancanti: gaps,
     mancanti_canonici: canonicalizeGaps(gaps),

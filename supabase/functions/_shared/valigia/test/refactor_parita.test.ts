@@ -37,7 +37,7 @@ for (const modo of modiArmadio) test(`regressioni: contratto originale e delta r
     const cambiato = motore.casi[key];
     if (cambiato) {
       assert.ok(cambiato.motivi.length > 0 && cambiato.motivi.every((m: string) =>
-        ["passeggiate_non_tecniche", "scarpa_ordinaria_pioggia"].includes(m)), `${key}: policy non revisionata`);
+        ["passeggiate_non_tecniche", "scarpa_ordinaria_pioggia", "cammino_tecnico_rotazione"].includes(m)), `${key}: policy non revisionata`);
       assert.ok(Object.keys(cambiato.campi).length > 0, `${key}: delta vuoto`);
       assert.ok(!("prompt" in cambiato.campi), `${key}: il prompt deve restare invariato`);
       for (const [campo, revisione] of Object.entries(cambiato.campi) as [string, any][]) {

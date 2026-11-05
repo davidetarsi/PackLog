@@ -392,13 +392,12 @@ test("postiApp: cammino a piedi con lo zaino piccolo, si lava a mano come nel ge
   const viaggio = { giorni: 12, lavatrice: false, attivita: ["cammino di Santiago"], bagaglio: "zaino da 35 litri" };
   const meteo = { temp_min_media: 12, temp_max_media: 22 };
   const copie = copieDi(magliette, { frequency: "daily" }, meteo, viaggio);
-  assert.equal(copie, quantityFor("T-Shirt", "", 12, true, "daily", null, 22, giorniDiMare(12, viaggio.attivita), null));
+  assert.equal(copie, 3);
   assert.ok(copie < quantityFor("T-Shirt", "", 12, false, "daily", null, 22, giorniDiMare(12, viaggio.attivita), null));
-  // gli essenziali invece no: la lavatrice del viaggio
+  // Anche gli essenziali seguono la rotazione corta del cammino.
   const r = postiApp({ mancanti_canonici: [], richiesti: [], essenziali: [] }, { capi: [], essenziali: [] }, new Map(),
     { meteo, viaggio, armadio: [] });
-  assert.equal(r.posti.find((p) => p.tipo === "intimo")!.copie,
-    essenzialiPerViaggio(caricaArmadio([{ id: "x", name: "Mutande" }]), 12, false, 22)[0].quantita);
+  assert.equal(r.posti.find((p) => p.tipo === "intimo")!.copie, 3);
 });
 
 test("postiApp a tappe: la massima della tappa base per i capi", () => {
