@@ -19,8 +19,7 @@ type Capo = { sub: string | null; categoria: string; foulardLeggero?: boolean };
 
 /** Il nome tecnico da solo non rende necessario un capo per questo viaggio. */
 function daAttivita(sub: string | null, attivita: string[]): boolean {
-  // Il matcher accetta anche escursioni leggere come ripiego; qui non sono un obbligo tecnico.
-  if (sub === "Hiking Boots") return eTrekking(attivita.map((a) => a.replace(/\bescursion\w*\s+legger\w*\b/gi, "")));
+  if (sub === "Hiking Boots") return eTrekking(attivita);
   if (sub === "Swimwear" || sub === "Water Shoes") return eAttivitaAcqua(attivita) || ha(attivita, RADICI_GIORNI_ACQUA_IN_PIU);
   if (["Ski Jacket", "Ski Pants", "Ski Suit", "Snow Boots"].includes(sub ?? "")) return interseca(parole(attivita), K.PAROLE_NEVE);
   return false;
