@@ -77,14 +77,26 @@ export function riempiPostiConKit(
     copie.set(a.item_id, Math.max(copie.get(a.item_id) ?? 0, a.copie));
   }
   const rimaste = new Map(posti.map((p) => [p.id, p.copie]));
+  const adatto = (p: PostoApp, g: CapoArmadio) => {
+    const r = p.requisiti;
+    if (!r) return true; // Risultati precedenti: manca il dettaglio dei requisiti.
+    return (r.minWarmth == null || (g.warmth != null && g.warmth >= r.minWarmth)) &&
+      (r.maxWarmth == null || (g.warmth != null && g.warmth <= r.maxWarmth)) &&
+      (!r.formality?.length || r.formality.includes(g.formality ?? "")) &&
+      (!r.activityTags?.length || g.activity_tags.some((t) => r.activityTags!.includes(t))) &&
+      (!r.coverage?.length || r.coverage.includes(g.coverage)) &&
+      (g.water_resistance ?? 0) >= (r.minWaterResistance ?? 0);
+  };
   for (const [id, n] of copie) {
     const g = perId.get(id)!;
     // Prima i posti della sottocategoria, poi quelli della categoria: lo stesso
     // tipo puo' avere piu' posti (quello del meteo e' a parte), e le copie che
     // avanzano dal primo passano al successivo.
     let resto = n;
-    for (const p of [...posti.filter((x) => x.tipo === g.sub_category), ...posti.filter((x) => x.tipo === g.category)]) {
+    for (const p of [...posti.filter((x) => x.tipo === g.sub_fine || x.tipo === g.sub_category),
+      ...posti.filter((x) => x.tipo === g.category)]) {
       if (resto <= 0) break;
+      if (!adatto(p, g)) continue;
       const ha = rimaste.get(p.id)!;
       if (ha <= 0) continue;
       const tolte = Math.min(ha, resto);

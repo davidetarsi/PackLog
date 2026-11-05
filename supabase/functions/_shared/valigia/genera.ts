@@ -9,44 +9,11 @@ import type { Lingua } from "../lingua.ts";
 import { attivitaScenario, promptValigia } from "./prompt.ts";
 import { parseJsonBlock, strategySlots } from "./slots.ts";
 import { strategySlotsMultitappa } from "./tappe.ts";
-import type { Luogo, Tappa } from "../clima/meteo.ts";
+import { analizzaFabbisogni, type AnalisiFabbisogni } from "./fabbisogni.ts";
 
 type Record_ = Record<string, any>;
 
-/** Il viaggio come lo manda l'app. */
-export interface ViaggioApp {
-  /** "AAAA-MM-GG" */
-  data_inizio: string;
-  giorni: number;
-  /** Una sola destinazione... */
-  destinazione?: Luogo | null;
-  /** ...oppure piu' tappe in fila, ognuna con i suoi giorni e le sue attivita'. */
-  tappe?: Tappa[] | null;
-  attivita?: string[] | null;
-  /** Testo libero come nel bench: "trolley medio", "zaino da 40 litri", "borsa a tracolla". */
-  bagaglio?: string | null;
-  alloggio?: string | null;
-  lavatrice?: boolean | null;
-}
-
-/** Lo scenario nella forma del bench, da cui partono prompt, Jev e matcher. */
-export function scenarioDaApp(v: ViaggioApp): Record_ {
-  const sc: Record_ = {
-    data_inizio: v.data_inizio,
-    giorni: v.giorni,
-    attivita: [...(v.attivita ?? [])],
-    bagaglio: v.bagaglio ?? "",
-    alloggio: v.alloggio ?? "",
-    lavatrice: !!v.lavatrice,
-  };
-  if (v.tappe?.length) {
-    sc.legs = v.tappe.map((t) => ({ destinazione: t.nome, giorni: t.giorni, attivita: [...(t.attivita ?? [])] }));
-  } else if (v.destinazione) {
-    sc.destinazione = v.destinazione.nome;
-    sc.paese = v.destinazione.paese ?? "";
-  }
-  return sc;
-}
+export { scenarioDaApp, type ViaggioApp } from "./contesto_viaggio.ts";
 
 export type Uso = Record<string, unknown>;
 export type ChiediModello = (prompt: string) => Promise<{ testo: string; uso?: Uso }>;
@@ -64,6 +31,8 @@ export interface Servizi {
 
 export interface Risultato {
   valigia: Record_;
+  /** Analisi interna condivisa: non viene serializzata nel payload della valigia. */
+  fabbisogni: AnalisiFabbisogni;
   motivi: Record_;
   perche: Record_[];
   geo: Record_;
@@ -107,8 +76,15 @@ export async function generaValigia(sc: Record_, righe: RigaArmadio[], s: Serviz
   const v = { scenario: sc, meteo, slots: valigia };
   const tag = tagArmadio(righe);
   const motivi = motiviValigia(v, tag, s.lingua);
+  const viaggio = { ...sc, ...(sc.legs?.length ? {
+    tappe: sc.legs.map((l: Record_) => ({ nome: l.destinazione, giorni: l.giorni, attivita: l.attivita })),
+  } : { destinazione: { nome: sc.destinazione } }) };
+  const fabbisogni = analizzaFabbisogni(valigia, caricaArmadio(righe), viaggio, meteo, {
+    motivi: motivi as { capi: Record_[]; essenziali: Record_[] },
+    salvate: new Map(righe.map((g) => [String(g.id), g.quantity ?? null])),
+  });
   return {
-    valigia, motivi, perche: percheValigia(v, tag, motivi, s.lingua), geo, meteo,
+    valigia, fabbisogni, motivi, perche: percheValigia(v, tag, motivi, s.lingua), geo, meteo,
     jev: { profili_nuovi: jev.profili_nuovi, errori: jev.errori }, uso: risposta.uso,
     diagnostica: { prompt, testo: risposta.testo, jev },
   };

@@ -310,6 +310,48 @@ void main() {
       expect(out.slots!.map((s) => s.toBuy), [true, false]);
     });
 
+    test(
+      'due bisogni dello stesso tipo: da comprare segue il bisogno anche dopo un riordino',
+      () {
+        final out = carryToBuy(
+          result([
+            slot('need:v1:caldo', 'Shirt', toBuy: true),
+            slot('need:v1:leggero', 'Shirt'),
+          ]),
+          result([
+            slot('need:v1:leggero', 'Shirt'),
+            slot('need:v1:caldo', 'Shirt'),
+          ]),
+        );
+        expect(out.slots!.map((s) => s.toBuy), [false, true]);
+      },
+    );
+
+    test('un bisogno diverso dello stesso tipo non eredita da comprare', () {
+      final out = carryToBuy(
+        result([slot('need:v1:caldo', 'Shirt', toBuy: true)]),
+        result([slot('need:v1:leggero', 'Shirt')]),
+      );
+      expect(out.slots!.single.toBuy, isFalse);
+    });
+
+    test(
+      'due bisogni distinti già da comprare conservano entrambi la scelta',
+      () {
+        final out = carryToBuy(
+          result([
+            slot('need:v1:caldo', 'Shirt', toBuy: true),
+            slot('need:v1:leggero', 'Shirt', toBuy: true),
+          ]),
+          result([
+            slot('need:v1:leggero', 'Shirt'),
+            slot('need:v1:caldo', 'Shirt'),
+          ]),
+        );
+        expect(out.slots!.map((s) => s.toBuy), [true, true]);
+      },
+    );
+
     test('un posto nuovo chiuso non eredita', () {
       final out = carryToBuy(
         result([slot('p1', 'Scarf', toBuy: true)]),

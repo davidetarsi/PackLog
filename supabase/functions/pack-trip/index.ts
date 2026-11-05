@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
     });
     const postiGen = postiApp(r.valigia, motiviApp, salvate, {
       meteo: r.meteo as Record<string, any> | null, viaggio: viaggio as Record<string, any>,
-      armadio: armadioApp, lingua,
+      armadio: armadioApp, lingua, fabbisogni: r.fabbisogni,
     });
     // Passo dei kit (dopo il generatore, prima dei posti): senza `kit` nel corpo non cambia nulla.
     let soloKit: Record<string, unknown> = {};

@@ -1,0 +1,1191 @@
+{
+  "base": "99591feb5484e3398a5f826d0d5c4ab312d1c22f",
+  "input": "fec7a3de44e9f1d5908645c00554c24af46cf212fa8264081bbe3c63b0dbf9aa",
+  "casi": {
+    "v3m/ne3_dubrovnik_luglio/wardrobe_femminile.json/vuoto": {
+      "prima": "68291bcca0e7ef2c814761d4c5c64f9a3be53544dd3ba5ccf7a77777edf3c3de",
+      "dopo": "4223df3577633f538dafcee035592cd5ddd9de8fbe686f1707128c9dc78275c5",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/dolomiti_trekking/inventory_cache.json/vuoto": {
+      "prima": "76d1d2ccf4e760f20155db8c737deb6c9b499b4966af83002302a2a9c903f4a7",
+      "dopo": "a488b286eb49104be0d6315418681e4e38f7356eb718956179fd9ab6f10f703a",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/lisbona_citta/wardrobe_minimo.json/vuoto": {
+      "prima": "a06b83134df2f40522ddb27b3c0d215d1965f9b0e7617274c08c7b0e1908fdc9",
+      "dopo": "5cccb09e449a646693c6c7814ff037777998b9a737a2dbe53aa7397dde6f9985",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/val_edimburgo_autunno/wardrobe_mediterraneo.json/vuoto": {
+      "prima": "86f29810906770020397db61b780c950ac1558578622d1dd753901c972cdf092",
+      "dopo": "90217f46894f9b9cdc6b794df8384d16dbf0d9ff7cc8d7d0714379e3d71f9b62",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "v3m/ne3_malta_marzo/wardrobe_sportivo.json/vuoto": {
+      "prima": "77eef8785d1c4f2779909976fbdcc73a2e9d9f3ddc094b040db8fcd12b7285f6",
+      "dopo": "71f9fcca9ba70a5521ec3799b54dfce0dcd163b59b83de37505fa24e194d9e83",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "v2/ne_miami_marzo/wardrobe_mediterraneo.json/vuoto": {
+      "prima": "c5a5b9e534c8621007ff73437d707db3ad5fb23efa6e5dd22f119220e66b24db",
+      "dopo": "78a078ce597d85d94e8e89a0a216ba63e12f00f397f57dfea675faed9ebab19a",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "v2/ne_palma_mare_settimana/wardrobe_reale_incompleto.json/vuoto": {
+      "prima": "1bdce215a51330508b07074d8271813e6f789a4a94babd9cc89bef2b0573aa0b",
+      "dopo": "e9d9fc6067c1b246c05dd5a26d66ed3cdef7af5a38e4947d39de29a7c361a527",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            2,
+            2
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Loafers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            2,
+            2
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/hf_praga_capodanno/wardrobe_femminile.json/vuoto": {
+      "prima": "c65da3cf856d3eae29dd89cde8a2ece0a6fee59655fe02e141eded0a2e40a2c9",
+      "dopo": "178aa2fdd85468e21f742155bb14b20a96eeefea91b30ebd2c9938b8cb37cf6f",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            3,
+            3
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sg_yakutsk_gennaio/wardrobe_minimo.json/vuoto": {
+      "prima": "7d7fc7c07f4f22816453a5f8af9c2b8d274f6ffdbb147c2854c01b5380f9c959",
+      "dopo": "ab8ba5822badb4f1e3a4341ce36794e1dad8f1b8b1abeb744615cfe930bd6d1e",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "v2/ne_madrid_primavera/wardrobe_femminile.json/vuoto": {
+      "prima": "c1eedca1bd34474da5f753144e36c1862eb98155390ebcfc781644edd0dc799d",
+      "dopo": "84bda2772e2248f89406c404ac6c75119fee0e12706516da5211ba1862a38c9d",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Blazer",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/hf_livigno_sci/inventory_cache.json/vuoto": {
+      "prima": "5689accf000e4aa9c9f6c98d885e2904522ab803136653a6d2e895f732e70edc",
+      "dopo": "9c8583f5ffd54ab9af6e8fd9ed9ad589d4378023962f312359e8c2e1a9c8dab9",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            2,
+            2
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Trousers",
+          "copie": [
+            2,
+            2
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "v2/ne_salisburgo_mercatini/wardrobe_minimo.json/vuoto": {
+      "prima": "647902839f7c5823b53fb8e230e0ba7cf35be7e0b98e3b16753a43d53e545f44",
+      "dopo": "3e3882b84216ba34fe3c24c37d0f195eb29725896267405c062db3237f6ff4dd",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            2,
+            2
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "v2/ne_valencia_aprile/wardrobe_sportivo.json/vuoto": {
+      "prima": "9105d59e2e3f106c70016b4571cae060356f6bfa8512a1c2ab13ba10f5f74bb1",
+      "dopo": "5b55890bb9ece248cd9a1ffd12f75202983e3f25a61597524710e2af5c0eebb2",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            2,
+            2
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sn_budapest_terme_weekend/wardrobe_femminile.json/vuoto": {
+      "prima": "d7cfb8096a88942cd87444f6ed18ffa5ca6cf1c8abaf4fee27d3eabb55f59d78",
+      "dopo": "bafd259996c0f0d42c2a02d88dbc6da4d1c5df8bef221f12f015e07fed8cfbd5",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            2,
+            2
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "v2/ne_salisburgo_mercatini/wardrobe_reale_incompleto.json/vuoto": {
+      "prima": "05649efc8fd361173e655b3d7a472bd8ac07aa6bb3c1c6c1aef56cd9582c6bbb",
+      "dopo": "882ac2b676b7942664af8a26ebebe37913358fadbb137671003e5d044c8da325",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            2,
+            2
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sn_santorini_coppia/inventory_cache.json/vuoto": {
+      "prima": "53d2a8a13145cdf883fe2d1bd1df0f9ffb8ba6ac13061d3b383ad5a9dc15abd8",
+      "dopo": "44a740c9d0d163d1a024c68a4306421468f4a470cb36f9c0e69b7160a2d36e93",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Loafers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sg_oslo_copenaghen/wardrobe_reale_incompleto.json/vuoto": {
+      "prima": "9c821b5101cdf47dd6943533871365b6fc1beb9b84ca5d7f7cd23e0554fb49a8",
+      "dopo": "e770364f7158c06f82c99e6fc9d5e8c57645f884fc8bf18e72f29d67eabc52ce",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            2,
+            2
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Boots",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/hf_tappe_bangkok_sapporo/wardrobe_sportivo.json/vuoto": {
+      "prima": "7f29efa0e94cab68808cf977f14bf8248602ac33334f1d39dc8d818724768b5f",
+      "dopo": "5fbb47be08ae6bd6e0319000cb940b5bc40f55419654d2dc1fe80263248c4375",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            5,
+            5
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sg_toronto_montreal_gelo/wardrobe_reale_incompleto.json/vuoto": {
+      "prima": "aa2095c3ff3dfb969ffa9830da2c8d2f019f645ca65a13cefafa7705898acb5a",
+      "dopo": "89121e51cfff868e004057be18f8320b48ee60a0bad73b5db6f1b63a418ca4fa",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "v2/nh_egitto_nilo_mar_rosso/wardrobe_nordico.json/vuoto": {
+      "prima": "b2cb350c38144a37db7a10d2a7b7e3ad74ba2b73b9783f5ced35cc11d7b5106b",
+      "dopo": "9344aa609bad810605f9ac7071d62e02817eb52ed0d7eac9181598afcbf9995b",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            6,
+            6
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "v3m/nh3_giappone_autunno/inventory_cache.json/vuoto": {
+      "prima": "acb9610de9c183a33a9f33b5d68ef07d53fb77bb75c98761697f6e8d933e1e24",
+      "dopo": "dc7e4fb3babb816886cdde52c12e56d25e42b3898132f80f380e9250ef4d68d3",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            5,
+            5
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sg_perth_melbourne/wardrobe_minimo.json/vuoto": {
+      "prima": "c0ad871e7050d0c662ec60b38741779fc3b781187698b36ae22267c4cf96aa35",
+      "dopo": "efcdcb9a96b98dbb899a4b6ac7b909aac2848846d4bc5b536f410774bd7546cc",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/edge_marrakech_caldo_estremo/inventory_cache.json/vuoto": {
+      "prima": "4c5a9a90dabf433cdce509f31fba775da7bca8d9f785a2a7d71cfcb1a90f0efc",
+      "dopo": "47dbd6bb4d2bcd80e74904116325140a692ee1371535f4e325e1d3087de47c0f",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            5,
+            5
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/amsterdam_mezza_stagione/inventory_cache.json/vuoto": {
+      "prima": "1890c51022905f229e3e256ea0eb5b48dcfbec33f97da8748fd4677ba9c2cfa4",
+      "dopo": "c8f94e31df04dff91b9a1ae878dc8f18dc965347a1093ea263db489af0359f9f",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/islanda_inverno/inventory_cache.json/vuoto": {
+      "prima": "ea47cb980b6f83edfb148b5158178f8d195317bac1564330aa92139e4f4350f4",
+      "dopo": "8095b23b2e0eb7671d2a94af35dcbc32720faf585506b79fdb24d2349226138d",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/lisbona_citta/wardrobe_femminile.json/vuoto": {
+      "prima": "fc8f1a4f0b40c5690221c87280e9e8d4c76b20addcb7ee6aae687c65ec095e4f",
+      "dopo": "a66d7970b7306e10d63cd923d4d5c92a02566026bfa5ee50aed10f580eaaaab1",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sg_maldive_immersioni/wardrobe_femminile.json/vuoto": {
+      "prima": "57e686edc10f9e80b06baff5b1634cc6469769e8dc2741022952ee3d6dce6d3e",
+      "dopo": "d130e8aade0ca9ad619c6f294c64a37f8dad4e16e1d4fdc122056a415e33b9e0",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/hf_tappe_bangkok_sapporo/wardrobe_femminile.json/vuoto": {
+      "prima": "a949645da4e79013fc9f7657cc89e602c80f8f29d912c45054829101a936c6e1",
+      "dopo": "d675304ee0501743f7b3ebe18f1a340bebf3530cc6b4473eaaa9c614d955a648",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            5,
+            5
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/lisbona_citta/wardrobe_minimo.json/parziale": {
+      "prima": "1a331276f6f95b0a6c59d1eb44cfec0bf05fa9181e468b69694db21a9493219e",
+      "dopo": "e477e385c03b217c0a7beeef91864282f0e7c7db82afd13144285824cea5cd83",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/hf_ginevra_congresso/wardrobe_formale.json/parziale": {
+      "prima": "73e6c1d2f61c6a5f86d8d1b4e9df0b24050a335a5580008a9fa2fc76f0aa004b",
+      "dopo": "054b05a9558993fcfbb9fdc7010f634ab7bccbc0f0968183858a2a48f8426165",
+      "motivi": [
+        "ripiego_assegnato_compatibile"
+      ],
+      "rimosse": [
+        {
+          "tipo": "Outerwear",
+          "copie": 1
+        }
+      ],
+      "aggiunte": [],
+      "modificate": []
+    },
+    "v2/ne_palma_mare_settimana/wardrobe_reale_incompleto.json/parziale": {
+      "prima": "d3cf6b0d94e2275db825e1333551b344fedc9cb0bfeb31b028e330bc40f4af69",
+      "dopo": "6c2c4f9649dc532391c6753c9681e3ed93f995dfb6b2da138c9094dfb7ba7449",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "v2/ne_valencia_aprile/wardrobe_sportivo.json/parziale": {
+      "prima": "edf95e28a80a1f368efb77529fecfdec8584d050482a7a492990df32d4e0cbcd",
+      "dopo": "497dcf2579cae19081f69e2dc86254366f5e18a3b1b7b61b2adf66c3aadce9f6",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sn_santorini_coppia/inventory_cache.json/parziale": {
+      "prima": "7be7840718d3ff322b8182e984c4eef718387eecc4c655c39352ce1ec7970000",
+      "dopo": "6801d058a0528b4e46d88113128fbeeab2d75db1f564552cf6af7d03a7201eca",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sg_oslo_copenaghen/wardrobe_reale_incompleto.json/parziale": {
+      "prima": "b1cc8b6ba2261f54dce6fb5340419c3ce1b95c8e7cec450a60262b9bbe937441",
+      "dopo": "0ce121c4be9fe8894f021f763a9f6bc212a18f2ddcbe38b8468b947e8a3e0fce",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            2,
+            2
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            2,
+            2
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/hf_tappe_bangkok_sapporo/wardrobe_sportivo.json/parziale": {
+      "prima": "a661b769fc5b5bb9c7771f0bbde2f723f6971705520ebe67dd1a1ae0cf6b8a2a",
+      "dopo": "dfe352dabc5a38a25e5fd0c433839f1eaf22f8f1e31a2afb15f115f464056b31",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sg_toronto_montreal_gelo/wardrobe_reale_incompleto.json/parziale": {
+      "prima": "6e246dc222b575ec7a6b1535b8d4128b5bf965c155450ba8d3d46b5a518aeae4",
+      "dopo": "b26e38c95a800cf6a988660a669445fe11d5a2b08e1205f23d1dab13517c34a1",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sg_perth_melbourne/wardrobe_minimo.json/parziale": {
+      "prima": "8f5f481a98c664857927399dba975db9a01c2bd9670e69a021645a213870b40f",
+      "dopo": "95ca916e2c874ecf1131a249941a54899312dccd67ce614db502ccecb68eb4e2",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/hf_tappe_bangkok_sapporo/wardrobe_femminile.json/parziale": {
+      "prima": "19083d9a7a52e4908766053b156dec962ecb9c93814804ac97c4981884c233a8",
+      "dopo": "1509d68c7f87fe3524aa4ab347e7eb953ed541806f448d28dfe205a26c8464d8",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/hf_ginevra_congresso/wardrobe_formale.json/completo": {
+      "prima": "3f2d9dd9e1d53094348ceebb4760a87566c0d50a8bd737361fd84031f9086621",
+      "dopo": "5f42a5c2257c65687a95bd639c10f53dd7e3d789db60eccf6623705a5f85119c",
+      "motivi": [
+        "ripiego_assegnato_compatibile"
+      ],
+      "rimosse": [
+        {
+          "tipo": "Outerwear",
+          "copie": 1
+        }
+      ],
+      "aggiunte": [],
+      "modificate": []
+    },
+    "v2/ne_palma_mare_settimana/wardrobe_reale_incompleto.json/completo": {
+      "prima": "977e14196e28477509c8adde6453d7ce1f29f597a67e24a0f979ea4acc627d8e",
+      "dopo": "5f318b89a22671adb82ae57e61250551838fd0cb715e5c2f548747d5aa988319",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "v2/ne_valencia_aprile/wardrobe_sportivo.json/completo": {
+      "prima": "0cbfaa24d4e6a8dd97b59a27b7b13432506dd6f5962465b56572171388e8dd78",
+      "dopo": "2377e464ecbc14b3404dfea0065c08e882fc8a4f1a6fe1b77007c7b626189b30",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sn_santorini_coppia/inventory_cache.json/completo": {
+      "prima": "ffe9cb7b19ad1f9c3347ca4bf4dc39a4fc6147150dd9f6512af8c5a177581ec9",
+      "dopo": "2dcf03b3a5c5fdeb251d42a6a68b345c7b748cb574f6c55b3779edf72cc20e5a",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sg_oslo_copenaghen/wardrobe_reale_incompleto.json/completo": {
+      "prima": "3826620f7b804d5016d1236c982f6170eab72c58e5230d10a0f4cc6aacef2761",
+      "dopo": "9f63cd2016e8d9f2e2608401c6f9c450456df53832d7ffb0bf55a9e6bc172c4c",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "pool44/hf_tappe_bangkok_sapporo/wardrobe_sportivo.json/completo": {
+      "prima": "793f3d818f56354d387d111b3147756b95d8641053eb6879c0d51f6e79ddfb43",
+      "dopo": "c519446db4f3e87b71960ff5fdb0dcd37599cefdada1716ceb2cdc0c5a375ca0",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sg_toronto_montreal_gelo/wardrobe_reale_incompleto.json/completo": {
+      "prima": "338dd8a07d8f699cf7766765c72611db6d484febc6df7a34ae9dffc60dfe49fe",
+      "dopo": "fbea233fa68282a30231b224a8073059884a2e9a971159a45ce935899acab163",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    },
+    "holdout30/sg_perth_melbourne/wardrobe_minimo.json/completo": {
+      "prima": "57a11f165aaf5cfac8650ed71762ea25bbc4e0b4345f956922c64f9221afbbb9",
+      "dopo": "75e44cdb6156f5ee2c86b46a95a5a7c70e6516e8e8238bd60c907f6f4ec28deb",
+      "motivi": [
+        "formalita_senza_occasione"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Trousers",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        },
+        {
+          "tipo": "Shirt",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ]
+        }
+      ]
+    }
+  }
+}

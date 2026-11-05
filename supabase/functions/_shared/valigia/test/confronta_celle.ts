@@ -7,7 +7,7 @@ import { strategySlots } from "../slots.ts";
 import { strategySlotsMultitappa } from "../tappe.ts";
 
 const file = process.argv[2] && !process.argv[2].startsWith("-")
-  ? process.argv[2] : new URL("./oracolo_celle_campione.json", import.meta.url).pathname;
+  ? process.argv[2] : new URL("./oracolo_celle_campione.json", import.meta.url);
 const verboso = process.argv.includes("-v");
 const casi: any[] = JSON.parse(readFileSync(file, "utf8"));
 const righe: Record<string, RigaArmadio[]> = {};
@@ -48,6 +48,8 @@ for (const c of casi) {
     const r = c.tipo === "singola" ? strategySlots(c.grezzo, items, c.args)
       : strategySlotsMultitappa(c.grezzo, items, structuredClone(c.args));
     out = JSON.parse(JSON.stringify(r));
+    // Metadati aggiuntivi per i posti: non modificano matching, capi o quantita' del bench.
+    for (const rich of (out as any).richiesti ?? []) { delete rich.capoTipico; delete rich.maxWarmth; delete rich.vincoliPosto; }
   } catch (e) {
     ko++; perCampo["(errore)"] = (perCampo["(errore)"] ?? 0) + 1;
     if (esempi.length < 8) esempi.push(`${c.insieme}/${c.armadio}/${c.id}: ERRORE ${(e as Error).stack?.split("\n").slice(0, 3).join(" | ")}`);

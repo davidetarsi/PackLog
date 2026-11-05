@@ -27,7 +27,8 @@ export const NOMI_SOTTOCATEGORIA: Record<string, NomePosto> = {
   "Tank Top": { it: ["canottiera", "canottiere"], genere: "f", en: ["tank top", "tank tops"], soloPlurale: false, qualificabile: true },
   "Crop Top": { it: ["top", "top"], genere: "m", en: ["crop top", "crop tops"], soloPlurale: false, qualificabile: true },
   "Thermal Top": { it: ["maglia termica", "maglie termiche"], genere: "f", en: ["thermal top", "thermal tops"], soloPlurale: false, qualificabile: false },
-  "Fleece": { it: ["pile", "pile"], genere: "m", en: ["fleece", "fleeces"], soloPlurale: false, qualificabile: true },
+  // Il pile e' gia' un capo caldo: "Pile caldi" non si dice (come la maglia termica).
+  "Fleece": { it: ["pile", "pile"], genere: "m", en: ["fleece", "fleeces"], soloPlurale: false, qualificabile: false },
   "Jeans": { it: sp("jeans"), genere: "m", en: sp("jeans"), soloPlurale: true, qualificabile: true },
   "Shorts": { it: sp("pantaloncini"), genere: "m", en: sp("shorts"), soloPlurale: true, qualificabile: true },
   "Trousers": { it: sp("pantaloni"), genere: "m", en: sp("trousers"), soloPlurale: true, qualificabile: true },

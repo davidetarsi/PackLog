@@ -1,3 +1,4 @@
+import { preparaContestoTappe } from "./contesto_viaggio.ts";
 // Viaggi a piu' tappe: porting di serve_per_tappa, diversifica_copie,
 // conta_pezzi e strategy_slots_multitappa (packlog_checklist_bench_48.py).
 // La tappa piu' calda costruisce la valigia base con una sola chiamata al
@@ -5,6 +6,7 @@
 import * as K from "./costanti.ts";
 import * as rc from "./regole_capi.ts";
 import type { Capo } from "./capo.ts";
+import { armadioTipico } from "./armadio_tipico.ts";
 import { eAttivitaAcqua, giorniDiMare, normIntensita, quantityFor, usiSottoSoglia } from "./quantita.ts";
 import {
   capoLeggero, capoRiservato, eTrekking, insieme, interseca, penalitaCulto, quantiStratiMedi, type Record_, riverbero,
@@ -16,7 +18,7 @@ import {
   segnaInPartenza, segnalaScarpeCammino, segnalaVolume, togliDoppioni,
 } from "./dopo.ts";
 import {
-  get, ordinaTappe, pavimentoDi, pilaDiTappa, ripartisciCopie, round2, strategySlots, tettoCopie, tettoCopieMorbido,
+  get, pavimentoDi, pilaDiTappa, ripartisciCopie, round2, strategySlots, tettoCopie, tettoCopieMorbido,
   tettoDi, tettoMorbidoPer,
 } from "./slots.ts";
 import { massimo, minimo, pf, vero } from "./py.ts";
@@ -53,7 +55,10 @@ function contiene(xs: Record_[], x: Record_): boolean {
 const eRecord = (x: any) => "item_id" in x || !("sub_category" in x);
 
 export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: Set<string>, bulkPress: number,
-  minimoT = false, profiliCapi: Record<string, any> | null = null, soloTrekking = false): Record_[] {
+  minimoT = false, profiliCapi: Record<string, any> | null = null, soloTrekking = false,
+  mancanti?: Record_[], copertoDalGeneratore?: (capo: Record_, bisogno: Record_) => boolean): Record_[] {
+  const tipici = mancanti ? armadioTipico() : [];
+  segnaCapiDaNeve(tipici, t.attivita || []);
   const nome = t.destinazione, meteo = t.meteo;
   const ceiling = tettoDi(meteo);
   const tmaxTappa = meteo.temp_max_media;
@@ -158,7 +163,7 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
       reason: `${nome}: neve, ghiacciaio o quota, riverbero` });
   }
   if (!minimoT) {
-    richieste.push(...slotCapiNuovi(items, meteo.temp_min_media, t.attivita, meteo.giorni_di_pioggia, null,
+    richieste.push(...slotCapiNuovi(mancanti ? [...items, ...tipici] : items, meteo.temp_min_media, t.attivita, meteo.giorni_di_pioggia, null,
       [...richieste, ...capi.map((c) => ({ subCategories: [get(c, "subCategory")] }))], nome));
   }
   if (soloTrekking) richieste = richieste.filter((r) => K.SLOT_DEL_TREKKING.has(r.slot));
@@ -171,7 +176,7 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
     const minWr = Math.trunc(Number(req.minWaterResistance || 0));
     const culto = K.SLOT_CULTO.includes(req.slot);
     const tettoReq = vero(req.senza_tetto) ? Math.min(5, Math.trunc(Number(req.maxWarmth || 5))) : ceiling;
-    const minW = Math.trunc(Number(req.minWarmth || 0));
+    const minW = Math.trunc(Number(req.minWarmth || (mancanti && req._preferisci_calore ? 3 : 0)));
     const tagReq = insieme(req.activityTags || []);
     const haTag = (x: any) => {
       if (!tagReq.size) return true;
@@ -184,11 +189,15 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
     };
     const ok = (x: Record_) => {
       if (vero(req.ruolo) && x.category === "Shoes" && diRuolo(x)) return true;
-      return (x.warmth || 0) >= minW && subs.has(x.subCategory) && haTag(x) && (!cov.size || cov.has(x.coverage)) &&
-        (!fm.size || fm.has(x.formality)) && (x.waterResistance || 0) >= minWr && !(culto && capoRiservato(x, profiliCapi)) &&
+      // Nell'analisi dei posti un'assegnazione gia' accettata puo' coprire le preferenze di tipo/stile.
+      const preferenze = (subs.has(x.subCategory) && (!fm.size || fm.has(x.formality))) ||
+        (Boolean(mancanti) && (!vero(req.ruolo) || diRuolo(x)) &&
+          (x.warmth || 1) <= tettoReq && Boolean(copertoDalGeneratore?.(x, req)));
+      return (x.warmth || 0) >= minW && preferenze && haTag(x) && (!cov.size || cov.has(x.coverage)) &&
+        (x.waterResistance || 0) >= minWr && !(culto && capoRiservato(x, profiliCapi)) &&
         !(culto && K.CULTO_LEGGERO_IN_TAPPA && rc.cultoLeggero(tmaxTappa) && !capoLeggero(x, profiliCapi));
     };
-    const n = Math.trunc(Number(req.n || 1));
+    const n = Math.trunc(Number(req.n || (mancanti ? req._restano : 0) || 1));
     for (let k = 0; k < n; k++) {
       const pool = [...capi, ...aggiunti];
       const giaInTappa = pool.filter((x) => (x.tappe || []).includes(nome) && ok(x));
@@ -198,13 +207,26 @@ export function servePerTappa(t: Record_, capi: Record_[], items: Capo[], used: 
       const larghe = new Set([...subs, ...[...subs].flatMap((s) => K.SUBSTITUTIONS[s] ?? [])]);
       const scR = (g: Capo) => score(g, 1, ceiling, new Set(), new Set(), minWr, bulkPress) +
         penalitaCulto(req.slot, g, profiliCapi, rc.cultoLeggero(tmaxTappa));
-      const candidati = (p: Set<string>) => items.filter((g) => g.has_metadata && !g.sempre_in_valigia && !used.has(g.id) &&
+      const candidati = (p: Set<string>, lista = items, virtuale = false) => lista.filter((g) => g.has_metadata && !g.sempre_in_valigia && (virtuale || !used.has(g.id)) &&
         p.has(g.sub_category) && (!cov.size || cov.has(g.coverage)) && (!fm.size || fm.has(g.formality)) &&
         (g.water_resistance || 0) >= minWr && (g.warmth || 1) >= minW && (g.warmth || 1) <= tettoReq && !estivoQui(g) &&
         haTag(g) && (!vero(req.ruolo) || diRuolo(g)) && scR(g) <= K.MAX_PENALTY_COMPROMESSO);
       let cands = candidati(subs);
       if (!cands.length) cands = candidati(larghe);
-      if (!cands.length) break;
+      if (!cands.length) {
+        if (mancanti) {
+          const virtuali = candidati(subs, tipici, true);
+          const scelto = minimo(virtuali.length ? virtuali : candidati(larghe, tipici, true), scR);
+          const richiesto = { ...req, minWarmth: Math.max(1, minW), maxWarmth: tettoReq,
+            capoTipico: scelto ? { sub: scelto.sub_fine, categoria: scelto.category } : null };
+          mancanti.push({ ...req, tipo: "assente", imposto: true, essential: true, tappe: [nome],
+            ...(minW > 1 || tettoReq < 5 ? { warmth_richiesto: [richiesto.minWarmth, tettoReq] } : {}),
+            impermeabilita_richiesta: minWr,
+            copie_coperte: giaInTappa.reduce((tot, x) => tot + q(x), 0),
+            copie_minime: n - k, requiredActivityTags: [...tagReq], richiesto });
+        }
+        break;
+      }
       const g = minimo(cands, scR)!;
       used.add(g.id);
       aggiunti.push({
@@ -316,12 +338,8 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
   segnaCapiDaNeve(items, [...(sc.attivita || []), ...perTappa.flatMap((t) => t.attivita || []),
     ...(sc.legs || []).flatMap((l: Record_) => l.attivita || [])]);
   const nomi: string[] = perTappa.map((t) => t.destinazione);
-  const giorniTot = perTappa.reduce((s, t) => s + Math.trunc(Number(t.giorni || 1)), 0);
-  const ordinate = ordinaTappe(perTappa);
-  const base = ordinate[0];
-  let attBase: string[] = [...(sc.attivita || []), ...(base.attivita || [])];
-  const trekkingDiTappa = K.SLOT_TREKKING && perTappa.length > 1 && !eTrekking(sc.attivita) && eTrekking(base.attivita);
-  if (trekkingDiTappa) attBase = attBase.filter((x) => !eTrekking([x]));
+  const { giorni: giorniTot, ordinate, base, attivitaBase: attBase, trekkingDiTappa,
+    lavatriceEssenziali: lavEss, lavatriceTappe: lavMt } = preparaContestoTappe(sc, perTappa, bagaglio);
   const attContesto: string[] = [];
   const visti = new Set<string>();
   for (const att of [...(sc.attivita || []), ...perTappa.flatMap((t) => t.attivita || [])]) {
@@ -331,9 +349,6 @@ export function strategySlotsMultitappa(testoModello: string, items: Capo[], a: 
     attContesto.push(att);
   }
   const capienza = capienzaBagaglio(bagaglio);
-  const lavEss = Boolean(get(sc, "lavatrice", false));
-  const lavMt = lavEss ||
-    (K.CAMMINO_LAVA_A_MANO && rc.camminoAPiedi(sc.attivita, bagaglio, giorniTot));
   const r = strategySlots(testoModello, items, {
     giorni: giorniTot, lavatrice: lavMt, attivita: attBase, attivita_viaggio: attContesto,
     lavatrice_essenziali: lavEss,

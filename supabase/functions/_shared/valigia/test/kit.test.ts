@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { kitDelViaggio, riempiPostiConKit, type KitIngresso } from "../kit.ts";
 import type { PostoApp } from "../posti.ts";
 import type { CapoApp } from "../uscita.ts";
+import { caricaArmadio } from "../capo.ts";
 
 const capo = (item_id: string, quantita = 1): CapoApp =>
   ({ item_id, quantita, in_partenza: true, motivo: { codice: "x", etichetta: "x", frase: "x" } });
@@ -110,4 +111,51 @@ test("riempiPostiConKit ignora gli oggetti gia' in capi e quelli senza posto", (
   const arm = [g("m", "Upper Body", "T-Shirt"), g("z", "Bags", "Backpack")];
   assert.equal(riempiPostiConKit(posti, aggiunti, arm, [capo("m", 1)])[0].copie, 3);
   assert.equal(riempiPostiConKit(posti, aggiunti, arm)[0].copie, 1);
+});
+
+test("il kit copre solo il bisogno compatibile per calore e formalita'", () => {
+  const posti = [
+    { ...posto("Shirt", 1, 0), requisiti: { minWarmth: 2, maxWarmth: 3, formality: ["Business"] } },
+    { ...posto("Shirt", 1, 1), requisiti: { minWarmth: 1, maxWarmth: 2, formality: ["Casual"] } },
+  ];
+  const arm = caricaArmadio([{ id: "estiva", name: "Camicia estiva", ai_metadata: {
+    category: "Upper Body", subCategory: "Shirt", warmth: 1, formality: "Casual", waterResistance: 0,
+  } }]);
+  const r = riempiPostiConKit(posti, [{ kit_id: "k", item_id: "estiva", copie: 1 }], arm);
+  assert.deepEqual(r.map((p) => p.id), ["Shirt:0"]);
+});
+
+test("un capo del kit non chiude una proposta piu' impermeabile", () => {
+  const posti = [{ ...posto("Outerwear", 1, 0), requisiti: { minWaterResistance: 2 } }];
+  const arm = caricaArmadio([{ id: "vento", name: "Antivento", ai_metadata: {
+    category: "Outerwear", subCategory: "Windbreaker", warmth: 2, formality: "Casual", waterResistance: 1,
+  } }]);
+  assert.equal(riempiPostiConKit(posti, [{ kit_id: "k", item_id: "vento", copie: 1 }], arm).length, 1);
+});
+
+test("il kit riconosce il tipo fine del capo virtuale, oltre al genitore del generatore", () => {
+  const arm = caricaArmadio([{ id: "pile", name: "Pile", ai_metadata: {
+    category: "Upper Body", subCategory: "Fleece", warmth: 3, formality: "Casual", waterResistance: 0,
+  } }]);
+  assert.equal(riempiPostiConKit([posto("Fleece", 1, 0)], [{ kit_id: "k", item_id: "pile", copie: 1 }], arm).length, 0);
+});
+
+test("il kit non chiude un bisogno tecnico con una maglietta quotidiana", () => {
+  const posti = [{ ...posto("T-Shirt", 1, 0), requisiti: { activityTags: ["Hiking"] } }];
+  const arm = caricaArmadio([{ id: "m", name: "Maglietta", ai_metadata: {
+    category: "Upper Body", subCategory: "T-Shirt", activityTags: ["Everyday"], warmth: 2,
+  } }]);
+  const aggiunti = [{ kit_id: "k", item_id: "m", copie: 1 }];
+  assert.equal(riempiPostiConKit(posti, aggiunti, arm).length, 1);
+  assert.equal(riempiPostiConKit(posti, aggiunti, arm.map((g) => ({ ...g, activity_tags: ["Hiking"] }))).length, 0);
+});
+
+test("il kit rispetta la copertura richiesta dal bisogno", () => {
+  const posti = [{ ...posto("Shirt", 1, 0), requisiti: { coverage: ["Long Sleeves"] } }];
+  const arm = caricaArmadio([{ id: "m", name: "Camicia", ai_metadata: {
+    category: "Upper Body", subCategory: "Shirt", coverage: "Short Sleeves", warmth: 2,
+  } }]);
+  const aggiunti = [{ kit_id: "k", item_id: "m", copie: 1 }];
+  assert.equal(riempiPostiConKit(posti, aggiunti, arm).length, 1);
+  assert.equal(riempiPostiConKit(posti, aggiunti, arm.map((g) => ({ ...g, coverage: "Long Sleeves" }))).length, 0);
 });

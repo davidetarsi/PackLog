@@ -6,7 +6,7 @@ import type { RigaArmadio } from "../capo.ts";
 import { motiviValigia, percheValigia, tagArmadio } from "../motivi.ts";
 import { promptValigia } from "../prompt.ts";
 
-const file = process.argv[2] ?? new URL("./oracolo_celle_campione.json", import.meta.url).pathname;
+const file = process.argv[2] ?? new URL("./oracolo_celle_campione.json", import.meta.url);
 const casi: any[] = JSON.parse(readFileSync(file, "utf8"));
 const tag: Record<string, Record<string, string[]>> = {};
 for (const c of JSON.parse(readFileSync(new URL("./oracolo_quantita.json", import.meta.url), "utf8"))) {
