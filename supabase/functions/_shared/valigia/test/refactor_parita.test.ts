@@ -25,7 +25,8 @@ for (const modo of modiArmadio) test(`parita': valigia invariata e proposte revi
     if (delta) {
       assert.equal(delta.prima, atteso.proposte, `${key}: baseline delle proposte alterata`);
       assert.ok(delta.motivi.length > 0 && delta.motivi.every((m: string) =>
-        ["ripiego_assegnato_compatibile", "formalita_senza_occasione"].includes(m)), `${key}: differenza non revisionata`);
+        ["ripiego_assegnato_compatibile", "formalita_senza_occasione", "ombrello_utile",
+          "scarpette_da_scoglio", "nome_concreto_pioggia", "foulard_leggero"].includes(m)), `${key}: differenza non revisionata`);
       assert.notEqual(delta.dopo, delta.prima, `${key}: eccezione senza cambiamenti`);
     }
     for (const [campo, valore] of Object.entries(riproduciCaso(c, modo))) {

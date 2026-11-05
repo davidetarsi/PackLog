@@ -47,6 +47,11 @@ class RapidFireInput extends ConsumerStatefulWidget {
   /// Chiamato con l'oggetto creato, dopo un salvataggio riuscito.
   final ValueChanged<ItemModel>? onItemCreated;
 
+  /// Come [onItemCreated], ma parte sempre dopo un salvataggio riuscito,
+  /// anche se il campo è sparito nel frattempo (un foglio chiuso a metà).
+  /// Chi la usa non può toccare lo stato della sua vista senza controllare.
+  final ValueChanged<ItemModel>? onItemSaved;
+
   /// Segnaposto del campo, al posto di `items.rapid_fire_hint`.
   final String? hintText;
 
@@ -62,6 +67,7 @@ class RapidFireInput extends ConsumerStatefulWidget {
     this.onTextChanged,
     this.focusNode,
     this.onItemCreated,
+    this.onItemSaved,
     this.hintText,
     this.enabled = true,
     this.height = 50.0,
@@ -267,6 +273,13 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
           .read(itemNotifierProvider(widget.houseId).notifier)
           .addItem(item, categoryChosen: _forcedCategory != null);
 
+      // Il campo è sparito mentre si salvava (un foglio chiuso a metà): se
+      // ne perde solo l'aspetto, l'oggetto esiste e chi ascolta lo deve
+      // sapere. Chi usa solo onItemCreated non viene chiamato a vista morta.
+      if (!mounted) {
+        widget.onItemSaved?.call(item);
+        return;
+      }
       _textController.clear();
       widget.onTextChanged?.call('');
       _forcedCategory = null;
@@ -274,6 +287,7 @@ class _RapidFireInputState extends ConsumerState<RapidFireInput> {
       _copiesDismissed = false;
       _tipVisible = false;
       HapticFeedback.lightImpact();
+      widget.onItemSaved?.call(item);
       widget.onItemCreated?.call(item);
     } catch (e) {
       if (mounted) {

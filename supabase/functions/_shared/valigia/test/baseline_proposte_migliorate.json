@@ -26,9 +26,10 @@
     },
     "pool44/dolomiti_trekking/inventory_cache.json/vuoto": {
       "prima": "76d1d2ccf4e760f20155db8c737deb6c9b499b4966af83002302a2a9c903f4a7",
-      "dopo": "a488b286eb49104be0d6315418681e4e38f7356eb718956179fd9ab6f10f703a",
+      "dopo": "f1792394414565d941466e960f21e94aaa96010e4a2218a08fb8d5c738760315",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -42,15 +43,31 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
     },
     "pool44/lisbona_citta/wardrobe_minimo.json/vuoto": {
       "prima": "a06b83134df2f40522ddb27b3c0d215d1965f9b0e7617274c08c7b0e1908fdc9",
-      "dopo": "5cccb09e449a646693c6c7814ff037777998b9a737a2dbe53aa7397dde6f9985",
+      "dopo": "3b82c4cbb2303dbd104e81a053c08078a1e58a6d048a4f8cb3f8efacd5362edd",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -65,14 +82,30 @@
             "importante",
             "utile"
           ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
         }
       ]
     },
     "pool44/val_edimburgo_autunno/wardrobe_mediterraneo.json/vuoto": {
       "prima": "86f29810906770020397db61b780c950ac1558578622d1dd753901c972cdf092",
-      "dopo": "90217f46894f9b9cdc6b794df8384d16dbf0d9ff7cc8d7d0714379e3d71f9b62",
+      "dopo": "ec424d4b778624ddd665c56664010d55605ad7eb4a39880b20f415ca99f447bd",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -86,6 +119,21 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
@@ -114,9 +162,11 @@
     },
     "v2/ne_miami_marzo/wardrobe_mediterraneo.json/vuoto": {
       "prima": "c5a5b9e534c8621007ff73437d707db3ad5fb23efa6e5dd22f119220e66b24db",
-      "dopo": "78a078ce597d85d94e8e89a0a216ba63e12f00f397f57dfea675faed9ebab19a",
+      "dopo": "a0f98aabbe6d7d5fec0a92e913f1daf25696b96ef5e26479d6715074e98dc0f5",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "scarpette_da_scoglio",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -141,6 +191,36 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Water Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Scarpe da acqua",
+            "Scarpette da scoglio"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
@@ -191,9 +271,10 @@
     },
     "pool44/hf_praga_capodanno/wardrobe_femminile.json/vuoto": {
       "prima": "c65da3cf856d3eae29dd89cde8a2ece0a6fee59655fe02e141eded0a2e40a2c9",
-      "dopo": "178aa2fdd85468e21f742155bb14b20a96eeefea91b30ebd2c9938b8cb37cf6f",
+      "dopo": "c90cb68978ccde4d1b4128ae80c083a721fcfbd1024c7c002af15363c0a47342",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -207,6 +288,21 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
@@ -268,9 +364,10 @@
     },
     "pool44/hf_livigno_sci/inventory_cache.json/vuoto": {
       "prima": "5689accf000e4aa9c9f6c98d885e2904522ab803136653a6d2e895f732e70edc",
-      "dopo": "9c8583f5ffd54ab9af6e8fd9ed9ad589d4378023962f312359e8c2e1a9c8dab9",
+      "dopo": "b6875b0125548d1ab97ddce87aa47537da696be38f8112277c7c436eb1e39ee1",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -296,14 +393,30 @@
             "importante",
             "utile"
           ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
         }
       ]
     },
     "v2/ne_salisburgo_mercatini/wardrobe_minimo.json/vuoto": {
       "prima": "647902839f7c5823b53fb8e230e0ba7cf35be7e0b98e3b16753a43d53e545f44",
-      "dopo": "3e3882b84216ba34fe3c24c37d0f195eb29725896267405c062db3237f6ff4dd",
+      "dopo": "958bc3944e6413b68a3139808f4be0c1b1333abb5ffaf7b7c12f826c41109290",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -317,6 +430,21 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
@@ -389,9 +517,10 @@
     },
     "v2/ne_salisburgo_mercatini/wardrobe_reale_incompleto.json/vuoto": {
       "prima": "05649efc8fd361173e655b3d7a472bd8ac07aa6bb3c1c6c1aef56cd9582c6bbb",
-      "dopo": "882ac2b676b7942664af8a26ebebe37913358fadbb137671003e5d044c8da325",
+      "dopo": "7c55c6622e981e20ea749fdfdf400a0eb9c09fd18f4e105e71e3639ed928decd",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -405,6 +534,21 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
@@ -499,9 +643,11 @@
     },
     "pool44/hf_tappe_bangkok_sapporo/wardrobe_sportivo.json/vuoto": {
       "prima": "7f29efa0e94cab68808cf977f14bf8248602ac33334f1d39dc8d818724768b5f",
-      "dopo": "5fbb47be08ae6bd6e0319000cb940b5bc40f55419654d2dc1fe80263248c4375",
+      "dopo": "261ba17c093c06e9572d3fa97f50de006fdcbaf8ef86c5442458fa6ea9e3fd5f",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "nome_concreto_pioggia",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -515,6 +661,36 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
@@ -554,9 +730,11 @@
     },
     "v2/nh_egitto_nilo_mar_rosso/wardrobe_nordico.json/vuoto": {
       "prima": "b2cb350c38144a37db7a10d2a7b7e3ad74ba2b73b9783f5ced35cc11d7b5106b",
-      "dopo": "9344aa609bad810605f9ac7071d62e02817eb52ed0d7eac9181598afcbf9995b",
+      "dopo": "90449e47d229c2f62aa80113379142dd44242d4150f81b0bed5f78a6d4e0c640",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "foulard_leggero",
+        "scarpette_da_scoglio"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -570,6 +748,36 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Scarf",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "utile",
+            "utile"
+          ],
+          "nome": [
+            "Sciarpa",
+            "Foulard leggero"
+          ]
+        },
+        {
+          "tipo": "Water Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "utile",
+            "utile"
+          ],
+          "nome": [
+            "Scarpe da acqua",
+            "Scarpette da scoglio"
           ]
         }
       ]
@@ -598,9 +806,10 @@
     },
     "holdout30/sg_perth_melbourne/wardrobe_minimo.json/vuoto": {
       "prima": "c0ad871e7050d0c662ec60b38741779fc3b781187698b36ae22267c4cf96aa35",
-      "dopo": "efcdcb9a96b98dbb899a4b6ac7b909aac2848846d4bc5b536f410774bd7546cc",
+      "dopo": "4e2a5ff7b0a242e705a6c07136122fc331c438b45d066f0e929d4abd1cacb9bc",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -626,14 +835,30 @@
             "importante",
             "utile"
           ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
         }
       ]
     },
     "pool44/edge_marrakech_caldo_estremo/inventory_cache.json/vuoto": {
       "prima": "4c5a9a90dabf433cdce509f31fba775da7bca8d9f785a2a7d71cfcb1a90f0efc",
-      "dopo": "47dbd6bb4d2bcd80e74904116325140a692ee1371535f4e325e1d3087de47c0f",
+      "dopo": "6aa435de17d638fd6f76604c34dcb9b2e7aac3bf4f258b85fb9c0a11d2d3a25f",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "foulard_leggero"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -647,6 +872,21 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Scarf",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "utile",
+            "utile"
+          ],
+          "nome": [
+            "Sciarpa",
+            "Foulard leggero"
           ]
         }
       ]
@@ -675,9 +915,10 @@
     },
     "pool44/islanda_inverno/inventory_cache.json/vuoto": {
       "prima": "ea47cb980b6f83edfb148b5158178f8d195317bac1564330aa92139e4f4350f4",
-      "dopo": "8095b23b2e0eb7671d2a94af35dcbc32720faf585506b79fdb24d2349226138d",
+      "dopo": "80676eaca214fc867ce66882d39c8b460daab94edba81d385593acef4aa3120f",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -691,15 +932,31 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
     },
     "pool44/lisbona_citta/wardrobe_femminile.json/vuoto": {
       "prima": "fc8f1a4f0b40c5690221c87280e9e8d4c76b20addcb7ee6aae687c65ec095e4f",
-      "dopo": "a66d7970b7306e10d63cd923d4d5c92a02566026bfa5ee50aed10f580eaaaab1",
+      "dopo": "7d67ab28e32c4bae2c4417bcf273057bdf65ca7c9df93b1e0c568885c8d7e8f5",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -713,15 +970,32 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
     },
     "holdout30/sg_maldive_immersioni/wardrobe_femminile.json/vuoto": {
       "prima": "57e686edc10f9e80b06baff5b1634cc6469769e8dc2741022952ee3d6dce6d3e",
-      "dopo": "d130e8aade0ca9ad619c6f294c64a37f8dad4e16e1d4fdc122056a415e33b9e0",
+      "dopo": "c786e1f43954e24fed4e46c89b62ca9cc2e4a351d4ff1117dfd5b98115913bc3",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "nome_concreto_pioggia",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -736,14 +1010,45 @@
             "importante",
             "utile"
           ]
+        },
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
         }
       ]
     },
     "pool44/hf_tappe_bangkok_sapporo/wardrobe_femminile.json/vuoto": {
       "prima": "a949645da4e79013fc9f7657cc89e602c80f8f29d912c45054829101a936c6e1",
-      "dopo": "d675304ee0501743f7b3ebe18f1a340bebf3530cc6b4473eaaa9c614d955a648",
+      "dopo": "dcc351357e16f3310cc2a7a0ee6b7ae8ec94195b6fa1a2cc91009a6f9d87fe32",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -758,14 +1063,30 @@
             "importante",
             "utile"
           ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
         }
       ]
     },
     "pool44/lisbona_citta/wardrobe_minimo.json/parziale": {
       "prima": "1a331276f6f95b0a6c59d1eb44cfec0bf05fa9181e468b69694db21a9493219e",
-      "dopo": "e477e385c03b217c0a7beeef91864282f0e7c7db82afd13144285824cea5cd83",
+      "dopo": "8002ad8fb0a7b6944382d4019fc66c730307129974415a1e6f648b61c96f482d",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -780,14 +1101,30 @@
             "importante",
             "utile"
           ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
         }
       ]
     },
     "pool44/hf_ginevra_congresso/wardrobe_formale.json/parziale": {
       "prima": "73e6c1d2f61c6a5f86d8d1b4e9df0b24050a335a5580008a9fa2fc76f0aa004b",
-      "dopo": "054b05a9558993fcfbb9fdc7010f634ab7bccbc0f0968183858a2a48f8426165",
+      "dopo": "7cf9cdbed9cb408d73ec4bc10ef5b1197aa5fcfec267cca9137a17c5587357dc",
       "motivi": [
-        "ripiego_assegnato_compatibile"
+        "ripiego_assegnato_compatibile",
+        "ombrello_utile"
       ],
       "rimosse": [
         {
@@ -796,7 +1133,23 @@
         }
       ],
       "aggiunte": [],
-      "modificate": []
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ]
     },
     "v2/ne_palma_mare_settimana/wardrobe_reale_incompleto.json/parziale": {
       "prima": "d3cf6b0d94e2275db825e1333551b344fedc9cb0bfeb31b028e330bc40f4af69",
@@ -910,9 +1263,10 @@
     },
     "pool44/hf_tappe_bangkok_sapporo/wardrobe_sportivo.json/parziale": {
       "prima": "a661b769fc5b5bb9c7771f0bbde2f723f6971705520ebe67dd1a1ae0cf6b8a2a",
-      "dopo": "dfe352dabc5a38a25e5fd0c433839f1eaf22f8f1e31a2afb15f115f464056b31",
+      "dopo": "eb10ed646fd4352a2c06dd82099370d5a815f2618ec31f61795dc8e739f8a137",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -926,6 +1280,21 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
@@ -954,9 +1323,10 @@
     },
     "holdout30/sg_perth_melbourne/wardrobe_minimo.json/parziale": {
       "prima": "8f5f481a98c664857927399dba975db9a01c2bd9670e69a021645a213870b40f",
-      "dopo": "95ca916e2c874ecf1131a249941a54899312dccd67ce614db502ccecb68eb4e2",
+      "dopo": "d6ab2c3794e58a7deaa6e68c237e6b6b745dbd727ef7363664d4b0e092e1d5e3",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -981,6 +1351,21 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
@@ -1009,9 +1394,10 @@
     },
     "pool44/hf_ginevra_congresso/wardrobe_formale.json/completo": {
       "prima": "3f2d9dd9e1d53094348ceebb4760a87566c0d50a8bd737361fd84031f9086621",
-      "dopo": "5f42a5c2257c65687a95bd639c10f53dd7e3d789db60eccf6623705a5f85119c",
+      "dopo": "4cd6dd16f8ae2004659660f50e3a9795abb73773d51530483cb1c597d4804304",
       "motivi": [
-        "ripiego_assegnato_compatibile"
+        "ripiego_assegnato_compatibile",
+        "ombrello_utile"
       ],
       "rimosse": [
         {
@@ -1020,7 +1406,23 @@
         }
       ],
       "aggiunte": [],
-      "modificate": []
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ]
     },
     "v2/ne_palma_mare_settimana/wardrobe_reale_incompleto.json/completo": {
       "prima": "977e14196e28477509c8adde6453d7ce1f29f597a67e24a0f979ea4acc627d8e",
@@ -1112,9 +1514,10 @@
     },
     "pool44/hf_tappe_bangkok_sapporo/wardrobe_sportivo.json/completo": {
       "prima": "793f3d818f56354d387d111b3147756b95d8641053eb6879c0d51f6e79ddfb43",
-      "dopo": "c519446db4f3e87b71960ff5fdb0dcd37599cefdada1716ceb2cdc0c5a375ca0",
+      "dopo": "9c58629342176e30b32a30096b8ff712ea5b4085d3970579b3160310739938cd",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -1128,6 +1531,21 @@
           "livello": [
             "importante",
             "utile"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
           ]
         }
       ]
@@ -1156,9 +1574,10 @@
     },
     "holdout30/sg_perth_melbourne/wardrobe_minimo.json/completo": {
       "prima": "57a11f165aaf5cfac8650ed71762ea25bbc4e0b4345f956922c64f9221afbbb9",
-      "dopo": "75e44cdb6156f5ee2c86b46a95a5a7c70e6516e8e8238bd60c907f6f4ec28deb",
+      "dopo": "6dea3336ff980267c576c9674ce5aef122e283dd2e32001ae3699fb21dd510eb",
       "motivi": [
-        "formalita_senza_occasione"
+        "formalita_senza_occasione",
+        "ombrello_utile"
       ],
       "rimosse": [],
       "aggiunte": [],
@@ -1184,8 +1603,1337 @@
             "importante",
             "utile"
           ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
         }
       ]
+    },
+    "holdout30/sg_crociera_antartide/wardrobe_reale_incompleto.json/vuoto": {
+      "prima": "151fbda54a6d8bb69b047cb0b198437365b73122d6a674e7ac2119ccc68e155b",
+      "motivi": [
+        "nome_concreto_pioggia",
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "c6ae2d018fbadc6c63ba59cdc50721c983bb4949bc0c50ca334197e57d403479"
+    },
+    "pool44/hf_faroe_ostile/wardrobe_sportivo.json/vuoto": {
+      "prima": "34134236d63d4ff4ff598d3192c48470eec7034eb280db37a5ebca2b49842091",
+      "motivi": [
+        "nome_concreto_pioggia",
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "a918d8827f041e74fcdb2978eeb4063e6938891b7b9d3a6d994f935e4b1c7436"
+    },
+    "v2/nh_svalbard_marzo/wardrobe_nordico.json/vuoto": {
+      "prima": "ec53aafb1fea15227eb1eeaaff5ef7316f475b7a7ab5dfb77d093d7eb44a9e73",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "4a2486748352117bff3688024393dd4966224ad517a41be82899188d58cfbe4d"
+    },
+    "v2/nh_islanda_anello/inventory_cache.json/vuoto": {
+      "prima": "828a853c6d36d03b4e4bd4b83c53e067dd75a95754d63c801615e85a81fe7e5a",
+      "motivi": [
+        "nome_concreto_pioggia",
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "f69bd5de8b3c896b82c821709816f3a248f914f8f93d214463c75151d2f88888"
+    },
+    "pool44/hf_ginevra_congresso/wardrobe_formale.json/vuoto": {
+      "prima": "44f8d80e2952abbdd4f585c15a096271481016c50a844e71242c969602b65dd9",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "5b5b5a2c04f40971e15624be54aa1997eba72062a3852aa965e3b478261512f1"
+    },
+    "v2/nh_torres_del_paine/inventory_cache.json/vuoto": {
+      "prima": "4dd85d813bffd2d5f693eceed013c446f75332ee2a17cf78e8a5239cc8165ce1",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "c0114ef8334f295d5e7e1ca240b528d220a53dc55015821b7768e3a814e34f1d"
+    },
+    "pool44/edge_bangkok_lungo_cabina/inventory_cache.json/vuoto": {
+      "prima": "c3a96729665ea4396901991ea70a9d3ce60e679d34cf8b8b1459c3418fb2f7f2",
+      "motivi": [
+        "scarpette_da_scoglio",
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Water Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Scarpe da acqua",
+            "Scarpette da scoglio"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "ffc391e7853d9d83351c50d98ad7168dd1d8982babf8e94444400c4be83020cc"
+    },
+    "v3m/nh3_giordania_marzo/wardrobe_femminile.json/vuoto": {
+      "prima": "08da9199ddd06bbecdaeb7449469cee2916ee80cfdcbbab6e3b9be14050ebb61",
+      "motivi": [
+        "nome_concreto_pioggia"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        }
+      ],
+      "dopo": "2c0fbd4407198c234a875b557cae7a76489e477f09e408ada9d71933cd4c7776"
+    },
+    "v2/nh_fes_sahara/wardrobe_femminile.json/vuoto": {
+      "prima": "db9410dd9d2bd51f3f222ce57fa4c64e4a5b0072382779987989e86ee73ebae1",
+      "motivi": [
+        "scarpette_da_scoglio"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Water Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "utile",
+            "utile"
+          ],
+          "nome": [
+            "Scarpe da acqua",
+            "Scarpette da scoglio"
+          ]
+        }
+      ],
+      "dopo": "f1ed826196247a2f1c2b6b67f2c1156ab72f109d4f7901c4c675a0cccdd3ae51"
+    },
+    "v3m/nh3_namibia_inverno/wardrobe_minimo.json/vuoto": {
+      "prima": "185329b321e81e9587836ee4771eddc5ac147358a260c6d33f941a5438c083e8",
+      "motivi": [
+        "nome_concreto_pioggia"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        }
+      ],
+      "dopo": "2d3ec507e78753f0d94570a2227f99a072a6d53c8ed8887e264994452d9f1be1"
+    },
+    "pool44/hf_tappe_reykjavik_amsterdam/inventory_cache.json/vuoto": {
+      "prima": "2b8579f5c20ce73b869936bd1d0bf111c9f0c58ea9616fb9716e0b8c6ccd5db8",
+      "motivi": [
+        "nome_concreto_pioggia",
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "53a69a6a92194350d04da1ddd5dda9e40a814373adeb3b97a5016262dff27589"
+    },
+    "pool44/hf_faroe_ostile/inventory_cache.json/vuoto": {
+      "prima": "34134236d63d4ff4ff598d3192c48470eec7034eb280db37a5ebca2b49842091",
+      "motivi": [
+        "nome_concreto_pioggia",
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "a918d8827f041e74fcdb2978eeb4063e6938891b7b9d3a6d994f935e4b1c7436"
+    },
+    "pool44/hf_tappe_reykjavik_amsterdam/wardrobe_femminile.json/vuoto": {
+      "prima": "2b8579f5c20ce73b869936bd1d0bf111c9f0c58ea9616fb9716e0b8c6ccd5db8",
+      "motivi": [
+        "nome_concreto_pioggia",
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "53a69a6a92194350d04da1ddd5dda9e40a814373adeb3b97a5016262dff27589"
+    },
+    "pool44/dolomiti_trekking/inventory_cache.json/parziale": {
+      "prima": "22f86b62e1e4df7a671227128bf7578cc3a2cee393dd919500716503662e6d81",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "ea8fcb4ac11ecf59e790d97f81ebcddb87a873dfde9c05af85baa77a05771c05"
+    },
+    "pool44/val_edimburgo_autunno/wardrobe_mediterraneo.json/parziale": {
+      "prima": "a6d315e0503de68639d41e15b684e5ab9e3d13bf34f98429092ff65f8566b4f0",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "8687a846baa1a6ef081ef242b15772a7ca25f7aa653e798c0719996cc49f2448"
+    },
+    "holdout30/sg_crociera_antartide/wardrobe_reale_incompleto.json/parziale": {
+      "prima": "3b1cea8b4f86c32a85d5273f8077bc71ce6e3c97cdc3eb1259e19840d214fad2",
+      "motivi": [
+        "nome_concreto_pioggia",
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "f464493ac41aafdfd6cb96b270d388af70eedea382284b6a360e73ee90d6a2c0"
+    },
+    "pool44/hf_faroe_ostile/wardrobe_sportivo.json/parziale": {
+      "prima": "6975f63a783bd4e0036dc3c34059855b53d6bafeaa54bc11234c5056a2bac9ff",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "a1baff77382860b79d87823c8991a74eee355d71b8e161a4df2dbe54d563fcfd"
+    },
+    "v2/nh_svalbard_marzo/wardrobe_nordico.json/parziale": {
+      "prima": "e5d6133c1969c8eff5e5b17e2f90c619762b3aa2e09d46d21129c9b15ddc2d03",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "0d535f616485fb40d06771a7618137313edbaab546bd4f7ac5b6720fa2cd98c7"
+    },
+    "v2/ne_miami_marzo/wardrobe_mediterraneo.json/parziale": {
+      "prima": "566484183f284e95950a83b6db8586cab289d77af5429feb0c7ded0333d4d8db",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "0f75e5db80470f6c96916f1642bf165f3247c037b0ea4a1ba2dcfbd07252a870"
+    },
+    "v2/nh_islanda_anello/inventory_cache.json/parziale": {
+      "prima": "62aa2fb322900b67955ac3054c05dd1d46def43b90c91ac992b5d78369dcddf4",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "7ee2476c4450a50e08206db6fdf3ed0727b6d783ae5818c27b7f85cfad6dca23"
+    },
+    "pool44/hf_livigno_sci/inventory_cache.json/parziale": {
+      "prima": "8097d77e9bedb35c0b3e9bb0d64245ce58e0889e1aea1c9c409f8d8e32145993",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "85a47020d9cfaf7b398e8de51b7a0c9259d50864408722c7185bd6e185efe1ed"
+    },
+    "v2/ne_salisburgo_mercatini/wardrobe_minimo.json/parziale": {
+      "prima": "1abb2ff902b94b748ecbcedea9cb9ab18fa0f751bd1e313c8cd0e76d47a195e1",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "aed40cad0fbe2d5dc93fd67d4be2416ec86a31320406e1bc905cc2ab2c589ee9"
+    },
+    "v2/nh_torres_del_paine/inventory_cache.json/parziale": {
+      "prima": "713d456b388cf91366091590b8f15a69a3a20405aba69c028663c4cc36969cc5",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "5715139bc0751145c8888df7c9376a5f43ee7ab1e0ee1fca77ad49bec6c690cc"
+    },
+    "pool44/edge_bangkok_lungo_cabina/inventory_cache.json/parziale": {
+      "prima": "f7f9916ba293e94738322ecf55906251b3d610580d7aab9c2bfdbc0aa58a8c7a",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "dff06e67a5fca4fe163973c5a33db917c2b48a1be822fedce24f2bea5c6e3f93"
+    },
+    "v2/ne_salisburgo_mercatini/wardrobe_reale_incompleto.json/parziale": {
+      "prima": "3aed0034428bfe9859fb114987a49f649b9eed1f26e09a0ae10c8eb730fe8bdd",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "89c61845f470e58e7c2ede80bdc39376c270930b555a3654c06e89dbb380c0dd"
+    },
+    "v2/nh_egitto_nilo_mar_rosso/wardrobe_nordico.json/parziale": {
+      "prima": "d866ea7abc952fa5380d5563f361c8c467590917485ee5cd182fb7b6d7bc80a4",
+      "motivi": [
+        "scarpette_da_scoglio"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Water Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "utile",
+            "utile"
+          ],
+          "nome": [
+            "Scarpe da acqua",
+            "Scarpette da scoglio"
+          ]
+        }
+      ],
+      "dopo": "80f5ca2d25d3db138c3387e69c38cea585b4b5bb065549d03f634661e6afd179"
+    },
+    "pool44/hf_tappe_reykjavik_amsterdam/inventory_cache.json/parziale": {
+      "prima": "31d2222105c71ceae870a32f7fe1613f5ae494a832e01a3c4a230476dc655f1f",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "490e4f3fbe70cf31a4478c3b6d507e2a8d76f0ea721d84217504b06fbec5387e"
+    },
+    "pool44/hf_faroe_ostile/inventory_cache.json/parziale": {
+      "prima": "03e50b3c621a39afcc81b8d7499820e65314603732441c89c6f2379357b772a8",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "d61748f869592c509d73993a57a6282d9102284071f7fe073410bf0721891334"
+    },
+    "pool44/islanda_inverno/inventory_cache.json/parziale": {
+      "prima": "c28df257744a5fe481d89a32ef2d575805b8744e8438e71b231381250851fff8",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "22e93433351806ad8286e6ff7b45ad5d98abb6ed9cacd4d91a04533ad6d74c3c"
+    },
+    "pool44/dolomiti_trekking/inventory_cache.json/completo": {
+      "prima": "8a4e7c635b1831ec6b6216807accc5b4ae0cddcc69d9e7f390cbf1bf1f0604de",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "7ef5d13aac170b45a92496d43b9f50646426b5dd66b607cd2d15eb56bc3d4c51"
+    },
+    "pool44/lisbona_citta/wardrobe_minimo.json/completo": {
+      "prima": "37b6a417675e5a9e5d72001b256afdf42c80f6d52a44f32af04e34bb6fdd9bea",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "93fae586c06ac2aeedf209bc8b21afcf6e147ac4821935e99a072de5ed98e3c5"
+    },
+    "pool44/val_edimburgo_autunno/wardrobe_mediterraneo.json/completo": {
+      "prima": "63275ce332d8b7d90f0a187d48e4149a8a446d1a6d74fc59fd97e0be909d54cf",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "d0626024d8f8bd56a68ec13ac9ab3f9ca1389de8f954267cdf322bbc9f260830"
+    },
+    "holdout30/sg_crociera_antartide/wardrobe_reale_incompleto.json/completo": {
+      "prima": "9bf6b02dce350a222f9f79c5d3266f4286b20dca18520fcefff07ccaee8bb751",
+      "motivi": [
+        "nome_concreto_pioggia",
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Shoes",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "importante"
+          ],
+          "nome": [
+            "Scarpe impermeabili",
+            "Scarponi da trekking"
+          ]
+        },
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "d785bd00c0a7364ee184ae471adc727b4304836ff1f2effc2bffdd39a18188da"
+    },
+    "pool44/hf_faroe_ostile/wardrobe_sportivo.json/completo": {
+      "prima": "520601a524dd326e1c0a22378f83132c11b4f2ddb33b0a790935c64b15c7a617",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "baf70874c71cb646f3ec0953a8a582a4ac49cc74b8705780be87d78d3bf8451a"
+    },
+    "v2/nh_svalbard_marzo/wardrobe_nordico.json/completo": {
+      "prima": "022a61db461ffb77eaca8e921ae8e06e782f5b364ded24bedbe37d790688915c",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "d6c8a47f5724d39d6dccc805ce58f3938b31da51b0ac81be4276ffb72d15a7a2"
+    },
+    "v2/ne_miami_marzo/wardrobe_mediterraneo.json/completo": {
+      "prima": "520601a524dd326e1c0a22378f83132c11b4f2ddb33b0a790935c64b15c7a617",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "baf70874c71cb646f3ec0953a8a582a4ac49cc74b8705780be87d78d3bf8451a"
+    },
+    "v2/nh_islanda_anello/inventory_cache.json/completo": {
+      "prima": "65ada82ae3503ef5450b65d4ca8584a8097edfe9e6d9bbf3865866a018588047",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "098bc1b9d7b5dd16f724ecde803bb4723c2ca33f3596b56aadc8fbfe596d81be"
+    },
+    "pool44/hf_livigno_sci/inventory_cache.json/completo": {
+      "prima": "da8596aefee4e8530680b9cf060780fcf957ae94622708108845df1a8900c4f6",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "8397f6230a6e31dc3a5d4946e3ec281b7f715872a81f84baa922455f4d38e84c"
+    },
+    "v2/ne_salisburgo_mercatini/wardrobe_minimo.json/completo": {
+      "prima": "68bc13bcb0f6c90d5632b868764fdfee5852481fa6e3ca781e6a5caf4c78a035",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "a38c4702eb303a3913db4ccf3985d49d55e27c71a1c4980c72b084d2c9556ce7"
+    },
+    "v2/nh_torres_del_paine/inventory_cache.json/completo": {
+      "prima": "e9ad5feb5bad8c6be9ef454b6e888a681e531d0c6612a7c20f42140ea26eb4f5",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "e86f3091cf9b3efebf73fe99b0a3932d7709430e546f2adbd3f92a815f6bf6de"
+    },
+    "pool44/edge_bangkok_lungo_cabina/inventory_cache.json/completo": {
+      "prima": "8a4e7c635b1831ec6b6216807accc5b4ae0cddcc69d9e7f390cbf1bf1f0604de",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "7ef5d13aac170b45a92496d43b9f50646426b5dd66b607cd2d15eb56bc3d4c51"
+    },
+    "v2/ne_salisburgo_mercatini/wardrobe_reale_incompleto.json/completo": {
+      "prima": "b409e371549d32781903dc28de87d8feb768822ab20b2adb745d63bb9a3ac383",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "dd4c96d69df151aa703feaff0a7f5189bd504ed188931f00a8a194247a465f50"
+    },
+    "pool44/hf_tappe_reykjavik_amsterdam/inventory_cache.json/completo": {
+      "prima": "b133da66176cbe78919c6f623fb086cfccf5eaec86984131e3189b4cff58a404",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "41aa25a989d565dbf06a9aa2bd2c2dc52a87c0bc5d88c44f9284a4cd5cbee9a0"
+    },
+    "pool44/hf_faroe_ostile/inventory_cache.json/completo": {
+      "prima": "39428b3ddccd23e88418de96493eefb62a709474ad1c6638786c79437c4ec6f7",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "225e2c9fd1def2ae2c588b41dd6bc73b44f69e46a99b20fb484edeba23838ea2"
+    },
+    "pool44/islanda_inverno/inventory_cache.json/completo": {
+      "prima": "f616b6b7e4e76e7dea09ea1b72a52bd58a93f6b41a3dc975fe7a1b4ec2463655",
+      "motivi": [
+        "ombrello_utile"
+      ],
+      "rimosse": [],
+      "aggiunte": [],
+      "modificate": [
+        {
+          "tipo": "Umbrella",
+          "copie": [
+            1,
+            1
+          ],
+          "livello": [
+            "importante",
+            "utile"
+          ],
+          "nome": [
+            "Ombrello",
+            "Ombrello"
+          ]
+        }
+      ],
+      "dopo": "f63ed7819cab67db5ba93f1848d0177770a90227ec53b38cd30bae6aaa9c81f2"
     }
   }
 }

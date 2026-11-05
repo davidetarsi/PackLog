@@ -286,8 +286,11 @@ void main() {
       );
       expect(find.text('Aggiungi la tua'), findsNWidgets(4));
       expect(find.text('Presa'), findsOneWidget);
+      expect(find.text('Suggeriti da PackLog'), findsOneWidget);
       expect(
-        find.text('Proposti da PackLog · tocca per mettere i tuoi'),
+        find.text(
+          'Nel tuo inventario mancano oggetti adatti o copie sufficienti.',
+        ),
         findsOneWidget,
       );
       // I proposti con le copie; finché si sistema niente caselle.
@@ -480,6 +483,28 @@ void main() {
       expect(find.byKey(const Key('slot_card_imp-giacca')), findsOneWidget);
       verifyNever(() => tripRepo.updateTrip(any()));
     });
+
+    testWidgets(
+      'Non utile scarta la proposta senza foglio e Annulla la ripristina',
+      (tester) async {
+        await pumpDetail(tester, _trip());
+
+        await tester.tap(find.byKey(const Key('slot_not_useful_u-magliette')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(BottomSheet), findsNothing);
+        expect(find.byKey(const Key('slot_row_u-magliette')), findsNothing);
+        expect(savedSlot(tester, 'u-magliette').removed, isTrue);
+        expect(find.byKey(const Key('trip_item_i-aux')), findsOneWidget);
+
+        await tester.tap(find.text('Annulla'));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('slot_row_u-magliette')), findsOneWidget);
+        expect(savedSlot(tester, 'u-magliette').removed, isFalse);
+        expect(find.byType(BottomSheet), findsNothing);
+      },
+    );
 
     testWidgets('scorrere una proposta: riga sparita, snack e Annulla', (
       tester,
