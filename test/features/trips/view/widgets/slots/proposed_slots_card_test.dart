@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
@@ -65,5 +66,31 @@ void main() {
     );
     expect(border.width, AppConstants.hairlineBorderWidth);
     expect(border.restingOpacity, AppOpacity.subtleGradientBorder);
+  });
+
+  testWidgets('spiega il rapporto tra suggerimenti e inventario', (
+    tester,
+  ) async {
+    await pump(tester, noAnimations: false);
+
+    expect(find.text('trips.slots.proposed_inventory'), findsOneWidget);
+    expect(find.text('trips.slots.proposed_header'), findsOneWidget);
+    expect(find.text('Magliette'), findsOneWidget);
+  });
+
+  testWidgets('la spiegazione resta leggibile su uno schermo stretto', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pump(tester, noAnimations: false);
+
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.text('trips.slots.proposed_inventory'),
+    );
+    expect(paragraph.didExceedMaxLines, isFalse);
+    expect(tester.takeException(), isNull);
   });
 }

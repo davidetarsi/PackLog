@@ -17,6 +17,11 @@ export interface NomePosto {
 /** Nome solo plurale: la stessa voce per singolare e plurale. */
 const sp = (s: string): [string, string] => [s, s];
 
+export const NOME_FOULARD_LEGGERO: NomePosto = {
+  it: ["foulard leggero", "foulard leggeri"], genere: "m", en: ["light scarf", "light scarves"],
+  soloPlurale: false, qualificabile: false,
+};
+
 export const NOMI_SOTTOCATEGORIA: Record<string, NomePosto> = {
   "T-Shirt": { it: ["maglietta", "magliette"], genere: "f", en: ["t-shirt", "t-shirts"], soloPlurale: false, qualificabile: true },
   "Shirt": { it: ["camicia", "camicie"], genere: "f", en: ["shirt", "shirts"], soloPlurale: false, qualificabile: true },
@@ -47,7 +52,7 @@ export const NOMI_SOTTOCATEGORIA: Record<string, NomePosto> = {
   "Loafers": { it: sp("mocassini"), genere: "m", en: sp("loafers"), soloPlurale: true, qualificabile: true },
   "Dress Shoes": { it: sp("scarpe eleganti"), genere: "f", en: sp("dress shoes"), soloPlurale: true, qualificabile: false },
   "Hiking Boots": { it: sp("scarponi da trekking"), genere: "m", en: sp("hiking boots"), soloPlurale: true, qualificabile: true },
-  "Water Shoes": { it: sp("scarpe da acqua"), genere: "f", en: sp("water shoes"), soloPlurale: true, qualificabile: true },
+  "Water Shoes": { it: sp("scarpette da scoglio"), genere: "f", en: sp("water shoes"), soloPlurale: true, qualificabile: true },
   "Snow Boots": { it: sp("doposci"), genere: "m", en: sp("snow boots"), soloPlurale: true, qualificabile: false },
   "Coat": { it: ["cappotto", "cappotti"], genere: "m", en: ["coat", "coats"], soloPlurale: false, qualificabile: true },
   "Rain Jacket": { it: ["giacca impermeabile", "giacche impermeabili"], genere: "f", en: ["rain jacket", "rain jackets"], soloPlurale: false, qualificabile: false },

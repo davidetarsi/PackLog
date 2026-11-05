@@ -41,6 +41,13 @@ test("livello: scarpe con la pioggia sono importanti, un accessorio col freddo p
   assert.equal(livello(guanti), "importante");
 });
 
+test("livello: l'ombrello resta utile anche con pioggia, freddo o un'occasione formale", () => {
+  for (const attivita of [[], ["mare"], ["congresso"]]) {
+    assert.equal(livello({ category: "Accessory", subCategories: ["Umbrella"],
+      impermeabilita_richiesta: 2, warmth_richiesto: [4, 5], formality: ["Formal"] }, true, attivita), "utile");
+  }
+});
+
 test("qualifica: freddo, poi acqua, poi elegante", () => {
   const freddoAcqua = { category: "Outerwear", subCategories: ["Coat"], warmth_richiesto: [4, 5], impermeabilita_richiesta: 2 };
   const acqua = { category: "Outerwear", subCategories: ["Coat"], warmth_richiesto: [1, 2], impermeabilita_richiesta: 2 };
@@ -449,17 +456,17 @@ test("un posto solo: solo pioggia (nessun freddo), Rain Jacket e Windbreaker div
   assert.ok(!posti.some((p) => p.tipo === "Rain Jacket" || p.tipo === "Windbreaker"));
 });
 
-test("un posto solo: scarpe solo pioggia diventano Scarpe impermeabili", () => {
+test("scarpe solo pioggia: il raggruppamento conserva il nome concreto", () => {
   const posti = postiDi([pioggiaGap("Sneakers", "Shoes", "Sneakers"), pioggiaGap("Stivali", "Shoes", "Boots")], { meteo: MITE });
-  assert.deepEqual(posti.filter((p) => p.tipo === "Shoes").map((p) => [p.nome, p.copie]), [["Scarpe impermeabili", 1]]);
+  assert.deepEqual(posti.filter((p) => p.tipo === "Shoes").map((p) => [p.nome, p.copie]), [["Sneakers", 1]]);
 });
 
-test("un posto solo: in inglese Winter jacket, Winter shoes, Waterproof jacket, Waterproof shoes", () => {
+test("inglese: il freddo resta qualificato e le scarpe da pioggia hanno un nome concreto", () => {
   const inverno = postiDi([freddoGap("a", "Outerwear", "Coat"), freddoGap("b", "Shoes", "Boots")], { lingua: "en" });
   assert.deepEqual(inverno.filter((p) => p.livello === "importante").map((p) => p.nome).sort(), ["Winter jacket", "Winter shoes"]);
   const acqua = postiDi([pioggiaGap("a", "Outerwear", "Rain Jacket"), pioggiaGap("b", "Shoes", "Sneakers")],
     { meteo: MITE, lingua: "en" });
-  assert.deepEqual(acqua.filter((p) => p.livello === "importante").map((p) => p.nome).sort(), ["Waterproof jacket", "Waterproof shoes"]);
+  assert.deepEqual(acqua.filter((p) => p.livello === "importante").map((p) => p.nome).sort(), ["Sneakers", "Waterproof jacket"]);
 });
 
 test("posti meteo: freddo e pioggia con fasce incompatibili restano distinti anche invertiti", () => {
@@ -507,7 +514,7 @@ test("un posto solo: un utile d'attivita' o elegante della stessa categoria rest
   const posti = postiDi([acqua, freddoGap("Stivali", "Shoes", "Boots")], { meteo: MITE });
   // Water Shoes e' sempre importante (attivita'): resta, e le Boots fredde sono un posto a parte.
   assert.deepEqual(posti.filter((p) => ["Shoes", "Water Shoes"].includes(p.tipo)).map((p) => p.nome).sort(),
-    ["Scarpe da acqua", "Scarpe invernali"]);
+    ["Scarpe invernali", "Scarpette da scoglio"]);
 });
 
 test("un posto solo: i pezzi in meno di un capo Shoes dell'utente non si toccano", () => {
@@ -518,12 +525,13 @@ test("un posto solo: i pezzi in meno di un capo Shoes dell'utente non si toccano
   assert.deepEqual(scarpe.map((p) => [p.nome, p.tipo, p.copie]).sort(), [["Scarpe invernali", "Shoes", 1], ["Sneakers", "Sneakers", 2]]);
 });
 
-test("un posto solo: gli accessori del meteo (Cappello, Guanti, Ombrello) restano come sono", () => {
+test("accessori del meteo: cappello e guanti importanti, ombrello utile", () => {
   const posti = postiDi([assente("Cappello", "Accessory", ["Cap/Hat"], { warmth_richiesto: [4, 5] }),
     assente("Guanti", "Accessory", ["Gloves"], { warmth_richiesto: [4, 5] }),
     pioggiaGap("Ombrello", "Accessory", "Umbrella")]);
   assert.deepEqual(new Set(posti.filter((p) => p.livello === "importante").map((p) => p.nome)),
-    new Set(["Cappello caldo", "Guanti", "Ombrello"]));
+    new Set(["Cappello caldo", "Guanti"]));
+  assert.equal(posti.find((p) => p.tipo === "Umbrella")!.livello, "utile");
 });
 
 test("un posto solo: identita' univoca e ordine del primo bisogno unito", () => {
@@ -877,10 +885,10 @@ test("attivita': escursioni leggere non rendono gli scarponi automaticamente imp
   assert.equal(postoAttivita("Hiking Boots", ["escursioni leggere e trekking"]).livello, "importante");
 });
 
-test("attivita': costume e scarpe da acqua sono importanti solo se si va in acqua", () => {
+test("attivita': il mare rende importante il costume, non le scarpette da scoglio", () => {
   for (const sub of ["Swimwear", "Water Shoes"]) {
     assert.equal(postoAttivita(sub, ["visite in citta"]).livello, "utile");
-    assert.equal(postoAttivita(sub, ["mare"]).livello, "importante");
+    assert.equal(postoAttivita(sub, ["mare"]).livello, sub === "Water Shoes" ? "utile" : "importante");
     assert.equal(postoAttivita(sub, ["immersioni"]).livello, "importante");
   }
 });
@@ -961,4 +969,42 @@ test("requisiti: due strati dello stesso tipo restano almeno due copie dopo la d
   ], { temp_min: -4, temp_max: 5 }, [], 5);
   const medi = ps.filter((p) => ["Hoodie", "Sweater", "Sweatshirt", "Fleece"].includes(p.tipo));
   assert.equal(medi.reduce((n, p) => n + p.copie, 0), 2);
+});
+
+test("scarpe per la pioggia: nome concreto, protezione nel motivo e nei requisiti", () => {
+  const p = postiDi([pioggiaGap("scarpe per camminare", "Shoes", "Sneakers")], { meteo: MITE });
+  const scarpe = p.find((p) => p.tipo === "Shoes")!;
+  assert.equal(scarpe.nome, "Sneakers");
+  assert.equal(scarpe.copie, 1);
+  assert.equal(scarpe.livello, "importante");
+  assert.equal(scarpe.requisiti?.minWaterResistance, 2);
+  assert.match(scarpe.motivo!, /pioggia/);
+});
+
+test("mare generico: scarpette da scoglio utili e distinte dalle scarpe per la pioggia", () => {
+  const p = postiDi([assente("calzature da mare", "Shoes", ["Water Shoes"], { warmth_richiesto: [1, 2] }),
+    pioggiaGap("pioggia", "Shoes", "Sneakers")],
+    { meteo: MITE, viaggio: { giorni: 10, attivita: ["mare"] } });
+  assert.equal(p.find((p) => p.tipo === "Water Shoes")?.nome, "Scarpette da scoglio");
+  assert.equal(p.find((p) => p.tipo === "Water Shoes")?.livello, "utile");
+  assert.ok(p.some((p) => p.tipo === "Shoes" && p.livello === "importante"));
+});
+
+test("luoghi di culto al caldo: il foulard leggero non si chiama sciarpa", () => {
+  const p = postiDi([assente("foulard", "Accessory", ["Scarf"], { warmth_richiesto: [1, 2] })],
+    { meteo: { temp_min_media: 25, temp_max_media: 31 },
+      viaggio: { giorni: 10, attivita: ["visite a siti religiosi"] } });
+  assert.equal(p.find((p) => p.tipo === "Scarf")?.nome, "Foulard leggero");
+  assert.equal(p.find((p) => p.tipo === "Scarf")?.livello, "utile");
+  const inverno = postiDi([freddoGap("collo e mani", "Accessory", "Scarf")]);
+  assert.equal(inverno.find((p) => p.tipo === "Scarf")?.nome, "Sciarpa calda");
+});
+
+test("scarpe da pioggia: il motivo spiega il bisogno anche quando il candidato e' troppo caldo", () => {
+  const g = { ...pioggiaGap("scarpe", "Shoes", "Boots"), tipo: "posseduto_ma_inadatto",
+    candidato_scartato: "Blundstone", candidato_warmth: 3, candidato_wr: 1 };
+  const p = postiDi([g], { meteo: MITE }).find((p) => p.tipo === "Shoes")!;
+  assert.equal(p.nome, "Stivali");
+  assert.match(p.motivo!, /Blundstone/);
+  assert.match(p.motivo!, /pioggia/);
 });

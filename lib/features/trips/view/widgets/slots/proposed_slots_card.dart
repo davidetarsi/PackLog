@@ -10,7 +10,7 @@ import 'slot_focus.dart';
 import 'slot_pop.dart';
 
 /// Card dei proposti di PackLog in un gruppo: bordo col gradiente, fermo;
-/// in cima la scintilla e "Proposti da PackLog · tocca per mettere i tuoi".
+/// in cima la scintilla, "Suggeriti da PackLog" e il rapporto con l'inventario.
 ///
 /// Ogni riga ha la scintilla, il nome, ×N e la freccina; quando non si sta
 /// più sistemando ([sorting] falso) al posto della scintilla c'è la casella,
@@ -80,15 +80,28 @@ class ProposedSlotsCard extends StatelessWidget {
                 context.spacingXs,
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   PackLogSparkle(size: context.iconSizeSm),
                   SizedBox(width: context.spacingXs),
                   Expanded(
-                    child: Text(
-                      'trips.slots.proposed_header'.tr(),
-                      style: tt.labelLarge?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'trips.slots.proposed_header'.tr(),
+                          style: tt.labelLarge?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                        SizedBox(height: context.spacingXxs),
+                        Text(
+                          'trips.slots.proposed_inventory'.tr(),
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

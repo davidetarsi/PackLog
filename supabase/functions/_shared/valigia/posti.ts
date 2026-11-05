@@ -10,12 +10,12 @@ import { eAttivitaAcqua, RADICI_GIORNI_ACQUA_IN_PIU } from "./quantita.ts";
 import { caldoUnCapoAlGiorno, ha, occasioneFormale } from "./regole_capi.ts";
 import { attivitaPer, calore, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
   meteoDelGap, perQuestoArmadio, SOLO_SE_NELL_ARMADIO, soloElegante } from "./uscita.ts";
-import { NOMI_CATEGORIA, NOMI_FAMIGLIA, NOMI_SOTTOCATEGORIA, type NomePosto } from "./posti_nomi.ts";
+import { NOME_FOULARD_LEGGERO, NOMI_CATEGORIA, NOMI_FAMIGLIA, NOMI_SOTTOCATEGORIA, type NomePosto } from "./posti_nomi.ts";
 
 export type Livello = "importante" | "utile";
 export type Qualifica = "freddo" | "acqua" | "elegante";
 
-type Capo = { sub: string | null; categoria: string };
+type Capo = { sub: string | null; categoria: string; foulardLeggero?: boolean };
 
 /** Il nome tecnico da solo non rende necessario un capo per questo viaggio. */
 function daAttivita(sub: string | null, attivita: string[]): boolean {
@@ -31,8 +31,9 @@ const CATEGORIE_DEL_METEO = new Set(["Outerwear", "Shoes", "Accessory"]);
  *  freddo o la pioggia per giacche, scarpe e accessori. Il resto (magliette, maglioni, strato
  *  termico compresi) e' utile. */
 export function livelloPosto(g: Record<string, any>, capo: Capo, viaggioFreddo: boolean, attivita: string[] = []): Livello {
-  // La muta si noleggia quasi sempre sul posto: al massimo utile (il costume resta importante).
-  if (capo.sub === "Wetsuit") return "utile";
+  // Muta e ombrello non sono obblighi del viaggio; il solo mare non impone le scarpette.
+  if (capo.sub === "Wetsuit" || capo.sub === "Umbrella") return "utile";
+  if (capo.sub === "Water Shoes" && !ha(attivita, RADICI_GIORNI_ACQUA_IN_PIU)) return "utile";
   if (daAttivita(capo.sub, attivita)) return "importante";
   if (soloElegante(g) && (viaggioDiLavoro(attivita) || occasioneFormale(attivita))) return "importante";
   if (CATEGORIE_DEL_METEO.has(capo.categoria)) {
@@ -67,8 +68,8 @@ const maiuscola = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
  *  Per gli essenziali di base la categoria e' la famiglia ("intimo", "calzini", "notte", "igiene"). */
 export function nomePosto(capo: Capo, copie: number, qualifica: Qualifica | null, lingua: Lingua):
   { nome: string; aggiungi: string } {
-  const voce: NomePosto | undefined = (capo.sub && NOMI_SOTTOCATEGORIA[capo.sub]) || NOMI_CATEGORIA[capo.categoria] ||
-    NOMI_FAMIGLIA[capo.categoria];
+  const voce: NomePosto | undefined = capo.foulardLeggero ? NOME_FOULARD_LEGGERO :
+    (capo.sub && NOMI_SOTTOCATEGORIA[capo.sub]) || NOMI_CATEGORIA[capo.categoria] || NOMI_FAMIGLIA[capo.categoria];
   if (!voce) return lingua === "en" ? { nome: "Item", aggiungi: "Add yours" } : { nome: "Capo", aggiungi: "Aggiungi il tuo" };
   const q = voce.qualificabile ? qualifica : null;
   const plurale = copie > 1 || voce.soloPlurale ? 1 : 0;
@@ -128,8 +129,10 @@ interface Grezzo {
   origine: "gap" | "pezzi" | "famiglia";
   /** Solo per i mancanti: il gap chiede un capo elegante (soloElegante). */
   elegante?: boolean;
-  /** Necessario per le attivita' delle tappe di questo bisogno. */
+  /** Specifico per un'attivita': resta distinto dai capi del meteo anche quando e' utile. */
   daAttivita?: boolean;
+  /** Il tipo scelto prima del raggruppamento, per nominare le scarpe da pioggia. */
+  capoPioggia?: Capo;
   /** Solo per i mancanti: le tappe del gap (viaggi a piu' tappe), se il generatore le indica. */
   tappe?: string[];
   /** Il posto unico del meteo (unisciIlMeteo): non si somma ad altri posti dello stesso tipo. */
@@ -165,7 +168,9 @@ function unisciIlMeteo(grezzi: Grezzo[], lingua: Lingua): Grezzo[] {
     if (!delMeteo(p) || p.livello !== "importante") continue;
     const gia = gruppi.find((g) => g.capo.categoria === p.capo.categoria && compatibili(g, p));
     if (!gia) {
-      const nuovo = { ...p, tipo: p.capo.categoria, copie: 1, delMeteo: true, capo: { sub: null, categoria: p.capo.categoria } };
+      const nuovo = { ...p, tipo: p.capo.categoria, copie: 1, delMeteo: true,
+        capoPioggia: p.capo.categoria === "Shoes" ? p.capo : undefined,
+        capo: { sub: null, categoria: p.capo.categoria } };
       gruppi.push(nuovo);
       assegnati.set(p, nuovo);
     } else { unisciBisogni(gia, p, lingua); assegnati.set(p, gia); }
@@ -223,7 +228,8 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
       : capoDelGap(g, viaggioFreddo || (calore(g)?.[0] ?? 0) >= 3);
     const tipo = sub ?? categoria;
     if (!tipo) continue;
-    const capo = { sub, categoria };
+    const capo: Capo = { sub, categoria,
+      foulardLeggero: sub === "Scarf" && g.slot === "foulard" && (calore(g)?.[1] ?? 5) <= 2 };
     const proposta: Grezzo = {
       tipo, categoria: "vestiti", livello: livelloPosto(g, capo, viaggioFreddo, attivita),
       daAttivita: daAttivita(capo.sub, attivita),
@@ -327,7 +333,12 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
   const posti = [...uniti.values()]
     .sort((a, b) => Number(b.livello === "importante") - Number(a.livello === "importante"))
     .map((p): PostoApp => {
-      const { nome, aggiungi } = nomePosto(p.capo, p.copie, p.qualifica, lingua);
+      const scarpePioggia = p.delMeteo && p.qualifica === "acqua" && p.capoPioggia?.sub ? p.capoPioggia : null;
+      const { nome, aggiungi } = nomePosto(scarpePioggia ?? p.capo, p.copie, scarpePioggia ? null : p.qualifica, lingua);
+      const motivo = scarpePioggia && !/pioggia|rain/i.test(p.motivo ?? "")
+        ? [p.motivo, lingua === "en" ? "Choose a pair suited to the expected rain." :
+          "Scegli un paio adatto alla pioggia prevista."].filter(Boolean).join(" ")
+        : p.motivo;
       const fascia = p.bisogno ? calore(p.bisogno) : null;
       const requisiti = p.bisogno ? {
         ...(fascia ? { minWarmth: fascia[0], maxWarmth: fascia[1] } : {}),
@@ -341,7 +352,7 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
         fascia, requisiti?.formality ?? [], requisiti?.minWaterResistance ?? 0,
         requisiti?.activityTags ?? [], requisiti?.coverage ?? []])}`;
       return { id, tipo: p.tipo, categoria: p.categoria, livello: p.livello, nome, copie: p.copie,
-        motivo: p.motivo, aggiungi, ...(requisiti ? { requisiti } : {}) };
+        motivo, aggiungi, ...(requisiti ? { requisiti } : {}) };
     });
 
   const lavanderia = lavanderiaDelViaggio(viaggio, lingua);

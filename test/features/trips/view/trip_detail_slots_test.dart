@@ -286,8 +286,11 @@ void main() {
       );
       expect(find.text('Aggiungi la tua'), findsNWidgets(4));
       expect(find.text('Presa'), findsOneWidget);
+      expect(find.text('Suggeriti da PackLog'), findsOneWidget);
       expect(
-        find.text('Proposti da PackLog · tocca per mettere i tuoi'),
+        find.text(
+          'Nel tuo inventario mancano oggetti adatti o copie sufficienti.',
+        ),
         findsOneWidget,
       );
       // I proposti con le copie; finché si sistema niente caselle.
