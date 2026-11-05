@@ -7,10 +7,10 @@ test("contesto: il viaggio lungo conserva i quattordici giorni di autonomia", ()
     { giorni: 14, lavatrice: false, lavatriceEssenziali: false });
 });
 
-test("contesto: il bucato a mano del cammino vale per i vestiti, non per gli essenziali", () => {
+test("contesto: il bucato a mano del cammino vale anche per gli essenziali", () => {
   assert.deepEqual(normalizzaQuantitaViaggio({ giorni: 12, lavatrice: false,
     bagaglio: "zaino da 30 litri", attivita: ["cammino"] }),
-    { giorni: 12, lavatrice: true, lavatriceEssenziali: false });
+    { giorni: 12, lavatrice: true, lavatriceEssenziali: true });
 });
 
 test("contesto: le tappe non subiscono il tetto dei viaggi lunghi in una sola meta", () => {

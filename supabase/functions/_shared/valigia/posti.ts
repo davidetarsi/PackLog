@@ -1,3 +1,4 @@
+import { interoCammino, limitaProposteCammino } from "./cammino.ts";
 import { analizzaFabbisogni, copieResidue, copriConProposte, intersecaVincoli, vincoliCompatibili,
   type AnalisiFabbisogni } from "./fabbisogni.ts";
 // I posti della valigia dai mancanti del generatore: quanto e' importante un posto e come
@@ -9,7 +10,7 @@ import { eTrekking, interseca, parole, viaggioDiLavoro } from "./inject.ts";
 import { eAttivitaAcqua, RADICI_GIORNI_ACQUA_IN_PIU } from "./quantita.ts";
 import { caldoUnCapoAlGiorno, ha, occasioneFormale } from "./regole_capi.ts";
 import { attivitaPer, calore, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
-  meteoDelGap, perQuestoArmadio, SOLO_SE_NELL_ARMADIO, soloElegante } from "./uscita.ts";
+  meteoDelGap, perQuestoArmadio, SOLO_SE_NELL_ARMADIO, soloElegante, tettoSalvate } from "./uscita.ts";
 import { NOME_FOULARD_LEGGERO, NOMI_CATEGORIA, NOMI_FAMIGLIA, NOMI_SOTTOCATEGORIA, type NomePosto } from "./posti_nomi.ts";
 
 export type Livello = "importante" | "utile";
@@ -356,5 +357,5 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
 
   const lavanderia = lavanderiaDelViaggio(viaggio, lingua);
   if (lavanderia) informazioni.push({ codice: CODICE_LAVANDERIA, ...lavanderia });
-  return { posti, informazioni };
+  return { posti: interoCammino(viaggio) ? limitaProposteCammino(posti, valigia, (id) => tettoSalvate(salvate, id), armadio) : posti, informazioni };
 }

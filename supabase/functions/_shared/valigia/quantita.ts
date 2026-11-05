@@ -1,3 +1,4 @@
+import { famigliaCammino, BUDGET_CAMMINO } from "./cammino.ts";
 // Quantita' ed essenziali: deterministico, nessuna AI. Porting delle sezioni
 // "Quantita" e "porta sempre" di packlog_checklist_bench_48.py; il PERCHE' di
 // ogni numero e' commentato la'.
@@ -31,7 +32,7 @@ export const SOGLIA_COLLANT = 20.0;
 export const MAX_COLLANT = 3;
 
 export function essenzialiPerViaggio(items: Capo[], giorni: number, lavatrice: boolean,
-  tempMax: number | null = null): Essenziale[] {
+  tempMax: number | null = null, cammino = false): Essenziale[] {
   const out: Essenziale[] = [];
   const visti = new Set<string>();
   // Tipi non ancora coperti dalle copie dei capi gia' presi: {radice: pezzi che mancano}
@@ -39,7 +40,9 @@ export function essenzialiPerViaggio(items: Capo[], giorni: number, lavatrice: b
   const scoperti = new Map<string, number>();
   for (const g of items) {
     if (!g.sempre_in_valigia) continue;
-    const r = radiceSempre(g.name) || RADICE_DA_SOTTOCAT[g.sub_fine] || null;
+    const radice = radiceSempre(g.name) || RADICE_DA_SOTTOCAT[g.sub_fine] || null;
+    const famiglia = famigliaCammino(g.sub_fine, radice ?? "");
+    const r = cammino && famiglia === "intimo" ? "mutand" : cammino && famiglia === "calzini" ? "calz" : radice;
     if (r === "collant" && (tempMax == null || tempMax > SOGLIA_COLLANT)) continue;
     // una sola voce per tipo; con le copie possedute il tipo continua sul capo dopo finche' serve
     if (r != null && visti.has(r) && !scoperti.has(r)) continue;
@@ -67,6 +70,7 @@ export function essenzialiPerViaggio(items: Capo[], giorni: number, lavatrice: b
       qta = Math.min(qta, giorni + TETTO_ESSENZIALI_EXTRA);
       if (r === "collant") qta = Math.min(ceilDiv(giorni, usi), MAX_COLLANT);
     }
+    if (cammino && famiglia && BUDGET_CAMMINO[famiglia]) qta = Math.min(qta, BUDGET_CAMMINO[famiglia]);
     if (r && g.copie != null && qta > g.copie) { scoperti.set(r, qta - g.copie); qta = g.copie; }
     out.push({ item: g.name, item_id: g.id, radice: r || "categoria", quantita: qta, bulk: g.bulk || 1 });
   }

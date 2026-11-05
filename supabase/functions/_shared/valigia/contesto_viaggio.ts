@@ -1,20 +1,23 @@
+import { eCammino } from "./cammino.ts";
 // Il contesto del viaggio comune ai capi posseduti e ai bisogni residui.
 import type { Luogo, Tappa } from "../clima/meteo.ts";
 import * as K from "./costanti.ts";
 import { lavanderiaPresunta } from "./dopo.ts";
 import { eTrekking, type Record_ } from "./inject.ts";
 import { ordina } from "./py.ts";
-import { camminoAPiedi } from "./regole_capi.ts";
 
 export function normalizzaQuantitaViaggio(a: {
   giorni: number; lavatrice: boolean; attivita?: string[] | null; bagaglio?: string;
   lavatrice_essenziali?: boolean | null;
+  cammino_essenziali?: boolean;
 }): { giorni: number; lavatrice: boolean; lavatriceEssenziali: boolean } {
-  const giorni = a.lavatrice_essenziali == null && lavanderiaPresunta(a.giorni, a.lavatrice)
+  const cammino = eCammino(a.attivita);
+  const giorni = !cammino && a.lavatrice_essenziali == null && lavanderiaPresunta(a.giorni, a.lavatrice)
     ? K.GIORNI_LAVANDERIA : a.giorni;
-  let lavatrice = a.lavatrice;
-  if (K.CAMMINO_LAVA_A_MANO && camminoAPiedi(a.attivita, a.bagaglio ?? "", giorni)) lavatrice = true;
-  return { giorni, lavatrice, lavatriceEssenziali: a.lavatrice_essenziali == null ? a.lavatrice : a.lavatrice_essenziali };
+  const lavatrice = a.lavatrice || cammino;
+  const lavatriceEssenziali = (a.cammino_essenziali ?? cammino) ||
+    (a.lavatrice_essenziali == null ? a.lavatrice : a.lavatrice_essenziali);
+  return { giorni, lavatrice, lavatriceEssenziali };
 }
 
 export function ordinaTappe(perTappa: Record_[]): Record_[] {
@@ -30,7 +33,7 @@ export function preparaContestoTappe(sc: Record_, perTappa: Record_[], bagaglio 
   const ordinate = ordinaTappe(perTappa), base = ordinate[0];
   let attivitaBase: string[] = [...(sc.attivita || []), ...(base.attivita || [])];
   const trekkingDiTappa = K.SLOT_TREKKING && perTappa.length > 1 && !eTrekking(sc.attivita) && eTrekking(base.attivita);
-  if (trekkingDiTappa) attivitaBase = attivitaBase.filter((x) => !eTrekking([x]));
+  if (trekkingDiTappa) attivitaBase = attivitaBase.filter((x) => eCammino([x]) || !eTrekking([x]));
   const lavatriceEssenziali = Boolean(sc.lavatrice);
   const lavatriceTappe = normalizzaQuantitaViaggio({ giorni, lavatrice: lavatriceEssenziali,
     attivita: sc.attivita, bagaglio, lavatrice_essenziali: lavatriceEssenziali }).lavatrice;

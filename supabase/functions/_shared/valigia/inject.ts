@@ -1,3 +1,4 @@
+import { eCammino } from "./cammino.ts";
 // Gli slot che impone il codice: attivita', codice di abbigliamento, clima.
 // Porting delle funzioni inject_* e vicine di packlog_checklist_bench_48.py;
 // il PERCHE' di ogni regola e' commentato la'. Gli slot sono oggetti liberi come
@@ -64,7 +65,7 @@ export function warmthCeiling(tempMax: number | null | undefined): number {
 }
 
 export function eTrekking(attivita: (string | null)[] | null | undefined): boolean {
-  return (attivita ?? []).some((a) => {
+  return eCammino(attivita) || (attivita ?? []).some((a) => {
     const tecnica = lw(a).replace(/\bescursion\w*\s+legger[aeio]\b/g, "");
     return K.RADICI_TREKKING.some((r: string) => tecnica.includes(r));
   });
@@ -172,7 +173,7 @@ export function capospallaInTracolla(capi: Record_[], capienza: number | null | 
 export function riverbero(attNorm: Set<string>, classi: any = null, quotaM: number | null = null): boolean {
   if (interseca(attNorm, K.ATTIVITA_RIVERBERO)) return true;
   // Il riverbero riguarda anche un'escursione leggera svolta in alta quota.
-  const inNatura = [...attNorm].some((a) => K.RADICI_TREKKING.some((r: string) => lw(a).includes(r)));
+  const inNatura = eCammino([...attNorm]) || [...attNorm].some((a) => K.RADICI_TREKKING.some((r: string) => lw(a).includes(r)));
   if (K.SOGLIA_QUOTA_RIVERBERO != null && quotaM != null && quotaM >= K.SOGLIA_QUOTA_RIVERBERO && inNatura) {
     return true;
   }
@@ -325,7 +326,7 @@ export function injectFabbisogno(slots: Slot[], tempMin: number | null | undefin
     ];
     for (const [nome, cat, subs, tags, freq, extra] of lista) {
       const largo = nome === K.SLOT_MAGLIETTA_TECNICA || !serateCurate(attivita, classi);
-      const orientabili = slots.filter((s) => s.category === cat && interseca(insieme(s.subCategories || []), subs) &&
+      const orientabili = slots.filter((s) => !s._riposo_cammino && s.category === cat && interseca(insieme(s.subCategories || []), subs) &&
         (!vero(s.formality) || (largo && s.formality.includes("Casual")) ||
           [...insieme(s.formality)].every((f) => f === "Casual")));
       if (orientabili.length) {
@@ -344,7 +345,7 @@ export function injectFabbisogno(slots: Slot[], tempMin: number | null | undefin
     }
   }
 
-  if (giorni != null && giorni >= K.GIORNI_SECONDE_SCARPE && capienza != null && capienza > 30) {
+  if (!eCammino(attivita) && giorni != null && giorni >= K.GIORNI_SECONDE_SCARPE && capienza != null && capienza > 30) {
     if (slots.filter((s) => s.category === "Shoes").length < 2) {
       slots.push(nuovo("calzature di ricambio", "Shoes", ["Sneakers", "Loafers", "Boots", "Dress Shoes", "Sandals"],
         { frequency: "once", reason: `${giorni} giorni: un secondo paio di scarpe` }));
@@ -454,6 +455,11 @@ export function injectFabbisogno(slots: Slot[], tempMin: number | null | undefin
   }
 
   const ciabatte = insieme(K.SOTTOCAT_CIABATTE);
+  if (eCammino(attivita)) {
+    slots.push(nuovo("ciabatte per il riposo", "Shoes", ["Flip-Flops", "Sandals"], { frequency: "once",
+      _riposo_cammino: true, reason: "dopo il cammino: ciabatte per il riposo" }));
+  }
+
   if (K.CIABATTE_IN_ACQUA && eAttivitaAcqua(attivita || []) && (tempMax == null || tempMax >= K.SOGLIA_CALZATURE) &&
     !(capienza != null && capienza <= 8) &&
     !slots.some((s) => s.category === "Shoes" && vero(s.subCategories) && sottoinsieme(s.subCategories, ciabatte))) {
