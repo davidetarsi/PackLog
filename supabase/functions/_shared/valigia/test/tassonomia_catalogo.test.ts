@@ -21,7 +21,12 @@ test("un tipo nuovo con un genitore: categoria, generatore e prompt", (t) => {
     data: { group: "Outerwear", parent: "Down Jacket", isNew: true, hint: "smanicato imbottito" } })));
   assert.equal(tassonomia.categoriaDi("Gilet imbottito"), "Outerwear");
   assert.equal(tassonomia.perIlGeneratore("Gilet imbottito"), "Down Jacket");
-  assert.match(promptScan(), /"Gilet imbottito" \(smanicato imbottito\)/);
+  const tipi = promptScan().split("\n").filter((riga) => riga.startsWith("{"))
+    .map((riga) => JSON.parse(riga));
+  assert.deepEqual(tipi.find((tipo) => tipo.subCategory === "Gilet imbottito"), {
+    subCategory: "Gilet imbottito", category: "Outerwear",
+    names: ["Gilet imbottito", "Padded gilet"], description: "smanicato imbottito",
+  });
   assert.equal(tassonomia.SOTTOCATEGORIE.Outerwear.at(-1), tassonomia.ALTRO);
 });
 

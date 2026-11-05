@@ -7,6 +7,8 @@ import {
 } from "../analisi.ts";
 import { domandeJev, MAX_CAPI_SCAN, promptNome, promptScan } from "../scheda.ts";
 import type { ChiediJev } from "../../valigia/jev.ts";
+import { CATALOGO_BASE } from "../../catalogo/catalogo.ts";
+import { applicaCatalogo } from "../../catalogo/applica.ts";
 
 const pile = { name: "pile blu", category: "Outerwear", subCategory: "Fleece", warmth: 3, formality: "Casual",
   activityTags: ["Hiking"], waterResistance: 0, bulk: 2 };
@@ -38,6 +40,30 @@ test("dal nome: prompt col nome pulito, categoria dalla sottocategoria, dubbio d
   assert.equal(r.items[0].app_category, "vestiti");
   assert.deepEqual(r.items[0].dubbi, [{ campo: "warmth", valore: 3, jev: 4, sicurezza: 0.95 }]);
   assert.deepEqual(r.note_tecniche, []);
+});
+
+test("nome e foto: i tipi mostrano le etichette del catalogo corrente e nascondono quelli disattivati", async () => {
+  const catalogo = structuredClone(CATALOGO_BASE);
+  const tipo = catalogo.voci.find((v) => v.domain === "clothing_type" && v.id === "Fleece")!;
+  tipo.label = { it: "Pile da montagna", en: "Mountain fleece" };
+  const muta = catalogo.voci.find((v) => v.domain === "clothing_type" && v.id === "Wetsuit")!;
+  muta.active = false;
+  applicaCatalogo(catalogo);
+  try {
+    const chiamate: unknown[][] = [];
+    await schedaDaNome("Pile leggero", { modello: modelloFinto([JSON.stringify(pile)], chiamate), jev: null });
+    await schedeDaFoto("QUJD", { modello: modelloFinto([JSON.stringify([pile])], chiamate), jev: null });
+    const prompt = [chiamate[0][0] as string,
+      (chiamate[1][0] as { type: string; text?: string }[]).find((b) => b.type === "text")!.text!];
+    for (const testo of prompt) {
+      assert.ok(testo.includes('"Pile da montagna"'));
+      assert.ok(testo.includes('"Mountain fleece"'));
+      assert.ok(testo.includes('"Fleece"'));
+      assert.ok(!testo.includes('"Wetsuit"'));
+    }
+  } finally {
+    applicaCatalogo(CATALOGO_BASE);
+  }
 });
 
 test("dal nome: una risposta illeggibile si richiede una volta, due no", async () => {

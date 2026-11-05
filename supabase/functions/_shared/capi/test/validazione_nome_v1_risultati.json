@@ -1,0 +1,900 @@
+{
+  "cases_sha256": "63f10e45dfb5308df6abfb7087eb39d9735fc19ef4c45c0f0030b078bd718a39",
+  "baseline_ref": "d4947fbab5958336d974a77a8c85003f3769f311",
+  "candidate_ref": "91068c10576a127a622995f7a08b052d433cb5c6",
+  "variants": {
+    "baseline": {
+      "total": 32,
+      "passed": 28,
+      "type_passed": 29,
+      "warmth_total": 21,
+      "warmth_passed": 19,
+      "water_total": 6,
+      "water_passed": 6,
+      "it_passed": 13,
+      "en_passed": 15,
+      "request_errors": 0,
+      "input_tokens": 102538,
+      "output_tokens": 4250,
+      "cache_read_input_tokens": 0,
+      "models": [
+        "claude-haiku-5-5"
+      ]
+    },
+    "candidate": {
+      "total": 32,
+      "passed": 32,
+      "type_passed": 32,
+      "warmth_total": 21,
+      "warmth_passed": 21,
+      "water_total": 6,
+      "water_passed": 6,
+      "it_passed": 16,
+      "en_passed": 16,
+      "request_errors": 0,
+      "input_tokens": 168746,
+      "output_tokens": 4253,
+      "cache_read_input_tokens": 0,
+      "models": [
+        "claude-haiku-5-5"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "nome": "Bikini a triangolo",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Lower Body",
+        "subCategory": "Swimwear",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Mutino da surf in neoprene",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Lower Body",
+        "subCategory": "Wetsuit",
+        "warmth": 3,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Salopette da snowboard",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": false,
+      "errors": [
+        "category",
+        "subCategory",
+        "warmth"
+      ],
+      "actual": {
+        "category": "Full Body",
+        "subCategory": "Other",
+        "warmth": 5,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Giacca tecnica da sci",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Outerwear",
+        "subCategory": "Ski Jacket",
+        "warmth": 5,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Pile pesante con zip",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Fleece",
+        "warmth": 4,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Calze di cotone",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": false,
+      "errors": [
+        "warmth"
+      ],
+      "actual": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 2,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Calzettoni termici per escursioni",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 4,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Maglia intima termica",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Thermal Top",
+        "warmth": 3,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Camicia in lino bianca",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Shirt",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Abito lungo da cerimonia",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Full Body",
+        "subCategory": "Dress",
+        "warmth": 2,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Scarpe da scoglio",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Shoes",
+        "subCategory": "Water Shoes",
+        "warmth": 1,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Zaino da escursione",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Accessory",
+        "subCategory": "Bag",
+        "warmth": 1,
+        "waterResistance": 1
+      }
+    },
+    {
+      "nome": "Ombrello pieghevole",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Accessory",
+        "subCategory": "Umbrella",
+        "warmth": 1,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Grembiule da cucina",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": false,
+      "errors": [
+        "subCategory",
+        "category"
+      ],
+      "actual": {
+        "category": "Not Clothing",
+        "subCategory": "N/A",
+        "warmth": null,
+        "waterResistance": null
+      }
+    },
+    {
+      "nome": "Caricabatterie USB-C",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Not Clothing",
+        "subCategory": "N/A",
+        "warmth": null,
+        "waterResistance": null
+      }
+    },
+    {
+      "nome": "Spazzolino da denti",
+      "lang": "it",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Not Clothing",
+        "subCategory": "N/A",
+        "warmth": null,
+        "waterResistance": null
+      }
+    },
+    {
+      "nome": "Men's swimming trunks",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Lower Body",
+        "subCategory": "Swimwear",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Full-length diving wetsuit",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": false,
+      "errors": [
+        "category",
+        "subCategory"
+      ],
+      "actual": {
+        "category": "Outerwear",
+        "subCategory": "Other",
+        "warmth": 3,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "One-piece snowsuit for skiing",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Outerwear",
+        "subCategory": "Ski Suit",
+        "warmth": 5,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Lightweight fleece pullover",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Fleece",
+        "warmth": 3,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Ankle socks",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Merino wool socks",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 4,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Long-sleeved polo shirt",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Polo",
+        "warmth": 3,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Black leather belt",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Accessory",
+        "subCategory": "Belt",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Hooded sweatshirt",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Hoodie",
+        "warmth": 3,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Thermal base-layer bottoms",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Lower Body",
+        "subCategory": "Thermal Bottoms",
+        "warmth": 4,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Waterproof hiking boots",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Shoes",
+        "subCategory": "Hiking Boots",
+        "warmth": 4,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Silk evening dress",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Full Body",
+        "subCategory": "Dress",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Windproof softshell jacket",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Outerwear",
+        "subCategory": "Windbreaker",
+        "warmth": 3,
+        "waterResistance": 1
+      }
+    },
+    {
+      "nome": "Long laboratory coat",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Full Body",
+        "subCategory": "Other",
+        "warmth": 2,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Laptop computer",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Not Clothing",
+        "subCategory": "N/A",
+        "warmth": null,
+        "waterResistance": null
+      }
+    },
+    {
+      "nome": "Passport",
+      "lang": "en",
+      "variant": "baseline",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Not Clothing",
+        "subCategory": "N/A",
+        "warmth": null,
+        "waterResistance": null
+      }
+    },
+    {
+      "nome": "Bikini a triangolo",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Lower Body",
+        "subCategory": "Swimwear",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Mutino da surf in neoprene",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Lower Body",
+        "subCategory": "Wetsuit",
+        "warmth": 3,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Salopette da snowboard",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Lower Body",
+        "subCategory": "Ski Pants",
+        "warmth": 4,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Giacca tecnica da sci",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Outerwear",
+        "subCategory": "Ski Jacket",
+        "warmth": 5,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Pile pesante con zip",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Fleece",
+        "warmth": 4,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Calze di cotone",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Calzettoni termici per escursioni",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 4,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Maglia intima termica",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Thermal Top",
+        "warmth": 3,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Camicia in lino bianca",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Shirt",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Abito lungo da cerimonia",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Full Body",
+        "subCategory": "Dress",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Scarpe da scoglio",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Shoes",
+        "subCategory": "Water Shoes",
+        "warmth": 1,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Zaino da escursione",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Accessory",
+        "subCategory": "Bag",
+        "warmth": 1,
+        "waterResistance": 1
+      }
+    },
+    {
+      "nome": "Ombrello pieghevole",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Accessory",
+        "subCategory": "Umbrella",
+        "warmth": 1,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Grembiule da cucina",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Accessory",
+        "subCategory": "Other",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Caricabatterie USB-C",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Not Clothing",
+        "subCategory": "N/A",
+        "warmth": null,
+        "waterResistance": null
+      }
+    },
+    {
+      "nome": "Spazzolino da denti",
+      "lang": "it",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Not Clothing",
+        "subCategory": "N/A",
+        "warmth": null,
+        "waterResistance": null
+      }
+    },
+    {
+      "nome": "Men's swimming trunks",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Lower Body",
+        "subCategory": "Swimwear",
+        "warmth": 1,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Full-length diving wetsuit",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Lower Body",
+        "subCategory": "Wetsuit",
+        "warmth": 2,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "One-piece snowsuit for skiing",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Outerwear",
+        "subCategory": "Ski Suit",
+        "warmth": 5,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Lightweight fleece pullover",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Fleece",
+        "warmth": 3,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Ankle socks",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Merino wool socks",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Essentials",
+        "subCategory": "Socks",
+        "warmth": 4,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Long-sleeved polo shirt",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Polo",
+        "warmth": 3,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Black leather belt",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Accessory",
+        "subCategory": "Belt",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Hooded sweatshirt",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Upper Body",
+        "subCategory": "Hoodie",
+        "warmth": 3,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Thermal base-layer bottoms",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Lower Body",
+        "subCategory": "Thermal Bottoms",
+        "warmth": 4,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Waterproof hiking boots",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Shoes",
+        "subCategory": "Hiking Boots",
+        "warmth": 4,
+        "waterResistance": 2
+      }
+    },
+    {
+      "nome": "Silk evening dress",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Full Body",
+        "subCategory": "Dress",
+        "warmth": 1,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Windproof softshell jacket",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Outerwear",
+        "subCategory": "Windbreaker",
+        "warmth": 3,
+        "waterResistance": 1
+      }
+    },
+    {
+      "nome": "Long laboratory coat",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Outerwear",
+        "subCategory": "Coat",
+        "warmth": 2,
+        "waterResistance": 0
+      }
+    },
+    {
+      "nome": "Laptop computer",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Not Clothing",
+        "subCategory": "N/A",
+        "warmth": null,
+        "waterResistance": null
+      }
+    },
+    {
+      "nome": "Passport",
+      "lang": "en",
+      "variant": "candidate",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "category": "Not Clothing",
+        "subCategory": "N/A",
+        "warmth": null,
+        "waterResistance": null
+      }
+    }
+  ],
+  "changes": {
+    "improved": [
+      "Salopette da snowboard",
+      "Calze di cotone",
+      "Grembiule da cucina",
+      "Full-length diving wetsuit"
+    ],
+    "regressed": [],
+    "still_failed": []
+  },
+  "raw_results_sha256": "06c81ee435c6f1d7af6c2e6f58140572f2eb34e0b2f349733f73391dd68af51e"
+}
