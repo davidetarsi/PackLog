@@ -274,6 +274,7 @@
     "slots": {
       "important": "Important",
       "to_buy": "To buy",
+      "not_useful": "Not useful for this trip",
       "got_it": "Got it",
       "proposed_header": "Suggested by PackLog",
       "proposed_inventory": "Your inventory is missing suitable items or enough copies.",

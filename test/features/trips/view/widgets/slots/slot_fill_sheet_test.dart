@@ -196,6 +196,7 @@ void main() {
     await pumpSheet(tester, _slot(copies: 2));
 
     await send(tester, '3 sneakers nere');
+    await tester.pump(AppMotion.slow + AppMotion.slotSheetCloseDelay);
     await tester.pumpAndSettle();
 
     expect(sheet, findsNothing);

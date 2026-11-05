@@ -94,6 +94,7 @@ class ProposedSlotsCard extends StatelessWidget {
                   sorting: sorting,
                   onTap: () => onOpen(slot),
                   onToggle: () => onToggle(slot),
+                  onDismiss: remove == null ? null : () => remove(slot),
                 ),
               ),
             SizedBox(height: context.spacingXs),

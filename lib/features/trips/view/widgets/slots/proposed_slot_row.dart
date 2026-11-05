@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_checkbox.dart';
+import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../../../shared/widgets/packlog_gradient.dart';
 import '../../../model/ai_packing.dart';
 import 'slot_copies_label.dart';
@@ -59,12 +60,14 @@ class ProposedSlotRow extends StatelessWidget {
     required this.sorting,
     required this.onTap,
     required this.onToggle,
+    this.onDismiss,
   });
 
   final AiSlot slot;
   final bool sorting;
   final VoidCallback onTap;
   final VoidCallback onToggle;
+  final VoidCallback? onDismiss;
 
   @override
   Widget build(BuildContext context) {
@@ -129,11 +132,20 @@ class ProposedSlotRow extends StatelessWidget {
                 ),
               ],
               SizedBox(width: context.spacingXs),
-              Icon(
-                Icons.chevron_right,
-                size: context.iconSizeMd,
-                color: cs.onSurfaceVariant,
-              ),
+              if (onDismiss != null)
+                DsIconButton(
+                  key: Key('slot_not_useful_${slot.id}'),
+                  icon: Icons.close,
+                  tooltip: 'trips.slots.not_useful'.tr(),
+                  onPressed: onDismiss,
+                  flushEnd: true,
+                )
+              else
+                Icon(
+                  Icons.chevron_right,
+                  size: context.iconSizeMd,
+                  color: cs.onSurfaceVariant,
+                ),
             ],
           ),
         ),
