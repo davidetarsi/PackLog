@@ -77,12 +77,12 @@ Traduzioni in IT/EN, numeri con placeholder e plurali. Non concatenare frasi né
 
 **Interface:** conservare `showSlotFillSheet(..., onFill: Future<void> Function(TripItem), onToBuy: VoidCallback)`. Usare il provider inventario della casa esistente, RapidFireInput.onTextChanged, parseCopies e matchesSearch; nessuna nuova classificazione.
 
-- [ ] Test RED in `test/features/trips/view/widgets/slots/slot_fill_sheet_test.dart`: ricerca chiusa; scrivere `2 T-shirt bianca`, aprirla e trovare il nome senza copie con risultati visibili; ricerca poi modificabile. Coprire anche la sintassi copie in coda già supportata dall'app.
-- [ ] Test RED: stesso nome mostra l'avviso esatto, invio ancora consentito e nuovo ID senza merge. Un esistente selezionato mantiene ID/record sorgente; copie già nel trip non riutilizzabili. Residuo 3 + aggiunta 2 → residuo 1.
-- [ ] Test RED: ultima aggiunta lascia aperto il foglio con conferma e Chiudi, senza timer o Riapri; chiudere prima/dopo conserva le scritture riuscite. Un errore di salvataggio non scala copie né mostra completamento.
-- [ ] Applicare struttura e testi dello Spec; ricerca facoltativa con selezione manuale, nessuna promessa di adeguatezza. Conservare il percorso Rapid Fire inventario→viaggio e la quantità reale creata; non tagliare silenziosamente copie eccedenti il residuo.
-- [ ] Rimuovere la scrittura anticipata che toglie toBuy in openSlot. Aprire/chiudere non modifica lo stato; aggiunta parziale conserva il residuo da comprare.
-- [ ] GREEN: test del foglio, `trip_detail_slot_fill_test.dart`, provider trip/to-buy; test Rapid Fire se modificato. Analyze/format, review e commit.
+- [x] Test RED in `test/features/trips/view/widgets/slots/slot_fill_sheet_test.dart`: ricerca chiusa; scrivere `2 T-shirt bianca`, aprirla e trovare il nome senza copie con risultati visibili; ricerca poi modificabile. Coprire anche la sintassi copie in coda già supportata dall'app.
+- [x] Test RED: stesso nome mostra l'avviso esatto, invio ancora consentito e nuovo ID senza merge. Un esistente selezionato mantiene ID/record sorgente; copie già nel trip non riutilizzabili. Residuo 3 + aggiunta 2 → residuo 1.
+- [x] Test RED: ultima aggiunta lascia aperto il foglio con conferma e Chiudi, senza timer o Riapri; chiudere prima/dopo conserva le scritture riuscite. Un errore di salvataggio non scala copie né mostra completamento.
+- [x] Applicare struttura e testi dello Spec; ricerca facoltativa con selezione manuale, nessuna promessa di adeguatezza. Conservare il percorso Rapid Fire inventario→viaggio e la quantità reale creata; non tagliare silenziosamente copie eccedenti il residuo.
+- [x] Rimuovere la scrittura anticipata che toglie toBuy in openSlot. Aprire/chiudere non modifica lo stato; aggiunta parziale conserva il residuo da comprare.
+- [x] GREEN: test del foglio, `trip_detail_slot_fill_test.dart`, provider trip/to-buy; test Rapid Fire se modificato. Analyze/format, review e commit.
 
 ### Task 3: Pagina principale e necessità dedicate
 

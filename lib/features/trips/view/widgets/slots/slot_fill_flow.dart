@@ -34,26 +34,14 @@ mixin TripSlotFill on TripSlotEdits {
       AppSnackBar.showInfo(context, 'trips.slots.no_house'.tr());
       return;
     }
-    // "Presa" su una proposta da comprare: torna nella valigia, in cima ai
-    // proposti, e il foglio si apre già con il posto aggiornato.
     final wasToBuy = slot.toBuy;
-    var shown = slot;
-    if (wasToBuy && slot.level == AiSlotLevel.useful) {
-      shown = slot.copyWith(toBuy: false);
-      unawaited(
-        updateSlot(
-          ref.read(tripNotifierProvider.notifier),
-          slot,
-          (s) => s.copyWith(toBuy: false),
-        ),
-      );
-    }
     unawaited(
       showSlotFillSheet(
         context,
-        slot: shown,
+        slot: slot,
         houseId: houseId,
-        onFill: (item) => _fillSlot(shown, item, bought: wasToBuy),
+        tripId: tripId,
+        onFill: (item) => _fillSlot(slot, item, bought: wasToBuy),
         onToBuy: () => unawaited(markSlotToBuy(slot, from: 'sheet')),
       ),
     );

@@ -25,7 +25,6 @@ import 'package:pack_log/features/trips/view/widgets/slots/slot_fill_sheet.dart'
 import 'package:pack_log/features/trips/view/widgets/slots/slot_widgets.dart';
 import 'package:pack_log/features/trips/view/widgets/slots/slots_section.dart';
 import 'package:pack_log/features/trips/view/widgets/slots/trip_items_card.dart';
-import 'package:pack_log/shared/theme/app_motion.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
@@ -225,13 +224,6 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Fa passare l'entrata della riga e l'attesa prima della chiusura
-  /// automatica.
-  Future<void> waitAutoClose(WidgetTester tester) async {
-    await tester.pump(AppMotion.slow + AppMotion.slotSheetCloseDelay);
-    await tester.pumpAndSettle();
-  }
-
   TripModel lastSaved() =>
       verify(() => tripRepo.updateTrip(captureAny())).captured.last
           as TripModel;
@@ -247,7 +239,12 @@ void main() {
 
       expect(sheet, findsOneWidget);
       expect(find.text('Magliette ×5'), findsOneWidget);
-      expect(find.textContaining('PackLog ne propone 5'), findsOneWidget);
+      expect(
+        find.text(
+          'La quantità che aggiungi viene scalata da quella richiesta. Puoi segnare da comprare ciò che manca.',
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Es. 2 t-shirt nere'), findsOneWidget);
       expect(find.byType(RapidFireInput), findsOneWidget);
       expect(find.byKey(const Key('slot_sheet_to_buy')), findsOneWidget);
@@ -429,7 +426,7 @@ void main() {
       expect(inProposed(find.text('×3')), findsNWidgets(2));
     });
 
-    testWidgets('"5 t-shirt" su ×3: il foglio si chiude da solo, il posto '
+    testWidgets('"5 t-shirt" su ×3: il foglio resta e mostra completamento, '
         'sparisce, l\'oggetto ha 5 copie', (tester) async {
       await pumpDetail(tester, _trip(magliette: 3));
       await openMagliette(tester);
@@ -439,7 +436,11 @@ void main() {
       await tester.tap(find.byIcon(Icons.arrow_upward));
       await tester.pump();
       expect(sheet, findsOneWidget);
-      await waitAutoClose(tester);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Hai aggiunto tutte le copie richieste.'),
+        findsOneWidget,
+      );
 
       final saved = lastSaved();
       expect(saved.items.single.quantity, 5);
@@ -449,6 +450,9 @@ void main() {
             .remaining,
         0,
       );
+      expect(sheet, findsOneWidget);
+      await tester.tap(find.byKey(const Key('slot_sheet_done')));
+      await tester.pumpAndSettle();
       expect(sheet, findsNothing);
       expect(inProposed(find.text('Magliette')), findsNothing);
     });
@@ -501,10 +505,8 @@ void main() {
       expectEvent('slot_bought', {'level': 'important'}, 1);
     });
 
-    testWidgets('?slot= su un proposto da comprare: il foglio riceve il '
-        'posto già tornato in valigia, e il riempimento è slot_bought', (
-      tester,
-    ) async {
+    testWidgets('?slot= su un proposto da comprare: aprire non lo modifica, '
+        'e il riempimento è slot_bought', (tester) async {
       final trip = _trip();
       final slots = [
         for (final s in trip.aiResult!.slots!)
@@ -517,12 +519,19 @@ void main() {
       );
 
       expect(sheet, findsOneWidget);
-      expect(tester.widget<SlotFillSheet>(sheet).slot.toBuy, isFalse);
-      expect(find.byKey(const Key('slot_sheet_to_buy')), findsOneWidget);
+      expect(tester.widget<SlotFillSheet>(sheet).slot.toBuy, isTrue);
+      expect(find.byKey(const Key('slot_sheet_to_buy')), findsNothing);
+      verifyNever(() => tripRepo.updateTrip(any()));
 
       await send(tester, 'Camicia blu');
 
       expectEvent('slot_bought', {'level': 'useful'}, 1);
+      final saved = lastSaved();
+      final slot = saved.aiResult!.slots!.firstWhere(
+        (s) => s.id == 'u-magliette',
+      );
+      expect(slot.remaining, 4);
+      expect(slot.toBuy, isTrue);
     });
 
     testWidgets('?slot= (dalla vista Da comprare) e un riempimento: '

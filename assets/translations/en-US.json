@@ -286,7 +286,17 @@
       "removed": "Removed {}",
       "no_house": "The departure home no longer exists",
       "rapid_fire_hint": "e.g. 2 black t-shirts",
-      "open_hint": "PackLog suggests {}. Write below the ones you actually have, several at once too («2 black t-shirts»): they take their place."
+      "open_hint": "The quantity you add is subtracted from the amount needed. You can mark anything missing as to buy.",
+      "new_item_hint": "Add a new item. It will be saved to your inventory and added to your suitcase.",
+      "search_inventory": "Search your inventory",
+      "search_suitability": "Make sure the item is suitable for this trip.",
+      "items_found": "Items found",
+      "added_title": "Added to the suitcase",
+      "add": "Add",
+      "no_inventory_match": "No item with this name in your inventory.",
+      "duplicate_name": "An item with this name is already in your inventory.",
+      "completed": "You’ve added all the requested items.",
+      "close": "Close"
     },
     "pack": {
       "title": "Pack your suitcase",
