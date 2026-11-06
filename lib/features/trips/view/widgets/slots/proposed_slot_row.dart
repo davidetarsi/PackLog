@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_checkbox.dart';
 import '../../../../../shared/widgets/ds_icon_button.dart';
-import '../../../../../shared/widgets/packlog_gradient.dart';
 import '../../../model/ai_packing.dart';
 import 'slot_copies_label.dart';
 
@@ -51,7 +50,7 @@ class SwipeableSlotRow extends StatelessWidget {
   }
 }
 
-/// Una riga dei proposti: scintilla o casella, nome, "da comprare", ×N e
+/// Una riga dei proposti: rimozione, nome, ×N e
 /// la freccina; il tocco chiama [onTap].
 class ProposedSlotRow extends StatelessWidget {
   const ProposedSlotRow({
@@ -90,14 +89,16 @@ class ProposedSlotRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              if (sorting)
-                SizedBox.square(
-                  dimension: kMinInteractiveDimension,
-                  child: Center(
-                    child: PackLogSparkle(size: context.iconSizeSm),
-                  ),
+              if (onDismiss != null)
+                DsIconButton(
+                  key: Key('slot_not_useful_${slot.id}'),
+                  icon: Icons.close,
+                  tooltip: 'trips.slots.not_useful'.tr(),
+                  onPressed: onDismiss,
                 )
               else
+                SizedBox(width: context.spacingSm),
+              if (!sorting)
                 DsCheckbox(value: slot.checked, onChanged: (_) => onToggle()),
               SizedBox(width: context.spacingXs),
               Expanded(
@@ -114,13 +115,6 @@ class ProposedSlotRow extends StatelessWidget {
                         decoration: packed ? TextDecoration.lineThrough : null,
                       ),
                     ),
-                    if (slot.toBuy)
-                      Text(
-                        'trips.slots.to_buy'.tr(),
-                        style: tt.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -137,14 +131,6 @@ class ProposedSlotRow extends StatelessWidget {
                 size: context.iconSizeMd,
                 color: cs.onSurfaceVariant,
               ),
-              if (onDismiss != null)
-                DsIconButton(
-                  key: Key('slot_not_useful_${slot.id}'),
-                  icon: Icons.close,
-                  tooltip: 'trips.slots.not_useful'.tr(),
-                  onPressed: onDismiss,
-                  flushEnd: true,
-                ),
             ],
           ),
         ),

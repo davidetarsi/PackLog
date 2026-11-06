@@ -29,12 +29,15 @@ class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 class MockTripLifecycleService extends Mock implements TripLifecycleService {}
 
+class TripModelFake extends Fake implements TripModel {}
+
 AiSlot _slot(
   String id,
   String name, {
   AiSlotLevel level = AiSlotLevel.useful,
   bool toBuy = true,
   int remaining = 1,
+  String? boughtLabel,
 }) => AiSlot(
   id: id,
   type: 'type-$id',
@@ -45,6 +48,7 @@ AiSlot _slot(
   remaining: remaining,
   addLabel: 'Aggiungi',
   toBuy: toBuy,
+  boughtLabel: boughtLabel,
 );
 
 TripModel _trip(
@@ -70,15 +74,18 @@ TripModel _trip(
 void main() {
   late MockTripRepository repo;
 
+  setUpAll(() => registerFallbackValue(TripModelFake()));
+
   setUp(() {
     repo = MockTripRepository();
   });
 
   Future<GoRouter> pumpScreen(
     WidgetTester tester,
-    List<TripModel> trips,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
+    List<TripModel> trips, {
+    double width = 390,
+  }) async {
+    tester.view.physicalSize = Size(width, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -170,9 +177,8 @@ void main() {
     expect(giacca, lessThan(calzini));
     expect(calzini, lessThan(parigi));
 
-    expect(find.text('Importante'), findsOneWidget);
     expect(find.text('×3'), findsOneWidget);
-    expect(find.text('Presa'), findsNWidgets(3));
+    expect(find.text('Ho comprato'), findsNWidgets(3));
   });
 
   testWidgets('un posto chiuso non compare', (tester) async {
@@ -192,10 +198,62 @@ void main() {
       _trip('t1', 'Seul', DateTime(2026, 12), [_slot('s1', 'Calzini')]),
     ]);
 
-    await tester.tap(find.byKey(const Key('to_buy_got_it_s1')));
+    await tester.tap(find.byKey(const Key('slot_got_it_s1')));
     await tester.pumpAndSettle();
 
     expect(find.text('detail t1 slot=s1'), findsOneWidget);
+  });
+
+  testWidgets('nome lungo, X e azione restano leggibili a 320px', (
+    tester,
+  ) async {
+    await pumpScreen(tester, [
+      _trip('t1', 'Seul', DateTime(2026, 12), [
+        _slot(
+          's1',
+          'Giacca tecnica impermeabile ultraleggera da trekking',
+          boughtLabel: 'Comprata',
+          remaining: 2,
+        ),
+      ]),
+    ], width: 320);
+
+    expect(find.byKey(const Key('slot_not_useful_s1')), findsOneWidget);
+    expect(find.text('Comprata'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('rimozione dell’ultima voce è annullabile e serializzata', (
+    tester,
+  ) async {
+    when(() => repo.updateTrip(any())).thenAnswer((_) async {});
+    await pumpScreen(tester, [
+      _trip('t1', 'Seul', DateTime(2026, 12), [_slot('s1', 'Calzini')]),
+    ]);
+
+    await tester.tap(find.byKey(const Key('slot_not_useful_s1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Calzini'), findsNothing);
+    expect(find.text('Tolta Calzini'), findsOneWidget);
+
+    await tester.tap(find.text('Annulla'));
+    await tester.pumpAndSettle();
+    expect(find.text('Calzini'), findsOneWidget);
+    verify(() => repo.updateTrip(any())).called(2);
+  });
+
+  testWidgets('un errore di salvataggio mantiene la richiesta visibile', (
+    tester,
+  ) async {
+    when(() => repo.updateTrip(any())).thenThrow(StateError('offline'));
+    await pumpScreen(tester, [
+      _trip('t1', 'Seul', DateTime(2026, 12), [_slot('s1', 'Calzini')]),
+    ]);
+
+    await tester.tap(find.byKey(const Key('slot_not_useful_s1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Calzini'), findsOneWidget);
+    expect(find.text('Errore di salvataggio'), findsOneWidget);
   });
 
   testWidgets('senza voci mostra lo stato vuoto', (tester) async {

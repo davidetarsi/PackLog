@@ -107,12 +107,12 @@ Traduzioni in IT/EN, numeri con placeholder e plurali. Non concatenare frasi né
 
 **Interfaces:** campo server additivo `comprato?: string`; AiSlot `String? boughtLabel`; parser compatibile se assente. Helper server `compratoPosto(capo, copie, lingua): string` usa la stessa voce di posti_nomi.ts usata da nomePosto, che mantiene la firma attuale. Cambia solo presentazione.
 
-- [ ] Test RED: X prima del nome, quantità/freccia a destra, nessuna stella sulle righe; X non apre il foglio. Acquisti con pulsante invece della freccia, anche con nomi lunghi a 320px.
-- [ ] Mostrare gli acquisti tramite `isOpen && toBuy` separati dalle proposte da valutare, qualunque sia il livello. Conservare la vista generale della tab Viaggi, con gli stessi dati.
-- [ ] Test grammatica: Costume→Comprato, Giacca→Comprata, Calzini→Comprati, Scarpe→Comprate; nomi invariabili/plurali obbligati dalla tabella esistente; EN Bought. Nessuna AI o deduzione dal nome libero.
-- [ ] Parser e round-trip JSON mantengono campo, residuo e stato di acquisto. Vecchi viaggi senza boughtLabel restano leggibili con fallback Ho comprato/Bought; dichiarare questo limite. Eseguire build_runner per il modello Freezed.
-- [ ] GREEN: `node --test supabase/functions/_shared/valigia/test/posti.test.ts`; test Dart modello/servizio, to-buy e card. Confrontare output di packing prima/dopo escludendo solo comprato: stessi ID, nomi, livelli, copie e selezioni; non rigenerare baseline per assorbire differenze inattese.
-- [ ] Analyze/format, review e commit. Pack-trip sarà la funzione da distribuire per il nuovo campo, con deploy separato autorizzato: nessun deploy automatico nel blocco.
+- [x] Test RED: X prima del nome, quantità/freccia a destra, nessuna stella sulle righe; X non apre il foglio. Acquisti con pulsante invece della freccia, anche con nomi lunghi a 320px.
+- [x] Mostrare gli acquisti tramite `isOpen && toBuy` separati dalle proposte da valutare, qualunque sia il livello. Conservare la vista generale della tab Viaggi, con gli stessi dati.
+- [x] Test grammatica: Costume→Comprato, Giacca→Comprata, Calzini→Comprati, Scarpe→Comprate; nomi invariabili/plurali obbligati dalla tabella esistente; EN Bought. Nessuna AI o deduzione dal nome libero.
+- [x] Parser e round-trip JSON mantengono campo, residuo e stato di acquisto. Vecchi viaggi senza boughtLabel restano leggibili con fallback Ho comprato/Bought; dichiarare questo limite. Eseguire build_runner per il modello Freezed.
+- [x] GREEN: `node --test supabase/functions/_shared/valigia/test/posti.test.ts`; test Dart modello/servizio, to-buy e card. Confrontare output di packing prima/dopo escludendo solo comprato: stessi ID, nomi, livelli, copie e selezioni; non rigenerare baseline per assorbire differenze inattese.
+- [x] Analyze/format, review e commit. Pack-trip sarà la funzione da distribuire per il nuovo campo, con deploy separato autorizzato: nessun deploy automatico nel blocco.
 
 ### Task 5: Verifica integrata e consegna
 

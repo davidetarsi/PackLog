@@ -117,10 +117,19 @@ class PackedRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final packed = item.isChecked;
+    final itemName = Text(
+      item.name,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: tt.bodyLarge?.copyWith(
+        color: packed ? context.textTertiary : cs.onSurface,
+        decoration: packed ? TextDecoration.lineThrough : null,
+      ),
+    );
 
     return InkWell(
       key: Key('trip_item_${item.id}'),
-      onTap: onOpen == null ? onToggle : null,
+      onTap: onOpen ?? onToggle,
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: context.spacingSm,
@@ -131,31 +140,18 @@ class PackedRow extends StatelessWidget {
             if (onToggle != null)
               DsCheckbox(value: packed, onChanged: (_) => onToggle!()),
             SizedBox(width: context.spacingXs),
+            if (onRemove != null)
+              DsIconButton(
+                key: Key('trip_item_remove_${item.id}'),
+                icon: Icons.close,
+                tooltip: 'trips.pack.ai.remove'.tr(),
+                onPressed: onRemove,
+              ),
             Expanded(
-              child: onOpen == null
-                  ? Text(
-                      item.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tt.bodyLarge?.copyWith(
-                        color: packed ? context.textTertiary : cs.onSurface,
-                        decoration: packed ? TextDecoration.lineThrough : null,
-                      ),
-                    )
-                  : InkWell(
-                      onTap: onOpen,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: context.spacingXs,
-                        ),
-                        child: Text(
-                          item.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: tt.bodyLarge?.copyWith(color: cs.onSurface),
-                        ),
-                      ),
-                    ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: context.spacingXs),
+                child: itemName,
+              ),
             ),
             if (item.quantity > 1)
               Padding(
@@ -164,14 +160,6 @@ class PackedRow extends StatelessWidget {
                   '×${item.quantity}',
                   style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
                 ),
-              ),
-            if (onRemove != null)
-              DsIconButton(
-                key: Key('trip_item_remove_${item.id}'),
-                icon: Icons.close,
-                tooltip: 'trips.pack.ai.remove'.tr(),
-                onPressed: onRemove,
-                flushEnd: true,
               ),
           ],
         ),

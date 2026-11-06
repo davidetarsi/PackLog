@@ -1,6 +1,9 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
+import '../../../../../shared/widgets/ds_section_title.dart';
 import '../../../../../shared/widgets/ds_group_header.dart';
 import '../../../../items/model/item_model.dart';
 import '../../../model/ai_packing.dart';
@@ -54,7 +57,7 @@ class SlotsSection extends StatelessWidget {
         key: Key('slot_to_buy_row_${slot.id}'),
         slot: slot,
         onGotIt: () => actions.open(slot),
-        onRemove: () => actions.remove(slot),
+        onRemove: () => actions.dismiss(slot),
       );
     }
     return ImportantSlotCard(
@@ -81,6 +84,7 @@ class SlotsSection extends StatelessWidget {
     final useful = slots
         .where((s) => s.level == AiSlotLevel.useful && !s.toBuy)
         .toList();
+    final purchases = toBuy.toList();
     final blocks = <Widget>[
       for (final slot in important.where((s) => !s.toBuy)) _important(slot),
       if (useful.isNotEmpty)
@@ -91,7 +95,7 @@ class SlotsSection extends StatelessWidget {
           onToggle: actions.toggle,
           onRemove: actions.dismiss,
         ),
-      for (final slot in toBuy) _important(slot),
+      if (purchases.isNotEmpty) _toBuyCard(context, purchases),
     ];
     if (blocks.isEmpty) return const [];
 
@@ -99,6 +103,30 @@ class SlotsSection extends StatelessWidget {
       DsGroupHeader(label: header, count: count),
       for (var i = 0; i < blocks.length; i++) ...[if (i > 0) gap, blocks[i]],
     ];
+  }
+
+  Widget _toBuyCard(BuildContext context, List<AiSlot> slots) {
+    return Material(
+      color: context.groupSurface,
+      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: EdgeInsets.all(context.spacingSm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DsSectionTitle('trips.slots.to_buy'.tr()),
+            for (final slot in slots)
+              ToBuySlotRow(
+                key: Key('slot_to_buy_row_${slot.id}'),
+                slot: slot,
+                onGotIt: () => actions.open(slot),
+                onRemove: () => actions.dismiss(slot),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

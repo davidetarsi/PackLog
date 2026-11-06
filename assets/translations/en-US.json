@@ -277,6 +277,7 @@
       "to_buy": "To buy",
       "not_useful": "Not useful for this trip",
       "got_it": "Got it",
+      "bought_fallback": "Bought",
       "proposed_header": "Suggested by PackLog",
       "proposed_edit_hint": "Tap an item to edit it.",
       "proposed_inventory": "Your inventory is missing suitable items or enough copies.",

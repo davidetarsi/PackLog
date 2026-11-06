@@ -328,6 +328,10 @@ void main() {
 
       expect(find.byType(DsCheckbox), findsNothing);
       expect(find.byKey(const Key('trip_item_remove_i-aux')), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.byKey(const Key('trip_item_remove_i-aux'))).dx,
+        lessThan(tester.getTopLeft(find.text('Aux bt')).dx),
+      );
     });
 
     testWidgets('vista necessità mostra i posti senza righe proprie', (
@@ -705,7 +709,7 @@ void main() {
 
       expect(find.byType(ImportantSlotCard), findsNWidgets(3));
       expect(find.byType(ToBuySlotRow), findsNWidgets(2));
-      expect(find.text('Presa'), findsNWidgets(2));
+      expect(find.text('Ho comprato'), findsNWidgets(2));
       expect(find.text('Segnato da comprare'), findsOneWidget);
 
       final saved =
@@ -829,22 +833,27 @@ void main() {
       expect(savedSlot(tester, 'imp-giacca').removed, isTrue);
     });
 
-    testWidgets('X su un importante da comprare: dialog, "Togli", la riga '
-        'sparisce', (tester) async {
+    testWidgets('X su un importante da comprare lo rimuove con Annulla', (
+      tester,
+    ) async {
       await pumpDetail(tester, _trip());
 
-      await tester.tap(find.byKey(const Key('slot_remove_imp-sciarpa')));
+      await tester.tap(find.byKey(const Key('slot_not_useful_imp-sciarpa')));
       await tester.pumpAndSettle();
-      expect(find.text('Togli Sciarpa?'), findsOneWidget);
-
-      await tester.tap(find.text('Togli'));
-      await tester.pumpAndSettle();
-
+      expect(find.text('Togli Sciarpa?'), findsNothing);
       expect(
         find.byKey(const Key('slot_to_buy_row_imp-sciarpa')),
         findsNothing,
       );
       expect(savedSlot(tester, 'imp-sciarpa').removed, isTrue);
+
+      await tester.tap(find.text('Annulla'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('slot_to_buy_row_imp-sciarpa')),
+        findsOneWidget,
+      );
+      expect(savedSlot(tester, 'imp-sciarpa').removed, isFalse);
     });
 
     testWidgets('X poi "Annulla": la card resta', (tester) async {

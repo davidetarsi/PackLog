@@ -2,7 +2,7 @@
 // Uso: node --test valigia/test/posti.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { livelloPosto, nomePosto, qualificaDelGap } from "../posti.ts";
+import { livelloPosto, nomePosto, qualificaDelGap, compratoPosto } from "../posti.ts";
 import { strategySlots } from "../slots.ts";
 import { capoDelGap, NOME_CATEGORIA, NOME_SOTTOCATEGORIA } from "../uscita.ts";
 import { NOMI_CATEGORIA, NOMI_SOTTOCATEGORIA } from "../posti_nomi.ts";
@@ -1006,4 +1006,15 @@ test("scarpe da pioggia: il motivo spiega il bisogno anche quando il candidato e
   assert.equal(p.nome, "Stivali");
   assert.match(p.motivo!, /Blundstone/);
   assert.match(p.motivo!, /pioggia/);
+});
+
+test("comprato segue genere e numero della stessa voce grammaticale del posto", () => {
+  assert.equal(compratoPosto({ sub: "Swimwear", categoria: "Lower Body" }, 1, "it"), "Comprato");
+  assert.equal(compratoPosto({ sub: "Jacket", categoria: "Outerwear" }, 1, "it"), "Comprata");
+  assert.equal(compratoPosto({ sub: "Socks", categoria: "Accessory" }, 2, "it"), "Comprati");
+  assert.equal(compratoPosto({ sub: "Shoes", categoria: "Shoes" }, 1, "it"), "Comprate");
+  assert.equal(compratoPosto({ sub: "Fleece", categoria: "Upper Body" }, 1, "it"), "Comprato");
+  assert.equal(compratoPosto({ sub: "Fleece", categoria: "Upper Body" }, 2, "it"), "Comprati");
+  assert.equal(compratoPosto({ sub: "Shirt", categoria: "Upper Body" }, 2, "en"), "Bought");
+  assert.equal(compratoPosto({ sub: null, categoria: "unknown" }, 1, "it"), "Ho comprato");
 });
