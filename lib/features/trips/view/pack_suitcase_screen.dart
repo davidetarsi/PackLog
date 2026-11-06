@@ -17,7 +17,6 @@ import '../../../shared/widgets/ds_button.dart';
 import '../../../shared/widgets/ds_icon_button.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/ds_group_header.dart';
-import '../../../shared/widgets/ds_link_button.dart';
 import '../../../shared/widgets/ds_picker_sheet.dart';
 import '../../../shared/widgets/ds_steps.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
@@ -31,8 +30,6 @@ import '../../kits/model/kit_model.dart';
 import '../../kits/providers/kit_provider.dart';
 import '../../luggages/model/luggage_model.dart';
 import '../../luggages/providers/luggage_provider.dart';
-import '../../luggages/view/add_edit_luggage_screen.dart';
-import '../../luggages/view/luggages_management_sheet.dart';
 import '../../tour/providers/post_login_onboarding_provider.dart';
 import '../model/ai_availability.dart';
 import '../model/ai_packing.dart';
@@ -47,14 +44,15 @@ import 'widgets/ai/ai_pack_item_sheet.dart';
 import 'widgets/ai/ai_pack_rows.dart';
 import 'widgets/ai/ai_packing_sheet.dart';
 import 'widgets/pack/pack_parts.dart';
+import 'widgets/pack/pack_inventory_search.dart';
+import 'widgets/pack/pack_luggage_selector.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
 import 'widgets/trip_edit_placeholder.dart';
 import '../../../shared/widgets/ds_section_title.dart';
 import '../../../shared/widgets/ds_search_field.dart';
 
-/// Lettere della ricerca da cui, se ci sono risultati, compare anche la riga
-/// "Aggiungi". Senza risultati compare subito.
+/// Lettere della ricerca manuale da cui compare anche la riga "Aggiungi".
 const _kAddRowMinChars = 3;
 
 /// Chiave di `SharedPreferences` che ricorda se `first_suitcase_generated`
@@ -313,6 +311,20 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     });
   }
 
+  void _includeCreatedLuggages(List<LuggageModel> created) {
+    final latest = ref.read(luggageNotifierProvider).valueOrNull;
+    if (latest == null) return;
+    final selected = _luggages.keys.toSet();
+    final newIds = created.map((luggage) => luggage.id).toSet();
+    setState(() {
+      _luggages = {
+        for (final luggage in latest)
+          if (selected.contains(luggage.id) || newIds.contains(luggage.id))
+            luggage.id: luggage,
+      };
+    });
+  }
+
   Future<void> _chooseHouse(List<HouseModel> houses, HouseModel current) async {
     final picked = await DsPickerSheet.show<HouseModel>(
       context: context,
@@ -559,7 +571,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     // e `_initial*` è allineato, quindi l'uscita non chiede conferma.
     if (saved && result.hasSlots) {
       if (widget.fromNewTrip) {
-        context.pushReplacement('/trips/${trip.id}');
+        context.pushReplacement('/trips/${trip.id}?review=1');
       } else {
         context.pop();
       }
@@ -805,7 +817,11 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
               ],
               PackWeatherSection(trip: trip),
               DsSectionTitle('trips.pack.luggages'.tr()),
-              _luggageSection(context),
+              PackLuggageSelector(
+                selectedIds: _luggages.keys.toSet(),
+                onToggle: _toggleLuggage,
+                onCreated: _includeCreatedLuggages,
+              ),
               DsSectionTitle('trips.pack.items'.tr()),
               _itemsBlock(context, housesAsync),
             ],
@@ -814,93 +830,6 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
       ),
     );
   }
-
-  Widget _luggageSection(BuildContext context) {
-    final luggagesAsync = ref.watch(luggageNotifierProvider);
-
-    return luggagesAsync.when(
-      data: (luggages) {
-        if (luggages.isEmpty) {
-          return _noLuggages(context);
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: context.spacingSm,
-              runSpacing: context.spacingSm,
-              children: [
-                for (final luggage in luggages)
-                  PackPill(
-                    label: luggage.name,
-                    icon: Icons.luggage_outlined,
-                    selected: _luggages.containsKey(luggage.id),
-                    onTap: () => _toggleLuggage(luggage),
-                  ),
-              ],
-            ),
-            // Con dei bagagli si crea da "Gestisci bagagli"; il link "Nuovo
-            // bagaglio" resta solo quando non ce n'è nessuno.
-            DsLinkButton(
-              key: const Key('pack_manage_luggages'),
-              icon: Icons.edit_outlined,
-              label: 'luggages.manage'.tr(),
-              onPressed: () async {
-                final before = {for (final l in luggages) l.id};
-                await showLuggagesManagementSheet(context);
-                if (!mounted) return;
-                final current = ref.read(luggageNotifierProvider).valueOrNull;
-                if (current == null) return;
-                // Quelli creati nel foglio entrano nel viaggio, come faceva il
-                // link "Nuovo bagaglio".
-                setState(() {
-                  _luggages = {
-                    for (final l in current)
-                      if (_luggages.containsKey(l.id) || !before.contains(l.id))
-                        l.id: l,
-                  };
-                });
-              },
-            ),
-          ],
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => DsErrorState(
-        error: error,
-        title: 'luggages.load_failed'.tr(),
-        onRetry: () => ref.invalidate(luggageNotifierProvider),
-      ),
-    );
-  }
-
-  Widget _noLuggages(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'trips.pack.no_luggages'.tr(),
-          style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-        ),
-        _newLuggageLink(),
-      ],
-    );
-  }
-
-  Widget _newLuggageLink() => DsLinkButton(
-    key: const Key('pack_new_luggage'),
-    icon: Icons.add,
-    label: 'luggages.add_new'.tr(),
-    onPressed: () async {
-      final created = await showAddEditLuggageSheet(context);
-      if (created != null && mounted) {
-        setState(() => _luggages[created.id] = created);
-      }
-    },
-  );
 
   Widget _itemsBlock(
     BuildContext context,
@@ -1025,33 +954,9 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   ) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final houseName =
-        houses.where((h) => h.id == result.houseId).firstOrNull?.displayName ??
-        '';
     final byId = {for (final item in houseItems) item.id: item};
     final proposal = {for (final p in result.proposal) p.itemId: p};
-    final query = _query.toLowerCase();
     final packed = _items.values.toList();
-
-    // Ricerca: gli oggetti della casa che non sono in valigia.
-    final results = query.isEmpty
-        ? const <ItemModel>[]
-        : houseItems
-              .where(
-                (i) =>
-                    !_items.containsKey(i.id) &&
-                    i.name.toLowerCase().contains(query),
-              )
-              .toList();
-    // Come la pagina manuale: senza risultati la riga compare subito; con
-    // risultati, da [_kAddRowMinChars] lettere, e mai se il nome esiste già.
-    final hasExact =
-        query.isNotEmpty &&
-        houseItems.any((i) => i.name.trim().toLowerCase() == query);
-    final showAddRow =
-        query.isNotEmpty &&
-        !hasExact &&
-        (results.isEmpty || query.length >= _kAddRowMinChars);
 
     final home = houseItems
         .where(
@@ -1084,46 +989,23 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
           ],
         ),
         SizedBox(height: context.spacingMd),
-        _searchField(context, hint: 'trips.pack.ai.search_hint'.tr()),
-        if (query.isNotEmpty) ...[
-          SizedBox(height: context.spacingMd),
-          if (results.isNotEmpty)
-            Material(
-              color: context.groupSurface,
-              borderRadius: BorderRadius.circular(
-                AppConstants.cardBorderRadius,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  for (final item in results)
-                    AiWardrobeRow(
-                      key: Key('pack_ai_result_${item.id}'),
-                      name: item.name,
-                      subtitle: item.category.displayName,
-                      onAdd: () => _addToSuitcase(
-                        TripItem(
-                          id: item.id,
-                          name: item.name,
-                          category: item.category,
-                          quantity: 1,
-                          originHouseId: result.houseId,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+        PackInventorySearch(
+          houseId: result.houseId,
+          excludedItemIds: _items.keys.toSet(),
+          controller: _searchController,
+          onQueryChanged: (query) => setState(() => _query = query),
+          resultKeyPrefix: 'pack_ai_result',
+          addRowKey: 'pack_add_row',
+          onAdd: (item, copies) async => _addToSuitcase(
+            TripItem(
+              id: item.id,
+              name: item.name,
+              category: item.category,
+              quantity: copies,
+              originHouseId: result.houseId,
             ),
-          if (results.isNotEmpty && showAddRow)
-            SizedBox(height: context.spacingMd),
-          if (showAddRow)
-            PackAddRow(
-              key: const Key('pack_add_row'),
-              name: _query,
-              houseName: houseName,
-              onTap: () => _createInHouse(result.houseId, houseName),
-            ),
-        ],
+          ),
+        ),
         if (packed.isEmpty)
           Padding(
             padding: EdgeInsets.symmetric(vertical: context.spacingMd),

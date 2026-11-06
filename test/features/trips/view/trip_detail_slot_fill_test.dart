@@ -16,6 +16,8 @@ import 'package:pack_log/features/houses/repositories/house_repository.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/items/widgets/rapid_fire_input.dart';
+import 'package:pack_log/features/luggages/model/luggage_model.dart';
+import 'package:pack_log/features/luggages/providers/luggage_provider.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
@@ -52,6 +54,11 @@ class _RecordingItemNotifier extends ItemNotifier {
   Future<void> addItem(ItemModel model, {bool categoryChosen = false}) async {
     added.add(model);
   }
+}
+
+class _EmptyLuggageNotifier extends LuggageNotifier {
+  @override
+  Future<List<LuggageModel>> build() async => const [];
 }
 
 final _casa = HouseModel(
@@ -151,7 +158,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final detail = slot == null ? '/trips/trip-1' : '/trips/trip-1?slot=$slot';
+    final detail = slot == null
+        ? '/trips/trip-1/needs'
+        : '/trips/trip-1/needs?slot=$slot';
     router = GoRouter(
       initialLocation: fromHome ? '/' : detail,
       routes: [
@@ -163,6 +172,14 @@ void main() {
           path: '/trips/:id',
           builder: (context, state) => TripDetailScreen(
             tripId: state.pathParameters['id']!,
+            initialSlotId: state.uri.queryParameters['slot'],
+          ),
+        ),
+        GoRoute(
+          path: '/trips/:id/needs',
+          builder: (context, state) => TripDetailScreen(
+            tripId: state.pathParameters['id']!,
+            showNeeds: true,
             initialSlotId: state.uri.queryParameters['slot'],
           ),
         ),
@@ -178,6 +195,7 @@ void main() {
           coreAnalyticsServiceProvider.overrideWithValue(analytics),
           analyticsServiceProvider.overrideWithValue(rawAnalytics),
           syncOrchestratorProvider.overrideWithValue(sync),
+          luggageNotifierProvider.overrideWith(() => _EmptyLuggageNotifier()),
           itemNotifierProvider('h1').overrideWith(() => itemNotifier),
         ],
         child: EasyLocalization(
@@ -248,8 +266,8 @@ void main() {
       expect(find.text('Es. 2 t-shirt nere'), findsOneWidget);
       expect(find.byType(RapidFireInput), findsOneWidget);
       expect(find.byKey(const Key('slot_sheet_to_buy')), findsOneWidget);
-      // "Modifica valigia" resta dov'è: il foglio non sostituisce il bottone.
-      expect(cta, findsOneWidget);
+      // La pagina dei bisogni non duplica l'azione della valigia principale.
+      expect(cta, findsNothing);
     });
 
     testWidgets('con il foglio aperto nessuna riga della pagina è spenta', (
@@ -391,6 +409,11 @@ void main() {
       expect(find.text('Magliette ×3'), findsOneWidget);
       expect(find.text('T-shirt nere'), findsWidgets);
       expect(inProposed(find.text('×3')), findsNWidgets(2));
+      expect(find.byKey(Key('trip_item_${packed.id}')), findsNothing);
+      await tester.tap(find.byKey(const Key('sheet_close')));
+      await tester.pumpAndSettle();
+      router.go('/trips/trip-1');
+      await tester.pumpAndSettle();
       expect(find.byKey(Key('trip_item_${packed.id}')), findsOneWidget);
     });
 
@@ -415,6 +438,8 @@ void main() {
 
       expect(sheet, findsNothing);
       final packed = lastSaved().items.single;
+      router.go('/trips/trip-1');
+      await tester.pumpAndSettle();
       expect(
         find.descendant(
           of: find.byType(ItemsCard),
@@ -422,6 +447,8 @@ void main() {
         ),
         findsOneWidget,
       );
+      router.go('/trips/trip-1/needs');
+      await tester.pumpAndSettle();
       expect(inProposed(find.text('Magliette')), findsOneWidget);
       expect(inProposed(find.text('×3')), findsNWidgets(2));
     });

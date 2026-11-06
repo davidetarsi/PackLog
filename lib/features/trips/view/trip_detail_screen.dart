@@ -10,15 +10,24 @@ import '../../../shared/helpers/design_system.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/theme/theme.dart';
 import '../../../shared/widgets/ds_button.dart';
+import '../../../shared/widgets/ds_section_title.dart';
 import '../../../shared/widgets/ds_not_found_state.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../houses/providers/house_provider.dart';
+import '../../items/model/item_model.dart';
+import '../../items/providers/item_provider.dart';
+import '../../luggages/model/luggage_model.dart';
+import '../../luggages/providers/luggage_provider.dart';
 import '../model/suitcase_progress.dart';
+import '../model/ai_packing.dart';
 import '../model/trip_model.dart';
 import '../providers/trip_provider.dart';
+import 'widgets/pack/pack_luggage_selector.dart';
 import 'widgets/pack/pack_luggages.dart';
+import 'widgets/ai/ai_pack_rows.dart';
+import 'widgets/ai/ai_pack_item_sheet.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
 import 'widgets/slots/slot_actions.dart';
@@ -28,7 +37,7 @@ import 'widgets/slots/slot_fill_flow.dart';
 import 'widgets/slots/slots_section.dart';
 import 'widgets/slots/trip_items_card.dart';
 
-enum _TripMenu { edit, duplicate, save, delete }
+enum _TripMenu { edit, regenerate, duplicate, save, delete }
 
 /// La valigia del viaggio mentre la si fa: cosa c'è da portare e cosa è già
 /// dentro. È la pagina valigia (lo step 2 del nuovo viaggio) vista nel momento
@@ -44,12 +53,20 @@ enum _TripMenu { edit, duplicate, save, delete }
 /// PackLog; senza posti resta com'era.
 class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
+  final bool showNeeds;
+  final bool firstReview;
 
   /// Il posto da riempire all'apertura (`/trips/:id?slot=<id>`). Un id
   /// sconosciuto o di un posto già chiuso si ignora in silenzio.
   final String? initialSlotId;
 
-  const TripDetailScreen({super.key, required this.tripId, this.initialSlotId});
+  const TripDetailScreen({
+    super.key,
+    required this.tripId,
+    this.initialSlotId,
+    this.showNeeds = false,
+    this.firstReview = false,
+  });
 
   @override
   ConsumerState<TripDetailScreen> createState() => _TripDetailScreenState();
@@ -114,6 +131,135 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
           .firstOrNull;
       if (latest != null) await notifier.updateTrip(change(latest));
     });
+  }
+
+  Future<void> _addInventoryItem(ItemModel item, int copies) async {
+    final notifier = _container.read(tripNotifierProvider.notifier);
+    final id = tripId;
+    try {
+      await runSuitcaseMutation(() async {
+        final latest = _container
+            .read(tripNotifierProvider)
+            .valueOrNull
+            ?.where((trip) => trip.id == id)
+            .firstOrNull;
+        if (latest == null ||
+            latest.items.any((entry) => entry.id == item.id)) {
+          return;
+        }
+        await notifier.updateTrip(
+          latest.copyWith(
+            items: [
+              ...latest.items,
+              TripItem(
+                id: item.id,
+                name: item.name,
+                category: item.category,
+                quantity: copies,
+                originHouseId: item.houseId,
+              ),
+            ],
+            updatedAt: DateTime.now(),
+          ),
+        );
+      });
+    } catch (_) {
+      if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
+    }
+  }
+
+  void _toggleTripLuggage(LuggageModel luggage) {
+    unawaited(() async {
+      try {
+        await _changeTrip((latest) {
+          final selected = latest.luggages.any(
+            (entry) => entry.id == luggage.id,
+          );
+          return latest.copyWith(
+            luggages: selected
+                ? latest.luggages
+                      .where((entry) => entry.id != luggage.id)
+                      .toList()
+                : [...latest.luggages, luggage],
+            updatedAt: DateTime.now(),
+          );
+        });
+      } catch (_) {
+        if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
+      }
+    }());
+  }
+
+  void _reconcileTripLuggages(List<LuggageModel> created) {
+    unawaited(() async {
+      final createdIds = created.map((luggage) => luggage.id).toSet();
+      try {
+        await _changeTrip((latest) {
+          final available = ref.read(luggageNotifierProvider).valueOrNull;
+          if (available == null) return latest;
+          final selectedIds = latest.luggages
+              .map((luggage) => luggage.id)
+              .toSet();
+          return latest.copyWith(
+            luggages: [
+              for (final luggage in available)
+                if (selectedIds.contains(luggage.id) ||
+                    createdIds.contains(luggage.id))
+                  luggage,
+            ],
+            updatedAt: DateTime.now(),
+          );
+        });
+      } catch (_) {
+        if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
+      }
+    }());
+  }
+
+  Future<void> _openTripItem(TripItem item) async {
+    final trip = _container
+        .read(tripNotifierProvider)
+        .valueOrNull
+        ?.where((entry) => entry.id == tripId)
+        .firstOrNull;
+    if (trip == null) return;
+    final houseId = trip.aiResult?.houseId;
+    final inventoryItem = houseId == null
+        ? null
+        : _container
+              .read(itemNotifierProvider(houseId))
+              .valueOrNull
+              ?.where((entry) => entry.id == item.id)
+              .firstOrNull;
+    final proposed = trip.aiResult?.proposal
+        .where((entry) => entry.itemId == item.id)
+        .firstOrNull;
+    await showAiPackItemSheet(
+      context,
+      item: item,
+      available: inventoryItem?.quantity ?? 1,
+      reason: proposed?.reason,
+      inDeparture: proposed?.inDeparture ?? false,
+      onQuantity: (quantity) => unawaited(() async {
+        try {
+          await _changeTrip(
+            (latest) => latest.copyWith(
+              items: [
+                for (final entry in latest.items)
+                  if (entry.id == item.id)
+                    entry.copyWith(quantity: quantity)
+                  else
+                    entry,
+              ],
+              updatedAt: DateTime.now(),
+            ),
+          );
+        } catch (_) {
+          if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
+        }
+      }()),
+      onRemove: () => unawaited(_removeInventoryItem(item)),
+    );
   }
 
   void _toggleInventoryItem(TripItem item) {
@@ -187,6 +333,12 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
         _resolvePendingSlot(trip);
         return _TripDetail(
           trip: trip,
+          showNeeds: widget.showNeeds || widget.initialSlotId != null,
+          firstReview: widget.firstReview,
+          onAddInventory: _addInventoryItem,
+          onOpenItem: (item) => unawaited(_openTripItem(item)),
+          onToggleLuggage: _toggleTripLuggage,
+          onCreatedLuggages: _reconcileTripLuggages,
           slotActions: SlotActions(
             open: openSlot,
             markToBuy: (slot) => markSlotToBuy(slot),
@@ -231,8 +383,23 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
 class _TripDetail extends ConsumerWidget {
   final TripModel trip;
   final SlotActions slotActions;
+  final bool showNeeds;
+  final bool firstReview;
+  final Future<void> Function(ItemModel item, int copies) onAddInventory;
+  final ValueChanged<TripItem> onOpenItem;
+  final ValueChanged<LuggageModel> onToggleLuggage;
+  final ValueChanged<List<LuggageModel>> onCreatedLuggages;
 
-  const _TripDetail({required this.trip, required this.slotActions});
+  const _TripDetail({
+    required this.trip,
+    required this.slotActions,
+    required this.showNeeds,
+    required this.firstReview,
+    required this.onAddInventory,
+    required this.onOpenItem,
+    required this.onToggleLuggage,
+    required this.onCreatedLuggages,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -240,7 +407,7 @@ class _TripDetail extends ConsumerWidget {
     final destinationHouse = houses
         .where((h) => h.id == trip.destinationHouseId)
         .firstOrNull;
-    // Con i posti la valigia c'è anche senza oggetti propri.
+    final hasSlots = trip.aiResult?.hasSlots ?? false;
     final hasItems = !SuitcaseProgress.of(trip).isEmpty;
 
     return StickyCtaScaffold(
@@ -255,6 +422,11 @@ class _TripDetail extends ConsumerWidget {
                 value: _TripMenu.edit,
                 child: Text('trips.detail.edit_trip'.tr()),
               ),
+              if (hasSlots)
+                PopupMenuItem(
+                  value: _TripMenu.regenerate,
+                  child: Text('trips.pack.ai.regenerate'.tr()),
+                ),
               PopupMenuItem(
                 value: _TripMenu.duplicate,
                 child: Text('trips.detail.duplicate'.tr()),
@@ -280,15 +452,28 @@ class _TripDetail extends ConsumerWidget {
           ),
         ],
       ),
-      bottomContent: DsButton(
-        key: const Key('trip_detail_cta'),
-        label: hasItems
-            ? 'trips.detail.edit_suitcase'.tr()
-            : 'trips.pack.title'.tr(),
-        icon: hasItems ? Icons.edit_outlined : Icons.luggage_outlined,
-        expand: true,
-        onPressed: () => context.push('/trips/${trip.id}/edit-items'),
-      ),
+      bottomContent: firstReview && !showNeeds
+          ? DsButton(
+              key: const Key('trip_detail_cta'),
+              label: 'trips.pack.done'.tr(),
+              icon: Icons.check,
+              expand: true,
+              onPressed: () async {
+                await slotActions.runMutation(() async {});
+                if (context.mounted) context.go('/trips');
+              },
+            )
+          : !hasSlots
+          ? DsButton(
+              key: const Key('trip_detail_cta'),
+              label: hasItems
+                  ? 'trips.detail.edit_suitcase'.tr()
+                  : 'trips.pack.title'.tr(),
+              icon: hasItems ? Icons.edit_outlined : Icons.luggage_outlined,
+              expand: true,
+              onPressed: () => context.push('/trips/${trip.id}/edit-items'),
+            )
+          : null,
       body: Builder(
         builder: (context) => ListView(
           padding: EdgeInsets.fromLTRB(
@@ -312,12 +497,55 @@ class _TripDetail extends ConsumerWidget {
                 houseNames: {for (final h in houses) h.id: h.displayName},
               ),
             ),
-            PackWeatherSection(trip: trip),
-            PackLuggages(trip.luggages),
-            if (trip.aiResult?.hasSlots ?? false)
+            if (hasSlots && !showNeeds)
+              Padding(
+                padding: EdgeInsets.only(bottom: context.spacingMd),
+                child: AiPackRows(
+                  warnings: const [],
+                  readIds: const {},
+                  reasons: trip.aiResult!.reasons,
+                  needsCounts: _needsCounts(trip),
+                  onNeeds: () => context.push('/trips/${trip.id}/needs'),
+                  onSearch: (_) {},
+                  onDismiss: (_) {},
+                ),
+              ),
+            if (hasSlots && !showNeeds) ...[
+              TripSlotsContext(trip: trip, actions: slotActions),
+              SizedBox(height: context.spacingMd),
+            ],
+            if (showNeeds && hasSlots)
               SlotsSection(trip: trip, actions: slotActions)
-            else
-              PlainItemsSection(trip: trip),
+            else ...[
+              PackWeatherSection(trip: trip),
+              if (hasSlots) ...[
+                DsSectionTitle('trips.pack.luggages'.tr()),
+                PackLuggageSelector(
+                  selectedIds: trip.luggages
+                      .map((luggage) => luggage.id)
+                      .toSet(),
+                  onToggle: onToggleLuggage,
+                  onCreated: onCreatedLuggages,
+                ),
+              ] else
+                PackLuggages(trip.luggages),
+              if (!hasSlots)
+                PlainItemsSection(trip: trip)
+              else ...[
+                DsSectionTitle('trips.detail.owned_items_title'.tr()),
+                ItemsOnlySection(
+                  trip: trip,
+                  houseId: trip.aiResult?.houseId,
+                  checklistEnabled: !firstReview,
+                  onAddInventory: onAddInventory,
+                  onRemoveItem: firstReview ? slotActions.removeItem : null,
+                  onToggleItem: slotActions.toggleItem,
+                  onOpenItem: onOpenItem,
+                  rowKey: slotActions.rowKey,
+                  flying: slotActions.flying,
+                ),
+              ],
+            ],
           ],
         ),
       ),
@@ -333,6 +561,8 @@ class _TripDetail extends ConsumerWidget {
     switch (choice) {
       case _TripMenu.edit:
         context.push('/trips/${trip.id}/edit-info');
+      case _TripMenu.regenerate:
+        context.push('/trips/${trip.id}/edit-items?ai=1');
       case _TripMenu.duplicate:
         final ok = await ErrorRetryDialog.executeWithRetry(
           context: context,
@@ -378,4 +608,17 @@ class _TripDetail extends ConsumerWidget {
     );
     if (success && context.mounted) context.pop();
   }
+}
+
+({int important, int useful, int toBuy}) _needsCounts(TripModel trip) {
+  final slots = trip.aiResult?.slots ?? const <AiSlot>[];
+  return (
+    important: slots
+        .where((s) => s.isOpen && s.level == AiSlotLevel.important && !s.toBuy)
+        .length,
+    useful: slots
+        .where((s) => s.isOpen && s.level == AiSlotLevel.useful && !s.toBuy)
+        .length,
+    toBuy: slots.where((s) => s.isOpen && s.toBuy).length,
+  );
 }

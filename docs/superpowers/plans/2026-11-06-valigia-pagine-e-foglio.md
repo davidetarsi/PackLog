@@ -92,14 +92,14 @@ Traduzioni in IT/EN, numeri con placeholder e plurali. Non concatenare frasi né
 
 **Interfaces:** TripDetailScreen aggiunge `bool showNeeds = false` e `bool firstReview = false`; conservare tripId/initialSlotId. Nuova rotta `/trips/:id/needs`; parametro `review=1` per il primo risultato. PackLuggageSelector riceve selectedIds, onToggle(LuggageModel), onCreated(List<LuggageModel>); PackInventorySearch riceve houseId, excludedItemIds, onAdd(ItemModel, int copies) asincrono. Le callback rileggono il trip corrente nella coda Task 1.
 
-- [ ] Test RED: creazione AI porta a risultato con X e senza checkbox; Fatto torna ai Viaggi. Apertura normale dalla cartolina mostra checkbox solo sui propri oggetti e conserva isChecked. Nessun tab di modalità. Viaggi manuali, risultati legacy con slots null e valigia vuota conservano un percorso utilizzabile, senza accessi null o regressioni.
-- [ ] Test RED: card→necessità→ritorno conserva dati e modifiche. I deep link esistenti `?slot=<id>` da Da comprare aprono il foglio nella vista necessità. Chiudere e riaprire ritrova gli slot pendenti.
-- [ ] Realizzare ordine e componenti dello Spec. Estendere AiPackRows con callback/conteggi delle necessità riusando la presentazione e il foglio motivi. Conteggi per righe, non copie; acquisti non contati due volte.
-- [ ] Estrarre ricerca e selettore bagagli dalla pagina manuale per riusarli nella principale. Conservare quantità, creazione contestuale e accesso al foglio oggetto esistente; non perdere funzioni togliendo la CTA Modifica valigia nel flusso AI.
-- [ ] SlotsSection mostra solo importanti, suggerimenti e acquisti nelle categorie, senza propri oggetti, checkbox o barra dei pronti. Riusare lo stato vuoto esistente quando non resta nulla.
-- [ ] _adoptResult apre `/trips/:id?review=1` soltanto nel nuovo viaggio AI. Nessun nuovo salvataggio, credito o rigenerazione al passaggio di pagina/date. Flusso manuale e rigenerazione esplicita restano disponibili.
+- [x] Test RED: creazione AI porta a risultato con X e senza checkbox; Fatto torna ai Viaggi. Apertura normale dalla cartolina mostra checkbox solo sui propri oggetti e conserva isChecked. Nessun tab di modalità. Viaggi manuali, risultati legacy con slots null e valigia vuota conservano un percorso utilizzabile, senza accessi null o regressioni.
+- [x] Test RED: card→necessità→ritorno conserva dati e modifiche. I deep link esistenti `?slot=<id>` da Da comprare aprono il foglio nella vista necessità. Chiudere e riaprire ritrova gli slot pendenti.
+- [x] Realizzare ordine e componenti dello Spec. Estendere AiPackRows con callback/conteggi delle necessità riusando la presentazione e il foglio motivi. Conteggi per righe, non copie; acquisti non contati due volte.
+- [x] Estrarre ricerca e selettore bagagli dalla pagina manuale per riusarli nella principale. Conservare quantità, creazione contestuale e accesso al foglio oggetto esistente; non perdere funzioni togliendo la CTA Modifica valigia nel flusso AI.
+- [x] SlotsSection mostra solo importanti, suggerimenti e acquisti nelle categorie, senza propri oggetti, checkbox o barra dei pronti. Riusare lo stato vuoto esistente quando non resta nulla.
+- [x] _adoptResult apre `/trips/:id?review=1` soltanto nel nuovo viaggio AI. Nessun nuovo salvataggio, credito o rigenerazione al passaggio di pagina/date. Flusso manuale e rigenerazione esplicita restano disponibili.
 - [ ] Test scroll a 320×640, 390×844 e 320×640 al 160%: ultima riga Igiene/Elettronica interamente sopra il footer; foglio con tastiera e stato completato. Conservare Builder sotto lo scope CTA, niente padding magici.
-- [ ] GREEN: `trip_detail_slots_test`, `pack_suitcase_screen_test`, `pack_suitcase_ai_mode_test`, `pack_suitcase_ai_flow_test`, `to_buy_screen_test`, `widgets/pack_weather_test` e test dei componenti estratti. Analyze, review e commit.
+- [x] GREEN: `trip_detail_slots_test`, `pack_suitcase_screen_test`, `pack_suitcase_ai_mode_test`, `pack_suitcase_ai_flow_test`, `to_buy_screen_test`, `widgets/pack_weather_test` e test dei componenti estratti. Analyze, review e commit.
 
 ### Task 4: Righe e grammatica degli acquisti
 

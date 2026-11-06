@@ -16,6 +16,8 @@ import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/providers/item_provider.dart';
 import 'package:pack_log/features/kits/model/kit_model.dart';
 import 'package:pack_log/features/kits/repositories/kit_repository.dart';
+import 'package:pack_log/features/luggages/model/luggage_model.dart';
+import 'package:pack_log/features/luggages/providers/luggage_provider.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
@@ -49,6 +51,11 @@ class _FixedItems extends ItemNotifier {
 
   @override
   Future<List<ItemModel>> build(String houseId) async => items;
+}
+
+class _FixedLuggages extends LuggageNotifier {
+  @override
+  Future<List<LuggageModel>> build() async => const [];
 }
 
 final _casa = HouseModel(
@@ -218,6 +225,7 @@ void main() {
           analyticsServiceProvider.overrideWithValue(raw),
           syncOrchestratorProvider.overrideWithValue(sync),
           kitRepositoryProvider.overrideWithValue(kitRepo),
+          luggageNotifierProvider.overrideWith(() => _FixedLuggages()),
           itemNotifierProvider(
             'h1',
           ).overrideWith(() => _FixedItems(houseItems)),
@@ -397,7 +405,9 @@ void main() {
         if (++writes == 1) await removal.future;
         current = next;
       });
-      await tester.tap(find.byKey(const Key('trip_item_remove_calzetti')));
+      await tester.tap(find.byKey(const Key('trip_item_calzetti')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('ai_pack_item_remove')));
       await tester.pump();
       await addAll(tester);
       expect(writes, 1);

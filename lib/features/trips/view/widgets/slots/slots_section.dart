@@ -1,21 +1,16 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_group_header.dart';
-import '../../../../../shared/widgets/ds_section_title.dart';
 import '../../../../items/model/item_model.dart';
 import '../../../model/ai_packing.dart';
-import '../../../model/suitcase_progress.dart';
 import '../../../model/trip_model.dart';
 import 'slot_actions.dart';
 import 'slot_widgets.dart';
 import 'trip_kit_row.dart';
-import 'trip_items_card.dart';
+import 'trip_items_card.dart' show EmptySuitcase;
 
-/// "Cosa porti" con la valigia fatta di posti: la testata con l'avanzamento,
-/// le informazioni sul viaggio, poi per categoria gli importanti aperti, i
-/// "da comprare", la card dei proposti e gli oggetti dell'utente.
+/// Necessità aperte della valigia AI, ordinate per categoria.
 class SlotsSection extends StatelessWidget {
   final TripModel trip;
   final SlotActions actions;
@@ -24,18 +19,16 @@ class SlotsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = SuitcaseProgress.of(trip);
-    if (progress.isEmpty) return const EmptySuitcase();
-
     final result = trip.aiResult!;
-    final slots = (result.slots ?? const <AiSlot>[]).where((s) => s.inSuitcase);
+    final slots = (result.slots ?? const <AiSlot>[]).where((s) => s.isOpen);
+    if (!slots.any((slot) => slot.isOpen)) {
+      return const EmptySuitcase();
+    }
     final gap = SizedBox(height: context.spacingSm);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DsSectionTitle('trips.pack.items'.tr()),
-        SuitcaseProgressHeader(progress: progress),
         for (final note in result.notes) TripNoteRow(note: note),
         TripKitRow(
           trip: trip,
@@ -46,14 +39,9 @@ class SlotsSection extends StatelessWidget {
           ..._group(
             context,
             slots: slots.where((s) => s.category == category).toList(),
-            items: trip.items.where((i) => i.category == category).toList(),
-            count:
-                slots
-                    .where((s) => s.category == category && s.inSuitcase)
-                    .length +
-                trip.items.where((i) => i.category == category).length,
+            count: slots.where((s) => s.category == category).length,
             header: category.displayName,
-            sorting: progress.sorting,
+            sorting: true,
             gap: gap,
           ),
       ],
@@ -81,17 +69,20 @@ class SlotsSection extends StatelessWidget {
   List<Widget> _group(
     BuildContext context, {
     required List<AiSlot> slots,
-    required List<TripItem> items,
     required int count,
     required String header,
     required bool sorting,
     required Widget gap,
   }) {
-    final important = slots.where((s) => s.level == AiSlotLevel.important);
-    final useful = slots.where((s) => s.level == AiSlotLevel.useful).toList();
+    final toBuy = slots.where((s) => s.toBuy);
+    final important = slots.where(
+      (s) => s.level == AiSlotLevel.important && !s.toBuy,
+    );
+    final useful = slots
+        .where((s) => s.level == AiSlotLevel.useful && !s.toBuy)
+        .toList();
     final blocks = <Widget>[
       for (final slot in important.where((s) => !s.toBuy)) _important(slot),
-      for (final slot in important.where((s) => s.toBuy)) _important(slot),
       if (useful.isNotEmpty)
         ProposedSlotsCard(
           slots: useful,
@@ -100,15 +91,7 @@ class SlotsSection extends StatelessWidget {
           onToggle: actions.toggle,
           onRemove: actions.dismiss,
         ),
-      if (items.isNotEmpty)
-        ItemsCard(
-          tripId: trip.id,
-          items: items,
-          onRemoveItem: actions.removeItem,
-          onToggleItem: actions.toggleItem,
-          rowKey: actions.rowKey,
-          flying: actions.flying,
-        ),
+      for (final slot in toBuy) _important(slot),
     ];
     if (blocks.isEmpty) return const [];
 
@@ -116,5 +99,32 @@ class SlotsSection extends StatelessWidget {
       DsGroupHeader(label: header, count: count),
       for (var i = 0; i < blocks.length; i++) ...[if (i > 0) gap, blocks[i]],
     ];
+  }
+}
+
+class TripSlotsContext extends StatelessWidget {
+  final TripModel trip;
+  final SlotActions actions;
+
+  const TripSlotsContext({
+    super.key,
+    required this.trip,
+    required this.actions,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final notes = trip.aiResult?.notes ?? const [];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final note in notes) TripNoteRow(note: note),
+        TripKitRow(
+          trip: trip,
+          flyKitItems: actions.flyKitItems,
+          changeTrip: actions.changeTrip,
+        ),
+      ],
+    );
   }
 }
