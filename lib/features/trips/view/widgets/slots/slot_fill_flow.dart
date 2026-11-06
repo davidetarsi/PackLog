@@ -70,8 +70,9 @@ mixin TripSlotFill on TripSlotEdits {
     if (!mounted) throw StateError('trip detail closed');
     final notifier = ref.read(tripNotifierProvider.notifier);
     final analytics = ref.read(analyticsServiceProvider);
+    final id = tripId;
     try {
-      await notifier.fillAiSlot(tripId, slot.id, item);
+      await runSuitcaseMutation(() => notifier.fillAiSlot(id, slot.id, item));
       // Un posto "da comprare" si apre solo con "Presa": riempirlo vuol dire
       // che l'hai comprato.
       if (bought) {

@@ -203,10 +203,12 @@ void main() {
     WidgetTester tester,
     TripModel trip, {
     bool fromHome = false,
+    Size size = const Size(390, 4000),
+    double textScale = 1,
   }) async {
     when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [trip]);
     // Alta abbastanza da costruire tutta la lista.
-    tester.view.physicalSize = const Size(390, 4000);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -247,6 +249,12 @@ void main() {
               supportedLocales: context.supportedLocales,
               localizationsDelegates: context.localizationDelegates,
               routerConfig: router,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(textScale)),
+                child: child!,
+              ),
             ),
           ),
         ),
@@ -264,6 +272,153 @@ void main() {
       find.descendant(of: find.byType(ProposedSlotsCard), matching: finder);
 
   group('valigia fatta di posti', () {
+    testWidgets(
+      'la X toglie solo dal viaggio e Annulla ripristina ordine e spunta',
+      (tester) async {
+        var stored = _trip(items: _items(checked: 1));
+        final beforeRemoval = stored.updatedAt;
+        when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [stored]);
+        when(() => tripRepo.updateTrip(any())).thenAnswer((call) async {
+          stored = call.positionalArguments.first as TripModel;
+        });
+        await pumpDetail(tester, stored);
+        when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [stored]);
+        await tester.tap(find.byKey(const Key('trip_item_remove_i-aux')));
+        await tester.pumpAndSettle();
+        expect(stored.items.map((i) => i.id), [
+          'i-power',
+          'i-cuscino',
+          'i-coperta',
+        ]);
+        expect(find.byKey(const Key('trip_item_i-aux')), findsNothing);
+        expect(find.byType(BottomSheet), findsNothing);
+        expect(stored.updatedAt.isAfter(beforeRemoval), isTrue);
+        final beforeUndo = stored.updatedAt;
+        await tester.tap(find.text('Annulla'));
+        await tester.pumpAndSettle();
+        expect(stored.items.map((i) => i.id), [
+          'i-aux',
+          'i-power',
+          'i-cuscino',
+          'i-coperta',
+        ]);
+        expect(stored.items.first.isChecked, isTrue);
+        expect(stored.updatedAt.isAfter(beforeUndo), isTrue);
+        expect(find.byKey(const Key('trip_item_i-aux')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Annulla e una nuova X si salvano in ordine senza perdere il ripristino',
+      (tester) async {
+        var stored = _trip(items: _items(checked: 1));
+        final undoGate = Completer<void>();
+        addTearDown(() {
+          if (!undoGate.isCompleted) undoGate.complete();
+        });
+        var writes = 0;
+        when(() => tripRepo.updateTrip(any())).thenAnswer((call) async {
+          final next = call.positionalArguments.first as TripModel;
+          writes++;
+          if (writes == 2) await undoGate.future;
+          stored = next;
+        });
+        await pumpDetail(tester, stored);
+        when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [stored]);
+        await tester.tap(find.byKey(const Key('trip_item_remove_i-aux')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Annulla'));
+        await tester.pump();
+        await tester.tap(find.byKey(const Key('trip_item_remove_i-power')));
+        await tester.pump();
+        expect(writes, 2, reason: 'La seconda X deve attendere il ripristino');
+        undoGate.complete();
+        await tester.pumpAndSettle();
+        expect(stored.items.map((i) => i.id), [
+          'i-aux',
+          'i-cuscino',
+          'i-coperta',
+        ]);
+        expect(stored.items.first.isChecked, isTrue);
+      },
+    );
+
+    testWidgets(
+      'rimozione inventario e rimozione proposta conservano entrambe le modifiche',
+      (tester) async {
+        var stored = _trip();
+        final firstWrite = Completer<void>();
+        addTearDown(() {
+          if (!firstWrite.isCompleted) firstWrite.complete();
+        });
+        var writes = 0;
+        when(() => tripRepo.updateTrip(any())).thenAnswer((call) async {
+          final next = call.positionalArguments.first as TripModel;
+          writes++;
+          if (writes == 1) await firstWrite.future;
+          stored = next;
+        });
+        await pumpDetail(tester, stored);
+        when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [stored]);
+        await tester.tap(find.byKey(const Key('trip_item_remove_i-aux')));
+        await tester.pump();
+        await tester.tap(find.byKey(const Key('slot_not_useful_u-magliette')));
+        await tester.pump();
+        expect(
+          writes,
+          1,
+          reason: 'La proposta deve attendere la rimozione già in corso',
+        );
+        firstWrite.complete();
+        await tester.pumpAndSettle();
+        expect(stored.items.any((i) => i.id == 'i-aux'), isFalse);
+        expect(
+          stored.aiResult!.slots!
+              .firstWhere((s) => s.id == 'u-magliette')
+              .removed,
+          isTrue,
+        );
+      },
+    );
+
+    for (final (size, scale) in [
+      (const Size(320, 640), 1.0),
+      (const Size(390, 844), 1.0),
+      (const Size(320, 640), 1.6),
+    ]) {
+      testWidgets('ultima riga raggiungibile sopra la CTA a $size testo $scale', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          _trip(
+            items: [
+              ..._items(),
+              _item('ultimo', 'Ultimo oggetto', ItemCategory.varie),
+            ],
+          ),
+          size: size,
+          textScale: scale,
+        );
+        final scroll = tester.state<ScrollableState>(
+          find.byType(Scrollable).first,
+        );
+        scroll.position.jumpTo(scroll.position.maxScrollExtent);
+        await tester.pumpAndSettle();
+
+        final ultima = find.byKey(const Key('trip_item_ultimo'));
+        final cta = find.byKey(const Key('trip_detail_cta'));
+        expect(
+          tester.getBottomLeft(ultima).dy,
+          lessThanOrEqualTo(tester.getTopLeft(cta).dy),
+          reason:
+              'L ultima riga deve scorrere interamente sopra il pulsante fisso',
+        );
+        expect(ultima.hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     testWidgets('testata, legenda e posti come nel mockup', (tester) async {
       await pumpDetail(tester, _trip());
 

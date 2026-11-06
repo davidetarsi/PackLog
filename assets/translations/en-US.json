@@ -277,6 +277,7 @@
       "not_useful": "Not useful for this trip",
       "got_it": "Got it",
       "proposed_header": "Suggested by PackLog",
+      "proposed_edit_hint": "Tap an item to edit it.",
       "proposed_inventory": "Your inventory is missing suitable items or enough copies.",
       "marked_to_buy": "Marked to buy",
       "remove_title": "Remove {}?",

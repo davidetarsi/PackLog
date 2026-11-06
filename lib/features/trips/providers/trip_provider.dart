@@ -21,8 +21,23 @@ const _kRefreshBuffer = Duration(seconds: 2);
 
 @Riverpod(keepAlive: true)
 class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
+  final Map<String, Future<void>> _editQueues = {};
+
   TripRepository get _repo => ref.read(tripRepositoryProvider);
   CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
+
+  /// Serializza le scritture concorrenti dello stesso viaggio.
+  Future<void> serializeEdit(String tripId, Future<void> Function() operation) {
+    final previous = _editQueues[tripId] ?? Future<void>.value();
+    final next = previous.then((_) => operation());
+    late final Future<void> tail;
+    tail = next.catchError((Object _, StackTrace _) {});
+    _editQueues[tripId] = tail;
+    tail.whenComplete(() {
+      if (identical(_editQueues[tripId], tail)) _editQueues.remove(tripId);
+    });
+    return next;
+  }
 
   @override
   Future<List<TripModel>> build() async {

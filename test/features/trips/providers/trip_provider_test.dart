@@ -102,6 +102,46 @@ void main() {
   });
 
   group('TripNotifier - Success Path (AsyncData)', () {
+    test('serializza le modifiche allo stesso viaggio tra chiamanti', () async {
+      when(() => mockRepository.getAllTrips()).thenAnswer((_) async => []);
+      await container.read(tripNotifierProvider.future);
+      final notifier = container.read(tripNotifierProvider.notifier);
+      final gate = Completer<void>();
+      final order = <String>[];
+
+      final first = notifier.serializeEdit('t1', () async {
+        order.add('prima-inizio');
+        await gate.future;
+        order.add('prima-fine');
+      });
+      final second = notifier.serializeEdit('t1', () async {
+        order.add('seconda');
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect(order, ['prima-inizio']);
+      gate.complete();
+      await Future.wait([first, second]);
+      expect(order, ['prima-inizio', 'prima-fine', 'seconda']);
+    });
+
+    test('un errore non impedisce la modifica successiva', () async {
+      when(() => mockRepository.getAllTrips()).thenAnswer((_) async => []);
+      await container.read(tripNotifierProvider.future);
+      final notifier = container.read(tripNotifierProvider.notifier);
+      final failure = Exception('edit failed');
+      var nextRan = false;
+
+      final failed = notifier.serializeEdit('t1', () async => throw failure);
+      final next = notifier.serializeEdit('t1', () async {
+        nextRan = true;
+      });
+
+      await expectLater(failed, throwsA(same(failure)));
+      await next;
+      expect(nextRan, isTrue);
+    });
+
     test('should correctly refresh the state after adding a new trip', () async {
       // === ARRANGE ===
       // Mock repository to return empty list initially, then list with new trip

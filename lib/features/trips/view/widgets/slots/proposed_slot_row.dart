@@ -132,6 +132,11 @@ class ProposedSlotRow extends StatelessWidget {
                 ),
               ],
               SizedBox(width: context.spacingXs),
+              Icon(
+                Icons.chevron_right,
+                size: context.iconSizeMd,
+                color: cs.onSurfaceVariant,
+              ),
               if (onDismiss != null)
                 DsIconButton(
                   key: Key('slot_not_useful_${slot.id}'),
@@ -139,12 +144,6 @@ class ProposedSlotRow extends StatelessWidget {
                   tooltip: 'trips.slots.not_useful'.tr(),
                   onPressed: onDismiss,
                   flushEnd: true,
-                )
-              else
-                Icon(
-                  Icons.chevron_right,
-                  size: context.iconSizeMd,
-                  color: cs.onSurfaceVariant,
                 ),
             ],
           ),

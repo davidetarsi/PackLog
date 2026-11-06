@@ -368,6 +368,46 @@ void main() {
       expect(find.text('K-way'), findsOneWidget);
     });
 
+    testWidgets('ricalcola il kit dopo una rimozione ancora in salvataggio', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        _trip(
+          items: [
+            TripItem(
+              id: 'calzetti',
+              name: 'Calzetti merino',
+              category: ItemCategory.vestiti,
+              quantity: 1,
+            ),
+          ],
+          suggestions: [
+            _suggestion('k1', {'calzetti': 2}),
+          ],
+        ),
+      );
+      final removal = Completer<void>();
+      addTearDown(() {
+        if (!removal.isCompleted) removal.complete();
+      });
+      var writes = 0;
+      when(() => tripRepo.updateTrip(any())).thenAnswer((inv) async {
+        final next = inv.positionalArguments.first as TripModel;
+        if (++writes == 1) await removal.future;
+        current = next;
+      });
+      await tester.tap(find.byKey(const Key('trip_item_remove_calzetti')));
+      await tester.pump();
+      await addAll(tester);
+      expect(writes, 1);
+      removal.complete();
+      await tester.pumpAndSettle();
+      expect(current.items.single.id, 'calzetti');
+      expect(current.items.single.quantity, 2);
+      expect(current.aiResult!.kitAnswers, {'k1': 'added'});
+    });
+
     testWidgets('eventi: accettata e scartata', (tester) async {
       kits = [_kit('k1', 'Montagna'), _kit('k2', 'Aereo')];
       houseItems = [...houseItems, _item('cuffia', 'Cuffia')];

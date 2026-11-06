@@ -49,24 +49,28 @@ class ToBuySlotRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    spacing: context.spacingXs,
+                    runSpacing: context.spacingXs,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      // Con la X la riga è stretta: le parole si accorciano.
-                      Flexible(child: ImportantLabel(color: muted)),
-                      Text(' · ', style: tt.labelLarge?.copyWith(color: muted)),
-                      Icon(
-                        Icons.shopping_cart_outlined,
-                        size: context.iconSizeXs,
-                        color: muted,
-                      ),
-                      SizedBox(width: context.spacingXs),
-                      Flexible(
-                        child: Text(
-                          'trips.slots.to_buy'.tr(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: tt.labelLarge?.copyWith(color: muted),
-                        ),
+                      ImportantLabel(color: muted),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.shopping_cart_outlined,
+                            size: context.iconSizeXs,
+                            color: muted,
+                          ),
+                          SizedBox(width: context.spacingXs),
+                          Flexible(
+                            child: Text(
+                              'trips.slots.to_buy'.tr(),
+                              style: tt.labelLarge?.copyWith(color: muted),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

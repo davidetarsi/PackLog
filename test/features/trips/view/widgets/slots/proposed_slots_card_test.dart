@@ -93,4 +93,19 @@ void main() {
     expect(paragraph.didExceedMaxLines, isFalse);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('modifica e rimozione restano azioni distinte e riconoscibili', (
+    tester,
+  ) async {
+    await pump(tester, noAnimations: false);
+    final row = find.byKey(const Key('slot_row_u-magliette'));
+    expect(
+      find.descendant(of: row, matching: find.byIcon(Icons.chevron_right)),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('slot_not_useful_u-magliette')),
+      findsOneWidget,
+    );
+    expect(find.text('trips.slots.proposed_edit_hint'), findsOneWidget);
+  });
 }

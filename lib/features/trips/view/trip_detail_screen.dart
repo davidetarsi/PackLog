@@ -60,10 +60,12 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
   /// Il posto chiesto dal percorso, in attesa che viaggio e case siano
   /// caricati per aprire il foglio.
   String? _pendingSlotId;
+  late final ProviderContainer _container;
 
   @override
   void initState() {
     super.initState();
+    _container = ProviderScope.containerOf(context, listen: false);
     _pendingSlotId = widget.initialSlotId;
   }
 
@@ -92,6 +94,88 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     });
   }
 
+  /// Rimozione e Annulla leggono il viaggio dopo il salvataggio precedente.
+  @override
+  Future<void> runSuitcaseMutation(Future<void> Function() change) {
+    return _container
+        .read(tripNotifierProvider.notifier)
+        .serializeEdit(tripId, change);
+  }
+
+  Future<void> _changeTrip(TripModel Function(TripModel) change) {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final notifier = container.read(tripNotifierProvider.notifier);
+    final id = tripId;
+    return runSuitcaseMutation(() async {
+      final latest = container
+          .read(tripNotifierProvider)
+          .valueOrNull
+          ?.where((t) => t.id == id)
+          .firstOrNull;
+      if (latest != null) await notifier.updateTrip(change(latest));
+    });
+  }
+
+  void _toggleInventoryItem(TripItem item) {
+    final notifier = ref.read(tripNotifierProvider.notifier);
+    final id = tripId;
+    unawaited(runSuitcaseMutation(() => notifier.toggleItemCheck(id, item.id)));
+  }
+
+  /// Agisce sullo snapshot del viaggio; l'oggetto nell'inventario resta intatto.
+  Future<void> _removeInventoryItem(TripItem item) {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final notifier = container.read(tripNotifierProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+    final id = tripId;
+    TripModel? currentTrip() => container
+        .read(tripNotifierProvider)
+        .valueOrNull
+        ?.where((t) => t.id == id)
+        .firstOrNull;
+    return runSuitcaseMutation(() async {
+      try {
+        final trip = currentTrip();
+        if (trip == null) return;
+        final index = trip.items.indexWhere((i) => i.id == item.id);
+        if (index < 0) return;
+        final removed = trip.items[index];
+        await notifier.updateTrip(
+          trip.copyWith(
+            items: trip.items.where((i) => i.id != item.id).toList(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        if (!mounted) return;
+        Future<void> restore() async {
+          try {
+            final latest = currentTrip();
+            if (latest == null || latest.items.any((i) => i.id == removed.id)) {
+              return;
+            }
+            final items = [...latest.items];
+            items.insert(index.clamp(0, items.length).toInt(), removed);
+            await notifier.updateTrip(
+              latest.copyWith(items: items, updatedAt: DateTime.now()),
+            );
+          } catch (_) {
+            if (messenger.mounted) {
+              AppSnackBar.showErrorOn(messenger, 'errors.save_error'.tr());
+            }
+          }
+        }
+
+        AppSnackBar.showUndo(
+          context,
+          'trips.pack.ai.removed'.tr(args: [removed.name]),
+          onUndo: () => unawaited(runSuitcaseMutation(restore)),
+        );
+      } catch (_) {
+        if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final tripsAsync = ref.watch(tripNotifierProvider);
@@ -109,6 +193,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
             toggle: toggleSlot,
             remove: (slot) => unawaited(removeSlot(slot, confirm: true)),
             dismiss: (slot) => unawaited(removeSlot(slot, confirm: false)),
+            removeItem: (item) => unawaited(_removeInventoryItem(item)),
+            toggleItem: _toggleInventoryItem,
+            changeTrip: _changeTrip,
+            runMutation: runSuitcaseMutation,
             rowKey: rowKey,
             flying: flying,
             flyKitItems: flyKitItems,
@@ -201,33 +289,37 @@ class _TripDetail extends ConsumerWidget {
         expand: true,
         onPressed: () => context.push('/trips/${trip.id}/edit-items'),
       ),
-      body: ListView(
-        padding: EdgeInsets.fromLTRB(
-          context.spacingMd,
-          context.spacingSm,
-          context.spacingMd,
-          context.spacingLg + context.ctaReservedHeight,
-        ),
-        children: [
-          // Il riepilogo è la cartolina del viaggio: toccarlo apre la modifica
-          // di date e tappe.
-          InkWell(
-            key: const Key('trip_detail_summary'),
-            borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-            onTap: () => context.push('/trips/${trip.id}/edit-info'),
-            child: PackSummaryLine(
-              trip: trip,
-              destinationHouseName: destinationHouse?.displayName,
-              houseNames: {for (final h in houses) h.id: h.displayName},
-            ),
+      body: Builder(
+        builder: (context) => ListView(
+          padding: EdgeInsets.fromLTRB(
+            context.spacingMd,
+            context.spacingSm,
+            context.spacingMd,
+            context.spacingLg + context.ctaReservedHeight,
           ),
-          PackWeatherSection(trip: trip),
-          PackLuggages(trip.luggages),
-          if (trip.aiResult?.hasSlots ?? false)
-            SlotsSection(trip: trip, actions: slotActions)
-          else
-            PlainItemsSection(trip: trip),
-        ],
+          children: [
+            // Il riepilogo è la cartolina del viaggio: toccarlo apre la modifica
+            // di date e tappe.
+            InkWell(
+              key: const Key('trip_detail_summary'),
+              borderRadius: BorderRadius.circular(
+                AppConstants.cardBorderRadius,
+              ),
+              onTap: () => context.push('/trips/${trip.id}/edit-info'),
+              child: PackSummaryLine(
+                trip: trip,
+                destinationHouseName: destinationHouse?.displayName,
+                houseNames: {for (final h in houses) h.id: h.displayName},
+              ),
+            ),
+            PackWeatherSection(trip: trip),
+            PackLuggages(trip.luggages),
+            if (trip.aiResult?.hasSlots ?? false)
+              SlotsSection(trip: trip, actions: slotActions)
+            else
+              PlainItemsSection(trip: trip),
+          ],
+        ),
       ),
     );
   }
@@ -244,10 +336,12 @@ class _TripDetail extends ConsumerWidget {
       case _TripMenu.duplicate:
         final ok = await ErrorRetryDialog.executeWithRetry(
           context: context,
-          operation: () => notifier.duplicateTrip(
-            trip.id,
-            nameSuffix: 'trips.duplicate_suffix'.tr(),
-          ),
+          operation: () => slotActions.runMutation(() async {
+            await notifier.duplicateTrip(
+              trip.id,
+              nameSuffix: 'trips.duplicate_suffix'.tr(),
+            );
+          }),
           errorTitle: 'errors.save_error'.tr(),
           errorMessage: 'errors.duplicate_trip_failed'.tr(args: [trip.name]),
         );
@@ -257,7 +351,8 @@ class _TripDetail extends ConsumerWidget {
       case _TripMenu.save:
         await ErrorRetryDialog.executeWithRetry(
           context: context,
-          operation: () => notifier.toggleSaved(trip.id),
+          operation: () =>
+              slotActions.runMutation(() => notifier.toggleSaved(trip.id)),
           errorTitle: 'errors.save_error'.tr(),
           errorMessage: 'errors.save_trip_failed'.tr(args: [trip.name]),
         );
@@ -275,8 +370,9 @@ class _TripDetail extends ConsumerWidget {
     if (confirmed != true || !context.mounted) return;
     final success = await ErrorRetryDialog.executeWithRetry(
       context: context,
-      operation: () =>
-          ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id),
+      operation: () => slotActions.runMutation(
+        () => ref.read(tripNotifierProvider.notifier).deleteTrip(trip.id),
+      ),
       errorTitle: 'errors.delete_error'.tr(),
       errorMessage: 'errors.delete_trip_failed'.tr(args: [trip.name]),
     );

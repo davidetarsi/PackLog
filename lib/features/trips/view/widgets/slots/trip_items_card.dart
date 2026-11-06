@@ -10,6 +10,7 @@ import '../../../../../shared/widgets/ds_group_header.dart';
 import '../../../../../shared/widgets/ds_section_title.dart';
 import '../../../../items/model/item_model.dart';
 import '../../../../../shared/widgets/ds_checkbox.dart';
+import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../model/trip_model.dart';
 import '../../../providers/trip_provider.dart';
 import 'flight_target.dart';
@@ -34,6 +35,8 @@ class EmptySuitcase extends StatelessWidget {
 class ItemsCard extends ConsumerWidget {
   final String tripId;
   final List<TripItem> items;
+  final ValueChanged<TripItem>? onRemoveItem;
+  final ValueChanged<TripItem>? onToggleItem;
 
   /// La chiave della riga di un oggetto (per farlo volare fin qui).
   final GlobalKey Function(String itemId)? rowKey;
@@ -46,6 +49,8 @@ class ItemsCard extends ConsumerWidget {
     super.key,
     required this.tripId,
     required this.items,
+    this.onRemoveItem,
+    this.onToggleItem,
     this.rowKey,
     this.flying,
   });
@@ -65,9 +70,14 @@ class ItemsCard extends ConsumerWidget {
               itemId: item.id,
               child: PackedRow(
                 item: item,
-                onToggle: () => ref
-                    .read(tripNotifierProvider.notifier)
-                    .toggleItemCheck(tripId, item.id),
+                onRemove: onRemoveItem == null
+                    ? null
+                    : () => onRemoveItem!(item),
+                onToggle: onToggleItem != null
+                    ? () => onToggleItem!(item)
+                    : () => ref
+                          .read(tripNotifierProvider.notifier)
+                          .toggleItemCheck(tripId, item.id),
               ),
             ),
         ],
@@ -81,8 +91,14 @@ class ItemsCard extends ConsumerWidget {
 class PackedRow extends StatelessWidget {
   final TripItem item;
   final VoidCallback onToggle;
+  final VoidCallback? onRemove;
 
-  const PackedRow({super.key, required this.item, required this.onToggle});
+  const PackedRow({
+    super.key,
+    required this.item,
+    required this.onToggle,
+    this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -120,6 +136,14 @@ class PackedRow extends StatelessWidget {
                   '×${item.quantity}',
                   style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
                 ),
+              ),
+            if (onRemove != null)
+              DsIconButton(
+                key: Key('trip_item_remove_${item.id}'),
+                icon: Icons.close,
+                tooltip: 'trips.pack.ai.remove'.tr(),
+                onPressed: onRemove,
+                flushEnd: true,
               ),
           ],
         ),

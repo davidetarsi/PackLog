@@ -37,7 +37,11 @@ class SlotsSection extends StatelessWidget {
         DsSectionTitle('trips.pack.items'.tr()),
         SuitcaseProgressHeader(progress: progress),
         for (final note in result.notes) TripNoteRow(note: note),
-        TripKitRow(trip: trip, flyKitItems: actions.flyKitItems),
+        TripKitRow(
+          trip: trip,
+          flyKitItems: actions.flyKitItems,
+          changeTrip: actions.changeTrip,
+        ),
         for (final category in ItemCategory.values)
           ..._group(
             context,
@@ -100,6 +104,8 @@ class SlotsSection extends StatelessWidget {
         ItemsCard(
           tripId: trip.id,
           items: items,
+          onRemoveItem: actions.removeItem,
+          onToggleItem: actions.toggleItem,
           rowKey: actions.rowKey,
           flying: actions.flying,
         ),
