@@ -1,6 +1,6 @@
 ---
 name: generatore-proposte
-description: "Generatore delle proposte (strato dei posti di pack-trip): stato del 3 nov 2026, regola D approvata da fare dopo il foglio dei suggeriti"
+description: "Generatore dei suggerimenti (ex generatore delle proposte) (strato dei posti di pack-trip): stato del 3 nov 2026, regola D approvata da fare dopo il foglio dei suggeriti"
 metadata:
   type: project
 ---

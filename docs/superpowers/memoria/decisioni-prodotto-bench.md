@@ -86,3 +86,16 @@ Registro curato, una riga per decisione (le piu' recenti in fondo). Il diario cr
 Nello strato dei posti (suggerimenti senza leggerezza) la regola dei pantaloni si applica subito: posto pantaloni lunghi al caldo = al massimo le copie delle camicie (1 se non ci sono camicie).
 
 **7 nov 2026 — Cammino compatto (Davide).** Il "Cammino di più giorni" resta compatto con le regole oggi nell'app (#106, `cammino.ts`: base di 3 maglie, 2 pantaloni, 3 mutande, 3 paia di calzini, un paio di scarpe principali più ciabatte, bucato a mano). Le asserzioni del Cammino di Santiago (>=12 intimo, >=11 calze, 11-19 capi) vanno riscritte di conseguenza: le propongo io, le approva Davide.
+
+**7 nov 2026 — Asserzioni di Santiago compatte APPROVATE da Davide** (proposta `proposta_asserzioni_cammino_2026-11-07.json` nel banco, ramo feat/allinea-app-novembre): capi 8-10, sopra 2-4, sotto 1-2, intimo 3-4, calze 3-4, un paio di ciabatte, maglia e pantalone lungo leggeri per le chiese; invariate scarpa chiusa, capospalla antipioggia, cappello/occhiali, strato caldo.
+**7 nov 2026 — Niente ripiego sui capi normali nel cammino (Davide).** Con un armadio scarno la valigia tiene solo i capi adatti; quello che manca lo propone il "generatore dei suggerimenti" (nuovo nome dello strato dei posti, prima "generatore delle proposte"): importanti solo quelli davvero necessari, il resto utile. Vale in generale per inventari scarni o vuoti rispetto all'attività del viaggio.
+
+**7 nov 2026 (Davide), suggerimenti e asserzioni:**
+- Ombrello FUORI dal generatore dei suggerimenti: il generatore fa la valigia dei vestiti; le cose da ricordare (ombrello, caricatore, cuscino) vanno nei KIT. Idea futura: kit agganciati anche al meteo ("quando piove"). Nella valigia vera l'ombrello posseduto resta una regola del banco, da decidere a parte.
+- "Giacca invernale" importante con minime di 10° (León a maggio) è eccessiva: nome e livello del posto del meteo devono seguire il calore davvero richiesto.
+- Santiago: chiese = copertura (maglia con maniche, pantalone lungo, qualsiasi calore); quantità compatte contate solo se l'armadio ha capi tecnici.
+- Se il viaggio chiede una copertura leggera e l'armadio ha solo capi troppo caldi: la valigia prende cio' che c'e' e i suggerimenti propongono il capo leggero mancante.
+- Il riquadro "perché" in alto nella valigia resta e deve spiegare tutto: capi dell'utente, importanti e suggerimenti.
+- Dubbi del generatore da guardare: maglia termica scelta al posto delle T-shirt tecniche a 23°; pile calore 4 escluso dal tetto di calore con mattine a 10°.
+
+**7 nov 2026 — soglie dei suggerimenti (Davide):** giacca del meteo per minima: <=5° "Giacca invernale" (può essere importante); 5-10° "Giacca" (senza "leggera", per non sembrare un errore); >10° "Giacca leggera". Cappello e sciarpa "caldi" e importanti solo con freddo vero (min <=5°). Camicie per coprire le spalle (templi/chiese) al massimo 2. Bug "informali" letto come formale (occasioneFormale): si corregge nel banco e poi nell'app. Esperimenti "strati dalla minima" (exp/strati-minima, exp/strati-attivita) NON adottati: neutri o peggiorativi; idea futura: slot per lo strato termico di sotto nelle attività all'alba.

@@ -13,12 +13,23 @@ Aggiornato: 7 novembre 2026. Si aggiorna a ogni lavoro chiuso.
   - ci sono errori nuovi nelle proposte.
 - **Piano deciso da Davide il 7 nov:**
   1. **Banco su GitHub** (`davidetarsi/checklist-script-packlog`). Le valigie registrate sono committate e pushate su `feat/catalogo` (commit `337fa4e`). Davide apre la PR da `feat/catalogo` verso `main`: https://github.com/davidetarsi/checklist-script-packlog/compare/main...feat/catalogo
-  2. **IN CORSO: portare nel banco #105, #106 e #107.**
+  2. **FATTO (7 nov): banco allineato**, ramo `feat/allinea-app-novembre` pushato.
+     - Contiene #105 senza la conversione, il cammino compatto, le quantità al mare, le asserzioni di Santiago compatte (chiese = copertura, quantità solo coi capi tecnici) e la correzione delle "cene informali".
+     - Numeri: holdout30 549/630, pool44 621/660, v2 494/504, v3 375/504, v4 277/504 (solo totale).
+     - Esperimenti NON adottati: `exp/strati-minima` ed `exp/strati-attivita`, solo locali.
+     - Davide deve aprire le PR: prima `feat/catalogo` → `main`, poi `feat/allinea-app-novembre`.
+     - **Storico del punto 2, il piano iniziale:**
      - Dove: ramo `feat/allinea-app-novembre`, worktree `/srv/claude/workspaces/bench-allinea`, brief in `scratchpad/ds-piani/brief-allinea-banco.md`.
      - Del #105 si porta tutto tranne la conversione delle escursioni leggere.
      - Il cammino è compatto, deciso da Davide il 7 nov: le asserzioni di Santiago si riscrivono con una proposta separata che Davide deve approvare.
   3. **Misura sul banco** (v4 solo totale), poi rigenerazione degli oracoli; l'app deve rifare il banco 888/888.
-  4. **Nell'app:** togliere la conversione delle escursioni leggere, poi il comando di controllo prima del merge (valigie dell'app valutate con le asserzioni; script di partenza in `scratchpad/review-nov7/esporta_ts.ts`).
+  4. **FATTO (7 nov): app allineata.** Ramo `fix/allinea-banco` pushato: sostituisce la #107, che va chiusa senza unirla.
+     - App = banco 888/888.
+     - Comando di controllo: `valuta_con_banco.ts` + `VALUTA_CON_BANCO.md`.
+     - Correzioni dei suggerimenti: niente ombrello, pioggia vera, giacca e cappello/sciarpa per fasce di minima, niente fuori contesto, nomi.
+     - Regole fisse come test (`regole_posti.test.ts`).
+     - PR: https://github.com/davidetarsi/PackLog/compare/develop...fix/allinea-banco
+     - Deploy: solo `pack-trip`.
   5. **Poi:**
      - scarponi corretti solo nei nomi delle proposte;
      - "importante" solo con pioggia vera, perché oggi la giacca impermeabile è importante in 246 viaggi sopra i 28°;
