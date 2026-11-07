@@ -251,6 +251,48 @@ void main() {
         expect(find.byType(PackLogGradientBorder), findsOneWidget);
       });
 
+      testWidgets('la stima si apre solo se ha il giorno per giorno', (
+        tester,
+      ) async {
+        Future<void> pumpStop(StopWeather stop) => pumpLocalized(
+          tester,
+          overrides: [
+            tripWeatherNotifierProvider(trip.id).overrideWith(
+              () => _FixedWeather(
+                TripWeatherReady(
+                  TripWeather(
+                    signature: 's',
+                    fetchedAt: DateTime.now(),
+                    stops: [stop],
+                  ),
+                ),
+              ),
+            ),
+          ],
+          child: PackWeatherSection(trip: trip),
+        );
+        final base = _meteo(WeatherSource.climate).stops.single;
+
+        await pumpStop(base);
+        expect(find.byType(InkWell), findsNothing);
+
+        await pumpStop(
+          StopWeather(
+            name: base.name,
+            from: base.from,
+            to: base.to,
+            source: base.source,
+            years: base.years,
+            tempMin: base.tempMin,
+            tempMax: base.tempMax,
+            historicalDays: [
+              HistoricalDayWeather(date: base.from, dataYears: 5),
+            ],
+          ),
+        );
+        expect(find.byType(InkWell), findsOneWidget);
+      });
+
       testWidgets('dalla previsione, in inglese: "Forecast"', (tester) async {
         await pumpLocalized(
           tester,

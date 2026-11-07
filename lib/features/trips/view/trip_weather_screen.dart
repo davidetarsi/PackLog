@@ -8,11 +8,13 @@ import '../../../shared/widgets/ds_empty_state.dart';
 import '../model/trip_weather.dart';
 import '../providers/trip_weather_provider.dart';
 import 'widgets/pack/pack_weather.dart' show weatherUpdatedLabel;
+import 'widgets/pack/weather_history_day_row.dart';
 import 'widgets/pack/weather_icons.dart';
 import '../../../shared/widgets/ds_divider.dart';
 
 /// Il meteo dei prossimi giorni di una tappa: per ogni giorno il riepilogo e
-/// le sei fasce di quattro ore, con icona, temperatura media e pioggia.
+/// le sei fasce di quattro ore, con icona, temperatura media e pioggia. Per le
+/// stime dallo storico, ogni giorno con le medie degli ultimi anni.
 ///
 /// Si apre toccando una tappa nella sezione meteo della pagina valigia; legge
 /// lo stesso meteo, quindi non fa chiamate.
@@ -36,7 +38,7 @@ class TripWeatherScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(stop?.name ?? 'trips.weather.title'.tr())),
-      body: stop == null || stop.forecastDays.isEmpty
+      body: stop == null || !stop.hasDailyDetail
           ? DsEmptyState(
               icon: Icons.cloud_outlined,
               title: 'trips.weather.detail_missing'.tr(),
@@ -57,7 +59,14 @@ class _DaysList extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final locale = context.locale.toString();
-    final later = stop.days - stop.forecastDays.length;
+    final forecastDates = {for (final d in stop.forecastDays) d.date};
+    // Le medie coprono i giorni che la previsione non ha già.
+    final history = [
+      for (final d in stop.historicalDays)
+        if (!forecastDates.contains(d.date)) d,
+    ];
+    final later = history.isEmpty ? stop.days - stop.forecastDays.length : 0;
+    final years = stop.years ?? _maxDataYears(history);
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
@@ -71,25 +80,72 @@ class _DaysList extends StatelessWidget {
           _DayCard(day: day),
           SizedBox(height: context.spacingMd),
         ],
+        if (history.isNotEmpty) ...[
+          Padding(
+            key: const Key('weather_history_label'),
+            padding: EdgeInsets.only(
+              left: context.spacingSm,
+              bottom: context.spacingSm,
+            ),
+            child: Text(
+              'trips.weather.source_climate'.plural(years),
+              style: tt.titleSmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+          _HistoryCard(days: history),
+          SizedBox(height: context.spacingMd),
+        ],
         Padding(
           padding: EdgeInsets.symmetric(horizontal: context.spacingSm),
           child: Text(
             [
               if (later > 0) 'trips.weather.detail_later'.plural(later),
-              'trips.weather.detail_footer'.tr(
-                args: [
-                  weatherUpdatedLabel(
-                    fetchedAt,
-                    now: DateTime.now(),
-                    locale: locale,
+              (history.isEmpty
+                      ? 'trips.weather.detail_footer'
+                      : 'trips.weather.detail_footer_history')
+                  .tr(
+                    args: [
+                      weatherUpdatedLabel(
+                        fetchedAt,
+                        now: DateTime.now(),
+                        locale: locale,
+                      ),
+                    ],
                   ),
-                ],
-              ),
             ].join(' '),
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Gli anni dell'etichetta quando la tappa non li dice: il massimo fra i
+/// giorni, cioè gli anni che hanno risposto.
+int _maxDataYears(List<HistoricalDayWeather> days) =>
+    days.fold(0, (a, d) => d.dataYears > a ? d.dataYears : a);
+
+/// I giorni delle medie in un'unica scheda, separati da una linea.
+class _HistoryCard extends StatelessWidget {
+  const _HistoryCard({required this.days});
+
+  final List<HistoricalDayWeather> days;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.groupSurface,
+      borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < days.length; i++) ...[
+            if (i > 0) const DsDivider(),
+            WeatherHistoryDayRow(day: days[i]),
+          ],
+        ],
+      ),
     );
   }
 }

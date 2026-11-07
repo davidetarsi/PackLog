@@ -141,8 +141,9 @@ class _WeatherCard extends StatelessWidget {
                   if (i > 0) const DsDivider(),
                   _StopRow(
                     stop: weather.stops[i],
-                    // Con i giorni di previsione la tappa apre il dettaglio.
-                    onTap: weather.stops[i].forecastDays.isEmpty
+                    // Con un giorno per giorno (previsione o media degli
+                    // anni passati) la tappa apre il dettaglio.
+                    onTap: !weather.stops[i].hasDailyDetail
                         ? null
                         : () => context.push('/trips/$tripId/weather?stop=$i'),
                   ),

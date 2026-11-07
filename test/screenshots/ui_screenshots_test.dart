@@ -1780,6 +1780,21 @@ final flows = <Flow>[
       },
     ),
     Scenario(
+      24,
+      'meteo',
+      'dettaglio-stima',
+      route: '/trips/:id/weather',
+      source: 'lib/features/trips/view/trip_weather_screen.dart',
+      description:
+          'Toccando una tappa con la stima dallo storico: "Media degli ultimi '
+          '5 anni" e ogni giorno con massima e minima medie e la pioggia come '
+          'anni su 5, senza icone né fasce.',
+      steps: (app) async {
+        await _pack(app, kUpcomingTripId);
+        await app.tap(find.text('Sintra').last);
+      },
+    ),
+    Scenario(
       19,
       'dettaglio-viaggio',
       'valigia-con-posti',
