@@ -48,6 +48,13 @@ StopWeather _stima({List<HistoricalDayWeather>? days, int? years = 5}) =>
               dataYears: 4,
             ),
             HistoricalDayWeather(date: DateTime(2027, 7, 3)),
+            HistoricalDayWeather(
+              date: DateTime(2027, 7, 4),
+              tempMax: 26,
+              tempMin: 17,
+              rainYears: 0,
+              dataYears: 5,
+            ),
           ],
     );
 
@@ -98,14 +105,13 @@ void main() {
     expect(find.text('Media degli ultimi 5 anni'), findsOneWidget);
     expect(find.text('15° / 24°'), findsOneWidget);
     expect(find.text('16° / 25°'), findsOneWidget);
-    expect(
-      find.text('Pioggia 2 anni su 5 · vento fino a 21 km/h'),
-      findsOneWidget,
-    );
+    expect(find.text('Pioggia 2 anni su 5'), findsOneWidget);
+    expect(find.textContaining('vento'), findsNothing);
     expect(find.text('Pioggia 1 anno su 4'), findsOneWidget);
     // niente icona del tempo, e il giorno senza dati non scrive la pioggia
     expect(find.byType(Icon), findsNothing);
     expect(find.textContaining('Pioggia'), findsNWidgets(2));
+    expect(find.text('Mai pioggia negli ultimi 5 anni'), findsOneWidget);
   });
 
   testWidgets('stima in inglese: plurali', (tester) async {

@@ -370,6 +370,7 @@
       "detail_missing": "Details for this stop are not available.",
       "detail_later": {"one": "The last day will show up once it is within the next 7.", "other": "The other {} days will show up once they are within the next 7."},
       "detail_footer": "Open-Meteo forecast in local time · {}.",
+      "rain_never": {"one": "No rain last year", "other": "No rain in the last {} years"},
       "rain_years": {"one": "Rain {} year out of {}", "other": "Rain {} years out of {}"},
       "detail_footer_history": "Open-Meteo historical data (ERA5 archive) · {}."
     },

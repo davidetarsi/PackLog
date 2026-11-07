@@ -5,7 +5,8 @@ import '../../../../../shared/theme/theme.dart';
 import '../../../model/trip_weather.dart';
 
 /// Un giorno di una stima dallo storico: data, minima e massima medie, e sotto
-/// la pioggia come anni su anni ("Pioggia 2 anni su 5") e il vento. Niente
+/// la pioggia come anni su anni ("Pioggia 2 anni su 5", "Mai pioggia negli
+/// ultimi 5 anni"). Niente
 /// icona del tempo né fasce: sono medie, non una previsione.
 class WeatherHistoryDayRow extends StatelessWidget {
   const WeatherHistoryDayRow({super.key, required this.day});
@@ -60,21 +61,18 @@ class WeatherHistoryDayRow extends StatelessWidget {
     );
   }
 
-  /// "Pioggia 2 anni su 5 · vento fino a 24 km/h".
+  /// "Pioggia 2 anni su 5", oppure "Mai pioggia negli ultimi 5 anni".
   String _details() {
-    final parts = <String>[];
-    if (day.dataYears > 0) {
-      parts.add(
-        'trips.weather.rain_years'.plural(
-          day.rainYears,
-          args: ['${day.rainYears}', '${day.dataYears}'],
-        ),
+    if (day.dataYears == 0) return '';
+    if (day.rainYears == 0) {
+      return 'trips.weather.rain_never'.plural(
+        day.dataYears,
+        args: ['${day.dataYears}'],
       );
     }
-    final wind = day.windMaxKmh;
-    if (wind != null) {
-      parts.add('trips.weather.wind'.tr(args: [wind.round().toString()]));
-    }
-    return parts.join(' · ');
+    return 'trips.weather.rain_years'.plural(
+      day.rainYears,
+      args: ['${day.rainYears}', '${day.dataYears}'],
+    );
   }
 }

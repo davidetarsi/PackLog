@@ -370,6 +370,7 @@
       "detail_missing": "Il dettaglio di questa tappa non è disponibile.",
       "detail_later": {"one": "L'ultimo giorno comparirà quando sarà nei prossimi 7.", "other": "Gli altri {} giorni compariranno quando saranno nei prossimi 7."},
       "detail_footer": "Previsione Open-Meteo in ora locale · {}.",
+      "rain_never": {"one": "Mai pioggia l'ultimo anno", "other": "Mai pioggia negli ultimi {} anni"},
       "rain_years": {"one": "Pioggia {} anno su {}", "other": "Pioggia {} anni su {}"},
       "detail_footer_history": "Dati storici Open-Meteo (archivio ERA5) · {}."
     },
