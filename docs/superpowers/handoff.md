@@ -1,8 +1,35 @@
 # PackLog — passaggio di consegne
 
-Aggiornato: 3 novembre 2026, sera. Si aggiorna a ogni lavoro chiuso.
+Aggiornato: 7 novembre 2026. Si aggiorna a ogni lavoro chiuso.
 
 **Per riprendere in una sessione nuova:** "leggi `/srv/claude/workspaces/PackLog-giri-dev/docs/superpowers/handoff.md` e la memoria, poi riprendi dal primo punto aperto".
+
+## 0. Dal 7 novembre (ha la precedenza sul resto)
+
+- **Fatto con GPT, dal 5 al 7 nov:** Davide ha unito in develop le PR #98-#106; la #107 (quantità al mare) è aperta.
+- **Revisione del 7 nov** (memoria `revisione-codex-7-novembre.md`):
+  - il generatore dell'app non rifà più il banco: 618/888;
+  - il #105 va contro la decisione del 18 ottobre sulle escursioni leggere;
+  - ci sono errori nuovi nelle proposte.
+- **Piano deciso da Davide il 7 nov:**
+  1. **Banco su GitHub** (`davidetarsi/checklist-script-packlog`). Le valigie registrate sono committate e pushate su `feat/catalogo` (commit `337fa4e`). Davide apre la PR da `feat/catalogo` verso `main`: https://github.com/davidetarsi/checklist-script-packlog/compare/main...feat/catalogo
+  2. **IN CORSO: portare nel banco #105, #106 e #107.**
+     - Dove: ramo `feat/allinea-app-novembre`, worktree `/srv/claude/workspaces/bench-allinea`, brief in `scratchpad/ds-piani/brief-allinea-banco.md`.
+     - Del #105 si porta tutto tranne la conversione delle escursioni leggere.
+     - Il cammino è compatto, deciso da Davide il 7 nov: le asserzioni di Santiago si riscrivono con una proposta separata che Davide deve approvare.
+  3. **Misura sul banco** (v4 solo totale), poi rigenerazione degli oracoli; l'app deve rifare il banco 888/888.
+  4. **Nell'app:** togliere la conversione delle escursioni leggere, poi il comando di controllo prima del merge (valigie dell'app valutate con le asserzioni; script di partenza in `scratchpad/review-nov7/esporta_ts.ts`).
+  5. **Poi:**
+     - scarponi corretti solo nei nomi delle proposte;
+     - "importante" solo con pioggia vera, perché oggi la giacca impermeabile è importante in 246 viaggi sopra i 28°;
+     - niente stivali o scarpette fuori contesto;
+     - nomi "Leggings/Camicie calde";
+     - "5 camicie eleganti".
+  6. **App:**
+     - spezzare `house_detail_screen.dart` (1098 righe);
+     - spostare in un widget piccolo la misura della barra del Rapid Fire, fatta durante il disegno (`:491`, `:683`);
+     - `rapid_fire_input.dart` è a 557 righe.
+- **Superati dai merge:** le sezioni A e B qui sotto (armadio tipico, Rapid Fire, PR da aprire) sono già in develop, in gran parte rifatte da GPT. Restano validi i punti C.
 
 ---
 

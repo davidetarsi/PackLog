@@ -1,0 +1,27 @@
+- [PackLog bench on the VPS](packlog-bench-vps-setup.md) — OpenAI key file, venv, runner, prepaid credits
+- [Sala Doganale artifact](sala-doganale-artifact.md) — assertion review lives in artifact db, read via ArtifactData
+- [Bench: quantità e casi guida](bench-quantita-e-casi-guida.md) — branch locali impilati, decisioni di Davide, revisione tabella usi
+- [Idea: profilo personale](idea-profilo-personale.md) — preferenze di valigia per utente, da valutare dopo il test holdout v2
+- [Servizi esterni: licenze e limiti](servizi-esterni-licenze.md) — Open-Meteo solo non commerciale gratis, clima storico da Professional; Geoapify limiti e attribuzione
+- [Decisioni di prodotto del bench](decisioni-prodotto-bench.md) — registro curato delle scelte di Davide; rileggere SEMPRE prima di cambiare regole o asserzioni
+- [Coda lavori del bench](coda-lavori-bench.md) — ordine concordato dei prossimi passi e stato di ciascuno
+- [Jev nel prodotto](jev-usi-nel-prodotto.md) — tre usi di Jev (profilo capi, voto viaggio x capo, classificare il viaggio), stato e risultati
+- [Controllo overfitting](feedback-controllo-overfitting.md) — fermarsi ogni tanto e dire a Davide se si sta andando verso l'overfitting; prima riusare il v4 sigillato (solo punteggio complessivo), holdout nuovo solo se serve davvero
+- [Compilare holdout è pesante](feedback-compilare-holdout-pesante.md) — Davide trova stressante compilare i bisogni; ridurre holdout nuovi e lavoro manuale
+- [Scelte dubbie da rivedere](scelte-dubbie-da-rivedere.md) — soglia estivi 21, lavatrice 4+1: riguardarle per prime se qualcosa non torna
+- [App: aggiunta capi, scan, tassonomia](idea-ui-aggiunta-capi.md) — per la sessione UI: contratto di item-metadata e cosa cambia in Flutter; GPT riempie, Jev controlla, etichette con '?', tassonomia nuova
+- [Generatore in produzione](produzione-generatore.md) — porting TS completo e identico al bench; Edge Functions pack-trip e trip-weather: contratto per la UI, segreti, migrazione, cosa manca
+- [Ricorda segreti e migrazione](feedback-ricorda-segreti-migrazione.md) — a fine lavoro su Edge Functions/PR ripetere a Davide: secrets set e migrazione da applicare
+- [Build dev e Supabase](build-dev-supabase.md) — dal 3 nov progetti DEV e PROD separati: migrazioni e deploy prima su DEV
+- [Design valigia AI](design-valigia-ai.md) — decisioni del 24 ott: foglio a stepper per tappa, pillole, attesa, valigia generata, regola quantità; mockup
+- [Giri di prova su DEV](giri-prova-dev-valigia.md) — script pack-trip dal vivo, utente di prova, registro errori per la PR dopo valigia-ai
+- [Roadmap 29 ottobre](roadmap-29-ottobre.md) — PL-01..12 e fasi: quantita', scheda, pillole, attivita', cataloghi; bench come specifica
+- [Dogana delle Serate](dogana-serate-artifact.md) — revisione asserzioni cene/lavoro/cerimonie del 31 ott, risposte nel db dell'artifact
+- [Kit e gerarchia valigia](punto-aperto-spazi-kit.md) — parte A in PR #96, parte B feat/kit pushata; cosa resta
+- [Blocco 2: prima valigia](prima-valigia-blocco2.md) — feat/prima-valigia: posti, primo avvio, stato del 1 nov e cosa resta
+- [UI: DS e componenti semplici](feedback-componenti-ds-semplici.md) — solo DS/tema/stringhe esistenti, widget piccoli a una responsabilità; ripetuto da Davide
+- [Punti aperti di novembre](punti-aperti-novembre.md) — spazi/kit, blocchi 3-4 Leo, Dogana, misura fluidità, test su emulatore/telefono
+- [Cose che fa Davide](da-fare-davide.md) — migrazioni, deploy, PR, Dogana, prova fluidità: ricordarle
+- [Generatore delle proposte](generatore-proposte.md) — posti di pack-trip: fix fatti, regola D approvata dopo il foglio
+- [Handoff sempre aggiornato](feedback-handoff.md) — file di passaggio di consegne in docs/superpowers/handoff.md
+- [Revisione Codex 7 nov](revisione-codex-7-novembre.md) — PR #98-#107: banco 618/888, #105 contro 18 ott, cammino, gate da ripristinare
