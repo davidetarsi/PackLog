@@ -60,6 +60,9 @@ export interface ContestoPosto {
   formale: boolean;
 }
 
+/** Oltre questa minima la giacca generica e' "leggera"; fra freddo vero e questa e' solo "Giacca". */
+const MINIMA_FRESCA = 10;
+
 /** Freddo vero per giacche e scarponi: la soglia delle estremita' coperte (guanti, berretto). */
 export const FREDDO_VERO = K.SOGLIA_ESTREMITA;
 
@@ -85,8 +88,9 @@ export function contestoPer(g: Record<string, any>, meteo: Record<string, any> |
 }
 
 const freddoVero = (c?: ContestoPosto) => !c || c.minima == null || c.minima <= FREDDO_VERO;
-/** Giacche e scarponi si dicono "da freddo" solo col freddo vero, non con una minima fresca. */
-const SOLO_COL_FREDDO_VERO = (capo: Capo) => capo.categoria === "Outerwear" || capo.sub === "Hiking Boots";
+/** Giacche, scarponi, cappelli e sciarpe si dicono "da freddo" solo col freddo vero, non con una minima fresca. */
+const SOLO_COL_FREDDO_VERO = (capo: Capo) => capo.categoria === "Outerwear" || capo.sub === "Hiking Boots" ||
+  capo.sub === "Cap/Hat" || capo.sub === "Scarf";
 /** Caldo che esclude scarponi e stivali importanti: la massima che il bench usa per "caldo" nelle sue misure. */
 export const CALDO_FORTE = 28;
 const caldoVero = (c?: ContestoPosto) => c != null && c.massima != null && c.massima >= CALDO_FORTE;
@@ -141,7 +145,8 @@ export function qualificaDelGap(g: Record<string, any>, capo: Capo, viaggioFredd
   if (freddo) return "freddo";
   if (acqua) return "acqua";
   if (soloElegante(g) && (capo.sub !== "Shirt" || !contesto || contesto.formale)) return "elegante";
-  if (contesto && capo.categoria === "Outerwear" && !capo.sub) return "leggero";
+  // Giacca generica: invernale col freddo vero (sopra), semplice fra 5 e 10 gradi, leggera oltre.
+  if (contesto && capo.categoria === "Outerwear" && !capo.sub && (contesto.minima == null || contesto.minima > MINIMA_FRESCA)) return "leggero";
   return null;
 }
 

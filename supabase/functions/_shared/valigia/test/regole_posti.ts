@@ -85,6 +85,8 @@ export function violazioni(cella: CellaPosti): { regola: string; posto: string }
     if (/invernal/i.test(p.nome) && TIPI_GIACCA.has(p.tipo) && !freddo) no("giacca invernale senza freddo vero", p);
     if (importante && p.tipo === "Outerwear" && !freddo && !pioggia && !formale) no("giacca importante senza freddo ne' pioggia", p);
     if (/leggera|leggere/i.test(p.nome) && TIPI_GIACCA.has(p.tipo) && importante) no("giacca leggera importante", p);
+    if (/leggera|leggere/i.test(p.nome) && TIPI_GIACCA.has(p.tipo) && tappe.every((t) => t.tmin != null && t.tmin <= 10)) no("giacca leggera con minima di 10 gradi o meno", p);
+    if (["Cap/Hat", "Scarf"].includes(p.tipo) && !freddo && (importante || CALDO.test(p.nome)) && !/impermeabil/i.test(p.nome)) no("cappello o sciarpa caldi/importanti senza freddo vero", p);
     if (p.tipo === "Water Shoes" && !acqua) no("scarpette da scoglio senza acqua", p);
     if (p.tipo === "Shirt" && /elegant/i.test(p.nome) && !formale) no("camicia elegante fuori dai contesti formali", p);
     if (p.tipo === "Wetsuit" && importante) no("muta importante", p);

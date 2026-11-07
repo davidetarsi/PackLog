@@ -34,17 +34,36 @@ const posti = (mancanti: Record<string, any>[], meteo: Record<string, any>, atti
     { meteo, viaggio: { giorni: 6, lavatrice: true, attivita }, armadio: [], lingua: "it" }).posti;
 const trovato = (p: PostoApp[], tipo: string) => p.find((x) => x.tipo === tipo);
 
-const LEON_MAGGIO = { temp_min_media: 10, temp_max_media: 23, giorni_di_pioggia: 0 };
+const LEON_MAGGIO = { temp_min_media: 12, temp_max_media: 23, giorni_di_pioggia: 0 };
 const FREDDO_VERO = { temp_min_media: 2, temp_max_media: 8, giorni_di_pioggia: 0 };
 const MALDIVE = { temp_min_media: 27, temp_max_media: 30, giorni_di_pioggia: 4 };
 
-test("giacca: con minime di 10 gradi e senza pioggia e' leggera e utile, non invernale e importante", () => {
+test("giacca: con minime sopra i 10 gradi e senza pioggia e' leggera e utile, non invernale e importante", () => {
   for (const warmth of [[3, 4], [4, 5]]) {
     const giacca = trovato(posti([assente("capospalla", "Outerwear", ["Coat", "Down Jacket", "Windbreaker"], { warmth_richiesto: warmth })],
       LEON_MAGGIO), "Outerwear")!;
     assert.equal(giacca.nome, "Giacca leggera", `calore ${warmth}`);
     assert.equal(giacca.livello, "utile");
   }
+});
+
+test("giacca: fra 5 e 10 gradi di minima e' semplice e utile, ne' invernale ne' leggera", () => {
+  const giacca = trovato(posti([assente("capospalla", "Outerwear", ["Coat", "Down Jacket"], { warmth_richiesto: [4, 5] })],
+    { temp_min_media: 7, temp_max_media: 15, giorni_di_pioggia: 0 }), "Outerwear")!;
+  assert.equal(giacca.nome, "Giacca");
+  assert.equal(giacca.livello, "utile");
+});
+
+test("cappello e sciarpa: caldi e importanti solo col freddo vero", () => {
+  const gap = () => [assente("c", "Accessory", ["Cap/Hat"], { warmth_richiesto: [3, 5] }), assente("s", "Accessory", ["Scarf"], { warmth_richiesto: [3, 5] })];
+  const mite = posti(gap(), { temp_min_media: 8, temp_max_media: 15, giorni_di_pioggia: 0 });
+  for (const tipo of ["Cap/Hat", "Scarf"]) {
+    const p = trovato(mite, tipo)!;
+    if (p) { assert.equal(p.livello, "utile"); assert.ok(!/cald/i.test(p.nome), p.nome); }
+  }
+  const freddo = posti(gap(), FREDDO_VERO);
+  assert.equal(trovato(freddo, "Cap/Hat")!.nome, "Cappello caldo");
+  assert.equal(trovato(freddo, "Scarf")!.livello, "importante");
 });
 
 test("giacca: col freddo vero e' invernale e importante", () => {
