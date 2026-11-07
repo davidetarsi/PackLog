@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pack_log/shared/widgets/size_reporter.dart';
+import 'package:pack_log/shared/widgets/height_reporter.dart';
 
 void main() {
   testWidgets('riporta l\'altezza dopo il primo layout', (tester) async {

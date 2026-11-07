@@ -20,9 +20,11 @@ import '../../kits/view/widgets/kit_strip.dart';
 import '../../spaces/providers/space_provider.dart';
 import 'house_manage_sheet.dart';
 import '../../../shared/widgets/ds_contextual_app_bar.dart';
-import '../../../shared/widgets/size_reporter.dart';
+import '../../../shared/widgets/height_reporter.dart';
 import '../../../shared/widgets/skeleton/skeleton.dart';
+import '../../kits/view/add_selection_to_kit.dart';
 import 'widgets/house_actions.dart';
+import 'widgets/house_bulk_actions.dart';
 import 'widgets/house_add_page.dart';
 import 'widgets/house_normal_action_bar.dart';
 import 'widgets/house_normal_app_bar.dart';
@@ -284,7 +286,7 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                 ? StickyCtaScaffold.standardHeight(context) -
                       context.responsive(AppConstants.ctaHeight) +
                       (_normalActionBarHeight ??
-                          context.responsive(kBottomBarElementsHeight) +
+                          context.responsive(kHouseBottomBarHeight) +
                               MediaQuery.viewInsetsOf(context).bottom)
                 : null,
             appBar: DsContextualAppBar(
@@ -395,8 +397,18 @@ class _HouseDetailScreenState extends ConsumerState<HouseDetailScreen> {
                     child: isSelectionMode
                         ? HouseSelectionBar(
                             key: const ValueKey('selection-bar'),
-                            houseId: widget.houseId,
                             hasSelection: hasSelection,
+                            onMove: () =>
+                                handleBulkMove(context, ref, widget.houseId),
+                            onKit: () => addSelectionToKit(
+                              context,
+                              ref,
+                              houseId: widget.houseId,
+                            ),
+                            onTrip: () =>
+                                handleAddToTrip(context, ref, widget.houseId),
+                            onDelete: () =>
+                                handleBulkDelete(context, ref, widget.houseId),
                           )
                         : KeyedSubtree(
                             key: const ValueKey('normal_bar'),

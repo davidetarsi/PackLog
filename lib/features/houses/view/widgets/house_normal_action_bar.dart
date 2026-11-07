@@ -4,7 +4,7 @@ import '../../../../shared/widgets/circular_action_button.dart';
 import '../../../items/widgets/rapid_fire_input.dart';
 
 /// Altezza degli elementi della barra in basso (campo rapid fire e bottone AI).
-const kBottomBarElementsHeight = 50.0;
+const kHouseBottomBarHeight = 50.0;
 
 /// Bottom action bar in modalità normale: campo rapid-fire (sinistra) e
 /// scansione AI (destra). "⋮" e ricerca stanno nell'intestazione.
@@ -32,7 +32,7 @@ class HouseNormalActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final elementHeight = context.responsive(kBottomBarElementsHeight);
+    final elementHeight = context.responsive(kHouseBottomBarHeight);
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Padding(

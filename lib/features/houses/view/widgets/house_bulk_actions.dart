@@ -10,7 +10,9 @@ import '../../../trips/model/trip_model.dart';
 import '../../../trips/providers/trip_provider.dart';
 import '../../../trips/view/trip_picker_sheet.dart';
 
-// Azioni della barra di selezione multipla della casa.
+// Azioni della barra di selezione multipla della casa. Il [context] deve
+// essere quello dello schermo (non della barra): dopo ogni await decide se
+// mostrare snackbar e svuotare la selezione.
 
 /// Mostra un dialog di conferma ed elimina in bulk gli item selezionati.
 ///

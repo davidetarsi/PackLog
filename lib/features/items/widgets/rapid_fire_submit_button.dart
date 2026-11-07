@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../shared/theme/app_motion.dart';
 import '../../../shared/theme/app_spacing.dart';
 
+/// Bottone tondo "invia" del rapid fire: arancio se attivo, neutro se no,
+/// con l'indicatore di avanzamento mentre salva.
 class RapidFireSubmitButton extends StatelessWidget {
   final bool enabled;
   final VoidCallback onPressed;
