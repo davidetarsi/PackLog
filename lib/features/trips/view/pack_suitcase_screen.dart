@@ -209,12 +209,17 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     });
   }
 
-  /// Cambia la quantità di un oggetto già scelto. Con `copyWith` lo snapshot
-  /// resta com'è, `isChecked` compreso.
+  /// Cambiare quantità aggiungendo copie richiede di confermare di nuovo la
+  /// spunta; una riduzione conserva la spunta esistente.
   void _setQuantity(String itemId, int quantity) {
     final chosen = _items[itemId];
     if (chosen == null) return;
-    setState(() => _items[itemId] = chosen.copyWith(quantity: quantity));
+    setState(
+      () => _items[itemId] = chosen.copyWith(
+        quantity: quantity,
+        isChecked: quantity > chosen.quantity ? false : chosen.isChecked,
+      ),
+    );
   }
 
   /// Crea nella casa l'oggetto cercato e lo mette in valigia. La ricerca

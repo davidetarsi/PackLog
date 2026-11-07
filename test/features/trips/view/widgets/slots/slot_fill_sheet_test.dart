@@ -20,16 +20,23 @@ import '../../../../../helpers/memory_asset_loader.dart';
 /// Se [gate] c'è, il salvataggio resta in attesa finché non si completa.
 Completer<void>? gate;
 Completer<void>? fillGate;
+Completer<void>? inventoryGate;
+bool inventoryFails = false;
 
 /// Se vero, `onFill` del foglio fallisce.
 bool fillFails = false;
+int? linkReceipt;
 
 class _RecordingItemNotifier extends ItemNotifier {
   _RecordingItemNotifier(this.items);
   final List<ItemModel> items;
 
   @override
-  Future<List<ItemModel>> build(String houseId) async => items;
+  Future<List<ItemModel>> build(String houseId) async {
+    if (inventoryFails) throw StateError('inventory failed');
+    await inventoryGate?.future;
+    return items;
+  }
 
   @override
   Future<void> addItem(ItemModel model, {bool categoryChosen = false}) async {
@@ -85,7 +92,10 @@ void main() {
     disableAnimations = false;
     gate = null;
     fillGate = null;
+    inventoryGate = null;
+    inventoryFails = false;
     fillFails = false;
+    linkReceipt = null;
   });
 
   Future<void> pumpSheet(
@@ -150,6 +160,10 @@ void main() {
                           await fillGate?.future;
                           if (fillFails) throw StateError('boom');
                           filled.add(item);
+                        },
+                        onLinkInventory: (item) async {
+                          filled.add(item);
+                          return linkReceipt ?? item.quantity;
                         },
                         onToBuy: () => toBuyCalls++,
                       ),
@@ -221,6 +235,153 @@ void main() {
     expect(find.text('Oggetti trovati'), findsNothing);
   });
 
+  testWidgets('inventario in caricamento non viene mostrato come vuoto', (
+    tester,
+  ) async {
+    inventoryGate = Completer<void>();
+    await pumpSheet(tester, _slot());
+    await tester.enterText(find.byType(TextField).first, 'T-shirt bianca');
+    await tester.tap(find.byKey(const Key('slot_open_inventory_search')));
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(
+      find.text('Nessun oggetto con questo nome nell’inventario.'),
+      findsNothing,
+    );
+
+    inventoryGate!.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('T-shirt bianca'), findsWidgets);
+  });
+
+  testWidgets('errore inventario offre riprova e poi mostra i risultati', (
+    tester,
+  ) async {
+    inventoryFails = true;
+    await pumpSheet(tester, _slot());
+    await tester.enterText(find.byType(TextField).first, 'T-shirt bianca');
+    await tester.tap(find.byKey(const Key('slot_open_inventory_search')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Nessun oggetto con questo nome nell’inventario.'),
+      findsNothing,
+    );
+    expect(find.text('Riprova'), findsOneWidget);
+
+    inventoryFails = false;
+    await tester.ensureVisible(find.text('Riprova'));
+    await tester.tap(find.text('Riprova'));
+    await tester.pumpAndSettle();
+    expect(find.text('T-shirt bianca'), findsWidgets);
+  });
+
+  testWidgets(
+    'tastiera, viewport stretto e testo grande non coprono il foglio',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            tripNotifierProvider.overrideWith(
+              () => _RecordingTripNotifier(const []),
+            ),
+            itemNotifierProvider('h1').overrideWith(
+              () => _RecordingItemNotifier([
+                ItemModel(
+                  id: 'inventory-tee',
+                  houseId: 'h1',
+                  name: 'T-shirt bianca',
+                  category: ItemCategory.vestiti,
+                  quantity: 3,
+                  createdAt: DateTime(2026),
+                  updatedAt: DateTime(2026),
+                ),
+              ]),
+            ),
+          ],
+          child: EasyLocalization(
+            supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
+            path: 'assets/translations',
+            assetLoader: MemoryAssetLoader(readAppTranslations()),
+            fallbackLocale: const Locale('en', 'US'),
+            startLocale: const Locale('it', 'IT'),
+            saveLocale: false,
+            child: Builder(
+              builder: (context) => MaterialApp(
+                theme: AppTheme.dark,
+                locale: context.locale,
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: const TextScaler.linear(1.6)),
+                  child: child!,
+                ),
+                home: Scaffold(
+                  body: Builder(
+                    builder: (context) => TextButton(
+                      onPressed: () => unawaited(
+                        showSlotFillSheet(
+                          context,
+                          slot: _slot(copies: 1),
+                          houseId: 'h1',
+                          tripId: 't1',
+                          onFill: (item) async => filled.add(item),
+                          onLinkInventory: (item) async {
+                            filled.add(item);
+                            return item.quantity;
+                          },
+                          onToBuy: () {},
+                        ),
+                      ),
+                      child: const Text('apri'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('apri'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, 'T-shirt bianca');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Cerca nel tuo inventario'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Cerca nel tuo inventario').hitTestable(),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Cerca nel tuo inventario'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Aggiungi'));
+      await tester.tap(find.text('Aggiungi'));
+      await tester.pumpAndSettle();
+
+      final close = find.byKey(const Key('slot_sheet_done'));
+      expect(close, findsOneWidget);
+      await tester.ensureVisible(close);
+      expect(close.hitTestable(), findsOneWidget);
+      expect(find.byIcon(Icons.close).hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(close);
+      await tester.pumpAndSettle();
+      expect(sheet, findsNothing);
+      expect(filled.single.id, 'inventory-tee');
+    },
+  );
+
   testWidgets('la ricerca secondaria riconosce copie in coda', (tester) async {
     await pumpSheet(tester, _slot());
     await tester.enterText(find.byType(TextField).first, 'T-shirt bianca, 2');
@@ -249,6 +410,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.byKey(const Key('slot_sheet_done')), findsOneWidget);
+      expect(find.text('Sneakers ×0'), findsNothing);
       expect(find.byType(RapidFireInput), findsNothing);
       expect(filled.single.id, 'inventory-tee');
     },
@@ -309,6 +471,21 @@ void main() {
     },
   );
 
+  testWidgets('usa solo le copie confermate dal salvataggio', (tester) async {
+    linkReceipt = 1;
+    await pumpSheet(tester, _slot(copies: 3));
+    await tester.enterText(find.byType(TextField).first, 'T-shirt bianca');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('slot_open_inventory_search')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Aggiungi'));
+    await tester.pumpAndSettle();
+
+    expect(filled.single.quantity, 3);
+    expect(find.text('×3'), findsNothing);
+    expect(find.text('Sneakers ×2'), findsOneWidget);
+  });
+
   testWidgets(
     'nome già tutto allocato avvisa il duplicato ma non offre risultati',
     (tester) async {
@@ -337,10 +514,17 @@ void main() {
       await tester.tap(find.byKey(const Key('slot_open_inventory_search')));
       await tester.pumpAndSettle();
       expect(
-        find.text('Nessun oggetto con questo nome nell’inventario.'),
+        find.text(
+          'In questa valigia hai già aggiunto tutte le copie disponibili.',
+        ),
         findsOneWidget,
       );
+      expect(
+        find.text('Nessun oggetto con questo nome nell’inventario.'),
+        findsNothing,
+      );
       expect(find.text('Aggiungi'), findsNothing);
+      expect(find.byType(RapidFireInput), findsOneWidget);
     },
   );
 

@@ -296,6 +296,7 @@
       "added_title": "Added to the suitcase",
       "add": "Add",
       "no_inventory_match": "No item with this name in your inventory.",
+      "all_copies_packed": "You’ve already added all available copies to this suitcase.",
       "duplicate_name": "An item with this name is already in your inventory.",
       "completed": "You’ve added all the requested items.",
       "close": "Close"

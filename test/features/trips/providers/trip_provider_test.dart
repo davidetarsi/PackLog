@@ -953,7 +953,7 @@ void main() {
 
     TripModel current() => container.read(tripNotifierProvider).value!.single;
 
-    test('una sola scrittura: oggetto fra gli items e posto scalato', () async {
+    test('pubblica il fill solo dopo la scrittura', () async {
       await load(tripWith());
       final saving = Completer<void>();
       when(
@@ -964,9 +964,8 @@ void main() {
           .read(tripNotifierProvider.notifier)
           .fillAiSlot('t1', 's-magliette', item('i1', 2));
 
-      // Prima che il salvataggio finisca lo stato è già cambiato.
-      expect(current().items.single.quantity, 2);
-      expect(current().aiResult!.slots!.single.remaining, 1);
+      expect(current().items, isEmpty);
+      expect(current().aiResult!.slots!.single.remaining, 3);
 
       saving.complete();
       await done;
@@ -977,6 +976,19 @@ void main() {
       expect(saved.items.single.id, 'i1');
       expect(saved.aiResult!.slots!.single.remaining, 1);
       verify(() => mockRepository.getAllTrips()).called(1);
+    });
+
+    test('aggiungere copie riapre solo la riga già spuntata', () async {
+      final checked = item('i1', 1).copyWith(isChecked: true);
+      final other = item('i2', 1).copyWith(isChecked: true);
+      await load(tripWith(items: [checked, other]));
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await container
+          .read(tripNotifierProvider.notifier)
+          .fillAiSlot('t1', 's-magliette', item('i1', 1));
+
+      expect(current().items.map((entry) => entry.isChecked), [false, true]);
     });
 
     test('slot_filled: livello e copie, dopo il salvataggio', () async {

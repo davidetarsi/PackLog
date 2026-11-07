@@ -240,14 +240,19 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
       available: inventoryItem?.quantity ?? 1,
       reason: proposed?.reason,
       inDeparture: proposed?.inDeparture ?? false,
-      onQuantity: (quantity) => unawaited(() async {
+      onQuantity: (quantity) async {
         try {
           await _changeTrip(
             (latest) => latest.copyWith(
               items: [
                 for (final entry in latest.items)
                   if (entry.id == item.id)
-                    entry.copyWith(quantity: quantity)
+                    entry.copyWith(
+                      quantity: quantity,
+                      isChecked: quantity > entry.quantity
+                          ? false
+                          : entry.isChecked,
+                    )
                   else
                     entry,
               ],
@@ -256,8 +261,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
           );
         } catch (_) {
           if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());
+          rethrow;
         }
-      }()),
+      },
       onRemove: () => unawaited(_removeInventoryItem(item)),
     );
   }

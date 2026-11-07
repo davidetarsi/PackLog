@@ -26,11 +26,18 @@ void _setScreen(
 /// Monta una pagina con un bottone che apre il foglio tramite [open].
 Future<void> _pumpHost(
   WidgetTester tester,
-  void Function(BuildContext context) open,
-) async {
+  void Function(BuildContext context) open, {
+  double textScale = 1,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.light,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(
@@ -139,6 +146,127 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     expect(find.byKey(_actionKey).hitTestable(), findsOneWidget);
+  });
+
+  testWidgets('titolo lungo e azioni vanno a capo, la X resta a destra', (
+    tester,
+  ) async {
+    _setScreen(tester, size: const Size(320, 640));
+    const action = Key('sheet_action_test');
+    const done = Key('sheet_done_test');
+    await _pumpHost(
+      tester,
+      (context) => showDsFormSheet<void>(
+        context,
+        builder: (_) => DsFormSheet(
+          title: 'Scarpe da trekking impermeabili per il viaggio',
+          actions: [
+            TextButton(
+              key: action,
+              onPressed: () {},
+              child: const Text('Da comprare'),
+            ),
+          ],
+          footer: const SizedBox(
+            key: done,
+            height: 48,
+            child: Center(child: Text('Chiudi')),
+          ),
+          child: const TextField(),
+        ),
+      ),
+      textScale: 1.6,
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('sheet_close')).hitTestable(), findsOneWidget);
+    expect(find.byKey(action).hitTestable(), findsOneWidget);
+    expect(find.byKey(done).hitTestable(), findsOneWidget);
+    expect(
+      tester.getTopRight(find.byKey(const Key('sheet_close'))).dx,
+      lessThanOrEqualTo(320),
+    );
+  });
+
+  testWidgets('il draft di corpo e piè sopravvive al cambio con tastiera', (
+    tester,
+  ) async {
+    _setScreen(tester, size: const Size(320, 640));
+    late StateSetter setHostState;
+    var textScale = 1.0;
+    final bodyController = TextEditingController();
+    final footerController = TextEditingController();
+    addTearDown(bodyController.dispose);
+    addTearDown(footerController.dispose);
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          setHostState = setState;
+          return MaterialApp(
+            theme: AppTheme.light,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(textScale)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showDsFormSheet<void>(
+                    context,
+                    builder: (_) => DsFormSheet(
+                      title: 'Scarpe da trekking impermeabili per il viaggio',
+                      actions: [
+                        TextButton(
+                          onPressed: () {},
+                          child: const Text('Da comprare'),
+                        ),
+                      ],
+                      footer: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'La quantità che aggiungi viene scalata da quella richiesta. '
+                              'Puoi segnare da comprare ciò che manca.',
+                            ),
+                            TextField(
+                              key: const Key('footer_draft'),
+                              controller: footerController,
+                            ),
+                          ],
+                        ),
+                      ),
+                      child: TextField(
+                        key: const Key('body_draft'),
+                        controller: bodyController,
+                      ),
+                    ),
+                  ),
+                  child: const Text('apri'),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    await tester.tap(find.text('apri'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('body_draft')), 'testo corpo');
+    await tester.enterText(find.byKey(const Key('footer_draft')), 'testo piè');
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+    setHostState(() => textScale = 1.6);
+    await tester.pumpAndSettle();
+
+    expect(bodyController.text, 'testo corpo');
+    expect(footerController.text, 'testo piè');
+    expect(tester.testTextInput.hasAnyClients, isTrue);
+    expect(find.byKey(const Key('sheet_close')).hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('expand: il contenuto riempie il foglio senza scroll esterno', (

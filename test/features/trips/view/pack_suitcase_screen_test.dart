@@ -491,26 +491,25 @@ void main() {
       },
     );
 
-    testWidgets(
-      'salvando, un oggetto già spuntato mantiene isChecked quando cambia la quantità',
-      (tester) async {
-        arrange(
-          trip: _trip(items: [_tripItem(_maglietta, isChecked: true)]),
-          items: {
-            'h1': [_maglietta],
-          },
-        );
-        await pumpPack(tester);
+    testWidgets('salvando, aumentare la quantità riapre la spunta della riga', (
+      tester,
+    ) async {
+      arrange(
+        trip: _trip(items: [_tripItem(_maglietta, isChecked: true)]),
+        items: {
+          'h1': [_maglietta],
+        },
+      );
+      await pumpPack(tester);
 
-        await tapInRow(tester, 'Maglietta', Icons.add_circle_outline);
-        await tapText(tester, 'Fatto · 1 oggetto');
+      await tapInRow(tester, 'Maglietta', Icons.add_circle_outline);
+      await tapText(tester, 'Fatto · 1 oggetto');
 
-        final saved = savedTrip();
-        expect(saved.items.single.id, 'i-maglietta');
-        expect(saved.items.single.quantity, 2);
-        expect(saved.items.single.isChecked, isTrue);
-      },
-    );
+      final saved = savedTrip();
+      expect(saved.items.single.id, 'i-maglietta');
+      expect(saved.items.single.quantity, 2);
+      expect(saved.items.single.isChecked, isFalse);
+    });
 
     testWidgets('lo stepper non supera la quantità disponibile in casa', (
       tester,

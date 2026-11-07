@@ -296,6 +296,7 @@
       "added_title": "Aggiunte alla valigia",
       "add": "Aggiungi",
       "no_inventory_match": "Nessun oggetto con questo nome nell’inventario.",
+      "all_copies_packed": "In questa valigia hai già aggiunto tutte le copie disponibili.",
       "duplicate_name": "Attenzione, nell’inventario c’è già un oggetto con questo nome.",
       "completed": "Hai aggiunto tutte le copie richieste.",
       "close": "Chiudi"

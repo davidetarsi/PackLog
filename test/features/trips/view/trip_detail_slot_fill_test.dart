@@ -20,6 +20,7 @@ import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/luggages/providers/luggage_provider.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
 import 'package:pack_log/features/trips/view/trip_detail_screen.dart';
@@ -45,14 +46,27 @@ class MockRawAnalytics extends Mock implements AppAnalyticsService {}
 
 /// Registra gli oggetti creati dal Rapid Fire, senza toccare il database.
 class _RecordingItemNotifier extends ItemNotifier {
+  _RecordingItemNotifier([this.initialItems = const []]);
+
+  final List<ItemModel> initialItems;
   final added = <ItemModel>[];
+  Completer<void>? addGate;
 
   @override
-  Future<List<ItemModel>> build(String houseId) async => const [];
+  Future<List<ItemModel>> build(String houseId) async => initialItems;
+
+  void changeQuantity(String id, int quantity) {
+    state = AsyncData([
+      for (final item in state.valueOrNull ?? const <ItemModel>[])
+        item.id == id ? item.copyWith(quantity: quantity) : item,
+    ]);
+  }
 
   @override
   Future<void> addItem(ItemModel model, {bool categoryChosen = false}) async {
+    await addGate?.future;
     added.add(model);
+    state = AsyncData([...state.valueOrNull ?? const <ItemModel>[], model]);
   }
 }
 
@@ -151,6 +165,7 @@ void main() {
     TripModel trip, {
     String? slot,
     bool fromHome = false,
+    bool firstReview = false,
   }) async {
     when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [trip]);
     tester.view.physicalSize = const Size(390, 4000);
@@ -159,7 +174,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final detail = slot == null
-        ? '/trips/trip-1/needs'
+        ? '/trips/trip-1${firstReview ? '?review=1' : '/needs'}'
         : '/trips/trip-1/needs?slot=$slot';
     router = GoRouter(
       initialLocation: fromHome ? '/' : detail,
@@ -173,6 +188,7 @@ void main() {
           builder: (context, state) => TripDetailScreen(
             tripId: state.pathParameters['id']!,
             initialSlotId: state.uri.queryParameters['slot'],
+            firstReview: state.uri.queryParameters['review'] == '1',
           ),
         ),
         GoRoute(
@@ -378,6 +394,185 @@ void main() {
   });
 
   group('riempire il posto', () {
+    testWidgets('creazione in coda rifiuta copie non piu disponibili', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _trip());
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(TripDetailScreen)),
+        listen: false,
+      );
+      final gate = Completer<void>();
+      addTearDown(() {
+        if (!gate.isCompleted) gate.complete();
+      });
+      final queue = container
+          .read(tripNotifierProvider.notifier)
+          .serializeEdit('trip-1', () => gate.future);
+      await tester.pump();
+      await openMagliette(tester);
+      await send(tester, '3 T-shirt nuove');
+      expect(itemNotifier.added.single.quantity, 3);
+      itemNotifier.changeQuantity(itemNotifier.added.single.id, 1);
+      await tester.pump();
+      gate.complete();
+      await queue;
+      await tester.pumpAndSettle();
+
+      verifyNever(() => tripRepo.updateTrip(any()));
+      expect(container.read(tripNotifierProvider).value!.single.items, isEmpty);
+      expect(
+        container.read(itemNotifierProvider('h1')).value!.single.quantity,
+        1,
+      );
+      expect(find.text('Magliette ×5'), findsOneWidget);
+      expect(find.text('Errore di salvataggio'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('una seconda apertura usa il residuo committato', (
+      tester,
+    ) async {
+      final commitA = Completer<void>();
+      final startedA = Completer<void>();
+      var writes = 0;
+      when(() => tripRepo.updateTrip(any())).thenAnswer((_) async {
+        if (writes++ == 0) {
+          startedA.complete();
+          await commitA.future;
+        }
+      });
+      itemNotifier = _RecordingItemNotifier([
+        ItemModel(
+          id: 'inventory-socks',
+          houseId: 'h1',
+          name: 'Calzini blu',
+          category: ItemCategory.vestiti,
+          quantity: 3,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      ]);
+      await pumpDetail(tester, _trip(magliette: 3));
+      await openMagliette(tester);
+
+      await tester.enterText(find.byType(TextField).first, '2 T-shirt nuove');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.arrow_upward));
+      await tester.pump();
+      await startedA.future;
+      await tester.tap(find.byKey(const Key('sheet_close')));
+      await tester.pumpAndSettle();
+
+      await openMagliette(tester);
+      expect(find.text('Magliette ×3'), findsOneWidget);
+      commitA.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Magliette ×1'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).first, 'Calzini blu');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('slot_open_inventory_search')));
+      await tester.pumpAndSettle();
+      expect(find.text('×3'), findsNWidgets(2));
+      await tester.tap(find.text('Aggiungi'));
+      await tester.pumpAndSettle();
+
+      final saved = lastSaved();
+      expect(saved.items.map((item) => item.quantity), [2, 1]);
+      expect(
+        saved.aiResult!.slots!
+            .firstWhere((slot) => slot.id == 'u-magliette')
+            .remaining,
+        0,
+      );
+      expect(writes, 2);
+    });
+
+    testWidgets('un fill fallito non completa il posto mentre è in attesa', (
+      tester,
+    ) async {
+      final saveGate = Completer<void>();
+      final started = Completer<void>();
+      when(() => tripRepo.updateTrip(any())).thenAnswer((_) async {
+        started.complete();
+        await saveGate.future;
+        throw StateError('save failed');
+      });
+      await pumpDetail(tester, _trip(magliette: 2));
+      await openMagliette(tester);
+
+      await tester.enterText(find.byType(TextField).first, '2 T-shirt nuove');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.arrow_upward));
+      await tester.pump();
+      await started.future;
+      expect(find.text('Hai aggiunto tutte le copie richieste.'), findsNothing);
+
+      saveGate.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Hai aggiunto tutte le copie richieste.'), findsNothing);
+      expect(find.text('Magliette ×2'), findsOneWidget);
+    });
+
+    testWidgets('una creazione continua dopo chiusura e pop della route', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _trip(), fromHome: true);
+      await openMagliette(tester);
+      itemNotifier.addGate = Completer<void>();
+
+      await tester.enterText(find.byType(TextField), 'T-shirt nuova');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.arrow_upward));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('sheet_close')));
+      await tester.pumpAndSettle();
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(TripDetailScreen), findsNothing);
+
+      itemNotifier.addGate!.complete();
+      await tester.pumpAndSettle();
+
+      expect(itemNotifier.added, hasLength(1));
+      final saved = lastSaved();
+      expect(saved.items.single.id, itemNotifier.added.single.id);
+      expect(
+        saved.aiResult!.slots!
+            .firstWhere((slot) => slot.id == 'u-magliette')
+            .remaining,
+        4,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('un errore dopo la chiusura avvisa e conserva inventario', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _trip(), fromHome: true);
+      await openMagliette(tester);
+      itemNotifier.addGate = Completer<void>();
+      when(
+        () => tripRepo.updateTrip(any()),
+      ).thenThrow(StateError('save failed'));
+
+      await tester.enterText(find.byType(TextField), 'T-shirt nuova');
+      await tester.pump();
+      await tester.tap(find.byIcon(Icons.arrow_upward));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('sheet_close')));
+      await tester.pumpAndSettle();
+      router.pop();
+      await tester.pumpAndSettle();
+      itemNotifier.addGate!.complete();
+      await tester.pumpAndSettle();
+
+      expect(itemNotifier.added, hasLength(1));
+      expect(find.text('Errore di salvataggio'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('"2 t-shirt nere" crea l\'oggetto, lo mette in valigia e il '
         'posto scende a ×3', (tester) async {
       await pumpDetail(tester, _trip());
@@ -532,6 +727,33 @@ void main() {
       expectEvent('slot_bought', {'level': 'important'}, 1);
     });
 
+    testWidgets('Comprato collegando inventario conserva slot_bought', (
+      tester,
+    ) async {
+      itemNotifier = _RecordingItemNotifier([
+        ItemModel(
+          id: 'inventory-jacket',
+          houseId: 'h1',
+          name: 'Piumino nero',
+          category: ItemCategory.vestiti,
+          quantity: 1,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      ]);
+      await pumpDetail(tester, withGiaccaToBuy(), slot: 'imp-giacca');
+      await tester.enterText(find.byType(TextField), 'Piumino nero');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('slot_open_inventory_search')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Aggiungi'));
+      await tester.pumpAndSettle();
+
+      expectEvent('slot_bought', {'level': 'important'}, 1);
+      expect(lastSaved().items.single.id, 'inventory-jacket');
+      expect(itemNotifier.added, isEmpty);
+    });
+
     testWidgets('?slot= su un proposto da comprare: aprire non lo modifica, '
         'e il riempimento è slot_bought', (tester) async {
       final trip = _trip();
@@ -662,6 +884,83 @@ void main() {
       expect(
         undone.aiResult!.slots!.firstWhere((s) => s.id == 'imp-giacca').toBuy,
         isFalse,
+      );
+    });
+
+    testWidgets('ripristino in coda limita le copie allo stock rimasto', (
+      tester,
+    ) async {
+      var stored = _trip().copyWith(
+        items: [
+          TripItem(
+            id: 'inventory-tee',
+            name: 'T-shirt bianca',
+            category: ItemCategory.vestiti,
+            quantity: 2,
+            originHouseId: 'h1',
+          ),
+        ],
+      );
+      final undoGate = Completer<void>();
+      final restoreStarted = Completer<void>();
+      addTearDown(() {
+        if (!undoGate.isCompleted) undoGate.complete();
+      });
+      var writes = 0;
+      when(() => tripRepo.updateTrip(any())).thenAnswer((call) async {
+        final next = call.positionalArguments.first as TripModel;
+        writes++;
+        if (writes == 2) {
+          restoreStarted.complete();
+          await undoGate.future;
+        }
+        stored = next;
+      });
+      itemNotifier = _RecordingItemNotifier([
+        ItemModel(
+          id: 'inventory-tee',
+          houseId: 'h1',
+          name: 'T-shirt bianca',
+          category: ItemCategory.vestiti,
+          quantity: 3,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      ]);
+
+      await pumpDetail(tester, stored, firstReview: true);
+      when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [stored]);
+      await tester.tap(find.byKey(const Key('trip_item_remove_inventory-tee')));
+      await tester.pumpAndSettle();
+      expect(stored.items, isEmpty);
+
+      await tester.tap(find.text('Annulla'));
+      await tester.pump();
+      await restoreStarted.future;
+
+      // Durante il salvataggio dell'Undo, la UI vede ancora il viaggio
+      // senza la riga e propone erroneamente tutte e tre le copie.
+      router.go('/trips/trip-1/needs?slot=u-magliette');
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'T-shirt bianca');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cerca nel tuo inventario'));
+      await tester.pumpAndSettle();
+      expect(find.text('×3'), findsNWidgets(2));
+      await tester.tap(find.text('Aggiungi'));
+      await tester.pump();
+
+      undoGate.complete();
+      await tester.pumpAndSettle();
+
+      expect(writes, 3);
+      expect(stored.items.single.quantity, 3);
+      expect(stored.items.single.quantity, lessThanOrEqualTo(3));
+      expect(
+        stored.aiResult!.slots!
+            .firstWhere((slot) => slot.id == 'u-magliette')
+            .remaining,
+        4,
       );
     });
 

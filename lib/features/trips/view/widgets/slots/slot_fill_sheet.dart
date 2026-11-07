@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../shared/helpers/search_match.dart';
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_button.dart';
+import '../../../../../shared/widgets/ds_error_state.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../../../shared/widgets/ds_search_field.dart';
 import '../../../../../shared/widgets/ds_text_button.dart';
@@ -27,6 +28,7 @@ Future<void> showSlotFillSheet(
   required String houseId,
   required String tripId,
   required Future<void> Function(TripItem item) onFill,
+  required Future<int> Function(TripItem item) onLinkInventory,
   required VoidCallback onToBuy,
 }) => showDsSheet<void>(
   context,
@@ -35,6 +37,7 @@ Future<void> showSlotFillSheet(
     houseId: houseId,
     tripId: tripId,
     onFill: onFill,
+    onLinkInventory: onLinkInventory,
     onToBuy: onToBuy,
   ),
 );
@@ -46,6 +49,7 @@ class SlotFillSheet extends ConsumerStatefulWidget {
     required this.houseId,
     required this.tripId,
     required this.onFill,
+    required this.onLinkInventory,
     required this.onToBuy,
   });
 
@@ -53,6 +57,7 @@ class SlotFillSheet extends ConsumerStatefulWidget {
   final String houseId;
   final String tripId;
   final Future<void> Function(TripItem item) onFill;
+  final Future<int> Function(TripItem item) onLinkInventory;
   final VoidCallback onToBuy;
 
   @override
@@ -69,7 +74,6 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
   String _rapidText = '';
   bool _searchOpen = false;
 
-  bool get _done => _remaining == 0 && _pendingFills == 0;
   bool get _saving => _pendingFills > 0;
 
   @override
@@ -107,42 +111,43 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
     );
   }
 
-  Future<void> _fill(TripItem item) {
+  Future<void> _fill(TripItem item, {bool linkInventory = false}) {
     if (mounted) setState(() => _pendingFills++);
-    final operation = _fillQueue.then((_) => _performFill(item));
+    final operation = _fillQueue.then(
+      (_) => _performFill(item, linkInventory: linkInventory),
+    );
     _fillQueue = operation.catchError((Object _, StackTrace _) {});
     return operation;
   }
 
-  Future<void> _performFill(TripItem item) async {
-    if (!mounted) {
-      try {
-        await widget.onFill(item);
-      } catch (_) {
-        // Una chiusura durante il salvataggio non annulla la scrittura.
-      }
-      return;
-    }
+  Future<void> _performFill(TripItem item, {bool linkInventory = false}) async {
     try {
-      await widget.onFill(item);
+      final actualQuantity = linkInventory
+          ? await widget.onLinkInventory(item)
+          : await _createAndFill(item);
+      if (!mounted || actualQuantity <= 0) return;
+      setState(() {
+        final index = _written.indexWhere((written) => written.id == item.id);
+        final saved = item.copyWith(quantity: actualQuantity);
+        if (index == -1) {
+          _written.add(saved);
+        } else {
+          _written[index] = _written[index].copyWith(
+            quantity: _written[index].quantity + actualQuantity,
+          );
+        }
+        _remaining = (_remaining - actualQuantity).clamp(0, _remaining);
+      });
     } catch (_) {
-      // Il chiamante avvisa già dell'errore; non si scala il residuo.
-      return;
+      // Il chiamante mostra l'errore con il messenger catturato all'apertura.
     } finally {
       if (mounted) setState(() => _pendingFills--);
     }
-    if (!mounted) return;
-    setState(() {
-      final index = _written.indexWhere((written) => written.id == item.id);
-      if (index == -1) {
-        _written.add(item);
-      } else {
-        _written[index] = _written[index].copyWith(
-          quantity: _written[index].quantity + item.quantity,
-        );
-      }
-      _remaining = (_remaining - item.quantity).clamp(0, _remaining);
-    });
+  }
+
+  Future<int> _createAndFill(TripItem item) async {
+    await widget.onFill(item);
+    return item.quantity;
   }
 
   void _openSearch() {
@@ -166,16 +171,21 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
     final slot = widget.slot;
     final tt = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
-    final copies = slotCopiesLabel(
-      slot.copyWith(remaining: _remaining),
-      always: true,
-    )!;
     final inventory = ref.watch(itemNotifierProvider(widget.houseId));
     final trip = ref
         .watch(tripNotifierProvider)
         .valueOrNull
         ?.where((candidate) => candidate.id == widget.tripId)
         .firstOrNull;
+    final liveSlot = trip?.aiResult?.slots
+        ?.where((candidate) => candidate.id == slot.id)
+        .firstOrNull;
+    final remaining = liveSlot?.remaining ?? _remaining;
+    final done = remaining == 0 && _pendingFills == 0;
+    final copies = slotCopiesLabel(
+      slot.copyWith(remaining: remaining),
+      always: true,
+    )!;
     final availableItems = _availableItems(
       inventory.valueOrNull ?? const <ItemModel>[],
       trip,
@@ -187,23 +197,28 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
         : availableItems
               .where((item) => matchesSearch(item.name, query))
               .toList();
-    final duplicateName = allItems.any(
-      (item) =>
-          normalizeForSearch(item.name) ==
-          normalizeForSearch(parseCopies(_rapidText)?.name ?? _rapidText),
-    );
+    final matchingInInventory = query.length < 2
+        ? const <ItemModel>[]
+        : allItems.where((item) => matchesSearch(item.name, query)).toList();
+    final duplicateName =
+        inventory.hasValue &&
+        allItems.any(
+          (item) =>
+              normalizeForSearch(item.name) ==
+              normalizeForSearch(parseCopies(_rapidText)?.name ?? _rapidText),
+        );
 
     return DsFormSheet(
-      title: '${slot.name} $copies',
+      title: done ? slot.name : '${slot.name} $copies',
       actions: [
-        if (!_done && !slot.toBuy)
+        if (!done && !slot.toBuy)
           DsTextButton(
             key: const Key('slot_sheet_to_buy'),
             label: 'trips.slots.to_buy'.tr(),
             onPressed: _saving ? null : _toBuy,
           ),
       ],
-      footer: _done
+      footer: done
           ? Padding(
               padding: EdgeInsets.all(context.spacingMd),
               child: DsButton(
@@ -245,12 +260,12 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            _done
+            done
                 ? 'trips.slots.completed'.tr()
                 : 'trips.slots.open_hint'.tr(args: ['${slot.copies}']),
             style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
-          if (!_done && duplicateName)
+          if (!done && duplicateName)
             Padding(
               padding: EdgeInsets.only(top: context.spacingSm),
               child: Text(
@@ -264,16 +279,17 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
             for (final item in _written)
               SlotWrittenRow(key: ValueKey(item.id), item: item),
           ],
-          if (!_done && !_searchOpen)
+          if (!done && !_searchOpen)
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
+              child: DsTextButton(
                 key: const Key('slot_open_inventory_search'),
                 onPressed: _openSearch,
-                child: Text('trips.slots.search_inventory'.tr()),
+                label: 'trips.slots.search_inventory'.tr(),
+                flushStart: true,
               ),
             ),
-          if (!_done && _searchOpen) ...[
+          if (!done && _searchOpen) ...[
             SizedBox(height: context.spacingMd),
             DsSearchField(
               key: const Key('slot_inventory_search'),
@@ -287,7 +303,18 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
               'trips.slots.search_suitability'.tr(),
               style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
-            if (matches.isNotEmpty) ...[
+            if (!inventory.hasValue && inventory.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (!inventory.hasValue && inventory.hasError)
+              SizedBox(
+                height: 180,
+                child: DsErrorState(
+                  error: inventory.error!,
+                  onRetry: () =>
+                      ref.invalidate(itemNotifierProvider(widget.houseId)),
+                ),
+              )
+            else if (matches.isNotEmpty) ...[
               SizedBox(height: context.spacingMd),
               Text('trips.slots.items_found'.tr(), style: tt.titleSmall),
               for (final item in matches)
@@ -303,7 +330,7 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
                         ),
                       ),
                       SizedBox(width: context.spacingSm),
-                      TextButton(
+                      DsTextButton(
                         onPressed: _saving || _fillingIds.contains(item.id)
                             ? null
                             : () async {
@@ -324,11 +351,6 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
                                     )
                                     .firstOrNull;
                                 if (freshItem == null) return;
-                                final quantity = math.min(
-                                  _available(freshItem, freshTrip),
-                                  _remaining,
-                                );
-                                if (quantity <= 0) return;
                                 setState(() => _fillingIds.add(item.id));
                                 try {
                                   await _fill(
@@ -336,9 +358,13 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
                                       id: freshItem.id,
                                       name: freshItem.name,
                                       category: freshItem.category,
-                                      quantity: quantity,
+                                      quantity: math.min(
+                                        _available(freshItem, freshTrip),
+                                        remaining,
+                                      ),
                                       originHouseId: freshItem.houseId,
                                     ),
+                                    linkInventory: true,
                                   );
                                 } finally {
                                   if (mounted) {
@@ -346,7 +372,8 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
                                   }
                                 }
                               },
-                        child: Text('trips.slots.add'.tr()),
+                        label: 'trips.slots.add'.tr(),
+                        flushStart: true,
                       ),
                     ],
                   ),
@@ -355,7 +382,9 @@ class _SlotFillSheetState extends ConsumerState<SlotFillSheet> {
               Padding(
                 padding: EdgeInsets.only(top: context.spacingMd),
                 child: Text(
-                  'trips.slots.no_inventory_match'.tr(),
+                  matchingInInventory.isEmpty
+                      ? 'trips.slots.no_inventory_match'.tr()
+                      : 'trips.slots.all_copies_packed'.tr(),
                   style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ),

@@ -431,10 +431,15 @@ void main() {
       when(() => itemRepo.getItemsByHouseId('h1')).thenAnswer(
         (_) async => [_inventoryItem('i-aux', 'Aux bt', quantity: 3)],
       );
-      when(
-        () => tripRepo.updateTrip(any()),
-      ).thenThrow(StateError('save failed'));
-      await pumpDetail(tester, _trip(), showNeeds: false);
+      var attempts = 0;
+      when(() => tripRepo.updateTrip(any())).thenAnswer((_) async {
+        if (attempts++ == 0) throw StateError('save failed');
+      });
+      await pumpDetail(
+        tester,
+        _trip(items: _items(checked: 1)),
+        showNeeds: false,
+      );
 
       await tester.tap(find.byKey(const Key('trip_item_i-aux')));
       await tester.pumpAndSettle();
@@ -442,6 +447,54 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(QuantityStepper), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(QuantityStepper),
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byIcon(Icons.add_circle_outline));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(QuantityStepper),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      final saved =
+          verify(() => tripRepo.updateTrip(captureAny())).captured.last
+              as TripModel;
+      expect(
+        saved.items.firstWhere((entry) => entry.id == 'i-aux').isChecked,
+        isFalse,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('diminuire copie conserva la spunta', (tester) async {
+      when(() => itemRepo.getItemsByHouseId('h1')).thenAnswer(
+        (_) async => [_inventoryItem('i-aux', 'Aux bt', quantity: 3)],
+      );
+      final items = [
+        _items(checked: 1).first.copyWith(quantity: 3),
+        ..._items(checked: 1).skip(1),
+      ];
+      await pumpDetail(tester, _trip(items: items), showNeeds: false);
+
+      await tester.tap(find.byKey(const Key('trip_item_i-aux')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.remove_circle_outline));
+      await tester.pumpAndSettle();
+
+      final saved =
+          verify(() => tripRepo.updateTrip(captureAny())).captured.single
+              as TripModel;
+      expect(
+        saved.items.firstWhere((entry) => entry.id == 'i-aux').isChecked,
+        isTrue,
+      );
       expect(tester.takeException(), isNull);
     });
 
