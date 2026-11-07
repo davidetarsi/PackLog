@@ -20,3 +20,5 @@ Dal 5 al 7 nov 2026 Davide ha lavorato con Codex e unito in develop le PR #98-#1
 
 Da sistemare anche (Davide, 7 nov): `house_detail_screen.dart` (1098 righe) e la misurazione dell'altezza della barra del Rapid Fire fatta durante il disegno (`:491`, `:683`, dalla PR #100): spostarla in un widget piccolo a parte; valutare di spezzare la pagina della casa. Anche `rapid_fire_input.dart` è a 557 righe.
 Piano deciso il 7 nov: PRIMA allineare il banco (repo GitHub davidetarsi/checklist-script-packlog, lavoro sul ramo feat/catalogo 152 commit avanti a main; le run registrate, 89 MB, non sono in git), poi i punti 2-4.
+
+2026-11-07 sera: casa e Rapid Fire FATTI su refactor/casa-rapid-fire (pushato, PR da aprire); foglio perché su feat/perche-completo.
