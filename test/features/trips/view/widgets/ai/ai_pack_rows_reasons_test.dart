@@ -137,6 +137,7 @@ void main() {
     await open(tester);
 
     expect(find.text('Ombrello'), findsOneWidget);
+    expect(find.textContaining('×1'), findsNothing);
     expect(find.byKey(const Key('ai_reasons_wardrobe')), findsNothing);
     expect(find.byKey(const Key('ai_reasons_suggested')), findsNothing);
   });

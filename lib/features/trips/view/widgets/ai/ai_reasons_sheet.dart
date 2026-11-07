@@ -7,8 +7,9 @@ import 'ai_reason_point_item.dart';
 import 'ai_reason_section.dart';
 import 'ai_reason_slot_item.dart';
 
-/// I posti di [level] che il foglio spiega: ancora aperti e non "da comprare"
-/// (quelli hanno già la loro vista). L'ordine è quello ricevuto.
+/// I posti di [level] che il foglio spiega: ancora aperti e non "da comprare",
+/// importanti compresi (gli importanti da comprare restano in valigia come riga
+/// spenta, ma si spiegano nella vista "Da comprare"). L'ordine è quello ricevuto.
 List<AiSlot> reasonSlots(List<AiSlot> slots, AiSlotLevel level) => [
   for (final slot in slots)
     if (slot.level == level && slot.isOpen && !slot.toBuy) slot,

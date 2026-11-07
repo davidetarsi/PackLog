@@ -2317,6 +2317,25 @@ final flows = <Flow>[
         await app.tap(find.byKey(const Key('pack_row_reasons')));
       },
     ),
+    Scenario(
+      11,
+      'motivi',
+      'con-posti',
+      source: _aiRowsSrc,
+      description:
+          'Perché queste scelte con i posti: gli importanti ancora aperti, '
+          'i punti dall\'armadio e i suggeriti, ognuno col suo motivo.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _pack(app, kSeoulTripId);
+        await app.tap(find.byKey(const Key('pack_row_reasons')));
+      },
+    ),
   ]),
   Flow('12-errori', 'Errori e contenuti non trovati', [
     Scenario(

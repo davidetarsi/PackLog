@@ -621,6 +621,20 @@ Future<void> seedValigiaPosti(ProviderContainer c) async {
         generatedAt: stamp,
         houseId: kHomeId,
         slots: slots,
+        reasons: const [
+          AiReasonPoint(
+            code: 'giorno',
+            title: 'Tutti i giorni',
+            sentences: ['2 t-shirt: lavate strada facendo'],
+            items: ['T-shirt nera ×2'],
+          ),
+          AiReasonPoint(
+            code: 'freddo',
+            title: 'Freddo',
+            sentences: ['Minime sotto zero quasi ogni mattina'],
+            items: ['Felpa grigia'],
+          ),
+        ],
         notes: const [
           AiTripNote(
             code: 'lavanderia',

@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_button.dart';
+import '../../../../../shared/widgets/ds_divider.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../model/ai_packing.dart';
 import 'ai_reasons_sheet.dart';
-import '../../../../../shared/widgets/ds_divider.dart';
 
 /// Le due righe sotto il titolo della valigia AI: "Cosa manca a questo viaggio"
 /// (avvisi, in arancio finché ce n'è uno da leggere) e "Perché queste scelte"
