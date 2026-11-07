@@ -6,6 +6,7 @@ Aggiornato: 7 novembre 2026. Si aggiorna a ogni lavoro chiuso.
 
 ## 0. Dal 7 novembre (ha la precedenza sul resto)
 
+- **Perché queste scelte (7 nov, FATTO):** ramo app `feat/perche-completo` (da develop, pushato): il foglio ha tre sezioni, Importanti / Dal tuo armadio / Suggeriti, coi motivi dei posti aperti; esclusi riempiti, tolti e "da comprare"; niente kit (decisione di Davide). Solo app, niente deploy. PR da aprire: https://github.com/davidetarsi/PackLog/pull/new/feat/perche-completo
 - **Fatto con GPT, dal 5 al 7 nov:** Davide ha unito in develop le PR #98-#106; la #107 (quantità al mare) è aperta.
 - **Revisione del 7 nov** (memoria `revisione-codex-7-novembre.md`):
   - il generatore dell'app non rifà più il banco: 618/888;
