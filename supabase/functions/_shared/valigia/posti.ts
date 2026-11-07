@@ -68,7 +68,7 @@ export const FREDDO_VERO = K.SOGLIA_ESTREMITA;
 
 /** Lavoro, cerimonie, gala: le sole occasioni in cui un capo si chiama "elegante". */
 export function viaggioFormale(attivita: string[]): boolean {
-  return viaggioDiLavoro(attivita) || occasioneFormale(attivita.filter((a) => !/informal/i.test(a)));
+  return viaggioDiLavoro(attivita) || occasioneFormale(attivita);
 }
 
 /** Minima, massima e pioggia delle tappe del bisogno (tutte, se non le dice), con la scelta delle

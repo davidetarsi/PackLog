@@ -128,7 +128,9 @@ export function presentabiliRichiesti(giorni: number, attivita: string[] | null 
 }
 
 export function occasioneFormale(attivita: string[] | null | undefined): boolean {
-  return ha(attivita, RADICI_OCCASIONE_FORMALE);
+  // "cene informali" non e' un'occasione formale (Davide, 7 novembre): la radice "formal" non
+  // deve scattare dentro "informal*". Come occasione_formale() del bench.
+  return ha((attivita ?? []).map((a) => (a ?? "").toLowerCase().replace(/informal\w*/g, " ")), RADICI_OCCASIONE_FORMALE);
 }
 
 // ── Una felpa per la sera anche d'estate ────────────────────────────────────
