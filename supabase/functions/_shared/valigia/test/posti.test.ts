@@ -420,6 +420,7 @@ const postiDi = (mancanti: Record<string, any>[], opzioni: { meteo?: Record<stri
     { capi: opzioni.capi ?? [], essenziali: [] }, opzioni.salvate ?? new Map(),
     { meteo: opzioni.meteo ?? SEUL_METEO, viaggio: opzioni.viaggio ?? SEUL_VIAGGIO, armadio: opzioni.armadio ?? [], lingua: opzioni.lingua }).posti;
 const MITE = { temp_min_media: 14, temp_max_media: 22, giorni_di_pioggia: 3 };
+const FREDDO_E_PIOGGIA = { temp_min_media: 1, temp_max_media: 9, giorni_di_pioggia: 3 };
 const freddoGap = (slot: string, category: string, sub: string) =>
   assente(slot, category, [sub], { warmth_richiesto: [4, 5] });
 const pioggiaGap = (slot: string, category: string, sub: string) =>
@@ -510,7 +511,7 @@ test("un posto solo: le Sneakers utili restano senza alcun posto del meteo per l
 
 test("un posto solo: un utile d'attivita' o elegante della stessa categoria resta", () => {
   const acqua = assente("Acqua", "Shoes", ["Water Shoes"], { warmth_richiesto: [1, 2] });
-  const posti = postiDi([acqua, freddoGap("Stivali", "Shoes", "Boots")], { meteo: MITE });
+  const posti = postiDi([acqua, freddoGap("Stivali", "Shoes", "Boots")], { meteo: MITE, viaggio: { giorni: 4, attivita: ["immersioni"] } });
   // Water Shoes e' sempre importante (attivita'): resta, e le Boots fredde sono un posto a parte.
   assert.deepEqual(posti.filter((p) => ["Shoes", "Water Shoes"].includes(p.tipo)).map((p) => p.nome).sort(),
     ["Scarpe invernali", "Scarpette da scoglio"]);
@@ -524,13 +525,13 @@ test("un posto solo: i pezzi in meno di un capo Shoes dell'utente non si toccano
   assert.deepEqual(scarpe.map((p) => [p.nome, p.tipo, p.copie]).sort(), [["Scarpe invernali", "Shoes", 1], ["Sneakers", "Sneakers", 2]]);
 });
 
-test("accessori del meteo: cappello e guanti importanti, ombrello utile", () => {
+test("accessori del meteo: cappello e guanti importanti, l'ombrello non si suggerisce mai", () => {
   const posti = postiDi([assente("Cappello", "Accessory", ["Cap/Hat"], { warmth_richiesto: [4, 5] }),
     assente("Guanti", "Accessory", ["Gloves"], { warmth_richiesto: [4, 5] }),
     pioggiaGap("Ombrello", "Accessory", "Umbrella")]);
   assert.deepEqual(new Set(posti.filter((p) => p.livello === "importante").map((p) => p.nome)),
     new Set(["Cappello caldo", "Guanti"]));
-  assert.equal(posti.find((p) => p.tipo === "Umbrella")!.livello, "utile");
+  assert.ok(!posti.some((p) => p.tipo === "Umbrella" || /ombrell/i.test(p.nome)), "l'ombrello sta nei kit");
 });
 
 test("un posto solo: identita' univoca e ordine del primo bisogno unito", () => {
@@ -683,12 +684,13 @@ const bisogno = (slot: string, category: string, subCategories: string[], extra:
     essential: true, reason: "prova", ...extra });
 
 /** Il giro vero: il generatore su un armadio vuoto, poi i posti. Restano i capi da vestire (non intimo, calzini, ecc.). */
-function postiDelGeneratore(bisogni: Bisogno[], meteo: { temp_min: number; temp_max: number }, attivita: string[] = [],
+function postiDelGeneratore(bisogni: Bisogno[], meteo: { temp_min: number; temp_max: number; pioggia?: number }, attivita: string[] = [],
   giorni = 5): PostoApp[] {
+  const pioggia = meteo.pioggia ?? 0;
   const valigia = strategySlots(JSON.stringify(bisogni), [], { giorni, lavatrice: true, attivita, temp_min: meteo.temp_min,
-    temp_max: meteo.temp_max, bagaglio: "trolley medio", giorni_pioggia: 0 });
+    temp_max: meteo.temp_max, bagaglio: "trolley medio", giorni_pioggia: pioggia });
   return postiApp(valigia, { capi: [], essenziali: [] }, new Map(),
-    { meteo: { temp_min_media: meteo.temp_min, temp_max_media: meteo.temp_max, giorni_di_pioggia: 0 },
+    { meteo: { temp_min_media: meteo.temp_min, temp_max_media: meteo.temp_max, giorni_di_pioggia: pioggia },
       viaggio: { giorni, lavatrice: true, attivita }, armadio: [], lingua: "it" })
     .posti.filter((p) => !["intimo", "calzini", "notte", "igiene"].includes(p.tipo));
 }
@@ -751,19 +753,25 @@ test("requisiti: blazer e stivali formali restano distinti dai posti per il fred
   }
 });
 
-test("requisiti: la protezione dalla pioggia resta importante anche senza pioggia nel riepilogo", () => {
-  const p = postiDelGeneratore([
-    bisogno("guscio impermeabile", "Outerwear", ["Rain Jacket", "Windbreaker"],
-      { minWarmth: 1, maxWarmth: 2, minWaterResistance: 2 }),
-  ], { temp_min: 16, temp_max: 23 });
-  assert.ok(p.some((x) => x.livello === "importante" && x.nome === "Giacca impermeabile"), JSON.stringify(p));
+test("requisiti: la protezione dalla pioggia e' importante solo con giorni di pioggia", () => {
+  const guscio = () => bisogno("guscio impermeabile", "Outerwear", ["Rain Jacket", "Windbreaker"],
+    { minWarmth: 1, maxWarmth: 2, minWaterResistance: 2 });
+  const conPioggia = postiDelGeneratore([guscio()], { temp_min: 16, temp_max: 23, pioggia: 3 });
+  assert.ok(conPioggia.some((x) => x.livello === "importante" && x.nome === "Giacca impermeabile"), JSON.stringify(conPioggia));
+  // Senza giorni di pioggia il requisito resta (il kit non lo chiude con un capo inadatto), ma il posto e' utile e leggero.
+  const senza = postiDelGeneratore([guscio()], { temp_min: 16, temp_max: 23 });
+  const giacca = senza.find((x) => x.tipo === "Outerwear")!;
+  assert.equal(giacca.livello, "utile");
+  assert.equal(giacca.nome, "Giacca leggera");
+  assert.equal(giacca.requisiti?.minWaterResistance, 2);
+  assert.ok(!/pioggia/.test(giacca.motivo ?? ""), giacca.motivo ?? "");
 });
 
 test("requisiti: giacca calda e guscio leggero incompatibili restano due posti", () => {
   const p = postiDi([
     assente("freddo", "Outerwear", ["Coat"], { warmth_richiesto: [4, 5] }),
     assente("pioggia", "Outerwear", ["Rain Jacket"], { warmth_richiesto: [1, 2], impermeabilita_richiesta: 2 }),
-  ], { meteo: MITE }).filter((x) => x.tipo === "Outerwear");
+  ], { meteo: FREDDO_E_PIOGGIA }).filter((x) => x.tipo === "Outerwear");
   assert.equal(p.length, 2);
   assert.deepEqual(new Set(p.map((x) => x.nome)), new Set(["Giacca invernale", "Giacca impermeabile"]));
   assert.notEqual(p[0].id, p[1].id);
@@ -773,7 +781,7 @@ test("requisiti: un posto meteo compatibile conserva sia freddo sia pioggia nel 
   const p = postiDi([
     assente("freddo", "Outerwear", ["Coat"], { warmth_richiesto: [3, 5] }),
     assente("pioggia", "Outerwear", ["Rain Jacket"], { warmth_richiesto: [2, 4], impermeabilita_richiesta: 2 }),
-  ], { meteo: MITE }).filter((x) => x.tipo === "Outerwear");
+  ], { meteo: FREDDO_E_PIOGGIA }).filter((x) => x.tipo === "Outerwear");
   assert.equal(p.length, 1);
   assert.match(p[0].motivo!, /freddo e alla pioggia/);
 });
@@ -785,8 +793,9 @@ test("requisiti: camicie con fasce di calore incompatibili non diventano un post
   ], { meteo: MITE }).filter((x) => x.tipo === "Shirt");
   assert.equal(p.length, 2);
   assert.notEqual(p[0].id, p[1].id);
-  assert.ok(p.some((x) => x.nome.includes("cald")));
-  assert.ok(p.some((x) => !x.nome.includes("cald")));
+  assert.deepEqual(p.map((x) => x.requisiti?.minWarmth).sort(), [1, 3]);
+  // il freddo non rende "calda" una camicia
+  assert.ok(p.every((x) => !/cald/.test(x.nome)), p.map((x) => x.nome).join(", "));
 });
 
 test("requisiti: l'identita' resta stabile cambiando ordine, lingua e quantita'", () => {
@@ -869,13 +878,13 @@ test("destinazione singola: il controllo dei bisogni non raddoppia i costumi gia
 });
 
 // La priorita' dipende dall'attivita' dichiarata, non dal nome tecnico del capo.
-const postoAttivita = (sub: string, attivita: string[], extra: Record<string, any> = {}) => {
+const postoAttivita = (sub: string, attivita: string[], extra: Record<string, any> = {},
+  meteo: Record<string, any> = { temp_min_media: 14, temp_max_media: 20, giorni_di_pioggia: 0 }) => {
   const category = ["Hiking Boots", "Water Shoes", "Snow Boots"].includes(sub) ? "Shoes" :
     ["Ski Jacket", "Ski Suit"].includes(sub) ? "Outerwear" : "Lower Body";
   return postiApp({ mancanti_canonici: [{ slot: "test", tipo: "assente", category,
     subCategories: [sub], warmth_richiesto: [1, 2], ...extra }], essenziali: TUTTI_ESSENZIALI },
-    { capi: [], essenziali: [] }, new Map(), { armadio: [], viaggio: { giorni: 4, attivita },
-      meteo: { temp_min_media: 18, temp_max_media: 25 } }).posti[0];
+    { capi: [], essenziali: [] }, new Map(), { armadio: [], viaggio: { giorni: 4, attivita }, meteo }).posti[0];
 };
 
 test("attivita': le escursioni leggere sono trekking e rendono importanti gli scarponi (Davide, 18 e 31 ottobre)", () => {
@@ -886,9 +895,21 @@ test("attivita': le escursioni leggere sono trekking e rendono importanti gli sc
   assert.equal(postoAttivita("Hiking Boots", ["escursioni leggere e trekking"]).livello, "importante");
 });
 
+test("attivita': col caldo le escursioni leggere non rendono importanti gli scarponi, il trekking vero si'", () => {
+  const caldo = { temp_min_media: 22, temp_max_media: 30, giorni_di_pioggia: 0 };
+  const scarpe = (attivita: string[]) => postoAttivita("Hiking Boots", attivita, {}, caldo);
+  assert.equal(scarpe(["escursioni leggere"]).livello, "utile");
+  assert.equal(scarpe(["trekking"]).livello, "importante");
+  assert.equal(scarpe(["cammino"]).livello, "importante");
+  // col calore basso o col caldo sono scarpe da trekking, non scarponi
+  assert.equal(scarpe(["escursioni leggere"]).nome, "Scarpe da trekking");
+});
+
 test("attivita': il mare rende importante il costume, non le scarpette da scoglio", () => {
   for (const sub of ["Swimwear", "Water Shoes"]) {
-    assert.equal(postoAttivita(sub, ["visite in citta"]).livello, "utile");
+    // senza un'attivita' in acqua le scarpette non si suggeriscono affatto
+    const citta = postoAttivita(sub, ["visite in citta"]);
+    assert.equal(citta?.livello, sub === "Water Shoes" ? undefined : "utile");
     assert.equal(postoAttivita(sub, ["mare"]).livello, sub === "Water Shoes" ? "utile" : "importante");
     assert.equal(postoAttivita(sub, ["immersioni"]).livello, "importante");
   }
@@ -906,7 +927,10 @@ test("attivita': la muta rimane utile anche per le immersioni", () => {
 });
 
 test("attivita': la protezione dalla pioggia resta importante senza trekking", () => {
-  assert.equal(postoAttivita("Hiking Boots", ["visite in citta"], { impermeabilita_richiesta: 2 }).livello, "importante");
+  const pioggia = { temp_min_media: 14, temp_max_media: 20, giorni_di_pioggia: 3 };
+  assert.equal(postoAttivita("Hiking Boots", ["visite in citta"], { impermeabilita_richiesta: 2 }, pioggia).livello, "importante");
+  // senza giorni di pioggia la sola impermeabilita' richiesta non basta
+  assert.equal(postoAttivita("Hiking Boots", ["visite in citta"], { impermeabilita_richiesta: 2 }).livello, "utile");
 });
 
 test("attivita': il trekking di un'altra tappa non rende importanti gli scarponi per la citta'", () => {
