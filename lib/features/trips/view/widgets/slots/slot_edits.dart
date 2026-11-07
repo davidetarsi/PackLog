@@ -14,6 +14,7 @@ import '../../trip_detail_screen.dart';
 /// la casella di un proposto. Ognuna salva subito e, se non va, lo dice.
 mixin TripSlotEdits on ConsumerState<TripDetailScreen> {
   String get tripId => widget.tripId;
+  Future<void> runSuitcaseMutation(Future<void> Function() change);
 
   /// "Da comprare" sulla card di un importante: la card diventa una riga
   /// "da comprare"; Annulla la riporta.
@@ -97,8 +98,11 @@ mixin TripSlotEdits on ConsumerState<TripDetailScreen> {
     AiSlot slot,
     AiSlot Function(AiSlot) change,
   ) async {
+    final id = tripId;
     try {
-      await notifier.updateAiSlot(tripId, slot.id, change);
+      await runSuitcaseMutation(
+        () => notifier.updateAiSlot(id, slot.id, change),
+      );
       return true;
     } catch (_) {
       if (mounted) AppSnackBar.showError(context, 'errors.save_error'.tr());

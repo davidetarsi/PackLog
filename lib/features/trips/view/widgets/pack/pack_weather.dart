@@ -360,9 +360,11 @@ class _WeatherLoading extends StatelessWidget {
               child: const CircularProgressIndicator(strokeWidth: 2),
             ),
             SizedBox(width: context.spacingMd),
-            Text(
-              'trips.weather.loading'.tr(),
-              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            Expanded(
+              child: Text(
+                'trips.weather.loading'.tr(),
+                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              ),
             ),
           ],
         ),

@@ -93,4 +93,56 @@ void main() {
     expect(paragraph.didExceedMaxLines, isFalse);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('modifica e rimozione restano azioni distinte e riconoscibili', (
+    tester,
+  ) async {
+    await pump(tester, noAnimations: false);
+    final row = find.byKey(const Key('slot_row_u-magliette'));
+    expect(
+      find.descendant(of: row, matching: find.byIcon(Icons.chevron_right)),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('slot_not_useful_u-magliette')),
+      findsOneWidget,
+    );
+    expect(find.text('trips.slots.proposed_edit_hint'), findsOneWidget);
+  });
+
+  testWidgets('la X è prima del nome, senza stella, e non apre la riga', (
+    tester,
+  ) async {
+    var openCalls = 0;
+    var removeCalls = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Scaffold(
+          body: ProposedSlotsCard(
+            slots: const [_magliette],
+            sorting: true,
+            onOpen: (_) => openCalls++,
+            onToggle: (_) {},
+            onRemove: (_) => removeCalls++,
+          ),
+        ),
+      ),
+    );
+
+    final row = find.byKey(const Key('slot_row_u-magliette'));
+    expect(
+      tester
+          .getTopLeft(find.byKey(const Key('slot_not_useful_u-magliette')))
+          .dx,
+      lessThan(tester.getTopLeft(find.text('Magliette')).dx),
+    );
+    expect(
+      find.descendant(of: row, matching: find.byType(PackLogSparkle)),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const Key('slot_not_useful_u-magliette')));
+    await tester.pump();
+    expect(removeCalls, 1);
+    expect(openCalls, 0);
+  });
 }
