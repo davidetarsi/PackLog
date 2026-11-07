@@ -65,14 +65,8 @@ export function warmthCeiling(tempMax: number | null | undefined): number {
 }
 
 export function eTrekking(attivita: (string | null)[] | null | undefined): boolean {
-  return eCammino(attivita) || (attivita ?? []).some((a) => {
-    const tecnica = lw(a).replace(/\bescursion\w*\s+legger[aeio]\b/g, "");
-    return K.RADICI_TREKKING.some((r: string) => tecnica.includes(r));
-  });
-}
-
-export function ePasseggiataLeggera(attivita: (string | null)[] | null | undefined): boolean {
-  return (attivita ?? []).some((a) => /\bescursion\w*\s+legger[aeio]\b/.test(lw(a)));
+  // Le "escursioni leggere" restano trekking: decisione di Davide (18 e 31 ottobre).
+  return eCammino(attivita) || (attivita ?? []).some((a) => K.RADICI_TREKKING.some((r: string) => lw(a).includes(r)));
 }
 
 export function jevDice(classi: Record<string, any> | null | undefined, domanda: string): boolean | null {
@@ -172,9 +166,8 @@ export function capospallaInTracolla(capi: Record_[], capienza: number | null | 
  *  trekking (Davide, 31 ottobre). */
 export function riverbero(attNorm: Set<string>, classi: any = null, quotaM: number | null = null): boolean {
   if (interseca(attNorm, K.ATTIVITA_RIVERBERO)) return true;
-  // Il riverbero riguarda anche un'escursione leggera svolta in alta quota.
-  const inNatura = eCammino([...attNorm]) || [...attNorm].some((a) => K.RADICI_TREKKING.some((r: string) => lw(a).includes(r)));
-  if (K.SOGLIA_QUOTA_RIVERBERO != null && quotaM != null && quotaM >= K.SOGLIA_QUOTA_RIVERBERO && inNatura) {
+  if (K.SOGLIA_QUOTA_RIVERBERO != null && quotaM != null && quotaM >= K.SOGLIA_QUOTA_RIVERBERO &&
+    eTrekking([...attNorm])) {
     return true;
   }
   const p = (classi || {}).riverbero;

@@ -10,7 +10,7 @@ const casi = [
   { nome: "Riunioni e pioggia", giorni: 4, min: 12, max: 19, pioggia: 3, attivita: ["riunioni di lavoro"],
     sub: "Shirt", category: "Upper Body", formality: ["Business", "Formal"], necessario: true },
   { nome: "Passeggiate temperate", giorni: 6, min: 18, max: 25, pioggia: 0, attivita: ["escursioni leggere"],
-    sub: "Hiking Boots", category: "Shoes", necessario: false },
+    sub: "Hiking Boots", category: "Shoes", necessario: true },
   { nome: "Sentieri di montagna", giorni: 5, min: 10, max: 20, pioggia: 0, attivita: ["trekking"],
     sub: "Hiking Boots", category: "Shoes", necessario: true },
   { nome: "Settimana al mare", giorni: 7, min: 24, max: 31, pioggia: 0, attivita: ["mare"],

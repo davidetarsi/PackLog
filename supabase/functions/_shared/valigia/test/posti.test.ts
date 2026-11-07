@@ -878,8 +878,9 @@ const postoAttivita = (sub: string, attivita: string[], extra: Record<string, an
       meteo: { temp_min_media: 18, temp_max_media: 25 } }).posti[0];
 };
 
-test("attivita': escursioni leggere non rendono gli scarponi automaticamente importanti", () => {
-  assert.equal(postoAttivita("Hiking Boots", ["escursioni leggere"]).livello, "utile");
+test("attivita': le escursioni leggere sono trekking e rendono importanti gli scarponi (Davide, 18 e 31 ottobre)", () => {
+  assert.equal(postoAttivita("Hiking Boots", ["escursioni leggere"]).livello, "importante");
+  assert.equal(postoAttivita("Hiking Boots", ["visite in citta"]).livello, "utile");
   assert.equal(postoAttivita("Hiking Boots", ["trekking"]).livello, "importante");
   assert.equal(postoAttivita("Hiking Boots", ["escursioni in quota"]).livello, "importante");
   assert.equal(postoAttivita("Hiking Boots", ["escursioni leggere e trekking"]).livello, "importante");
@@ -905,14 +906,14 @@ test("attivita': la muta rimane utile anche per le immersioni", () => {
 });
 
 test("attivita': la protezione dalla pioggia resta importante senza trekking", () => {
-  assert.equal(postoAttivita("Hiking Boots", ["escursioni leggere"], { impermeabilita_richiesta: 2 }).livello, "importante");
+  assert.equal(postoAttivita("Hiking Boots", ["visite in citta"], { impermeabilita_richiesta: 2 }).livello, "importante");
 });
 
 test("attivita': il trekking di un'altra tappa non rende importanti gli scarponi per la citta'", () => {
   const per = (nome: string) => postiApp({ mancanti_canonici: [{ tipo: "assente", category: "Shoes",
     subCategories: ["Hiking Boots"], warmth_richiesto: [1, 2], tappe: [nome] }], essenziali: TUTTI_ESSENZIALI },
     { capi: [], essenziali: [] }, new Map(), { armadio: [], viaggio: { giorni: 6, tappe: [
-      { nome: "Centro", giorni: 3, attivita: ["escursioni leggere"] },
+      { nome: "Centro", giorni: 3, attivita: ["visite in citta"] },
       { nome: "Monte", giorni: 3, attivita: ["trekking"] }] } }).posti[0].livello;
   assert.equal(per("Centro"), "utile");
   assert.equal(per("Monte"), "importante");
@@ -925,7 +926,7 @@ test("attivita': le copie mancanti usano la tappa del capo, non il trekking di u
     mancanti_canonici: [], essenziali: TUTTI_ESSENZIALI },
     { capi: [{ item_id: "scarpe", quantita: 3, motivo: motivoGiorno }], essenziali: [] }, new Map([["scarpe", 1]]),
     { armadio, viaggio: { giorni: 6, tappe: [
-      { nome: "Centro", giorni: 3, attivita: ["escursioni leggere"] },
+      { nome: "Centro", giorni: 3, attivita: ["visite in citta"] },
       { nome: "Monte", giorni: 3, attivita: ["trekking"] }] } }).posti.find((p) => p.tipo === "Hiking Boots")!;
   assert.equal(per("Centro").livello, "utile");
   assert.equal(per("Monte").livello, "importante");
