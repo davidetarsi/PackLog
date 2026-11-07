@@ -19,13 +19,13 @@ class AiReasonSlotItem extends StatelessWidget {
     final reason = slot.reason;
 
     return Padding(
-      padding: EdgeInsets.only(bottom: context.spacingMd),
+      padding: EdgeInsets.all(context.spacingMd),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             copies == null ? slot.name : '${slot.name} $copies',
-            style: tt.titleMedium?.title,
+            style: tt.bodyLarge?.strong,
           ),
           if (reason != null && reason.isNotEmpty) ...[
             SizedBox(height: context.spacingXs),

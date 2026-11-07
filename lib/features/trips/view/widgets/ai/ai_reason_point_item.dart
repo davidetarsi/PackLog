@@ -14,11 +14,11 @@ class AiReasonPointItem extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     return Padding(
-      padding: EdgeInsets.only(bottom: context.spacingMd),
+      padding: EdgeInsets.all(context.spacingMd),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(point.title, style: tt.titleMedium?.title),
+          Text(point.title, style: tt.bodyLarge?.strong),
           SizedBox(height: context.spacingXs),
           for (final sentence in point.sentences)
             Text(sentence, style: tt.bodyMedium),

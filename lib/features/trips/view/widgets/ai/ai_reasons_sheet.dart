@@ -15,8 +15,8 @@ List<AiSlot> reasonSlots(List<AiSlot> slots, AiSlotLevel level) => [
     if (slot.level == level && slot.isOpen && !slot.toBuy) slot,
 ];
 
-/// Il sottotitolo della riga "Perché queste scelte": "2 importanti · Tutti i
-/// giorni, Pioggia · 3 suggeriti". Le parti vuote non ci sono.
+/// Il sottotitolo della riga "Perché queste scelte": "2 importanti · 3
+/// suggeriti · Tutti i giorni, Pioggia". Le parti vuote non ci sono.
 String reasonsSummary({
   required List<AiSlot> important,
   required List<AiReasonPoint> reasons,
@@ -24,14 +24,14 @@ String reasonsSummary({
 }) => [
   if (important.isNotEmpty)
     'trips.pack.ai.reasons_count_important'.plural(important.length),
-  if (reasons.isNotEmpty)
-    [for (final reason in reasons.take(4)) reason.title].join(', '),
   if (suggested.isNotEmpty)
     'trips.pack.ai.reasons_count_suggested'.plural(suggested.length),
+  if (reasons.isNotEmpty)
+    [for (final reason in reasons.take(4)) reason.title].join(', '),
 ].join(' · ');
 
-/// Il foglio dei motivi, in tre sezioni: gli importanti ancora aperti, i
-/// punti dall'armadio, i suggeriti ancora aperti. Le sezioni vuote non ci
+/// Il foglio dei motivi, in tre sezioni nell'ordine della valigia: gli
+/// importanti ancora aperti, i suggeriti ancora aperti, i punti dall'armadio. Le sezioni vuote non ci
 /// sono. Si apre solo se almeno una ha qualcosa.
 class AiReasonsSheet extends StatelessWidget {
   const AiReasonsSheet({
@@ -63,16 +63,6 @@ class AiReasonsSheet extends StatelessWidget {
                 for (final slot in important) AiReasonSlotItem(slot: slot),
               ],
             ),
-          if (reasons.isNotEmpty)
-            AiReasonSection(
-              key: const Key('ai_reasons_wardrobe'),
-              icon: Icons.checkroom_outlined,
-              title: 'trips.pack.ai.reasons_wardrobe'.tr(),
-              color: cs.onSurface,
-              children: [
-                for (final point in reasons) AiReasonPointItem(point: point),
-              ],
-            ),
           if (suggested.isNotEmpty)
             AiReasonSection(
               key: const Key('ai_reasons_suggested'),
@@ -81,6 +71,16 @@ class AiReasonsSheet extends StatelessWidget {
               color: cs.tertiary,
               children: [
                 for (final slot in suggested) AiReasonSlotItem(slot: slot),
+              ],
+            ),
+          if (reasons.isNotEmpty)
+            AiReasonSection(
+              key: const Key('ai_reasons_wardrobe'),
+              icon: Icons.checkroom_outlined,
+              title: 'trips.pack.ai.reasons_wardrobe'.tr(),
+              color: cs.onSurface,
+              children: [
+                for (final point in reasons) AiReasonPointItem(point: point),
               ],
             ),
         ],

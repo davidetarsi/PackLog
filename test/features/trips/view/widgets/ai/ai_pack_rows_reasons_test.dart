@@ -103,25 +103,26 @@ void main() {
     _slot('x4', 'Utile comprare', level: AiSlotLevel.useful, toBuy: true),
   ];
 
-  testWidgets('tre sezioni nell\'ordine: importanti, armadio, suggeriti', (
-    tester,
-  ) async {
-    await pump(tester, reasons: [_point], slots: slots);
-    await open(tester);
+  testWidgets(
+    'tre sezioni nell\'ordine della valigia: importanti, suggeriti, armadio',
+    (tester) async {
+      await pump(tester, reasons: [_point], slots: slots);
+      await open(tester);
 
-    final y = [
-      for (final key in ['important', 'wardrobe', 'suggested'])
-        tester.getTopLeft(find.byKey(Key('ai_reasons_$key'))).dy,
-    ];
-    expect(y[0], lessThan(y[1]));
-    expect(y[1], lessThan(y[2]));
-    expect(find.text('Importanti'), findsOneWidget);
-    expect(find.text('Dal tuo armadio'), findsOneWidget);
-    expect(find.text('Suggeriti da PackLog'), findsOneWidget);
-    expect(find.text('Giacca ×2'), findsOneWidget);
-    expect(find.text('Fino a -7°.'), findsOneWidget);
-    expect(find.text('Da usare tutti i giorni'), findsOneWidget);
-  });
+      final y = [
+        for (final key in ['important', 'suggested', 'wardrobe'])
+          tester.getTopLeft(find.byKey(Key('ai_reasons_$key'))).dy,
+      ];
+      expect(y[0], lessThan(y[1]));
+      expect(y[1], lessThan(y[2]));
+      expect(find.text('Importanti'), findsOneWidget);
+      expect(find.text('Dal tuo armadio'), findsOneWidget);
+      expect(find.text('Suggeriti da PackLog'), findsOneWidget);
+      expect(find.text('Giacca ×2'), findsOneWidget);
+      expect(find.text('Fino a -7°.'), findsOneWidget);
+      expect(find.text('Da usare tutti i giorni'), findsOneWidget);
+    },
+  );
 
   testWidgets('riempiti, tolti e da comprare restano fuori', (tester) async {
     await pump(tester, reasons: [_point], slots: slots);
@@ -156,7 +157,7 @@ void main() {
   ) async {
     await pump(tester, reasons: [_point, _rain], slots: slots);
     expect(
-      find.text('2 importanti · Tutti i giorni, Pioggia · 2 suggeriti'),
+      find.text('2 importanti · 2 suggeriti · Tutti i giorni, Pioggia'),
       findsOneWidget,
     );
   });
