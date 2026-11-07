@@ -113,6 +113,14 @@ test("cammino: i posti dell'armadio vuoto rispettano i budget delle famiglie", (
   assert.ok(posti.some((p) => p.tipo === "Flip-Flops"));
 });
 
+test("cammino col caldo: i pantaloni suggeriti restano due, come la quantita' compatta", () => {
+  for (const tempMax of [24, 26, 30, 36]) {
+    const { posti } = genera([], 30, "zaino da 30 litri", 18, tempMax);
+    const lunghi = posti.filter((p) => ["Trousers", "Shorts"].includes(p.tipo)).reduce((n, p) => n + p.copie, 0);
+    assert.equal(lunghi, 2, `tempMax ${tempMax}`);
+  }
+});
+
 test("cammino: posseduti e proposte condividono il budget senza chiedere un altro ricambio", () => {
   const righe = tecnici.filter((g) => !["Boxer", "Socks"].includes(String(g.id)))
     .map((g) => ({ ...g, quantity: 1 }));

@@ -9,7 +9,7 @@ import * as K from "./costanti.ts";
 import { type Capo as CapoArmadio } from "./capo.ts";
 import { eTrekking, interseca, parole, viaggioDiLavoro } from "./inject.ts";
 import { eAttivitaAcqua, RADICI_GIORNI_ACQUA_IN_PIU } from "./quantita.ts";
-import { caldoUnCapoAlGiorno, ha, occasioneFormale } from "./regole_capi.ts";
+import { ha, occasioneFormale } from "./regole_capi.ts";
 import { attivitaPer, calore, capoDelGap, CODICE_LAVANDERIA, copyMancante, frasePochi, freddoPer, lavanderiaDelViaggio,
   meteoDelGap, perQuestoArmadio, SOLO_SE_NELL_ARMADIO, soloElegante, tettoSalvate } from "./uscita.ts";
 import { NOME_FOULARD_LEGGERO, NOMI_CATEGORIA, NOMI_FAMIGLIA, NOMI_SOTTOCATEGORIA, type NomePosto } from "./posti_nomi.ts";
@@ -324,14 +324,6 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     p.copie = dei + (copieAltre.get(chiave) ?? 0);
   }
 
-  // Il Cammino conserva la rotazione gia' rilasciata, separata dalla nuova policy mare/sera.
-  if (eCammino(attivitaPer({}, viaggio)) && caldoUnCapoAlGiorno(q.tempMaxEssenziali)) {
-    const camicie = uniti.get("Shirt")?.copie ?? 1;
-    for (const tipo of ["Trousers", "Jeans"]) {
-      const lunghi = uniti.get(tipo);
-      if (lunghi) lunghi.copie = Math.min(lunghi.copie, camicie);
-    }
-  }
   // Un solo budget serale per tutti i gruppi, anche quelli separati per requisiti.
   if (q.tutteTappeCalde && !eCammino(attivitaPer({}, viaggio)) &&
     !viaggioDiLavoro(attivitaPer({}, viaggio))) {
