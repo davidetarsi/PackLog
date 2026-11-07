@@ -6,6 +6,8 @@ Aggiornato: 7 novembre 2026. Si aggiorna a ogni lavoro chiuso.
 
 ## 0. Dal 7 novembre (ha la precedenza sul resto)
 
+- **Casa e Rapid Fire (7 nov, FATTO):** ramo app `refactor/casa-rapid-fire` (da develop, pushato): `house_detail_screen.dart` 1098→437 righe in widget piccoli, misura della barra in `HeightReporter` (shared/widgets/height_reporter.dart), rapid_fire_input 557→476; 40 screenshot della casa identici; 870 test verdi. PR da aprire: https://github.com/davidetarsi/PackLog/pull/new/refactor/casa-rapid-fire
+- **Perché:** suggeriti senza frase, una riga di sezione; ordine Importanti, Suggeriti, Dal tuo armadio.
 - **Perché queste scelte (7 nov, FATTO):** ramo app `feat/perche-completo` (da develop, pushato): il foglio ha tre sezioni, Importanti / Dal tuo armadio / Suggeriti, coi motivi dei posti aperti; esclusi riempiti, tolti e "da comprare"; niente kit (decisione di Davide). Solo app, niente deploy. PR da aprire: https://github.com/davidetarsi/PackLog/pull/new/feat/perche-completo
 - **Fatto con GPT, dal 5 al 7 nov:** Davide ha unito in develop le PR #98-#106; la #107 (quantità al mare) è aperta.
 - **Revisione del 7 nov** (memoria `revisione-codex-7-novembre.md`):
