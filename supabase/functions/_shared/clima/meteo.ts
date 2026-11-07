@@ -135,6 +135,11 @@ export function giorniStorici(inizio: string, fine: string, risposte: Record_[])
   return out;
 }
 
+/** I giorni in cache (senza data) rimessi sulle date di questo viaggio. */
+function conDate(inizio: string, giorni: Omit<GiornoStorico, "data">[]): GiornoStorico[] {
+  return giorni.map((g, i) => ({ data: iso(giorno(inizio) + i), ...g }));
+}
+
 // ── Il meteo di un luogo e di un periodo ────────────────────────────────────
 
 export interface Risposta { status: number; json(): Promise<any> }
@@ -173,7 +178,7 @@ export async function meteo(lat: number, lon: number, inizio: string, fine: stri
   if (hit && (fonte === "clima" || hit._giorno === s.oggi())
     && (!giorniStoriciOut || fonte !== "clima" || Array.isArray(hitGiorni?.giorni))) {
     const { _giorno, ...resto } = hit;
-    if (giorniStoriciOut && fonte === "clima") giorniStoriciOut(hitGiorni!.giorni);
+    if (giorniStoriciOut && fonte === "clima") giorniStoriciOut(conDate(inizio, hitGiorni!.giorni));
     return { ...resto, da_cache: true };
   }
 
@@ -240,9 +245,12 @@ export async function meteo(lat: number, lon: number, inizio: string, fine: stri
   out.pioggia_totale_mm = r1(out.pioggia_totale_mm / n);
   out.anni_mediati = n;
   await s.scriviCache(chiave, out);
-  const giorniAnno = giorniStorici(inizio, fine, risposte.filter((j) => j && j.daily?.time?.length));
-  await s.scriviCache(chiaveGiorni, { giorni: giorniAnno });
-  giorniStoriciOut?.(giorniAnno);
+  if (giorniStoriciOut) {
+    const giorniAnno = giorniStorici(inizio, fine, risposte.filter((j) => j && j.daily?.time?.length));
+    // La chiave non ha l'anno: in cache vanno i giorni senza data, in fila dalla partenza.
+    await s.scriviCache(chiaveGiorni, { giorni: giorniAnno.map(({ data: _, ...resto }) => resto) });
+    giorniStoriciOut(giorniAnno);
+  }
   return out;
 }
 

@@ -274,7 +274,7 @@ void main() {
         final base = _meteo(WeatherSource.climate).stops.single;
 
         await pumpStop(base);
-        expect(find.byType(InkWell), findsNothing);
+        expect(find.byIcon(Icons.chevron_right), findsNothing);
 
         await pumpStop(
           StopWeather(
@@ -290,7 +290,7 @@ void main() {
             ],
           ),
         );
-        expect(find.byType(InkWell), findsOneWidget);
+        expect(find.byIcon(Icons.chevron_right), findsOneWidget);
       });
 
       testWidgets('dalla previsione, in inglese: "Forecast"', (tester) async {

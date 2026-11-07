@@ -91,5 +91,23 @@ test("meteo() non cambia con il giorno per giorno e una voce vecchia si ricalcol
   assert.equal(richieste(), 10);
   assert.equal(dalCache.da_cache, true);
   assert.deepEqual(g2, g1);
-  assert.ok(cache.size === 2);
+  assert.deepEqual(cache.size, 2);
+});
+
+test("senza il parametro nessuna voce |giorni viene scritta", async () => {
+  const { s, cache } = servizi();
+  await meteo(40, 10, "2027-07-01", "2027-07-02", null, s);
+  assert.ok([...cache.keys()].every((k) => !k.endsWith("|giorni")));
+  assert.equal(cache.size, 1);
+});
+
+test("lo stesso viaggio chiesto un altro anno riceve le date di quell'anno", async () => {
+  const { s } = servizi();
+  let a: any, b: any;
+  await meteo(40, 10, "2027-07-15", "2027-07-20", null, s, (g) => { a = g; });
+  await meteo(40, 10, "2028-07-15", "2028-07-20", null, s, (g) => { b = g; });
+  assert.equal(a[0].data, "2027-07-15");
+  assert.equal(b[0].data, "2028-07-15");
+  assert.equal(b.length, 6);
+  assert.equal(b[5].data, "2028-07-20");
 });
