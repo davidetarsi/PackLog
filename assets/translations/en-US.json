@@ -331,6 +331,17 @@
         "nothing_missing_hint": "The suitcase covers weather and activities",
         "nothing_missing_sheet": "Nothing is missing: the suitcase covers the weather and activities of every stop.",
         "reasons_row": "Why these choices",
+        "reasons_important": "Important",
+        "reasons_wardrobe": "From your wardrobe",
+        "reasons_suggested": "Suggested by PackLog",
+        "reasons_count_important": {
+          "one": "{} important",
+          "other": "{} important"
+        },
+        "reasons_count_suggested": {
+          "one": "{} suggested",
+          "other": "{} suggested"
+        },
         "level_important": "Important",
         "level_useful": "Useful",
         "warning_search": "Search the wardrobe",

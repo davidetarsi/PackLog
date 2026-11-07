@@ -799,6 +799,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
                   warnings: result.hasSlots ? const [] : result.warnings,
                   readIds: result.dismissedWarnings.toSet(),
                   reasons: result.reasons,
+                  slots: result.slots ?? const [],
                   onSearch: _searchFrom,
                   onDismiss: _dismissWarning,
                 ),

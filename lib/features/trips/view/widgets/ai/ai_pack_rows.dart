@@ -6,6 +6,7 @@ import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_button.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
 import '../../../model/ai_packing.dart';
+import 'ai_reasons_sheet.dart';
 import '../../../../../shared/widgets/ds_divider.dart';
 
 /// Le due righe sotto il titolo della valigia AI: "Cosa manca a questo viaggio"
@@ -17,6 +18,7 @@ class AiPackRows extends StatelessWidget {
     required this.warnings,
     required this.readIds,
     required this.reasons,
+    this.slots = const [],
     required this.onSearch,
     required this.onDismiss,
   });
@@ -30,6 +32,9 @@ class AiPackRows extends StatelessWidget {
   /// Motivi, nell'ordine ricevuto da `pack-trip`.
   final List<AiReasonPoint> reasons;
 
+  /// I posti del risultato: il foglio dei motivi spiega quelli ancora aperti.
+  final List<AiSlot> slots;
+
   /// "Cerca nell'armadio": riceve la query dell'avviso, dopo che il foglio si
   /// è chiuso.
   final ValueChanged<String> onSearch;
@@ -42,7 +47,8 @@ class AiPackRows extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final hasWarnings = warnings.isNotEmpty;
     final unread = warnings.where((w) => !readIds.contains(w.id)).length;
-    final reasonTitles = [for (final reason in reasons.take(4)) reason.title];
+    final important = reasonSlots(slots, AiSlotLevel.important);
+    final suggested = reasonSlots(slots, AiSlotLevel.useful);
 
     return Material(
       color: context.groupSurface,
@@ -67,8 +73,11 @@ class AiPackRows extends StatelessWidget {
             trailing: unread > 0 ? _CountBadge(count: unread) : null,
             onTap: () => _openWarnings(context),
           ),
-          // Senza motivi non c'è niente da aprire: la riga non si mostra.
-          if (reasons.isNotEmpty) ...[
+          // Senza niente da spiegare non c'è niente da aprire: la riga non si
+          // mostra.
+          if (important.isNotEmpty ||
+              reasons.isNotEmpty ||
+              suggested.isNotEmpty) ...[
             DsDivider(
               // Allineato al titolo: margine, icona e spazio dopo l'icona.
               indent: context.spacingMd * 2 + context.iconSizeMd,
@@ -79,8 +88,12 @@ class AiPackRows extends StatelessWidget {
               iconColor: cs.onSurfaceVariant,
               title: 'trips.pack.ai.reasons_row'.tr(),
               titleColor: cs.onSurface,
-              subtitle: reasonTitles.join(', '),
-              onTap: () => _openReasons(context),
+              subtitle: reasonsSummary(
+                important: important,
+                reasons: reasons,
+                suggested: suggested,
+              ),
+              onTap: () => _openReasons(context, important, suggested),
             ),
           ],
         ],
@@ -98,9 +111,17 @@ class AiPackRows extends StatelessWidget {
     ),
   );
 
-  Future<void> _openReasons(BuildContext context) => showDsFormSheet<void>(
+  Future<void> _openReasons(
+    BuildContext context,
+    List<AiSlot> important,
+    List<AiSlot> suggested,
+  ) => showDsFormSheet<void>(
     context,
-    builder: (_) => _ReasonsSheet(reasons: reasons),
+    builder: (_) => AiReasonsSheet(
+      important: important,
+      reasons: reasons,
+      suggested: suggested,
+    ),
   );
 }
 
@@ -361,49 +382,6 @@ class _WarningCard extends StatelessWidget {
                 ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Bottone a contorno, neutro: mai arancio.
-/// Il foglio dei motivi: un punto per motivo, nell'ordine ricevuto. Si apre
-/// solo con almeno un motivo (la riga che lo apre sta nascosta altrimenti).
-class _ReasonsSheet extends StatelessWidget {
-  const _ReasonsSheet({required this.reasons});
-
-  final List<AiReasonPoint> reasons;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    return DsFormSheet(
-      title: 'trips.pack.ai.reasons_row'.tr(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final point in reasons)
-            Padding(
-              padding: EdgeInsets.only(bottom: context.spacingMd),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(point.title, style: tt.titleMedium?.title),
-                  SizedBox(height: context.spacingXs),
-                  for (final sentence in point.sentences)
-                    Text(sentence, style: tt.bodyMedium),
-                  if (point.items.isNotEmpty) ...[
-                    SizedBox(height: context.spacingXs),
-                    Text(
-                      point.items.join(' · '),
-                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  ],
-                ],
-              ),
-            ),
         ],
       ),
     );
