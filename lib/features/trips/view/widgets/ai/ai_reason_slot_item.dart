@@ -5,18 +5,26 @@ import '../../../model/ai_packing.dart';
 import '../slots/slot_copies_label.dart';
 
 /// Un posto ancora aperto nel foglio dei motivi: nome, "×N" se le copie da
-/// riempire sono più d'una, e sotto il motivo (assente: solo il nome).
+/// riempire sono più d'una, e sotto il motivo (assente o nascosto: solo il
+/// nome).
 class AiReasonSlotItem extends StatelessWidget {
-  const AiReasonSlotItem({super.key, required this.slot});
+  const AiReasonSlotItem({
+    super.key,
+    required this.slot,
+    this.showReason = true,
+  });
 
   final AiSlot slot;
+
+  /// I suggeriti non mostrano il motivo: la sezione lo dice una volta sola.
+  final bool showReason;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final copies = slotCopiesLabel(slot);
-    final reason = slot.reason;
+    final reason = showReason ? slot.reason : null;
 
     return Padding(
       padding: EdgeInsets.all(context.spacingMd),

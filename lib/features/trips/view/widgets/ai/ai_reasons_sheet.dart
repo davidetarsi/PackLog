@@ -69,8 +69,10 @@ class AiReasonsSheet extends StatelessWidget {
               icon: Icons.auto_awesome,
               title: 'trips.pack.ai.reasons_suggested'.tr(),
               color: cs.tertiary,
+              subtitle: 'trips.pack.ai.reasons_suggested_hint'.tr(),
               children: [
-                for (final slot in suggested) AiReasonSlotItem(slot: slot),
+                for (final slot in suggested)
+                  AiReasonSlotItem(slot: slot, showReason: false),
               ],
             ),
           if (reasons.isNotEmpty)

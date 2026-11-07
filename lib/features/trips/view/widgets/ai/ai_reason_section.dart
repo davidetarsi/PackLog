@@ -15,12 +15,16 @@ class AiReasonSection extends StatelessWidget {
     required this.title,
     required this.color,
     required this.children,
+    this.subtitle,
   });
 
   final IconData icon;
   final String title;
   final Color color;
   final List<Widget> children;
+
+  /// Una riga sotto il titolo che vale per tutta la sezione.
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +37,16 @@ class AiReasonSection extends StatelessWidget {
           color: color,
           padding: EdgeInsets.only(bottom: context.spacingSm),
         ),
+        if (subtitle != null)
+          Padding(
+            padding: EdgeInsets.only(bottom: context.spacingSm),
+            child: Text(
+              subtitle!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         Material(
           color: context.groupSurface,
           borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),

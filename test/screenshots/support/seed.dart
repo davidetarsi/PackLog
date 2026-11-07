@@ -598,7 +598,7 @@ Future<void> seedValigiaPosti(ProviderContainer c) async {
     ),
     slot('sciarpa_calda', 'Sciarpa calda', important, toBuy: true),
     slot('maglioni_caldi', 'Maglioni caldi', useful, copies: 3),
-    slot('strato_termico', 'Strato termico', useful, copies: 2),
+    slot('strato_termico', 'Maglia termica', useful, copies: 2),
     slot('magliette', 'Magliette', useful, copies: 7),
     slot('pantaloni_caldi', 'Pantaloni caldi', useful, copies: 3),
     slot('calzini', 'Calzini', useful, copies: 7),

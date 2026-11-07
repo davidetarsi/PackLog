@@ -143,6 +143,30 @@ void main() {
     expect(find.byKey(const Key('ai_reasons_suggested')), findsNothing);
   });
 
+  testWidgets('suggeriti: niente motivo, una riga per tutta la sezione', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      slots: [
+        _slot(
+          'u2',
+          'Pile',
+          level: AiSlotLevel.useful,
+          reason: 'Niente di adatto al freddo.',
+        ),
+      ],
+    );
+    await open(tester);
+
+    expect(find.text('Pile'), findsOneWidget);
+    expect(find.text('Niente di adatto al freddo.'), findsNothing);
+    expect(
+      find.text('Servono per questo viaggio e nel tuo armadio non ci sono'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('sezioni vuote non si mostrano', (tester) async {
     await pump(tester, reasons: [_point]);
     await open(tester);

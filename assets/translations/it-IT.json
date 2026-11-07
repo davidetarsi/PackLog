@@ -334,6 +334,7 @@
         "reasons_important": "Importanti",
         "reasons_wardrobe": "Dal tuo armadio",
         "reasons_suggested": "Suggeriti da PackLog",
+        "reasons_suggested_hint": "Servono per questo viaggio e nel tuo armadio non ci sono",
         "reasons_count_important": {
           "one": "{} importante",
           "other": "{} importanti"
