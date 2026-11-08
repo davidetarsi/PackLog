@@ -247,6 +247,10 @@ class AiPackingResult with _$AiPackingResult {
 
     /// Kit già contati per imparare in questo viaggio: un sì non conta due volte.
     @Default(<String>[]) List<String> kitLearnCounted,
+
+    /// Versione del generatore che ha prodotto la valigia (`versione_generatore`
+    /// della risposta). `null` = risultato vecchio, senza versione.
+    String? generatorVersion,
   }) = _AiPackingResult;
 
   /// Il risultato ha i posti (anche se la lista è vuota).
