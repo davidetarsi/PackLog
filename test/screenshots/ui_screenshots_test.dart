@@ -180,7 +180,7 @@ Future<void> _addNonClothingNeeds(ProviderContainer c) async {
   );
 }
 
-/// Apre la pagina valigia di un viaggio, sopra la tab Viaggi.
+/// Apre la pagina "Aggiungi alla valigia" di un viaggio, sopra la tab Viaggi.
 Future<void> _pack(ScreenshotApp app, String id) async {
   await app.go('/trips');
   await app.push('/trips/$id/edit-items');
@@ -351,11 +351,12 @@ Future<void> _tapShown(ScreenshotApp app, Finder finder) async {
   await app.tap(finder);
 }
 
-/// Apre il foglio "Valigia con AI" dal viaggio: il viaggio ha già oggetti,
+/// Apre il foglio "Valigia con AI" dal viaggio (Rigenera): il viaggio ha già oggetti,
 /// quindi prima c'è l'avviso di sostituzione, che si conferma.
 Future<void> _openAiSheet(ScreenshotApp app, String tripId) async {
-  await _pack(app, tripId);
-  await app.tap(find.byKey(const Key('pack_ai_suitcase')));
+  // "Rigenera" dal menu del dettaglio: la pagina si apre con `?ai=1`.
+  await app.go('/trips');
+  await app.push('/trips/$tripId/edit-items?ai=1');
   await app.tap(_text('trips.pack.ai.replace_confirm'));
 }
 
@@ -764,8 +765,7 @@ final flows = <Flow>[
       source: 'lib/features/luggages/view/add_edit_luggage_screen.dart',
       description: 'Modifica bagaglio dalla gestione globale nel viaggio.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await _tripDetail(app);
         await app.tester.ensureVisible(
           find.byKey(const Key('pack_manage_luggages')),
         );
@@ -1590,7 +1590,8 @@ final flows = <Flow>[
       route: '/trips/:id',
       source: _tripDetailSrc,
       description:
-          'Viaggio futuro con tappe, bagagli e oggetti parzialmente spuntati.',
+          'Valigia a mano: riepilogo, meteo, bagagli e oggetti parzialmente '
+          'spuntati, con "Aggiungi oggetti" in basso.',
       steps: _tripDetail,
     ),
     Scenario(
@@ -1608,7 +1609,8 @@ final flows = <Flow>[
       'senza-oggetti',
       route: '/trips/:id',
       source: _tripDetailSrc,
-      description: 'Viaggio senza oggetti: CTA "Prepara la valigia".',
+      description:
+          'Viaggio vuoto: valigia vuota e "Aggiungi oggetti" in basso.',
       steps: (app) => _tripDetail(app, kEmptyTripId),
     ),
     Scenario(
@@ -1638,12 +1640,13 @@ final flows = <Flow>[
     Scenario(
       6,
       'valigia',
-      'da-modifica-oggetti',
+      'da-dettaglio',
       route: '/trips/:id/edit-items',
       source: _packSrc,
       description:
-          'Pagina valigia aperta da "Modifica valigia": riepilogo, bagagli, '
-          'ricerca e oggetti della casa proposta. Senza indicatore dei passi.',
+          'Pagina "Aggiungi alla valigia" aperta dal dettaglio con "Aggiungi '
+          'oggetti": solo ricerca, casa e oggetti della casa. Senza '
+          'indicatore dei passi.',
       steps: (app) async {
         await _tripDetail(app);
         await app.tap(find.byKey(const Key('trip_detail_cta')));
@@ -1656,8 +1659,9 @@ final flows = <Flow>[
       route: '/trips/:id/edit-items',
       source: _packSrc,
       description:
-          'Passo 2 di "Nuovo viaggio" appena salvato il passo 1: indicatore dei '
-          'passi con "Viaggio" fatto, "Valigia" attivo, "Fatto" a zero oggetti.',
+          'Pagina valigia dalla creazione, passo 2 di "Nuovo viaggio": '
+          'indicatore dei passi con "Viaggio" fatto, "Valigia" attivo, '
+          '"Fatto" a zero oggetti.',
       steps: (app) async {
         await _fillStep1(app);
         await app.tap(find.byKey(const Key('new_trip_choose_items')));
@@ -1670,12 +1674,11 @@ final flows = <Flow>[
       route: '/trips/:id/edit-items',
       source: _packSrc,
       description:
-          'Valigia con scelte e quantità: un bagaglio in più e la quantità di '
-          '"Calzini" diminuita di uno. "Fatto" dice quanti oggetti.',
+          'Valigia con scelte e quantità: la quantità di "Calzini" diminuita '
+          'di uno. "Fatto" dice quanti oggetti.',
       steps: (app) async {
         await _tripDetail(app);
         await app.tap(find.byKey(const Key('trip_detail_cta')));
-        await app.tap(find.text('Valigia grande'));
         // Calzini è a 7: il "+" è spento al massimo della casa, il "-" no. Si
         // toglie un capo senza deselezionare la riga.
         final calzini = find.byWidgetPredicate(
@@ -1781,18 +1784,18 @@ final flows = <Flow>[
       15,
       'valigia',
       'meteo-previsione',
-      route: '/trips/:id/edit-items',
+      route: '/trips/:id',
       source: _packWeatherSrc,
       description:
           'Viaggio in corso verso una casa: il meteo della casa dai giorni '
           'che restano, con la previsione e "Aggiorna".',
-      steps: (app) => _pack(app, kActiveTripId),
+      steps: (app) => _tripDetail(app, kActiveTripId),
     ),
     Scenario(
       16,
       'valigia',
       'meteo-tetto',
-      route: '/trips/:id/edit-items',
+      route: '/trips/:id',
       source: _packWeatherSrc,
       description:
           'Tetto giornaliero del meteo finito e nessuna copia: al posto delle '
@@ -1804,18 +1807,18 @@ final flows = <Flow>[
           ),
         ],
       ),
-      steps: (app) => _pack(app, kUpcomingTripId),
+      steps: (app) => _tripDetail(app, kUpcomingTripId),
     ),
     Scenario(
       17,
       'valigia',
       'meteo-non-disponibile',
-      route: '/trips/:id/edit-items',
+      route: '/trips/:id',
       source: _packWeatherSrc,
       description:
           'Viaggio verso una casa senza località: il meteo non si può '
           'chiedere e la sezione lo dice.',
-      steps: (app) => _pack(app, kEmptyTripId),
+      steps: (app) => _tripDetail(app, kEmptyTripId),
     ),
     Scenario(
       18,
@@ -1827,7 +1830,7 @@ final flows = <Flow>[
           'Toccando la tappa con la previsione: i giorni che restano, ognuno '
           'con il riepilogo e le sei fasce di quattro ore.',
       steps: (app) async {
-        await _pack(app, kActiveTripId);
+        await _tripDetail(app, kActiveTripId);
         await app.tap(find.text('Casa al mare').last);
       },
     ),
@@ -1859,8 +1862,8 @@ final flows = <Flow>[
       route: '/trips/:id',
       source: _tripDetailSrc,
       description:
-          'Apertura ordinaria dopo la cartolina: gli oggetti propri hanno '
-          'checkbox per la checklist.',
+          'Dettaglio della valigia AI dopo la revisione: gli oggetti propri '
+          'hanno checkbox per la checklist e "Aggiungi oggetti" in basso.',
       setup: AppSetup(
         seedWith: (c) async {
           await seed(c, SeedLevel.full);
@@ -1883,6 +1886,7 @@ final flows = <Flow>[
           find.byKey(const Key('trip_item_item-12')),
         );
         expect(find.byKey(const Key('trip_item_item-12')), findsOneWidget);
+        expect(find.byKey(const Key('trip_detail_cta')), findsOneWidget);
         expect(
           app.issues,
           isEmpty,
@@ -2288,8 +2292,7 @@ final flows = <Flow>[
       source: 'lib/features/luggages/view/add_edit_luggage_screen.dart',
       description: 'Modifica bagaglio: nome, taglia e menu eliminazione.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await _tripDetail(app);
         await app.tester.ensureVisible(
           find.byKey(const Key('pack_manage_luggages')),
         );
@@ -2304,8 +2307,7 @@ final flows = <Flow>[
       source: 'lib/features/luggages/view/add_edit_luggage_screen.dart',
       description: 'Nuovo bagaglio personalizzato con volume in litri.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await _tripDetail(app);
         await app.tester.ensureVisible(
           find.byKey(const Key('pack_manage_luggages')),
         );
@@ -2363,8 +2365,7 @@ final flows = <Flow>[
       description:
           'Bagagli dell’utente gestibili dal viaggio, indipendenti dalle case.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await _tripDetail(app);
         await app.tester.ensureVisible(
           find.byKey(const Key('pack_manage_luggages')),
         );
@@ -2375,11 +2376,10 @@ final flows = <Flow>[
       9,
       'bagagli',
       'selezione-viaggio',
-      source: 'lib/features/trips/view/pack_suitcase_screen.dart',
-      description: 'Selezione, creazione e gestione dei bagagli nella valigia.',
+      source: _tripDetailSrc,
+      description: 'Selezione, creazione e gestione dei bagagli nel dettaglio.',
       steps: (app) async {
-        await app.go('/trips');
-        await app.push('/trips/$kUpcomingTripId/edit-items');
+        await _tripDetail(app);
         await app.tester.ensureVisible(_text('trips.pack.luggages'));
         await app.settle();
       },
@@ -2490,17 +2490,6 @@ final flows = <Flow>[
       },
     ),
     Scenario(
-      6,
-      'valigia',
-      'generata-con-avvisi',
-      source: _packSrc,
-      description:
-          'Valigia generata: avvisi aperti in cima, capi e igiene in valigia, '
-          'il capo da indossare in partenza segnato.',
-      setup: const AppSetup(aiPacking: true),
-      steps: (app) => _pack(app, kUpcomingTripId),
-    ),
-    Scenario(
       8,
       'scheda-oggetto',
       'capo-in-partenza',
@@ -2510,25 +2499,11 @@ final flows = <Flow>[
           'Togli dalla valigia.',
       setup: const AppSetup(aiPacking: true),
       steps: (app) async {
-        await _pack(app, kUpcomingTripId);
+        await _tripDetail(app, kUpcomingTripId);
         // La riga è più in basso nella lista: prima la si porta a schermo.
         await app.tester.ensureVisible(find.text('Giacca impermeabile').first);
         await app.settle();
         await app.tap(find.text('Giacca impermeabile'));
-      },
-    ),
-    Scenario(
-      9,
-      'avvisi',
-      'elenco',
-      source: _aiRowsSrc,
-      description:
-          'Cosa manca: avvisi importanti in ambra e utili, ognuno con "Cerca '
-          'nell\'armadio" e "Ok, capito".',
-      setup: const AppSetup(aiPacking: true),
-      steps: (app) async {
-        await _pack(app, kUpcomingTripId);
-        await app.tap(find.byKey(const Key('pack_row_missing')));
       },
     ),
     Scenario(
@@ -2539,9 +2514,14 @@ final flows = <Flow>[
       description:
           'Perché queste scelte: un punto per clima o attività, con '
           'i capi collegati.',
-      setup: const AppSetup(aiPacking: true),
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
       steps: (app) async {
-        await _pack(app, kUpcomingTripId);
+        await _tripDetail(app, kSeoulTripId);
         await app.tap(find.byKey(const Key('pack_row_reasons')));
       },
     ),
