@@ -304,6 +304,7 @@
       "discard_title": "Leave without saving?",
       "discard_message": "Your suitcase changes will be lost.",
       "ai": {
+        "reassurance": "This suitcase has what you need for this trip. If you want to bring more, add it from search.",
         "note": "The clothes and the hygiene basics have been chosen. The rest is up to you: you'll find it at the bottom of the suitcase.",
         "search_hint": "Add from your wardrobe",
         "in_departure": "Wear on departure",

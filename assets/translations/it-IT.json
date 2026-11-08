@@ -304,6 +304,7 @@
       "discard_title": "Uscire senza salvare?",
       "discard_message": "Le modifiche alla valigia andranno perse.",
       "ai": {
+        "reassurance": "Con questa valigia hai il necessario per questo viaggio. Se vuoi portare altro, aggiungilo dalla ricerca.",
         "note": "Sono stati scelti i vestiti e l'essenziale per l'igiene. Il resto lo scegli tu: lo trovi in fondo alla valigia.",
         "search_hint": "Aggiungi dal tuo armadio",
         "in_departure": "Da indossare in partenza",

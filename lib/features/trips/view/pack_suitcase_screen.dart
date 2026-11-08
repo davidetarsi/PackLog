@@ -44,6 +44,7 @@ import '../providers/trip_provider.dart';
 import 'ai_packing_wait_screen.dart';
 import 'widgets/ai/ai_home_group.dart';
 import 'widgets/ai/ai_pack_item_sheet.dart';
+import 'widgets/ai/ai_pack_reassurance.dart';
 import 'widgets/ai/ai_pack_rows.dart';
 import 'widgets/ai/ai_packing_sheet.dart';
 import 'widgets/pack/pack_parts.dart';
@@ -793,6 +794,10 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
                 houseNames: {for (final h in houses) h.id: h.displayName},
               ),
               if (_aiResult case final result?) ...[
+                if (_notDeparted(trip)) ...[
+                  SizedBox(height: context.spacingSm),
+                  const AiPackReassurance(),
+                ],
                 SizedBox(height: context.spacingMd),
                 AiPackRows(
                   // Con i posti "cosa manca" sta nel dettaglio: qui restano i motivi.
@@ -813,6 +818,12 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         ),
       ),
     );
+  }
+
+  /// Prima della partenza (senza data di partenza vale come non partito).
+  bool _notDeparted(TripModel trip) {
+    final departure = trip.departureDateTime;
+    return departure == null || DateTime.now().isBefore(departure);
   }
 
   Widget _luggageSection(BuildContext context) {

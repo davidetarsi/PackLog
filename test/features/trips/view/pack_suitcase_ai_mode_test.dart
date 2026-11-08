@@ -23,6 +23,7 @@ import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
 import 'package:pack_log/features/trips/view/pack_suitcase_screen.dart';
+import 'package:pack_log/features/trips/view/widgets/ai/ai_pack_reassurance.dart';
 import 'package:pack_log/features/trips/view/widgets/pack/pack_parts.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_form_sheet.dart';
@@ -375,6 +376,26 @@ void main() {
 
       expect(find.text(_note), findsOneWidget);
       expect(find.byIcon(Icons.info_outline), findsOneWidget);
+    });
+
+    testWidgets('prima della partenza c è la frase rassicurante', (tester) async {
+      arrange(trip: _aiTrip(), items: _houseItems);
+      await pumpPack(tester);
+
+      expect(find.byType(AiPackReassurance), findsOneWidget);
+    });
+
+    testWidgets('a viaggio partito la frase rassicurante non c è', (
+      tester,
+    ) async {
+      final partito = _aiTrip().copyWith(
+        departureDateTime: DateTime(2020, 1, 1),
+        returnDateTime: DateTime(2099, 11, 3),
+      );
+      arrange(trip: partito, items: _houseItems);
+      await pumpPack(tester);
+
+      expect(find.byType(AiPackReassurance), findsNothing);
     });
 
     testWidgets('il capo da indossare in partenza lo dice sotto il nome', (
