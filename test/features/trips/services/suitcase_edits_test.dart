@@ -276,4 +276,97 @@ void main() {
     expect(dump, isNot(contains('Nome privato')));
     expect(dump, isNot(contains('Roma segreta')));
   });
+
+  test('posto tolto e da comprare nello stesso salvataggio: due eventi', () {
+    final e = _run(
+      _trip(slots: [_slot('s')]),
+      _trip(slots: [_slot('s', removed: true, toBuy: true)]),
+    );
+    expect(e.map((x) => x.action), [
+      SuitcaseEditAction.suggestionRemoved,
+      SuitcaseEditAction.toBuy,
+    ]);
+  });
+
+  test('due nuovi della stessa categoria e un posto calato: tutti utente', () {
+    final e = _run(
+      _trip(slots: [_slot('s')]),
+      _trip(
+        slots: [_slot('s', remaining: 0)],
+        items: [_item('n1'), _item('n2')],
+      ),
+    );
+    expect(
+      e.where((x) => x.action == SuitcaseEditAction.slotFilled),
+      hasLength(1),
+    );
+    final added = e.where((x) => x.action == SuitcaseEditAction.added);
+    expect(added, hasLength(2));
+    expect(added.every((x) => x.origin == SuitcaseEditOrigin.user), isTrue);
+  });
+
+  test('un id ripetuto in after.items dà un solo added', () {
+    final e = _run(_trip(), _trip(items: [_item('a'), _item('a')]));
+    expect(e, hasLength(1));
+  });
+
+  test('quantità a 0: copies X -> 0', () {
+    final e = _run(
+      _trip(items: [_item('a', q: 2)]),
+      _trip(items: [_item('a', q: 0)]),
+    );
+    expect(e.single.action, SuitcaseEditAction.copies);
+    expect(e.single.copiesBefore, 2);
+    expect(e.single.copiesAfter, 0);
+  });
+
+  test('oggetto in proposta e in kit: proposta', () {
+    final e = _run(
+      _trip(
+        items: [_item('a')],
+        proposal: ['a'],
+        kit: [const AiKitAdded(kitId: 'x', itemId: 'a')],
+      ),
+      _trip(
+        proposal: ['a'],
+        kit: [const AiKitAdded(kitId: 'x', itemId: 'a')],
+      ),
+    );
+    expect(e.single.origin, SuitcaseEditOrigin.proposal);
+  });
+
+  test('partenza senza data: il viaggio non e partito, si registra', () {
+    final noDate = _trip(items: [_item('a')]).copyWith(departureDateTime: null);
+    final e = _run(_trip().copyWith(departureDateTime: null), noDate);
+    expect(e.single.action, SuitcaseEditAction.added);
+  });
+
+  test('posti null prima o dopo: nessun evento sui posti', () {
+    expect(_run(_trip(), _trip(slots: [_slot('s', removed: true)])), isEmpty);
+    expect(_run(_trip(slots: [_slot('s')]), _trip()), isEmpty);
+  });
+
+  test('slotFilled senza oggetti nuovi: un solo evento', () {
+    final e = _run(
+      _trip(slots: [_slot('s')]),
+      _trip(slots: [_slot('s', remaining: 0)]),
+    );
+    expect(e.single.action, SuitcaseEditAction.slotFilled);
+  });
+
+  test('card con subCategory e activityTags', () {
+    final e = _run(
+      _trip(),
+      _trip(items: [_item('a')]),
+      cardOf: (_) => {
+        'subCategory': 'giacca',
+        'activityTags': ['city'],
+        'brand': 'x',
+      },
+    );
+    expect(e.single.card, {
+      'subCategory': 'giacca',
+      'activityTags': ['city'],
+    });
+  });
 }

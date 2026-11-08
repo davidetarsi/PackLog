@@ -22,7 +22,7 @@ const _uuid = Uuid();
 /// Funzione pura: non legge orologio, consenso né rete. Restituisce `[]` se il
 /// viaggio non ha una valigia AI in entrambe le versioni, se la valigia è
 /// stata rigenerata o adottata (`generatedAt` diverso) o se [now] non è prima
-/// della partenza. Le spunte non contano.
+/// della partenza (senza data di partenza il viaggio conta come non partito). Le spunte non contano.
 ///
 /// [cardOf] dà la scheda di un oggetto (null = nessuna scheda); ne passano solo
 /// i campi di [kSuitcaseEditCardFields]. [weather], se passato, finisce nel
@@ -41,7 +41,8 @@ List<SuitcaseEdit> suitcaseEdits({
   if (beforeResult == null || afterResult == null) return const [];
   if (beforeResult.generatedAt != afterResult.generatedAt) return const [];
   final departure = after.departureDateTime;
-  if (departure == null || !now.isBefore(departure)) return const [];
+  // Senza data di partenza il viaggio non è ancora partito: si registra.
+  if (departure != null && !now.isBefore(departure)) return const [];
 
   final makeId = newId ?? () => _uuid.v4();
   final context = _context(after);
@@ -89,7 +90,6 @@ List<SuitcaseEdit> suitcaseEdits({
           card,
         ),
       );
-      continue;
     }
     if (!old.toBuy && slot.toBuy) {
       slotEdits.add(
@@ -115,20 +115,39 @@ List<SuitcaseEdit> suitcaseEdits({
     for (final k in [...beforeResult.kitAdded, ...afterResult.kitAdded])
       k.itemId,
   };
+  // Primo id vince se un elenco ripete lo stesso oggetto.
+  final beforeItems = <String, TripItem>{};
+  for (final i in before.items) {
+    beforeItems.putIfAbsent(i.id, () => i);
+  }
+  final afterItems = <String, TripItem>{};
+  for (final i in after.items) {
+    afterItems.putIfAbsent(i.id, () => i);
+  }
+
+  // Oggetti nuovi che non vengono dalla proposta né da un kit, per categoria:
+  // solo se ce n'è uno solo il posto riempito è sicuramente il suo.
+  final candidates = <Object, int>{};
+  for (final i in afterItems.values) {
+    if (!beforeItems.containsKey(i.id) &&
+        !proposed.contains(i.id) &&
+        !kitItems.contains(i.id)) {
+      candidates.update(i.category, (n) => n + 1, ifAbsent: () => 1);
+    }
+  }
+
   SuitcaseEditOrigin originOf(String id, {Object? slotCategory}) {
     if (proposed.contains(id)) return SuitcaseEditOrigin.proposal;
     if (kitItems.contains(id)) return SuitcaseEditOrigin.kit;
-    if (slotCategory != null && (filledByCategory[slotCategory] ?? 0) > 0) {
-      filledByCategory[slotCategory] = filledByCategory[slotCategory]! - 1;
+    if (slotCategory != null &&
+        candidates[slotCategory] == 1 &&
+        (filledByCategory[slotCategory] ?? 0) > 0) {
       return SuitcaseEditOrigin.slot;
     }
     return SuitcaseEditOrigin.user;
   }
 
-  final beforeItems = {for (final i in before.items) i.id: i};
-  final afterItems = {for (final i in after.items) i.id: i};
-
-  for (final item in after.items) {
+  for (final item in afterItems.values) {
     final old = beforeItems[item.id];
     if (old == null) {
       edits.add(
@@ -151,7 +170,7 @@ List<SuitcaseEdit> suitcaseEdits({
       );
     }
   }
-  for (final old in before.items) {
+  for (final old in beforeItems.values) {
     if (afterItems.containsKey(old.id)) continue;
     edits.add(
       edit(
