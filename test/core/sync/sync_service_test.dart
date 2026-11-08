@@ -11,6 +11,7 @@ import 'package:pack_log/core/sync/sync_service.dart';
 import 'package:pack_log/core/sync/tombstone_config_service.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/luggages/model/luggage_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../../helpers/test_database_setup.dart';
 
 class MockSupabaseRepository extends Mock implements SupabaseRepository {}
@@ -1261,6 +1262,8 @@ void main() {
           SuitcaseEdit(
             id: 'e-wipe',
             tripId: 't-wipe',
+            itemKey: 'k',
+            userId: 'u1',
             at: now,
             action: SuitcaseEditAction.removed,
             origin: SuitcaseEditOrigin.proposal,
@@ -2430,6 +2433,8 @@ void main() {
     SuitcaseEdit edit(String id, {int minute = 0}) => SuitcaseEdit(
       id: id,
       tripId: 't-1',
+      itemKey: 'k-$id',
+      userId: 'u1',
       at: DateTime.utc(2026, 11, 8, 10, minute),
       action: SuitcaseEditAction.removed,
       origin: SuitcaseEditOrigin.proposal,
@@ -2460,7 +2465,8 @@ void main() {
         expect(rows.first['azione'], 'tolto');
         expect(rows.first['origine'], 'proposta');
         expect(rows.first['analisi_consentita'], true);
-        expect(rows.first.containsKey('user_id'), isFalse);
+        expect(rows.first['user_id'], 'u1');
+        expect(rows.first['chiave_oggetto'], 'k-e1');
         expect(await database.suitcaseEditsDao.pending(), isEmpty);
       },
     );
@@ -2534,5 +2540,112 @@ void main() {
         expect(await database.suitcaseEditsDao.pending(), isEmpty);
       },
     );
+
+    void stubMonitoring() => when(
+      () => mockMonitoring.captureException(
+        any<Object>(),
+        stackTrace: any(named: 'stackTrace'),
+        tags: any(named: 'tags'),
+      ),
+    ).thenAnswer((_) async {});
+
+    /// Insert che rifiuta ogni blocco con più righe e, riga per riga, lancia
+    /// [errors[id]] per gli id indicati.
+    void stubRows(Map<String, Object> errors) {
+      when(() => mockRemote.insertSuitcaseEdits(any())).thenAnswer((inv) async {
+        final rows =
+            inv.positionalArguments.first as List<Map<String, dynamic>>;
+        if (rows.length > 1) {
+          throw PostgrestException(message: 'bad', code: '23514');
+        }
+        final err = errors[rows.single['id']];
+        if (err != null) throw err;
+      });
+    }
+
+    test('riga avvelenata (23): il blocco si rimanda una riga alla volta, '
+        'le altre arrivano, quella rifiutata si toglie', () async {
+      stubMonitoring();
+      stubRows({'e2': PostgrestException(message: 'bad', code: '23514')});
+      await database.suitcaseEditsDao.enqueue([
+        edit('e1'),
+        edit('e2', minute: 1),
+        edit('e3', minute: 2),
+      ]);
+
+      await syncService.processQueue();
+
+      expect(await database.suitcaseEditsDao.pending(), isEmpty);
+      verify(
+        () => mockMonitoring.captureException(
+          any<Object>(),
+          stackTrace: any(named: 'stackTrace'),
+          tags: any(named: 'tags'),
+        ),
+      ).called(1);
+    });
+
+    test('riga rifiutata con 22 (dati non validi): tolta', () async {
+      stubMonitoring();
+      stubRows({'e1': PostgrestException(message: 'bad', code: '22P02')});
+      await database.suitcaseEditsDao.enqueue([
+        edit('e1'),
+        edit('e2', minute: 1),
+      ]);
+      await syncService.processQueue();
+      expect(await database.suitcaseEditsDao.pending(), isEmpty);
+    });
+
+    test(
+      'errore di rete nel rimando riga per riga: la riga resta in coda',
+      () async {
+        stubMonitoring();
+        stubRows({
+          'e1': PostgrestException(message: 'bad', code: '23514'),
+          'e2': Exception('offline'),
+        });
+        await database.suitcaseEditsDao.enqueue([
+          edit('e1'),
+          edit('e2', minute: 1),
+          edit('e3', minute: 2),
+        ]);
+
+        await syncService.processQueue();
+
+        expect((await database.suitcaseEditsDao.pending()).map((e) => e.id), [
+          'e2',
+        ]);
+      },
+    );
+
+    test(
+      'utente diverso (RLS 42501): le righe si tolgono, non si riprova per sempre',
+      () async {
+        stubMonitoring();
+        when(
+          () => mockRemote.insertSuitcaseEdits(any()),
+        ).thenThrow(PostgrestException(message: 'rls', code: '42501'));
+        await database.suitcaseEditsDao.enqueue([
+          edit('e1'),
+          edit('e2', minute: 1),
+        ]);
+
+        await syncService.processQueue();
+
+        expect(await database.suitcaseEditsDao.pending(), isEmpty);
+      },
+    );
+
+    test('errore Postgrest non di dati (es. 500): la coda resta', () async {
+      stubMonitoring();
+      when(
+        () => mockRemote.insertSuitcaseEdits(any()),
+      ).thenThrow(PostgrestException(message: 'down', code: '503'));
+      await database.suitcaseEditsDao.enqueue([edit('e1')]);
+      await syncService.processQueue();
+      expect((await database.suitcaseEditsDao.pending()).map((e) => e.id), [
+        'e1',
+      ]);
+    });
   });
 }

@@ -8,6 +8,7 @@ import 'package:sentry_flutter/sentry_flutter.dart' show SentryLevel;
 
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/auth/auth_provider.dart';
 import '../../../core/consent/consent_provider.dart';
 import '../../../core/monitoring/monitoring_service.dart';
 import '../../../core/sync/sync_provider.dart';
@@ -345,7 +346,12 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
         cardOf: (id) => cards[id],
       );
       if (edits.isEmpty) return;
-      await ref.read(suitcaseEditsDaoProvider).enqueue(edits);
+      // Senza utente non si mette in coda: l'invio non saprebbe di chi sono.
+      final String? userId = ref.read(currentUserIdProvider);
+      if (userId == null) return;
+      await ref.read(suitcaseEditsDaoProvider).enqueue([
+        for (final e in edits) e.copyWith(userId: userId),
+      ]);
     } catch (error, stackTrace) {
       // Anche la segnalazione è protetta: un errore qui non deve salire.
       try {

@@ -420,12 +420,14 @@ abstract final class SyncSerializers {
     };
   }
 
-  /// Riga di `valigia_modifiche`. Niente `user_id` (lo mette il server con
-  /// `auth.uid()`) e mai il nome scritto dall'utente: [SuitcaseEdit] non lo
-  /// porta.
+  /// Riga di `valigia_modifiche`. `user_id` è l'utente di quando la modifica è
+  /// stata fatta: se non è quello della sessione la RLS rifiuta la riga. Mai il
+  /// nome scritto dall'utente: [SuitcaseEdit] non lo porta.
   static Map<String, dynamic> suitcaseEditToJson(SuitcaseEdit e) => {
     'id': e.id,
+    'user_id': e.userId,
     'trip_id': e.tripId,
+    'chiave_oggetto': e.itemKey,
     'creato_il': e.at.toUtc().toIso8601String(),
     'azione': e.action.dbValue,
     'origine': e.origin.dbValue,

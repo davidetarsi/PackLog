@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/consent/consent_provider.dart';
+import 'package:pack_log/core/auth/auth_provider.dart';
 import 'package:pack_log/core/database/daos/suitcase_edits_dao.dart';
 import 'package:pack_log/core/database/database.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
@@ -1182,6 +1183,7 @@ void main() {
           syncOrchestratorProvider.overrideWithValue(sync),
           itemRepositoryProvider.overrideWithValue(items),
           suitcaseEditsDaoProvider.overrideWithValue(dao),
+          currentUserIdProvider.overrideWithValue('u-1'),
         ],
       );
       c = build(db.suitcaseEditsDao);
@@ -1215,10 +1217,46 @@ void main() {
         expect(pending.single.origin.dbValue, 'proposta');
         expect(pending.single.tripId, 't1');
         expect(pending.single.generatorVersion, 'v9');
-        expect(pending.single.card, {'category': 'vestiti', 'warmth': 3});
+        expect(pending.single.userId, 'u-1');
+        expect(pending.single.itemKey, hasLength(64));
+        expect(pending.single.card['appCategory'], isNotNull);
+        expect(pending.single.card['category'], 'vestiti');
+        expect(pending.single.card['warmth'], 3);
         expect(pending.single.toString(), isNot(contains('Nome privato')));
       },
     );
+
+    test('senza utente non si mette niente in coda', () async {
+      final after = trip(withItem: false);
+      c.dispose();
+      c = ProviderContainer(
+        overrides: [
+          tripRepositoryProvider.overrideWithValue(mockRepository),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            MockCoreAnalyticsService(),
+          ),
+          syncOrchestratorProvider.overrideWithValue(MockSyncOrchestrator()),
+          itemRepositoryProvider.overrideWithValue(items),
+          suitcaseEditsDaoProvider.overrideWithValue(db.suitcaseEditsDao),
+          currentUserIdProvider.overrideWithValue(null),
+        ],
+      );
+      await load(trip(), after);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+      when(
+        () => (c.read(coreAnalyticsServiceProvider) as MockCoreAnalyticsService)
+            .trackTripUpdated(),
+      ).thenAnswer((_) async {});
+      when(
+        () => (c.read(syncOrchestratorProvider) as MockSyncOrchestrator)
+            .requestSync(),
+      ).thenReturn(null);
+
+      await c.read(tripNotifierProvider.notifier).updateTrip(after);
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(await db.suitcaseEditsDao.pending(), isEmpty);
+    });
 
     test('un salvataggio fallito non mette niente', () async {
       final after = trip(withItem: false);

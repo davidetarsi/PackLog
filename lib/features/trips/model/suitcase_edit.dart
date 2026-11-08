@@ -39,6 +39,12 @@ class SuitcaseEdit with _$SuitcaseEdit {
   const factory SuitcaseEdit({
     required String id,
     required String tripId,
+
+    /// SHA-256 di "<viaggio>:<oggetto>" (o "<viaggio>:slot:<posto>").
+    required String itemKey,
+
+    /// Utente che ha fatto la modifica (null = nessun utente: non si mette in coda).
+    String? userId,
     required DateTime at,
     required SuitcaseEditAction action,
     required SuitcaseEditOrigin origin,

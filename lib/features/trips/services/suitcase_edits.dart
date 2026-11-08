@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
 
 import '../model/ai_packing.dart';
@@ -16,6 +19,14 @@ const kSuitcaseEditCardFields = <String>{
 };
 
 const _uuid = Uuid();
+
+/// Chiave dell'oggetto di un evento: SHA-256 esadecimale di
+/// `<viaggio>:<oggetto>` (o `<viaggio>:slot:<posto>`). Stabile per lo stesso
+/// oggetto nello stesso viaggio, non risale al nome.
+String suitcaseItemKey(String tripId, String itemId, {bool slot = false}) =>
+    sha256
+        .convert(utf8.encode('$tripId:${slot ? 'slot:' : ''}$itemId'))
+        .toString();
 
 /// Le modifiche fatte dall'utente alla valigia proposta tra [before] e [after].
 ///
@@ -51,12 +62,14 @@ List<SuitcaseEdit> suitcaseEdits({
   SuitcaseEdit edit(
     SuitcaseEditAction action,
     SuitcaseEditOrigin origin,
-    Map<String, Object?> card, {
+    Map<String, Object?> card,
+    String itemKey, {
     int? copiesBefore,
     int? copiesAfter,
   }) => SuitcaseEdit(
     id: makeId(),
     tripId: after.id,
+    itemKey: itemKey,
     at: now,
     action: action,
     origin: origin,
@@ -78,6 +91,7 @@ List<SuitcaseEdit> suitcaseEdits({
   for (final slot in afterResult.slots ?? const <AiSlot>[]) {
     final old = beforeSlots[slot.id];
     if (old == null) continue;
+    final slotKey = suitcaseItemKey(after.id, slot.id, slot: true);
     final card = <String, Object?>{
       'type': slot.type,
       'level': slot.level.dbValue,
@@ -88,17 +102,23 @@ List<SuitcaseEdit> suitcaseEdits({
           SuitcaseEditAction.suggestionRemoved,
           SuitcaseEditOrigin.slot,
           card,
+          slotKey,
         ),
       );
     }
     if (!old.toBuy && slot.toBuy) {
       slotEdits.add(
-        edit(SuitcaseEditAction.toBuy, SuitcaseEditOrigin.slot, card),
+        edit(SuitcaseEditAction.toBuy, SuitcaseEditOrigin.slot, card, slotKey),
       );
     }
     if (!slot.removed && slot.remaining < old.remaining) {
       slotEdits.add(
-        edit(SuitcaseEditAction.slotFilled, SuitcaseEditOrigin.slot, card),
+        edit(
+          SuitcaseEditAction.slotFilled,
+          SuitcaseEditOrigin.slot,
+          card,
+          slotKey,
+        ),
       );
       filledByCategory.update(
         slot.category,
@@ -154,7 +174,8 @@ List<SuitcaseEdit> suitcaseEdits({
         edit(
           SuitcaseEditAction.added,
           originOf(item.id, slotCategory: item.category),
-          _card(cardOf(item.id)),
+          _card(cardOf(item.id), item),
+          suitcaseItemKey(after.id, item.id),
           copiesAfter: item.quantity,
         ),
       );
@@ -163,7 +184,8 @@ List<SuitcaseEdit> suitcaseEdits({
         edit(
           SuitcaseEditAction.copies,
           originOf(item.id),
-          _card(cardOf(item.id)),
+          _card(cardOf(item.id), item),
+          suitcaseItemKey(after.id, item.id),
           copiesBefore: old.quantity,
           copiesAfter: item.quantity,
         ),
@@ -176,7 +198,8 @@ List<SuitcaseEdit> suitcaseEdits({
       edit(
         SuitcaseEditAction.removed,
         originOf(old.id),
-        _card(cardOf(old.id)),
+        _card(cardOf(old.id), old),
+        suitcaseItemKey(after.id, old.id),
         copiesBefore: old.quantity,
       ),
     );
@@ -185,10 +208,13 @@ List<SuitcaseEdit> suitcaseEdits({
   return [...slotEdits, ...edits];
 }
 
-Map<String, Object?> _card(Map<String, Object?>? raw) => {
+/// La scheda dell'evento: i campi ammessi di [raw] più la categoria dell'app
+/// dell'oggetto (`ItemCategory`, mai testo dell'utente) sotto `appCategory`.
+Map<String, Object?> _card(Map<String, Object?>? raw, TripItem item) => {
   if (raw != null)
     for (final e in raw.entries)
       if (kSuitcaseEditCardFields.contains(e.key)) e.key: e.value,
+  'appCategory': item.category.name,
 };
 
 /// Giorni del viaggio, risposte per tappa e mezzi. Niente nomi.

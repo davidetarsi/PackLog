@@ -10,6 +10,8 @@ SuitcaseEdit _edit(String id, DateTime at, {bool allowed = true}) =>
     SuitcaseEdit(
       id: id,
       tripId: 't1',
+      itemKey: 'k-$id',
+      userId: 'u1',
       at: at,
       action: SuitcaseEditAction.removed,
       origin: SuitcaseEditOrigin.proposal,
@@ -54,6 +56,41 @@ void main() {
     expect((first.context['stops'] as Map)['main'], {'washer': true});
     expect(first.generatorVersion, 'v9');
   });
+
+  test('senza utente non si mette in coda', () async {
+    await db.suitcaseEditsDao.enqueue([
+      _edit('a', DateTime(2026, 11, 1)).copyWith(userId: null),
+    ]);
+    expect(await db.suitcaseEditsDao.pending(), isEmpty);
+  });
+
+  test('chiave e utente sopravvivono alla coda', () async {
+    await db.suitcaseEditsDao.enqueue([_edit('a', DateTime(2026, 11, 1))]);
+    final e = (await db.suitcaseEditsDao.pending()).single;
+    expect(e.itemKey, 'k-a');
+    expect(e.userId, 'u1');
+  });
+
+  test(
+    'azione o origine sconosciute: saltate e cancellate, senza lanciare',
+    () async {
+      await db.suitcaseEditsDao.enqueue([
+        _edit('ok', DateTime(2026, 11, 1)),
+        _edit('x1', DateTime(2026, 11, 2)),
+        _edit('x2', DateTime(2026, 11, 3)),
+      ]);
+      await db.customStatement(
+        "UPDATE suitcase_edits SET action = 'futura' WHERE id = 'x1'",
+      );
+      await db.customStatement(
+        "UPDATE suitcase_edits SET origin = 'boh' WHERE id = 'x2'",
+      );
+
+      expect((await db.suitcaseEditsDao.pending()).map((e) => e.id), ['ok']);
+      final left = await db.customSelect('SELECT id FROM suitcase_edits').get();
+      expect(left.map((r) => r.data['id']), ['ok']);
+    },
+  );
 
   test('pending rispetta il limite', () async {
     await db.suitcaseEditsDao.enqueue([

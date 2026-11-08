@@ -246,9 +246,9 @@ void main() {
     );
   });
 
-  test('senza scheda: card vuota', () {
+  test('senza scheda: solo la categoria dell\'app', () {
     final e = _run(_trip(), _trip(items: [_item('a')]), cardOf: (_) => null);
-    expect(e.single.card, isEmpty);
+    expect(e.single.card, {'appCategory': 'vestiti'});
   });
 
   test('card filtrata, context completo, nessun nome', () {
@@ -260,7 +260,11 @@ void main() {
       },
     );
     final edit = e.single;
-    expect(edit.card, {'category': 'vestiti', 'warmth': 'caldo'});
+    expect(edit.card, {
+      'category': 'vestiti',
+      'warmth': 'caldo',
+      'appCategory': 'vestiti',
+    });
     expect(edit.context['days'], 5);
     expect(edit.context['transports'], ['treno']);
     expect(edit.context['stops'], {
@@ -367,6 +371,61 @@ void main() {
     expect(e.single.card, {
       'subCategory': 'giacca',
       'activityTags': ['city'],
+      'appCategory': 'vestiti',
     });
+  });
+
+  test(
+    'appCategory: categoria dell\'app, anche con scheda e per toiletries',
+    () {
+      final e = _run(
+        _trip(),
+        _trip(items: [_item('a', cat: ItemCategory.toiletries)]),
+        cardOf: (_) => {'category': 'igiene'},
+      );
+      expect(e.single.card, {
+        'category': 'igiene',
+        'appCategory': 'toiletries',
+      });
+    },
+  );
+
+  test(
+    'chiave oggetto: aggiunta e rimozione dello stesso oggetto coincidono',
+    () {
+      final add = _run(_trip(), _trip(items: [_item('a')])).single;
+      final rem = _run(_trip(items: [_item('a')]), _trip()).single;
+      expect(add.itemKey, rem.itemKey);
+      expect(add.itemKey, matches(RegExp(r'^[0-9a-f]{64}$')));
+      expect(add.itemKey, suitcaseItemKey('trip-1', 'a'));
+      expect(add.itemKey, isNot(contains('Nome privato')));
+    },
+  );
+
+  test(
+    'chiave oggetto: due oggetti con la stessa scheda hanno chiavi diverse',
+    () {
+      final e = _run(
+        _trip(),
+        _trip(items: [_item('a'), _item('b')]),
+        cardOf: (_) => {'category': 'vestiti'},
+      );
+      expect(e[0].card, e[1].card);
+      expect(e[0].itemKey, isNot(e[1].itemKey));
+    },
+  );
+
+  test('chiave del posto: "<viaggio>:slot:<posto>", stabile fra eventi', () {
+    final e = _run(
+      _trip(slots: [_slot('s')]),
+      _trip(slots: [_slot('s', remaining: 0, toBuy: true)]),
+    );
+    expect(e.map((x) => x.itemKey).toSet(), {
+      suitcaseItemKey('trip-1', 's', slot: true),
+    });
+    expect(
+      suitcaseItemKey('trip-1', 's', slot: true),
+      isNot(suitcaseItemKey('trip-1', 's')),
+    );
   });
 }

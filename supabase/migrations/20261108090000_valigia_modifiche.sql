@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS public.valigia_modifiche (
   user_id             uuid        NOT NULL DEFAULT auth.uid()
                                   REFERENCES auth.users(id) ON DELETE CASCADE,
   trip_id             uuid        NOT NULL,
+  -- SHA-256 esadecimale di "<viaggio>:<oggetto>" (o "<viaggio>:slot:<posto>"):
+  -- stabile per lo stesso oggetto nello stesso viaggio, non risale al nome.
+  chiave_oggetto      text        NOT NULL,
   creato_il           timestamptz NOT NULL,
   azione              text        NOT NULL CHECK (azione IN (
                         'aggiunto', 'tolto', 'copie',

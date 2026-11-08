@@ -15,8 +15,12 @@ class SuitcaseEditsDao extends DatabaseAccessor<AppDatabase>
   SuitcaseEditsDao(super.db);
 
   /// Mette in coda [edits] in una sola scrittura. Un id già presente viene
-  /// sostituito.
-  Future<void> enqueue(List<SuitcaseEdit> edits) async {
+  /// sostituito. Le modifiche senza utente non si mettono in coda.
+  Future<void> enqueue(List<SuitcaseEdit> input) async {
+    final edits = [
+      for (final e in input)
+        if (e.userId != null) e,
+    ];
     if (edits.isEmpty) return;
     await batch((b) {
       b.insertAll(suitcaseEdits, [
@@ -24,6 +28,8 @@ class SuitcaseEditsDao extends DatabaseAccessor<AppDatabase>
           SuitcaseEditsCompanion.insert(
             id: e.id,
             tripId: e.tripId,
+            itemKey: e.itemKey,
+            userId: e.userId!,
             at: e.at,
             action: e.action.dbValue,
             origin: e.origin.dbValue,
@@ -48,7 +54,20 @@ class SuitcaseEditsDao extends DatabaseAccessor<AppDatabase>
               ])
               ..limit(limit))
             .get();
-    return [for (final r in rows) _toModel(r)];
+    final models = <SuitcaseEdit>[];
+    final unreadable = <String>[];
+    for (final r in rows) {
+      final m = _toModel(r);
+      if (m == null) {
+        unreadable.add(r.id);
+      } else {
+        models.add(m);
+      }
+    }
+    // Azione o origine sconosciute (versione futura, dati rovinati): non si
+    // potranno mai inviare, quindi si tolgono invece di bloccare la coda.
+    await deleteByIds(unreadable);
+    return models;
   }
 
   /// Toglie dalla coda le modifiche inviate.
@@ -60,19 +79,30 @@ class SuitcaseEditsDao extends DatabaseAccessor<AppDatabase>
   /// Svuota la coda (cambio account, logout).
   Future<void> deleteAll() => delete(suitcaseEdits).go();
 
-  SuitcaseEdit _toModel(SuitcaseEditRow r) => SuitcaseEdit(
-    id: r.id,
-    tripId: r.tripId,
-    at: r.at,
-    action: SuitcaseEditAction.values.firstWhere((a) => a.dbValue == r.action),
-    origin: SuitcaseEditOrigin.values.firstWhere((o) => o.dbValue == r.origin),
-    copiesBefore: r.copiesBefore,
-    copiesAfter: r.copiesAfter,
-    card: _decode(r.cardJson),
-    context: _decode(r.contextJson),
-    generatorVersion: r.generatorVersion,
-    analysisAllowed: r.analysisAllowed,
-  );
+  SuitcaseEdit? _toModel(SuitcaseEditRow r) {
+    final action = SuitcaseEditAction.values
+        .where((a) => a.dbValue == r.action)
+        .firstOrNull;
+    final origin = SuitcaseEditOrigin.values
+        .where((o) => o.dbValue == r.origin)
+        .firstOrNull;
+    if (action == null || origin == null) return null;
+    return SuitcaseEdit(
+      id: r.id,
+      tripId: r.tripId,
+      itemKey: r.itemKey,
+      userId: r.userId,
+      at: r.at,
+      action: action,
+      origin: origin,
+      copiesBefore: r.copiesBefore,
+      copiesAfter: r.copiesAfter,
+      card: _decode(r.cardJson),
+      context: _decode(r.contextJson),
+      generatorVersion: r.generatorVersion,
+      analysisAllowed: r.analysisAllowed,
+    );
+  }
 
   static Map<String, Object?> _decode(String json) {
     final decoded = jsonDecode(json);

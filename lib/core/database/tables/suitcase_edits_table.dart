@@ -16,6 +16,13 @@ class SuitcaseEdits extends Table {
   /// sopravvive al viaggio cancellato).
   TextColumn get tripId => text()();
 
+  /// SHA-256 di `<viaggio>:<oggetto>` (o `<viaggio>:slot:<posto>`).
+  TextColumn get itemKey => text()();
+
+  /// L'utente che ha fatto la modifica: l'invio lo manda al server, che
+  /// rifiuta (RLS) le righe di un altro account.
+  TextColumn get userId => text()();
+
   /// Quando l'utente ha fatto la modifica.
   DateTimeColumn get at => dateTime()();
 
