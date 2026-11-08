@@ -201,6 +201,10 @@
   "incomplete": "{} è ancora da compilare. Ha un meteo diverso: conviene indicare cosa farai e dove dormi.",
   "go_to_stop": "Compila la tappa",
   "busy": "Sto già preparando una valigia: ti avviso quando è pronta.",
+  "ready": "Valigia pronta per {}",
+  "open": "Apri",
+  "failed_no_credit": "Non sono riuscito a preparare la valigia. Nessun credito è stato scalato.",
+  "failed_network": "Non sono riuscito a preparare la valigia. Controlla la connessione e riprova.",
   "wait": {
     "title": "Preparo la valigia",
     "subtitle": "{} · {}",

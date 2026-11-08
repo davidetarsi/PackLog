@@ -98,12 +98,15 @@ class AppSnackBar {
   ///
   /// Se la pagina non ha uno `ScaffoldMessenger` (per esempio un'azione
   /// annullata durante il cambio di pagina) non mostra nulla e non lancia.
+  ///
+  /// Con [queue] non toglie lo SnackBar già visibile: questo compare dopo.
   static void showAction(
     BuildContext context,
     String message, {
     required String actionLabel,
     required VoidCallback onAction,
     Key? key,
+    bool queue = false,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     _show(
@@ -117,6 +120,7 @@ class AppSnackBar {
         textColor: colorScheme.onInverseSurface,
         onPressed: onAction,
       ),
+      queue: queue,
     );
   }
 
@@ -144,6 +148,7 @@ class AppSnackBar {
     required Color textColor,
     SnackBarAction? action,
     Key? key,
+    bool queue = false,
   }) {
     // Senza ScaffoldMessenger non c'è dove mostrare lo SnackBar: si esce senza
     // errore, come per un'azione chiesta da una pagina già smontata.
@@ -157,6 +162,7 @@ class AppSnackBar {
       textColor: textColor,
       action: action,
       key: key,
+      queue: queue,
     );
   }
 
@@ -168,26 +174,26 @@ class AppSnackBar {
     required Color textColor,
     SnackBarAction? action,
     Key? key,
+    bool queue = false,
   }) {
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          key: key,
-          content: Text(
-            message,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: textColor),
-          ),
-          backgroundColor: backgroundColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
-          ),
-          margin: EdgeInsets.all(context.spacingMd),
-          action: action,
+    if (!queue) messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        key: key,
+        content: Text(
+          message,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: textColor),
         ),
-      );
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.inputBorderRadius),
+        ),
+        margin: EdgeInsets.all(context.spacingMd),
+        action: action,
+      ),
+    );
   }
 }
