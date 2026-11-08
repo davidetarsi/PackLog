@@ -33,17 +33,18 @@ final _job = PackTripJob(
   nights: 8,
 );
 
-AiPackingRequest _requestFor(PackTripJob job) => AiPackingRequest(
-  trip: TripModel(
-    id: 'trip-1',
-    name: 'Islanda',
-    createdAt: DateTime(2026),
-    updatedAt: DateTime(2026),
-  ),
-  isNew: false,
-  setup: const AiPackingSetup(houseId: _houseId),
-  job: job,
-);
+AiPackingRequest _requestFor(PackTripJob job, {bool isNew = false}) =>
+    AiPackingRequest(
+      trip: TripModel(
+        id: 'trip-1',
+        name: 'Islanda',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      ),
+      isNew: isNew,
+      setup: const AiPackingSetup(houseId: _houseId),
+      job: job,
+    );
 
 /// Il lavoro AI finto: lo stato lo decide il test; registra le chiamate.
 class _FakeRun extends AiPackingRun {
@@ -145,10 +146,11 @@ Future<void> _pump(
   Completer<TripWeatherState>? lateWeather,
   int items = 3,
   bool disableAnimations = false,
+  bool isNew = false,
 }) async {
   SharedPreferences.setMockInitialValues(prefs);
   _run = _FakeRun();
-  _request = _requestFor(job ?? _job);
+  _request = _requestFor(job ?? _job, isNew: isNew);
   _visited = [];
 
   final container = ProviderContainer(
@@ -200,6 +202,10 @@ Future<void> _pump(
       GoRoute(
         path: '/ai-packing',
         builder: (context, state) => const AiPackingWaitScreen(),
+      ),
+      GoRoute(
+        path: '/trips',
+        builder: (context, state) => const Scaffold(body: Text('VIAGGI')),
       ),
       GoRoute(
         path: '/trips/:id',
@@ -379,8 +385,10 @@ void main() {
       await _finish(tester);
     });
 
-    testWidgets('back_detaches_and_keeps_running', (tester) async {
-      await _pump(tester);
+    testWidgets('back_while_running_goes_to_trips_and_keeps_running', (
+      tester,
+    ) async {
+      await _pump(tester, isNew: true);
 
       await tester.binding.handlePopRoute();
       await _settle(tester);
@@ -388,8 +396,23 @@ void main() {
       expect(_run.detaches, greaterThanOrEqualTo(1));
       expect(_run.clears, 0);
       expect(_container.read(aiPackingRunProvider), isA<AiRunRunning>());
-      expect(find.text('apri'), findsOneWidget);
+      // Il passo 1 che ha lanciato il lavoro non c'è più: si va ai Viaggi.
+      expect(_text('VIAGGI'), findsOneWidget);
+      expect(find.text('apri'), findsNothing);
       expect(_text('Preparo la valigia'), findsNothing);
+    });
+
+    testWidgets('back_while_regenerating_goes_to_trip_detail', (tester) async {
+      await _pump(tester);
+
+      await tester.binding.handlePopRoute();
+      await _settle(tester);
+
+      expect(_run.clears, 0);
+      expect(_container.read(aiPackingRunProvider), isA<AiRunRunning>());
+      expect(_visited, ['/trips/trip-1']);
+      expect(_text('DETTAGLIO'), findsOneWidget);
+      expect(find.text('apri'), findsNothing);
     });
 
     testWidgets('arrival_while_attached_opens_review', (tester) async {
@@ -648,6 +671,20 @@ void main() {
       expect(_run.clears, 1);
       expect(find.text('apri'), findsOneWidget);
       expect(find.text('RADICE'), findsNothing);
+    });
+
+    testWidgets('close_after_failure_returns_to_step_one', (tester) async {
+      await _pump(tester, isNew: true);
+      _fail(const PackTripException('HTTP 502'));
+      await _settle(tester);
+
+      await tester.tap(find.text('Chiudi'));
+      await _settle(tester);
+
+      // Si torna alla pagina sotto (il passo 1 compilato), non ai Viaggi.
+      expect(_run.clears, 1);
+      expect(find.text('apri'), findsOneWidget);
+      expect(_text('VIAGGI'), findsNothing);
     });
 
     testWidgets('indietro in errore chiude e azzera', (tester) async {

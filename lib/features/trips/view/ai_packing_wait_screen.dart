@@ -147,10 +147,15 @@ class _AiPackingWaitScreenState extends ConsumerState<AiPackingWaitScreen> {
   }
 
   /// Indietro in attesa: la pagina si stacca e il lavoro continua; ad
-  /// arrivare ci pensa l'avviso globale.
+  /// arrivare ci pensa l'avviso globale. Il passo 1 che ha avviato il lavoro
+  /// si chiude con la pagina (niente è salvato, i dati sono nel lavoro): si
+  /// va ai Viaggi, o al dettaglio se è una Rigenera.
   void _stay() => _leave(() {
     _run.detach();
-    context.pop();
+    final request = _request;
+    context.go(
+      request == null || request.isNew ? '/trips' : '/trips/${request.trip.id}',
+    );
   });
 
   /// Chiude un errore (o una pagina senza lavoro): [clear] azzera il lavoro.

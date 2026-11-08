@@ -188,7 +188,10 @@ class AiPackingRun extends _$AiPackingRun {
       houseItems: houseItems,
     );
     final notifier = ref.read(tripNotifierProvider.notifier);
-    if (request.isNew) {
+    // Un viaggio nuovo con quell'id può esserci già (un Riprova dopo un
+    // salvataggio riuscito a metà): si aggiorna, mai un secondo `addTrip`.
+    final exists = trips.any((t) => t.id == adopted.id);
+    if (request.isNew && !exists) {
       await notifier.addTrip(adopted);
     } else {
       await notifier.updateTrip(adopted);

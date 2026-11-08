@@ -217,6 +217,21 @@ void main() {
     expect(state(), isA<AiRunIdle>());
   });
 
+  test('is_new_with_existing_id_updates_instead_of_adding', () async {
+    // Il viaggio c'è già (per esempio salvato da un tentativo precedente).
+    build(existing: [_trip('t1')]);
+    await container.read(tripNotifierProvider.future);
+    run().start(_request(_trip('t1'), isNew: true));
+    service.pending.complete(_result());
+    await settle();
+
+    expect(trips.added, isEmpty);
+    expect(trips.updated, hasLength(1));
+    expect(trips.updated.single.id, 't1');
+    expect(trips.updated.single.aiResult, isNotNull);
+    expect(state(), isA<AiRunDone>());
+  });
+
   test('failure_saves_nothing', () async {
     build();
     run().start(_request(_trip('t1'), isNew: true));
