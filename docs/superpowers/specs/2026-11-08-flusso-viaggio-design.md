@@ -63,7 +63,7 @@ Due bottoni, sempre nello stesso ordine:
 3. Conferma nel foglio: si apre l'attesa. Il viaggio non è ancora salvato.
 4. **Arriva la valigia:** viaggio e valigia si salvano insieme, in una scrittura sola. Se l'utente è ancora nell'attesa, si apre il dettaglio in prima revisione (`?review=1`, CTA "Fatto" → Viaggi), come oggi.
 5. **Errore:** niente salvato, si resta nell'uscita d'errore dell'attesa (`AiWaitFailure`), che oggi offre riprova; da lì si torna al passo 1 compilato.
-6. **Riusa** con l'AI: DA DECIDERE CON DAVIDE (vedi in fondo).
+6. **Riusa** (decisione di Davide): si entra dal bottone "Riusa" della cartolina di un viaggio passato (`trip_album.dart`, unico punto d'ingresso) e diventa un **passo 1 già compilato** (meta, tappe senza date, mezzi, nome, bagagli e oggetti dell'originale tenuti in memoria), **senza salvare niente** finché non si sceglie una strada; sparisce la copia salvata subito e cancellata all'uscita (`_onClosed`, `discardOnExit`). Con "Prepara la valigia con AI" la valigia AI **sostituisce** gli oggetti dell'originale e il viaggio si salva all'arrivo, come un viaggio nuovo. Con "Scegli tu cosa portare" il viaggio si salva con gli oggetti dell'originale non spuntati e si apre la pagina di aggiunta. "Duplica" (menu ⋮, copia con le date) resta com'è.
 7. **Risposte del foglio** (`aiSetup`): restano in memoria finché si è nel passo 1 (riaprendo il foglio dopo un errore o una chiusura si ritrovano) e si salvano con il viaggio all'arrivo (scelta mia).
 
 ### Un lavoro AI alla volta (scelta mia)
@@ -175,7 +175,3 @@ Tre PR separate, nell'ordine: **A** (passo 1, strada AI, attesa), **B** (dettagl
 - Risposte del foglio tenute in memoria nel passo 1 e salvate all'arrivo.
 - Rigenera: la valigia nuova va sul viaggio com'è all'arrivo; viaggio cancellato = risultato scartato.
 - Logica AI in un servizio condiviso, via `edit-items?ai=1`.
-
-## Da decidere con Davide
-
-- **Riusa con l'AI.** Oggi Riusa crea subito una copia salvata del viaggio (senza date, con gli oggetti dell'originale non spuntati) e la cancella se si esce senza salvare. Con "Prepara la valigia con AI" la valigia AI sostituisce gli oggetti copiati o si aggiunge? E la copia deve esistere solo quando si sceglie una delle due strade (Riusa = passo 1 precompilato, niente salvato prima)?
