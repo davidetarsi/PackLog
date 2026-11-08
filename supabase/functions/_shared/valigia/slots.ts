@@ -8,7 +8,7 @@ import * as K from "./costanti.ts";
 import * as rc from "./regole_capi.ts";
 import * as tx from "./tassonomia.ts";
 import type { Capo } from "./capo.ts";
-import { eAttivitaAcqua, essenzialiPerViaggio, giorniDiMare, normIntensita, quantityFor } from "./quantita.ts";
+import { viaggioCaldoAlMare, eAttivitaAcqua, essenzialiPerViaggio, giorniDiMare, normIntensita, quantityFor } from "./quantita.ts";
 import {
   capoLeggero, capoRiservato, capospallaInTracolla, fixes, injectFabbisogno, injectMandatory,
   injectParteInferioreFormale, injectStratoFormale, insieme, interseca, normList, penalitaCulto, rejects,
@@ -16,7 +16,7 @@ import {
   warmthFloor, eTrekking, ePasseggiataLeggera,
 } from "./inject.ts";
 import {
-  applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps,
+  limitaPantaloniDaSera, applicaBudgetRotazione, applicaTettoVolume, applicaVestiti, berrettoColFreddo, caloreEfficace, canonicalizeGaps,
   capienzaBagaglio, capienzaPotabile, consolidaBloccoViaggio, estivoFuoriStagione, minimoCapiLeggeri,
   penalitaVetoCapo, penalitaVoto, rispettaCopie, score, segnaInPartenza, segnalaScarpeCammino, segnalaVolume,
   togliDoppioni,
@@ -200,6 +200,8 @@ export interface ArgomentiSlots {
   attivita_viaggio?: string[] | null;
   lavatrice_essenziali?: boolean | null;
   cammino_essenziali?: boolean;
+  mare_caldo_essenziali?: boolean;
+  pantaloni_da_sera?: boolean;
   /** I collant si decidono su questa massima (a tappe: la tappa piu' fresca). */
   temp_max_essenziali?: number | null;
   /** false nei viaggi a tappe: i vestiti si mettono alla fine. */
@@ -473,14 +475,16 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     };
     // Il capo che avrebbe il bisogno in un armadio tipico, per dare il nome al posto se resta un mancante.
     // Stesso abbinamento, stessa fascia di calore e stesso meteo; i capi tipici partono tutti liberi.
-    const tipico = (): { sub: string; categoria: string } | null => {
+    const tipico = (): { sub: string; categoria: string; leggero?: boolean } | null => {
       if (!armadioDelTipico) {
         armadioDelTipico = armadioTipico();
         if (cammino) armadioDelTipico = armadioCammino(armadioDelTipico, tempMin != null && tempMin >= 18, inAcquaTappa);
         segnaCapiDaNeve(armadioDelTipico, [...attViaggio, ...(attivita || [])]);
       }
       const [scelto] = scala(armadioDelTipico, false);
-      return scelto ? { sub: scelto.sub_fine, categoria: scelto.category } : null;
+      return scelto ? { sub: scelto.sub_fine, categoria: scelto.category,
+        ...(!eCammino(attViaggio) && !lavoro && (a.pantaloni_da_sera ?? rc.caldoUnCapoAlGiorno(tempMax)) && ["Trousers", "Jeans"].includes(scelto.sub_category)
+          ? { leggero: (scelto.warmth ?? 3) <= 2 } : {}) } : null;
     };
 
     let [g, kind] = scala(items, true);
@@ -746,6 +750,12 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     ideali = ideali.filter((x) => q(x) >= 1);
     ripieghi = ripieghi.filter((x) => q(x) >= 1);
   }
+  if (!eCammino(attViaggio) && !lavoro && (a.pantaloni_da_sera ?? rc.caldoUnCapoAlGiorno(tempMax))) {
+    limitaPantaloniDaSera([...ideali, ...ripieghi], undefined, (g) => capoLeggero(g, profiliCapi) ||
+      (tagDi.get(g.item_id)?.includes("Hiking") ?? false));
+    ideali = ideali.filter((g) => q(g) > 0);
+    ripieghi = ripieghi.filter((g) => q(g) > 0);
+  }
   if (rispettaCopie([ideali, ripieghi], items, gaps)) {
     ideali = ideali.filter((x) => q(x) >= 1);
     ripieghi = ripieghi.filter((x) => q(x) >= 1);
@@ -769,10 +779,19 @@ export function strategySlots(testoModello: string, items: Capo[], a: ArgomentiS
     ripieghi = ripieghi.filter((g) => g.quantita > 0);
   }
   segnaInPartenza([...ideali, ...ripieghi]);
+  // Dopo eventuali sostituzioni per copie, l'adapter riusa la valutazione del capo finale.
+  if (!eCammino(attViaggio) && !lavoro && (a.pantaloni_da_sera ?? rc.caldoUnCapoAlGiorno(tempMax))) {
+    for (const g of [...ideali, ...ripieghi]) {
+      if (g.category === "Lower Body" && ["Trousers", "Jeans"].includes(g.subCategory)) {
+        g.leggero = capoLeggero(g, profiliCapi) || (tagDi.get(g.item_id)?.includes("Hiking") ?? false);
+      }
+    }
+  }
   const setFix = new Set(fixes.map(String)), setRej = new Set(rejects.map(String));
   return {
     essenziali: essenzialiPerViaggio(items, giorni, lavatriceVera,
-      a.temp_max_essenziali == null ? tempMax : a.temp_max_essenziali, a.cammino_essenziali ?? cammino),
+      a.temp_max_essenziali == null ? tempMax : a.temp_max_essenziali, a.cammino_essenziali ?? cammino,
+      a.mare_caldo_essenziali ?? viaggioCaldoAlMare(a.attivita_viaggio ?? attivita, [tempMax])),
     slots_richiesti: slots.length,
     ideali, ripieghi, mancanti: gaps,
     mancanti_canonici: canonicalizeGaps(gaps),

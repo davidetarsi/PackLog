@@ -13,21 +13,30 @@ import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/repositories/house_repository.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
+import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
 import 'package:pack_log/features/trips/view/trip_detail_screen.dart';
 import 'package:pack_log/features/trips/view/widgets/slots/slot_widgets.dart';
+import 'package:pack_log/features/trips/view/widgets/slots/trip_items_card.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_checkbox.dart';
 import 'package:pack_log/shared/widgets/ds_empty_state.dart';
+import 'package:pack_log/shared/widgets/quantity_stepper.dart';
 
 import '../../../helpers/memory_asset_loader.dart';
 
 class MockTripRepository extends Mock implements TripRepository {}
 
 class MockHouseRepository extends Mock implements HouseRepository {}
+
+class MockItemRepository extends Mock implements ItemRepository {}
+
+class MockLuggageRepository extends Mock implements LuggageRepository {}
 
 class MockTripLifecycleService extends Mock implements TripLifecycleService {}
 
@@ -54,6 +63,16 @@ TripItem _item(
   category: category,
   quantity: 1,
   isChecked: checked,
+);
+
+ItemModel _inventoryItem(String id, String name, {int? quantity}) => ItemModel(
+  id: id,
+  houseId: 'h1',
+  name: name,
+  category: ItemCategory.varie,
+  quantity: quantity,
+  createdAt: DateTime(2026),
+  updatedAt: DateTime(2026),
 );
 
 AiSlot _slot(
@@ -159,6 +178,13 @@ TripModel _trip({
               generatedAt: DateTime(2026, 11),
               houseId: 'h1',
               slots: [..._important(), ..._useful],
+              reasons: const [
+                AiReasonPoint(
+                  code: 'why',
+                  title: 'Una scelta utile',
+                  sentences: ['Motivo del viaggio'],
+                ),
+              ],
             )
       : null,
   createdAt: DateTime(2026),
@@ -168,6 +194,8 @@ TripModel _trip({
 void main() {
   late MockTripRepository tripRepo;
   late MockHouseRepository houseRepo;
+  late MockItemRepository itemRepo;
+  late MockLuggageRepository luggageRepo;
   late MockTripLifecycleService lifecycle;
   late MockCoreAnalyticsService analytics;
   late MockSyncOrchestrator sync;
@@ -181,6 +209,8 @@ void main() {
   setUp(() {
     tripRepo = MockTripRepository();
     houseRepo = MockHouseRepository();
+    itemRepo = MockItemRepository();
+    luggageRepo = MockLuggageRepository();
     lifecycle = MockTripLifecycleService();
     analytics = MockCoreAnalyticsService();
     sync = MockSyncOrchestrator();
@@ -195,6 +225,8 @@ void main() {
       () => tripRepo.setTripItemChecked(any(), any(), any()),
     ).thenAnswer((_) async {});
     when(() => houseRepo.getAllHouses()).thenAnswer((_) async => [_casa]);
+    when(() => itemRepo.getItemsByHouseId(any())).thenAnswer((_) async => []);
+    when(() => luggageRepo.getAllLuggages()).thenAnswer((_) async => []);
   });
 
   /// Con [fromHome] il dettaglio sta sopra una pagina di partenza: si può
@@ -203,10 +235,14 @@ void main() {
     WidgetTester tester,
     TripModel trip, {
     bool fromHome = false,
+    bool showNeeds = true,
+    bool firstReview = false,
+    Size size = const Size(390, 4000),
+    double textScale = 1,
   }) async {
     when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [trip]);
     // Alta abbastanza da costruire tutta la lista.
-    tester.view.physicalSize = const Size(390, 4000);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -216,10 +252,23 @@ void main() {
       routes: [
         if (fromHome)
           GoRoute(path: '/home', builder: (_, _) => const Scaffold()),
+        GoRoute(path: '/trips', builder: (_, _) => const Scaffold()),
+        GoRoute(
+          path: '/trips/:id/needs',
+          builder: (context, state) => TripDetailScreen(
+            tripId: state.pathParameters['id']!,
+            showNeeds: true,
+            initialSlotId: state.uri.queryParameters['slot'],
+          ),
+        ),
         GoRoute(
           path: '/trips/:id',
-          builder: (context, state) =>
-              TripDetailScreen(tripId: state.pathParameters['id']!),
+          builder: (context, state) => TripDetailScreen(
+            tripId: state.pathParameters['id']!,
+            showNeeds: showNeeds,
+            firstReview: firstReview,
+            initialSlotId: state.uri.queryParameters['slot'],
+          ),
         ),
       ],
     );
@@ -229,6 +278,8 @@ void main() {
         overrides: [
           tripRepositoryProvider.overrideWithValue(tripRepo),
           houseRepositoryProvider.overrideWithValue(houseRepo),
+          itemRepositoryProvider.overrideWithValue(itemRepo),
+          luggageRepositoryProvider.overrideWithValue(luggageRepo),
           tripLifecycleServiceProvider.overrideWithValue(lifecycle),
           coreAnalyticsServiceProvider.overrideWithValue(analytics),
           syncOrchestratorProvider.overrideWithValue(sync),
@@ -247,6 +298,12 @@ void main() {
               supportedLocales: context.supportedLocales,
               localizationsDelegates: context.localizationDelegates,
               routerConfig: router,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(textScale)),
+                child: child!,
+              ),
             ),
           ),
         ),
@@ -264,44 +321,436 @@ void main() {
       find.descendant(of: find.byType(ProposedSlotsCard), matching: finder);
 
   group('valigia fatta di posti', () {
-    testWidgets('testata, legenda e posti come nel mockup', (tester) async {
-      await pumpDetail(tester, _trip());
+    testWidgets('prima revisione nasconde le checkbox degli oggetti propri', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _trip(), showNeeds: false, firstReview: true);
 
-      expect(find.text('13 di 18 pronti'), findsOneWidget);
-      expect(find.text('4 tue'), findsOneWidget);
-      expect(find.text('9 proposte da PackLog'), findsOneWidget);
-      expect(find.text('5 importanti da sistemare'), findsOneWidget);
-
-      expect(find.byType(SuitcaseProgressHeader), findsOneWidget);
-      expect(find.byType(ImportantSlotCard), findsNWidgets(4));
-      expect(find.byType(ToBuySlotRow), findsOneWidget);
-      expect(find.byType(ProposedSlotsCard), findsOneWidget);
-
-      // La card: etichetta, nome, motivo, le due azioni testuali.
-      expect(find.text('Importante'), findsNWidgets(5));
-      expect(find.text('Giacca invernale'), findsOneWidget);
+      expect(find.byType(DsCheckbox), findsNothing);
+      expect(find.byKey(const Key('trip_item_remove_i-aux')), findsOneWidget);
       expect(
-        find.text('Fino a -7°: nell’armadio non c’è una giacca adatta.'),
-        findsOneWidget,
+        tester.getTopLeft(find.byKey(const Key('trip_item_remove_i-aux'))).dx,
+        lessThan(tester.getTopLeft(find.text('Aux bt')).dx),
       );
-      expect(find.text('Aggiungi la tua'), findsNWidgets(4));
-      expect(find.text('Presa'), findsOneWidget);
-      expect(find.text('Suggeriti da PackLog'), findsOneWidget);
+    });
+
+    testWidgets('vista necessità mostra i posti senza righe proprie', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _trip(), showNeeds: true);
+
+      expect(find.byKey(const Key('slot_card_imp-giacca')), findsOneWidget);
+      expect(find.byKey(const Key('trip_item_i-aux')), findsNothing);
+      expect(find.byType(DsCheckbox), findsNothing);
+    });
+
+    testWidgets('Fatto chiude la prima revisione e torna ai Viaggi', (
+      tester,
+    ) async {
+      await pumpDetail(tester, _trip(), showNeeds: false, firstReview: true);
+
+      expect(find.text('Fatto'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('trip_detail_cta')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TripDetailScreen), findsNothing);
+    });
+
+    testWidgets(
+      'solo acquisti utili restano visibili senza propri o importanti',
+      (tester) async {
+        await pumpDetail(
+          tester,
+          _trip(
+            items: const [],
+            aiResult: AiPackingResult(
+              generatedAt: DateTime(2026, 11),
+              houseId: 'h1',
+              slots: [
+                _slot(
+                  'u-buy',
+                  'Cavo USB',
+                  level: AiSlotLevel.useful,
+                  toBuy: true,
+                ),
+              ],
+            ),
+          ),
+          showNeeds: true,
+        );
+
+        expect(find.byKey(const Key('slot_to_buy_row_u-buy')), findsOneWidget);
+        expect(find.byType(EmptySuitcase), findsNothing);
+        expect(find.byType(ImportantSlotCard), findsNothing);
+        expect(find.byType(DsCheckbox), findsNothing);
+        expect(find.text('Vestiti · 1'), findsOneWidget);
+      },
+    );
+
+    testWidgets('apertura normale conserva le spunte sugli oggetti propri', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        _trip(items: _items(checked: 1)),
+        showNeeds: false,
+      );
+
+      expect(find.byKey(const Key('trip_item_i-aux')), findsOneWidget);
+      expect(find.byKey(const Key('trip_item_remove_i-aux')), findsNothing);
+      expect(find.byType(DsCheckbox), findsNWidgets(4));
+      expect(find.byKey(const Key('trip_detail_cta')), findsNothing);
+    });
+
+    testWidgets(
+      'errore aggiunta inventario resta gestito e non aggiunge righe',
+      (tester) async {
+        final inventoryItem = _inventoryItem('i-new', 'Custodia');
+        when(
+          () => itemRepo.getItemsByHouseId('h1'),
+        ).thenAnswer((_) async => [inventoryItem]);
+        when(
+          () => tripRepo.updateTrip(any()),
+        ).thenThrow(StateError('save failed'));
+        final trip = _trip();
+        await pumpDetail(tester, trip, showNeeds: false);
+
+        await tester.enterText(find.byType(TextField).first, 'Custodia');
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('pack_inventory_result_i-new')));
+        await tester.pumpAndSettle();
+
+        expect(trip.items.any((item) => item.id == 'i-new'), isFalse);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('errore quantità è mostrato senza future non gestite', (
+      tester,
+    ) async {
+      when(() => itemRepo.getItemsByHouseId('h1')).thenAnswer(
+        (_) async => [_inventoryItem('i-aux', 'Aux bt', quantity: 3)],
+      );
+      var attempts = 0;
+      when(() => tripRepo.updateTrip(any())).thenAnswer((_) async {
+        if (attempts++ == 0) throw StateError('save failed');
+      });
+      await pumpDetail(
+        tester,
+        _trip(items: _items(checked: 1)),
+        showNeeds: false,
+      );
+
+      await tester.tap(find.byKey(const Key('trip_item_i-aux')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.add_circle_outline));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(QuantityStepper), findsOneWidget);
       expect(
-        find.text(
-          'Nel tuo inventario mancano oggetti adatti o copie sufficienti.',
+        find.descendant(
+          of: find.byType(QuantityStepper),
+          matching: find.text('1'),
         ),
         findsOneWidget,
       );
-      // I proposti con le copie; finché si sistema niente caselle.
-      expect(inProposed(find.text('Magliette')), findsOneWidget);
-      expect(inProposed(find.text('×5')), findsOneWidget);
-      expect(inProposed(find.byType(DsCheckbox)), findsNothing);
+      await tester.tap(find.byIcon(Icons.add_circle_outline));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(QuantityStepper),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      final saved =
+          verify(() => tripRepo.updateTrip(captureAny())).captured.last
+              as TripModel;
+      expect(
+        saved.items.firstWhere((entry) => entry.id == 'i-aux').isChecked,
+        isFalse,
+      );
+      expect(tester.takeException(), isNull);
+    });
 
-      // Gli oggetti dell'utente restano le righe di oggi.
+    testWidgets('diminuire copie conserva la spunta', (tester) async {
+      when(() => itemRepo.getItemsByHouseId('h1')).thenAnswer(
+        (_) async => [_inventoryItem('i-aux', 'Aux bt', quantity: 3)],
+      );
+      final items = [
+        _items(checked: 1).first.copyWith(quantity: 3),
+        ..._items(checked: 1).skip(1),
+      ];
+      await pumpDetail(tester, _trip(items: items), showNeeds: false);
+
+      await tester.tap(find.byKey(const Key('trip_item_i-aux')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.remove_circle_outline));
+      await tester.pumpAndSettle();
+
+      final saved =
+          verify(() => tripRepo.updateTrip(captureAny())).captured.single
+              as TripModel;
+      expect(
+        saved.items.firstWhere((entry) => entry.id == 'i-aux').isChecked,
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('errore salvataggio bagaglio è gestito', (tester) async {
+      when(() => luggageRepo.getAllLuggages()).thenAnswer(
+        (_) async => [
+          LuggageModel(
+            id: 'l1',
+            name: 'Trolley',
+            sizeType: LuggageSize.cabinBaggage,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+        ],
+      );
+      when(
+        () => tripRepo.updateTrip(any()),
+      ).thenThrow(StateError('save failed'));
+      await pumpDetail(tester, _trip(), showNeeds: false);
+
+      await tester.tap(find.text('Trolley'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+      'la X toglie solo dal viaggio e Annulla ripristina ordine e spunta',
+      (tester) async {
+        var stored = _trip(items: _items(checked: 1));
+        final beforeRemoval = stored.updatedAt;
+        when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [stored]);
+        when(() => tripRepo.updateTrip(any())).thenAnswer((call) async {
+          stored = call.positionalArguments.first as TripModel;
+        });
+        await pumpDetail(tester, stored, showNeeds: false, firstReview: true);
+        when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [stored]);
+        await tester.tap(find.byKey(const Key('trip_item_remove_i-aux')));
+        await tester.pumpAndSettle();
+        expect(stored.items.map((i) => i.id), [
+          'i-power',
+          'i-cuscino',
+          'i-coperta',
+        ]);
+        expect(find.byKey(const Key('trip_item_i-aux')), findsNothing);
+        expect(find.byType(BottomSheet), findsNothing);
+        expect(stored.updatedAt.isAfter(beforeRemoval), isTrue);
+        final beforeUndo = stored.updatedAt;
+        await tester.tap(find.text('Annulla'));
+        await tester.pumpAndSettle();
+        expect(stored.items.map((i) => i.id), [
+          'i-aux',
+          'i-power',
+          'i-cuscino',
+          'i-coperta',
+        ]);
+        expect(stored.items.first.isChecked, isTrue);
+        expect(stored.updatedAt.isAfter(beforeUndo), isTrue);
+        expect(find.byKey(const Key('trip_item_i-aux')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Annulla e una nuova X si salvano in ordine senza perdere il ripristino',
+      (tester) async {
+        var stored = _trip(items: _items(checked: 1));
+        final undoGate = Completer<void>();
+        addTearDown(() {
+          if (!undoGate.isCompleted) undoGate.complete();
+        });
+        var writes = 0;
+        when(() => tripRepo.updateTrip(any())).thenAnswer((call) async {
+          final next = call.positionalArguments.first as TripModel;
+          writes++;
+          if (writes == 2) await undoGate.future;
+          stored = next;
+        });
+        await pumpDetail(tester, stored, showNeeds: false, firstReview: true);
+        when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [stored]);
+        await tester.tap(find.byKey(const Key('trip_item_remove_i-aux')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Annulla'));
+        await tester.pump();
+        await tester.tap(find.byKey(const Key('trip_item_remove_i-power')));
+        await tester.pump();
+        expect(writes, 2, reason: 'La seconda X deve attendere il ripristino');
+        undoGate.complete();
+        await tester.pumpAndSettle();
+        expect(stored.items.map((i) => i.id), [
+          'i-aux',
+          'i-cuscino',
+          'i-coperta',
+        ]);
+        expect(stored.items.first.isChecked, isTrue);
+      },
+    );
+
+    testWidgets('card → necessità → ritorno mantiene l aggiornamento salvato', (
+      tester,
+    ) async {
+      var stored = _trip();
+      when(() => tripRepo.updateTrip(any())).thenAnswer((call) async {
+        stored = call.positionalArguments.first as TripModel;
+      });
+      final router = await pumpDetail(tester, stored, showNeeds: false);
+
+      expect(find.byKey(const Key('slot_card_imp-giacca')), findsNothing);
+      await tester.tap(find.byKey(const Key('pack_row_missing')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('slot_card_imp-giacca')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('slot_to_buy_imp-giacca')));
+      await tester.pumpAndSettle();
+      expect(
+        stored.aiResult!.slots!.firstWhere((s) => s.id == 'imp-giacca').toBuy,
+        isTrue,
+      );
+
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('slot_card_imp-giacca')), findsNothing);
+      expect(find.byKey(const Key('pack_row_missing')), findsOneWidget);
+      expect(
+        stored.items.map((item) => item.id),
+        _items().map((item) => item.id),
+      );
+    });
+
+    for (final (size, scale) in [
+      (const Size(320, 640), 1.0),
+      (const Size(390, 844), 1.0),
+      (const Size(320, 640), 1.6),
+    ]) {
+      testWidgets('ultima riga raggiungibile a $size testo $scale', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          _trip(
+            items: [
+              ..._items(),
+              _item('ultimo', 'Ultimo oggetto', ItemCategory.varie),
+            ],
+          ),
+          size: size,
+          textScale: scale,
+          showNeeds: false,
+          firstReview: true,
+        );
+        final scroll = tester.state<ScrollableState>(
+          find
+              .descendant(
+                of: find.byType(ListView),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        scroll.position.jumpTo(scroll.position.maxScrollExtent);
+        await tester.pumpAndSettle();
+        scroll.position.jumpTo(scroll.position.maxScrollExtent);
+        await tester.pumpAndSettle();
+
+        final ultima = find.byKey(const Key('trip_item_ultimo'));
+        expect(ultima, findsOneWidget);
+        final ultimaRect = tester.getRect(ultima);
+        final ctaRect = tester.getRect(
+          find.byKey(const Key('trip_detail_cta')),
+        );
+        expect(
+          ultimaRect.bottom,
+          lessThanOrEqualTo(ctaRect.top),
+          reason:
+              'ultima=$ultimaRect, CTA=$ctaRect, '
+              'max=${scroll.position.maxScrollExtent}, '
+              'offset=${scroll.position.pixels}',
+        );
+        expect(ultima.hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('necessità: ultima riga non vestiti raggiungibile', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        _trip(
+          items: const [],
+          aiResult: AiPackingResult(
+            generatedAt: DateTime(2026, 11),
+            houseId: 'h1',
+            slots: [
+              ..._important(),
+              ..._useful,
+              _slot(
+                'imp-borraccia',
+                'Borraccia',
+                category: ItemCategory.varie,
+                level: AiSlotLevel.important,
+              ),
+            ],
+          ),
+        ),
+        size: const Size(320, 640),
+        showNeeds: true,
+      );
+      final scroll = tester.state<ScrollableState>(
+        find
+            .descendant(
+              of: find.byType(ListView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      scroll.position.jumpTo(scroll.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      scroll.position.jumpTo(scroll.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+
+      final ultima = find.byKey(const Key('slot_card_imp-borraccia'));
+      expect(ultima, findsOneWidget);
+      expect(ultima.hitTestable(), findsOneWidget);
+      final rowRect = tester.getRect(ultima);
+      final viewportRect = tester.getRect(find.byType(ListView));
+      expect(rowRect.bottom, lessThanOrEqualTo(viewportRect.bottom));
+    });
+
+    testWidgets('pagina principale separa necessità e motivi dagli oggetti', (
+      tester,
+    ) async {
+      final trip = _trip();
+      await pumpDetail(
+        tester,
+        trip.copyWith(
+          aiResult: trip.aiResult!.copyWith(
+            reasons: const [
+              AiReasonPoint(
+                code: 'why',
+                title: 'Una scelta utile',
+                sentences: ['Motivo del viaggio'],
+              ),
+            ],
+          ),
+        ),
+        showNeeds: false,
+      );
+
+      expect(find.byKey(const Key('pack_row_missing')), findsOneWidget);
+      expect(find.byKey(const Key('pack_row_reasons')), findsOneWidget);
+      expect(find.textContaining('4 importanti'), findsOneWidget);
+      expect(find.textContaining('9 suggerimenti'), findsOneWidget);
+      expect(find.textContaining('comprare'), findsOneWidget);
+      expect(find.byType(ImportantSlotCard), findsNothing);
+      expect(find.byType(ProposedSlotsCard), findsNothing);
+      expect(find.byType(ToBuySlotRow), findsNothing);
       expect(find.byKey(const Key('trip_item_i-aux')), findsOneWidget);
-      // Il gruppo conta posti aperti più oggetti: 5 importanti + 9 utili.
-      expect(find.text('Vestiti · 14'), findsOneWidget);
+      expect(find.byType(DsCheckbox), findsNWidgets(4));
     });
 
     testWidgets('"Da comprare" sposta la card fra le righe da comprare, '
@@ -313,10 +762,7 @@ void main() {
 
       expect(find.byType(ImportantSlotCard), findsNWidgets(3));
       expect(find.byType(ToBuySlotRow), findsNWidgets(2));
-      expect(find.text('Presa'), findsNWidgets(2));
-      // La legenda non cambia: un "da comprare" resta da sistemare.
-      expect(find.text('13 di 18 pronti'), findsOneWidget);
-      expect(find.text('5 importanti da sistemare'), findsOneWidget);
+      expect(find.text('Ho comprato'), findsNWidgets(2));
       expect(find.text('Segnato da comprare'), findsOneWidget);
 
       final saved =
@@ -341,7 +787,7 @@ void main() {
       );
     });
 
-    testWidgets('importanti chiusi: spunte e caselle sui proposti', (
+    testWidgets('importanti chiusi: nessuna checkbox sui proposti', (
       tester,
     ) async {
       await pumpDetail(
@@ -356,23 +802,10 @@ void main() {
         ),
       );
 
-      expect(find.text('1 di 13 in valigia'), findsOneWidget);
-      expect(find.text('13 di 13 pronti'), findsNothing);
       expect(find.byType(ImportantSlotCard), findsNothing);
       expect(find.byType(ToBuySlotRow), findsNothing);
-      expect(inProposed(find.byType(DsCheckbox)), findsNWidgets(9));
-
-      await tester.tap(inProposed(find.byType(DsCheckbox)).first);
-      await tester.pumpAndSettle();
-
-      expect(find.text('2 di 13 in valigia'), findsOneWidget);
-      final saved =
-          verify(() => tripRepo.updateTrip(captureAny())).captured.single
-              as TripModel;
-      expect(
-        saved.aiResult!.slots!.firstWhere((s) => s.id == 'u-maglioni').checked,
-        isTrue,
-      );
+      expect(inProposed(find.byType(DsCheckbox)), findsNothing);
+      expect(find.byKey(const Key('slot_row_u-maglioni')), findsOneWidget);
     });
 
     testWidgets('le informazioni del viaggio sotto la testata', (tester) async {
@@ -450,26 +883,30 @@ void main() {
 
       expect(find.byKey(const Key('slot_card_imp-giacca')), findsNothing);
       expect(find.byType(ImportantSlotCard), findsNWidgets(3));
-      expect(find.text('4 importanti da sistemare'), findsOneWidget);
       expect(savedSlot(tester, 'imp-giacca').removed, isTrue);
     });
 
-    testWidgets('X su un importante da comprare: dialog, "Togli", la riga '
-        'sparisce', (tester) async {
+    testWidgets('X su un importante da comprare lo rimuove con Annulla', (
+      tester,
+    ) async {
       await pumpDetail(tester, _trip());
 
-      await tester.tap(find.byKey(const Key('slot_remove_imp-sciarpa')));
+      await tester.tap(find.byKey(const Key('slot_not_useful_imp-sciarpa')));
       await tester.pumpAndSettle();
-      expect(find.text('Togli Sciarpa?'), findsOneWidget);
-
-      await tester.tap(find.text('Togli'));
-      await tester.pumpAndSettle();
-
+      expect(find.text('Togli Sciarpa?'), findsNothing);
       expect(
         find.byKey(const Key('slot_to_buy_row_imp-sciarpa')),
         findsNothing,
       );
       expect(savedSlot(tester, 'imp-sciarpa').removed, isTrue);
+
+      await tester.tap(find.text('Annulla'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('slot_to_buy_row_imp-sciarpa')),
+        findsOneWidget,
+      );
+      expect(savedSlot(tester, 'imp-sciarpa').removed, isFalse);
     });
 
     testWidgets('X poi "Annulla": la card resta', (tester) async {
@@ -495,7 +932,7 @@ void main() {
         expect(find.byType(BottomSheet), findsNothing);
         expect(find.byKey(const Key('slot_row_u-magliette')), findsNothing);
         expect(savedSlot(tester, 'u-magliette').removed, isTrue);
-        expect(find.byKey(const Key('trip_item_i-aux')), findsOneWidget);
+        expect(find.byKey(const Key('trip_item_i-aux')), findsNothing);
 
         await tester.tap(find.text('Annulla'));
         await tester.pumpAndSettle();
@@ -564,11 +1001,12 @@ void main() {
             ],
           ),
         ),
+        showNeeds: false,
       );
 
       expect(find.text('Sciarpa leggera'), findsNothing);
       expect(find.byKey(const Key('slot_row_u-sciarpa')), findsNothing);
-      expect(find.text('Vestiti · 14'), findsOneWidget);
+      expect(find.textContaining('comprare'), findsOneWidget);
     });
   });
 

@@ -644,6 +644,16 @@ Future<void> seedValigiaPosti(ProviderContainer c) async {
                 'basta portare meno capi.',
           ),
         ],
+        reasons: const [
+          AiReasonPoint(
+            code: 'clima_seoul',
+            title: 'Freddo e vento a Seoul',
+            sentences: [
+              'Le minime sotto zero richiedono strati caldi e accessori.',
+            ],
+            items: ['Giacca invernale', 'Maglioni caldi'],
+          ),
+        ],
       ),
       createdAt: stamp,
       updatedAt: stamp,

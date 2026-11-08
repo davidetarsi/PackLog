@@ -21,6 +21,8 @@ class AiPackRows extends StatelessWidget {
     this.slots = const [],
     required this.onSearch,
     required this.onDismiss,
+    this.needsCounts,
+    this.onNeeds,
   });
 
   /// Tutti gli avvisi, anche quelli già letti: restano da rivedere.
@@ -41,6 +43,8 @@ class AiPackRows extends StatelessWidget {
 
   /// "Ok, capito": riceve l'id dell'avviso letto.
   final ValueChanged<String> onDismiss;
+  final ({int important, int useful, int toBuy})? needsCounts;
+  final VoidCallback? onNeeds;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +53,54 @@ class AiPackRows extends StatelessWidget {
     final unread = warnings.where((w) => !readIds.contains(w.id)).length;
     final important = reasonSlots(slots, AiSlotLevel.important);
     final suggested = reasonSlots(slots, AiSlotLevel.useful);
+
+    if (onNeeds != null) {
+      return Column(
+        children: [
+          _separateCard(
+            context,
+            _Row(
+              key: const Key('pack_row_missing'),
+              icon: Icons.checklist_outlined,
+              iconColor: cs.onSurfaceVariant,
+              title: 'trips.pack.ai.missing_row'.tr(),
+              titleColor: cs.onSurface,
+              subtitle: [
+                'trips.pack.ai.important_count'.plural(
+                  needsCounts?.important ?? 0,
+                  args: ['${needsCounts?.important ?? 0}'],
+                ),
+                'trips.pack.ai.useful_count'.plural(
+                  needsCounts?.useful ?? 0,
+                  args: ['${needsCounts?.useful ?? 0}'],
+                ),
+                'trips.pack.ai.to_buy_count'.plural(
+                  needsCounts?.toBuy ?? 0,
+                  args: ['${needsCounts?.toBuy ?? 0}'],
+                ),
+              ].join('\n'),
+              multilineSubtitle: true,
+              onTap: onNeeds!,
+            ),
+          ),
+          if (reasons.isNotEmpty) ...[
+            SizedBox(height: context.spacingMd),
+            _separateCard(
+              context,
+              _Row(
+                key: const Key('pack_row_reasons'),
+                icon: Icons.lightbulb_outline,
+                iconColor: cs.onSurfaceVariant,
+                title: 'trips.pack.ai.reasons_row'.tr(),
+                titleColor: cs.onSurface,
+                subtitle: reasonTitles.join(', '),
+                onTap: () => _openReasons(context),
+              ),
+            ),
+          ],
+        ],
+      );
+    }
 
     return Material(
       color: context.groupSurface,
@@ -101,6 +153,13 @@ class AiPackRows extends StatelessWidget {
     );
   }
 
+  Widget _separateCard(BuildContext context, Widget child) => Material(
+    color: context.groupSurface,
+    borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+    clipBehavior: Clip.antiAlias,
+    child: child,
+  );
+
   Future<void> _openWarnings(BuildContext context) => showDsFormSheet<void>(
     context,
     builder: (_) => _WarningsSheet(
@@ -143,6 +202,7 @@ class _Row extends StatelessWidget {
     required this.onTap,
     this.subtitle,
     this.trailing,
+    this.multilineSubtitle = false,
   });
 
   final IconData icon;
@@ -151,6 +211,7 @@ class _Row extends StatelessWidget {
   final Color titleColor;
   final String? subtitle;
   final Widget? trailing;
+  final bool multilineSubtitle;
   final VoidCallback onTap;
 
   @override
@@ -180,8 +241,10 @@ class _Row extends StatelessWidget {
                     SizedBox(height: context.spacingXxs),
                     Text(
                       subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: multilineSubtitle ? null : 1,
+                      overflow: multilineSubtitle
+                          ? TextOverflow.visible
+                          : TextOverflow.ellipsis,
                       style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],

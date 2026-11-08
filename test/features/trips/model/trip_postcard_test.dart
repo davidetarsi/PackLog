@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/trips/model/trip_leg.dart';
+import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/model/trip_postcard.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
@@ -524,6 +525,56 @@ void main() {
 
       expect(ctaFor(trip), PostcardCta.prepare);
     });
+
+    test('necessità AI aperte: continua anche senza oggetti propri', () {
+      final trip = makeTrip('c5').copyWith(
+        aiResult: AiPackingResult(
+          generatedAt: DateTime(2026),
+          houseId: 'h1',
+          slots: [
+            AiSlot(
+              id: 'slot-1',
+              type: 'slot-1',
+              category: ItemCategory.varie,
+              level: AiSlotLevel.important,
+              name: 'Adattatore',
+              copies: 1,
+              remaining: 1,
+              addLabel: 'Aggiungi',
+            ),
+          ],
+        ),
+      );
+
+      expect(ctaFor(trip), PostcardCta.continuePacking);
+    });
+
+    test(
+      'non pronto se tutti gli oggetti sono spuntati ma restano necessità',
+      () {
+        final trip = makeTrip('c6', items: [makeItem('a', checked: true)])
+            .copyWith(
+              aiResult: AiPackingResult(
+                generatedAt: DateTime(2026),
+                houseId: 'h1',
+                slots: [
+                  AiSlot(
+                    id: 'slot-1',
+                    type: 'slot-1',
+                    category: ItemCategory.varie,
+                    level: AiSlotLevel.important,
+                    name: 'Adattatore',
+                    copies: 1,
+                    remaining: 1,
+                    addLabel: 'Aggiungi',
+                  ),
+                ],
+              ),
+            );
+
+        expect(ctaFor(trip), PostcardCta.continuePacking);
+      },
+    );
   });
 
   group('upcomingTrips', () {
