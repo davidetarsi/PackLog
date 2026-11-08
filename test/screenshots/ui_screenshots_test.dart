@@ -35,7 +35,6 @@ import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:pack_log/features/trips/services/trip_weather_service.dart';
 import 'package:pack_log/features/trips/view/ai_packing_wait_screen.dart';
-import 'package:pack_log/features/trips/view/widgets/ai/ai_home_group.dart';
 import 'package:pack_log/features/trips/view/widgets/slots/slots_section.dart';
 import 'package:pack_log/features/trips/view/widgets/pack/pack_parts.dart';
 import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
@@ -378,7 +377,6 @@ const _aiResults = 'lib/features/ai_input/view/ai_results_screen.dart';
 const _aiSheetSrc = 'lib/features/trips/view/widgets/ai/ai_packing_sheet.dart';
 const _aiWaitSrc = 'lib/features/trips/view/ai_packing_wait_screen.dart';
 const _aiRowsSrc = 'lib/features/trips/view/widgets/ai/ai_pack_rows.dart';
-const _aiHomeSrc = 'lib/features/trips/view/widgets/ai/ai_home_group.dart';
 const _aiItemSrc = 'lib/features/trips/view/widgets/ai/ai_pack_item_sheet.dart';
 
 final flows = <Flow>[
@@ -2501,35 +2499,6 @@ final flows = <Flow>[
           'il capo da indossare in partenza segnato.',
       setup: const AppSetup(aiPacking: true),
       steps: (app) => _pack(app, kUpcomingTripId),
-    ),
-    Scenario(
-      7,
-      'valigia',
-      'dalla-casa-aperta',
-      source: _aiHomeSrc,
-      description:
-          'Gruppo "Dalla casa" aperto: gli oggetti non di abbigliamento che '
-          'non sono in valigia, da aggiungere con un tocco.',
-      setup: const AppSetup(aiPacking: true),
-      steps: (app) async {
-        await _pack(app, kUpcomingTripId);
-        final header = find.descendant(
-          of: find.byType(AiHomeGroup),
-          matching: find.byType(InkWell),
-        );
-        await app.tester.drag(
-          find.byType(ListView).first,
-          const Offset(0, -1500),
-        );
-        await app.settle();
-        await app.tap(header);
-        await app.tester.drag(
-          find.byType(ListView).first,
-          const Offset(0, -1000),
-        );
-        await app.settle();
-        await app.settle();
-      },
     ),
     Scenario(
       8,

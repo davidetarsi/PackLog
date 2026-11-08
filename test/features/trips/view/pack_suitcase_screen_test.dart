@@ -24,9 +24,13 @@ import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/trip_lifecycle_service.dart';
 import 'package:pack_log/features/trips/view/pack_suitcase_screen.dart';
 import 'package:pack_log/features/trips/view/widgets/pack/pack_parts.dart';
-import 'package:pack_log/features/luggages/view/add_edit_luggage_screen.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
 import 'package:pack_log/shared/widgets/ds_empty_state.dart';
+import 'package:pack_log/features/trips/view/widgets/ai/ai_pack_rows.dart';
+import 'package:pack_log/features/trips/view/widgets/pack/pack_luggage_selector.dart';
+import 'package:pack_log/features/trips/view/widgets/pack/pack_summary_line.dart';
+import 'package:pack_log/features/trips/view/widgets/pack/pack_weather.dart';
+import 'package:pack_log/shared/widgets/ds_search_field.dart';
 import 'package:pack_log/shared/widgets/ds_steps.dart';
 import 'package:pack_log/shared/widgets/quantity_stepper.dart';
 
@@ -229,6 +233,11 @@ void main() {
           ),
         ),
         GoRoute(
+          path: '/trips/:id',
+          builder: (context, state) =>
+              Scaffold(appBar: AppBar(title: const Text('Dettaglio viaggio'))),
+        ),
+        GoRoute(
           path: '/trips/:id/edit-items',
           builder: (context, state) => PackSuitcaseScreen(
             tripId: state.pathParameters['id']!,
@@ -334,6 +343,51 @@ void main() {
       expect(tester.getTopLeft(done).dy, before.dy);
     });
 
+    testWidgets('add_page_has_only_search_and_house_items', (tester) async {
+      arrange(
+        items: {
+          'h1': [_maglietta],
+        },
+        luggages: [_luggage('l1', 'Zaino')],
+      );
+      await pumpPack(tester);
+
+      expect(find.byType(DsSearchField), findsOneWidget);
+      expect(find.text('Maglietta'), findsOneWidget);
+      expect(find.byType(PackWeatherSection), findsNothing);
+      expect(find.byType(PackLuggageSelector), findsNothing);
+      expect(find.byType(PackSummaryLine), findsNothing);
+      expect(find.byType(AiPackRows), findsNothing);
+      expect(find.byKey(const Key('pack_ai_suitcase')), findsNothing);
+    });
+
+    testWidgets('title_from_detail_is_add_to_suitcase', (tester) async {
+      arrange();
+      await pumpPack(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Aggiungi alla valigia'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('title_from_new_trip_has_steps', (tester) async {
+      arrange();
+      await pumpPack(tester, fromNewTrip: true);
+
+      expect(find.byType(DsSteps), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('Prepara la valigia'),
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('con fromNewTrip mostra l indicatore dei passi', (
       tester,
     ) async {
@@ -369,16 +423,6 @@ void main() {
       // Con una casa sola il selettore non apre niente: niente freccia.
       expect(find.byIcon(Icons.expand_more), findsNothing);
       expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('senza bagagli mostra il testo e il link per aggiungerne', (
-      tester,
-    ) async {
-      arrange();
-      await pumpPack(tester);
-
-      expect(find.text('Non hai ancora bagagli.'), findsOneWidget);
-      expect(find.text('Nuovo bagaglio'), findsOneWidget);
     });
 
     testWidgets(
@@ -684,47 +728,8 @@ void main() {
     });
   });
 
-  group('PackSuitcaseScreen — bagagli e salvataggio', () {
-    testWidgets('"Nuovo bagaglio" apre direttamente il modulo', (tester) async {
-      arrange();
-      await pumpPack(tester);
-
-      await tapText(tester, 'Nuovo bagaglio');
-
-      expect(find.byType(AddEditLuggageSheet), findsOneWidget);
-    });
-
-    testWidgets('si possono creare bagagli anche senza case', (tester) async {
-      arrange(houses: []);
-      await pumpPack(tester);
-      await tapText(tester, 'Nuovo bagaglio');
-      expect(find.byType(AddEditLuggageSheet), findsOneWidget);
-    });
-
-    testWidgets('con dei bagagli si crea da "Gestisci bagagli"', (
-      tester,
-    ) async {
-      arrange(luggages: [_luggage('l1', 'Zaino')]);
-      await pumpPack(tester);
-      expect(find.text('Nuovo bagaglio'), findsNothing);
-      await tapText(tester, 'Gestisci bagagli');
-      await tapText(tester, 'Nuovo bagaglio');
-      expect(find.byType(AddEditLuggageSheet), findsOneWidget);
-    });
-
-    testWidgets('i bagagli scelti si salvano in luggages', (tester) async {
-      arrange(luggages: [_luggage('l1', 'Zaino'), _luggage('l2', 'Trolley')]);
-      await pumpPack(tester);
-
-      await tapText(tester, 'Zaino');
-      await tapText(tester, 'Fatto');
-
-      expect(savedTrip().luggages.map((l) => l.id), ['l1']);
-    });
-
-    testWidgets('salvando "Fatto" torna alla pagina che ha aperto la valigia', (
-      tester,
-    ) async {
+  group('PackSuitcaseScreen — salvataggio e uscita', () {
+    testWidgets('done_from_new_trip_replaces_with_detail', (tester) async {
       arrange(
         items: {
           'h1': [_spazzolino],
@@ -735,8 +740,28 @@ void main() {
       await tapText(tester, 'Spazzolino');
       await tapText(tester, 'Fatto · 1 oggetto');
 
+      // Il passo 2 lascia il posto al dettaglio: indietro porta ai viaggi.
+      expect(find.text('Dettaglio viaggio'), findsOneWidget);
+      expect(find.byType(PackSuitcaseScreen), findsNothing);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
       expect(find.text('apri'), findsOneWidget);
-      expect(find.text('Prepara la valigia'), findsNothing);
+    });
+
+    testWidgets('done_from_detail_pops', (tester) async {
+      arrange(
+        items: {
+          'h1': [_spazzolino],
+        },
+      );
+      await pumpPack(tester);
+
+      await tapText(tester, 'Spazzolino');
+      await tapText(tester, 'Fatto · 1 oggetto');
+
+      expect(find.byType(PackSuitcaseScreen), findsNothing);
+      expect(find.text('Dettaglio viaggio'), findsNothing);
+      expect(find.text('apri'), findsOneWidget);
     });
 
     testWidgets('Indietro con modifiche chiede conferma e Annulla resta', (
@@ -757,7 +782,7 @@ void main() {
 
       await tapText(tester, 'Annulla');
 
-      expect(find.text('Prepara la valigia'), findsOneWidget);
+      expect(find.text('Aggiungi alla valigia'), findsOneWidget);
       verifyNever(() => tripRepo.updateTrip(any()));
     });
 
