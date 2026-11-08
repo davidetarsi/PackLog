@@ -1437,29 +1437,16 @@ final flows = <Flow>[
     Scenario(
       10,
       'viaggi',
-      'dopo-passo-1',
-      route: '/trips',
+      'riusa-passo-1',
+      route: '/new-trip',
       source: 'lib/features/trips/view/new_trip_screen.dart',
       description:
-          'Passo 1 compilato (Siviglia) e "Prepara la valigia più tardi": la '
-          'pila si apre sul viaggio appena creato, in cima.',
+          '"Riusa" da un viaggio passato: il passo 1 si apre già compilato '
+          '(meta, tappe, mezzi, nome), senza date e senza salvare niente, con '
+          'le due strade in fondo.',
       steps: (app) async {
-        await _openNewTrip(app);
-        await _searchPlace(app, _placeField(), 'Siviglia');
-        await _pickTripDates(
-          app,
-          departure: _nextMonthDay(20),
-          end: _nextMonthDay(23),
-        );
-        await app.tap(find.byKey(const Key('new_trip_later')));
-        // Il viaggio appena creato è la cartolina in cima alla pila.
-        expect(
-          find.descendant(
-            of: find.byKey(const Key('postcard_pile_top')),
-            matching: find.text('Siviglia'),
-          ),
-          findsWidgets,
-        );
+        await app.go('/trips');
+        await app.push('/new-trip?reuseFrom=$kPastTripId');
       },
     ),
   ]),
@@ -1473,7 +1460,8 @@ final flows = <Flow>[
       source: _addTrip,
       description:
           'Passo 1 appena aperto: "Dove vai?", "Quando?", itinerario vuoto, '
-          'nome del viaggio, "Avanti" spento.',
+          'nome del viaggio, "Prepara la valigia con AI" e "Scegli tu cosa portare" '
+          'spenti.',
       steps: (app) async {
         await _openNewTrip(app);
       },
@@ -1500,7 +1488,7 @@ final flows = <Flow>[
       source: _addTrip,
       description:
           'Meta Lisbona e date: l\'itinerario ha la tappa di arrivo e il '
-          'ritorno calcolato, "Avanti" acceso.',
+          'ritorno calcolato, i due bottoni accesi.',
       steps: (app) async {
         await _fillStep1(app);
       },
@@ -1555,11 +1543,11 @@ final flows = <Flow>[
       route: '/new-trip',
       source: _addTrip,
       description:
-          'Tocco su "Avanti" a modulo vuoto: il campo "Dove vai?" e il campo '
+          'Tocco su "Scegli tu cosa portare" a modulo vuoto: il campo "Dove vai?" e il campo '
           'delle date si colorano di errore, con il messaggio sotto ciascuno.',
       steps: (app) async {
         await _openNewTrip(app);
-        await app.tap(find.byKey(const Key('new_trip_next')));
+        await app.tap(find.byKey(const Key('new_trip_choose_items')));
       },
     ),
     Scenario(
@@ -1570,7 +1558,7 @@ final flows = <Flow>[
       source: _addTrip,
       description:
           'La meta finisce il giorno in cui finisce la tappa: la tappa ha zero '
-          'notti, il messaggio la segnala e "Avanti" è spento.',
+          'notti, il messaggio la segnala e i due bottoni sono spenti.',
       steps: (app) async {
         await _fillStep1(app);
         await _addSintraStop(app, end: _nextMonthDay(15));
@@ -1674,7 +1662,7 @@ final flows = <Flow>[
           'passi con "Viaggio" fatto, "Valigia" attivo, "Fatto" a zero oggetti.',
       steps: (app) async {
         await _fillStep1(app);
-        await app.tap(find.byKey(const Key('new_trip_next')));
+        await app.tap(find.byKey(const Key('new_trip_choose_items')));
       },
     ),
     Scenario(

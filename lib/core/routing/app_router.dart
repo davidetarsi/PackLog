@@ -347,6 +347,7 @@ GoRouter appRouter(Ref ref) {
           child: NewTripScreen(
             aiIntent: state.uri.queryParameters['ai'] == '1',
             firstRun: state.uri.queryParameters['first'] == '1',
+            reuseFromId: state.uri.queryParameters['reuseFrom'],
           ),
         ),
       ),
