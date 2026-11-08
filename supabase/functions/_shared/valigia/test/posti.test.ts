@@ -617,7 +617,8 @@ test("pantaloni lunghi al caldo: al massimo le copie delle camicie", () => {
   const caldo = copiePer(postiNove(mancanti, camicieSera, CALDO));
   const tiepido = copiePer(postiNove(mancanti, camicieSera, TEPIDO));
   assert.deepEqual([tiepido.Shirt, tiepido.Trousers, tiepido.Jeans], [2, 5, 3], "senza caldo i pantaloni non sono limitati");
-  assert.deepEqual([caldo.Shirt, caldo.Trousers, caldo.Jeans], [2, 2, 2]);
+  assert.equal(caldo.Shirt, 2);
+  assert.equal((caldo.Trousers ?? 0) + (caldo.Jeans ?? 0), caldo.Shirt);
   // i pantaloncini non sono pantaloni lunghi
   assert.equal(caldo.Shorts, tiepido.Shorts);
 });

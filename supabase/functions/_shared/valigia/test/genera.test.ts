@@ -14,6 +14,8 @@ import { chiaveCaso, impronta, riproduciCaso } from "./support/replay_valigia.ts
 
 const motore = JSON.parse(readFileSync(process.env.PACKING_ENGINE_CHANGES
   ?? new URL("./baseline_motore_migliorato.json", import.meta.url), "utf8"));
+const mare = JSON.parse(readFileSync(process.env.PACKING_SUMMER_CHANGES
+  ?? new URL("./baseline_quantita_mare.json", import.meta.url), "utf8"));
 
 const file = process.env.ORACOLO_CELLE ?? new URL("./oracolo_celle_campione.json", import.meta.url);
 const casi: any[] = JSON.parse(readFileSync(file, "utf8"));
@@ -42,6 +44,7 @@ function jevCome(a: any): ChiediJev {
 
 test("flusso completo: prompt storico, risultati e delta revisionati del motore", async () => {
   assert.equal(motore.input, impronta(casi), "Delta del motore riferiti ad altri input");
+  assert.equal(mare.input, impronta(casi), "Delta mare riferiti ad altri input");
   let n = 0;
   for (const c of casi) {
     const { scenario, geo, meteo } = structuredClone(c.viaggio);
@@ -67,13 +70,14 @@ test("flusso completo: prompt storico, risultati e delta revisionati del motore"
     assert.deepEqual(
       postiApp(r.valigia, r.motivi as any, salvate, { ...contesto, fabbisogni: r.fabbisogni }),
       postiApp(r.valigia, r.motivi as any, salvate, contesto), `${nome}: fabbisogni del motore e adapter coerenti`);
-    const cambiato = motore.casi[chiaveCaso(c, "completo")];
-    if (cambiato?.campi.valigia) {
+    const key = chiaveCaso(c, "completo");
+    const cambiato = { ...motore.casi[key]?.campi, ...mare.casi[key]?.campi };
+    if (cambiato.valigia) {
       // Il replay diretto e' congelato dal delta; il flusso completo deve ricostruirlo senza divergenze.
       const replay = riproduciCaso(c, "completo");
       for (const campo of ["valigia", "motivi", "perche"] as const) {
-        if (cambiato.campi[campo]) {
-          assert.equal(impronta(replay[campo]), cambiato.campi[campo].dopo, `${nome}: replay ${campo} fuori baseline`);
+        if (cambiato[campo]) {
+          assert.equal(impronta(replay[campo]), cambiato[campo].dopo, `${nome}: replay ${campo} fuori baseline`);
         }
         assert.deepEqual(numeri(r[campo]), numeri(replay[campo]), `${nome}: flusso completo ${campo}`);
       }
