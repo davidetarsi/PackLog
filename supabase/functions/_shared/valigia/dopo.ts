@@ -156,37 +156,55 @@ export function minimoCapiLeggeri(tappe: [number, number | null][], lavatrice: b
   return caldi ? rc.capiLeggeriColCaldo(caldi, lavatrice) : null;
 }
 
+function limitaRotazione(capi: Record_[], limite: number, fissi: Record_[] = []): number {
+  let tagliati = 0;
+  let totale = [...capi, ...fissi].reduce((s, x) => s + q(x), 0);
+  while (totale > limite) {
+    const piuAlto = massimo(capi, (x) => q(x));
+    if (!piuAlto || q(piuAlto) <= 1) break;
+    piuAlto.quantita -= 1;
+    totale -= 1;
+    tagliati += 1;
+  }
+  while (K.TOGLI_CAPI_DIVERSI_ZONA && totale > limite) {
+    const vivi = [...capi, ...fissi].filter((x) => q(x) >= 1);
+    const perSlot = new Map<string, number>();
+    for (const x of vivi) for (const s of slotDi(x)) perSlot.set(s, (perSlot.get(s) ?? 0) + 1);
+    const candidati = capi.filter((x) => q(x) >= 1 && !intoccabile(x) && slotDi(x).size &&
+      [...slotDi(x)].every((s) => (perSlot.get(s) ?? 0) >= 2));
+    if (!candidati.length) break;
+    const fuori = massimo([...candidati].reverse(), (x) => Math.max(...[...slotDi(x)].map((s) => perSlot.get(s) ?? 0)))!;
+    totale -= q(fuori);
+    tagliati += q(fuori);
+    fuori.quantita = 0;
+  }
+  return tagliati;
+}
+
+/** Lo stesso limite vale per lunghi posseduti e proposti; la leggerezza richiede evidenza. */
+export function limitaPantaloniDaSera(capi: Record_[], camicie?: number,
+  leggero: (g: Record_) => boolean = (g) => g.warmth != null && g.warmth <= 2,
+  fissi: Record_[] = []): number {
+  const daSera = (g: Record_) => g.category === "Lower Body" &&
+    ["Trousers", "Jeans"].includes(g.subCategory) && !leggero(g);
+  const lunghi = capi.filter(daSera);
+  const sopra = camicie ?? capi.filter((g) => g.category === "Upper Body" && g.subCategory === "Shirt")
+    .reduce((n, g) => n + q(g), 0);
+  return limitaRotazione(lunghi, Math.max(1, sopra), fissi.filter(daSera));
+}
+
 export function applicaBudgetRotazione(capi: Record_[], giorni: number, minimoSopra: number | null = null,
   climaTappe: [number, number | null, number | null][] | null = null, lavatrice = false): number {
   let tagliati = 0;
   for (const zona of ["Upper Body", "Lower Body"]) {
     const inZona = capi.filter((x) => x.category === zona && x.subCategory !== "Swimwear" &&
       !K.SOTTO_STRATI.has(x.subCategory) && (K.RUOLO_STRATO[x.subCategory || ""] ?? "base") === "base");
-    let totale = inZona.reduce((s, x) => s + q(x), 0);
     let limite = Math.min(giorni + 1, K.TETTO_ROTAZIONE_ZONA[zona] ?? 99);
     if (zona === "Lower Body" && K.PANTALONI_PER_CLIMA && vero(climaTappe)) {
       limite = Math.min(giorni + 1, rc.pantaloniPerClima(climaTappe!, lavatrice));
     }
     if (zona === "Upper Body" && minimoSopra) limite = Math.max(limite, minimoSopra);
-    while (totale > limite) {
-      const piuAlto = massimo(inZona, (x) => q(x))!;
-      if (q(piuAlto) <= 1) break;
-      piuAlto.quantita -= 1;
-      totale -= 1;
-      tagliati += 1;
-    }
-    while (K.TOGLI_CAPI_DIVERSI_ZONA && totale > limite) {
-      const vivi = inZona.filter((x) => q(x) >= 1);
-      const perSlot = new Map<string, number>();
-      for (const x of vivi) for (const s of slotDi(x)) perSlot.set(s, (perSlot.get(s) ?? 0) + 1);
-      const candidati = vivi.filter((x) => !intoccabile(x) && slotDi(x).size &&
-        [...slotDi(x)].every((s) => (perSlot.get(s) ?? 0) >= 2));
-      if (!candidati.length) break;
-      const fuori = massimo([...candidati].reverse(), (x) => Math.max(...[...slotDi(x)].map((s) => perSlot.get(s) ?? 0)))!;
-      totale -= q(fuori);
-      tagliati += q(fuori);
-      fuori.quantita = 0;
-    }
+    tagliati += limitaRotazione(inZona, limite);
   }
   return tagliati;
 }
