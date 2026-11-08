@@ -205,6 +205,8 @@
   "open": "Apri",
   "failed_no_credit": "Non sono riuscito a preparare la valigia. Nessun credito è stato scalato.",
   "failed_network": "Non sono riuscito a preparare la valigia. Controlla la connessione e riprova.",
+  "failed_save": "Non sono riuscito a salvare la valigia.",
+  "retry": "Riprova",
   "wait": {
     "title": "Preparo la valigia",
     "subtitle": "{} · {}",

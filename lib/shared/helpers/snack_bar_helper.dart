@@ -100,7 +100,7 @@ class AppSnackBar {
   /// annullata durante il cambio di pagina) non mostra nulla e non lancia.
   ///
   /// Con [queue] non toglie lo SnackBar già visibile: questo compare dopo.
-  static void showAction(
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? showAction(
     BuildContext context,
     String message, {
     required String actionLabel,
@@ -109,7 +109,7 @@ class AppSnackBar {
     bool queue = false,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-    _show(
+    return _show(
       context: context,
       key: key,
       message: message,
@@ -141,7 +141,7 @@ class AppSnackBar {
 
   // ── Internal ────────────────────────────────────────────────────────────────
 
-  static void _show({
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _show({
     required BuildContext context,
     required String message,
     required Color backgroundColor,
@@ -153,8 +153,8 @@ class AppSnackBar {
     // Senza ScaffoldMessenger non c'è dove mostrare lo SnackBar: si esce senza
     // errore, come per un'azione chiesta da una pagina già smontata.
     final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    _showOn(
+    if (messenger == null) return null;
+    return _showOn(
       messenger,
       context: context,
       message: message,
@@ -166,7 +166,7 @@ class AppSnackBar {
     );
   }
 
-  static void _showOn(
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> _showOn(
     ScaffoldMessengerState messenger, {
     required BuildContext context,
     required String message,
@@ -177,7 +177,7 @@ class AppSnackBar {
     bool queue = false,
   }) {
     if (!queue) messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
+    return messenger.showSnackBar(
       SnackBar(
         key: key,
         content: Text(

@@ -38,9 +38,16 @@ class AiRunRunning extends AiPackingRunState {
 
 /// Il lavoro è fallito: [request] serve a riprovare.
 class AiRunFailed extends AiPackingRunState {
-  const AiRunFailed(this.request, this.error);
+  const AiRunFailed(this.request, this.error, {this.saveOnly = false});
   final AiPackingRequest request;
   final Object error;
+
+  /// La risposta di `pack-trip` era già arrivata (credito consumato) e a
+  /// fallire è stato solo il salvataggio: [AiPackingRun.retry] rifà solo
+  /// quello, senza chiamare di nuovo il server.
+  final bool saveOnly;
+
+  bool get canRetrySaveOnly => saveOnly;
 }
 
 /// La valigia è arrivata ed è salvata sul viaggio [tripId]. [itemsError]: gli
@@ -139,7 +146,7 @@ class AiPackingRun extends _$AiPackingRun {
     } catch (error) {
       if (_stale(generation)) return;
       _pending = result;
-      state = AiRunFailed(request, error);
+      state = AiRunFailed(request, error, saveOnly: true);
     }
   }
 

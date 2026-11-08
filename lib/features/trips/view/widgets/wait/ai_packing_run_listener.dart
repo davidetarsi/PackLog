@@ -32,14 +32,46 @@ class AiPackingRunListener extends ConsumerWidget {
           };
           _showReady(context, ref, next, title);
           run.clear();
-        case AiRunFailed(:final error):
-          AppSnackBar.showError(context, aiFailureMessageKey(error).tr());
-          run.clear();
+        case AiRunFailed(:final error, :final canRetrySaveOnly):
+          if (canRetrySaveOnly) {
+            _offerSaveRetry(context, ref, next, error);
+          } else {
+            AppSnackBar.showError(context, aiFailureMessageKey(error).tr());
+            run.clear();
+          }
         case AiRunIdle() || AiRunRunning():
           break;
       }
     });
     return child;
+  }
+
+  /// La risposta è arrivata e solo il salvataggio è fallito: "Riprova" rifà
+  /// il salvataggio. Il lavoro si azzera solo se lo SnackBar si chiude senza
+  /// che l'azione sia stata toccata (altrimenti si perderebbe la valigia già
+  /// pagata).
+  void _offerSaveRetry(
+    BuildContext context,
+    WidgetRef ref,
+    AiRunFailed failed,
+    Object error,
+  ) {
+    final run = ref.read(aiPackingRunProvider.notifier);
+    final controller = AppSnackBar.showAction(
+      context,
+      aiFailureMessageKey(error).tr(),
+      actionLabel: 'trips.ai.retry'.tr(),
+      onAction: () => run.retry(),
+    );
+    if (controller == null) {
+      run.clear();
+      return;
+    }
+    controller.closed.then((reason) {
+      if (reason == SnackBarClosedReason.action) return;
+      // Solo se il lavoro è ancora quello fallito.
+      if (identical(ref.read(aiPackingRunProvider), failed)) run.clear();
+    });
   }
 
   void _showReady(

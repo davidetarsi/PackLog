@@ -20,6 +20,10 @@ import '../../../../../helpers/memory_asset_loader.dart';
 /// Il lavoro AI finto: lo stato lo decide il test; conta gli azzeramenti.
 class _FakeRun extends AiPackingRun {
   int clears = 0;
+  int retries = 0;
+
+  @override
+  Future<void> retry() async => retries++;
 
   void emit(AiPackingRunState next) => state = next;
 
@@ -180,6 +184,46 @@ void main() {
       expect(_run.clears, 1);
     });
 
+    testWidgets('save_failure_while_detached_offers_retry', (tester) async {
+      await _pump(tester);
+      _running();
+      await tester.pump();
+
+      _run.emit(AiRunFailed(_request, StateError('db'), saveOnly: true));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Non sono riuscito a salvare la valigia.'),
+        findsOneWidget,
+      );
+      expect(find.text('Riprova'), findsOneWidget);
+      // La valigia già pagata non si perde: niente clear().
+      expect(_run.clears, 0);
+
+      await tester.tap(find.text('Riprova'));
+      await tester.pumpAndSettle();
+
+      expect(_run.retries, 1);
+      expect(_run.clears, 0);
+    });
+
+    testWidgets('ignored_retry_snackbar_clears', (tester) async {
+      await _pump(tester);
+      _running();
+      await tester.pump();
+      _run.emit(AiRunFailed(_request, StateError('db'), saveOnly: true));
+      await tester.pumpAndSettle();
+      expect(_run.clears, 0);
+
+      ScaffoldMessenger.of(
+        tester.element(find.text('HOME')),
+      ).hideCurrentSnackBar();
+      await tester.pumpAndSettle();
+
+      expect(_run.retries, 0);
+      expect(_run.clears, 1);
+    });
+
     testWidgets('failure_while_attached_shows_nothing', (tester) async {
       await _pump(tester);
       _run.attach();
@@ -241,9 +285,14 @@ void main() {
         'trips.ai.failed_no_credit',
       );
       expect(
-        aiFailureMessageKey(StateError('boh')),
+        aiFailureMessageKey(const PackTripCreditsException()),
         'trips.ai.failed_no_credit',
       );
+    });
+
+    test('save_error_is_not_no_credit', () {
+      expect(aiFailureMessageKey(StateError('boh')), 'trips.ai.failed_save');
+      expect(aiFailureMessageKey(Exception('db')), 'trips.ai.failed_save');
     });
 
     test('network_error_is_generic', () {
