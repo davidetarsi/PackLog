@@ -1,0 +1,199 @@
+import 'package:uuid/uuid.dart';
+
+import '../model/ai_packing.dart';
+import '../model/suitcase_edit.dart';
+import '../model/trip_model.dart';
+
+/// Campi della scheda che possono entrare in un evento. Il nome scritto
+/// dall'utente non c'è, e non deve mai arrivarci.
+const kSuitcaseEditCardFields = <String>{
+  'category',
+  'subCategory',
+  'warmth',
+  'waterResistance',
+  'formality',
+  'activityTags',
+};
+
+const _uuid = Uuid();
+
+/// Le modifiche fatte dall'utente alla valigia proposta tra [before] e [after].
+///
+/// Funzione pura: non legge orologio, consenso né rete. Restituisce `[]` se il
+/// viaggio non ha una valigia AI in entrambe le versioni, se la valigia è
+/// stata rigenerata o adottata (`generatedAt` diverso) o se [now] non è prima
+/// della partenza. Le spunte non contano.
+///
+/// [cardOf] dà la scheda di un oggetto (null = nessuna scheda); ne passano solo
+/// i campi di [kSuitcaseEditCardFields]. [weather], se passato, finisce nel
+/// contesto così com'è (medie per tappa).
+List<SuitcaseEdit> suitcaseEdits({
+  required TripModel before,
+  required TripModel after,
+  required DateTime now,
+  required bool analysisAllowed,
+  required Map<String, Object?>? Function(String itemId) cardOf,
+  Map<String, Object?>? weather,
+  String Function()? newId,
+}) {
+  final beforeResult = before.aiResult;
+  final afterResult = after.aiResult;
+  if (beforeResult == null || afterResult == null) return const [];
+  if (beforeResult.generatedAt != afterResult.generatedAt) return const [];
+  final departure = after.departureDateTime;
+  if (departure == null || !now.isBefore(departure)) return const [];
+
+  final makeId = newId ?? () => _uuid.v4();
+  final context = _context(after);
+  final edits = <SuitcaseEdit>[];
+
+  SuitcaseEdit edit(
+    SuitcaseEditAction action,
+    SuitcaseEditOrigin origin,
+    Map<String, Object?> card, {
+    int? copiesBefore,
+    int? copiesAfter,
+  }) => SuitcaseEdit(
+    id: makeId(),
+    tripId: after.id,
+    at: now,
+    action: action,
+    origin: origin,
+    copiesBefore: copiesBefore,
+    copiesAfter: copiesAfter,
+    card: card,
+    context: {...context, if (weather != null) 'weather': weather},
+    generatorVersion: afterResult.generatorVersion,
+    analysisAllowed: analysisAllowed,
+  );
+
+  // Posti: confronto per id.
+  final beforeSlots = {
+    for (final s in beforeResult.slots ?? <AiSlot>[]) s.id: s,
+  };
+  final slotEdits = <SuitcaseEdit>[];
+  // Quanti oggetti nuovi di una categoria possono aver riempito un posto.
+  final filledByCategory = <Object, int>{};
+  for (final slot in afterResult.slots ?? const <AiSlot>[]) {
+    final old = beforeSlots[slot.id];
+    if (old == null) continue;
+    final card = <String, Object?>{
+      'type': slot.type,
+      'level': slot.level.dbValue,
+    };
+    if (!old.removed && slot.removed) {
+      slotEdits.add(
+        edit(
+          SuitcaseEditAction.suggestionRemoved,
+          SuitcaseEditOrigin.slot,
+          card,
+        ),
+      );
+      continue;
+    }
+    if (!old.toBuy && slot.toBuy) {
+      slotEdits.add(
+        edit(SuitcaseEditAction.toBuy, SuitcaseEditOrigin.slot, card),
+      );
+    }
+    if (!slot.removed && slot.remaining < old.remaining) {
+      slotEdits.add(
+        edit(SuitcaseEditAction.slotFilled, SuitcaseEditOrigin.slot, card),
+      );
+      filledByCategory.update(
+        slot.category,
+        (n) => n + old.remaining - slot.remaining,
+        ifAbsent: () => old.remaining - slot.remaining,
+      );
+    }
+  }
+
+  // Oggetti del viaggio: confronto per id.
+  final proposed = {for (final p in afterResult.proposal) p.itemId};
+  proposed.addAll(beforeResult.proposal.map((p) => p.itemId));
+  final kitItems = {
+    for (final k in [...beforeResult.kitAdded, ...afterResult.kitAdded])
+      k.itemId,
+  };
+  SuitcaseEditOrigin originOf(String id, {Object? slotCategory}) {
+    if (proposed.contains(id)) return SuitcaseEditOrigin.proposal;
+    if (kitItems.contains(id)) return SuitcaseEditOrigin.kit;
+    if (slotCategory != null && (filledByCategory[slotCategory] ?? 0) > 0) {
+      filledByCategory[slotCategory] = filledByCategory[slotCategory]! - 1;
+      return SuitcaseEditOrigin.slot;
+    }
+    return SuitcaseEditOrigin.user;
+  }
+
+  final beforeItems = {for (final i in before.items) i.id: i};
+  final afterItems = {for (final i in after.items) i.id: i};
+
+  for (final item in after.items) {
+    final old = beforeItems[item.id];
+    if (old == null) {
+      edits.add(
+        edit(
+          SuitcaseEditAction.added,
+          originOf(item.id, slotCategory: item.category),
+          _card(cardOf(item.id)),
+          copiesAfter: item.quantity,
+        ),
+      );
+    } else if (old.quantity != item.quantity) {
+      edits.add(
+        edit(
+          SuitcaseEditAction.copies,
+          originOf(item.id),
+          _card(cardOf(item.id)),
+          copiesBefore: old.quantity,
+          copiesAfter: item.quantity,
+        ),
+      );
+    }
+  }
+  for (final old in before.items) {
+    if (afterItems.containsKey(old.id)) continue;
+    edits.add(
+      edit(
+        SuitcaseEditAction.removed,
+        originOf(old.id),
+        _card(cardOf(old.id)),
+        copiesBefore: old.quantity,
+      ),
+    );
+  }
+
+  return [...slotEdits, ...edits];
+}
+
+Map<String, Object?> _card(Map<String, Object?>? raw) => {
+  if (raw != null)
+    for (final e in raw.entries)
+      if (kSuitcaseEditCardFields.contains(e.key)) e.key: e.value,
+};
+
+/// Giorni del viaggio, risposte per tappa e mezzi. Niente nomi.
+Map<String, Object?> _context(TripModel trip) {
+  final from = trip.departureDateTime;
+  final to = trip.returnDateTime;
+  final days = (from == null || to == null)
+      ? null
+      : DateTime.utc(
+          to.year,
+          to.month,
+          to.day,
+        ).difference(DateTime.utc(from.year, from.month, from.day)).inDays;
+  return {
+    'days': days,
+    'stops': {
+      for (final e
+          in (trip.aiSetup?.stops ?? const <String, AiStopAnswers>{}).entries)
+        e.key: {
+          'activities': e.value.activities,
+          'stay': e.value.stay,
+          'washer': e.value.washer,
+        },
+    },
+    'transports': trip.transports,
+  };
+}

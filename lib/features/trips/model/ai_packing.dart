@@ -105,7 +105,13 @@ enum AiSlotLevel {
   @JsonValue('importante')
   important,
   @JsonValue('utile')
-  useful,
+  useful;
+
+  /// Valore italiano, lo stesso del JSON.
+  String get dbValue => switch (this) {
+    AiSlotLevel.important => 'importante',
+    AiSlotLevel.useful => 'utile',
+  };
 }
 
 /// Posto della valigia: un oggetto che serve al viaggio e che l'utente può
