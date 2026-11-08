@@ -224,18 +224,24 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       return;
     }
     setState(() => _saving = true);
-    // La descrizione dell'originale (Riusa) viaggia anche con la strada AI;
-    // oggetti e bagagli no: li decide il foglio.
-    final trip = _draft
-        .toTripModel(id: _newTripId, now: DateTime.now())
-        .copyWith(aiSetup: _aiSetup, description: _reuseSource?.description);
-    final setup = await startAiPacking(context, ref, trip: trip, isNew: true);
-    if (!mounted) return;
-    setState(() {
-      _saving = false;
-      if (setup != null) _aiSetup = setup;
-    });
-    if (setup != null) _logFirstTripStarted();
+    AiPackingSetup? setup;
+    try {
+      // La descrizione dell'originale (Riusa) viaggia anche con la strada AI;
+      // oggetti e bagagli no: li decide il foglio.
+      final trip = _draft
+          .toTripModel(id: _newTripId, now: DateTime.now())
+          .copyWith(aiSetup: _aiSetup, description: _reuseSource?.description);
+      setup = await startAiPacking(context, ref, trip: trip, isNew: true);
+    } finally {
+      // Anche con un errore la pagina torna viva: bottoni e Indietro.
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          if (setup != null) _aiSetup = setup;
+        });
+      }
+    }
+    if (setup != null && mounted) _logFirstTripStarted();
   }
 
   /// "Scegli tu cosa portare": salva il viaggio e apre la valigia a mano.

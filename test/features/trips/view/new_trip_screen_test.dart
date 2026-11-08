@@ -67,11 +67,15 @@ class _MockLuggageRepository extends Mock implements LuggageRepository {}
 class _FakeRun extends AiPackingRun {
   final requests = <AiPackingRequest>[];
 
+  /// `start` solleva: il lancio dell'AI fallisce.
+  bool failStart = false;
+
   @override
   AiPackingRunState build() => const AiRunIdle();
 
   @override
   bool start(AiPackingRequest request) {
+    if (failStart) throw StateError('start fallito');
     if (state is AiRunRunning) return false;
     requests.add(request);
     state = AiRunRunning(request);
@@ -638,6 +642,27 @@ void main() {
       expect(find.text('Nuovo viaggio'), findsOneWidget);
       expect(button(tester, 'new_trip_prepare_ai').isLoading, isFalse);
       expect(button(tester, 'new_trip_prepare_ai').onPressed, isNotNull);
+    });
+
+    testWidgets('prepare_ai_error_resets_saving', (tester) async {
+      await pumpScreen(tester);
+      await fillStep(tester);
+      run.failStart = true;
+
+      // Il tocco gira in una zona a parte: l'errore del lancio arriva fin lì
+      // (non va inghiottito) senza far fallire il test.
+      final errors = <Object>[];
+      runZonedGuarded(
+        button(tester, 'new_trip_prepare_ai').onPressed!,
+        (error, _) => errors.add(error),
+      );
+      await tester.pumpAndSettle();
+      await confirmSheet(tester);
+
+      expect(errors, [isA<StateError>()]);
+      expect(button(tester, 'new_trip_prepare_ai').isLoading, isFalse);
+      expect(button(tester, 'new_trip_prepare_ai').onPressed, isNotNull);
+      expect(button(tester, 'new_trip_choose_items').onPressed, isNotNull);
     });
 
     testWidgets('setup_kept_on_reopen', (tester) async {
