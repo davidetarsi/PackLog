@@ -97,7 +97,9 @@ Future<AiPackingSetup?> startAiPacking(
     nights: nightsBetween(trip.departureDateTime, trip.returnDateTime) ?? 0,
     // Prima di sostituire la valigia: cosa c'è già e cosa cambia nel foglio.
     isRegeneration: !isNew && trip.aiResult != null,
-    setupChanged: setupChangedFields(trip.aiSetup, setup),
+    // Un viaggio nuovo non ha una valigia di prima con cui confrontarsi (la
+    // bozza di un tentativo precedente non conta).
+    setupChanged: isNew ? const [] : setupChangedFields(trip.aiSetup, setup),
     luggage: luggage,
   );
   final started = ref

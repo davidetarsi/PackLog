@@ -354,4 +354,20 @@ void main() {
     expect(request.job.setupChanged, contains('luggage'));
     expect(request.job.luggage, request.luggage);
   });
+
+  testWidgets('new_trip_has_no_setup_changed', (tester) async {
+    // Bozza di risposte rimasta da un tentativo precedente.
+    final draft = _trip().copyWith(
+      aiSetup: const AiPackingSetup(houseId: 'h1', luggageId: 'vecchio'),
+    );
+    await pumpLauncher(tester, trip: draft, isNew: true);
+    await tapStart(tester);
+    await confirmSheet(tester);
+
+    final request =
+        (container.read(aiPackingRunProvider) as AiRunRunning).request;
+    expect(request.isNew, isTrue);
+    expect(request.job.isRegeneration, isFalse);
+    expect(request.job.setupChanged, isEmpty);
+  });
 }
