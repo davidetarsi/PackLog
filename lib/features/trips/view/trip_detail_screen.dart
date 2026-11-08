@@ -45,7 +45,8 @@ enum _TripMenu { edit, regenerate, duplicate, save, delete }
 /// dopo: stessi pezzi (riepilogo, meteo, bagagli, oggetti per categoria), ma
 /// qui si spunta invece di scegliere.
 ///
-/// Un solo bottone, "Modifica valigia", che apre la pagina valigia; modifica
+/// Un solo bottone, "Aggiungi oggetti", che apre la pagina valigia (dopo la
+/// prima revisione AI c'è "Fatto" al suo posto); modifica
 /// del viaggio, copia, salvati ed eliminazione stanno nel menu ⋮, come nel
 /// dettaglio casa.
 ///
@@ -473,17 +474,15 @@ class _TripDetail extends ConsumerWidget {
                 if (context.mounted) context.go('/trips');
               },
             )
-          : !hasSlots
-          ? DsButton(
+          : showNeeds && hasSlots
+          ? null
+          : DsButton(
               key: const Key('trip_detail_cta'),
-              label: hasItems
-                  ? 'trips.detail.edit_suitcase'.tr()
-                  : 'trips.pack.title'.tr(),
-              icon: hasItems ? Icons.edit_outlined : Icons.luggage_outlined,
+              label: 'trips.detail.add_items'.tr(),
+              icon: Icons.add,
               expand: true,
               onPressed: () => context.push('/trips/${trip.id}/edit-items'),
-            )
-          : null,
+            ),
       body: Builder(
         builder: (context) => ListView(
           padding: EdgeInsets.fromLTRB(

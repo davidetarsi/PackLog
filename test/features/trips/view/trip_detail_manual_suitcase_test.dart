@@ -178,6 +178,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  final cta = find.byKey(const Key('trip_detail_cta'));
+
   group('valigia a mano', () {
     testWidgets('manual_suitcase_is_editable', (tester) async {
       await pumpDetail(tester, _trip());
@@ -269,6 +271,94 @@ void main() {
       expect(find.byType(PackInventorySearch), findsNothing);
       expect(find.byType(PackLuggageSelector), findsOneWidget);
       expect(find.text('0 di 2 in valigia'), findsOneWidget);
+    });
+  });
+
+  group('Aggiungi oggetti', () {
+    testWidgets('add_items_cta_for_all_suitcases: a mano', (tester) async {
+      await pumpDetail(tester, _trip());
+      expect(
+        find.descendant(of: cta, matching: find.text('Aggiungi oggetti')),
+        findsOneWidget,
+      );
+      await tester.tap(cta);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('edit_items_page')), findsOneWidget);
+    });
+
+    testWidgets('add_items_cta_for_all_suitcases: vuota', (tester) async {
+      await pumpDetail(tester, _trip(items: const []));
+      expect(find.byType(EmptySuitcase), findsOneWidget);
+      expect(
+        find.descendant(of: cta, matching: find.text('Aggiungi oggetti')),
+        findsOneWidget,
+      );
+      await tester.tap(cta);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('edit_items_page')), findsOneWidget);
+    });
+
+    testWidgets('add_items_cta_for_all_suitcases: AI dopo la revisione', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        _trip(
+          aiResult: AiPackingResult(
+            generatedAt: DateTime(2026, 11),
+            houseId: 'h1',
+            slots: [
+              AiSlot(
+                id: 's1',
+                type: 's1',
+                category: ItemCategory.vestiti,
+                level: AiSlotLevel.useful,
+                name: 'Maglioni',
+                copies: 1,
+                remaining: 1,
+                addLabel: 'Aggiungi',
+              ),
+            ],
+          ),
+        ),
+      );
+      expect(
+        find.descendant(of: cta, matching: find.text('Aggiungi oggetti')),
+        findsOneWidget,
+      );
+      await tester.tap(cta);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('edit_items_page')), findsOneWidget);
+    });
+
+    testWidgets('first_review_keeps_done', (tester) async {
+      await pumpDetail(
+        tester,
+        _trip(
+          aiResult: AiPackingResult(
+            generatedAt: DateTime(2026, 11),
+            houseId: 'h1',
+            slots: [
+              AiSlot(
+                id: 's1',
+                type: 's1',
+                category: ItemCategory.vestiti,
+                level: AiSlotLevel.useful,
+                name: 'Maglioni',
+                copies: 1,
+                remaining: 1,
+                addLabel: 'Aggiungi',
+              ),
+            ],
+          ),
+        ),
+        firstReview: true,
+      );
+      expect(
+        find.descendant(of: cta, matching: find.text('Fatto')),
+        findsOneWidget,
+      );
+      expect(find.text('Aggiungi oggetti'), findsNothing);
     });
   });
 }

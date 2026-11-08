@@ -399,7 +399,7 @@ void main() {
       expect(find.byKey(const Key('trip_item_i-aux')), findsOneWidget);
       expect(find.byKey(const Key('trip_item_remove_i-aux')), findsNothing);
       expect(find.byType(DsCheckbox), findsNWidgets(4));
-      expect(find.byKey(const Key('trip_detail_cta')), findsNothing);
+      expect(find.byKey(const Key('trip_detail_cta')), findsOneWidget);
     });
 
     testWidgets(
