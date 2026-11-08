@@ -212,6 +212,7 @@
     "step_wardrobe": "Choosing from your wardrobe",
     "step_check": "Checking what is missing",
     "hint": "This usually takes about ten seconds.",
+    "stay": "Stay here while we pack your suitcase: don't close PackLog or open other apps.",
     "fact_weather": "{}–{}°",
     "fact_rain": {
       "one": "{} rainy day",

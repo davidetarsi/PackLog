@@ -212,6 +212,7 @@
     "step_wardrobe": "Scelgo dal tuo armadio",
     "step_check": "Controllo cosa manca",
     "hint": "Di solito ci vogliono una decina di secondi.",
+    "stay": "Resta qui mentre prepariamo la valigia: non chiudere PackLog e non aprire altre app.",
     "fact_weather": "{}–{}°",
     "fact_rain": {
       "one": "{} giorno di pioggia",

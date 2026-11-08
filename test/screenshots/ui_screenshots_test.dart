@@ -28,6 +28,8 @@ import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
 import 'package:pack_log/features/tour/model/onboarding_state.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
+import 'package:pack_log/features/trips/model/ai_packing_request.dart';
+import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
@@ -125,6 +127,23 @@ Future<void> _needsDetail(ScreenshotApp app, [String id = kSeoulTripId]) async {
   await _tripDetail(app, id);
   await app.tester.ensureVisible(find.byKey(const Key('pack_row_missing')));
   await app.tap(find.byKey(const Key('pack_row_missing')));
+}
+
+/// Avvia un lavoro AI che non finisce mai e apre la pagina d'attesa.
+Future<void> _startWait(ScreenshotApp app, PackTripJob job) async {
+  final trips = await app.container.read(tripNotifierProvider.future);
+  final trip = trips.firstWhere((t) => t.id == kUpcomingTripId);
+  app.container
+      .read(aiPackingRunProvider.notifier)
+      .start(
+        AiPackingRequest(
+          trip: trip,
+          isNew: false,
+          setup: const AiPackingSetup(houseId: kHomeId),
+          job: job,
+        ),
+      );
+  unawaited(app.router.push('/ai-packing'));
 }
 
 Future<void> _addNonClothingNeeds(ProviderContainer c) async {
@@ -2439,15 +2458,13 @@ final flows = <Flow>[
       ),
       steps: (app) async {
         await app.go('/trips');
-        unawaited(
-          app.router.push(
-            '/trips/$kUpcomingTripId/ai-packing',
-            extra: const PackTripJob(
-              body: <String, dynamic>{},
-              houseId: kHomeId,
-              title: 'Lisbona e Sintra',
-              nights: 5,
-            ),
+        await _startWait(
+          app,
+          const PackTripJob(
+            body: <String, dynamic>{},
+            houseId: kHomeId,
+            title: 'Lisbona e Sintra',
+            nights: 5,
           ),
         );
         await app.settle();
@@ -2470,19 +2487,17 @@ final flows = <Flow>[
       ),
       steps: (app) async {
         await app.go('/trips');
-        unawaited(
-          app.router.push(
-            '/trips/$kUpcomingTripId/ai-packing',
-            extra: const PackTripJob(
-              body: <String, dynamic>{
-                'trip': {
-                  'attivita': ['city', 'walks'],
-                },
+        await _startWait(
+          app,
+          const PackTripJob(
+            body: <String, dynamic>{
+              'trip': {
+                'attivita': ['city', 'walks'],
               },
-              houseId: kHomeId,
-              title: 'Lisbona e Sintra',
-              nights: 5,
-            ),
+            },
+            houseId: kHomeId,
+            title: 'Lisbona e Sintra',
+            nights: 5,
           ),
         );
         await app.settle(frames: 75);
