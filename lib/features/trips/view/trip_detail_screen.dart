@@ -26,12 +26,12 @@ import '../model/trip_model.dart';
 import '../services/suitcase_analytics.dart';
 import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_luggage_selector.dart';
-import 'widgets/pack/pack_luggages.dart';
 import 'widgets/ai/ai_pack_rows.dart';
 import 'widgets/ai/ai_pack_item_sheet.dart';
 import 'widgets/pack/pack_summary_line.dart';
 import 'widgets/pack/pack_weather.dart';
 import 'widgets/slots/slot_actions.dart';
+import 'widgets/slots/suitcase_progress_header.dart';
 import 'widgets/slots/slot_flights.dart';
 import 'widgets/slots/slot_edits.dart';
 import 'widgets/slots/slot_fill_flow.dart';
@@ -528,33 +528,31 @@ class _TripDetail extends ConsumerWidget {
               SlotsSection(trip: trip, actions: slotActions)
             else ...[
               PackWeatherSection(trip: trip),
-              if (hasSlots) ...[
-                DsSectionTitle('trips.pack.luggages'.tr()),
-                PackLuggageSelector(
-                  selectedIds: trip.luggages
-                      .map((luggage) => luggage.id)
-                      .toSet(),
-                  onToggle: onToggleLuggage,
-                  onCreated: onCreatedLuggages,
-                ),
-              ] else
-                PackLuggages(trip.luggages),
-              if (!hasSlots)
-                PlainItemsSection(trip: trip)
-              else ...[
-                DsSectionTitle('trips.detail.owned_items_title'.tr()),
-                ItemsOnlySection(
-                  trip: trip,
-                  houseId: trip.aiResult?.houseId,
-                  checklistEnabled: !firstReview,
-                  onAddInventory: onAddInventory,
-                  onRemoveItem: firstReview ? slotActions.removeItem : null,
-                  onToggleItem: slotActions.toggleItem,
-                  onOpenItem: onOpenItem,
-                  rowKey: slotActions.rowKey,
-                  flying: slotActions.flying,
-                ),
-              ],
+              DsSectionTitle('trips.pack.luggages'.tr()),
+              PackLuggageSelector(
+                selectedIds: trip.luggages.map((luggage) => luggage.id).toSet(),
+                onToggle: onToggleLuggage,
+                onCreated: onCreatedLuggages,
+              ),
+              DsSectionTitle(
+                hasSlots
+                    ? 'trips.detail.owned_items_title'.tr()
+                    : 'trips.pack.items'.tr(),
+              ),
+              if (!hasSlots && hasItems)
+                SuitcaseProgressHeader(progress: SuitcaseProgress.of(trip)),
+              SuitcaseItemsSection(
+                trip: trip,
+                // Senza posti niente proposta: niente ricerca nella casa.
+                houseId: hasSlots ? trip.aiResult?.houseId : null,
+                checklistEnabled: !firstReview,
+                onAddInventory: onAddInventory,
+                onRemoveItem: firstReview ? slotActions.removeItem : null,
+                onToggleItem: slotActions.toggleItem,
+                onOpenItem: onOpenItem,
+                rowKey: slotActions.rowKey,
+                flying: slotActions.flying,
+              ),
             ],
           ],
         ),
