@@ -89,7 +89,9 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   // CRUD
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Future<void> addTrip(TripModel model) => mutate(
+  /// [source] dice da dove nasce il viaggio (`'new'` | `'reuse'`) e va solo
+  /// nell'evento `trip_created`.
+  Future<void> addTrip(TripModel model, {String? source}) => mutate(
     operation: () => _repo.addTrip(model),
     reload: _repo.getAllTrips,
     rethrowOnly: true,
@@ -97,6 +99,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       tripId: model.id,
       totalTrips: trips.length,
       daysToDeparture: daysToDeparture(model.departureDateTime, DateTime.now()),
+      source: source,
     ),
   );
 
