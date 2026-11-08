@@ -205,6 +205,7 @@
   "open": "Open",
   "failed_no_credit": "I couldn't pack the suitcase. No credit was used.",
   "failed_network": "I couldn't pack the suitcase. Check your connection and try again.",
+  "failed_generic": "I couldn't pack the suitcase. Please try again.",
   "failed_save": "I couldn't save the suitcase.",
   "retry": "Retry",
   "wait": {

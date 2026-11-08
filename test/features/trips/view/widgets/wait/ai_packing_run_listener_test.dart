@@ -290,6 +290,17 @@ void main() {
       );
     });
 
+    test('invalid_response_is_generic_not_no_credit', () {
+      expect(
+        aiFailureMessageKey(const PackTripInvalidResponseException('json')),
+        'trips.ai.failed_generic',
+      );
+      expect(
+        aiFailureMessageKey(const PackTripInvalidResponseException('json')),
+        isNot('trips.ai.failed_no_credit'),
+      );
+    });
+
     test('save_error_is_not_no_credit', () {
       expect(aiFailureMessageKey(StateError('boh')), 'trips.ai.failed_save');
       expect(aiFailureMessageKey(Exception('db')), 'trips.ai.failed_save');
