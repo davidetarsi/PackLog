@@ -16,3 +16,6 @@ Flusso di creazione del viaggio, decisioni dell'8 novembre 2026 (artifact screen
 
 **Why:** il flusso deve essere pulito, senza stati a metà né pagine che si confondono.
 **How to apply:** usare questi testi e questa struttura nel design del nuovo flusso; vedi [[design-valigia-ai]], [[profilo-modifiche-valigia]].
+
+**Punto aperto (Davide, 8 nov sera):** Riusa — tappe dell'originale visibili solo dopo aver scelto le date, a zero notti (Ruling 13). Davide lo controlla installando l'app alla fine delle parti A, B e C: ricordarglielo allora.
+**Allineamento analytics (8 nov sera):** la Parte A si allinea a origin/feat/analytics-domande con un merge dentro feat/flusso-a-passo1-ai: la PR analytics va unita PRIMA della PR A. ai_suitcase_finished passa nel provider (left_wait, save_failed, retry_save, niente cancelled); trip_created ha source new|reuse.
