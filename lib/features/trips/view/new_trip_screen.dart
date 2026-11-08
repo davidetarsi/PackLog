@@ -17,7 +17,6 @@ import '../../../shared/widgets/ds_steps.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../houses/providers/house_provider.dart';
-import '../../../core/monitoring/monitoring_service.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../tour/providers/post_login_onboarding_provider.dart';
 import '../model/ai_packing.dart';
@@ -48,12 +47,13 @@ const _missingScrollDuration = AppMotion.slow;
 /// date e nessuna tappa a zero notti.
 ///
 /// Con [tripId] è la modifica di un viaggio esistente: stessa pagina, senza i
-/// passi, con un solo "Salva" che si accende dopo un cambiamento.
+/// passi, con un solo "Salva" che si accende dopo un cambiamento. Con
+/// [reuseFromId] è il passo 1 di un viaggio nuovo, precompilato.
 class NewTripScreen extends ConsumerStatefulWidget {
   const NewTripScreen({
     super.key,
     this.tripId,
-    this.discardOnExit = false,
+    this.reuseFromId,
     this.aiIntent = false,
     this.firstRun = false,
   });
@@ -61,10 +61,11 @@ class NewTripScreen extends ConsumerStatefulWidget {
   /// Viaggio da modificare; null per un viaggio nuovo.
   final String? tripId;
 
-  /// Se `true`, uscire senza un salvataggio riuscito elimina il viaggio.
-  /// Serve al flusso "Riusa": la copia nasce senza date e, se l'utente la
-  /// abbandona, non deve restare in lista.
-  final bool discardOnExit;
+  /// Viaggio passato da riusare (`/new-trip?reuseFrom=<id>`): il passo 1 parte
+  /// compilato con meta, tappe, mezzi e nome, senza date. Oggetti e bagagli
+  /// dell'originale restano in memoria e si scrivono solo con "Scegli tu cosa
+  /// portare". Non si salva niente finché non si sceglie una strada.
+  final String? reuseFromId;
 
   /// Viene da "Valigia con AI" (`/new-trip?ai=1`). Il passo 1 ha sempre le
   /// stesse due strade, quindi oggi non cambia nulla.
@@ -94,8 +95,8 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
   /// In modifica: l'utente ha cambiato qualcosa.
   bool _edited = false;
 
-  /// In modifica: salvato con successo, l'uscita non elimina nulla.
-  bool _savedOk = false;
+  /// Con "Riusa": il viaggio passato com'era all'apertura.
+  TripModel? _reuseSource;
 
   /// L'id del viaggio nuovo, generato una volta per pagina: i tentativi di
   /// "Prepara con AI" e il salvataggio manuale usano lo stesso.
@@ -110,9 +111,8 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
 
   bool get _isEdit => widget.tripId != null;
 
-  /// "Riusa": la copia di un viaggio passato. Si compila come il passo 1 del
-  /// nuovo viaggio e prosegue verso la valigia con gli oggetti copiati.
-  bool get _isReuse => _isEdit && widget.discardOnExit;
+  /// "Riusa": il passo 1 di un viaggio nuovo, precompilato da uno passato.
+  bool get _isReuse => widget.reuseFromId != null;
 
   final GlobalKey _whereKey = GlobalKey();
   final GlobalKey _whenKey = GlobalKey();
@@ -248,7 +248,19 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     // Il router si prende prima dell'attesa: dopo il salvataggio questo
     // context non è più montato.
     final router = GoRouter.of(context);
-    final trip = _draft.toTripModel(id: _newTripId, now: DateTime.now());
+    var trip = _draft.toTripModel(id: _newTripId, now: DateTime.now());
+    final source = _reuseSource;
+    if (source != null) {
+      // Oggetti non spuntati e bagagli dell'originale, scritti insieme al
+      // viaggio.
+      trip = trip.copyWith(
+        description: source.description,
+        items: [
+          for (final item in source.items) item.copyWith(isChecked: false),
+        ],
+        luggages: source.luggages,
+      );
+    }
 
     final saved = await ErrorRetryDialog.executeWithRetry(
       context: context,
@@ -289,17 +301,10 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
 
   /// In modifica: riporta i cambiamenti sul viaggio di adesso, che conserva
   /// oggetti, bagagli, valigia AI, nota e tutto il resto.
-  ///
-  /// Con "Riusa" non torna indietro: con [goToPacking] apre la valigia della
-  /// copia, altrimenti la tab Viaggi con la copia in evidenza, come il passo 1
-  /// del nuovo viaggio.
-  Future<void> _saveEdit({bool goToPacking = false}) async {
+  Future<void> _saveEdit() async {
     final original = _original;
     if (_saving || original == null) return;
     setState(() => _saving = true);
-    // Il router si prende prima dell'attesa: dopo la navigazione questo
-    // context non è più montato.
-    final router = GoRouter.of(context);
     final draftTrip = _draft.toTripModel(id: original.id, now: DateTime.now());
     // Il viaggio com'è adesso nel provider, non la copia di apertura: risposte
     // AI, oggetti e bagagli salvati nel frattempo non devono sparire.
@@ -327,34 +332,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     );
     if (!mounted) return;
     setState(() => _saving = false);
-    if (!saved) return;
-    // Prima di uscire: l'uscita non va scambiata per un abbandono.
-    _savedOk = true;
-    if (!_isReuse) {
-      context.pop();
-      return;
-    }
-    if (goToPacking) {
-      ref.read(tripWeatherNotifierProvider(original.id));
-      router.go('/trips');
-      router.push('/trips/${original.id}/edit-items?from=new');
-    } else {
-      router.go('/trips?focus=${original.id}');
-    }
-  }
-
-  /// La pagina si è chiusa: con "Riusa" e senza salvataggio la copia va via.
-  void _onClosed() {
-    if (!_isEdit || !widget.discardOnExit || _savedOk) return;
-    // Catturati prima: il callback d'errore può arrivare dopo il dispose.
-    final notifier = ref.read(tripNotifierProvider.notifier);
-    final monitoring = ref.read(monitoringServiceProvider);
-    notifier
-        .deleteTrip(widget.tripId!)
-        .catchError(
-          (Object error, StackTrace stack) =>
-              monitoring.captureException(error, stackTrace: stack),
-        );
+    if (saved) context.pop();
   }
 
   /// Copia il viaggio nella bozza, una volta sola: un sync che rimpiazza la
@@ -364,6 +342,17 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     if (_original != null) return;
     _original = trip;
     _draft = TripDraft.fromTrip(
+      trip,
+      houseName: houseNames[trip.destinationHouseId],
+    );
+    _nameController.text = _draft.name;
+  }
+
+  /// Copia il viaggio passato nella bozza, una volta sola.
+  void _hydrateReuse(TripModel trip, Map<String, String> houseNames) {
+    if (_reuseSource != null) return;
+    _reuseSource = trip;
+    _draft = TripDraft.reuseOf(
       trip,
       houseName: houseNames[trip.destinationHouseId],
     );
@@ -403,41 +392,38 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       for (final house in houses) house.id: house.displayName,
     };
 
-    if (_isEdit) {
+    if (_isEdit || _isReuse) {
       final tripsAsync = ref.watch(tripNotifierProvider);
       final trip = tripsAsync.valueOrNull
-          ?.where((t) => t.id == widget.tripId)
+          ?.where((t) => t.id == (widget.tripId ?? widget.reuseFromId))
           .firstOrNull;
-      if (trip != null) _hydrate(trip, houseNames);
+      if (trip != null) {
+        if (_isEdit) {
+          _hydrate(trip, houseNames);
+        } else {
+          _hydrateReuse(trip, houseNames);
+        }
+      }
       final placeholder = tripEditPlaceholder(
         context: context,
         ref: ref,
-        title: 'trips.detail.edit_trip'.tr(),
+        title: _isReuse
+            ? 'trips.detail.reuse_trip'.tr()
+            : 'trips.detail.edit_trip'.tr(),
         tripsAsync: tripsAsync,
-        isHydrated: _original != null,
+        isHydrated: _isEdit ? _original != null : _reuseSource != null,
       );
-      if (placeholder != null) {
-        return PopScope(
-          onPopInvokedWithResult: (didPop, _) {
-            if (didPop) _onClosed();
-          },
-          child: placeholder,
-        );
-      }
+      if (placeholder != null) return placeholder;
     }
 
-    final hasChanges = _isEdit ? _edited : _draft.hasUserInput;
+    final hasChanges = _isEdit || _isReuse ? _edited : _draft.hasUserInput;
 
     return PopScope(
       // Il modulo con qualcosa scritto (o cambiato) chiede conferma prima di
       // uscire. Durante il salvataggio il back non fa nulla.
       canPop: !_saving && !hasChanges,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) {
-          _onClosed();
-          return;
-        }
-        if (_saving) return;
+        if (didPop || _saving) return;
         _confirmDiscard();
       },
       // Stesso scaffold degli altri form con CTA in fondo: i bottoni restano
@@ -463,14 +449,8 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
                 : 'trips.new.title'.tr(),
           ),
         ),
-        // Il nuovo viaggio ha due bottoni, "Riusa" bottone e link; la modifica
-        // solo il bottone.
-        ctaHeightOverride: _isReuse
-            ? StickyCtaScaffold.standardHeight(context) +
-                  kMinInteractiveDimension
-            : _isEdit
-            ? null
-            : _newTripCtaHeight(context),
+        // Il nuovo viaggio e "Riusa" hanno due bottoni; la modifica solo uno.
+        ctaHeightOverride: _isEdit ? null : _newTripCtaHeight(context),
         bottomContent: _buildBottomBar(context),
         body: Builder(
           builder: (context) => SingleChildScrollView(
@@ -483,7 +463,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (!_isEdit || _isReuse)
+                if (!_isEdit)
                   DsSteps(
                     labels: [
                       'trips.new.step_trip'.tr(),
@@ -691,29 +671,6 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       context.responsive(AppConstants.ctaHeight);
 
   Widget _buildBottomBar(BuildContext context) {
-    if (_isReuse) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DsButton(
-            key: const Key('reuse_next'),
-            label: 'trips.new.next'.tr(),
-            icon: Icons.arrow_forward,
-            expand: true,
-            isLoading: _saving,
-            onPressed: _draft.canSave
-                ? () => _saveEdit(goToPacking: true)
-                : null,
-            onDisabledTap: _showMissing,
-          ),
-          DsLinkButton(
-            key: const Key('reuse_later'),
-            label: 'trips.new.later'.tr(),
-            onPressed: _draft.canSave ? _saveEdit : _showMissing,
-          ),
-        ],
-      );
-    }
     if (_isEdit) {
       return DsButton(
         key: const Key('edit_trip_save'),

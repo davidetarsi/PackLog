@@ -458,8 +458,6 @@
       "stops_tip": "Visiting more than one city? Add a stop for each: you'll get the weather for every stop.",
       "name": "Trip name",
       "name_hint": "Taken from your destination: change it if you like.",
-      "next": "Next: pack your suitcase",
-      "later": "Pack later",
       "prepare_with_ai": "Pack with AI",
       "choose_items": "Choose what to bring",
       "where_missing": "Choose where you're going: we need it for the weather too.",

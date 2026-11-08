@@ -1,24 +1,41 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
 import 'package:pack_log/features/houses/model/house_model.dart';
 import 'package:pack_log/features/houses/repositories/house_repository.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
 import 'package:pack_log/features/items/repositories/item_repository.dart';
+import 'package:pack_log/features/items/services/category_infer_service.dart';
+import 'package:pack_log/features/kits/model/kit_model.dart';
+import 'package:pack_log/features/kits/providers/kit_provider.dart';
+import 'package:pack_log/features/luggages/model/luggage_model.dart';
+import 'package:pack_log/features/luggages/repositories/luggage_repository.dart';
+import 'package:pack_log/features/trips/model/ai_packing_request.dart';
 import 'package:pack_log/features/trips/model/trip_leg.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/view/new_trip_screen.dart';
+import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
 import 'package:pack_log/shared/model/location_suggestion_model.dart';
 import 'package:pack_log/shared/theme/app_theme.dart';
+import 'package:pack_log/shared/widgets/ds_button.dart';
+import 'package:pack_log/shared/widgets/ds_choice_pill.dart';
+import 'package:pack_log/shared/widgets/ds_form_sheet.dart';
 import 'package:pack_log/shared/widgets/ds_steps.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../helpers/catalogo_di_prova.dart';
+import '../../../helpers/memory_asset_loader.dart';
 
 class MockTripRepository extends Mock implements TripRepository {}
 
@@ -26,27 +43,72 @@ class MockHouseRepository extends Mock implements HouseRepository {}
 
 class MockItemRepository extends Mock implements ItemRepository {}
 
+class MockLuggageRepository extends Mock implements LuggageRepository {}
+
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
-/// Dopo "Riusa" il viaggio copia è senza date e la modifica è l'unico modo per
-/// completarlo: uscire senza salvare non deve lasciare una copia vuota in giro,
-/// mentre un salvataggio riuscito la deve conservare.
+/// Il lavoro AI finto: registra le richieste e resta in corso.
+class _FakeRun extends AiPackingRun {
+  final requests = <AiPackingRequest>[];
+
+  @override
+  AiPackingRunState build() => const AiRunIdle();
+
+  @override
+  bool start(AiPackingRequest request) {
+    if (state is AiRunRunning) return false;
+    requests.add(request);
+    state = AiRunRunning(request);
+    return true;
+  }
+}
+
+class _Kits extends KitNotifier {
+  @override
+  Future<List<KitModel>> build(String houseId) async => const [];
+}
+
+final _nextMonth = DateTime(DateTime.now().year, DateTime.now().month + 1);
+final _departure = DateTime(_nextMonth.year, _nextMonth.month, 10);
+final _return = DateTime(_nextMonth.year, _nextMonth.month, 12);
+
+Future<void> _tapDay(WidgetTester tester, DateTime day) async {
+  final finder = find.byKey(
+    ValueKey('trip_calendar_day_${DateFormat('yyyy-MM-dd').format(day)}'),
+  );
+  await tester.scrollUntilVisible(
+    finder,
+    50,
+    scrollable: find.descendant(
+      of: find.byType(TripCalendar),
+      matching: find.byType(Scrollable),
+    ),
+  );
+  await tester.ensureVisible(finder);
+  await tester.pump();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _pickDates(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('new_trip_dates')));
+  await tester.pumpAndSettle();
+  await _tapDay(tester, _departure);
+  await _tapDay(tester, _return);
+  await tester.tap(find.text('Conferma date'));
+  await tester.pumpAndSettle();
+}
+
+/// "Riusa" è il passo 1 di un viaggio nuovo, precompilato: non salva niente
+/// finché non si sceglie una strada.
 void main() {
   late MockTripRepository tripRepo;
-  late MockHouseRepository houseRepo;
-  late MockItemRepository itemRepo;
-  late MockCoreAnalyticsService analytics;
   late ProviderContainer container;
-  late List<TripModel> stored;
+  late _FakeRun run;
 
-  /// Location a cui il bottone della radice fa `push`: cambia tra uno scenario
-  /// e l'altro (con or senza `reuse=1`).
-  late String openLocation;
-  late GoRouter router;
-
-  final trip = TripModel(
+  final past = TripModel(
     id: 'trip-1',
     name: 'Toscana',
     departureDateTime: DateTime(2026, 9, 12),
@@ -55,6 +117,8 @@ void main() {
       placeId: 'p',
       displayName: 'Siena, Italia',
       city: 'Siena',
+      lat: 43.3,
+      lon: 11.3,
     ),
     legs: [
       TripLeg(
@@ -64,11 +128,41 @@ void main() {
         to: DateTime(2026, 9, 20),
       ),
     ],
+    transports: const ['car'],
+    items: [
+      TripItem(
+        id: 'i1',
+        name: 'Maglietta',
+        category: ItemCategory.vestiti,
+        quantity: 2,
+        originHouseId: 'h1',
+        isChecked: true,
+      ),
+      TripItem(
+        id: 'i2',
+        name: 'Spazzolino',
+        category: ItemCategory.toiletries,
+        quantity: 1,
+        originHouseId: 'h1',
+        isChecked: true,
+      ),
+    ],
+    luggages: [
+      LuggageModel(
+        id: 'l1',
+        name: 'Zaino',
+        sizeType: LuggageSize.cabinBaggage,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      ),
+    ],
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
   );
 
   setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    await EasyLocalization.ensureInitialized();
     registerFallbackValue(
       TripModel(
         id: 'fallback',
@@ -77,38 +171,33 @@ void main() {
         updatedAt: DateTime(2026),
       ),
     );
-
-    // Una sola inizializzazione per file, come negli altri test di trips/view.
-    SharedPreferences.setMockInitialValues({});
-    await EasyLocalization.ensureInitialized();
   });
 
-  setUp(() async {
+  setUp(() {
     tripRepo = MockTripRepository();
-    houseRepo = MockHouseRepository();
-    itemRepo = MockItemRepository();
-    analytics = MockCoreAnalyticsService();
-    stored = [trip];
+    final houseRepo = MockHouseRepository();
+    final itemRepo = MockItemRepository();
+    final luggageRepo = MockLuggageRepository();
+    run = _FakeRun();
 
-    when(() => tripRepo.getAllTrips()).thenAnswer((_) async => stored);
-    when(() => tripRepo.updateTrip(any())).thenAnswer((invocation) async {
-      final updated = invocation.positionalArguments.first as TripModel;
-      stored = [updated];
-    });
-    when(() => tripRepo.deleteTrip(any())).thenAnswer((invocation) async {
-      final id = invocation.positionalArguments.first as String;
-      stored = stored.where((t) => t.id != id).toList();
-      return true;
-    });
+    when(() => tripRepo.getAllTrips()).thenAnswer((_) async => [past]);
+    when(() => tripRepo.addTrip(any())).thenAnswer((_) async {});
+    when(() => houseRepo.getAllHouses()).thenAnswer(
+      (_) async => [
+        HouseModel(
+          id: 'h1',
+          name: 'Casa Milano',
+          isPrimary: true,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      ],
+    );
+    when(() => itemRepo.getItemsByHouseId(any())).thenAnswer((_) async => []);
+    when(() => luggageRepo.getAllLuggages()).thenAnswer((_) async => []);
     when(
-      () => houseRepo.getAllHouses(),
-    ).thenAnswer((_) async => <HouseModel>[]);
-    when(
-      () => itemRepo.moveItemsToHouse(any(), any(), any()),
-    ).thenAnswer((_) async {});
-    when(() => analytics.trackTripUpdated()).thenAnswer((_) async {});
-    when(() => analytics.trackTripDeleted()).thenAnswer((_) async {});
-
+      () => luggageRepo.getLuggagesByHouseId(any()),
+    ).thenAnswer((_) async => []);
     final sync = MockSyncOrchestrator();
     when(() => sync.requestSync()).thenReturn(null);
 
@@ -117,58 +206,66 @@ void main() {
         tripRepositoryProvider.overrideWithValue(tripRepo),
         houseRepositoryProvider.overrideWithValue(houseRepo),
         itemRepositoryProvider.overrideWithValue(itemRepo),
-        coreAnalyticsServiceProvider.overrideWithValue(analytics),
+        luggageRepositoryProvider.overrideWithValue(luggageRepo),
+        categoryInferServiceProvider.overrideWith(
+          (ref) => Completer<CategoryInferService>().future,
+        ),
+        coreAnalyticsServiceProvider.overrideWithValue(
+          MockCoreAnalyticsService(),
+        ),
         syncOrchestratorProvider.overrideWithValue(sync),
+        aiPackingRunProvider.overrideWith(() => run),
+        kitNotifierProvider('h1').overrideWith(_Kits.new),
       ],
     );
-
-    await container.read(tripNotifierProvider.future);
+    addTearDown(container.dispose);
   });
 
-  tearDown(() => container.dispose());
+  /// Monta la schermata sopra la tab Viaggi finta, come dal bottone "Riusa".
+  Future<void> pumpReuse(WidgetTester tester) async {
+    caricaCatalogoDelRepo();
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await container.read(tripNotifierProvider.future);
 
-  /// Monta una radice con un bottone che fa `push` su [openLocation]: così c'è
-  /// sempre una pagina sotto la schermata di modifica, come nell'app.
-  Future<void> pumpRoot(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1000, 2400);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    router = GoRouter(
-      initialLocation: '/',
+    final router = GoRouter(
+      initialLocation: '/trips',
       routes: [
         GoRoute(
-          path: '/',
-          builder: (_, _) => Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                key: const Key('open_edit'),
-                onPressed: () => context.push(openLocation),
-                child: const Text('apri'),
-              ),
+          path: '/trips',
+          builder: (context, _) => Scaffold(
+            body: Column(
+              children: [
+                const Text('trips-tab'),
+                ElevatedButton(
+                  onPressed: () => context.push('/new-trip?reuseFrom=trip-1'),
+                  child: const Text('apri'),
+                ),
+              ],
             ),
           ),
-          routes: [
-            GoRoute(
-              path: 'trips/:id/edit-info',
-              builder: (_, state) => NewTripScreen(
-                tripId: state.pathParameters['id']!,
-                discardOnExit: state.uri.queryParameters['reuse'] == '1',
-              ),
-            ),
-          ],
         ),
-        // Le mete dopo "Riusa": la tab Viaggi e la valigia della copia.
         GoRoute(
-          path: '/trips',
-          builder: (_, _) => const Scaffold(body: Text('lista viaggi')),
-          routes: [
-            GoRoute(
-              path: ':id/edit-items',
-              builder: (_, state) =>
-                  Scaffold(body: Text('valigia ${state.pathParameters['id']}')),
+          path: '/trips/:id/edit-items',
+          builder: (_, state) => Scaffold(
+            body: Text(
+              'edit-items ${state.pathParameters['id']} '
+              'from=${state.uri.queryParameters['from']}',
             ),
-          ],
+          ),
+        ),
+        GoRoute(
+          path: '/ai-packing',
+          builder: (_, _) =>
+              Scaffold(appBar: AppBar(), body: const Text('ai-wait')),
+        ),
+        GoRoute(
+          path: '/new-trip',
+          builder: (_, state) => NewTripScreen(
+            reuseFromId: state.uri.queryParameters['reuseFrom'],
+          ),
         ),
       ],
     );
@@ -177,16 +274,18 @@ void main() {
       EasyLocalization(
         supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
         path: 'assets/translations',
+        assetLoader: MemoryAssetLoader(readAppTranslations()),
         fallbackLocale: const Locale('en', 'US'),
+        startLocale: const Locale('it', 'IT'),
         saveLocale: false,
-        child: Builder(
-          builder: (context) => UncontrolledProviderScope(
-            container: container,
-            child: MaterialApp.router(
+        child: UncontrolledProviderScope(
+          container: container,
+          child: Builder(
+            builder: (context) => MaterialApp.router(
               theme: AppTheme.light,
               locale: context.locale,
-              localizationsDelegates: context.localizationDelegates,
               supportedLocales: context.supportedLocales,
+              localizationsDelegates: context.localizationDelegates,
               routerConfig: router,
             ),
           ),
@@ -194,103 +293,153 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await waitForCondition(
-      tester,
-      () => find.byKey(const Key('open_edit')).evaluate().isNotEmpty,
-    );
+    await tester.tap(find.text('apri'));
+    await tester.pumpAndSettle();
   }
 
-  /// Dalla radice apre [location] e attende che la schermata di modifica sia
-  /// pronta.
-  Future<void> openEdit(WidgetTester tester, String location) async {
-    openLocation = location;
-    await tester.tap(find.byKey(const Key('open_edit')));
-    await tester.pumpAndSettle();
-    await waitForCondition(
-      tester,
-      () =>
-          find.byKey(const Key('edit_trip_save')).evaluate().isNotEmpty ||
-          find.byKey(const Key('reuse_next')).evaluate().isNotEmpty,
-    );
-  }
+  testWidgets('reuse_opens_prefilled_step_without_saving', (tester) async {
+    await pumpReuse(tester);
 
-  /// Riporta lo stato al viaggio intatto tra uno scenario e il successivo.
-  Future<void> resetTrips() async {
-    stored = [trip];
-    clearInteractions(tripRepo);
-    container.invalidate(tripNotifierProvider);
-    await container.read(tripNotifierProvider.future);
-  }
-
-  // Un solo testWidgets: ogni mount di EasyLocalization in questo file non
-  // completa più il caricamento delle traduzioni dal secondo in poi. Gli scenari
-  // girano in sequenza sullo stesso albero.
-  testWidgets('uscita dopo Riusa: elimina la copia solo se non si salva', (
-    tester,
-  ) async {
-    await pumpRoot(tester);
-
-    // 1. Indietro dall'AppBar senza salvare: copia eliminata una sola volta.
-    await openEdit(tester, '/trips/trip-1/edit-info?reuse=1');
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    verify(() => tripRepo.deleteTrip('trip-1')).called(1);
-
-    // 2. Indietro di sistema senza salvare: copia eliminata.
-    await resetTrips();
-    await openEdit(tester, '/trips/trip-1/edit-info?reuse=1');
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    verify(() => tripRepo.deleteTrip('trip-1')).called(1);
-
-    // 3. Riusa è il passo 1 del nuovo viaggio: passi in alto, "Avanti" e
-    // "Più tardi" in fondo, niente "Salva".
-    await resetTrips();
-    await openEdit(tester, '/trips/trip-1/edit-info?reuse=1');
     expect(find.byType(DsSteps), findsOneWidget);
-    expect(find.byKey(const Key('edit_trip_save')), findsNothing);
-    expect(find.byKey(const Key('reuse_later')), findsOneWidget);
-
-    // 4. "Avanti": salva e apre la valigia della copia, che resta.
-    await tester.tap(find.byKey(const Key('reuse_next')));
-    await tester.pumpAndSettle();
-    verify(() => tripRepo.updateTrip(any())).called(1);
-    expect(find.text('valigia trip-1'), findsOneWidget);
-    verifyNever(() => tripRepo.deleteTrip(any()));
-
-    // 5. "Più tardi": salva e torna alla tab Viaggi, la copia resta.
-    await resetTrips();
-    router.go('/');
-    await tester.pumpAndSettle();
-    await openEdit(tester, '/trips/trip-1/edit-info?reuse=1');
-    await tester.tap(find.byKey(const Key('reuse_later')));
-    await tester.pumpAndSettle();
-    verify(() => tripRepo.updateTrip(any())).called(1);
-    expect(find.text('lista viaggi'), findsOneWidget);
-    verifyNever(() => tripRepo.deleteTrip(any()));
-
-    // 6. Senza reuse: uscire senza salvare non elimina niente.
-    await resetTrips();
-    router.go('/');
-    await tester.pumpAndSettle();
-    await openEdit(tester, '/trips/trip-1/edit-info');
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    verifyNever(() => tripRepo.deleteTrip(any()));
-  });
-}
-
-/// Timer reale, non l'orologio finto di `pumpAndSettle`: l'I/O di caricamento
-/// delle traduzioni non avanza con il solo clock fake.
-Future<void> waitForCondition(
-  WidgetTester tester,
-  bool Function() condition, {
-  int maxIterations = 300,
-}) async {
-  for (var i = 0; i < maxIterations && !condition(); i++) {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 15)),
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text('Riusa il viaggio'),
+      ),
+      findsOneWidget,
     );
+    expect(find.text('Siena, Italia'), findsOneWidget);
+    expect(find.text('Tocca per impostare le date'), findsOneWidget);
+    final name = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('new_trip_name')),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(name.controller!.text, 'Toscana');
+    expect(find.byKey(const Key('edit_trip_save')), findsNothing);
+
+    // Nessun viaggio nuovo all'apertura né all'uscita (niente conferma: il
+    // passo non è stato toccato).
+    expect(container.read(tripNotifierProvider).valueOrNull, [past]);
+    await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
-  }
+    expect(find.text('trips-tab'), findsOneWidget);
+    verifyNever(() => tripRepo.addTrip(any()));
+    verifyNever(() => tripRepo.deleteTrip(any()));
+    verifyNever(() => tripRepo.updateTrip(any()));
+    expect(container.read(tripNotifierProvider).valueOrNull, [past]);
+  });
+
+  testWidgets('reuse_has_two_buttons', (tester) async {
+    await pumpReuse(tester);
+
+    expect(find.byKey(const Key('new_trip_prepare_ai')), findsOneWidget);
+    expect(find.byKey(const Key('new_trip_choose_items')), findsOneWidget);
+    expect(find.text('Prepara la valigia con AI'), findsOneWidget);
+    expect(find.text('Scegli tu cosa portare'), findsOneWidget);
+    for (final gone in ['reuse_next', 'reuse_later', 'new_trip_next']) {
+      expect(find.byKey(Key(gone)), findsNothing);
+    }
+    // Senza date i bottoni sono spenti.
+    expect(
+      tester
+          .widget<DsButton>(find.byKey(const Key('new_trip_choose_items')))
+          .onPressed,
+      isNull,
+    );
+  });
+
+  testWidgets(
+    'reuse_choose_items_saves_copy_with_unchecked_items_and_luggages',
+    (tester) async {
+      await pumpReuse(tester);
+      await _pickDates(tester);
+      // La tappa di Firenze nasce a zero notti: si sistema dalla sua riga.
+      expect(
+        find.text('Firenze finisce prima di iniziare: controlla le date.'),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.text('Firenze'));
+      await tester.tap(find.text('Firenze'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('stop_sheet_dates')));
+      await tester.pumpAndSettle();
+      await _tapDay(tester, DateTime(_nextMonth.year, _nextMonth.month, 14));
+      await tester.tap(find.text('Conferma'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('stop_sheet_save')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('new_trip_choose_items')));
+      await tester.pumpAndSettle();
+
+      final saved =
+          verify(() => tripRepo.addTrip(captureAny())).captured.single
+              as TripModel;
+      expect(saved.id, isNot('trip-1'));
+      expect(saved.name, 'Toscana');
+      expect(saved.departureDateTime, _departure);
+      expect(saved.legs.single.locationDisplayName, 'Firenze');
+      expect(saved.transports, ['car']);
+      expect(saved.items.map((i) => i.id), ['i1', 'i2']);
+      expect(saved.items.every((i) => !i.isChecked), isTrue);
+      expect(saved.items.first.quantity, 2);
+      expect(saved.luggages.map((l) => l.id), ['l1']);
+      expect(find.text('edit-items ${saved.id} from=new'), findsOneWidget);
+      verifyNever(() => tripRepo.updateTrip(any()));
+    },
+  );
+
+  testWidgets('reuse_ai_starts_new_trip_without_items', (tester) async {
+    await pumpReuse(tester);
+    await _pickDates(tester);
+    // Come sopra la tappa va sistemata; qui basta togliere Firenze.
+    await tester.ensureVisible(find.text('Firenze'));
+    await tester.tap(find.text('Firenze'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('stop_sheet_remove')));
+    await tester.pumpAndSettle();
+    if (find.text('Elimina').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Elimina').last);
+      await tester.pumpAndSettle();
+    }
+
+    await tester.tap(find.byKey(const Key('new_trip_prepare_ai')));
+    await tester.pumpAndSettle();
+    for (final label in ['Città e musei', 'Hotel']) {
+      final pill = find.descendant(
+        of: find.byType(DsFormSheet),
+        matching: find.widgetWithText(DsChoicePill, label),
+      );
+      if (pill.evaluate().isNotEmpty &&
+          !tester.widget<DsChoicePill>(pill).selected) {
+        final text = find.descendant(
+          of: find.byType(DsFormSheet),
+          matching: find.text(label),
+        );
+        await tester.ensureVisible(text);
+        await tester.pumpAndSettle();
+        await tester.tap(text);
+        await tester.pumpAndSettle();
+      }
+    }
+    final prepare = find.descendant(
+      of: find.byType(DsFormSheet),
+      matching: find.text('Prepara la valigia'),
+    );
+    await tester.ensureVisible(prepare);
+    await tester.pumpAndSettle();
+    await tester.tap(prepare);
+    await tester.pumpAndSettle();
+
+    expect(run.requests, hasLength(1));
+    final request = run.requests.single;
+    expect(request.isNew, isTrue);
+    expect(request.trip.id, isNot('trip-1'));
+    expect(request.trip.items, isEmpty);
+    expect(request.trip.destinationLocation?.displayName, 'Siena, Italia');
+    expect(find.text('ai-wait'), findsOneWidget);
+    verifyNever(() => tripRepo.addTrip(any()));
+  });
 }

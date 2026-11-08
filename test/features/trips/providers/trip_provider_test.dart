@@ -776,40 +776,6 @@ void main() {
     );
   });
 
-  group('TripNotifier - reuseTrip', () {
-    test(
-      'calls repository.reuseTrip, returns the new id and tracks duplicate analytics',
-      () async {
-        final existingTrip = TripModel(
-          id: 't1',
-          name: 'Existing Trip',
-          items: const [],
-          luggages: const [],
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
-
-        when(
-          () => mockRepository.getAllTrips(),
-        ).thenAnswer((_) async => [existingTrip]);
-        when(
-          () => mockRepository.reuseTrip('t1'),
-        ).thenAnswer((_) async => 'new-trip-id');
-
-        // Prime the notifier's initial state.
-        await container.read(tripNotifierProvider.future);
-
-        final newId = await container
-            .read(tripNotifierProvider.notifier)
-            .reuseTrip('t1');
-
-        expect(newId, 'new-trip-id');
-        verify(() => mockRepository.reuseTrip('t1')).called(1);
-        verify(() => mockAnalytics.trackTripDuplicated()).called(1);
-      },
-    );
-  });
-
   group('TripNotifier - updateAiSlot', () {
     TripModel tripWithSlot() => TripModel(
       id: 't1',

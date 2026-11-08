@@ -360,10 +360,7 @@ GoRouter appRouter(Ref ref) {
             return _ErrorScreen(message: 'common.content_unavailable'.tr());
           }
           // Stessa pagina del nuovo viaggio, in modifica.
-          return NewTripScreen(
-            tripId: id,
-            discardOnExit: state.uri.queryParameters['reuse'] == '1',
-          );
+          return NewTripScreen(tripId: id);
         },
       ),
       GoRoute(
