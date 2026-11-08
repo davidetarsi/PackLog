@@ -79,6 +79,13 @@ class ProposedSlotsCard extends StatelessWidget {
                             color: cs.onSurfaceVariant,
                           ),
                         ),
+                        SizedBox(height: context.spacingXxs),
+                        Text(
+                          'trips.slots.proposed_edit_hint'.tr(),
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   ),

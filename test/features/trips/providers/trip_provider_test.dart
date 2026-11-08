@@ -111,6 +111,46 @@ void main() {
   });
 
   group('TripNotifier - Success Path (AsyncData)', () {
+    test('serializza le modifiche allo stesso viaggio tra chiamanti', () async {
+      when(() => mockRepository.getAllTrips()).thenAnswer((_) async => []);
+      await container.read(tripNotifierProvider.future);
+      final notifier = container.read(tripNotifierProvider.notifier);
+      final gate = Completer<void>();
+      final order = <String>[];
+
+      final first = notifier.serializeEdit('t1', () async {
+        order.add('prima-inizio');
+        await gate.future;
+        order.add('prima-fine');
+      });
+      final second = notifier.serializeEdit('t1', () async {
+        order.add('seconda');
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect(order, ['prima-inizio']);
+      gate.complete();
+      await Future.wait([first, second]);
+      expect(order, ['prima-inizio', 'prima-fine', 'seconda']);
+    });
+
+    test('un errore non impedisce la modifica successiva', () async {
+      when(() => mockRepository.getAllTrips()).thenAnswer((_) async => []);
+      await container.read(tripNotifierProvider.future);
+      final notifier = container.read(tripNotifierProvider.notifier);
+      final failure = Exception('edit failed');
+      var nextRan = false;
+
+      final failed = notifier.serializeEdit('t1', () async => throw failure);
+      final next = notifier.serializeEdit('t1', () async {
+        nextRan = true;
+      });
+
+      await expectLater(failed, throwsA(same(failure)));
+      await next;
+      expect(nextRan, isTrue);
+    });
+
     test('should correctly refresh the state after adding a new trip', () async {
       // === ARRANGE ===
       // Mock repository to return empty list initially, then list with new trip
@@ -922,7 +962,7 @@ void main() {
 
     TripModel current() => container.read(tripNotifierProvider).value!.single;
 
-    test('una sola scrittura: oggetto fra gli items e posto scalato', () async {
+    test('pubblica il fill solo dopo la scrittura', () async {
       await load(tripWith());
       final saving = Completer<void>();
       when(
@@ -933,9 +973,8 @@ void main() {
           .read(tripNotifierProvider.notifier)
           .fillAiSlot('t1', 's-magliette', item('i1', 2));
 
-      // Prima che il salvataggio finisca lo stato è già cambiato.
-      expect(current().items.single.quantity, 2);
-      expect(current().aiResult!.slots!.single.remaining, 1);
+      expect(current().items, isEmpty);
+      expect(current().aiResult!.slots!.single.remaining, 3);
 
       saving.complete();
       await done;
@@ -946,6 +985,19 @@ void main() {
       expect(saved.items.single.id, 'i1');
       expect(saved.aiResult!.slots!.single.remaining, 1);
       verify(() => mockRepository.getAllTrips()).called(1);
+    });
+
+    test('aggiungere copie riapre solo la riga già spuntata', () async {
+      final checked = item('i1', 1).copyWith(isChecked: true);
+      final other = item('i2', 1).copyWith(isChecked: true);
+      await load(tripWith(items: [checked, other]));
+      when(() => mockRepository.updateTrip(any())).thenAnswer((_) async {});
+
+      await container
+          .read(tripNotifierProvider.notifier)
+          .fillAiSlot('t1', 's-magliette', item('i1', 1));
+
+      expect(current().items.map((entry) => entry.isChecked), [false, true]);
     });
 
     test('slot_filled: livello e copie, dopo il salvataggio', () async {

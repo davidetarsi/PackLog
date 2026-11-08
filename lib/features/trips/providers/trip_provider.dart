@@ -30,8 +30,23 @@ const _kRefreshBuffer = Duration(seconds: 2);
 
 @Riverpod(keepAlive: true)
 class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
+  final Map<String, Future<void>> _editQueues = {};
+
   TripRepository get _repo => ref.read(tripRepositoryProvider);
   CoreAnalyticsService get _analytics => ref.read(coreAnalyticsServiceProvider);
+
+  /// Serializza le scritture concorrenti dello stesso viaggio.
+  Future<void> serializeEdit(String tripId, Future<void> Function() operation) {
+    final previous = _editQueues[tripId] ?? Future<void>.value();
+    final next = previous.then((_) => operation());
+    late final Future<void> tail;
+    tail = next.catchError((Object _, StackTrace _) {});
+    _editQueues[tripId] = tail;
+    tail.whenComplete(() {
+      if (identical(_editQueues[tripId], tail)) _editQueues.remove(tripId);
+    });
+    return next;
+  }
 
   @override
   Future<List<TripModel>> build() async {
@@ -222,10 +237,10 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
   /// del viaggio (se c'è già lo stesso id, le quantità si sommano) e le copie
   /// rimaste del posto scendono di `item.quantity`, mai sotto zero.
   ///
-  /// Una sola scrittura per tutte e due le cose, con lo stesso schema di
-  /// [updateAiSlot]: lo stato cambia subito; se il salvataggio fallisce torna
-  /// quello di prima e l'errore sale al chiamante. Viaggio, risultato senza
-  /// posti o posto sconosciuto: nessuna scrittura.
+  /// Una sola scrittura per entrambe le modifiche. Pubblica il nuovo viaggio
+  /// solo dopo il salvataggio; un errore sale al chiamante senza stato
+  /// ottimistico da ripristinare. Viaggio, risultato senza posti o posto
+  /// sconosciuto: nessuna scrittura.
   Future<void> fillAiSlot(String tripId, String slotId, TripItem item) async {
     final List<TripModel>? trips = state.valueOrNull;
     if (trips == null) return;
@@ -245,7 +260,10 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
         ? [
             for (final i in trip.items)
               i.id == item.id
-                  ? i.copyWith(quantity: i.quantity + item.quantity)
+                  ? i.copyWith(
+                      quantity: i.quantity + item.quantity,
+                      isChecked: false,
+                    )
                   : i,
           ]
         : [...trip.items, item];
@@ -261,18 +279,13 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
     final AiSlotLevel level = result.slots!
         .firstWhere((s) => s.id == slotId)
         .level;
-    final List<TripModel> newTrips = [...trips];
-    newTrips[tripIndex] = updatedTrip;
-    state = AsyncData(newTrips);
-
-    try {
-      await _repo.updateTrip(updatedTrip);
-    } catch (_) {
-      final List<TripModel>? current = state.valueOrNull;
-      if (current != null) {
-        state = AsyncData([for (final t in current) t.id == tripId ? trip : t]);
-      }
-      rethrow;
+    await _repo.updateTrip(updatedTrip);
+    final List<TripModel>? current = state.valueOrNull;
+    if (current != null) {
+      state = AsyncData([
+        for (final currentTrip in current)
+          currentTrip.id == tripId ? updatedTrip : currentTrip,
+      ]);
     }
     ref.read(syncOrchestratorProvider).requestSync();
     _recordEditsInBackground(trip, updatedTrip);

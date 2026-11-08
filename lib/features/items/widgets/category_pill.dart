@@ -91,14 +91,16 @@ class CategoryPill extends StatelessWidget {
               SizedBox(height: context.spacingXxs),
               // scaleDown: con caratteri di sistema grandi o in inglese
               // ("Electronics") il nome si stringe invece di sforare.
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  category.displayName,
-                  maxLines: 1,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: foregroundColor),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    category.displayName,
+                    maxLines: 1,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: foregroundColor),
+                  ),
                 ),
               ),
             ],

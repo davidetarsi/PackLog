@@ -292,6 +292,7 @@ AiSlot _posto(Map<String, dynamic> json) {
     remaining: copie,
     reason: json['motivo'] as String?,
     addLabel: json['aggiungi'] as String,
+    boughtLabel: json['comprato'] as String?,
   );
 }
 

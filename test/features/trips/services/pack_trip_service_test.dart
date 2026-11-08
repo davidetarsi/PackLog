@@ -426,6 +426,7 @@ void main() {
       'copie': copie,
       'motivo': null,
       'aggiungi': 'Aggiungi la sciarpa',
+      'comprato': 'Comprata',
     };
 
     test('posti letti: remaining == copies, campi mappati', () {
@@ -454,6 +455,7 @@ void main() {
       expect(first.remaining, 2);
       expect(first.reason, isNull);
       expect(first.addLabel, 'Aggiungi la sciarpa');
+      expect(first.boughtLabel, 'Comprata');
       expect(first.toBuy, isFalse);
       expect(first.checked, isFalse);
       final second = result.slots![1];
@@ -464,6 +466,22 @@ void main() {
         const AiTripNote(code: 'lavanderia', title: 'Lavanderia', why: 'Lavi'),
       ]);
     });
+
+    test(
+      'campo comprato assente resta compatibile con viaggi e funzioni vecchi',
+      () {
+        final json = _okResponse()
+          ..['posti'] = [posto('s1')..remove('comprato')];
+        final result = parsePackTripResponse(
+          json,
+          houseId: _houseId,
+          now: _now,
+        );
+        expect(result.slots!.single.boughtLabel, isNull);
+        final roundTrip = AiPackingResult.fromJson(result.toJson());
+        expect(roundTrip.slots!.single.boughtLabel, isNull);
+      },
+    );
 
     test('posti assenti: slots null, avvisi come oggi', () {
       final result = parsePackTripResponse(
