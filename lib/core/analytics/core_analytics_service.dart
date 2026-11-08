@@ -211,6 +211,38 @@ class CoreAnalyticsService {
     );
   }
 
+  /// Un tentativo di generare la valigia è finito (una volta per tentativo,
+  /// anche annullato). `outcome`: `ok`, `credits`, `empty_wardrobe`,
+  /// `wardrobe_too_large`, `network`, `error`, `cancelled`. [properties]
+  /// sono già piatte: viaggio, armadio, contesto.
+  void trackAiSuitcaseFinished({
+    required String outcome,
+    required int durationMs,
+    required String tripId,
+    required Map<String, Object> properties,
+  }) {
+    _safeLogEvent(
+      'ai_suitcase_finished',
+      properties: {
+        'outcome': outcome,
+        'duration_ms': durationMs,
+        'trip_id': tripId,
+        ...properties,
+      },
+    );
+  }
+
+  /// Aperta la scheda di un capo proposto, con il perché dell'AI.
+  void trackAiItemReasonOpened({
+    required String reasonCode,
+    required String subCategory,
+  }) {
+    _safeLogEvent(
+      'ai_item_reason_opened',
+      properties: {'reason_code': reasonCode, 'sub_category': subCategory},
+    );
+  }
+
   /// Un avviso "cosa manca" scartato dall'utente.
   void trackAiWarningDismissed({required String code, required String level}) {
     _safeLogEvent(

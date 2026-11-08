@@ -35,6 +35,7 @@ import '../model/ai_availability.dart';
 import '../model/ai_packing.dart';
 import '../model/pack_trip_request.dart';
 import '../model/trip_model.dart';
+import '../services/suitcase_analytics.dart';
 import '../model/trip_postcard.dart';
 import '../model/trip_weather.dart';
 import '../providers/trip_provider.dart';
@@ -299,6 +300,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   ) => showAiPackItemSheet(
     context,
     item: _items[tripItem.id] ?? tripItem,
+    subCategory: subCategoryByIdOf([item])[item.id],
     available: item.quantity ?? 1,
     reason: proposed?.reason,
     inDeparture: proposed?.inDeparture ?? false,
@@ -455,6 +457,9 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
 
     // Le risposte si salvano subito: "Rigenera" non le chiede di nuovo.
     final current = _currentTrip() ?? trip;
+    // Prima di sovrascrivere: cosa cambia rispetto alla valigia precedente.
+    final isRegeneration = current.aiResult != null;
+    final setupChanged = setupChangedFields(current.aiSetup, setup);
     final saved = await _writeTrip(
       current.copyWith(aiSetup: setup, updatedAt: DateTime.now()),
     );
@@ -479,6 +484,9 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         houseId: houseId,
         title: _joinStops(names),
         nights: nightsBetween(trip.departureDateTime, trip.returnDateTime) ?? 0,
+        isRegeneration: isRegeneration,
+        setupChanged: setupChanged,
+        luggage: luggage,
       ),
     );
     if (result == null || !mounted) return;

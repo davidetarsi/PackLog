@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/analytics/core_analytics_service.dart';
 import '../../../../../shared/constants/app_constants.dart';
 import '../../../../../shared/theme/theme.dart';
 import '../../../../../shared/widgets/ds_form_sheet.dart';
@@ -17,25 +19,39 @@ import '../../../model/trip_model.dart';
 /// [onQuantity] arriva a ogni cambio dei pezzi (almeno 1, massimo [available]).
 /// Lo stepper c'è solo con due pezzi o più nell'armadio. [onRemove] chiude la
 /// scheda e toglie l'oggetto. Non salva nulla: lo fa la pagina.
+///
+/// Con un perché dell'AI registra `ai_item_reason_opened`; [subCategory] è il
+/// tipo del capo nella tassonomia (se manca, la categoria dell'app).
 Future<void> showAiPackItemSheet(
   BuildContext context, {
   required TripItem item,
+  String? subCategory,
   required int available,
   AiReason? reason,
   bool inDeparture = false,
   required FutureOr<void> Function(int quantity) onQuantity,
   required VoidCallback onRemove,
-}) => showDsFormSheet<void>(
-  context,
-  builder: (_) => _AiPackItemSheet(
-    item: item,
-    available: available,
-    reason: reason,
-    inDeparture: inDeparture,
-    onQuantity: onQuantity,
-    onRemove: onRemove,
-  ),
-);
+}) {
+  if (reason != null) {
+    ProviderScope.containerOf(context, listen: false)
+        .read(coreAnalyticsServiceProvider)
+        .trackAiItemReasonOpened(
+          reasonCode: reason.code,
+          subCategory: subCategory ?? item.category.name,
+        );
+  }
+  return showDsFormSheet<void>(
+    context,
+    builder: (_) => _AiPackItemSheet(
+      item: item,
+      available: available,
+      reason: reason,
+      inDeparture: inDeparture,
+      onQuantity: onQuantity,
+      onRemove: onRemove,
+    ),
+  );
+}
 
 class _AiPackItemSheet extends StatefulWidget {
   const _AiPackItemSheet({

@@ -6,6 +6,7 @@ import 'package:pack_log/features/luggages/model/luggage_model.dart';
 import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
 import 'package:pack_log/features/trips/model/trip_weather.dart';
+import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:pack_log/features/trips/services/suitcase_analytics.dart';
 
 TripModel _trip() => TripModel(
@@ -250,6 +251,106 @@ void main() {
       expect(daysToDeparture(DateTime(2026, 11, 8, 6), now), 0);
       expect(daysToDeparture(DateTime(2026, 11, 6), now), -2);
       expect(daysToDeparture(null, now), isNull);
+    });
+  });
+
+  group('packOutcomeOf', () {
+    test('un esito per ogni modo di finire', () {
+      expect(packOutcomeOf(null, cancelled: false), 'ok');
+      expect(packOutcomeOf(null, cancelled: true), 'cancelled');
+      expect(
+        packOutcomeOf(const PackTripCreditsException(), cancelled: false),
+        'credits',
+      );
+      expect(
+        packOutcomeOf(const PackTripEmptyWardrobeException(), cancelled: false),
+        'empty_wardrobe',
+      );
+      expect(
+        packOutcomeOf(
+          const PackTripWardrobeTooLargeException(),
+          cancelled: false,
+        ),
+        'wardrobe_too_large',
+      );
+      expect(
+        packOutcomeOf(const PackTripNetworkException('rete'), cancelled: false),
+        'network',
+      );
+      expect(
+        packOutcomeOf(const PackTripException('x'), cancelled: false),
+        'error',
+      );
+      expect(packOutcomeOf(StateError('x'), cancelled: false), 'error');
+    });
+  });
+
+  group('wardrobeStats', () {
+    ItemModel item(String id, String? category) => ItemModel(
+      id: id,
+      houseId: 'h1',
+      name: 'capo',
+      category: ItemCategory.vestiti,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+      aiMetadata: category == null ? null : jsonEncode({'category': category}),
+    );
+
+    test('capi, schede e famiglie; chiavi sempre presenti', () {
+      final stats = wardrobeStats([
+        item('a', 'Upper Body'),
+        item('b', 'Shoes'),
+        item('c', null),
+      ]);
+      expect(stats, {
+        'wardrobe_items': 3,
+        'wardrobe_with_metadata': 2,
+        'wardrobe_upper': 1,
+        'wardrobe_lower': 0,
+        'wardrobe_full_body': 0,
+        'wardrobe_outerwear': 0,
+        'wardrobe_shoes': 1,
+        'wardrobe_accessory': 0,
+        'wardrobe_essentials': 0,
+        'wardrobe_other': 1,
+      });
+    });
+  });
+
+  group('setupChangedFields', () {
+    const before = AiPackingSetup(
+      luggageId: 'l1',
+      stops: {
+        'a': AiStopAnswers(activities: ['beach', 'hiking'], stay: 'hotel'),
+      },
+    );
+
+    test('solo la lavatrice cambiata, attività in altro ordine', () {
+      const after = AiPackingSetup(
+        luggageId: 'l1',
+        stops: {
+          'a': AiStopAnswers(
+            activities: ['hiking', 'beach'],
+            stay: 'hotel',
+            washer: true,
+          ),
+        },
+      );
+      expect(setupChangedFields(before, after), ['washer']);
+    });
+
+    test('bagaglio e alloggio cambiati', () {
+      const after = AiPackingSetup(
+        luggageId: 'l2',
+        stops: {
+          'a': AiStopAnswers(activities: ['beach', 'hiking'], stay: 'camping'),
+        },
+      );
+      expect(setupChangedFields(before, after), ['luggage', 'stays']);
+    });
+
+    test('prima volta: nessun campo', () {
+      expect(setupChangedFields(null, before), isEmpty);
     });
   });
 }

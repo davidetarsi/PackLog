@@ -735,6 +735,42 @@ void main() {
       ).called(1);
     });
 
+    test('trackAiSuitcaseFinished: esito, durata e proprietà', () async {
+      service.trackAiSuitcaseFinished(
+        outcome: 'ok',
+        durationMs: 41000,
+        tripId: 't1',
+        properties: const {'nights': 4, 'is_regeneration': false},
+      );
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_suitcase_finished',
+          properties: {
+            'outcome': 'ok',
+            'duration_ms': 41000,
+            'trip_id': 't1',
+            'nights': 4,
+            'is_regeneration': false,
+          },
+        ),
+      ).called(1);
+    });
+
+    test('trackAiItemReasonOpened', () async {
+      service.trackAiItemReasonOpened(
+        reasonCode: 'rain',
+        subCategory: 'Jacket',
+      );
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_item_reason_opened',
+          properties: {'reason_code': 'rain', 'sub_category': 'Jacket'},
+        ),
+      ).called(1);
+    });
+
     test('trackAiWarningDismissed e trackAiSlotRemoved', () async {
       service.trackAiWarningDismissed(code: 'rain_gear', level: 'important');
       service.trackAiSlotRemoved(type: 'calze', level: 'useful');

@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 
 import '../../items/model/item_model.dart';
 import '../../luggages/model/luggage_model.dart';
+import '../model/ai_packing.dart';
 import '../model/trip_model.dart';
 import '../model/trip_weather.dart';
+import 'pack_trip_service.dart';
 
 /// Funzioni pure per gli eventi della valigia AI: trasformano viaggio, meteo
 /// e armadio in proprietà piatte (solo testo, numeri e liste) per
@@ -182,4 +184,76 @@ Map<String, String> subCategoryByIdOf(List<ItemModel> items) {
     }
   }
   return types;
+}
+
+/// Come è finito un tentativo di generare la valigia, per
+/// `ai_suitcase_finished`.
+String packOutcomeOf(Object? failure, {required bool cancelled}) {
+  if (cancelled) return 'cancelled';
+  return switch (failure) {
+    null => 'ok',
+    PackTripCreditsException() => 'credits',
+    PackTripEmptyWardrobeException() => 'empty_wardrobe',
+    PackTripWardrobeTooLargeException() => 'wardrobe_too_large',
+    PackTripNetworkException() => 'network',
+    _ => 'error',
+  };
+}
+
+/// La famiglia di `ai_metadata.category` → chiave di [wardrobeStats].
+const _wardrobeKeys = {
+  'Upper Body': 'wardrobe_upper',
+  'Lower Body': 'wardrobe_lower',
+  'Full Body': 'wardrobe_full_body',
+  'Outerwear': 'wardrobe_outerwear',
+  'Shoes': 'wardrobe_shoes',
+  'Accessory': 'wardrobe_accessory',
+  'Essentials': 'wardrobe_essentials',
+};
+
+/// Com'è fatto l'armadio da cui parte la valigia: quanti oggetti, quanti con
+/// la scheda dell'AI, quanti per famiglia. Tutte le chiavi ci sono sempre.
+Map<String, Object> wardrobeStats(List<ItemModel> items) {
+  final stats = <String, int>{
+    'wardrobe_items': items.length,
+    'wardrobe_with_metadata': 0,
+    for (final key in _wardrobeKeys.values) key: 0,
+    'wardrobe_other': 0,
+  };
+  for (final item in items) {
+    final raw = item.aiMetadata;
+    Object? category;
+    if (raw != null && raw.isNotEmpty) {
+      stats['wardrobe_with_metadata'] = stats['wardrobe_with_metadata']! + 1;
+      try {
+        final json = jsonDecode(raw);
+        category = json is Map ? json['category'] : null;
+      } on FormatException {
+        category = null;
+      }
+    }
+    final key = _wardrobeKeys[category] ?? 'wardrobe_other';
+    stats[key] = stats[key]! + 1;
+  }
+  return stats;
+}
+
+/// Le risposte del foglio cambiate rispetto alla generazione precedente
+/// (`activities`, `luggage`, `stays`, `washer`, in ordine alfabetico); vuoto
+/// alla prima generazione.
+List<String> setupChangedFields(AiPackingSetup? before, AiPackingSetup after) {
+  if (before == null) return const [];
+  Set<String> activities(AiPackingSetup s) => {
+    for (final stop in s.stops.values) ...stop.activities,
+  };
+  Set<String> stays(AiPackingSetup s) => {
+    for (final stop in s.stops.values) ?stop.stay,
+  };
+  bool washer(AiPackingSetup s) => s.stops.values.any((stop) => stop.washer);
+  return [
+    if (!setEquals(activities(before), activities(after))) 'activities',
+    if (before.luggageId != after.luggageId) 'luggage',
+    if (!setEquals(stays(before), stays(after))) 'stays',
+    if (washer(before) != washer(after)) 'washer',
+  ];
 }
