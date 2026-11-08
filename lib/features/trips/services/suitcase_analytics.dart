@@ -7,6 +7,7 @@ import '../../luggages/model/luggage_model.dart';
 import '../model/ai_packing.dart';
 import '../model/trip_model.dart';
 import '../model/trip_weather.dart';
+import 'adopted_proposal.dart';
 import 'pack_trip_service.dart';
 
 /// Funzioni pure per gli eventi della valigia AI: trasformano viaggio, meteo
@@ -80,24 +81,21 @@ typedef SuitcaseDiff = ({
   List<String> quantityDownTypes,
 });
 
-/// Null se il viaggio non ha una proposta AI. La proposta sono i capi di
-/// `proposal` più quelli entrati da un kit (`kitAdded`); i tipi vengono da
+/// Null se il viaggio non ha una proposta AI. La proposta è quella che la
+/// pagina ha salvato adottandola ([adoptedQuantities], con [available] =
+/// pezzi in casa se l'armadio è caricato); i tipi vengono da
 /// [subCategoryById] o, se manca, dalla categoria del capo in valigia.
 /// `slotCopiesFilled`: copie riempite nei posti non tolti (gli oggetti dei
 /// posti sono anche fra gli `added`, perché un TripItem non sa da dove viene).
 SuitcaseDiff? suitcaseDiff(
   TripModel trip,
-  Map<String, String> subCategoryById,
-) {
+  Map<String, String> subCategoryById, {
+  Map<String, int?>? available,
+}) {
   final result = trip.aiResult;
   if (result == null) return null;
 
-  final proposal = <String, int>{
-    for (final p in result.proposal) p.itemId: p.quantity,
-  };
-  for (final k in result.kitAdded) {
-    proposal.putIfAbsent(k.itemId, () => k.copies);
-  }
+  final proposal = adoptedQuantities(result, available: available);
   final packed = {for (final i in trip.items) i.id: i};
   String typeOf(String id) =>
       subCategoryById[id] ?? packed[id]?.category.name ?? 'unknown';

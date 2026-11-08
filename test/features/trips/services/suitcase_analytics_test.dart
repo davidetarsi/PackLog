@@ -107,6 +107,34 @@ void main() {
       expect(diff.quantityDownTypes, isEmpty);
     });
 
+    test(
+      'la valigia salvata come la regola di adozione: nessuna differenza',
+      () {
+        final trip = _trip().copyWith(
+          items: [_packed('A', 2), _packed('B', 1)],
+          aiResult: AiPackingResult(
+            generatedAt: DateTime(2026, 11, 8),
+            houseId: 'h1',
+            proposal: const [
+              AiPackedItem(itemId: 'A', quantity: 1, reason: _reason),
+              AiPackedItem(itemId: 'B', quantity: 3, reason: _reason),
+              AiPackedItem(itemId: 'X', quantity: 1, reason: _reason),
+            ],
+            kitAdded: const [AiKitAdded(kitId: 'k1', itemId: 'A', copies: 2)],
+          ),
+        );
+        // B in casa ha un pezzo solo; X non c'è più.
+        final diff = suitcaseDiff(
+          trip,
+          const {},
+          available: const {'A': 3, 'B': 1},
+        )!;
+        expect(diff.proposed, 2);
+        expect(diff.quantityChanged, 0);
+        expect(diff.removed, 0);
+      },
+    );
+
     test('viaggio senza proposta AI: null', () {
       expect(suitcaseDiff(_trip(), types), isNull);
     });

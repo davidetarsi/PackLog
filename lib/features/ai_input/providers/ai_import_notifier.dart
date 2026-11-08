@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -223,6 +224,16 @@ class AiImportNotifier extends _$AiImportNotifier {
   /// con dettagli cambiati `item_details_edited`, e con dubbi o correzioni
   /// `ai_scan_doubt_resolved`.
   void _trackSave({required int count, required bool isOnboarding}) {
+    // Gli oggetti sono già salvati: un errore qui non deve diventare un
+    // errore di salvataggio (un nuovo tocco li salverebbe due volte).
+    try {
+      _trackSaveOrThrow(count: count, isOnboarding: isOnboarding);
+    } catch (e) {
+      debugPrint('[AiImport] eventi del salvataggio non emessi: $e');
+    }
+  }
+
+  void _trackSaveOrThrow({required int count, required bool isOnboarding}) {
     final analytics = ref.read(coreAnalyticsServiceProvider);
     final stats = scanSaveStats(state, _analyzed);
     analytics.trackAiItemsSaved(

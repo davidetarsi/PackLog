@@ -32,6 +32,15 @@ class ItemMetadataHttpException implements Exception {
   String toString() => 'ItemMetadataHttpException: HTTP $statusCode';
 }
 
+/// Risposta 200 che non si legge come JSON, per Sentry. Prende il posto della
+/// `FormatException`, il cui messaggio riporta un pezzo del corpo.
+class ItemMetadataParseException implements Exception {
+  const ItemMetadataParseException();
+
+  @override
+  String toString() => 'ItemMetadataParseException: risposta non JSON';
+}
+
 /// Chiede la scheda di un oggetto dal solo nome.
 ///
 /// Non lancia mai: senza rete, senza sessione, a limite raggiunto o con una
@@ -106,8 +115,9 @@ class ItemMetadataService {
     } catch (e, st) {
       debugPrint('[ItemMetadata] scheda non ottenuta: $e');
       if (!isNetworkFailure(e)) {
+        // Il messaggio di una FormatException riporta un pezzo del corpo.
         _monitoring?.captureException(
-          e,
+          e is FormatException ? const ItemMetadataParseException() : e,
           stackTrace: st,
           tags: {'operation': 'item_metadata'},
         );

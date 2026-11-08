@@ -35,6 +35,7 @@ import '../model/ai_availability.dart';
 import '../model/ai_packing.dart';
 import '../model/pack_trip_request.dart';
 import '../model/trip_model.dart';
+import '../services/adopted_proposal.dart';
 import '../services/suitcase_analytics.dart';
 import '../model/trip_postcard.dart';
 import '../model/trip_weather.dart';
@@ -623,51 +624,28 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         );
   }
 
-  /// I capi della proposta, con nome e categoria dell'oggetto di casa. Un
-  /// oggetto non più in casa non entra; la quantità sta tra 1 e i pezzi
-  /// salvati (senza quantità salvata, 1).
+  /// I capi della proposta (e dei kit entrati da soli), con nome e categoria
+  /// dell'oggetto di casa. Le quantità seguono [adoptedQuantities]: un
+  /// oggetto non più in casa non entra, i pezzi stanno tra 1 e quelli in casa.
   Map<String, TripItem> _proposedItems(
     AiPackingResult result,
     List<ItemModel> houseItems,
   ) {
     final byId = {for (final item in houseItems) item.id: item};
-    final items = <String, TripItem>{};
-    for (final proposed in result.proposal) {
-      final item = byId[proposed.itemId];
-      if (item == null) continue;
-      final available = item.quantity ?? 1;
-      final cap = available < 1 ? 1 : available;
-      final quantity = proposed.quantity < 1
-          ? 1
-          : (proposed.quantity > cap ? cap : proposed.quantity);
-      items[item.id] = TripItem(
-        id: item.id,
-        name: item.name,
-        category: item.category,
-        quantity: quantity,
-        originHouseId: result.houseId,
-      );
-    }
-    // Gli oggetti dei kit entrati da soli: se l'oggetto c'è già vale il
-    // massimo delle copie (mai la somma), sempre entro i pezzi in casa. Un
-    // oggetto non più in casa si salta.
-    for (final added in result.kitAdded) {
-      final item = byId[added.itemId];
-      if (item == null) continue;
-      final available = item.quantity ?? 1;
-      final cap = available < 1 ? 1 : available;
-      final wanted = added.copies < 1 ? 1 : added.copies;
-      final current = items[item.id]?.quantity ?? 0;
-      final quantity = (wanted > current ? wanted : current).clamp(1, cap);
-      items[item.id] = TripItem(
-        id: item.id,
-        name: item.name,
-        category: item.category,
-        quantity: quantity,
-        originHouseId: result.houseId,
-      );
-    }
-    return items;
+    final quantities = adoptedQuantities(
+      result,
+      available: {for (final item in houseItems) item.id: item.quantity},
+    );
+    return {
+      for (final MapEntry(key: id, value: quantity) in quantities.entries)
+        id: TripItem(
+          id: id,
+          name: byId[id]!.name,
+          category: byId[id]!.category,
+          quantity: quantity,
+          originHouseId: result.houseId,
+        ),
+    };
   }
 
   Future<bool> _writeTrip(TripModel trip) => ErrorRetryDialog.executeWithRetry(

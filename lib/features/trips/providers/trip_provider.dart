@@ -323,9 +323,18 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       return;
     }
 
-    final types = subCategoryByIdOf(_loadedItems(result.houseId));
-    final SuitcaseDiff? now = suitcaseDiff(after, types);
-    final SuitcaseDiff? then = suitcaseDiff(before!, types);
+    final List<ItemModel> houseItems = _loadedItems(result.houseId);
+    final types = subCategoryByIdOf(houseItems);
+    // Senza armadio caricato la proposta non si confronta con i pezzi in casa.
+    final available = houseItems.isEmpty
+        ? null
+        : {for (final item in houseItems) item.id: item.quantity};
+    final SuitcaseDiff? now = suitcaseDiff(after, types, available: available);
+    final SuitcaseDiff? then = suitcaseDiff(
+      before!,
+      types,
+      available: available,
+    );
     if (now != null && then != null && !sameSuitcaseDiff(now, then)) {
       unawaited(_trackSuitcaseChanged(after, now));
     }

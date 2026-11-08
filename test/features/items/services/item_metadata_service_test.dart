@@ -76,18 +76,21 @@ void main() {
       );
     });
 
-    test('risposta illeggibile: in Sentry', () async {
+    test('risposta illeggibile: in Sentry, senza il corpo', () async {
+      // Il corpo può ripetere il nome scritto dall'utente.
       final service = serviceAnswering(
-        () async => http.Response('non json', 200),
+        () async => http.Response('felpa grigia di Marta', 200),
       );
       expect(await service.fromName('felpa'), isNull);
-      verify(
+      final sent = verify(
         () => monitoring.captureException(
-          any(),
+          captureAny(),
           stackTrace: any(named: 'stackTrace'),
           tags: {'operation': 'item_metadata'},
         ),
-      ).called(1);
+      ).captured.single;
+      expect(sent, isA<ItemMetadataParseException>());
+      expect('$sent', isNot(contains('Marta')));
     });
   });
 
