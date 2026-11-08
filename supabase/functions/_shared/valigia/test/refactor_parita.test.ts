@@ -63,7 +63,10 @@ for (const modo of modiArmadio) test(`regressioni: contratto originale e delta r
         assert.notEqual(revisione.dopo, revisione.prima, `${key}: eccezione senza cambiamenti`);
       }
     }
-    for (const [campo, valore] of Object.entries(riproduciCaso(c, modo))) {
+    const risultato = riproduciCaso(c, modo);
+    const proposteSenzaComprato = { ...risultato.proposte,
+      posti: risultato.proposte.posti.map(({ comprato: _comprato, ...posto }) => posto) };
+    for (const [campo, valore] of Object.entries({ ...risultato, proposte: proposteSenzaComprato })) {
       const prima = campo === "proposte" && delta ? delta.dopo : atteso[campo];
       const hash = estivo?.campi[campo]?.dopo ?? cambiato?.campi[campo]?.dopo ?? prima;
       assert.equal(impronta(valore), hash, `${key}: cambia ${campo}`);

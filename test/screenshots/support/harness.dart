@@ -96,6 +96,12 @@ class AppSetup {
   /// Lingua dell'app e dei formati di data.
   final Locale locale;
 
+  /// Viewport e scala testo per scenari di layout mirati.
+  final Size viewport;
+  final Size? initialViewport;
+  final double textScale;
+  final double viewInsetBottom;
+
   const AppSetup({
     this.onboardingCompleted = true,
     this.authenticated = true,
@@ -107,6 +113,10 @@ class AppSetup {
     this.extraOverrides = const [],
     this.seedWith,
     this.locale = const Locale('it', 'IT'),
+    this.viewport = kScreenSize,
+    this.initialViewport,
+    this.textScale = 1,
+    this.viewInsetBottom = 0,
   });
 }
 
@@ -228,13 +238,17 @@ class ScreenshotApp {
     required ShotTheme theme,
     AppSetup setup = const AppSetup(),
   }) async {
-    tester.view.physicalSize = kScreenSize * kPixelRatio;
+    tester.view.physicalSize =
+        (setup.initialViewport ?? setup.viewport) * kPixelRatio;
     tester.view.devicePixelRatio = kPixelRatio;
     tester.view.padding = const FakeViewPadding(
       top: kStatusBar * kPixelRatio,
       bottom: kGestureBar * kPixelRatio,
     );
     tester.view.viewPadding = tester.view.padding;
+    tester.view.viewInsets = FakeViewPadding(
+      bottom: setup.viewInsetBottom * kPixelRatio,
+    );
     addTearDown(tester.view.reset);
 
     // flutter_test disegna le elevation come un contorno nero pieno al posto
@@ -362,7 +376,7 @@ class ScreenshotApp {
           useOnlyLangCode: false,
           child: UncontrolledProviderScope(
             container: container,
-            child: const _ScreenshotMaterialApp(),
+            child: _ScreenshotMaterialApp(textScale: setup.textScale),
           ),
         ),
       ),
@@ -487,6 +501,7 @@ class Shot {
   final String description;
   final String? route;
   final ShotTheme theme;
+  final Size viewport;
 
   /// Cartella di destinazione; gli screenshot dello Store ne hanno una loro.
   final String outputDir;
@@ -500,6 +515,7 @@ class Shot {
     required this.source,
     required this.description,
     required this.theme,
+    this.viewport = kScreenSize,
     this.route,
     this.outputDir = kOutputDir,
   });
@@ -521,8 +537,8 @@ class Shot {
     'route': route,
     'description': description,
     'size': {
-      'width': kScreenSize.width,
-      'height': kScreenSize.height,
+      'width': viewport.width,
+      'height': viewport.height,
       'pixelRatio': kPixelRatio,
     },
   };
@@ -562,7 +578,7 @@ class Manifest {
       ..writeAsStringSync(
         const JsonEncoder.withIndent('  ').convert({
           'generatedAt': DateTime.now().toIso8601String(),
-          'device': 'Pixel 7 (412x915 dp)',
+          'device': 'Flutter harness (viewport recorded per screen)',
           'locale': 'it-IT',
           'screens': screens,
         }),
@@ -592,7 +608,9 @@ String _describeOverflow(FlutterErrorDetails details, String message) {
 /// Gli altri rami di `MyApp` (splash, errore di bootstrap) non servono: il
 /// bootstrap è sostituito da un Future già risolto.
 class _ScreenshotMaterialApp extends ConsumerWidget {
-  const _ScreenshotMaterialApp();
+  const _ScreenshotMaterialApp({required this.textScale});
+
+  final double textScale;
 
   static ThemeData _withAppBarFont(ThemeData theme) => theme.copyWith(
     appBarTheme: theme.appBarTheme.copyWith(
@@ -612,6 +630,12 @@ class _ScreenshotMaterialApp extends ConsumerWidget {
       theme: _withAppBarFont(AppTheme.light),
       darkTheme: _withAppBarFont(AppTheme.dark),
       themeMode: themeMode,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
       routerConfig: ref.watch(appRouterProvider),
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,

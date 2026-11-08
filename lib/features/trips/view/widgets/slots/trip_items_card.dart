@@ -10,8 +10,10 @@ import '../../../../../shared/widgets/ds_group_header.dart';
 import '../../../../../shared/widgets/ds_section_title.dart';
 import '../../../../items/model/item_model.dart';
 import '../../../../../shared/widgets/ds_checkbox.dart';
+import '../../../../../shared/widgets/ds_icon_button.dart';
 import '../../../model/trip_model.dart';
 import '../../../providers/trip_provider.dart';
+import '../pack/pack_inventory_search.dart';
 import 'flight_target.dart';
 
 /// Valigia vuota: niente oggetti (e niente posti).
@@ -34,6 +36,11 @@ class EmptySuitcase extends StatelessWidget {
 class ItemsCard extends ConsumerWidget {
   final String tripId;
   final List<TripItem> items;
+  final ValueChanged<TripItem>? onRemoveItem;
+  final ValueChanged<TripItem>? onToggleItem;
+  final bool checklistEnabled;
+  final ValueChanged<TripItem>? onOpenItem;
+  final bool showRemove;
 
   /// La chiave della riga di un oggetto (per farlo volare fin qui).
   final GlobalKey Function(String itemId)? rowKey;
@@ -46,6 +53,11 @@ class ItemsCard extends ConsumerWidget {
     super.key,
     required this.tripId,
     required this.items,
+    this.onRemoveItem,
+    this.onToggleItem,
+    this.checklistEnabled = true,
+    this.onOpenItem,
+    this.showRemove = true,
     this.rowKey,
     this.flying,
   });
@@ -65,9 +77,17 @@ class ItemsCard extends ConsumerWidget {
               itemId: item.id,
               child: PackedRow(
                 item: item,
-                onToggle: () => ref
-                    .read(tripNotifierProvider.notifier)
-                    .toggleItemCheck(tripId, item.id),
+                onRemove: !showRemove || onRemoveItem == null
+                    ? null
+                    : () => onRemoveItem!(item),
+                onOpen: onOpenItem == null ? null : () => onOpenItem!(item),
+                onToggle: !checklistEnabled
+                    ? null
+                    : onToggleItem != null
+                    ? () => onToggleItem!(item)
+                    : () => ref
+                          .read(tripNotifierProvider.notifier)
+                          .toggleItemCheck(tripId, item.id),
               ),
             ),
         ],
@@ -80,19 +100,36 @@ class ItemsCard extends ConsumerWidget {
 /// volta dentro il nome si spegne e si barra; tutta la riga spunta.
 class PackedRow extends StatelessWidget {
   final TripItem item;
-  final VoidCallback onToggle;
+  final VoidCallback? onToggle;
+  final VoidCallback? onRemove;
+  final VoidCallback? onOpen;
 
-  const PackedRow({super.key, required this.item, required this.onToggle});
+  const PackedRow({
+    super.key,
+    required this.item,
+    required this.onToggle,
+    this.onRemove,
+    this.onOpen,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final packed = item.isChecked;
+    final itemName = Text(
+      item.name,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: tt.bodyLarge?.copyWith(
+        color: packed ? context.textTertiary : cs.onSurface,
+        decoration: packed ? TextDecoration.lineThrough : null,
+      ),
+    );
 
     return InkWell(
       key: Key('trip_item_${item.id}'),
-      onTap: onToggle,
+      onTap: onOpen ?? onToggle,
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: context.spacingSm,
@@ -100,17 +137,20 @@ class PackedRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            DsCheckbox(value: packed, onChanged: (_) => onToggle()),
+            if (onToggle != null)
+              DsCheckbox(value: packed, onChanged: (_) => onToggle!()),
             SizedBox(width: context.spacingXs),
+            if (onRemove != null)
+              DsIconButton(
+                key: Key('trip_item_remove_${item.id}'),
+                icon: Icons.close,
+                tooltip: 'trips.pack.ai.remove'.tr(),
+                onPressed: onRemove,
+              ),
             Expanded(
-              child: Text(
-                item.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: tt.bodyLarge?.copyWith(
-                  color: packed ? context.textTertiary : cs.onSurface,
-                  decoration: packed ? TextDecoration.lineThrough : null,
-                ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: context.spacingXs),
+                child: itemName,
               ),
             ),
             if (item.quantity > 1)
@@ -182,6 +222,68 @@ class PlainItemsSection extends ConsumerWidget {
             ItemsCard(
               tripId: trip.id,
               items: items.where((i) => i.category == category).toList(),
+            ),
+          ],
+      ],
+    );
+  }
+}
+
+/// Oggetti salvati del viaggio, separati dalle necessità AI.
+class ItemsOnlySection extends StatelessWidget {
+  final TripModel trip;
+  final String? houseId;
+  final bool checklistEnabled;
+  final Future<void> Function(ItemModel item, int copies) onAddInventory;
+  final ValueChanged<TripItem>? onRemoveItem;
+  final ValueChanged<TripItem> onToggleItem;
+  final ValueChanged<TripItem>? onOpenItem;
+  final GlobalKey Function(String itemId) rowKey;
+  final ValueListenable<Set<String>> flying;
+
+  const ItemsOnlySection({
+    super.key,
+    required this.trip,
+    required this.houseId,
+    required this.checklistEnabled,
+    required this.onAddInventory,
+    required this.onRemoveItem,
+    required this.onToggleItem,
+    required this.onOpenItem,
+    required this.rowKey,
+    required this.flying,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (trip.items.isEmpty && houseId == null) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (houseId != null) ...[
+          PackInventorySearch(
+            houseId: houseId!,
+            excludedItemIds: trip.items.map((item) => item.id).toSet(),
+            onAdd: onAddInventory,
+          ),
+          SizedBox(height: context.spacingMd),
+        ],
+        for (final category in ItemCategory.values)
+          if (trip.items.any((item) => item.category == category)) ...[
+            DsGroupHeader(
+              label: category.displayName,
+              count: trip.items.where((i) => i.category == category).length,
+            ),
+            ItemsCard(
+              tripId: trip.id,
+              items: trip.items.where((i) => i.category == category).toList(),
+              checklistEnabled: checklistEnabled,
+              onRemoveItem: onRemoveItem,
+              onToggleItem: onToggleItem,
+              onOpenItem: onOpenItem,
+              showRemove: !checklistEnabled,
+              rowKey: rowKey,
+              flying: flying,
             ),
           ],
       ],

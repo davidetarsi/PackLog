@@ -137,7 +137,7 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
   }
 
   void _onPileCta(TripModel trip, PostcardCta cta) {
-    if (cta == PostcardCta.prepare) {
+    if (cta == PostcardCta.prepare && !(trip.aiResult?.hasSlots ?? false)) {
       context.push('/trips/${trip.id}/edit-items');
     } else {
       context.push('/trips/${trip.id}');

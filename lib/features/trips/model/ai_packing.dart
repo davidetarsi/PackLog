@@ -131,6 +131,9 @@ class AiSlot with _$AiSlot {
     required int remaining,
     String? reason,
     required String addLabel,
+
+    /// Etichetta grammaticale del pulsante acquisti; assente nei vecchi payload.
+    String? boughtLabel,
     @Default(false) bool toBuy,
     @Default(false) bool checked,
 

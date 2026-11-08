@@ -22,6 +22,10 @@ class SlotActions {
     required this.toggle,
     required this.remove,
     required this.dismiss,
+    required this.removeItem,
+    required this.toggleItem,
+    required this.changeTrip,
+    required this.runMutation,
     required this.rowKey,
     required this.flying,
     required this.flyKitItems,
@@ -37,6 +41,10 @@ class SlotActions {
 
   /// Lo scorrimento di una proposta: toglie subito, con Annulla.
   final ValueChanged<AiSlot> dismiss;
+  final ValueChanged<TripItem> removeItem;
+  final ValueChanged<TripItem> toggleItem;
+  final Future<void> Function(TripModel Function(TripModel) change) changeTrip;
+  final Future<void> Function(Future<void> Function() change) runMutation;
 
   /// La chiave della riga di un oggetto, per farlo volare fino a lì.
   final GlobalKey Function(String itemId) rowKey;

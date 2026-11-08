@@ -61,6 +61,7 @@ const EN_QUALIFICATORE: Record<Qualifica, (invernale: boolean) => string> = {
   freddo: (invernale) => (invernale ? "winter" : "warm"), acqua: () => "waterproof", elegante: () => "smart",
 };
 const IT_AGGIUNGI = { m: ["Aggiungi il tuo", "Aggiungi i tuoi"], f: ["Aggiungi la tua", "Aggiungi le tue"] } as const;
+const IT_COMPRATO = { m: ["Comprato", "Comprati"], f: ["Comprata", "Comprate"] } as const;
 
 const maiuscola = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
@@ -69,8 +70,7 @@ const maiuscola = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
  *  Per gli essenziali di base la categoria e' la famiglia ("intimo", "calzini", "notte", "igiene"). */
 export function nomePosto(capo: Capo, copie: number, qualifica: Qualifica | null, lingua: Lingua):
   { nome: string; aggiungi: string } {
-  const voce: NomePosto | undefined = capo.foulardLeggero ? NOME_FOULARD_LEGGERO :
-    (capo.sub && NOMI_SOTTOCATEGORIA[capo.sub]) || NOMI_CATEGORIA[capo.categoria] || NOMI_FAMIGLIA[capo.categoria];
+  const voce = vocePosto(capo);
   if (!voce) return lingua === "en" ? { nome: "Item", aggiungi: "Add yours" } : { nome: "Capo", aggiungi: "Aggiungi il tuo" };
   const q = voce.qualificabile ? qualifica : null;
   const plurale = copie > 1 || voce.soloPlurale ? 1 : 0;
@@ -91,6 +91,20 @@ export function nomePosto(capo: Capo, copie: number, qualifica: Qualifica | null
   return { nome: maiuscola(nome), aggiungi: IT_AGGIUNGI[voce.genere][plurale] };
 }
 
+function vocePosto(capo: Capo): NomePosto | undefined {
+  return capo.foulardLeggero ? NOME_FOULARD_LEGGERO :
+    (capo.sub && NOMI_SOTTOCATEGORIA[capo.sub]) || NOMI_CATEGORIA[capo.categoria] || NOMI_FAMIGLIA[capo.categoria];
+}
+
+/** Etichetta di acquisto concordata con la voce usata da nomePosto. */
+export function compratoPosto(capo: Capo, copie: number, lingua: Lingua): string {
+  const voce = vocePosto(capo);
+  if (!voce) return lingua === "en" ? "Bought" : "Ho comprato";
+  if (lingua === "en") return "Bought";
+  const plurale = copie > 1 || voce.soloPlurale ? 1 : 0;
+  return IT_COMPRATO[voce.genere][plurale];
+}
+
 // ── I posti della valigia per l'app ─────────────────────────────────────────
 
 export interface PostoApp {
@@ -105,6 +119,8 @@ export interface PostoApp {
   copie: number;
   motivo: string | null;
   aggiungi: string;
+  /** Concordanza determinata dalla stessa voce tabellare di nomePosto. */
+  comprato?: string;
   /** Additivi: impediscono che un kit chiuda un bisogno con un capo inadatto. */
   requisiti?: { minWarmth?: number; maxWarmth?: number; formality?: string[]; minWaterResistance?: number;
     activityTags?: string[]; coverage?: string[] };
@@ -364,7 +380,9 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
     .sort((a, b) => Number(b.livello === "importante") - Number(a.livello === "importante"))
     .map((p): PostoApp => {
       const scarpePioggia = p.delMeteo && p.qualifica === "acqua" && p.capoPioggia?.sub ? p.capoPioggia : null;
-      const { nome, aggiungi } = nomePosto(scarpePioggia ?? p.capo, p.copie, scarpePioggia ? null : p.qualifica, lingua);
+      const capoNome = scarpePioggia ?? p.capo;
+      const { nome, aggiungi } = nomePosto(capoNome, p.copie, scarpePioggia ? null : p.qualifica, lingua);
+      const comprato = compratoPosto(capoNome, p.copie, lingua);
       const motivo = scarpePioggia && !/pioggia|rain/i.test(p.motivo ?? "")
         ? [p.motivo, lingua === "en" ? "Choose a pair suited to the expected rain." :
           "Scegli un paio adatto alla pioggia prevista."].filter(Boolean).join(" ")
@@ -382,7 +400,7 @@ export function postiApp(valigia: Record<string, any>, motivi: { capi: Record<st
         fascia, requisiti?.formality ?? [], requisiti?.minWaterResistance ?? 0,
         requisiti?.activityTags ?? [], requisiti?.coverage ?? []])}`;
       return { id, tipo: p.tipo, categoria: p.categoria, livello: p.livello, nome, copie: p.copie,
-        motivo, aggiungi, ...(requisiti ? { requisiti } : {}) };
+        motivo, aggiungi, comprato, ...(requisiti ? { requisiti } : {}) };
     });
 
   const lavanderia = lavanderiaDelViaggio(viaggio, lingua);

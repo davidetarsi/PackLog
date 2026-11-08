@@ -15,6 +15,7 @@ import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,10 +27,14 @@ import 'package:pack_log/features/ai_input/model/ai_import_state.dart';
 import 'package:pack_log/features/ai_input/providers/ai_import_notifier.dart';
 import 'package:pack_log/features/tour/model/onboarding_state.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
+import 'package:pack_log/features/trips/model/ai_packing.dart';
+import 'package:pack_log/features/items/model/item_model.dart';
+import 'package:pack_log/features/trips/repositories/trip_repository.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:pack_log/features/trips/services/trip_weather_service.dart';
 import 'package:pack_log/features/trips/view/ai_packing_wait_screen.dart';
 import 'package:pack_log/features/trips/view/widgets/ai/ai_home_group.dart';
+import 'package:pack_log/features/trips/view/widgets/slots/slots_section.dart';
 import 'package:pack_log/features/trips/view/widgets/pack/pack_parts.dart';
 import 'package:pack_log/features/trips/view/widgets/trip_calendar.dart';
 import 'package:pack_log/shared/widgets/ds_button.dart';
@@ -110,9 +115,51 @@ Future<void> _houseDetail(ScreenshotApp app, [String id = kHomeId]) async {
 Future<void> _tripDetail(
   ScreenshotApp app, [
   String id = kUpcomingTripId,
+  bool firstReview = false,
 ]) async {
   await app.go('/trips');
-  await app.push('/trips/$id');
+  await app.push('/trips/$id${firstReview ? '?review=1' : ''}');
+}
+
+Future<void> _needsDetail(ScreenshotApp app, [String id = kSeoulTripId]) async {
+  await _tripDetail(app, id);
+  await app.tester.ensureVisible(find.byKey(const Key('pack_row_missing')));
+  await app.tap(find.byKey(const Key('pack_row_missing')));
+}
+
+Future<void> _addNonClothingNeeds(ProviderContainer c) async {
+  final trips = c.read(tripRepositoryProvider);
+  final trip = await trips.getTripById(kSeoulTripId);
+  final result = trip.aiResult!;
+  await trips.updateTrip(
+    trip.copyWith(
+      aiResult: result.copyWith(
+        slots: [
+          ...(result.slots ?? const []),
+          AiSlot(
+            id: 'slot-spazzolino',
+            type: 'toothbrush',
+            category: ItemCategory.toiletries,
+            level: AiSlotLevel.useful,
+            name: 'Spazzolino da viaggio',
+            copies: 1,
+            remaining: 1,
+            addLabel: 'Aggiungi il tuo',
+          ),
+          AiSlot(
+            id: 'slot-adattatore',
+            type: 'adapter',
+            category: ItemCategory.elettronica,
+            level: AiSlotLevel.useful,
+            name: 'Adattatore universale',
+            copies: 1,
+            remaining: 1,
+            addLabel: 'Aggiungi il tuo',
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Apre la pagina valigia di un viaggio, sopra la tab Viaggi.
@@ -1783,19 +1830,22 @@ final flows = <Flow>[
       19,
       'dettaglio-viaggio',
       'valigia-con-posti',
-      route: '/trips/:id',
+      route: '/trips/:id?review=1',
       source: _tripDetailSrc,
       description:
-          'Valigia a posti con l\'armadio quasi vuoto (Seoul): le quattro cose '
-          'importanti da sistemare, la sciarpa da comprare, i capi proposti '
-          'da PackLog e la nota sulla lavanderia.',
+          'Prima revisione salvata del risultato: gli oggetti propri hanno X '
+          'per rimuoverli, le proposte non hanno checkbox e la CTA è Fatto.',
       setup: AppSetup(
         seedWith: (c) async {
           await seed(c, SeedLevel.full);
           await seedValigiaPosti(c);
         },
       ),
-      steps: (app) => _tripDetail(app, kSeoulTripId),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId, true);
+        expect(find.text('Fatto'), findsOneWidget);
+        expect(app.issues, isEmpty, reason: 'overflow nella prima revisione');
+      },
     ),
     Scenario(
       20,
@@ -1804,8 +1854,8 @@ final flows = <Flow>[
       route: '/trips/:id',
       source: _tripDetailSrc,
       description:
-          'Stessa valigia a posti, scorsa fino ai capi proposti da PackLog: '
-          'le copie e il tocco per mettere i propri.',
+          'Apertura ordinaria dopo la cartolina: gli oggetti propri hanno '
+          'checkbox per la checklist.',
       setup: AppSetup(
         seedWith: (c) async {
           await seed(c, SeedLevel.full);
@@ -1814,11 +1864,25 @@ final flows = <Flow>[
       ),
       steps: (app) async {
         await _tripDetail(app, kSeoulTripId);
-        await app.tester.drag(
-          find.byType(ListView).first,
-          const Offset(0, -1500),
+        final list = find.byType(ListView).first;
+        for (
+          var i = 0;
+          i < 3 &&
+              find.byKey(const Key('trip_item_item-12')).evaluate().isEmpty;
+          i++
+        ) {
+          await app.tester.drag(list, const Offset(0, -1000));
+          await app.settle();
+        }
+        await app.tester.ensureVisible(
+          find.byKey(const Key('trip_item_item-12')),
         );
-        await app.settle();
+        expect(find.byKey(const Key('trip_item_item-12')), findsOneWidget);
+        expect(
+          app.issues,
+          isEmpty,
+          reason: 'overflow nella checklist ordinaria',
+        );
       },
     ),
     Scenario(
@@ -1828,9 +1892,8 @@ final flows = <Flow>[
       route: '/trips/:id',
       source: _tripDetailSrc,
       description:
-          'Toccando le Magliette si apre il foglio dal basso: Magliette '
-          '\u00d75 con "Da comprare", la frase, T-shirt nere \u00d72 '
-          'gi\u00e0 scritte e il campo in fondo.',
+          'Dalla card Cosa manca, il foglio di Magliette apre la ricerca '
+          'secondaria e mostra risultati reali dall’inventario.',
       setup: AppSetup(
         seedWith: (c) async {
           await seed(c, SeedLevel.full);
@@ -1838,17 +1901,42 @@ final flows = <Flow>[
         },
       ),
       steps: (app) async {
-        await _tripDetail(app, kSeoulTripId);
+        await _needsDetail(app);
+        expect(find.byType(SlotsSection), findsOneWidget);
+        expect(
+          find.byKey(const Key('slot_row_slot-magliette')),
+          findsOneWidget,
+        );
         await app.tester.drag(
           find.byType(ListView).first,
-          const Offset(0, -1500),
+          const Offset(0, -1200),
         );
         await app.settle();
+        await app.tester.ensureVisible(
+          find.byKey(const Key('slot_row_slot-magliette')),
+        );
+        expect(
+          find.byKey(const Key('slot_row_slot-magliette')).hitTestable(),
+          findsOneWidget,
+        );
         await app.tap(find.byKey(const Key('slot_row_slot-magliette')));
-        for (final line in const ['2 t-shirt nere']) {
-          await app.enterText(find.byType(TextField), line);
-          await app.tap(find.byIcon(Icons.arrow_upward));
-        }
+        expect(
+          find.byKey(const Key('slot_sheet_input_slot-magliette')),
+          findsOneWidget,
+        );
+        await app.enterText(
+          find.byType(TextField).first,
+          'Caricatore telefono',
+        );
+        await app.tester.drag(
+          find.byType(SingleChildScrollView).last,
+          const Offset(0, -360),
+        );
+        await app.settle();
+        await app.tap(find.text('Cerca nel tuo inventario'));
+        expect(find.text('Oggetti trovati'), findsOneWidget);
+        expect(find.text('Caricatore telefono'), findsWidgets);
+        expect(app.issues, isEmpty, reason: 'overflow nel foglio di ricerca');
       },
     ),
     Scenario(
@@ -1859,7 +1947,7 @@ final flows = <Flow>[
       source: _tripDetailSrc,
       description:
           'La X su un importante (Giacca invernale): il dialog che chiede '
-          'conferma prima di toglierlo.',
+          'conferma dalla pagina dedicata alle necessità.',
       setup: AppSetup(
         seedWith: (c) async {
           await seed(c, SeedLevel.full);
@@ -1867,10 +1955,11 @@ final flows = <Flow>[
         },
       ),
       steps: (app) async {
-        await _tripDetail(app, kSeoulTripId);
+        await _needsDetail(app);
         await app.tap(
           find.byKey(const Key('slot_remove_slot-giacca_invernale')),
         );
+        expect(app.issues, isEmpty, reason: 'overflow nel dialog di conferma');
       },
     ),
     Scenario(
@@ -1892,8 +1981,175 @@ final flows = <Flow>[
       ),
       steps: (app) => _tripDetail(app, kSeoulTripId),
     ),
+    Scenario(
+      24,
+      'dettaglio-viaggio',
+      'necessita-categorie-basse',
+      route: '/trips/:id/needs',
+      source: _tripDetailSrc,
+      description:
+          'La pagina necessità include anche igiene ed elettronica sotto le '
+          'categorie di abbigliamento, con acquisto nella categoria relativa.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+          await _addNonClothingNeeds(c);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        await app.push('/trips/$kSeoulTripId/needs');
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1200),
+        );
+        await app.settle();
+        await app.tester.ensureVisible(
+          find.byKey(const Key('slot_row_slot-adattatore')),
+        );
+        expect(find.text('Spazzolino da viaggio'), findsWidgets);
+        expect(find.text('Adattatore universale'), findsWidgets);
+        expect(
+          app.issues,
+          isEmpty,
+          reason: 'overflow nelle categorie in basso',
+        );
+      },
+    ),
+    Scenario(
+      25,
+      'dettaglio-viaggio',
+      'foglio-completato',
+      route: '/trips/:id/needs',
+      source: 'lib/features/trips/view/widgets/slots/slot_fill_sheet.dart',
+      description:
+          'Collegamento di cinque magliette dall’inventario completa le copie '
+          'richieste e lascia la CTA esplicita Chiudi.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+          final trips = c.read(tripRepositoryProvider);
+          final trip = await trips.getTripById(kSeoulTripId);
+          await trips.updateTrip(
+            trip.copyWith(
+              aiResult: trip.aiResult!.copyWith(
+                slots: [
+                  for (final slot in trip.aiResult!.slots!)
+                    if (slot.id == 'slot-magliette')
+                      slot.copyWith(copies: 5, remaining: 5)
+                    else
+                      slot,
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        await app.push('/trips/$kSeoulTripId/needs');
+        await app.tester.drag(
+          find.byType(ListView).first,
+          const Offset(0, -1200),
+        );
+        await app.settle();
+        await app.tester.ensureVisible(
+          find.byKey(const Key('slot_row_slot-magliette')),
+        );
+        await app.tap(find.byKey(const Key('slot_row_slot-magliette')));
+        await app.enterText(find.byType(TextField).first, 'T-shirt bianca');
+        await app.tester.ensureVisible(find.text('Cerca nel tuo inventario'));
+        await app.tap(find.text('Cerca nel tuo inventario'));
+        await app.tester.ensureVisible(find.text('Aggiungi'));
+        await app.tap(find.text('Aggiungi'));
+        expect(find.byKey(const Key('slot_sheet_done')), findsOneWidget);
+        expect(
+          find.text('Hai aggiunto tutte le copie richieste.'),
+          findsOneWidget,
+        );
+        expect(
+          app.issues,
+          isEmpty,
+          reason: 'overflow nel completamento foglio',
+        );
+      },
+    ),
+    Scenario(
+      26,
+      'dettaglio-viaggio',
+      'foglio-ricerca-stretto-tastiera',
+      route: '/trips/:id/needs?slot=slot-magliette',
+      source: 'lib/features/trips/view/widgets/slots/slot_fill_sheet.dart',
+      description:
+          'Render Flutter a 320×640 dp, testo 160% e viewInsets da tastiera; '
+          'ricerca inventario aperta con risultati.',
+      setup: AppSetup(
+        viewport: const Size(320, 640),
+        initialViewport: kScreenSize,
+        textScale: 1.6,
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await app.go('/trips/$kSeoulTripId/needs?slot=slot-magliette');
+        app.tester.view.physicalSize = const Size(320, 640) * kPixelRatio;
+        app.tester.view.viewInsets = const FakeViewPadding(
+          bottom: 280 * kPixelRatio,
+        );
+        await app.settle();
+        expect(
+          find.byKey(const Key('slot_sheet_input_slot-magliette')),
+          findsOneWidget,
+        );
+        await app.enterText(
+          find.byType(TextField).first,
+          'Caricatore telefono',
+        );
+        await app.tester.ensureVisible(find.text('Cerca nel tuo inventario'));
+        expect(
+          find.text('Cerca nel tuo inventario').hitTestable(),
+          findsOneWidget,
+        );
+        await app.tap(find.text('Cerca nel tuo inventario'));
+        expect(find.text('Oggetti trovati'), findsOneWidget);
+        expect(find.text('Caricatore telefono'), findsWidgets);
+        final result = find.text('Caricatore telefono').last;
+        await app.tester.ensureVisible(result);
+        expect(result.hitTestable(), findsOneWidget);
+        expect(
+          app.issues,
+          isEmpty,
+          reason: 'overflow con tastiera e testo 160%',
+        );
+      },
+    ),
+    Scenario(
+      27,
+      'dettaglio-viaggio',
+      'necessita-importanti',
+      route: '/trips/:id/needs',
+      source: _tripDetailSrc,
+      description:
+          'Testa della pagina necessità con le card importanti e motivazioni '
+          'complete del seed salvato.',
+      setup: AppSetup(
+        seedWith: (c) async {
+          await seed(c, SeedLevel.full);
+          await seedValigiaPosti(c);
+        },
+      ),
+      steps: (app) async {
+        await _tripDetail(app, kSeoulTripId);
+        await app.push('/trips/$kSeoulTripId/needs');
+        expect(find.textContaining('Fino a -7°'), findsOneWidget);
+        expect(app.issues, isEmpty, reason: 'overflow nelle card importanti');
+      },
+    ),
   ]),
-
   Flow('10-profilo', 'Tab Profilo: impostazioni e account', [
     Scenario(
       1,
@@ -2506,21 +2762,25 @@ void main() {
               theme: theme,
               setup: s.setup,
             );
-            await s.steps(app);
-            await app.capture(
-              Shot(
-                flow: flow.id,
-                flowTitle: flow.title,
-                order: s.order,
-                screen: s.screen,
-                state: s.state,
-                source: s.source,
-                description: s.description,
-                route: s.route,
-                theme: theme,
-              ),
-            );
-            await app.finish();
+            try {
+              await s.steps(app);
+              await app.capture(
+                Shot(
+                  flow: flow.id,
+                  flowTitle: flow.title,
+                  order: s.order,
+                  screen: s.screen,
+                  state: s.state,
+                  source: s.source,
+                  description: s.description,
+                  route: s.route,
+                  theme: theme,
+                  viewport: s.setup.viewport,
+                ),
+              );
+            } finally {
+              await app.finish();
+            }
           });
         }
       }
