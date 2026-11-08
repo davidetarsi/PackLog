@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/analytics/analytics_service.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/notifier/synced_crud_notifier.dart';
@@ -271,14 +270,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
     ref.read(syncOrchestratorProvider).requestSync();
 
     // Dopo il salvataggio: si misurano i fatti, non le intenzioni.
-    unawaited(
-      ref
-          .read(analyticsServiceProvider)
-          .logEvent(
-            'slot_filled',
-            properties: {'level': level.name, 'copies': item.quantity},
-          ),
-    );
+    _analytics.trackSlotFilled(level: level.name, copies: item.quantity);
   }
 
   void _emitPackingEvents({
@@ -296,9 +288,28 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
     );
     if (events.isEmpty) return;
 
-    final analytics = ref.read(analyticsServiceProvider);
     for (final event in events) {
-      analytics.logEvent(event.name, properties: event.properties);
+      final p = event.properties;
+      switch (event.name) {
+        case 'packing_started':
+          _analytics.trackPackingStarted(
+            tripId: tripId,
+            totalItems: p['total_items'] as int,
+            daysToDeparture: p['days_to_departure'] as int?,
+          );
+        case 'packing_progress':
+          _analytics.trackPackingProgress(
+            tripId: tripId,
+            threshold: p['threshold'] as int,
+            daysToDeparture: p['days_to_departure'] as int?,
+          );
+        case 'packing_completed':
+          _analytics.trackPackingCompleted(
+            tripId: tripId,
+            totalItems: p['total_items'] as int,
+            daysToDeparture: p['days_to_departure'] as int?,
+          );
+      }
     }
   }
 

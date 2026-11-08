@@ -18,7 +18,7 @@ import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../houses/providers/house_provider.dart';
 import '../../../core/monitoring/monitoring_service.dart';
-import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../tour/providers/post_login_onboarding_provider.dart';
 import '../model/trip_draft.dart';
 import '../model/trip_model.dart';
@@ -245,11 +245,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
     // Il viaggio c'è: chi abbandona dopo questo passo non torna più a "Dove
     // vai?".
     if (widget.firstRun) {
-      unawaited(
-        ref
-            .read(analyticsServiceProvider)
-            .logEvent('first_trip_started', properties: const {}),
-      );
+      ref.read(coreAnalyticsServiceProvider).trackFirstTripStarted();
       await ref.read(postLoginOnboardingProvider.notifier).completeFirstTrip();
       if (!mounted) return;
     }

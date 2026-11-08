@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
@@ -21,8 +20,6 @@ class MockItemRepository extends Mock implements ItemRepository {}
 
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
-class MockRawAnalyticsService extends Mock implements AppAnalyticsService {}
-
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 /// Unit tests for TripNotifier (Riverpod AsyncNotifier).
@@ -35,7 +32,6 @@ class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 void main() {
   late MockTripRepository mockRepository;
   late MockCoreAnalyticsService mockAnalytics;
-  late MockRawAnalyticsService mockRawAnalytics;
   late ProviderContainer container;
 
   setUp(() {
@@ -76,25 +72,40 @@ void main() {
       () => mockItemRepo.moveItemsToHouse(any(), any(), any()),
     ).thenAnswer((_) async {});
 
-    mockRawAnalytics = MockRawAnalyticsService();
-    when(
-      () => mockRawAnalytics.logEvent(
-        any(),
-        properties: any(named: 'properties'),
-      ),
-    ).thenAnswer((_) async {});
-
     // Create ProviderContainer with mocked repository
     container = ProviderContainer(
       overrides: [
         tripRepositoryProvider.overrideWithValue(mockRepository),
         coreAnalyticsServiceProvider.overrideWithValue(mockAnalytics),
-        analyticsServiceProvider.overrideWithValue(mockRawAnalytics),
         syncOrchestratorProvider.overrideWithValue(mockSync),
         itemRepositoryProvider.overrideWithValue(mockItemRepo),
       ],
     );
   });
+
+  void verifyNoPackingEvents() {
+    verifyNever(
+      () => mockAnalytics.trackPackingStarted(
+        tripId: any(named: 'tripId'),
+        totalItems: any(named: 'totalItems'),
+        daysToDeparture: any(named: 'daysToDeparture'),
+      ),
+    );
+    verifyNever(
+      () => mockAnalytics.trackPackingProgress(
+        tripId: any(named: 'tripId'),
+        threshold: any(named: 'threshold'),
+        daysToDeparture: any(named: 'daysToDeparture'),
+      ),
+    );
+    verifyNever(
+      () => mockAnalytics.trackPackingCompleted(
+        tripId: any(named: 'tripId'),
+        totalItems: any(named: 'totalItems'),
+        daysToDeparture: any(named: 'daysToDeparture'),
+      ),
+    );
+  }
 
   tearDown(() {
     // Dispose container to prevent memory leaks between tests
@@ -407,9 +418,10 @@ void main() {
             .toggleItemCheck('trip-packing', 'item-0');
 
         verify(
-          () => mockRawAnalytics.logEvent(
-            'packing_started',
-            properties: any(named: 'properties'),
+          () => mockAnalytics.trackPackingStarted(
+            tripId: 'trip-packing',
+            totalItems: any(named: 'totalItems'),
+            daysToDeparture: any(named: 'daysToDeparture'),
           ),
         ).called(1);
       });
@@ -428,9 +440,10 @@ void main() {
             .toggleItemCheck('trip-packing', 'item-1');
 
         verify(
-          () => mockRawAnalytics.logEvent(
-            'packing_completed',
-            properties: any(named: 'properties'),
+          () => mockAnalytics.trackPackingCompleted(
+            tripId: 'trip-packing',
+            totalItems: 2,
+            daysToDeparture: any(named: 'daysToDeparture'),
           ),
         ).called(1);
       });
@@ -448,12 +461,7 @@ void main() {
             .read(tripNotifierProvider.notifier)
             .toggleItemCheck('trip-packing', 'item-0');
 
-        verifyNever(
-          () => mockRawAnalytics.logEvent(
-            any(that: startsWith('packing_')),
-            properties: any(named: 'properties'),
-          ),
-        );
+        verifyNoPackingEvents();
       });
 
       // Misuriamo fatti, non intenzioni: se il salvataggio fallisce non deve
@@ -474,12 +482,7 @@ void main() {
           throwsA(isA<Exception>()),
         );
 
-        verifyNever(
-          () => mockRawAnalytics.logEvent(
-            any(that: startsWith('packing_')),
-            properties: any(named: 'properties'),
-          ),
-        );
+        verifyNoPackingEvents();
       });
     });
 
@@ -1000,10 +1003,7 @@ void main() {
           .fillAiSlot('t1', 's-magliette', item('i1', 2));
 
       verify(
-        () => mockRawAnalytics.logEvent(
-          'slot_filled',
-          properties: {'level': 'useful', 'copies': 2},
-        ),
+        () => mockAnalytics.trackSlotFilled(level: 'useful', copies: 2),
       ).called(1);
     });
 
@@ -1019,9 +1019,9 @@ void main() {
       );
 
       verifyNever(
-        () => mockRawAnalytics.logEvent(
-          'slot_filled',
-          properties: any(named: 'properties'),
+        () => mockAnalytics.trackSlotFilled(
+          level: any(named: 'level'),
+          copies: any(named: 'copies'),
         ),
       );
     });

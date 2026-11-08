@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
 import '../../../shared/constants/app_constants.dart';
 import '../../../shared/constants/house_icons.dart';
@@ -587,27 +587,19 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   /// SharedPreferences, non per account), alla prima valigia con i posti salvata. La retention a 1 e 7 giorni si legge in
   /// Amplitude partendo da questo evento.
   Future<void> _logFirstSuitcase(AiPackingResult result, int tripItems) async {
-    final analytics = ref.read(analyticsServiceProvider);
+    final analytics = ref.read(coreAnalyticsServiceProvider);
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_firstSuitcaseLoggedKey) ?? false) return;
     await prefs.setBool(_firstSuitcaseLoggedKey, true);
     final slots = result.slots ?? const <AiSlot>[];
-    // Non si aspetta: un errore dell'analytics non deve fermare la navigazione.
-    unawaited(
-      analytics.logEvent(
-        'first_suitcase_generated',
-        properties: {
-          'slots_important': slots
-              .where((s) => s.level == AiSlotLevel.important)
-              .length,
-          'slots_proposed': slots
-              .where((s) => s.level == AiSlotLevel.useful)
-              .length,
-          'slots_total': slots.length,
-          'trip_items': tripItems,
-          'from_first_run': widget.firstRun,
-        },
-      ),
+    analytics.trackFirstSuitcaseGenerated(
+      slotsImportant: slots
+          .where((s) => s.level == AiSlotLevel.important)
+          .length,
+      slotsProposed: slots.where((s) => s.level == AiSlotLevel.useful).length,
+      slotsTotal: slots.length,
+      tripItems: tripItems,
+      fromFirstRun: widget.firstRun,
     );
   }
 
@@ -615,17 +607,12 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
   /// kit e quanti oggetti), solo se ce n'è stato qualcuno.
   void _logKitAutoAdded(AiPackingResult result) {
     if (result.kitAdded.isEmpty) return;
-    unawaited(
-      ref
-          .read(analyticsServiceProvider)
-          .logEvent(
-            'kit_auto_added',
-            properties: {
-              'kits': {for (final a in result.kitAdded) a.kitId}.length,
-              'items': result.kitAdded.length,
-            },
-          ),
-    );
+    ref
+        .read(coreAnalyticsServiceProvider)
+        .trackKitAutoAdded(
+          kits: {for (final a in result.kitAdded) a.kitId}.length,
+          items: result.kitAdded.length,
+        );
   }
 
   /// I capi della proposta, con nome e categoria dell'oggetto di casa. Un

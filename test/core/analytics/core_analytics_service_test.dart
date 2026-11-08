@@ -170,57 +170,6 @@ void main() {
     );
   });
 
-  group('bulk events', () {
-    test('trackBulkTemplateToggled logs bulk_template_toggled', () async {
-      service.trackBulkTemplateToggled(
-        templateKey: 'beach',
-        isSelected: true,
-        totalSelected: 2,
-      );
-      await pump();
-      verify(
-        () => mockAnalytics.logEvent(
-          'bulk_template_toggled',
-          properties: {
-            'template_key': 'beach',
-            'is_selected': true,
-            'total_selected': 2,
-          },
-        ),
-      ).called(1);
-    });
-
-    test('trackBulkGenderSet logs bulk_gender_set', () async {
-      service.trackBulkGenderSet(gender: 'male');
-      await pump();
-      verify(
-        () => mockAnalytics.logEvent(
-          'bulk_gender_set',
-          properties: {'gender': 'male'},
-        ),
-      ).called(1);
-    });
-
-    test('trackBulkSessionSaved logs bulk_session_saved', () async {
-      service.trackBulkSessionSaved(
-        itemCount: 10,
-        templateCount: 2,
-        hasManualItems: true,
-      );
-      await pump();
-      verify(
-        () => mockAnalytics.logEvent(
-          'bulk_session_saved',
-          properties: {
-            'item_count': 10,
-            'template_count': 2,
-            'has_manual_items': true,
-          },
-        ),
-      ).called(1);
-    });
-  });
-
   group('ai events', () {
     test('trackAiInputSubmitted logs ai_input_submitted', () async {
       service.trackAiInputSubmitted();
@@ -477,5 +426,184 @@ void main() {
         ).called(1);
       },
     );
+  });
+
+  group('eventi spostati', () {
+    // Nomi e proprietà identici a quando i chiamanti usavano logEvent diretto.
+    Future<void> expectEvent(String name, [Map<String, dynamic>? props]) async {
+      await pump();
+      verify(() => mockAnalytics.logEvent(name, properties: props)).called(1);
+    }
+
+    test('trackAppOpened', () async {
+      service.trackAppOpened(trigger: 'cold_start');
+      await expectEvent('app_opened', {'trigger': 'cold_start'});
+    });
+
+    test('trackOnboardingPageViewed', () async {
+      service.trackOnboardingPageViewed(pageIndex: 1, pageName: 'trips');
+      await expectEvent('onboarding_page_viewed', {
+        'page_index': 1,
+        'page_name': 'trips',
+      });
+    });
+
+    test('trackOnboardingSkipped', () async {
+      service.trackOnboardingSkipped(pageIndex: 0);
+      await expectEvent('onboarding_skipped', {'page_index': 0});
+    });
+
+    test('trackLoginScreenViewed', () async {
+      service.trackLoginScreenViewed();
+      await expectEvent('login_screen_viewed');
+    });
+
+    test('trackConsentGiven', () async {
+      service.trackConsentGiven(policyVersion: '2026-10');
+      await expectEvent('consent_given', {'policy_version': '2026-10'});
+    });
+
+    test('trackLoginAttempted e trackLoginCompleted', () async {
+      service.trackLoginAttempted(method: 'google');
+      await expectEvent('login_attempted', {'method': 'google'});
+      service.trackLoginCompleted(method: 'google');
+      await expectEvent('login_completed', {'method': 'google'});
+    });
+
+    test('trackLoginFailed senza error_type se null', () async {
+      service.trackLoginFailed(method: 'google', reason: 'cancelled');
+      await expectEvent('login_failed', {
+        'method': 'google',
+        'reason': 'cancelled',
+      });
+    });
+
+    test('trackLoginFailed con solo error_type', () async {
+      service.trackLoginFailed(method: 'google', errorType: 'StateError');
+      await expectEvent('login_failed', {
+        'method': 'google',
+        'error_type': 'StateError',
+      });
+    });
+
+    test('trackAnalyticsOptIn e trackAnalyticsOptOut', () async {
+      service.trackAnalyticsOptOut();
+      await expectEvent('analytics_opt_out', {'enabled': false});
+      service.trackAnalyticsOptIn();
+      await expectEvent('analytics_opt_in', {'enabled': true});
+    });
+
+    test('step del tour', () async {
+      const props = {'step_name': 'houseTooltip', 'step_index': 2};
+      service.trackOnboardingStepViewed(stepName: 'houseTooltip', stepIndex: 2);
+      await expectEvent('onboarding_step_viewed', props);
+      service.trackOnboardingStepAdvanced(
+        stepName: 'houseTooltip',
+        stepIndex: 2,
+      );
+      await expectEvent('onboarding_step_advanced', props);
+      service.trackOnboardingClosed(stepName: 'houseTooltip', stepIndex: 2);
+      await expectEvent('onboarding_closed', props);
+    });
+
+    test('tour e onboarding AI senza proprietà', () async {
+      service.trackAiOnboardingStarted();
+      await expectEvent('ai_onboarding_started');
+      service.trackAiOnboardingSkipped();
+      await expectEvent('ai_onboarding_skipped');
+      service.trackTourRelaunched();
+      await expectEvent('tour_relaunched');
+    });
+
+    test('trackTourCompleted', () async {
+      service.trackTourCompleted(skippedAi: true, lastStepIndex: 5);
+      await expectEvent('tour_completed', {
+        'skipped_ai': true,
+        'last_step_index': 5,
+      });
+    });
+
+    test('trackFirstTripStarted', () async {
+      service.trackFirstTripStarted();
+      await expectEvent('first_trip_started', const {});
+    });
+
+    test('trackFirstSuitcaseGenerated', () async {
+      service.trackFirstSuitcaseGenerated(
+        slotsImportant: 1,
+        slotsProposed: 2,
+        slotsTotal: 3,
+        tripItems: 20,
+        fromFirstRun: true,
+      );
+      await expectEvent('first_suitcase_generated', {
+        'slots_important': 1,
+        'slots_proposed': 2,
+        'slots_total': 3,
+        'trip_items': 20,
+        'from_first_run': true,
+      });
+    });
+
+    test('trackKitAutoAdded', () async {
+      service.trackKitAutoAdded(kits: 2, items: 5);
+      await expectEvent('kit_auto_added', {'kits': 2, 'items': 5});
+    });
+
+    test('posti', () async {
+      service.trackSlotFilled(level: 'important', copies: 2);
+      await expectEvent('slot_filled', {'level': 'important', 'copies': 2});
+      service.trackSlotMarkedToBuy(level: 'useful', from: 'card');
+      await expectEvent('slot_marked_to_buy', {
+        'level': 'useful',
+        'from': 'card',
+      });
+      service.trackSlotBought(level: 'useful');
+      await expectEvent('slot_bought', {'level': 'useful'});
+    });
+
+    test('kit', () async {
+      service.trackKitSuggestionAccepted(missing: 2);
+      await expectEvent('kit_suggestion_accepted', {'missing': 2});
+      service.trackKitSuggestionDismissed();
+      await expectEvent('kit_suggestion_dismissed');
+      service.trackKitUseLearned(kind: 'activity');
+      await expectEvent('kit_use_learned', {'kind': 'activity'});
+      service.trackKitCreated(items: 4, uses: 2);
+      await expectEvent('kit_created', {'items': 4, 'uses': 2});
+    });
+
+    test('preparazione della valigia', () async {
+      service.trackPackingStarted(
+        tripId: 't1',
+        totalItems: 10,
+        daysToDeparture: null,
+      );
+      await expectEvent('packing_started', {
+        'trip_id': 't1',
+        'total_items': 10,
+        'days_to_departure': null,
+      });
+      service.trackPackingProgress(
+        tripId: 't1',
+        threshold: 50,
+        daysToDeparture: 2,
+      );
+      await expectEvent('packing_progress', {
+        'trip_id': 't1',
+        'threshold': 50,
+        'days_to_departure': 2,
+      });
+      service.trackPackingCompleted(
+        tripId: 't1',
+        totalItems: 10,
+        daysToDeparture: 0,
+      );
+      await expectEvent('packing_completed', {
+        'trip_id': 't1',
+        'total_items': 10,
+        'days_to_departure': 0,
+      });
+    });
   });
 }
