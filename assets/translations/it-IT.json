@@ -200,6 +200,7 @@
   "prepare": "Prepara la valigia",
   "incomplete": "{} è ancora da compilare. Ha un meteo diverso: conviene indicare cosa farai e dove dormi.",
   "go_to_stop": "Compila la tappa",
+  "busy": "Sto già preparando una valigia: ti avviso quando è pronta.",
   "wait": {
     "title": "Preparo la valigia",
     "subtitle": "{} · {}",

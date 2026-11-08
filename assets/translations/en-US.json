@@ -200,6 +200,7 @@
   "prepare": "Pack the suitcase",
   "incomplete": "{} is still to fill in. The weather is different there: it's worth adding what you will do and where you sleep.",
   "go_to_stop": "Fill in the stop",
+  "busy": "I'm already packing a suitcase: I'll let you know when it's ready.",
   "wait": {
     "title": "Packing your suitcase",
     "subtitle": "{} · {}",
