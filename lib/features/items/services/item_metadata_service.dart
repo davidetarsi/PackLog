@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/monitoring/monitoring_service.dart';
+import '../../../core/once_per_day.dart';
 import '../model/item_model.dart';
 
 /// La scheda di un oggetto aggiunto a mano, dall'edge function
@@ -18,11 +21,26 @@ class ItemMetadataResult {
   final ItemCategory? category;
 }
 
+/// Risposta non 200 (e non 429) di `item-metadata`, per Sentry. Il corpo
+/// non entra: potrebbe ripetere il nome scritto dall'utente.
+class ItemMetadataHttpException implements Exception {
+  const ItemMetadataHttpException(this.statusCode);
+
+  final int statusCode;
+
+  @override
+  String toString() => 'ItemMetadataHttpException: HTTP $statusCode';
+}
+
 /// Chiede la scheda di un oggetto dal solo nome.
 ///
 /// Non lancia mai: senza rete, senza sessione, a limite raggiunto o con una
 /// risposta strana restituisce null e l'oggetto resta com'è. Il nome non
 /// consuma crediti AI (ha un limite giornaliero lato server).
+///
+/// Il limite raggiunto è un evento ([CoreAnalyticsService.trackAiLimitReached]);
+/// gli altri errori del server e le risposte illeggibili vanno in Sentry, la
+/// rete assente no.
 class ItemMetadataService {
   ItemMetadataService({
     required String url,
@@ -30,7 +48,11 @@ class ItemMetadataService {
     http.Client? client,
     String? Function()? jwtProvider,
     String Function()? language,
+    CoreAnalyticsService? analytics,
+    AppMonitoringService? monitoring,
   }) : _url = url,
+       _analytics = analytics,
+       _monitoring = monitoring,
        _language = language ?? (() => 'it'),
        _anonKey = anonKey,
        _client = client ?? http.Client(),
@@ -42,6 +64,8 @@ class ItemMetadataService {
   final String _anonKey;
   final http.Client _client;
   final String? Function() _jwtProvider;
+  final CoreAnalyticsService? _analytics;
+  final AppMonitoringService? _monitoring;
 
   /// La lingua dell'app ('it' o 'en'), per i testi che scrive il server.
   final String Function() _language;
@@ -63,13 +87,31 @@ class ItemMetadataService {
             ),
           )
           .timeout(const Duration(seconds: 60));
+      if (response.statusCode == 429) {
+        _analytics?.trackAiLimitReached(feature: 'item_name');
+        return null;
+      }
       if (response.statusCode != 200) {
         debugPrint('[ItemMetadata] ${response.statusCode}: ${response.body}');
+        _monitoring?.captureException(
+          ItemMetadataHttpException(response.statusCode),
+          tags: {
+            'operation': 'item_metadata',
+            'status': '${response.statusCode}',
+          },
+        );
         return null;
       }
       return parse(response.body);
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[ItemMetadata] scheda non ottenuta: $e');
+      if (!isNetworkFailure(e)) {
+        _monitoring?.captureException(
+          e,
+          stackTrace: st,
+          tags: {'operation': 'item_metadata'},
+        );
+      }
       return null;
     }
   }

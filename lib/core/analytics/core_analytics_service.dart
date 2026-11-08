@@ -315,6 +315,12 @@ class CoreAnalyticsService {
     _safeLogEvent('ai_input_failed', properties: {'error_type': errorType});
   }
 
+  /// Tetto AI finito (risposta 429). `feature`: `suitcase`, `scan`,
+  /// `weather`, `item_name`.
+  void trackAiLimitReached({required String feature}) {
+    _safeLogEvent('ai_limit_reached', properties: {'feature': feature});
+  }
+
   void trackAiItemsSaved({required int count, required bool isOnboarding}) {
     _safeLogEvent(
       'ai_items_saved',
@@ -450,6 +456,16 @@ class CoreAnalyticsService {
 
   void trackAnalyticsOptOut() =>
       _safeLogEvent('analytics_opt_out', properties: {'enabled': false});
+
+  // ── promo_ ────────────────────────────────────────────────────────────────
+
+  /// Esito dell'attivazione di un codice promo; mai il codice.
+  void trackPromoCodeRedeemed({required String outcome, int? credits}) {
+    _safeLogEvent(
+      'promo_code_redeemed',
+      properties: {'outcome': outcome, 'credits': ?credits},
+    );
+  }
 
   // ── screen_ ───────────────────────────────────────────────────────────────
 

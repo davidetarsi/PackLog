@@ -606,4 +606,39 @@ void main() {
       });
     });
   });
+
+  group('tetti e codici promo', () {
+    test('trackAiLimitReached', () async {
+      service.trackAiLimitReached(feature: 'weather');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'ai_limit_reached',
+          properties: {'feature': 'weather'},
+        ),
+      ).called(1);
+    });
+
+    test('trackPromoCodeRedeemed senza crediti', () async {
+      service.trackPromoCodeRedeemed(outcome: 'expired');
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'promo_code_redeemed',
+          properties: {'outcome': 'expired'},
+        ),
+      ).called(1);
+    });
+
+    test('trackPromoCodeRedeemed con i crediti', () async {
+      service.trackPromoCodeRedeemed(outcome: 'redeemed', credits: 20);
+      await pump();
+      verify(
+        () => mockAnalytics.logEvent(
+          'promo_code_redeemed',
+          properties: {'outcome': 'redeemed', 'credits': 20},
+        ),
+      ).called(1);
+    });
+  });
 }
