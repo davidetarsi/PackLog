@@ -51,8 +51,6 @@ class MockHouseRepository extends Mock implements HouseRepository {}
 
 class MockItemRepository extends Mock implements ItemRepository {}
 
-class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
-
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 class MockRawAnalytics extends Mock implements AppAnalyticsService {}
@@ -315,7 +313,7 @@ void main() {
         for (final id in ['h1', 'h2', 'h3'])
           kitNotifierProvider(id).overrideWith(_Kits.new),
         coreAnalyticsServiceProvider.overrideWithValue(
-          MockCoreAnalyticsService(),
+          CoreAnalyticsService(rawAnalytics),
         ),
         syncOrchestratorProvider.overrideWithValue(sync),
         tripLifecycleServiceProvider.overrideWithValue(lifecycle),

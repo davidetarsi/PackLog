@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../../core/analytics/analytics_service.dart';
+import '../../../../../core/analytics/core_analytics_service.dart';
 import '../../../../../shared/helpers/design_system.dart';
 import '../../../../../shared/helpers/snack_bar_helper.dart';
 import '../../../model/ai_packing.dart';
@@ -22,19 +22,14 @@ mixin TripSlotEdits on ConsumerState<TripDetailScreen> {
     // Il notifier si legge ora: Annulla può arrivare quando la pagina non c'è
     // più, e allora `ref` non si può usare.
     final notifier = ref.read(tripNotifierProvider.notifier);
-    final analytics = ref.read(analyticsServiceProvider);
+    final analytics = ref.read(coreAnalyticsServiceProvider);
     final saved = await updateSlot(
       notifier,
       slot,
       (s) => s.copyWith(toBuy: true),
     );
     if (!saved) return;
-    unawaited(
-      analytics.logEvent(
-        'slot_marked_to_buy',
-        properties: {'level': slot.level.name, 'from': from},
-      ),
-    );
+    analytics.trackSlotMarkedToBuy(level: slot.level.name, from: from);
     if (!mounted) return;
     AppSnackBar.showUndo(
       context,

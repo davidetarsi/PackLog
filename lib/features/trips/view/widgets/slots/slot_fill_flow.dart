@@ -5,7 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../../core/analytics/analytics_service.dart';
+import '../../../../../core/analytics/core_analytics_service.dart';
 import '../../../../../shared/helpers/snack_bar_helper.dart';
 import '../../../../houses/providers/house_provider.dart';
 import '../../../../items/providers/item_provider.dart';
@@ -84,7 +84,7 @@ mixin TripSlotFill on TripSlotEdits {
     required bool bought,
   }) async {
     final notifier = container.read(tripNotifierProvider.notifier);
-    final analytics = container.read(analyticsServiceProvider);
+    final analytics = container.read(coreAnalyticsServiceProvider);
     try {
       var applied = 0;
       await notifier.serializeEdit(id, () async {
@@ -157,12 +157,7 @@ mixin TripSlotFill on TripSlotEdits {
       // Un posto "da comprare" si apre solo con "Presa": riempirlo vuol dire
       // che l'hai comprato.
       if (bought) {
-        unawaited(
-          analytics.logEvent(
-            'slot_bought',
-            properties: {'level': slot.level.name},
-          ),
-        );
+        analytics.trackSlotBought(level: slot.level.name);
       }
       return applied;
     } catch (_) {

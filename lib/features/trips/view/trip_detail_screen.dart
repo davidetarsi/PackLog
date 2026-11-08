@@ -23,6 +23,7 @@ import '../../luggages/providers/luggage_provider.dart';
 import '../model/suitcase_progress.dart';
 import '../model/ai_packing.dart';
 import '../model/trip_model.dart';
+import '../services/suitcase_analytics.dart';
 import '../providers/trip_provider.dart';
 import 'widgets/pack/pack_luggage_selector.dart';
 import 'widgets/pack/pack_luggages.dart';
@@ -237,6 +238,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     await showAiPackItemSheet(
       context,
       item: item,
+      subCategory: inventoryItem == null
+          ? null
+          : subCategoryByIdOf([inventoryItem])[inventoryItem.id],
       available: inventoryItem?.quantity ?? 1,
       reason: proposed?.reason,
       inDeparture: proposed?.inDeparture ?? false,

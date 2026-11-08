@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:pack_log/core/analytics/analytics_service.dart';
 import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/sync/sync_orchestrator.dart';
 import 'package:pack_log/core/sync/sync_provider.dart';
@@ -21,8 +20,6 @@ class MockItemRepository extends Mock implements ItemRepository {}
 
 class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
 
-class MockRawAnalyticsService extends Mock implements AppAnalyticsService {}
-
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 /// Unit tests for TripNotifier (Riverpod AsyncNotifier).
@@ -35,7 +32,6 @@ class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 void main() {
   late MockTripRepository mockRepository;
   late MockCoreAnalyticsService mockAnalytics;
-  late MockRawAnalyticsService mockRawAnalytics;
   late ProviderContainer container;
 
   setUp(() {
@@ -76,25 +72,40 @@ void main() {
       () => mockItemRepo.moveItemsToHouse(any(), any(), any()),
     ).thenAnswer((_) async {});
 
-    mockRawAnalytics = MockRawAnalyticsService();
-    when(
-      () => mockRawAnalytics.logEvent(
-        any(),
-        properties: any(named: 'properties'),
-      ),
-    ).thenAnswer((_) async {});
-
     // Create ProviderContainer with mocked repository
     container = ProviderContainer(
       overrides: [
         tripRepositoryProvider.overrideWithValue(mockRepository),
         coreAnalyticsServiceProvider.overrideWithValue(mockAnalytics),
-        analyticsServiceProvider.overrideWithValue(mockRawAnalytics),
         syncOrchestratorProvider.overrideWithValue(mockSync),
         itemRepositoryProvider.overrideWithValue(mockItemRepo),
       ],
     );
   });
+
+  void verifyNoPackingEvents() {
+    verifyNever(
+      () => mockAnalytics.trackPackingStarted(
+        tripId: any(named: 'tripId'),
+        totalItems: any(named: 'totalItems'),
+        daysToDeparture: any(named: 'daysToDeparture'),
+      ),
+    );
+    verifyNever(
+      () => mockAnalytics.trackPackingProgress(
+        tripId: any(named: 'tripId'),
+        threshold: any(named: 'threshold'),
+        daysToDeparture: any(named: 'daysToDeparture'),
+      ),
+    );
+    verifyNever(
+      () => mockAnalytics.trackPackingCompleted(
+        tripId: any(named: 'tripId'),
+        totalItems: any(named: 'totalItems'),
+        daysToDeparture: any(named: 'daysToDeparture'),
+      ),
+    );
+  }
 
   tearDown(() {
     // Dispose container to prevent memory leaks between tests
@@ -407,9 +418,10 @@ void main() {
             .toggleItemCheck('trip-packing', 'item-0');
 
         verify(
-          () => mockRawAnalytics.logEvent(
-            'packing_started',
-            properties: any(named: 'properties'),
+          () => mockAnalytics.trackPackingStarted(
+            tripId: 'trip-packing',
+            totalItems: any(named: 'totalItems'),
+            daysToDeparture: any(named: 'daysToDeparture'),
           ),
         ).called(1);
       });
@@ -428,9 +440,10 @@ void main() {
             .toggleItemCheck('trip-packing', 'item-1');
 
         verify(
-          () => mockRawAnalytics.logEvent(
-            'packing_completed',
-            properties: any(named: 'properties'),
+          () => mockAnalytics.trackPackingCompleted(
+            tripId: 'trip-packing',
+            totalItems: 2,
+            daysToDeparture: any(named: 'daysToDeparture'),
           ),
         ).called(1);
       });
@@ -448,12 +461,7 @@ void main() {
             .read(tripNotifierProvider.notifier)
             .toggleItemCheck('trip-packing', 'item-0');
 
-        verifyNever(
-          () => mockRawAnalytics.logEvent(
-            any(that: startsWith('packing_')),
-            properties: any(named: 'properties'),
-          ),
-        );
+        verifyNoPackingEvents();
       });
 
       // Misuriamo fatti, non intenzioni: se il salvataggio fallisce non deve
@@ -474,12 +482,7 @@ void main() {
           throwsA(isA<Exception>()),
         );
 
-        verifyNever(
-          () => mockRawAnalytics.logEvent(
-            any(that: startsWith('packing_')),
-            properties: any(named: 'properties'),
-          ),
-        );
+        verifyNoPackingEvents();
       });
     });
 
@@ -776,6 +779,170 @@ void main() {
     );
   });
 
+  group('TripNotifier - eventi della valigia AI', () {
+    const reason = AiReason(code: 'base', label: 'Base', sentence: 'Serve.');
+
+    TripItem packed(String id) => TripItem(
+      id: id,
+      name: 'capo $id',
+      category: ItemCategory.vestiti,
+      quantity: 1,
+    );
+
+    AiPackingResult result(DateTime generatedAt) => AiPackingResult(
+      generatedAt: generatedAt,
+      houseId: 'h1',
+      proposal: const [
+        AiPackedItem(itemId: 'A', quantity: 1, reason: reason),
+        AiPackedItem(itemId: 'B', quantity: 1, reason: reason),
+      ],
+      warnings: const [
+        AiWarning(
+          id: 'w1',
+          code: 'rain_gear',
+          level: AiWarningLevel.important,
+          title: 'Pioggia',
+          why: 'Piove.',
+        ),
+      ],
+      slots: const [
+        AiSlot(
+          id: 's1',
+          type: 'calze',
+          category: ItemCategory.vestiti,
+          level: AiSlotLevel.useful,
+          name: 'Calze',
+          copies: 1,
+          remaining: 1,
+          addLabel: 'Aggiungi',
+        ),
+      ],
+    );
+
+    late TripModel stored;
+
+    Future<void> load(TripModel trip) async {
+      stored = trip;
+      when(
+        () => mockRepository.getAllTrips(),
+      ).thenAnswer((_) async => [stored]);
+      when(() => mockRepository.updateTrip(any())).thenAnswer((inv) async {
+        stored = inv.positionalArguments.first as TripModel;
+      });
+      when(
+        () => mockRepository.setTripItemChecked(any(), any(), any()),
+      ).thenAnswer((_) async {});
+      await container.read(tripNotifierProvider.future);
+    }
+
+    final suitcase = TripModel(
+      id: 't1',
+      name: 'Lisbona',
+      items: [packed('A'), packed('B')],
+      aiResult: result(DateTime(2026, 11, 8)),
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    TripNotifier notifier() => container.read(tripNotifierProvider.notifier);
+
+    // ai_suitcase_changed parte dopo la lettura del meteo salvato.
+    Future<List<Map<String, Object>>> changes() async {
+      await pumpEventQueue();
+      return verify(
+        () => mockAnalytics.trackAiSuitcaseChanged(
+          tripId: 't1',
+          counts: captureAny(named: 'counts'),
+          context: any(named: 'context'),
+        ),
+      ).captured.cast<Map<String, Object>>();
+    }
+
+    Future<void> verifyNoChange() async {
+      await pumpEventQueue();
+      verifyNever(
+        () => mockAnalytics.trackAiSuitcaseChanged(
+          tripId: any(named: 'tripId'),
+          counts: any(named: 'counts'),
+          context: any(named: 'context'),
+        ),
+      );
+    }
+
+    setUp(() => registerFallbackValue(<String, Object>{}));
+
+    test('togliere un capo proposto: ai_suitcase_changed', () async {
+      await load(suitcase);
+      await notifier().updateTrip(suitcase.copyWith(items: [packed('A')]));
+      final counts = (await changes()).single;
+      expect(counts['removed'], 1);
+      expect(counts['kept'], 1);
+    });
+
+    test('spuntare un capo non è una modifica', () async {
+      await load(suitcase);
+      await notifier().toggleItemCheck('t1', 'A');
+      await verifyNoChange();
+    });
+
+    test('valigia senza proposta AI: nessun evento', () async {
+      final manual = suitcase.copyWith(aiResult: null);
+      await load(manual);
+      await notifier().updateTrip(manual.copyWith(items: [packed('A')]));
+      await verifyNoChange();
+    });
+
+    test(
+      'la proposta rigenerata non conta; dopo si confronta con lei',
+      () async {
+        await load(suitcase);
+        final regenerated = suitcase.copyWith(
+          items: [packed('A')],
+          aiResult: result(DateTime(2026, 11, 9)).copyWith(
+            proposal: const [
+              AiPackedItem(itemId: 'A', quantity: 1, reason: reason),
+            ],
+          ),
+        );
+        await notifier().updateTrip(regenerated);
+        await verifyNoChange();
+
+        await notifier().updateTrip(regenerated.copyWith(items: const []));
+        final counts = (await changes()).single;
+        expect(counts['proposed'], 1);
+        expect(counts['removed'], 1);
+      },
+    );
+
+    test('avviso scartato: ai_warning_dismissed una volta', () async {
+      await load(suitcase);
+      await notifier().updateTrip(
+        suitcase.copyWith(
+          aiResult: suitcase.aiResult!.copyWith(dismissedWarnings: ['w1']),
+        ),
+      );
+      verify(
+        () => mockAnalytics.trackAiWarningDismissed(
+          code: 'rain_gear',
+          level: 'important',
+        ),
+      ).called(1);
+      await verifyNoChange();
+    });
+
+    test('posto tolto: ai_slot_removed una volta', () async {
+      await load(suitcase);
+      await notifier().updateAiSlot(
+        't1',
+        's1',
+        (s) => s.copyWith(removed: true),
+      );
+      verify(
+        () => mockAnalytics.trackAiSlotRemoved(type: 'calze', level: 'useful'),
+      ).called(1);
+    });
+  });
+
   group('TripNotifier - updateAiSlot', () {
     TripModel tripWithSlot() => TripModel(
       id: 't1',
@@ -966,10 +1133,7 @@ void main() {
           .fillAiSlot('t1', 's-magliette', item('i1', 2));
 
       verify(
-        () => mockRawAnalytics.logEvent(
-          'slot_filled',
-          properties: {'level': 'useful', 'copies': 2},
-        ),
+        () => mockAnalytics.trackSlotFilled(level: 'useful', copies: 2),
       ).called(1);
     });
 
@@ -985,9 +1149,9 @@ void main() {
       );
 
       verifyNever(
-        () => mockRawAnalytics.logEvent(
-          'slot_filled',
-          properties: any(named: 'properties'),
+        () => mockAnalytics.trackSlotFilled(
+          level: any(named: 'level'),
+          copies: any(named: 'copies'),
         ),
       );
     });

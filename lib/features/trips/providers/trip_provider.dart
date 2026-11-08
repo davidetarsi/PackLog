@@ -4,15 +4,19 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/analytics/analytics_service.dart';
 import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../shared/notifier/synced_crud_notifier.dart';
+import '../../items/model/item_model.dart';
+import '../../items/providers/item_provider.dart';
 import '../model/ai_packing.dart';
 import '../model/trip_model.dart';
+import '../model/trip_weather.dart';
 import '../repositories/trip_repository.dart';
 import '../services/packing_progress_tracker.dart';
+import '../services/suitcase_analytics.dart';
 import '../services/trip_lifecycle_service.dart';
+import '../services/trip_weather_service.dart';
 
 part 'trip_provider.g.dart';
 
@@ -89,24 +93,39 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
     operation: () => _repo.addTrip(model),
     reload: _repo.getAllTrips,
     rethrowOnly: true,
-    onSuccess: (trips) =>
-        _analytics.trackTripCreated(tripId: model.id, totalTrips: trips.length),
+    onSuccess: (trips) => _analytics.trackTripCreated(
+      tripId: model.id,
+      totalTrips: trips.length,
+      daysToDeparture: daysToDeparture(model.departureDateTime, DateTime.now()),
+    ),
   );
 
-  Future<void> updateTrip(TripModel model) => mutate(
-    operation: () => _repo.updateTrip(model),
-    reload: _repo.getAllTrips,
-    rethrowOnly: true,
-    onSuccess: (_) => _analytics.trackTripUpdated(),
-  );
+  Future<void> updateTrip(TripModel model) {
+    final TripModel? before = _tripById(model.id);
+    return mutate(
+      operation: () => _repo.updateTrip(model),
+      reload: _repo.getAllTrips,
+      rethrowOnly: true,
+      onSuccess: (_) {
+        _analytics.trackTripUpdated();
+        _emitSuitcaseEvents(before, model);
+      },
+    );
+  }
 
-  Future<void> addItemsToTrip(String tripId, List<TripItem> items) => mutate(
-    operation: () => _repo.addItemsToTrip(tripId, items),
-    reload: _repo.getAllTrips,
-    rethrowOnly: true,
-    onSuccess: (_) =>
-        _analytics.trackItemsAddedToTrip(tripId: tripId, count: items.length),
-  );
+  Future<void> addItemsToTrip(String tripId, List<TripItem> items) {
+    final TripModel? before = _tripById(tripId);
+    return mutate(
+      operation: () => _repo.addItemsToTrip(tripId, items),
+      reload: _repo.getAllTrips,
+      rethrowOnly: true,
+      onSuccess: (trips) {
+        _analytics.trackItemsAddedToTrip(tripId: tripId, count: items.length);
+        final TripModel? after = trips.where((t) => t.id == tripId).firstOrNull;
+        if (after != null) _emitSuitcaseEvents(before, after);
+      },
+    );
+  }
 
   Future<void> deleteTrip(String id) => mutate(
     operation: () => _repo.deleteTrip(id),
@@ -150,11 +169,8 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
 
       // Funnel della preparazione valigia. Emesso **dopo** la persistenza:
       // se il salvataggio fallisce l'evento non deve partire, altrimenti si
-      // misurerebbero intenzioni invece di fatti.
-      //
-      // `logEvent` grezzo e non `CoreAnalyticsService`: le proprietà sono
-      // calcolate dal tracker, e far conoscere al livello tipato in `core/`
-      // un tipo che vive in `features/trips/` invertirebbe la dipendenza.
+      // misurerebbero intenzioni invece di fatti. Niente
+      // `_emitSuitcaseEvents`: una spunta non cambia la valigia.
       _emitPackingEvents(
         tripId: tripId,
         trip: trip,
@@ -212,6 +228,7 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
       rethrow;
     }
     ref.read(syncOrchestratorProvider).requestSync();
+    _emitSuitcaseEvents(trip, updatedTrip);
   }
 
   /// Riempie il posto [slotId] con [item]: l'oggetto entra fra gli `items`
@@ -271,13 +288,102 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
     ref.read(syncOrchestratorProvider).requestSync();
 
     // Dopo il salvataggio: si misurano i fatti, non le intenzioni.
-    unawaited(
-      ref
-          .read(analyticsServiceProvider)
-          .logEvent(
-            'slot_filled',
-            properties: {'level': level.name, 'copies': item.quantity},
-          ),
+    _analytics.trackSlotFilled(level: level.name, copies: item.quantity);
+    _emitSuitcaseEvents(trip, updatedTrip);
+  }
+
+  TripModel? _tripById(String id) =>
+      state.valueOrNull?.where((t) => t.id == id).firstOrNull;
+
+  /// Gli eventi della valigia AI dopo una scrittura riuscita, confrontando il
+  /// viaggio [before] e [after]:
+  /// - `ai_suitcase_changed` se la distanza dalla proposta è cambiata. Con
+  ///   una proposta nuova (altro `generatedAt`, o nessun viaggio prima) non
+  ///   parte: è la proposta appena salvata, non una modifica dell'utente;
+  /// - `ai_warning_dismissed` per ogni avviso appena scartato;
+  /// - `ai_slot_removed` per ogni posto appena tolto.
+  ///
+  /// Armadio e meteo si leggono solo se già caricati: qui non si avviano
+  /// richieste.
+  void _emitSuitcaseEvents(TripModel? before, TripModel after) {
+    // Un errore dell'analytics non deve far fallire una scrittura riuscita.
+    try {
+      _emitSuitcaseEventsOrThrow(before, after);
+    } catch (e) {
+      debugPrint('[TripNotifier] eventi della valigia non emessi: $e');
+    }
+  }
+
+  void _emitSuitcaseEventsOrThrow(TripModel? before, TripModel after) {
+    final AiPackingResult? result = after.aiResult;
+    final AiPackingResult? previous = before?.aiResult;
+    if (result == null ||
+        previous == null ||
+        previous.generatedAt != result.generatedAt) {
+      return;
+    }
+
+    final List<ItemModel> houseItems = _loadedItems(result.houseId);
+    final types = subCategoryByIdOf(houseItems);
+    // Senza armadio caricato la proposta non si confronta con i pezzi in casa.
+    final available = houseItems.isEmpty
+        ? null
+        : {for (final item in houseItems) item.id: item.quantity};
+    final SuitcaseDiff? now = suitcaseDiff(after, types, available: available);
+    final SuitcaseDiff? then = suitcaseDiff(
+      before!,
+      types,
+      available: available,
+    );
+    if (now != null && then != null && !sameSuitcaseDiff(now, then)) {
+      unawaited(_trackSuitcaseChanged(after, now));
+    }
+
+    for (final id in result.dismissedWarnings) {
+      if (previous.dismissedWarnings.contains(id)) continue;
+      final warning = result.warnings.where((w) => w.id == id).firstOrNull;
+      if (warning == null) continue;
+      _analytics.trackAiWarningDismissed(
+        code: warning.code,
+        level: warning.level.name,
+      );
+    }
+
+    final wasRemoved = {
+      for (final s in previous.slots ?? const <AiSlot>[]) s.id: s.removed,
+    };
+    for (final slot in result.slots ?? const <AiSlot>[]) {
+      if (slot.removed && wasRemoved[slot.id] == false) {
+        _analytics.trackAiSlotRemoved(type: slot.type, level: slot.level.name);
+      }
+    }
+  }
+
+  List<ItemModel> _loadedItems(String houseId) {
+    final provider = itemNotifierProvider(houseId);
+    if (!ref.exists(provider)) return const [];
+    return ref.read(provider).valueOrNull ?? const [];
+  }
+
+  /// Il meteo viene dalla copia sul telefono: il provider del meteo dipende
+  /// da questo notifier e leggerlo da qui sarebbe un ciclo. La copia non
+  /// avvia richieste e, se manca, l'evento parte senza clima.
+  /// Dopo l'attesa `ref` non si usa: il notifier potrebbe non esserci più.
+  Future<void> _trackSuitcaseChanged(TripModel trip, SuitcaseDiff diff) async {
+    final analytics = _analytics;
+    final TripWeather? weather = await ref
+        .read(tripWeatherCacheProvider)
+        .read(trip.id);
+    analytics.trackAiSuitcaseChanged(
+      tripId: trip.id,
+      counts: suitcaseDiffProperties(diff),
+      context: tripContext(
+        trip,
+        luggage: trip.luggages
+            .where((l) => l.id == trip.aiSetup?.luggageId)
+            .firstOrNull,
+        weather: weather,
+      ),
     );
   }
 
@@ -296,9 +402,28 @@ class TripNotifier extends _$TripNotifier with SyncedCrudNotifier<TripModel> {
     );
     if (events.isEmpty) return;
 
-    final analytics = ref.read(analyticsServiceProvider);
     for (final event in events) {
-      analytics.logEvent(event.name, properties: event.properties);
+      final p = event.properties;
+      switch (event.name) {
+        case 'packing_started':
+          _analytics.trackPackingStarted(
+            tripId: tripId,
+            totalItems: p['total_items'] as int,
+            daysToDeparture: p['days_to_departure'] as int?,
+          );
+        case 'packing_progress':
+          _analytics.trackPackingProgress(
+            tripId: tripId,
+            threshold: p['threshold'] as int,
+            daysToDeparture: p['days_to_departure'] as int?,
+          );
+        case 'packing_completed':
+          _analytics.trackPackingCompleted(
+            tripId: tripId,
+            totalItems: p['total_items'] as int,
+            daysToDeparture: p['days_to_departure'] as int?,
+          );
+      }
     }
   }
 

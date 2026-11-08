@@ -18,7 +18,7 @@ import '../../../shared/widgets/ds_steps.dart';
 import '../../../shared/widgets/sticky_cta_scaffold.dart';
 import '../../../shared/widgets/error_retry_dialog.dart';
 import '../../houses/providers/house_provider.dart';
-import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../tour/providers/post_login_onboarding_provider.dart';
 import '../model/ai_packing.dart';
 import '../model/trip_draft.dart';
@@ -308,11 +308,7 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
   void _logFirstTripStarted() {
     if (!widget.firstRun || _firstTripLogged) return;
     _firstTripLogged = true;
-    unawaited(
-      ref
-          .read(analyticsServiceProvider)
-          .logEvent('first_trip_started', properties: const {}),
-    );
+    ref.read(coreAnalyticsServiceProvider).trackFirstTripStarted();
   }
 
   /// In modifica: riporta i cambiamenti sul viaggio di adesso, che conserva

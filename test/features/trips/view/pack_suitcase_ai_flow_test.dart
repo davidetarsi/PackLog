@@ -57,8 +57,6 @@ class MockSpaceRepository extends Mock implements SpaceRepository {}
 
 class MockTripLifecycleService extends Mock implements TripLifecycleService {}
 
-class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
-
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 class MockAppAnalytics extends Mock implements AppAnalyticsService {}
@@ -292,7 +290,6 @@ void main() {
   late MockLuggageRepository luggageRepo;
   late MockSpaceRepository spaceRepo;
   late MockTripLifecycleService lifecycle;
-  late MockCoreAnalyticsService analytics;
   late MockSyncOrchestrator sync;
   late MockAppAnalytics appAnalytics;
   late _MemoryOnboardingRepository onboardingRepo;
@@ -322,7 +319,6 @@ void main() {
     luggageRepo = MockLuggageRepository();
     spaceRepo = MockSpaceRepository();
     lifecycle = MockTripLifecycleService();
-    analytics = MockCoreAnalyticsService();
     sync = MockSyncOrchestrator();
     appAnalytics = MockAppAnalytics();
     onboardingRepo = _MemoryOnboardingRepository();
@@ -445,7 +441,9 @@ void main() {
             (ref) => Completer<CategoryInferService>().future,
           ),
           tripLifecycleServiceProvider.overrideWithValue(lifecycle),
-          coreAnalyticsServiceProvider.overrideWithValue(analytics),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            CoreAnalyticsService(appAnalytics),
+          ),
           analyticsServiceProvider.overrideWithValue(appAnalytics),
           onboardingRepositoryProvider.overrideWithValue(onboardingRepo),
           syncOrchestratorProvider.overrideWithValue(sync),

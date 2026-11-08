@@ -314,6 +314,38 @@ void main() {
       );
 
       test(
+        '429: ai_limit_reached oltre a ai_input_failed, niente Sentry',
+        () async {
+          final service = _makeService(
+            MockClient((_) async => http.Response('{}', 429)),
+            analytics: mockAnalytics,
+            monitoring: mockMonitoring,
+          );
+
+          await expectLater(
+            service.processClothingItem(_fakeImageFile()),
+            throwsA(isA<GptLimitExceededException>()),
+          );
+
+          verify(
+            () => mockAnalytics.trackAiLimitReached(feature: 'scan'),
+          ).called(1);
+          verify(
+            () => mockAnalytics.trackAiInputFailed(
+              errorType: 'GptLimitExceededException',
+            ),
+          ).called(1);
+          verifyNever(
+            () => mockMonitoring.captureException(
+              any(),
+              stackTrace: any(named: 'stackTrace'),
+              tags: any(named: 'tags'),
+            ),
+          );
+        },
+      );
+
+      test(
         'processClothingItem fires submitted + failed on error, then rethrows',
         () async {
           final service = _makeService(

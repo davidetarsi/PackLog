@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/analytics/core_analytics_service.dart';
+import '../../../core/monitoring/monitoring_service.dart';
 import '../../houses/providers/house_provider.dart';
 import '../model/trip_weather.dart';
 import '../services/trip_weather_service.dart';
@@ -86,11 +88,23 @@ class TripWeatherNotifier extends _$TripWeatherNotifier {
       await cache.write(tripId, weather);
       return TripWeatherReady(weather);
     } on TripWeatherCapException {
+      ref
+          .read(coreAnalyticsServiceProvider)
+          .trackAiLimitReached(feature: 'weather');
       // Una copia dello stesso viaggio, anche vecchia, è meglio di niente.
       if (sameTrip) return TripWeatherReady(cached);
       return const TripWeatherCapReached();
-    } on TripWeatherException catch (e) {
+    } on TripWeatherException catch (e, st) {
       debugPrint('[TripWeatherNotifier] $e');
+      if (e is! TripWeatherNetworkException) {
+        ref
+            .read(monitoringServiceProvider)
+            .captureException(
+              e,
+              stackTrace: st,
+              tags: {'operation': 'trip_weather'},
+            );
+      }
       if (sameTrip) return TripWeatherReady(cached);
       return const TripWeatherFailed();
     }

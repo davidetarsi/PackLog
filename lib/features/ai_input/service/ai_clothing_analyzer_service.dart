@@ -76,11 +76,16 @@ class AiClothingAnalyzerService {
       return result;
     } on ClothingAnalysisException catch (e, st) {
       _analytics?.trackAiInputFailed(errorType: _errorType(e));
-      _monitoring?.captureException(
-        e,
-        stackTrace: st,
-        tags: {'operation': 'ai_input'},
-      );
+      // Tetto finito e rete assente non sono guasti: niente Sentry.
+      if (e is GptLimitExceededException) {
+        _analytics?.trackAiLimitReached(feature: 'scan');
+      } else if (e is! AnalysisNetworkException) {
+        _monitoring?.captureException(
+          e,
+          stackTrace: st,
+          tags: {'operation': 'ai_input'},
+        );
+      }
       rethrow;
     }
   }

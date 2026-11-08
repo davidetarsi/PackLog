@@ -36,8 +36,6 @@ class _MockHouseRepo extends Mock implements HouseRepository {}
 
 class _MockLifecycle extends Mock implements TripLifecycleService {}
 
-class _MockCore extends Mock implements CoreAnalyticsService {}
-
 class _MockRaw extends Mock implements AppAnalyticsService {}
 
 class _MockSync extends Mock implements SyncOrchestrator {}
@@ -221,7 +219,9 @@ void main() {
           tripRepositoryProvider.overrideWithValue(tripRepo),
           houseRepositoryProvider.overrideWithValue(houseRepo),
           tripLifecycleServiceProvider.overrideWithValue(lifecycle),
-          coreAnalyticsServiceProvider.overrideWithValue(_MockCore()),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            CoreAnalyticsService(raw),
+          ),
           analyticsServiceProvider.overrideWithValue(raw),
           syncOrchestratorProvider.overrideWithValue(sync),
           kitRepositoryProvider.overrideWithValue(kitRepo),

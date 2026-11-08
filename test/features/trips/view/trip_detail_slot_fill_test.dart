@@ -38,8 +38,6 @@ class MockHouseRepository extends Mock implements HouseRepository {}
 
 class MockTripLifecycleService extends Mock implements TripLifecycleService {}
 
-class MockCoreAnalyticsService extends Mock implements CoreAnalyticsService {}
-
 class MockSyncOrchestrator extends Mock implements SyncOrchestrator {}
 
 class MockRawAnalytics extends Mock implements AppAnalyticsService {}
@@ -125,7 +123,6 @@ void main() {
   late MockTripRepository tripRepo;
   late MockHouseRepository houseRepo;
   late MockTripLifecycleService lifecycle;
-  late MockCoreAnalyticsService analytics;
   late MockRawAnalytics rawAnalytics;
   late MockSyncOrchestrator sync;
   late _RecordingItemNotifier itemNotifier;
@@ -141,7 +138,6 @@ void main() {
     tripRepo = MockTripRepository();
     houseRepo = MockHouseRepository();
     lifecycle = MockTripLifecycleService();
-    analytics = MockCoreAnalyticsService();
     rawAnalytics = MockRawAnalytics();
     when(
       () => rawAnalytics.logEvent(any(), properties: any(named: 'properties')),
@@ -208,7 +204,9 @@ void main() {
           tripRepositoryProvider.overrideWithValue(tripRepo),
           houseRepositoryProvider.overrideWithValue(houseRepo),
           tripLifecycleServiceProvider.overrideWithValue(lifecycle),
-          coreAnalyticsServiceProvider.overrideWithValue(analytics),
+          coreAnalyticsServiceProvider.overrideWithValue(
+            CoreAnalyticsService(rawAnalytics),
+          ),
           analyticsServiceProvider.overrideWithValue(rawAnalytics),
           syncOrchestratorProvider.overrideWithValue(sync),
           luggageNotifierProvider.overrideWith(() => _EmptyLuggageNotifier()),
