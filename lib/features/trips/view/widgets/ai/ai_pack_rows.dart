@@ -83,7 +83,9 @@ class AiPackRows extends StatelessWidget {
               onTap: onNeeds!,
             ),
           ),
-          if (reasons.isNotEmpty) ...[
+          if (important.isNotEmpty ||
+              reasons.isNotEmpty ||
+              suggested.isNotEmpty) ...[
             SizedBox(height: context.spacingMd),
             _separateCard(
               context,
@@ -93,8 +95,11 @@ class AiPackRows extends StatelessWidget {
                 iconColor: cs.onSurfaceVariant,
                 title: 'trips.pack.ai.reasons_row'.tr(),
                 titleColor: cs.onSurface,
-                subtitle: reasonTitles.join(', '),
-                onTap: () => _openReasons(context),
+                // Con "Cosa manca" i conteggi ci sono già: qui restano i titoli.
+                subtitle: reasons.isEmpty
+                    ? null
+                    : reasons.map((r) => r.title).join(', '),
+                onTap: () => _openReasons(context, important, suggested),
               ),
             ),
           ],
