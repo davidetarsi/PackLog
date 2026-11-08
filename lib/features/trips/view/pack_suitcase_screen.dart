@@ -4,7 +4,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/analytics/analytics_service.dart';
 import '../../../shared/helpers/snack_bar_helper.dart';
@@ -38,6 +37,7 @@ import '../model/trip_model.dart';
 import '../model/trip_postcard.dart';
 import '../model/trip_weather.dart';
 import '../providers/trip_provider.dart';
+import '../services/ai_suitcase_adoption.dart';
 import 'ai_packing_wait_screen.dart';
 import 'widgets/ai/ai_home_group.dart';
 import 'widgets/ai/ai_pack_item_sheet.dart';
@@ -54,10 +54,6 @@ import '../../../shared/widgets/ds_search_field.dart';
 
 /// Lettere della ricerca manuale da cui compare anche la riga "Aggiungi".
 const _kAddRowMinChars = 3;
-
-/// Chiave di `SharedPreferences` che ricorda se `first_suitcase_generated`
-/// è già partito.
-const _firstSuitcaseLoggedKey = 'first_suitcase_logged';
 
 /// Prepara la valigia di un viaggio: riepilogo, bagagli e oggetti.
 ///
@@ -477,7 +473,7 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
           kits: kits,
         ),
         houseId: houseId,
-        title: _joinStops(names),
+        title: joinStopNames(names),
         nights: nightsBetween(trip.departureDateTime, trip.returnDateTime) ?? 0,
       ),
     );
@@ -506,43 +502,40 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     required AiPackingSetup setup,
     LuggageModel? luggage,
   }) async {
-    final trip = _currentTrip();
-    if (trip == null) return;
-    final result = carryKitCounted(
-      trip.aiResult,
-      carryToBuy(trip.aiResult, proposal),
+    final current = _currentTrip();
+    if (current == null) return;
+    // Oggetti e bagagli sono quelli della pagina, anche non ancora salvati.
+    final trip = current.copyWith(
+      items: _items.values.toList(),
+      luggages: _luggages.values.toList(),
     );
 
-    Map<String, TripItem>? proposed;
+    List<ItemModel>? houseItems;
     try {
-      final houseItems = await ref.read(
-        itemNotifierProvider(result.houseId).future,
+      houseItems = await ref.read(
+        itemNotifierProvider(proposal.houseId).future,
       );
-      if (!mounted) return;
-      proposed = _proposedItems(result, houseItems);
-    } catch (_) {
-      if (!mounted) return;
-    }
+    } catch (_) {}
+    if (!mounted) return;
 
-    final items = proposed ?? _items;
-    final luggages = luggage == null || proposed == null
-        ? {..._luggages}
-        : {luggage.id: luggage};
-
-    final saved = await _writeTrip(
-      trip.copyWith(
-        items: items.values.toList(),
-        luggages: luggages.values.toList(),
-        aiSetup: setup,
-        aiResult: result,
-        updatedAt: DateTime.now(),
-      ),
+    final adopted = adoptedTrip(
+      trip: trip,
+      proposal: proposal,
+      setup: setup,
+      luggage: luggage,
+      houseItems: houseItems,
     );
+    final result = adopted.aiResult!;
+    final items = {for (final item in adopted.items) item.id: item};
+    final luggages = {for (final l in adopted.luggages) l.id: l};
+    final proposedOk = houseItems != null;
+
+    final saved = await _writeTrip(adopted);
     if (!mounted) return;
     // "La proposta è salva" si dice solo se la scrittura è riuscita.
     if (!saved) {
       AppSnackBar.showError(context, 'errors.save_error'.tr());
-    } else if (proposed == null) {
+    } else if (!proposedOk) {
       AppSnackBar.showError(context, 'trips.pack.ai.items_error'.tr());
     }
     setState(() {
@@ -567,10 +560,15 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     }
 
     if (saved && result.hasSlots) {
-      await _logFirstSuitcase(result, items.length);
+      await logFirstSuitcase(
+        ref.read(analyticsServiceProvider),
+        result,
+        items.length,
+        fromFirstRun: widget.firstRun,
+      );
       if (!mounted) return;
     }
-    if (saved) _logKitAutoAdded(result);
+    if (saved) logKitAutoAdded(ref.read(analyticsServiceProvider), result);
 
     // Niente snack in più: la valigia si vede già. Le modifiche sono salvate
     // e `_initial*` è allineato, quindi l'uscita non chiede conferma.
@@ -581,98 +579,6 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
         context.pop();
       }
     }
-  }
-
-  /// `first_suitcase_generated`: una volta sola per dispositivo (flag in
-  /// SharedPreferences, non per account), alla prima valigia con i posti salvata. La retention a 1 e 7 giorni si legge in
-  /// Amplitude partendo da questo evento.
-  Future<void> _logFirstSuitcase(AiPackingResult result, int tripItems) async {
-    final analytics = ref.read(analyticsServiceProvider);
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(_firstSuitcaseLoggedKey) ?? false) return;
-    await prefs.setBool(_firstSuitcaseLoggedKey, true);
-    final slots = result.slots ?? const <AiSlot>[];
-    // Non si aspetta: un errore dell'analytics non deve fermare la navigazione.
-    unawaited(
-      analytics.logEvent(
-        'first_suitcase_generated',
-        properties: {
-          'slots_important': slots
-              .where((s) => s.level == AiSlotLevel.important)
-              .length,
-          'slots_proposed': slots
-              .where((s) => s.level == AiSlotLevel.useful)
-              .length,
-          'slots_total': slots.length,
-          'trip_items': tripItems,
-          'from_first_run': widget.firstRun,
-        },
-      ),
-    );
-  }
-
-  /// `kit_auto_added`: i kit entrati da soli nella valigia salvata (quanti
-  /// kit e quanti oggetti), solo se ce n'è stato qualcuno.
-  void _logKitAutoAdded(AiPackingResult result) {
-    if (result.kitAdded.isEmpty) return;
-    unawaited(
-      ref
-          .read(analyticsServiceProvider)
-          .logEvent(
-            'kit_auto_added',
-            properties: {
-              'kits': {for (final a in result.kitAdded) a.kitId}.length,
-              'items': result.kitAdded.length,
-            },
-          ),
-    );
-  }
-
-  /// I capi della proposta, con nome e categoria dell'oggetto di casa. Un
-  /// oggetto non più in casa non entra; la quantità sta tra 1 e i pezzi
-  /// salvati (senza quantità salvata, 1).
-  Map<String, TripItem> _proposedItems(
-    AiPackingResult result,
-    List<ItemModel> houseItems,
-  ) {
-    final byId = {for (final item in houseItems) item.id: item};
-    final items = <String, TripItem>{};
-    for (final proposed in result.proposal) {
-      final item = byId[proposed.itemId];
-      if (item == null) continue;
-      final available = item.quantity ?? 1;
-      final cap = available < 1 ? 1 : available;
-      final quantity = proposed.quantity < 1
-          ? 1
-          : (proposed.quantity > cap ? cap : proposed.quantity);
-      items[item.id] = TripItem(
-        id: item.id,
-        name: item.name,
-        category: item.category,
-        quantity: quantity,
-        originHouseId: result.houseId,
-      );
-    }
-    // Gli oggetti dei kit entrati da soli: se l'oggetto c'è già vale il
-    // massimo delle copie (mai la somma), sempre entro i pezzi in casa. Un
-    // oggetto non più in casa si salta.
-    for (final added in result.kitAdded) {
-      final item = byId[added.itemId];
-      if (item == null) continue;
-      final available = item.quantity ?? 1;
-      final cap = available < 1 ? 1 : available;
-      final wanted = added.copies < 1 ? 1 : added.copies;
-      final current = items[item.id]?.quantity ?? 0;
-      final quantity = (wanted > current ? wanted : current).clamp(1, cap);
-      items[item.id] = TripItem(
-        id: item.id,
-        name: item.name,
-        category: item.category,
-        quantity: quantity,
-        originHouseId: result.houseId,
-      );
-    }
-    return items;
   }
 
   Future<bool> _writeTrip(TripModel trip) => ErrorRetryDialog.executeWithRetry(
@@ -687,14 +593,6 @@ class _PackSuitcaseScreenState extends ConsumerState<PackSuitcaseScreen> {
     final luggages =
         ref.read(luggageNotifierProvider).valueOrNull ?? const <LuggageModel>[];
     return luggages.where((l) => l.id == id).firstOrNull;
-  }
-
-  /// "Islanda e Olanda", "Islanda, Olanda e Francia".
-  String _joinStops(List<String> names) {
-    if (names.length <= 1) return names.join();
-    return 'trips.pack.ai.stops_join'.tr(
-      args: [names.sublist(0, names.length - 1).join(', '), names.last],
-    );
   }
 
   Future<void> _confirmDiscard() async {
