@@ -14,9 +14,11 @@ import 'package:pack_log/features/trips/model/ai_packing.dart';
 import 'package:pack_log/features/trips/model/ai_packing_request.dart';
 import 'package:pack_log/features/trips/model/pack_trip_job.dart';
 import 'package:pack_log/features/trips/model/trip_model.dart';
+import 'package:pack_log/features/trips/model/trip_weather.dart';
 import 'package:pack_log/features/trips/providers/ai_packing_run_provider.dart';
 import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
+import 'package:pack_log/features/trips/services/suitcase_analytics.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final _now = DateTime(2026, 11, 8);
@@ -134,10 +136,12 @@ AiPackingRequest _request(
   String? tripSource,
   bool isRegeneration = false,
   List<String> setupChanged = const [],
+  TripWeather? weather,
 }) => AiPackingRequest(
   trip: trip,
   isNew: isNew,
   tripSource: tripSource,
+  weather: weather,
   setup: const AiPackingSetup(houseId: 'h1', luggageId: 'l1'),
   job: PackTripJob(
     body: const {'trip': {}},
@@ -523,5 +527,42 @@ void main() {
     service.pending.complete(_result());
     await settle();
     expect(trips.sources, ['reuse', 'new']);
+  });
+
+  test('finished_uses_weather_from_request', () async {
+    build();
+    final weather = TripWeather(
+      signature: 's',
+      fetchedAt: _now,
+      stops: [
+        StopWeather(
+          name: 'Reykjavik',
+          from: DateTime(2026, 11, 10),
+          to: DateTime(2026, 11, 14),
+          source: WeatherSource.climate,
+          tempMin: 1.2,
+          tempMax: 6.4,
+          rainDays: 3,
+        ),
+      ],
+    );
+    run().start(_request(_trip('t1'), isNew: true, weather: weather));
+    service.pending.complete(_result());
+    await settle();
+
+    final props = finished().single.$2;
+    expect(props['temp_max_band'], tempBand(6.4));
+    expect(props['temp_min_band'], tempBand(1.2));
+    expect(props['rain_days'], 3);
+    expect(props['weather_source'], 'climate');
+    // Il nome della tappa non esce mai.
+    expect(props.toString(), isNot(contains('Reykjavik')));
+
+    // Senza meteo nella richiesta l'evento parte senza clima.
+    run().clear();
+    run().start(_request(_trip('t1'), isNew: true));
+    service.pending.complete(_result());
+    await settle();
+    expect(finished().last.$2.containsKey('temp_max_band'), isFalse);
   });
 }

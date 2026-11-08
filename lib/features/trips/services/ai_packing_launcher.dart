@@ -22,6 +22,7 @@ import '../model/trip_weather.dart';
 import '../providers/ai_packing_run_provider.dart';
 import '../view/widgets/ai/ai_packing_sheet.dart';
 import 'ai_suitcase_adoption.dart';
+import 'trip_weather_service.dart';
 import 'suitcase_analytics.dart';
 
 /// Il tocco su "Prepara con AI" / "Rigenera": controlla che si possa, chiede
@@ -102,6 +103,8 @@ Future<AiPackingSetup?> startAiPacking(
     setupChanged: isNew ? const [] : setupChangedFields(trip.aiSetup, setup),
     luggage: luggage,
   );
+  final weather = await _cachedWeather(ref, trip.id);
+  if (!context.mounted) return null;
   final started = ref
       .read(aiPackingRunProvider.notifier)
       .start(
@@ -112,6 +115,7 @@ Future<AiPackingSetup?> startAiPacking(
           job: job,
           luggage: luggage,
           tripSource: tripSource,
+          weather: weather,
         ),
       );
   if (!started) {
@@ -138,5 +142,14 @@ Future<List<KitModel>> _kitsOf(WidgetRef ref, String houseId) async {
     return await ref.read(kitNotifierProvider(houseId).future);
   } catch (_) {
     return const [];
+  }
+}
+
+/// Il meteo salvato sul telefono, senza rete. Vuoto o illeggibile: niente.
+Future<TripWeather?> _cachedWeather(WidgetRef ref, String tripId) async {
+  try {
+    return await ref.read(tripWeatherCacheProvider).read(tripId);
+  } catch (_) {
+    return null;
   }
 }

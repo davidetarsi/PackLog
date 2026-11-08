@@ -260,6 +260,10 @@ class AiPackingRun extends _$AiPackingRun {
       final weatherState = ref.exists(weatherProvider)
           ? ref.read(weatherProvider).valueOrNull
           : null;
+      // Meteo non caricato: quello sul telefono all'avvio della richiesta.
+      final weather = weatherState is TripWeatherReady
+          ? weatherState.weather
+          : request.weather;
       final days = daysToDeparture(trip.departureDateTime, DateTime.now());
       analytics.trackAiSuitcaseFinished(
         outcome: outcome,
@@ -276,13 +280,7 @@ class AiPackingRun extends _$AiPackingRun {
           if (result != null) 'proposal_items': result.proposal.length,
           if (result != null) 'slots_count': result.slots?.length ?? 0,
           ...wardrobeStats(items ?? const []),
-          ...tripContext(
-            trip,
-            luggage: request.luggage,
-            weather: weatherState is TripWeatherReady
-                ? weatherState.weather
-                : null,
-          ),
+          ...tripContext(trip, luggage: request.luggage, weather: weather),
         },
       );
     } catch (e) {

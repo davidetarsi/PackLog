@@ -2,6 +2,7 @@ import '../../luggages/model/luggage_model.dart';
 import 'ai_packing.dart';
 import 'pack_trip_job.dart';
 import 'trip_model.dart';
+import 'trip_weather.dart';
 
 /// Una richiesta di valigia AI: il viaggio a cui si applica e ciò che serve a
 /// generarla. Con [isNew] il viaggio non è ancora salvato: si scrive solo
@@ -14,6 +15,7 @@ class AiPackingRequest {
     required this.job,
     this.luggage,
     this.tripSource,
+    this.weather,
   });
 
   final TripModel trip;
@@ -26,4 +28,8 @@ class AiPackingRequest {
 
   /// Da dove nasce il viaggio nuovo (`'new'` | `'reuse'`), per `trip_created`.
   final String? tripSource;
+
+  /// Il meteo del viaggio dalla copia sul telefono all'avvio, se c'era: serve
+  /// solo all'analytics (fasce di temperatura, giorni di pioggia).
+  final TripWeather? weather;
 }
