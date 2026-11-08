@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:pack_log/core/analytics/analytics_service.dart';
+import 'package:pack_log/core/analytics/core_analytics_service.dart';
 import 'package:pack_log/core/monitoring/monitoring_service.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:pack_log/features/items/model/item_model.dart';
@@ -19,9 +19,9 @@ import 'package:pack_log/features/trips/providers/trip_provider.dart';
 import 'package:pack_log/features/trips/services/pack_trip_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../helpers/mock_analytics.dart';
-
 final _now = DateTime(2026, 11, 8);
+
+class _Analytics extends Mock implements CoreAnalyticsService {}
 
 class _FakeService extends PackTripService {
   _FakeService() : super(token: () => 'jwt');
@@ -44,6 +44,7 @@ class _FakeTrips extends TripNotifier {
   final List<TripModel> initial;
   final added = <TripModel>[];
   final updated = <TripModel>[];
+  final sources = <String?>[];
   Object? writeError;
 
   void replace(List<TripModel> trips) => state = AsyncData(trips);
@@ -52,7 +53,8 @@ class _FakeTrips extends TripNotifier {
   Future<List<TripModel>> build() async => initial;
 
   @override
-  Future<void> addTrip(TripModel model) async {
+  Future<void> addTrip(TripModel model, {String? source}) async {
+    sources.add(source);
     if (writeError != null) throw writeError!;
     added.add(model);
     state = AsyncData([...?state.valueOrNull, model]);
@@ -126,25 +128,33 @@ AiPackingResult _result() => AiPackingResult(
 TripModel _trip(String id, {String name = 'Viaggio'}) =>
     TripModel(id: id, name: name, createdAt: _now, updatedAt: _now);
 
-AiPackingRequest _request(TripModel trip, {required bool isNew}) =>
-    AiPackingRequest(
-      trip: trip,
-      isNew: isNew,
-      setup: const AiPackingSetup(houseId: 'h1', luggageId: 'l1'),
-      job: const PackTripJob(
-        body: {'trip': {}},
-        houseId: 'h1',
-        title: 'Islanda',
-        nights: 3,
-      ),
-    );
+AiPackingRequest _request(
+  TripModel trip, {
+  required bool isNew,
+  String? tripSource,
+  bool isRegeneration = false,
+  List<String> setupChanged = const [],
+}) => AiPackingRequest(
+  trip: trip,
+  isNew: isNew,
+  tripSource: tripSource,
+  setup: const AiPackingSetup(houseId: 'h1', luggageId: 'l1'),
+  job: PackTripJob(
+    body: const {'trip': {}},
+    houseId: 'h1',
+    title: 'Islanda',
+    nights: 3,
+    isRegeneration: isRegeneration,
+    setupChanged: setupChanged,
+  ),
+);
 
 void main() {
   late _FakeService service;
   late _FakeTrips trips;
   late _FakeOnboarding onboarding;
   late _FakeMonitoring monitoring;
-  late MockAnalyticsService analytics;
+  late _Analytics analytics;
   late ProviderContainer container;
 
   void build({List<TripModel> existing = const [], bool itemsFail = false}) {
@@ -152,10 +162,7 @@ void main() {
     trips = _FakeTrips(existing);
     onboarding = _FakeOnboarding();
     monitoring = _FakeMonitoring();
-    analytics = MockAnalyticsService();
-    when(
-      () => analytics.logEvent(any(), properties: any(named: 'properties')),
-    ).thenAnswer((_) async {});
+    analytics = _Analytics();
     container = ProviderContainer(
       overrides: [
         packTripServiceProvider.overrideWithValue(service),
@@ -165,7 +172,7 @@ void main() {
         ).overrideWith(() => _FakeItems([_house('a')], fails: itemsFail)),
         postLoginOnboardingProvider.overrideWith(() => onboarding),
         monitoringServiceProvider.overrideWithValue(monitoring),
-        analyticsServiceProvider.overrideWithValue(analytics),
+        coreAnalyticsServiceProvider.overrideWithValue(analytics),
       ],
     );
     addTearDown(container.dispose);
@@ -182,6 +189,7 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     registerFallbackValue(_trip('fallback'));
+    registerFallbackValue(<String, Object>{});
   });
 
   test('start_returns_false_while_running', () {
@@ -322,12 +330,12 @@ void main() {
     await settle();
     expect(onboarding.completed, 1);
     verify(
-      () => analytics.logEvent(
-        'first_suitcase_generated',
-        properties: any(
-          named: 'properties',
-          that: containsPair('from_first_run', true),
-        ),
+      () => analytics.trackFirstSuitcaseGenerated(
+        slotsImportant: 0,
+        slotsProposed: 0,
+        slotsTotal: 0,
+        tripItems: 1,
+        fromFirstRun: true,
       ),
     ).called(1);
 
@@ -337,9 +345,12 @@ void main() {
     await settle();
     expect(onboarding.completed, 2);
     verifyNever(
-      () => analytics.logEvent(
-        'first_suitcase_generated',
-        properties: any(named: 'properties'),
+      () => analytics.trackFirstSuitcaseGenerated(
+        slotsImportant: any(named: 'slotsImportant'),
+        slotsProposed: any(named: 'slotsProposed'),
+        slotsTotal: any(named: 'slotsTotal'),
+        tripItems: any(named: 'tripItems'),
+        fromFirstRun: any(named: 'fromFirstRun'),
       ),
     );
   });
@@ -367,5 +378,150 @@ void main() {
     await settle();
     expect(trips.added, isEmpty);
     expect(state(), isA<AiRunIdle>());
+  });
+
+  /// Gli `ai_suitcase_finished` registrati finora: esito e proprietà.
+  List<(String, Map<String, Object>)> finished() {
+    final calls = verify(
+      () => analytics.trackAiSuitcaseFinished(
+        outcome: captureAny(named: 'outcome'),
+        durationMs: any(named: 'durationMs'),
+        tripId: 't1',
+        properties: captureAny(named: 'properties'),
+      ),
+    ).captured;
+    return [
+      for (var i = 0; i < calls.length; i += 2)
+        (calls[i] as String, calls[i + 1] as Map<String, Object>),
+    ];
+  }
+
+  test('finished_ok_once_per_attempt', () async {
+    build();
+    run().start(
+      _request(
+        _trip('t1'),
+        isNew: true,
+        isRegeneration: true,
+        setupChanged: const ['washer'],
+      ),
+    );
+    service.pending.completeError(const PackTripException('boom'));
+    await settle();
+    final retried = run().retry();
+    await settle();
+    service.pending.complete(_result());
+    await retried;
+    await settle();
+
+    final events = finished();
+    expect([for (final e in events) e.$1], ['error', 'ok']);
+    final ok = events.last.$2;
+    expect(ok['nights'], 3);
+    expect(ok['stops'], 0);
+    expect(ok['is_regeneration'], isTrue);
+    expect(ok['setup_changed'], ['washer']);
+    expect(ok['proposal_items'], 1);
+    expect(ok['slots_count'], 0);
+    expect(ok['wardrobe_items'], 1);
+    expect(ok.containsKey('retry_save'), isFalse);
+    // Non c'è più l'annullamento.
+    expect([for (final e in events) e.$1], isNot(contains('cancelled')));
+  });
+
+  test('finished_credits_also_tracks_limit', () async {
+    build();
+    run().start(_request(_trip('t1'), isNew: true));
+    service.pending.completeError(const PackTripCreditsException());
+    await settle();
+
+    expect(finished().single.$1, 'credits');
+    verify(() => analytics.trackAiLimitReached(feature: 'suitcase')).called(1);
+    // Crediti finiti: caso previsto, non un guasto.
+    expect(monitoring.captured, isEmpty);
+  });
+
+  test('finished_network_for_timeout_is_not_reported', () async {
+    build();
+    run().start(_request(_trip('t1'), isNew: true));
+    service.pending.completeError(const PackTripNetworkException('timeout'));
+    await settle();
+
+    expect(finished().single.$1, 'network');
+    expect(monitoring.captured, isEmpty);
+    verifyNever(() => analytics.trackAiLimitReached(feature: 'suitcase'));
+  });
+
+  test('finished_left_wait_when_detached', () async {
+    build();
+    run().attach();
+    run().start(_request(_trip('t1'), isNew: true));
+    service.pending.complete(_result());
+    await settle();
+    run().clear();
+    run().detach();
+    run().start(_request(_trip('t1'), isNew: true));
+    service.pending.complete(_result());
+    await settle();
+
+    expect([for (final e in finished()) e.$2['left_wait']], [false, true]);
+  });
+
+  test('finished_save_failed_and_retry_save', () async {
+    build();
+    trips.writeError = StateError('disco');
+    run().start(_request(_trip('t1'), isNew: true));
+    service.pending.complete(_result());
+    await settle();
+
+    // Errore silenzioso: va a Sentry.
+    expect(monitoring.captured, hasLength(1));
+    expect(monitoring.captured.single, isA<StateError>());
+
+    trips.writeError = null;
+    await run().retry();
+    await settle();
+
+    // Un solo pack-trip; due eventi: il salvataggio fallito e poi riuscito.
+    expect(service.calls, 1);
+    final events = finished();
+    expect([for (final e in events) e.$1], ['save_failed', 'ok']);
+    expect(events.first.$2.containsKey('retry_save'), isFalse);
+    expect(events.last.$2['retry_save'], isTrue);
+  });
+
+  test('finished_invalid_response_is_error', () async {
+    build();
+    run().start(_request(_trip('t1'), isNew: true));
+    service.pending.completeError(const PackTripInvalidResponseException('x'));
+    await settle();
+
+    expect(finished().single.$1, 'error');
+    expect(monitoring.captured, hasLength(1));
+  });
+
+  test('finished_has_no_personal_text', () async {
+    build();
+    run().start(_request(_trip('t1', name: 'Segreto'), isNew: true));
+    service.pending.complete(_result());
+    await settle();
+
+    final props = finished().single.$2;
+    expect(props.toString(), isNot(contains('Segreto')));
+    expect(props.toString(), isNot(contains('Islanda')));
+  });
+
+  test('trip_created_source_reuse', () async {
+    build();
+    run().start(_request(_trip('t1'), isNew: true, tripSource: 'reuse'));
+    service.pending.complete(_result());
+    await settle();
+    expect(trips.sources, ['reuse']);
+
+    run().clear();
+    run().start(_request(_trip('t2'), isNew: true));
+    service.pending.complete(_result());
+    await settle();
+    expect(trips.sources, ['reuse', 'new']);
   });
 }

@@ -13,6 +13,7 @@ class AiPackingRequest {
     required this.setup,
     required this.job,
     this.luggage,
+    this.tripSource,
   });
 
   final TripModel trip;
@@ -22,4 +23,7 @@ class AiPackingRequest {
 
   /// Il bagaglio scelto nel foglio, se c'è.
   final LuggageModel? luggage;
+
+  /// Da dove nasce il viaggio nuovo (`'new'` | `'reuse'`), per `trip_created`.
+  final String? tripSource;
 }

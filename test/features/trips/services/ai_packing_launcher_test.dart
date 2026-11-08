@@ -327,8 +327,31 @@ void main() {
     expect(request.setup.houseId, 'h1');
     expect(request.job.houseId, 'h1');
     expect(request.job.title, 'Reykjavik');
+    // Prima valigia: niente rigenerazione e nessuna risposta cambiata.
+    expect(request.job.isRegeneration, isFalse);
+    expect(request.job.setupChanged, isEmpty);
     expect(location, '/ai-packing');
     expect(find.text('In attesa'), findsOneWidget);
     expect(service.bodies, hasLength(1));
+  });
+
+  testWidgets('regeneration_sets_job_flags', (tester) async {
+    final before = _trip().copyWith(
+      aiSetup: const AiPackingSetup(houseId: 'h1', luggageId: 'vecchio'),
+      aiResult: AiPackingResult(
+        generatedAt: DateTime(2026),
+        houseId: 'h1',
+        proposal: const [],
+      ),
+    );
+    await pumpLauncher(tester, trip: before);
+    await tapStart(tester);
+    await confirmSheet(tester);
+
+    final request =
+        (container.read(aiPackingRunProvider) as AiRunRunning).request;
+    expect(request.job.isRegeneration, isTrue);
+    expect(request.job.setupChanged, contains('luggage'));
+    expect(request.job.luggage, request.luggage);
   });
 }

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/analytics/analytics_service.dart';
+import '../../../core/analytics/core_analytics_service.dart';
 import '../../../core/monitoring/monitoring_service.dart';
 import '../../items/model/item_model.dart';
 import '../../items/providers/item_provider.dart';
@@ -16,7 +16,9 @@ import '../model/trip_model.dart';
 import '../services/ai_suitcase_adoption.dart';
 import '../services/pack_trip_service.dart';
 import '../services/pack_trip_timing.dart';
+import '../services/suitcase_analytics.dart';
 import 'trip_provider.dart';
+import 'trip_weather_provider.dart';
 
 part 'ai_packing_run_provider.g.dart';
 
@@ -116,9 +118,12 @@ class AiPackingRun extends _$AiPackingRun {
   bool _stale(int generation) => generation != _generation;
 
   Future<void> _run(AiPackingRequest request, int generation) async {
+    // Un tentativo: dalla partenza (o dal salvataggio, se la risposta c'era
+    // già) fino all'esito.
+    final timer = Stopwatch()..start();
     var result = _pending;
+    final retrySave = result != null;
     if (result == null) {
-      final timer = Stopwatch()..start();
       try {
         result = await _service.generate(
           request.job.body,
@@ -127,12 +132,14 @@ class AiPackingRun extends _$AiPackingRun {
       } catch (error, stack) {
         if (_stale(generation)) return;
         ref.invalidate(gptUsageProvider);
-        // Offline e casi previsti (crediti, armadio) non sono guasti da segnalare.
+        // Offline (e quindi il timeout) e casi previsti (crediti, armadio)
+        // non sono guasti da segnalare.
         if (error is PackTripException && error is! PackTripNetworkException) {
           ref
               .read(monitoringServiceProvider)
               .captureException(error, stackTrace: stack);
         }
+        _trackFinished(request, packOutcomeOf(error), timer);
         state = AiRunFailed(request, error);
         return;
       }
@@ -141,23 +148,47 @@ class AiPackingRun extends _$AiPackingRun {
       unawaited(PackTripTiming.record(timer.elapsed));
     }
 
+    final TripModel? saved;
     try {
-      await _adopt(request, result, generation);
-    } catch (error) {
+      saved = await _adopt(request, result, generation);
+    } catch (error, stack) {
       if (_stale(generation)) return;
+      // Un errore silenzioso per l'utente: la risposta è arrivata e il
+      // credito è speso, ma la valigia non si è salvata.
+      ref
+          .read(monitoringServiceProvider)
+          .captureException(error, stackTrace: stack);
+      _trackFinished(
+        request,
+        'save_failed',
+        timer,
+        result: result,
+        retrySave: retrySave,
+      );
       _pending = result;
       state = AiRunFailed(request, error, saveOnly: true);
+      return;
     }
+    if (saved == null) return;
+    // Il viaggio è salvato: da qui un errore non lo cancella.
+    _trackFinished(request, 'ok', timer, result: result, retrySave: retrySave);
+    await _afterSave(saved);
+    if (_stale(generation)) return;
+    state = AiRunDone(saved.id, itemsError: _itemsError);
   }
 
-  Future<void> _adopt(
+  bool _itemsError = false;
+
+  /// Salva la valigia. Ritorna il viaggio salvato; null se il lavoro è
+  /// stato scartato (viaggio sparito, [clear]).
+  Future<TripModel?> _adopt(
     AiPackingRequest request,
     AiPackingResult proposal,
     int generation,
   ) async {
     // Il viaggio si legge ora: nel frattempo può essere cambiato o sparito.
     final trips = await ref.read(tripNotifierProvider.future);
-    if (_stale(generation)) return;
+    if (_stale(generation)) return null;
     final TripModel? base;
     if (request.isNew) {
       base = request.trip;
@@ -167,7 +198,7 @@ class AiPackingRun extends _$AiPackingRun {
     if (base == null) {
       // Viaggio cancellato durante la richiesta: niente da salvare.
       clear();
-      return;
+      return null;
     }
 
     List<ItemModel>? houseItems;
@@ -178,7 +209,7 @@ class AiPackingRun extends _$AiPackingRun {
     } catch (e) {
       debugPrint('[AiPackingRun] oggetti della casa non leggibili: $e');
     }
-    if (_stale(generation)) return;
+    if (_stale(generation)) return null;
 
     final adopted = adoptedTrip(
       trip: base,
@@ -192,17 +223,71 @@ class AiPackingRun extends _$AiPackingRun {
     // salvataggio riuscito a metà): si aggiorna, mai un secondo `addTrip`.
     final exists = trips.any((t) => t.id == adopted.id);
     if (request.isNew && !exists) {
-      await notifier.addTrip(adopted);
+      await notifier.addTrip(adopted, source: request.tripSource ?? 'new');
     } else {
       await notifier.updateTrip(adopted);
     }
     _pending = null;
-    if (_stale(generation)) return;
+    _itemsError = houseItems == null;
+    return adopted;
+  }
 
-    // Il viaggio è salvato: da qui un errore non lo cancella.
-    await _afterSave(adopted);
-    if (_stale(generation)) return;
-    state = AiRunDone(adopted.id, itemsError: houseItems == null);
+  /// `ai_suitcase_finished`, una volta per tentativo. Con [retrySave] è il
+  /// solo salvataggio rifatto (`retry_save`): la generazione ha già il suo
+  /// evento. Armadio e meteo si leggono solo se già caricati: qui non si
+  /// avviano richieste. Un errore dell'analytics non ferma il lavoro.
+  void _trackFinished(
+    AiPackingRequest request,
+    String outcome,
+    Stopwatch timer, {
+    AiPackingResult? result,
+    bool retrySave = false,
+  }) {
+    try {
+      timer.stop();
+      final analytics = ref.read(coreAnalyticsServiceProvider);
+      if (outcome == 'credits') {
+        analytics.trackAiLimitReached(feature: 'suitcase');
+      }
+
+      final job = request.job;
+      final trip = request.trip.copyWith(aiSetup: request.setup);
+      final itemsProvider = itemNotifierProvider(job.houseId);
+      final items = ref.exists(itemsProvider)
+          ? ref.read(itemsProvider).valueOrNull
+          : null;
+      final weatherProvider = tripWeatherNotifierProvider(trip.id);
+      final weatherState = ref.exists(weatherProvider)
+          ? ref.read(weatherProvider).valueOrNull
+          : null;
+      final days = daysToDeparture(trip.departureDateTime, DateTime.now());
+      analytics.trackAiSuitcaseFinished(
+        outcome: outcome,
+        durationMs: timer.elapsedMilliseconds,
+        tripId: trip.id,
+        properties: {
+          'nights': job.nights,
+          'stops': request.setup.stops.length,
+          'is_regeneration': job.isRegeneration,
+          'setup_changed': job.setupChanged,
+          'left_wait': !_attached,
+          if (retrySave) 'retry_save': true,
+          'days_to_departure': ?days,
+          if (result != null) 'proposal_items': result.proposal.length,
+          if (result != null) 'slots_count': result.slots?.length ?? 0,
+          ...wardrobeStats(items ?? const []),
+          ...tripContext(
+            trip,
+            luggage: request.luggage,
+            weather: weatherState is TripWeatherReady
+                ? weatherState.weather
+                : null,
+          ),
+        },
+      );
+    } catch (e) {
+      debugPrint('[AiPackingRun] ai_suitcase_finished: $e');
+    }
   }
 
   /// La prima valigia è fatta ("Dove vai?" si chiude) ed escono gli eventi.
@@ -218,7 +303,7 @@ class AiPackingRun extends _$AiPackingRun {
     } catch (e) {
       debugPrint('[AiPackingRun] completeFirstTrip: $e');
     }
-    final analytics = ref.read(analyticsServiceProvider);
+    final analytics = ref.read(coreAnalyticsServiceProvider);
     try {
       if (result.hasSlots) {
         await logFirstSuitcase(

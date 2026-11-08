@@ -116,6 +116,9 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
   /// "Riusa": il passo 1 di un viaggio nuovo, precompilato da uno passato.
   bool get _isReuse => widget.reuseFromId != null;
 
+  /// `source` di `trip_created`: il viaggio nasce da zero o da Riusa.
+  String get _tripSource => _isReuse ? 'reuse' : 'new';
+
   final GlobalKey _whereKey = GlobalKey();
   final GlobalKey _whenKey = GlobalKey();
   final GlobalKey _itineraryKey = GlobalKey();
@@ -231,7 +234,13 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
       final trip = _draft
           .toTripModel(id: _newTripId, now: DateTime.now())
           .copyWith(aiSetup: _aiSetup, description: _reuseSource?.description);
-      setup = await startAiPacking(context, ref, trip: trip, isNew: true);
+      setup = await startAiPacking(
+        context,
+        ref,
+        trip: trip,
+        isNew: true,
+        tripSource: _tripSource,
+      );
     } finally {
       // Anche con un errore la pagina torna viva: bottoni e Indietro.
       if (mounted) {
@@ -280,7 +289,9 @@ class _NewTripScreenState extends ConsumerState<NewTripScreen> {
 
     final saved = await ErrorRetryDialog.executeWithRetry(
       context: context,
-      operation: () => ref.read(tripNotifierProvider.notifier).addTrip(trip),
+      operation: () => ref
+          .read(tripNotifierProvider.notifier)
+          .addTrip(trip, source: _tripSource),
       errorTitle: 'errors.save_error'.tr(),
       errorMessage: 'errors.create_trip_failed'.tr(),
     );

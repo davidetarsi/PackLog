@@ -22,6 +22,7 @@ import '../model/trip_weather.dart';
 import '../providers/ai_packing_run_provider.dart';
 import '../view/widgets/ai/ai_packing_sheet.dart';
 import 'ai_suitcase_adoption.dart';
+import 'suitcase_analytics.dart';
 
 /// Il tocco su "Prepara con AI" / "Rigenera": controlla che si possa, chiede
 /// conferma se la valigia ha già capi (solo se non [isNew]), apre il foglio,
@@ -38,6 +39,7 @@ Future<AiPackingSetup?> startAiPacking(
   required TripModel trip,
   required bool isNew,
   VoidCallback? beforeWait,
+  String? tripSource,
 }) async {
   if (ref.read(aiPackingRunProvider) is AiRunRunning) {
     AppSnackBar.showInfo(context, 'trips.ai.busy'.tr());
@@ -93,6 +95,10 @@ Future<AiPackingSetup?> startAiPacking(
     houseId: houseId,
     title: joinStopNames(names),
     nights: nightsBetween(trip.departureDateTime, trip.returnDateTime) ?? 0,
+    // Prima di sostituire la valigia: cosa c'è già e cosa cambia nel foglio.
+    isRegeneration: !isNew && trip.aiResult != null,
+    setupChanged: setupChangedFields(trip.aiSetup, setup),
+    luggage: luggage,
   );
   final started = ref
       .read(aiPackingRunProvider.notifier)
@@ -103,6 +109,7 @@ Future<AiPackingSetup?> startAiPacking(
           setup: setup,
           job: job,
           luggage: luggage,
+          tripSource: tripSource,
         ),
       );
   if (!started) {
